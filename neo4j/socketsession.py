@@ -41,6 +41,7 @@ class SocketSession(object):
 
         # Establish a socket connection
         s = socket.create_connection((host, port or cls.default_port))
+        s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
         # Negotiate protocol version
         versions = [0 if c is None else c.version for c in cls.subclasses]
