@@ -50,8 +50,8 @@ Neo4j server.
 
 Options:
   -? --help              display this help text
-  -i --iterations COUNT  number of iterations for each statement
-                         (default 10000)
+  -x --times COUNT       number of times to execute each statement
+                         (default 2500)
   -p --parallels VALUES  comma separated list of parallel values
                          (default: 1,2,4,8,16)
 
@@ -169,7 +169,7 @@ def main():
             if arg in ("-h", "--help"):
                 help_(script=basename(script))
                 sys.exit(0)
-            elif arg in ("-i", "--iterations"):
+            elif arg in ("-x", "--times"):
                 run_count = int(args.pop(0))
             elif arg in ("-p", "--parallels"):
                 parallels = list(map(int, args.pop(0).split(",")))
