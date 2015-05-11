@@ -25,7 +25,7 @@ try:
 except ImportError:
     from urlparse import urlparse
 
-from neo4j.socketsession import *
+from neo4j.session import *
 from neo4j.v1 import *
 from neo4j.v1.types import *
 
