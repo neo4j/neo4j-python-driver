@@ -26,7 +26,7 @@ import logging
 import struct
 import sys
 
-from ..socketsession import SocketSession
+from ..session import SocketSession
 from .chunking import ChunkedIO
 from .error import CypherError
 from .packstream import Packer, Unpacker
