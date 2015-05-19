@@ -6,7 +6,7 @@ from collections import OrderedDict
 from io import BytesIO
 from math import pi
 import struct
-from unittest import TestCase, main
+from unittest import main, TestCase
 
 from neo4j.v1.packstream import Packer, Unpacker, packb
 

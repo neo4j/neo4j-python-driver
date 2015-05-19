@@ -20,12 +20,20 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from unittest import main, TestCase
+
 import neo4j
 
 
-def test_can_run_statement():
-    session = neo4j.session("neo4j://localhost")
-    session.run("CREATE (n {name:'Bob'})")
-    for record in session.run("MATCH (n) RETURN n.name"):
-        print(record)
-    session.close()
+class RunStatementTestCase(TestCase):
+
+    def test_can_run_statement(self):
+        session = neo4j.session("neo4j://localhost")
+        session.run("CREATE (n {name:'Bob'})")
+        for record in session.run("MATCH (n) RETURN n.name"):
+            print(record)
+        session.close()
+
+
+if __name__ == "__main__":
+    main()

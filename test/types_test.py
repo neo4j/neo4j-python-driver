@@ -20,29 +20,39 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from unittest import main, TestCase
+
 from neo4j import Node, Relationship, Path
 
 
-def test_can_create_relationship():
-    alice = Node("A", {"Person"}, {"name": "Alice", "age": 33})
-    bob = Node("B", {"Person"}, {"name": "Bob", "age": 44})
-    alice_knows_bob = Relationship("AB", alice, bob, "KNOWS", {"since": 1999})
-    assert alice_knows_bob.identity() == "AB"
-    assert alice_knows_bob.start() is alice
-    assert alice_knows_bob.type() == "KNOWS"
-    assert alice_knows_bob.end() is bob
-    assert alice_knows_bob.property_keys() == {"since"}
-    assert alice_knows_bob.property("since") == 1999
+class RelationshipTestCase(TestCase):
+
+    def test_can_create_relationship(self):
+        alice = Node("A", {"Person"}, {"name": "Alice", "age": 33})
+        bob = Node("B", {"Person"}, {"name": "Bob", "age": 44})
+        alice_knows_bob = Relationship("AB", alice, bob, "KNOWS", {"since": 1999})
+        assert alice_knows_bob.identity() == "AB"
+        assert alice_knows_bob.start() is alice
+        assert alice_knows_bob.type() == "KNOWS"
+        assert alice_knows_bob.end() is bob
+        assert alice_knows_bob.property_keys() == {"since"}
+        assert alice_knows_bob.property("since") == 1999
 
 
-def test_can_create_path():
-    alice = Node("A", {"Person"}, {"name": "Alice", "age": 33})
-    bob = Node("B", {"Person"}, {"name": "Bob", "age": 44})
-    carol = Node("C", {"Person"}, {"name": "Carol", "age": 55})
-    alice_knows_bob = Relationship("AB", alice, bob, "KNOWS", {"since": 1999})
-    carol_knows_bob = Relationship("CB", carol, bob, "KNOWS", {"since": 2001})
-    path = Path(alice, [alice_knows_bob, carol_knows_bob])
-    assert path.start() == alice
-    assert path.end() == carol
-    assert path.nodes() == [alice, bob, carol]
-    assert path.relationships() == [alice_knows_bob, carol_knows_bob]
+class PathTestCase(TestCase):
+
+    def test_can_create_path(self):
+        alice = Node("A", {"Person"}, {"name": "Alice", "age": 33})
+        bob = Node("B", {"Person"}, {"name": "Bob", "age": 44})
+        carol = Node("C", {"Person"}, {"name": "Carol", "age": 55})
+        alice_knows_bob = Relationship("AB", alice, bob, "KNOWS", {"since": 1999})
+        carol_knows_bob = Relationship("CB", carol, bob, "KNOWS", {"since": 2001})
+        path = Path(alice, [alice_knows_bob, carol_knows_bob])
+        assert path.start() == alice
+        assert path.end() == carol
+        assert path.nodes() == [alice, bob, carol]
+        assert path.relationships() == [alice_knows_bob, carol_knows_bob]
+
+
+if __name__ == "__main__":
+    main()
