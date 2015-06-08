@@ -37,6 +37,7 @@ __all__ = ["SocketSessionV1"]
 
 
 # Signature bytes for each message type
+INIT = b"\x01"             # 0000 0001 // INIT
 ACK_FAILURE = b"\x0F"      # 0000 1111 // ACK_FAILURE
 RUN = b"\x10"              # 0001 0000 // RUN <statement> <parameters>
 DISCARD_ALL = b"\x2F"      # 0010 1111 // DISCARD *
@@ -48,6 +49,7 @@ FAILURE = b"\x7F"          # 0111 1111 // FAILURE <metadata>
 
 # Textual names for each message type (for logging)
 message_names = {
+    INIT: "INIT",
     ACK_FAILURE: "ACK_FAILURE",
     RUN: "RUN",
     DISCARD_ALL: "DISCARD *",
@@ -141,6 +143,9 @@ class SocketSessionV1(SocketSession):
         # Incoming message generator instance
         self.incoming = incoming()
 
+        # Initialise the connection
+        self.init("neo4j-python/1.0")
+
     def close(self):
         """ Close the connection.
         """
@@ -209,6 +214,23 @@ class SocketSessionV1(SocketSession):
             next(incoming)
         # Return the last (summary) response
         return response[-1]
+
+    def init(self, user_agent):
+        """ Initialise a connection with the details supplied.
+
+        :param user_agent: The user agent to register for this connection
+        """
+        # Send RUN and PULL_ALL messages
+        init_response, = self._send((INIT, (ustr(user_agent),)))
+        # Receive the summary message from the RUN request
+        signature, (metadata,) = self._receive_summary(init_response)
+        if signature == SUCCESS:
+            return
+        elif signature == FAILURE:
+            # TODO: ACK_FAILURE
+            raise CypherError(metadata["message"])
+        else:
+            raise RuntimeError("Cypher error")
 
     def run(self, statement, parameters=None):
         """ Run a Cypher statement and return the response records.
