@@ -1,0 +1,6 @@
+Neo4j
+Copyright © 2002-2015 Network Engine for Objects in Lund AB (referred to
+in this notice as "Neo Technology")
+   [http://neotechnology.com]
+
+This product includes software ("Software") developed by Neo Technology.
