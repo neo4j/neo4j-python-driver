@@ -31,6 +31,7 @@ import logging
 from select import select
 from socket import create_connection, SHUT_RDWR
 import struct
+from sys import version_info
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -41,6 +42,14 @@ from neo4j.packstream import Packer, Unpacker
 # Hydration function for turning structures into their actual types
 from neo4j.typesystem import hydrated
 
+
+# Workaround for Python 2/3 type differences
+if version_info >= (3,):
+    integer = int
+    string = str
+else:
+    integer = (int, long)
+    string = (str, unicode)
 
 DEFAULT_PORT = 7687
 
@@ -77,6 +86,63 @@ class CypherError(Exception):
         for key, value in data.items():
             if not key.startswith("_"):
                 setattr(self, key, value)
+
+
+class Record(object):
+    """ Record object for storing result values along with field names.
+    """
+
+    def __init__(self, fields, values):
+        self.__fields__ = fields
+        self.__values__ = values
+
+    def __repr__(self):
+        values = self.__values__
+        s = []
+        for i, field in enumerate(self.__fields__):
+            value = values[i]
+            if isinstance(value, tuple):
+                signature, _ = value
+                if signature == b"N":
+                    s.append("%s=<Node>" % (field,))
+                elif signature == b"R":
+                    s.append("%s=<Relationship>" % (field,))
+                else:
+                    s.append("%s=<?>" % (field,))
+            else:
+                s.append("%s=%r" % (field, value))
+        return "<Record %s>" % " ".join(s)
+
+    def __eq__(self, other):
+        try:
+            return vars(self) == vars(other)
+        except TypeError:
+            return tuple(self) == tuple(other)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __len__(self):
+        return self.__fields__.__len__()
+
+    def __getitem__(self, item):
+        if isinstance(item, string):
+            return getattr(self, item)
+        elif isinstance(item, integer):
+            return getattr(self, self.__fields__[item])
+        else:
+            raise LookupError(item)
+
+    def __getattr__(self, item):
+        try:
+            i = self.__fields__.index(item)
+        except ValueError:
+            raise AttributeError("No field %r" % item)
+        else:
+            value = self.__values__[i]
+            if isinstance(value, tuple):
+                value = self.__values__[i] = hydrated(value)
+            return value
 
 
 class ChunkWriter(object):
@@ -278,7 +344,7 @@ class SessionV1(object):
             signature, (data,) = recv_message()
             if signature == RECORD:
                 if __debug__: log_info("S: RECORD %r", data)
-                append(tuple(map(hydrated, data)))
+                append(Record(fields, tuple(map(hydrated, data))))
             elif signature == SUCCESS:
                 if __debug__: log_info("S: SUCCESS %r", data)
                 more = False
@@ -286,7 +352,7 @@ class SessionV1(object):
                 if __debug__: log_info("S: FAILURE %r", data)
                 raise CypherError(data)
 
-        return fields, records
+        return records
 
     def ack_failure(self):
         """ Send an acknowledgement for a previous failure.

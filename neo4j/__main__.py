@@ -91,13 +91,14 @@ def main():
         for _ in range(args.times):
             for statement in args.statement:
                 try:
-                    fields, records = session.run(statement, {})
+                    records = session.run(statement, {})
                 except neo4j.CypherError as error:
                     stderr.write("%s: %s\r\n" % (error.code, error.message))
                 else:
                     if not args.quiet:
-                        stdout.write("%s\r\n" % "\t".join(fields))
-                        for record in records:
+                        for i, record in enumerate(records):
+                            if i == 0:
+                                stdout.write("%s\r\n" % "\t".join(record.__fields__))
                             stdout.write("%s\r\n" % "\t".join(map(repr, record)))
                         stdout.write("\r\n")
         session.close()
