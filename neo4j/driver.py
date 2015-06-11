@@ -146,7 +146,6 @@ class SessionV1(object):
 
     def __init__(self, s):
         self.socket = s
-        if __debug__: log_info("NDPv1 connection established!")
         self.init("ExampleDriver/1.0")
 
     def _send_messages(self, *messages):
@@ -162,7 +161,7 @@ class SessionV1(object):
             flush(zero_chunk=True)
 
         data = raw.to_bytes()
-        if __debug__: log_debug("Sending request data: %r", data)
+        if __debug__: log_debug("C: %r", data)
         self.socket.sendall(data)
 
         raw.close()
@@ -205,13 +204,13 @@ class SessionV1(object):
         while more:
             # Receive chunk header to establish size of chunk that follows
             chunk_header = recv(2)
-            if __debug__: log_debug("Received chunk header data: %r", chunk_header)
             chunk_size, = struct.unpack_from(">H", chunk_header)
+            if __debug__: log_debug("S: %r (%dB)", chunk_header, chunk_size)
 
             # Receive chunk data
             if chunk_size > 0:
                 chunk_data = recv(chunk_size)
-                if __debug__: log_debug("Received chunk data: %r", chunk_data)
+                if __debug__: log_debug("S: %r", chunk_data)
                 write(chunk_data)
             else:
                 more = False
@@ -236,14 +235,15 @@ class SessionV1(object):
         if isinstance(user_agent, bytes):
             user_agent = user_agent.decode("UTF-8")
 
-        if __debug__: log_info("Initialising connection")
+        if __debug__: log_info("C: INIT %r", user_agent)
         self._send_messages((INIT, (user_agent,)))
 
         signature, (data,) = self._recv_message()
         if signature == SUCCESS:
-            if __debug__: log_info("Initialisation successful")
+            if __debug__: log_info("S: SUCCESS %r", data)
         else:
-            raise ProtocolError("INIT was unsuccessful: %r" % data)
+            if __debug__: log_info("S: FAILURE %r", data)
+            raise ProtocolError("Initialisation failed")
 
     def run(self, statement, parameters=None):
         """ Run a parameterised Cypher statement.
@@ -255,15 +255,18 @@ class SessionV1(object):
             statement = statement.decode("UTF-8")
 
         parameters = dict(parameters or {})
-        if __debug__: log_info("Running statement %r with parameters %r", statement, parameters)
+        if __debug__:
+            log_info("C: RUN %r %r", statement, parameters)
+            log_info("C: PULL_ALL")
         self._send_messages((RUN, (statement, parameters)),
                             (PULL_ALL, ()))
 
         signature, (data,) = recv_message()
         if signature == SUCCESS:
-            fields = tuple(data["fields"])
-            if __debug__: log_info("Statement ran successfully with field list %r", fields)
+            fields = data["fields"]
+            if __debug__: log_info("S: SUCCESS %r", fields)
         else:
+            if __debug__: log_info("S: FAILURE %r", data)
             raise CypherError(data)
 
         records = []
@@ -272,12 +275,13 @@ class SessionV1(object):
         while more:
             signature, (data,) = recv_message()
             if signature == RECORD:
-                if __debug__: log_info("Record received with value list %r", data)
+                if __debug__: log_info("S: RECORD %r", data)
                 append(tuple(map(hydrated, data)))
             elif signature == SUCCESS:
-                if __debug__: log_info("All records successfully received: %r", data)
+                if __debug__: log_info("S: SUCCESS %r", data)
                 more = False
             else:
+                if __debug__: log_info("S: FAILURE %r", data)
                 raise CypherError(data)
 
         return fields, records
@@ -285,24 +289,27 @@ class SessionV1(object):
     def ack_failure(self):
         """ Send an acknowledgement for a previous failure.
         """
-        if __debug__: log_info("Acknowledging failure")
+        if __debug__: log_info("C: ACK_FAILURE")
         self._send_messages((ACK_FAILURE, ()))
 
         # Skip any ignored responses
-        signature, _ = self._recv_message()
+        signature, fields = self._recv_message()
         while signature == IGNORED:
-            signature, _ = self._recv_message()
+            if __debug__: log_info("S: IGNORED")
+            signature, fields = self._recv_message()
 
         # Check the acknowledgement was successful
+        data, = fields
         if signature == SUCCESS:
-            if __debug__: log_info("Acknowledgement successful")
+            if __debug__: log_info("S: SUCCESS %r", data)
         else:
-            raise ProtocolError("ACK_FAILURE was unsuccessful")
+            if __debug__: log_info("S: FAILURE %r", data)
+            raise ProtocolError("Could not acknowledge failure")
 
     def close(self):
         """ Shut down and close the connection.
         """
-        if __debug__: log_info("Shutting down and closing connection")
+        if __debug__: log_info("~~ [CLOSE]")
         socket = self.socket
         socket.shutdown(SHUT_RDWR)
         socket.close()
@@ -327,26 +334,26 @@ class Driver(object):
         # Establish a connection to the host and port specified
         host = self.host
         port = self.port or DEFAULT_PORT
-        if __debug__: log_info("Creating connection to %s on port %d" % (host, port))
+        if __debug__: log_info("~~ [CONNECT] %s %d", host, port)
         s = create_connection((host, port))
 
         # Send details of the protocol versions supported
         supported_versions = [1, 0, 0, 0]
-        if __debug__: log_info("Supported protocol versions are: %r", supported_versions)
+        if __debug__: log_info("C: [HANDSHAKE] %r", supported_versions)
         data = b"".join(struct.pack(">I", version) for version in supported_versions)
-        if __debug__: log_debug("Sending handshake data: %r", data)
+        if __debug__: log_debug("C: %r", data)
         s.sendall(data)
 
         # Handle the handshake response
         data = s.recv(4)
-        if __debug__: log_debug("Received handshake data: %r", data)
+        if __debug__: log_debug("S: %r", data)
         agreed_version, = struct.unpack(">I", data)
+        if __debug__: log_info("S: [HANDSHAKE] %d", agreed_version)
         if agreed_version == 0:
-            if __debug__: log_warning("Closing connection as no protocol version could be agreed")
+            if __debug__: log_debug("~~ [CLOSE]")
             s.shutdown(SHUT_RDWR)
             s.close()
         else:
-            if __debug__: log_info("Protocol version %d agreed", agreed_version)
             return SessionV1(s)
 
 
