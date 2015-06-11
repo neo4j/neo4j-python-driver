@@ -168,25 +168,30 @@ class SessionV1(object):
         raw.close()
 
     def _recv(self, size):
-        """ Receive a required number of bytes from the network.
+        """ Receive a required number of bytes from the network. Bytes
+        are buffered so this only calls `socket.recv` if the buffer does
+        not contain enough data.
         """
         socket = self.socket
         recv = socket.recv
 
         # If data is needed, keep reading until all bytes have been received
-        data = b""
-        while size:
+        remaining = size - len(self._recv_buffer)
+        while remaining > 0:
             # Read up to the required amount remaining
-            b = recv(size)
-            size -= len(b)
-            data += b
+            b = recv(8192)
+            if __debug__: log_debug("S: %r", b)
+            remaining -= len(b)
+            self._recv_buffer += b
 
             # If more is required, wait for available network data
-            if size:
+            if remaining > 0:
                 ready_to_read, _, _ = select((socket,), (), (), 0)
                 while not ready_to_read:
                     ready_to_read, _, _ = select((socket,), (), (), 0)
 
+        # Split off the amount of data required and keep the rest in the buffer
+        data, self._recv_buffer = self._recv_buffer[:size], self._recv_buffer[size:]
         return data
 
     def _recv_message(self):
@@ -204,12 +209,10 @@ class SessionV1(object):
             # Receive chunk header to establish size of chunk that follows
             chunk_header = recv(2)
             chunk_size, = struct.unpack_from(">H", chunk_header)
-            if __debug__: log_debug("S: %r (%dB)", chunk_header, chunk_size)
 
             # Receive chunk data
             if chunk_size > 0:
                 chunk_data = recv(chunk_size)
-                if __debug__: log_debug("S: %r", chunk_data)
                 write(chunk_data)
             else:
                 more = False
