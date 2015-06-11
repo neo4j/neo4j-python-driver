@@ -27,7 +27,7 @@ import neo4j
 class RunStatementTestCase(TestCase):
 
     def test_can_run_statement(self):
-        session = neo4j.session("neo4j://localhost")
+        session = neo4j.driver("graph://localhost").session()
         session.run("CREATE (n {name:'Bob'})")
         for record in session.run("MATCH (n) RETURN n.name"):
             print(record)

@@ -21,14 +21,16 @@
 
 from __future__ import unicode_literals
 
+from argparse import ArgumentParser
 import logging
-import sys
-import threading
+from sys import stdout, stderr
 
-from . import session as neo4j_session
+import neo4j
 
 
 class ColourFormatter(logging.Formatter):
+    """ Colour formatter for pretty log output.
+    """
 
     def format(self, record):
         s = super(ColourFormatter, self).format(record)
@@ -46,7 +48,9 @@ class ColourFormatter(logging.Formatter):
             return s
 
 
-class Watcher(threading.local):
+class Watcher(object):
+    """ Log watcher for debug output.
+    """
 
     handlers = {}
 
@@ -54,9 +58,9 @@ class Watcher(threading.local):
         super(Watcher, self).__init__()
         self.logger_name = logger_name
         self.logger = logging.getLogger(self.logger_name)
-        self.formatter = ColourFormatter()
+        self.formatter = ColourFormatter("%(asctime)s  %(message)s")
 
-    def watch(self, level=logging.INFO, out=sys.stdout):
+    def watch(self, level=logging.INFO, out=stdout):
         try:
             self.logger.removeHandler(self.handlers[self.logger_name])
         except KeyError:
@@ -69,22 +73,34 @@ class Watcher(threading.local):
 
 
 def main():
-    script = sys.argv[0]
-    opts = []
-    args = []
-    for arg in sys.argv[1:]:
-        if arg.startswith("-"):
-            opts.append(arg)
-        else:
-            args.append(arg)
-    if "-v" in opts:
-        Watcher("neo4j").watch(logging.INFO, sys.stdout)
+    parser = ArgumentParser(description="Execute one or more Cypher statements using NDP.")
+    parser.add_argument("statement", nargs="+")
+    parser.add_argument("-u", "--url", default="graph://localhost")
+    parser.add_argument("-q", "--quiet", action="store_true")
+    parser.add_argument("-v", "--verbose", action="count")
+    parser.add_argument("-x", "--times", type=int, default=1)
+    args = parser.parse_args()
 
-    session = neo4j_session("neo4j://localhost")
-    for statement in args:
-        for record in session.run(statement):
-            print(record)
-    session.close()
+    if args.verbose:
+        level = logging.INFO if args.verbose == 1 else logging.DEBUG
+        Watcher("neo4j").watch(level, stderr)
+
+    driver = neo4j.driver(args.url)
+    session = driver.session()
+    if session:
+        for _ in range(args.times):
+            for statement in args.statement:
+                try:
+                    fields, records = session.run(statement, {})
+                except neo4j.CypherError as error:
+                    stderr.write("%s: %s\r\n" % (error.code, error.message))
+                else:
+                    if not args.quiet:
+                        stdout.write("%s\r\n" % "\t".join(fields))
+                        for record in records:
+                            stdout.write("%s\r\n" % "\t".join(map(repr, record)))
+                        stdout.write("\r\n")
+        session.close()
 
 
 if __name__ == "__main__":

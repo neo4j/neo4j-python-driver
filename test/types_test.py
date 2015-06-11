@@ -46,11 +46,11 @@ class PathTestCase(TestCase):
         carol = Node("C", {"Person"}, {"name": "Carol", "age": 55})
         alice_knows_bob = Relationship("AB", alice, bob, "KNOWS", {"since": 1999})
         carol_knows_bob = Relationship("CB", carol, bob, "KNOWS", {"since": 2001})
-        path = Path(alice, [alice_knows_bob, carol_knows_bob])
+        path = Path([alice, alice_knows_bob, bob, carol_knows_bob, carol])
         assert path.start() == alice
         assert path.end() == carol
-        assert path.nodes() == [alice, bob, carol]
-        assert path.relationships() == [alice_knows_bob, carol_knows_bob]
+        assert path.nodes() == (alice, bob, carol)
+        assert path.relationships() == (alice_knows_bob, carol_knows_bob)
 
 
 if __name__ == "__main__":

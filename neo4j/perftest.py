@@ -93,7 +93,7 @@ class HTTPLegacy(Remoting):
 
     def __init__(self, run_count, statement, times):
         super(HTTPLegacy, self).__init__(run_count, statement, times)
-        self.graph = Graph("http://neo4j:password@localhost:13676/db/data/")
+        self.graph = Graph("http://neo4j:password@localhost:7474/db/data/")
         self.cypher = self.graph.cypher
 
     def run(self):
@@ -116,7 +116,7 @@ class HTTPTransactional(Remoting):
 
     def __init__(self, run_count, statement, times):
         super(HTTPTransactional, self).__init__(run_count, statement, times)
-        self.graph = Graph("http://neo4j:password@localhost:13676/db/data/")
+        self.graph = Graph("http://neo4j:password@localhost:7474/db/data/")
         self.cypher = self.graph.cypher
 
     def run(self):
@@ -136,7 +136,7 @@ class NDP(Remoting):
 
     def __init__(self, run_count, statement, times):
         super(NDP, self).__init__(run_count, statement, times)
-        self.session = neo4j.session(getenv("NEO4J_URI", "neo4j://localhost"))
+        self.session = neo4j.driver(getenv("NEO4J_URI", "graph://localhost")).session()
 
     def run(self):
         run = self.session.run
@@ -183,7 +183,7 @@ def main():
             statements.append(arg)
     if not statements:
         print("No statements specified, using defaults")
-        session = neo4j.session(getenv("NEO4J_URI", "neo4j://localhost"))
+        session = neo4j.driver(getenv("NEO4J_URI", "graph://localhost")).session()
         session.run("CREATE CONSTRAINT ON (a:Thing) ASSERT a.foo IS UNIQUE")
         results = session.run("MERGE (a:Thing {foo:'bar'}) RETURN id(a)")
         node_id = results[0][0]

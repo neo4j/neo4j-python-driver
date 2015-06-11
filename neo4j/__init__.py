@@ -24,23 +24,5 @@ try:
 except ImportError:
     from urlparse import urlparse
 
-from neo4j.session import *
-from neo4j.v1 import *
-from neo4j.v1.types import *
-
-
-SocketSession.subclasses = [SocketSessionV1, None, None, None]
-
-
-def session(url):
-    """ Return a Session object appropriate for the URL specified.
-
-    :param url: the URL of the database server to which to connect
-    :return: a Session subclass instance for a supported protocol version
-    """
-    parsed = urlparse(url)
-    scheme = parsed.scheme
-    if scheme == "neo4j":
-        return SocketSession.create(parsed.hostname, parsed.port)
-    else:
-        raise ValueError("Unsupported URL scheme %r" % scheme)
+from neo4j.driver import *
+from neo4j.typesystem import *

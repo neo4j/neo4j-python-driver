@@ -2,7 +2,8 @@
 
 ```python
 import neo4j
-session = neo4j.session("neo4j://localhost")
+driver = neo4j.driver("graph://localhost")
+session = driver.session()
 session.run("CREATE (a:Person {name:'Bob'})")
 for name, in session.run("MATCH (a:Person) RETURN a.name AS name"):
     print(name)
@@ -33,5 +34,9 @@ Running "MATCH (a:Person {name:'Alice'}) RETURN a" × 10000
 ## Profiling
 
 ```bash
-python -m cProfile -s cumtime profile/driver_profile.py | less
+./runprofile.sh "RETURN 1" | less
+```
+
+```bash
+./runprofile.sh "RETURN 1" 20000 | less
 ```

@@ -18,74 +18,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import sys
-
-
-__all__ = ["Record", "Node", "Relationship", "Path"]
-
-
-if sys.version_info >= (3,):
-    integer = int
-    string = str
-else:
-    integer = (int, long)
-    string = (str, unicode)
+"""
+This module contains classes for modelling nodes, relationships and
+paths belonging to a Neo4j graph database. The `hydration` function,
+also included, allows PackStream structures to be turned into instances
+of these classes.
+"""
 
 
-class Record(object):
-
-    def __init__(self, fields, values):
-        self.__fields__ = fields
-        self.__values__ = values
-
-    def __repr__(self):
-        values = self.__values__
-        s = []
-        for i, field in enumerate(self.__fields__):
-            value = values[i]
-            if isinstance(value, tuple):
-                signature, _ = value
-                if signature == b"N":
-                    s.append("%s=<Node>" % (field,))
-                elif signature == b"R":
-                    s.append("%s=<Relationship>" % (field,))
-                else:
-                    s.append("%s=<?>" % (field,))
-            else:
-                s.append("%s=%r" % (field, value))
-        return "<Record %s>" % " ".join(s)
-
-    def __eq__(self, other):
-        try:
-            return vars(self) == vars(other)
-        except TypeError:
-            return tuple(self) == tuple(other)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __len__(self):
-        return self.__fields__.__len__()
-
-    def __getitem__(self, item):
-        if isinstance(item, string):
-            return getattr(self, item)
-        elif isinstance(item, integer):
-            return getattr(self, self.__fields__[item])
-        else:
-            raise LookupError(item)
-
-    def __getattr__(self, item):
-        try:
-            i = self.__fields__.index(item)
-        except ValueError:
-            raise AttributeError("No field %r" % item)
-        else:
-            value = self.__values__[i]
-            if isinstance(value, tuple):
-                value = self.__values__[i] = hydrated(value)
-            return value
+from neo4j.packstream import Structure
 
 
 class Entity(object):
@@ -150,19 +91,18 @@ class Path(object):
     """ Self-contained graph path.
     """
 
-    def __init__(self, start, relationships):
-        self._nodes = [start]
-        self._relationships = list(relationships)
-        for relationship in self._relationships:
-            end = self.end()
-            if end == relationship.start():
-                # forward
-                self._nodes.append(relationship.end())
-            elif end == relationship.end():
-                # reverse
-                self._nodes.append(relationship.start())
-            else:
-                raise ValueError("Relationships do not form a continuous path")
+    def __init__(self, entities):
+        self._nodes = tuple(map(hydrated, entities[0::2]))
+        self._relationships = tuple(map(hydrated, entities[1::2]))
+        self._directions = tuple("->" if rel.start() == self._nodes[i] else "<-"
+                                 for i, rel in enumerate(self._relationships))
+
+    def __repr__(self):
+        return "<Path start=%r end=%r size=%s>" % \
+               (self.start().identity(), self.end().identity(), len(self))
+
+    def __len__(self):
+        return len(self._relationships)
 
     def __iter__(self):
         return iter(self._relationships)
@@ -180,7 +120,7 @@ class Path(object):
         return self._relationships
 
 
-types = {
+structures = {
     b"N": Node,
     b"R": Relationship,
     b"P": Path,
@@ -188,12 +128,19 @@ types = {
 
 
 def hydrated(obj):
-    if isinstance(obj, tuple):
+    """ Hydrate an object or a collection of nested objects by replacing
+    structures with entity instances.
+    """
+    if isinstance(obj, Structure):
         signature, args = obj
         try:
-            return types[signature](*args)
+            structure = structures[signature]
         except KeyError:
-            raise RuntimeError("Unknown structure signature %r" % signature)
+            # If we don't recognise the structure type, just return it as-is
+            return obj
+        else:
+            # Otherwise pass the structural data to the appropriate constructor
+            return structure(*args)
     elif isinstance(obj, list):
         return list(map(hydrated, obj))
     elif isinstance(obj, dict):
