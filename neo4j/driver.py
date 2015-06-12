@@ -30,7 +30,7 @@ from io import BytesIO
 import logging
 from select import select
 from socket import create_connection, SHUT_RDWR
-import struct
+from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 from sys import version_info
 try:
     from urllib.parse import urlparse
@@ -181,7 +181,7 @@ class ChunkWriter(object):
         """
         output_buffer = self.output_buffer
         if output_buffer:
-            lines = [struct.pack(">H", self.output_size)] + output_buffer
+            lines = [struct_pack(">H", self.output_size)] + output_buffer
         else:
             lines = []
         if zero_chunk:
@@ -220,11 +220,14 @@ class SessionV1(object):
         """
         raw = ChunkWriter()
         packer = Packer(raw)
+        pack_struct_header = packer.pack_struct_header
         pack = packer.pack
         flush = raw.flush
 
-        for message in messages:
-            pack(message)
+        for signature, fields in messages:
+            pack_struct_header(len(fields), signature)
+            for field in fields:
+                pack(field)
             flush(zero_chunk=True)
 
         data = raw.to_bytes()
@@ -233,55 +236,47 @@ class SessionV1(object):
 
         raw.close()
 
-    def _recv(self, size):
-        """ Receive a required number of bytes from the network. Bytes
-        are buffered so this only calls `socket.recv` if the buffer does
-        not contain enough data.
-        """
-        socket = self.socket
-        recv = socket.recv
-
-        # If data is needed, keep reading until all bytes have been received
-        remaining = size - len(self._recv_buffer)
-        while remaining > 0:
-            # Read up to the required amount remaining
-            b = recv(8192)
-            if __debug__: log_debug("S: %r", b)
-            remaining -= len(b)
-            self._recv_buffer += b
-
-            # If more is required, wait for available network data
-            if remaining > 0:
-                ready_to_read, _, _ = select((socket,), (), (), 0)
-                while not ready_to_read:
-                    ready_to_read, _, _ = select((socket,), (), (), 0)
-
-        # Split off the amount of data required and keep the rest in the buffer
-        data, self._recv_buffer = self._recv_buffer[:size], self._recv_buffer[size:]
-        return data
-
     def _recv_message(self):
         """ Receive exactly one message from the server.
         """
         raw = BytesIO()
         unpack = Unpacker(raw).unpack
 
-        recv = self._recv
+        socket = self.socket
+        recv = socket.recv
         write = raw.write
 
         # Receive chunks of data until chunk_size == 0
-        more = True
-        while more:
-            # Receive chunk header to establish size of chunk that follows
-            chunk_header = recv(2)
-            chunk_size, = struct.unpack_from(">H", chunk_header)
+        chunk_size = None
+        while chunk_size != 0:
+            # Determine how much to read depending on header or data
+            size = 2 if chunk_size is None else chunk_size
 
-            # Receive chunk data
-            if chunk_size > 0:
-                chunk_data = recv(chunk_size)
-                write(chunk_data)
-            else:
-                more = False
+            # If data is needed, keep reading until all bytes have been received
+            remaining = size - len(self._recv_buffer)
+            while remaining > 0:
+                # Read up to the required amount remaining
+                b = recv(8192)
+                if __debug__: log_debug("S: %r", b)
+                remaining -= len(b)
+                self._recv_buffer += b
+
+                # If more is required, wait for available network data
+                if remaining > 0:
+                    ready_to_read, _, _ = select((socket,), (), (), 0)
+                    while not ready_to_read:
+                        ready_to_read, _, _ = select((socket,), (), (), 0)
+
+            # Split off the amount of data required and keep the rest in the buffer
+            data, self._recv_buffer = self._recv_buffer[:size], self._recv_buffer[size:]
+
+            if chunk_size is None:
+                # Interpret data as chunk header
+                chunk_size, = struct_unpack_from(">H", data)
+            elif chunk_size > 0:
+                # Interpret data as chunk
+                write(data)
+                chunk_size = None
 
         # Unpack the message structure from the raw byte stream
         # (there should be only one)
@@ -408,14 +403,14 @@ class Driver(object):
         # Send details of the protocol versions supported
         supported_versions = [1, 0, 0, 0]
         if __debug__: log_info("C: [HANDSHAKE] %r", supported_versions)
-        data = b"".join(struct.pack(">I", version) for version in supported_versions)
+        data = b"".join(struct_pack(">I", version) for version in supported_versions)
         if __debug__: log_debug("C: %r", data)
         s.sendall(data)
 
         # Handle the handshake response
         data = s.recv(4)
         if __debug__: log_debug("S: %r", data)
-        agreed_version, = struct.unpack(">I", data)
+        agreed_version, = struct_unpack(">I", data)
         if __debug__: log_info("S: [HANDSHAKE] %d", agreed_version)
         if agreed_version == 0:
             if __debug__: log_debug("~~ [CLOSE]")

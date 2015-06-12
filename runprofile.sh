@@ -6,7 +6,7 @@ function runprofile {
     STATEMENT="$1"
     TIMES="$2"
     cd ${HOME}
-    PYTHONPATH=. python -m cProfile -s cumtime neo4j/__main__.py -qx "${TIMES}" "${STATEMENT}"
+    PYTHONPATH=. python -m cProfile -s cumulative neo4j/__main__.py -qx "${TIMES}" "${STATEMENT}"
 }
 
 if [ $# -lt 1 ]
