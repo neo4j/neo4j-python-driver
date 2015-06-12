@@ -624,7 +624,7 @@ class Unpacker(object):
         while True:
             marker_byte = stream_read(1)
 
-            if marker_byte == b"":
+            if not marker_byte:
                 break
 
             is_collection = False
