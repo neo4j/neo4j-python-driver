@@ -93,7 +93,8 @@ class HTTPLegacy(Remoting):
 
     def __init__(self, run_count, statement, times):
         super(HTTPLegacy, self).__init__(run_count, statement, times)
-        self.graph = Graph("http://neo4j:password@localhost:7474/db/data/")
+        self.graph = Graph(getenv("NEO4J_HTTP_URI",
+                                  "http://neo4j:password@localhost:7474/db/data/"))
         self.cypher = self.graph.cypher
 
     def run(self):
@@ -116,7 +117,8 @@ class HTTPTransactional(Remoting):
 
     def __init__(self, run_count, statement, times):
         super(HTTPTransactional, self).__init__(run_count, statement, times)
-        self.graph = Graph("http://neo4j:password@localhost:7474/db/data/")
+        self.graph = Graph(getenv("NEO4J_HTTP_URI",
+                                  "http://neo4j:password@localhost:7474/db/data/"))
         self.cypher = self.graph.cypher
 
     def run(self):
@@ -136,7 +138,7 @@ class NDP(Remoting):
 
     def __init__(self, run_count, statement, times):
         super(NDP, self).__init__(run_count, statement, times)
-        self.session = neo4j.driver(getenv("NEO4J_URI", "graph://localhost")).session()
+        self.session = neo4j.driver(getenv("NEO4J_NDP_URI", "graph://localhost")).session()
 
     def run(self):
         run = self.session.run
@@ -183,7 +185,7 @@ def main():
             statements.append(arg)
     if not statements:
         print("No statements specified, using defaults")
-        session = neo4j.driver(getenv("NEO4J_URI", "graph://localhost")).session()
+        session = neo4j.driver(getenv("NEO4J_NDP_URI", "graph://localhost")).session()
         session.run("CREATE CONSTRAINT ON (a:Thing) ASSERT a.foo IS UNIQUE")
         results = session.run("MERGE (a:Thing {foo:'bar'}) RETURN id(a)")
         node_id = results[0][0]
@@ -203,7 +205,7 @@ def main():
                 t = repeat(python_statement, 'from neo4j.perftest import HTTPLegacy', number=1)
                 process_run_count = process_count * run_count
                 tx_per_second = process_run_count / min(t)
-                print(" -> {:13,.6f} tx/s (HTTPLegacy)".format(tx_per_second), end="")
+                print(" | {:13,.6f} tx/s (HTTPLegacy)".format(tx_per_second), end="")
 
             if old_remoting:
                 python_statement = 'HTTPTransactional.run_all(%d, %d, %r)' % (
@@ -211,14 +213,14 @@ def main():
                 t = repeat(python_statement, 'from neo4j.perftest import HTTPTransactional', number=1)
                 process_run_count = process_count * run_count
                 tx_per_second = process_run_count / min(t)
-                print(" -> {:13,.6f} tx/s (HTTPTx)".format(tx_per_second), end="")
+                print(" | {:13,.6f} tx/s (HTTPTx)".format(tx_per_second), end="")
 
             python_statement = 'NDP.run_all(%d, %d, %r)' % (
                 process_count, run_count, statement)
             t = repeat(python_statement, 'from neo4j.perftest import NDP', number=1)
             process_run_count = process_count * run_count
             tx_per_second = process_run_count / min(t)
-            print(" -> {:13,.6f} tx/s (NDP)".format(tx_per_second), end="")
+            print(" | {:13,.6f} tx/s (NDP)".format(tx_per_second), end="")
 
             print()
 
