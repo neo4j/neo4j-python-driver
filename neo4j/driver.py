@@ -213,7 +213,7 @@ class SessionV1(object):
     def __init__(self, s):
         self.socket = s
         self._recv_buffer = b""
-        self.init("ExampleDriver/1.0")
+        self.init("neo4j-python/0.0")
 
     def _send_messages(self, *messages):
         """ Send one or more messages to the server.
