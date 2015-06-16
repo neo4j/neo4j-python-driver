@@ -21,13 +21,13 @@
 
 from unittest import main, TestCase
 
-import neo4j
+from neo4j import GraphDatabase
 
 
 class RunStatementTestCase(TestCase):
 
     def test_can_run_statement(self):
-        session = neo4j.driver("graph://localhost").session()
+        session = GraphDatabase.driver("gap://localhost").session()
         session.run("CREATE (n {name:'Bob'})")
         for record in session.run("MATCH (n) RETURN n.name"):
             print(record)

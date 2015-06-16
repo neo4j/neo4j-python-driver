@@ -19,10 +19,10 @@
 # limitations under the License.
 
 """
-This module contains the main NDP driver components as well as several
-helper and exception classes. The main entry point is the `connect`
-function which returns an instance of the ConnectionV1 class that can
-be used for running Cypher statements.
+This module contains the main GAP driver components as well as several
+helper and exception classes. The main entry point is the `GraphDatabase`
+class which can be used to obtain `Driver` instances that are used for
+managing sessions.
 """
 
 
@@ -379,10 +379,12 @@ class SessionV1(object):
 
 
 class Driver(object):
+    """ Accessor for a specific graph database resource.
+    """
 
     def __init__(self, url, **config):
         parsed = urlparse(url)
-        if parsed.scheme == "graph":
+        if parsed.scheme == "gap":
             self.host = parsed.hostname
             self.port = parsed.port
         else:
@@ -420,5 +422,12 @@ class Driver(object):
             return SessionV1(s)
 
 
-def driver(url, **config):
-    return Driver(url, **config)
+class GraphDatabase(object):
+    """ Top level accessor for all graph database functionality.
+    """
+
+    @classmethod
+    def driver(cls, url, **config):
+        """ Acquire a driver instance for the given URL and configuration.
+        """
+        return Driver(url, **config)

@@ -23,7 +23,7 @@ PackStream
 ==========
 
 This module contains a full implementation of PackStream: the serialisation
-format built specifically for NDP. The PackStream design is based heavily on
+format built specifically for Neo4j. The PackStream design is based heavily on
 MessagePack but the implementation completely separate.
 
 Note that PackStream uses big-endian order exclusively and the byte values
