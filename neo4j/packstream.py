@@ -144,7 +144,7 @@ representation for the decimal value 42:
 
     CA 00 00 00 2A              -- INT_32
 
-    CA 00 00 00 00 00 00 00 2A  -- INT_64
+    CB 00 00 00 00 00 00 00 2A  -- INT_64
 
 Note that while encoding small numbers in wider formats is supported, it is
 generally recommended to use the most compact representation possible. The
