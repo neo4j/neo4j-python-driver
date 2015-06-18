@@ -254,10 +254,15 @@ class SessionV1(object):
 
             # If data is needed, keep reading until all bytes have been received
             remaining = size - len(self._recv_buffer)
+            ready_to_read = None
             while remaining > 0:
                 # Read up to the required amount remaining
                 b = recv(8192)
-                if __debug__: log_debug("S: %r", b)
+                if b:
+                    if __debug__: log_debug("S: %r", b)
+                else:
+                    if ready_to_read is not None:
+                        raise ProtocolError("Server closed connection")
                 remaining -= len(b)
                 self._recv_buffer += b
 
