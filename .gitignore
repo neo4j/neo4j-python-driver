@@ -2,5 +2,6 @@
 *.py[co]
 __pycache__
 *.lprof
+*.class
 
 .idea

@@ -26,12 +26,17 @@ managing sessions.
 """
 
 
+from collections import namedtuple
 from io import BytesIO
 import logging
 from select import select
 from socket import create_connection, SHUT_RDWR
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 from sys import version_info
+try:
+    from time import perf_counter
+except ImportError:
+    from time import clock as perf_counter
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -69,6 +74,9 @@ log = logging.getLogger("neo4j")
 log_debug = log.debug
 log_info = log.info
 log_warning = log.warning
+
+
+Latency = namedtuple("Latency", ["overall", "network", "wait"])
 
 
 class ProtocolError(Exception):
@@ -210,10 +218,14 @@ class SessionV1(object):
     version 1.
     """
 
-    def __init__(self, s):
+    def __init__(self, s, **config):
         self.socket = s
         self._recv_buffer = b""
         self.init("neo4j-python/0.0")
+        if config.get("bench"):
+            self._bench = []
+        else:
+            self._bench = None
 
     def _send_messages(self, *messages):
         """ Send one or more messages to the server.
@@ -232,11 +244,15 @@ class SessionV1(object):
 
         data = raw.to_bytes()
         if __debug__: log_debug("C: %r", data)
+        t1 = perf_counter()
         self.socket.sendall(data)
+        t2 = perf_counter()
 
         raw.close()
 
-    def _recv_message(self):
+        return t1, t2
+
+    def _recv_message(self, times=None):
         """ Receive exactly one message from the server.
         """
         raw = BytesIO()
@@ -245,6 +261,8 @@ class SessionV1(object):
         socket = self.socket
         recv = socket.recv
         write = raw.write
+
+        start_recv = None
 
         # Receive chunks of data until chunk_size == 0
         chunk_size = None
@@ -259,6 +277,8 @@ class SessionV1(object):
                 # Read up to the required amount remaining
                 b = recv(8192)
                 if b:
+                    if start_recv is None:
+                        start_recv = perf_counter()
                     if __debug__: log_debug("S: %r", b)
                 else:
                     if ready_to_read is not None:
@@ -282,6 +302,10 @@ class SessionV1(object):
                 # Interpret data as chunk
                 write(data)
                 chunk_size = None
+
+        if times:
+            times[3] = start_recv
+            times[4] = perf_counter()
 
         # Unpack the message structure from the raw byte stream
         # (there should be only one)
@@ -316,6 +340,10 @@ class SessionV1(object):
     def run(self, statement, parameters=None):
         """ Run a parameterised Cypher statement.
         """
+        # Collect six checkpoint times for each run
+        # INIT | START_SEND | END_SEND | START_RECV | END_RECV | RETURN
+        t = [perf_counter(), None, None, None, None, None]
+
         recv_message = self._recv_message
 
         # Ensure the statement is a Unicode value
@@ -326,10 +354,10 @@ class SessionV1(object):
         if __debug__:
             log_info("C: RUN %r %r", statement, parameters)
             log_info("C: PULL_ALL")
-        self._send_messages((RUN, (statement, parameters)),
-                            (PULL_ALL, ()))
+        t[1], t[2] = self._send_messages((RUN, (statement, parameters)),
+                                         (PULL_ALL, ()))
 
-        signature, (data,) = recv_message()
+        signature, (data,) = recv_message(t)
         if signature == SUCCESS:
             fields = data["fields"]
             if __debug__: log_info("S: SUCCESS %r", fields)
@@ -351,6 +379,11 @@ class SessionV1(object):
             else:
                 if __debug__: log_info("S: FAILURE %r", data)
                 raise CypherError(data)
+
+        bench = self._bench
+        if bench is not None:
+            t[5] = perf_counter()
+            bench.append(t)
 
         return records
 
@@ -381,6 +414,12 @@ class SessionV1(object):
         socket = self.socket
         socket.shutdown(SHUT_RDWR)
         socket.close()
+
+    @property
+    def bench(self):
+        if self._bench:
+            return [Latency(return_ - init, end_recv - start_send, start_recv - end_send)
+                    for init, start_send, end_send, start_recv, end_recv, return_ in self._bench]
 
 
 class Driver(object):
@@ -424,7 +463,7 @@ class Driver(object):
             s.shutdown(SHUT_RDWR)
             s.close()
         else:
-            return SessionV1(s)
+            return SessionV1(s, **self.config)
 
 
 class GraphDatabase(object):
