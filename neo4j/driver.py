@@ -26,6 +26,8 @@ managing sessions.
 """
 
 
+from __future__ import division
+
 from collections import namedtuple
 from io import BytesIO
 import logging
@@ -33,10 +35,19 @@ from select import select
 from socket import create_connection, SHUT_RDWR
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 from sys import version_info
+
+# Support Python 2, Python 3 and Jython :-/
 try:
-    from time import perf_counter
+    from java.lang.System import nanoTime
 except ImportError:
-    from time import time as perf_counter
+    try:
+        from time import perf_counter
+    except ImportError:
+        from time import time as perf_counter
+else:
+    def perf_counter():
+        return nanoTime() / 1000000000
+
 try:
     from urllib.parse import urlparse
 except ImportError:

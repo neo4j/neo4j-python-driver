@@ -26,16 +26,39 @@ python -m neo4j.bench
 from __future__ import print_function, division
 
 from itertools import chain
-from multiprocessing import Array, Process
 from os import getenv
 from os.path import basename
 import sys
 import subprocess
 from math import log, ceil, floor
+from sys import version, platform
+
+# Support Python 2, Python 3 and Jython :-/
 try:
-    from time import perf_counter
+    from java.lang.System import nanoTime
 except ImportError:
-    from time import time as perf_counter
+    JYTHON = False
+
+    try:
+        from time import perf_counter
+    except ImportError:
+        from time import time as perf_counter
+else:
+    JYTHON = True
+
+    def perf_counter():
+        return nanoTime() / 1000000000
+
+try:
+    from multiprocessing import Array, Process
+except ImportError:
+    # Workaround for Jython
+
+    from array import array
+    from threading import Thread as Process
+
+    def Array(typecode, size):
+        return array(typecode, [0] * size)
 
 from neo4j import GraphDatabase
 
@@ -186,7 +209,12 @@ def main():
     print("Network Engine for Objects in Lund AB [http://neotechnology.com]")
     print("Report bugs to nigel@neotechnology.com")
     print()
-    print("This machine has %d processors" % processor_count)
+    if JYTHON:
+        print("Jython " + version)
+    else:
+        print("Python " + version)
+    print()
+    print("This machine has %d processors (%s)" % (processor_count, platform))
     print()
     print("Latency measurements:")
     print("  overall = time between start and end of method call")
