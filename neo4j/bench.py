@@ -35,7 +35,7 @@ from math import log, ceil, floor
 try:
     from time import perf_counter
 except ImportError:
-    from time import clock as perf_counter
+    from time import time as perf_counter
 
 from neo4j import GraphDatabase
 
@@ -67,14 +67,24 @@ def percentile(values, nth):
     if lo == hi:
         return values[int(index)]
     else:
-        return values[lo] * (hi - index) + values[hi] * (index - lo)
+        return values[int(lo)] * (hi - index) + values[int(hi)] * (index - lo)
 
 
 def microseconds(t):
-    return "{:,.1f}\xB5s".format(t * 1000000)
+    s = "{:,.1f}\xB5s".format(t * 1000000)
+    try:
+        return s.decode("ISO-8859-1").encode("UTF-8")
+    except AttributeError:
+        return s
 
 
 def print_bench(overall_latencies, network_latencies, wait_latencies):
+    try:
+        unicode
+    except NameError:
+        width = 11
+    else:
+        width = 12
     print("------------------------------------------------------")
     print(" percentile |   overall   |   network   |     wait    ")
     print("------------|-------------|-------------|-------------")
@@ -85,16 +95,16 @@ def print_bench(overall_latencies, network_latencies, wait_latencies):
         if p in (50, 90, 99, 99.9):
             kwargs = {
                 "perc": yellow("{:5.1f}%".format(p)),
-                "over": yellow(microseconds(overall_latency).rjust(11)),
-                "netw": yellow(microseconds(network_latency).rjust(11)),
-                "wait": yellow(microseconds(wait_latency).rjust(11)),
+                "over": yellow(microseconds(overall_latency).rjust(width)),
+                "netw": yellow(microseconds(network_latency).rjust(width)),
+                "wait": yellow(microseconds(wait_latency).rjust(width)),
             }
         else:
             kwargs = {
                 "perc": "{:5.1f}%".format(p),
-                "over": microseconds(overall_latency).rjust(11),
-                "netw": microseconds(network_latency).rjust(11),
-                "wait": microseconds(wait_latency).rjust(11),
+                "over": microseconds(overall_latency).rjust(width),
+                "netw": microseconds(network_latency).rjust(width),
+                "wait": microseconds(wait_latency).rjust(width),
             }
         print("     {perc} | {over} | {netw} | {wait}".format(**kwargs))
 
@@ -134,15 +144,15 @@ class GAP(Process):
 
         process_run_count = process_count * run_count
         tx_per_second = process_run_count / t
-        print("   × {:,} runs × {} client{}".format(run_count, process_count,
-                                                    "" if process_count == 1 else "s"), end="")
+        print("   × {:,} runs × {} client{}".format(
+            run_count, process_count, "" if process_count == 1 else "s"), end="")
         print(" = " + yellow("{:,.1f} tx/s".format(tx_per_second)))
         print("    ({:,} requests in {:.1f}s)".format(process_run_count, t))
         print_bench(sorted(chain(*overall)), sorted(chain(*network)), sorted(chain(*wait)))
         print()
 
     def __init__(self, run_count, statement, overall, network, wait):
-        super(Process, self).__init__()
+        super(GAP, self).__init__()
         self.run_count = run_count
         self.statement = statement
         self.overall = overall

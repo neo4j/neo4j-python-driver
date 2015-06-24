@@ -36,7 +36,7 @@ from sys import version_info
 try:
     from time import perf_counter
 except ImportError:
-    from time import clock as perf_counter
+    from time import time as perf_counter
 try:
     from urllib.parse import urlparse
 except ImportError:
