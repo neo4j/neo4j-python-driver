@@ -96,11 +96,14 @@ def main():
                     stderr.write("%s: %s\r\n" % (error.code, error.message))
                 else:
                     if not args.quiet:
+                        has_results = False
                         for i, record in enumerate(records):
+                            has_results = True
                             if i == 0:
                                 stdout.write("%s\r\n" % "\t".join(record.__fields__))
                             stdout.write("%s\r\n" % "\t".join(map(repr, record)))
-                        stdout.write("\r\n")
+                        if has_results:
+                            stdout.write("\r\n")
         session.close()
 
 
