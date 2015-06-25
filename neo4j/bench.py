@@ -61,6 +61,7 @@ except ImportError:
         return array(typecode, [0] * size)
 
 from neo4j import GraphDatabase
+driver = GraphDatabase.driver(getenv("NEO4J_GAP_URI", "gap://localhost"))
 
 
 USAGE = """\
@@ -148,9 +149,13 @@ def processors():
 class GAP(Process):
 
     @classmethod
-    def run_all(cls, process_count, run_count, statement):
-        print("------------------------------------------------------")
-        print(" %s" % statement)
+    def run_all(cls, process_count, run_count, statement, with_output):
+        process_run_count = process_count * run_count
+        if with_output:
+            print("------------------------------------------------------")
+            print(" %s" % statement)
+            print("   × {:,} runs × {} client{} = ".format(
+                run_count, process_count, "" if process_count == 1 else "s"), end="")
 
         overall = [Array("d", run_count) for _ in range(process_count)]
         network = [Array("d", run_count) for _ in range(process_count)]
@@ -165,14 +170,12 @@ class GAP(Process):
             process.join()
         t = perf_counter() - t0
 
-        process_run_count = process_count * run_count
-        tx_per_second = process_run_count / t
-        print("   × {:,} runs × {} client{}".format(
-            run_count, process_count, "" if process_count == 1 else "s"), end="")
-        print(" = " + yellow("{:,.1f} tx/s".format(tx_per_second)))
-        print("    ({:,} requests in {:.1f}s)".format(process_run_count, t))
-        print_bench(sorted(chain(*overall)), sorted(chain(*network)), sorted(chain(*wait)))
-        print()
+        if with_output:
+            tx_per_second = process_run_count / t
+            print(yellow("{:,.1f} tx/s".format(tx_per_second)))
+            print("    ({:,} requests in {:.1f}s)".format(process_run_count, t))
+            print_bench(sorted(chain(*overall)), sorted(chain(*network)), sorted(chain(*wait)))
+            print()
 
     def __init__(self, run_count, statement, overall, network, wait):
         super(GAP, self).__init__()
@@ -181,8 +184,7 @@ class GAP(Process):
         self.overall = overall
         self.network = network
         self.wait = wait
-        self.driver = GraphDatabase.driver(getenv("NEO4J_GAP_URI", "gap://localhost"), bench=True)
-        self.session = self.driver.session()
+        self.session = driver.session(bench=True)
 
     def run(self):
         session = self.session
@@ -216,12 +218,21 @@ def main():
     print()
     print("This machine has %d processors (%s)" % (processor_count, platform))
     print()
-    print("Latency measurements:")
-    print("  overall = time between start and end of method call")
-    print("  network = time between start of send and end of receive")
-    print("  wait    = time between end of send and start of receive")
-    print()
+    print("""\
+Latency measurements:
+
+         INIT     <---SEND--->     <---RECV--->     DONE
+overall  <--------------------------------------------->
+network           <--------------------------->
+wait                          <--->
+
+INIT - start of overall request
+SEND - period of time over which data is sent
+RECV - period of time over which data is received
+DONE - end of overall request
+""")
     script, args = sys.argv[0], sys.argv[1:]
+    warmup_run_count = 1500
     run_count = 10000
     statements = []
     parallels = list(2 ** n for n in range(int(ceil(log(16, 2)) + 1)))
@@ -240,9 +251,11 @@ def main():
                 sys.exit(1)
         else:
             statements.append(arg)
+
+    print("Using graph database at %s" % driver.url)
     if not statements:
         print("No statements specified, using defaults")
-        session = GraphDatabase.driver(getenv("NEO4J_GAP_URI", "gap://localhost")).session()
+        session = driver.session()
         session.run("CREATE CONSTRAINT ON (a:Thing) ASSERT a.foo IS UNIQUE")
         results = session.run("MERGE (a:Thing {foo:'bar'}) RETURN id(a)")
         node_id = results[0][0]
@@ -250,11 +263,16 @@ def main():
         statements = ["unwind(range(1, %d)) AS z RETURN z" % n for n in [0, 1, 10, 100]] + \
                      ["MATCH (a) WHERE id(a) = %d RETURN a" % node_id,
                       "MATCH (a:Thing) WHERE a.foo = 'bar' RETURN a"]
+
+    print("Warming up... ", end="")
+    for statement in statements:
+        GAP.run_all(1, warmup_run_count, statement, with_output=False)
+    print("done")
+    print()
+
     for statement in statements:
         for process_count in parallels:
-            GAP.run_all(process_count, run_count, statement)
-
-        # print()
+            GAP.run_all(process_count, run_count, statement, with_output=True)
 
 
 if __name__ == "__main__":

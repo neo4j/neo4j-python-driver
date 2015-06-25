@@ -438,7 +438,8 @@ class Driver(object):
     """
 
     def __init__(self, url, **config):
-        parsed = urlparse(url)
+        self.url = url
+        parsed = urlparse(self.url)
         if parsed.scheme == "gap":
             self.host = parsed.hostname
             self.port = parsed.port
@@ -446,7 +447,7 @@ class Driver(object):
             raise ProtocolError("Unsupported URL scheme: %s" % parsed.scheme)
         self.config = config
 
-    def session(self):
+    def session(self, **config):
         """ Connect and perform a handshake in order to return a valid
         Connection object, assuming a protocol version can be agreed.
         """
@@ -474,7 +475,7 @@ class Driver(object):
             s.shutdown(SHUT_RDWR)
             s.close()
         else:
-            return SessionV1(s, **self.config)
+            return SessionV1(s, **dict(self.config, **config))
 
 
 class GraphDatabase(object):
