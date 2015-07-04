@@ -10,3 +10,5 @@ htmlcov
 .test
 
 docs/build
+dist
+UNKNOWN.egg-info
