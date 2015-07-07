@@ -466,6 +466,9 @@ class Driver(object):
         s.sendall(data)
 
         # Handle the handshake response
+        ready_to_read, _, _ = select((s,), (), (), 0)
+        while not ready_to_read:
+            ready_to_read, _, _ = select((s,), (), (), 0)
         data = s.recv(4)
         if __debug__: log_debug("S: %r", data)
         agreed_version, = struct_unpack(">I", data)
