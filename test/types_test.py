@@ -21,7 +21,20 @@
 
 from unittest import main, TestCase
 
-from neo4j import Node, Relationship, Path
+from neo4j.typesystem import Node, Relationship, Path, hydrated
+from neo4j.packstream import Structure
+
+
+class NodeTestCase(TestCase):
+
+    def test_can_create_node(self):
+        alice = Node("A", {"Person"}, {"name": "Alice", "age": 33})
+        assert alice.identity() == "A"
+        assert alice.labels() == {"Person"}
+        assert alice.property_keys() == {"name", "age"}
+        assert alice.property("name") == "Alice"
+        assert alice.property("age") == 33
+        assert repr(alice)
 
 
 class RelationshipTestCase(TestCase):
@@ -36,6 +49,7 @@ class RelationshipTestCase(TestCase):
         assert alice_knows_bob.end() is bob
         assert alice_knows_bob.property_keys() == {"since"}
         assert alice_knows_bob.property("since") == 1999
+        assert repr(alice_knows_bob)
 
 
 class PathTestCase(TestCase):
@@ -51,6 +65,54 @@ class PathTestCase(TestCase):
         assert path.end() == carol
         assert path.nodes() == (alice, bob, carol)
         assert path.relationships() == (alice_knows_bob, carol_knows_bob)
+        assert list(path) == [alice_knows_bob, carol_knows_bob]
+        assert repr(path)
+
+
+class HydrationTestCase(TestCase):
+
+    def test_can_hydrate_node_structure(self):
+        struct = Structure(3, b'N')
+        struct.append("node/123")
+        struct.append(["Person"])
+        struct.append({"name": "Alice"})
+        alice = hydrated(struct)
+        assert alice.identity() == "node/123"
+        assert alice.labels() == {"Person"}
+        assert alice.property_keys() == {"name"}
+        assert alice.property("name") == "Alice"
+
+    def test_hydrating_unknown_structure_returns_same(self):
+        struct = Structure(1, b'X')
+        struct.append("foo")
+        mystery = hydrated(struct)
+        assert mystery == struct
+
+    def test_can_hydrate_in_list(self):
+        struct = Structure(3, b'N')
+        struct.append("node/123")
+        struct.append(["Person"])
+        struct.append({"name": "Alice"})
+        alice_in_list = hydrated([struct])
+        assert isinstance(alice_in_list, list)
+        alice, = alice_in_list
+        assert alice.identity() == "node/123"
+        assert alice.labels() == {"Person"}
+        assert alice.property_keys() == {"name"}
+        assert alice.property("name") == "Alice"
+
+    def test_can_hydrate_in_dict(self):
+        struct = Structure(3, b'N')
+        struct.append("node/123")
+        struct.append(["Person"])
+        struct.append({"name": "Alice"})
+        alice_in_dict = hydrated({"foo": struct})
+        assert isinstance(alice_in_dict, dict)
+        alice = alice_in_dict["foo"]
+        assert alice.identity() == "node/123"
+        assert alice.labels() == {"Person"}
+        assert alice.property_keys() == {"name"}
+        assert alice.property("name") == "Alice"
 
 
 if __name__ == "__main__":
