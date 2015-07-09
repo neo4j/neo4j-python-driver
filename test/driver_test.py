@@ -30,7 +30,7 @@ class RunStatementTestCase(TestCase):
         session = GraphDatabase.driver("gap://localhost").session()
         session.run("CREATE (n {name:'Bob'})")
         for record in session.run("MATCH (n) RETURN n.name"):
-            print(record)
+            assert record
         session.close()
 
 
