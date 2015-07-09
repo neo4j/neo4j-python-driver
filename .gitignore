@@ -5,3 +5,6 @@ __pycache__
 *.class
 
 .idea
+htmlcov
+.coverage
+.test

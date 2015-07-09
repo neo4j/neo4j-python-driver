@@ -1,14 +1,36 @@
 #!/usr/bin/env bash
 
-HOME=$(dirname $0)
-
+HOME=$(pwd)/$(dirname $0)
 
 function runtests {
+
+    PYTHON_VERSION=$(python --version)
     NEO_VERSION=$1
-    PYTHON=$2
+
+    echo "========================================================================"
+    echo "Running with ${PYTHON_VERSION} against Neo4j ${NEO_VERSION}"
+    echo "------------------------------------------------------------------------"
+
+    mkdir -p ${HOME}/.test 2> /dev/null
+
+    cd ${HOME}/.test
+    tar xf $(${HOME}/neoget.sh -ex ${NEO_VERSION})
+    NEO_HOME=$(ls -1Ft | grep "/$" | head -1)      # finds the newest directory
+    ${NEO_HOME}/bin/neo4j start
+
     cd ${HOME}
-    ${PYTHON} -m unittest test
+    coverage run -m unittest test
+
+    cd ${HOME}/.test
+    ${NEO_HOME}/bin/neo4j stop
+    rm -rf ${NEO_HOME}
+
+    cd ${HOME}
+    coverage report --show-missing
+
+    echo "========================================================================"
+    echo ""
+
 }
 
-runtests "2.3.0-M01" "python2.7"
-runtests "2.3.0-M01" "python3.3"
+runtests "3.0.0-alpha.LATEST"
