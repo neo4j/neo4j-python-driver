@@ -28,9 +28,8 @@ class RunStatementTestCase(TestCase):
 
     def test_can_run_statement(self):
         session = GraphDatabase.driver("gap://localhost").session()
-        session.run("CREATE (n {name:'Bob'})")
-        for record in session.run("MATCH (n) RETURN n.name"):
-            assert record
+        for record in session.run("RETURN 1"):
+            assert record[0] == 1
         session.close()
 
 
