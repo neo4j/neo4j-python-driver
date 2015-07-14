@@ -54,7 +54,7 @@ except ImportError:
     from urlparse import urlparse
 
 # Serialisation and deserialisation routines
-from neo4j.packstream import Packer, Unpacker
+from neo4j.packstream import Packer, Unpacker, Structure
 # Hydration function for turning structures into their actual types
 from neo4j.typesystem import hydrated
 
@@ -85,6 +85,7 @@ log = logging.getLogger("neo4j")
 log_debug = log.debug
 log_info = log.info
 log_warning = log.warning
+log_error = log.error
 
 
 Latency = namedtuple("Latency", ["overall", "network", "wait"])
@@ -321,7 +322,13 @@ class SessionV1(object):
         # Unpack the message structure from the raw byte stream
         # (there should be only one)
         raw.seek(0)
-        signature, fields = next(unpack())
+        message = next(unpack())
+        if __debug__:
+            if not isinstance(message, Structure):
+                message = "Non-message data received from server"
+                log_error(message)
+                raise ProtocolError(message)
+        signature, fields = message
         raw.close()
 
         # Acknowledge any failures immediately
@@ -470,7 +477,12 @@ class Driver(object):
         while not ready_to_read:
             ready_to_read, _, _ = select((s,), (), (), 0)
         data = s.recv(4)
-        if __debug__: log_debug("S: %r", data)
+        if __debug__:
+            log_debug("S: %r", data)
+            if len(data) != 4:
+                message = "Expected four byte handshake response, received %r instead" % data
+                log_error(message)
+                raise ProtocolError(message)
         agreed_version, = struct_unpack(">I", data)
         if __debug__: log_info("S: [HANDSHAKE] %d", agreed_version)
         if agreed_version == 0:
