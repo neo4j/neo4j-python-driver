@@ -477,12 +477,16 @@ class Driver(object):
         while not ready_to_read:
             ready_to_read, _, _ = select((s,), (), (), 0)
         data = s.recv(4)
-        if __debug__:
-            log_debug("S: %r", data)
-            if len(data) != 4:
-                message = "Expected four byte handshake response, received %r instead" % data
-                log_error(message)
-                raise ProtocolError(message)
+        data_size = len(data)
+        if data_size == 0:
+            message = "Server closed connection without responding to handshake"
+            log_error(message)
+            raise ProtocolError(message)
+        if __debug__: log_debug("S: %r", data)
+        if data_size != 4:
+            message = "Expected four byte handshake response, received %r instead" % data
+            log_error(message)
+            raise ProtocolError(message)
         agreed_version, = struct_unpack(">I", data)
         if __debug__: log_info("S: [HANDSHAKE] %d", agreed_version)
         if agreed_version == 0:
