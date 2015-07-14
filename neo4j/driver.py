@@ -34,38 +34,15 @@ import logging
 from select import select
 from socket import create_connection, SHUT_RDWR
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
-from sys import version_info
 
-# Support Python 2, Python 3 and Jython :-/
-try:
-    from java.lang.System import nanoTime
-except ImportError:
-    try:
-        from time import perf_counter
-    except ImportError:
-        from time import time as perf_counter
-else:
-    def perf_counter():
-        return nanoTime() / 1000000000
+from neo4j.compat import integer, perf_counter, string, urlparse
 
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
-
-# Serialisation and deserialisation routines
+# Serialisation and deserialisation routines plus the structure data type
 from neo4j.packstream import Packer, Unpacker, Structure
+
 # Hydration function for turning structures into their actual types
 from neo4j.typesystem import hydrated
 
-
-# Workaround for Python 2/3 type differences
-if version_info >= (3,):
-    integer = int
-    string = str
-else:
-    integer = (int, long)
-    string = (str, unicode)
 
 DEFAULT_PORT = 7687
 
@@ -463,6 +440,10 @@ class Driver(object):
         port = self.port or DEFAULT_PORT
         if __debug__: log_info("~~ [CONNECT] %s %d", host, port)
         s = create_connection((host, port))
+
+        # Secure the connection if so requested
+        if config.pop("secure", False):
+            pass
 
         # Send details of the protocol versions supported
         supported_versions = [1, 0, 0, 0]

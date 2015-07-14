@@ -1,3 +1,5 @@
 [run]
 branch = True
-omit = test/*
+omit =
+    test/*
+    neo4j/compat.py

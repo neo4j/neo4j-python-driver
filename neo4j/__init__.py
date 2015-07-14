@@ -19,10 +19,5 @@
 # limitations under the License.
 
 
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
-
 from neo4j.driver import *
 from neo4j.typesystem import *
