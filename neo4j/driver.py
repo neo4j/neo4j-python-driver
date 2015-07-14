@@ -482,8 +482,9 @@ class Driver(object):
             # response, the server has closed the connection
             log_error("S: [CLOSE]")
             raise ProtocolError("Server closed connection without responding to handshake")
-        if __debug__: log_debug("S: %r", data)
-        if data_size != 4:
+        if data_size == 4:
+            if __debug__: log_debug("S: %r", data)
+        else:
             # Some other garbled data has been received
             log_error("S: @*#!")
             raise ProtocolError("Expected four byte handshake response, received %r instead" % data)
