@@ -77,6 +77,7 @@ def main():
     parser.add_argument("statement", nargs="+")
     parser.add_argument("-u", "--url", default="gap://localhost")
     parser.add_argument("-q", "--quiet", action="store_true")
+    parser.add_argument("-s", "--secure", action="store_true")
     parser.add_argument("-v", "--verbose", action="count")
     parser.add_argument("-x", "--times", type=int, default=1)
     args = parser.parse_args()
@@ -85,7 +86,7 @@ def main():
         level = logging.INFO if args.verbose == 1 else logging.DEBUG
         Watcher("neo4j").watch(level, stderr)
 
-    driver = GraphDatabase.driver(args.url)
+    driver = GraphDatabase.driver(args.url, secure=args.secure)
     session = driver.session()
     if session:
         for _ in range(args.times):

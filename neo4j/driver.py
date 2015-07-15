@@ -31,11 +31,12 @@ from __future__ import division
 from collections import namedtuple
 from io import BytesIO
 import logging
+from os import environ
 from select import select
 from socket import create_connection, SHUT_RDWR
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
-from neo4j.compat import integer, perf_counter, string, urlparse
+from neo4j.compat import integer, perf_counter, secure_socket, string, urlparse
 
 # Serialisation and deserialisation routines plus the structure data type
 from neo4j.packstream import Packer, Unpacker, Structure
@@ -354,7 +355,7 @@ class SessionV1(object):
         signature, (data,) = recv_message(t)
         if signature == SUCCESS:
             fields = data["fields"]
-            if __debug__: log_info("S: SUCCESS %r", fields)
+            if __debug__: log_info("S: SUCCESS %r", data)
         else:
             if __debug__: log_info("S: FAILURE %r", data)
             raise CypherError(data)
@@ -434,6 +435,7 @@ class Driver(object):
         """ Connect and perform a handshake in order to return a valid
         Connection object, assuming a protocol version can be agreed.
         """
+        config = dict(self.config, **config)
 
         # Establish a connection to the host and port specified
         host = self.host
@@ -442,8 +444,13 @@ class Driver(object):
         s = create_connection((host, port))
 
         # Secure the connection if so requested
-        if config.pop("secure", False):
-            pass
+        try:
+            secure = environ["NEO4J_SECURE"]
+        except KeyError:
+            secure = config.get("secure", False)
+        if secure:
+            if __debug__: log_info("~~ [SECURE] %s", host)
+            s = secure_socket(s, host)
 
         # Send details of the protocol versions supported
         supported_versions = [1, 0, 0, 0]
@@ -476,7 +483,7 @@ class Driver(object):
             s.shutdown(SHUT_RDWR)
             s.close()
         else:
-            return SessionV1(s, **dict(self.config, **config))
+            return SessionV1(s, **config)
 
 
 class GraphDatabase(object):
