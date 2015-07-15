@@ -19,6 +19,12 @@
 # limitations under the License.
 
 
+"""
+This module provides compatibility functions between different versions
+and flavours of Python. It is separate for clarity and deliberately
+excluded from test coverage.
+"""
+
 __all__ = ["integer", "perf_counter", "secure_socket", "string", "urlparse"]
 
 
