@@ -143,7 +143,7 @@ class Path(object):
     def __hash__(self):
         value = hash(self.start())
         for relationship in self.relationships():
-            value ^= relationship
+            value ^= hash(relationship)
         return value
 
     def __len__(self):
