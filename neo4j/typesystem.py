@@ -38,7 +38,10 @@ class Entity(object):
         self._properties = dict((k, v) for k, v in (properties or {}).items() if v is not None)
 
     def __eq__(self, other):
-        return self.identity() == other.identity()
+        try:
+            return self.identity() == other.identity()
+        except AttributeError:
+            return False
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -129,7 +132,10 @@ class Path(object):
                (self.start().identity(), self.end().identity(), len(self))
 
     def __eq__(self, other):
-        return self.start() == other.start() and self.relationships() == other.relationships()
+        try:
+            return self.start() == other.start() and self.relationships() == other.relationships()
+        except AttributeError:
+            return False
 
     def __ne__(self, other):
         return not self.__eq__(other)
