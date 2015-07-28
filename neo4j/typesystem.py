@@ -35,16 +35,43 @@ class Entity(object):
 
     def __init__(self, identity, properties=None):
         self._identity = identity
-        self._properties = dict(properties or {})
+        self._properties = dict((k, v) for k, v in (properties or {}).items() if v is not None)
+
+    def __eq__(self, other):
+        return self.identity() == other.identity()
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self._identity)
+
+    def __len__(self):
+        return len(self._properties)
+
+    def __getitem__(self, key):
+        return self._properties.get(key)
+
+    def __contains__(self, key):
+        return key in self._properties
+
+    def __iter__(self):
+        return iter(self._properties)
 
     def identity(self):
         return self._identity
 
-    def property(self, key, default=None):
+    def get(self, key, default=None):
         return self._properties.get(key, default)
 
-    def property_keys(self):
+    def keys(self):
         return set(self._properties.keys())
+
+    def values(self):
+        return set(self._properties.values())
+
+    def items(self):
+        return set(self._properties.items())
 
 
 class Node(Entity):
@@ -100,6 +127,18 @@ class Path(object):
     def __repr__(self):
         return "<Path start=%r end=%r size=%s>" % \
                (self.start().identity(), self.end().identity(), len(self))
+
+    def __eq__(self, other):
+        return self.start() == other.start() and self.relationships() == other.relationships()
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        value = hash(self.start())
+        for relationship in self.relationships():
+            value ^= relationship
+        return value
 
     def __len__(self):
         return len(self._relationships)

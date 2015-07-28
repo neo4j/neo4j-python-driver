@@ -31,9 +31,9 @@ class NodeTestCase(TestCase):
         alice = Node("A", {"Person"}, {"name": "Alice", "age": 33})
         assert alice.identity() == "A"
         assert alice.labels() == {"Person"}
-        assert alice.property_keys() == {"name", "age"}
-        assert alice.property("name") == "Alice"
-        assert alice.property("age") == 33
+        assert alice.keys() == {"name", "age"}
+        assert alice.get("name") == "Alice"
+        assert alice.get("age") == 33
         assert repr(alice)
 
 
@@ -47,8 +47,8 @@ class RelationshipTestCase(TestCase):
         assert alice_knows_bob.start() is alice
         assert alice_knows_bob.type() == "KNOWS"
         assert alice_knows_bob.end() is bob
-        assert alice_knows_bob.property_keys() == {"since"}
-        assert alice_knows_bob.property("since") == 1999
+        assert alice_knows_bob.keys() == {"since"}
+        assert alice_knows_bob.get("since") == 1999
         assert repr(alice_knows_bob)
 
 
@@ -79,8 +79,8 @@ class HydrationTestCase(TestCase):
         alice = hydrated(struct)
         assert alice.identity() == "node/123"
         assert alice.labels() == {"Person"}
-        assert alice.property_keys() == {"name"}
-        assert alice.property("name") == "Alice"
+        assert alice.keys() == {"name"}
+        assert alice.get("name") == "Alice"
 
     def test_hydrating_unknown_structure_returns_same(self):
         struct = Structure(1, b'X')
@@ -98,8 +98,8 @@ class HydrationTestCase(TestCase):
         alice, = alice_in_list
         assert alice.identity() == "node/123"
         assert alice.labels() == {"Person"}
-        assert alice.property_keys() == {"name"}
-        assert alice.property("name") == "Alice"
+        assert alice.keys() == {"name"}
+        assert alice.get("name") == "Alice"
 
     def test_can_hydrate_in_dict(self):
         struct = Structure(3, b'N')
@@ -111,8 +111,8 @@ class HydrationTestCase(TestCase):
         alice = alice_in_dict["foo"]
         assert alice.identity() == "node/123"
         assert alice.labels() == {"Person"}
-        assert alice.property_keys() == {"name"}
-        assert alice.property("name") == "Alice"
+        assert alice.keys() == {"name"}
+        assert alice.get("name") == "Alice"
 
 
 if __name__ == "__main__":
