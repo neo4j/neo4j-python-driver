@@ -36,13 +36,13 @@ from select import select
 from socket import create_connection, SHUT_RDWR
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
-from neo4j.compat import integer, perf_counter, secure_socket, string, urlparse
+from .compat import integer, perf_counter, secure_socket, string, urlparse
 
 # Serialisation and deserialisation routines plus the structure data type
-from neo4j.packstream import Packer, Unpacker, Structure
+from .packstream import Packer, Unpacker, Structure
 
 # Hydration function for turning structures into their actual types
-from neo4j.typesystem import hydrated
+from .typesystem import hydrated
 
 
 DEFAULT_PORT = 7687

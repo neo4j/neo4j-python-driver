@@ -19,5 +19,5 @@
 # limitations under the License.
 
 
-from neo4j.driver import *
-from neo4j.typesystem import *
+from .driver import *
+from .typesystem import *

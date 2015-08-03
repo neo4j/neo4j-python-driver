@@ -25,7 +25,7 @@ from argparse import ArgumentParser
 import logging
 from sys import stdout, stderr
 
-from neo4j import GraphDatabase, CypherError
+from .driver import GraphDatabase, CypherError
 
 
 class ColourFormatter(logging.Formatter):

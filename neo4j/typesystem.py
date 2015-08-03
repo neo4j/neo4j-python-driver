@@ -26,7 +26,7 @@ of these classes.
 """
 
 
-from neo4j.packstream import Structure
+from .packstream import Structure
 
 
 class Entity(object):

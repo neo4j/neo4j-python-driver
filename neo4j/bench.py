@@ -60,7 +60,7 @@ except ImportError:
     def Array(typecode, size):
         return array(typecode, [0] * size)
 
-from neo4j import GraphDatabase
+from .driver import GraphDatabase
 driver = GraphDatabase.driver(getenv("NEO4J_GAP_URI", "gap://localhost"))
 
 
