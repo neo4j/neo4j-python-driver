@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2002-2015 "Neo Technology,"
-# Network Engine for Objects in Lund AB [http://neotechnology.com]
-#
-# This file is part of Neo4j.
+# Copyright 2014-2015, Nigel Small
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 
 ACTION="download"
 DIST="http://dist.neo4j.org"
@@ -86,13 +82,19 @@ function download {
         fi
         if [ $DOWNLOAD -eq 1 ]
         then
-            curl --silent --fail "${DIST}/${ARCHIVE}" -o "${ARCHIVE}"
+            if [[ "${VERSION}" == *"alpha"* ]]
+            then
+                URL="${ALPHA}/${ARCHIVE}"
+            else
+                URL="${DIST}/${ARCHIVE}"
+            fi
+            curl --silent --fail "${URL}" -o "${ARCHIVE}"
             RESULT=$?
             if [ $RESULT -eq 0 ]
             then
                 echo "${ARCHIVE}"
             else
-                echo 1>&2 "Cannot download archive ${DIST}/${ARCHIVE}"
+                echo 1>&2 "Cannot download archive ${URL}"
                 exit $RESULT
             fi
         else
@@ -105,7 +107,6 @@ while getopts ":acdefhluvx" OPTION
 do
   case ${OPTION} in
     a)
-      DIST="${ALPHA}"
       ALL_VERSIONS="3.0.0-alpha.LATEST"
       ;;
     c)
