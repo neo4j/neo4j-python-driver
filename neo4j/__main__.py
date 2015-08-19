@@ -73,9 +73,9 @@ class Watcher(object):
 
 
 def main():
-    parser = ArgumentParser(description="Execute one or more Cypher statements using GAP.")
+    parser = ArgumentParser(description="Execute one or more Cypher statements using Bolt.")
     parser.add_argument("statement", nargs="+")
-    parser.add_argument("-u", "--url", default="gap://localhost")
+    parser.add_argument("-u", "--url", default="bolt://localhost")
     parser.add_argument("-q", "--quiet", action="store_true")
     parser.add_argument("-s", "--secure", action="store_true")
     parser.add_argument("-v", "--verbose", action="count")

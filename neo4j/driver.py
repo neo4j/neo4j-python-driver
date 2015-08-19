@@ -19,7 +19,7 @@
 # limitations under the License.
 
 """
-This module contains the main GAP driver components as well as several
+This module contains the main Bolt driver components as well as several
 helper and exception classes. The main entry point is the `GraphDatabase`
 class which can be used to obtain `Driver` instances that are used for
 managing sessions.
@@ -424,7 +424,7 @@ class Driver(object):
     def __init__(self, url, **config):
         self.url = url
         parsed = urlparse(self.url)
-        if parsed.scheme == "gap":
+        if parsed.scheme == "bolt":
             self.host = parsed.hostname
             self.port = parsed.port
         else:

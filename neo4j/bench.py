@@ -61,7 +61,7 @@ except ImportError:
         return array(typecode, [0] * size)
 
 from .driver import GraphDatabase
-driver = GraphDatabase.driver(getenv("NEO4J_GAP_URI", "gap://localhost"))
+driver = GraphDatabase.driver(getenv("NEO4J_BOLT_URI", "bolt://localhost"))
 
 
 USAGE = """\
@@ -146,7 +146,7 @@ def processors():
     return p
 
 
-class GAP(Process):
+class Bolt(Process):
 
     @classmethod
     def run_all(cls, process_count, run_count, statement, with_output):
@@ -178,7 +178,7 @@ class GAP(Process):
             print()
 
     def __init__(self, run_count, statement, overall, network, wait):
-        super(GAP, self).__init__()
+        super(Bolt, self).__init__()
         self.run_count = run_count
         self.statement = statement
         self.overall = overall
@@ -266,13 +266,13 @@ DONE - end of overall request
 
     print("Warming up... ", end="")
     for statement in statements:
-        GAP.run_all(1, warmup_run_count, statement, with_output=False)
+        Bolt.run_all(1, warmup_run_count, statement, with_output=False)
     print("done")
     print()
 
     for statement in statements:
         for process_count in parallels:
-            GAP.run_all(process_count, run_count, statement, with_output=True)
+            Bolt.run_all(process_count, run_count, statement, with_output=True)
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ from neo4j import GraphDatabase
 class RunStatementTestCase(TestCase):
 
     def test_can_run_statement(self):
-        session = GraphDatabase.driver("gap://localhost").session()
+        session = GraphDatabase.driver("bolt://localhost").session()
         for record in session.run("RETURN 1"):
             assert record[0] == 1
         session.close()
