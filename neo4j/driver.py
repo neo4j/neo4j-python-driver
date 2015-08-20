@@ -217,6 +217,12 @@ class SessionV1(object):
         else:
             self._bench = None
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def _send_messages(self, *messages):
         """ Send one or more messages to the server.
         """

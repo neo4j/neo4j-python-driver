@@ -21,16 +21,68 @@
 
 from unittest import main, TestCase
 
-from neo4j import GraphDatabase
+from neo4j import GraphDatabase, Node, Relationship, Path
 
 
-class RunStatementTestCase(TestCase):
+class RunTestCase(TestCase):
 
-    def test_can_run_statement(self):
+    def test_can_run_simple_statement(self):
         session = GraphDatabase.driver("bolt://localhost").session()
+        count = 0
         for record in session.run("RETURN 1"):
             assert record[0] == 1
+            count += 1
         session.close()
+        assert count == 1
+
+    def test_can_run_statement_that_returns_multiple_records(self):
+        session = GraphDatabase.driver("bolt://localhost").session()
+        count = 0
+        for record in session.run("unwind(range(1, 10)) AS z RETURN z"):
+            assert 1 <= record[0] <= 10
+            count += 1
+        session.close()
+        assert count == 10
+
+    def test_can_use_with_to_auto_close_session(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            records = session.run("RETURN 1")
+            assert len(records) == 1
+            for record in records:
+                assert record[0] == 1
+
+    def test_can_return_node(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            records = session.run("MERGE (a:Person {name:'Alice'}) RETURN a")
+            assert len(records) == 1
+            for record in records:
+                alice = record[0]
+                assert isinstance(alice, Node)
+                assert alice.labels == {"Person"}
+                assert alice.properties == {"name": "Alice"}
+
+    def test_can_return_relationship(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            records = session.run("MERGE ()-[r:KNOWS {since:1999}]->() RETURN r")
+            assert len(records) == 1
+            for record in records:
+                rel = record[0]
+                assert isinstance(rel, Relationship)
+                assert rel.type == "KNOWS"
+                assert rel.properties == {"since": 1999}
+
+    def test_can_return_path(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            records = session.run("MERGE p=({name:'Alice'})-[:KNOWS]->({name:'Bob'}) RETURN p")
+            assert len(records) == 1
+            for record in records:
+                path = record[0]
+                assert isinstance(path, Path)
+                assert path.start.properties == {"name": "Alice"}
+                assert path.end.properties == {"name": "Bob"}
+                assert path.relationships[0].type == "KNOWS"
+                assert len(path.nodes) == 2
+                assert len(path.relationships) == 1
 
 
 if __name__ == "__main__":

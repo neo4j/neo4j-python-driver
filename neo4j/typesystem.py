@@ -32,14 +32,16 @@ from .packstream import Structure
 class Entity(object):
     """ Base class for Node and Relationship.
     """
+    identity = None
+    properties = None
 
-    def __init__(self, identity, properties=None):
-        self._identity = identity
-        self._properties = dict((k, v) for k, v in (properties or {}).items() if v is not None)
+    def __init__(self, properties=None, **kwproperties):
+        properties = dict(properties or {}, **kwproperties)
+        self.properties = dict((k, v) for k, v in properties.items() if v is not None)
 
     def __eq__(self, other):
         try:
-            return self.identity() == other.identity()
+            return self.identity == other.identity
         except AttributeError:
             return False
 
@@ -47,93 +49,146 @@ class Entity(object):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash(self._identity)
+        return hash(self.identity)
 
     def __len__(self):
-        return len(self._properties)
+        return len(self.properties)
 
     def __getitem__(self, key):
-        return self._properties.get(key)
+        return self.properties.get(key)
 
     def __contains__(self, key):
-        return key in self._properties
+        return key in self.properties
 
     def __iter__(self):
-        return iter(self._properties)
-
-    def identity(self):
-        return self._identity
+        return iter(self.properties)
 
     def get(self, key, default=None):
-        return self._properties.get(key, default)
+        return self.properties.get(key, default)
 
     def keys(self):
-        return set(self._properties.keys())
+        return self.properties.keys()
 
     def values(self):
-        return set(self._properties.values())
+        return self.properties.values()
 
     def items(self):
-        return set(self._properties.items())
+        return self.properties.items()
 
 
 class Node(Entity):
     """ Self-contained graph node.
     """
+    labels = None
 
-    def __init__(self, identity, labels, properties=None):
-        super(Node, self).__init__(identity, properties)
-        self._labels = set(labels)
+    @classmethod
+    def hydrate(cls, identity, labels, properties=None):
+        inst = cls(labels, properties)
+        inst.identity = identity
+        return inst
+
+    def __init__(self, labels=None, properties=None, **kwproperties):
+        super(Node, self).__init__(properties, **kwproperties)
+        self.labels = set(labels or set())
 
     def __repr__(self):
         return "<Node identity=%r labels=%r properties=%r>" % \
-               (self._identity, self._labels, self._properties)
-
-    def labels(self):
-        return self._labels
+               (self.identity, self.labels, self.properties)
 
 
-class Relationship(Entity):
+class BaseRelationship(Entity):
+    """ Base class for Relationship and UnboundRelationship.
+    """
+    type = None
+
+    def __init__(self, type, properties=None, **kwproperties):
+        super(BaseRelationship, self).__init__(properties, **kwproperties)
+        self.type = type
+
+
+class Relationship(BaseRelationship):
     """ Self-contained graph relationship.
     """
+    start = None
+    end = None
 
-    def __init__(self, identity, start, end, type_, properties=None):
-        super(Relationship, self).__init__(identity, properties)
-        self._start = start
-        self._end = end
-        self._type = type_
+    @classmethod
+    def hydrate(cls, identity, start, end, type, properties=None):
+        inst = cls(start, end, type, properties)
+        inst.identity = identity
+        return inst
+
+    def __init__(self, start, end, type, properties=None, **kwproperties):
+        super(Relationship, self).__init__(type, properties, **kwproperties)
+        self.start = start
+        self.end = end
 
     def __repr__(self):
         return "<Relationship identity=%r start=%r end=%r type=%r properties=%r>" % \
-               (self._identity, self._start, self._end, self._type, self._properties)
+               (self.identity, self.start, self.end, self.type, self.properties)
 
-    def start(self):
-        return self._start
+    def unbind(self):
+        inst = UnboundRelationship(self.type, self.properties)
+        inst.identity = self.identity
+        return inst
 
-    def type(self):
-        return self._type
 
-    def end(self):
-        return self._end
+class UnboundRelationship(BaseRelationship):
+    """ Self-contained graph relationship without endpoints.
+    """
+
+    @classmethod
+    def hydrate(cls, identity, type, properties=None):
+        inst = cls(type, properties)
+        inst.identity = identity
+        return inst
+
+    def __init__(self, type, properties=None, **kwproperties):
+        super(UnboundRelationship, self).__init__(type, properties, **kwproperties)
+
+    def __repr__(self):
+        return "<UnboundRelationship identity=%r type=%r properties=%r>" % \
+               (self.identity, self.type, self.properties)
+
+    def bind(self, start, end):
+        inst = Relationship(start, end, self.type, self.properties)
+        inst.identity = self.identity
+        return inst
 
 
 class Path(object):
     """ Self-contained graph path.
     """
+    nodes = None
+    relationships = None
 
-    def __init__(self, entities):
-        self._nodes = tuple(map(hydrated, entities[0::2]))
-        self._relationships = tuple(map(hydrated, entities[1::2]))
-        self._directions = tuple("->" if rel.start() == self._nodes[i] else "<-"
-                                 for i, rel in enumerate(self._relationships))
+    @classmethod
+    def hydrate(cls, nodes, rels, sequence):
+        assert len(nodes) >= 1
+        assert len(sequence) % 2 == 0
+        last_node = nodes[0]
+        entities = [last_node]
+        for i, rel_index in enumerate(sequence[::2]):
+            assert rel_index != 0
+            next_node = nodes[sequence[2 * i + 1]]
+            if rel_index > 0:
+                entities.append(rels[rel_index - 1].bind(last_node, next_node))
+            else:
+                entities.append(rels[-rel_index - 1].bind(next_node, last_node))
+            entities.append(next_node)
+        return cls(*entities)
+
+    def __init__(self, start_node, *rels_and_nodes):
+        self.nodes = (start_node,) + rels_and_nodes[1::2]
+        self.relationships = rels_and_nodes[0::2]
 
     def __repr__(self):
         return "<Path start=%r end=%r size=%s>" % \
-               (self.start().identity(), self.end().identity(), len(self))
+               (self.start.identity, self.end.identity, len(self))
 
     def __eq__(self, other):
         try:
-            return self.start() == other.start() and self.relationships() == other.relationships()
+            return self.start == other.start and self.relationships == other.relationships
         except AttributeError:
             return False
 
@@ -141,34 +196,31 @@ class Path(object):
         return not self.__eq__(other)
 
     def __hash__(self):
-        value = hash(self.start())
-        for relationship in self.relationships():
+        value = hash(self.start)
+        for relationship in self.relationships:
             value ^= hash(relationship)
         return value
 
     def __len__(self):
-        return len(self._relationships)
+        return len(self.relationships)
 
     def __iter__(self):
-        return iter(self._relationships)
+        return iter(self.relationships)
 
+    @property
     def start(self):
-        return self._nodes[0]
+        return self.nodes[0]
 
+    @property
     def end(self):
-        return self._nodes[-1]
-
-    def nodes(self):
-        return self._nodes
-
-    def relationships(self):
-        return self._relationships
+        return self.nodes[-1]
 
 
-structures = {
-    b"N": Node,
-    b"R": Relationship,
-    b"P": Path,
+hydrants = {
+    b"N": Node.hydrate,
+    b"R": Relationship.hydrate,
+    b"r": UnboundRelationship.hydrate,
+    b"P": Path.hydrate,
 }
 
 
@@ -179,13 +231,13 @@ def hydrated(obj):
     if isinstance(obj, Structure):
         signature, args = obj
         try:
-            structure = structures[signature]
+            hydrant = hydrants[signature]
         except KeyError:
             # If we don't recognise the structure type, just return it as-is
             return obj
         else:
-            # Otherwise pass the structural data to the appropriate constructor
-            return structure(*args)
+            # Otherwise pass the structural data to the appropriate builder
+            return hydrant(*map(hydrated, args))
     elif isinstance(obj, list):
         return list(map(hydrated, obj))
     elif isinstance(obj, dict):
