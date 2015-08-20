@@ -21,7 +21,7 @@
 
 from unittest import main, TestCase
 
-from neo4j import GraphDatabase, Node, Relationship, Path
+from neo4j import GraphDatabase, Node, Relationship, Path, CypherError
 
 
 class RunTestCase(TestCase):
@@ -29,8 +29,30 @@ class RunTestCase(TestCase):
     def test_can_run_simple_statement(self):
         session = GraphDatabase.driver("bolt://localhost").session()
         count = 0
-        for record in session.run("RETURN 1"):
+        for record in session.run("RETURN 1 AS n"):
             assert record[0] == 1
+            assert record["n"] == 1
+            try:
+                record["x"]
+            except AttributeError:
+                assert True
+            else:
+                assert False
+            assert record.n == 1
+            try:
+                record.x
+            except AttributeError:
+                assert True
+            else:
+                assert False
+            try:
+                record[object()]
+            except TypeError:
+                assert True
+            else:
+                assert False
+            assert repr(record)
+            assert len(record) == 1
             count += 1
         session.close()
         assert count == 1
@@ -83,6 +105,21 @@ class RunTestCase(TestCase):
                 assert path.relationships[0].type == "KNOWS"
                 assert len(path.nodes) == 2
                 assert len(path.relationships) == 1
+
+    def test_can_handle_cypher_error(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            try:
+                session.run("X")
+            except CypherError:
+                assert True
+            else:
+                assert False
+
+    def test_record_equality(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            records = session.run("unwind([1, 1]) AS a RETURN a")
+            assert records[0] == records[1]
+            assert records[0] != "this is not a record"
 
 
 if __name__ == "__main__":

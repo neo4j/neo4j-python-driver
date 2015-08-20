@@ -98,17 +98,7 @@ class Record(object):
         values = self.__values__
         s = []
         for i, field in enumerate(self.__fields__):
-            value = values[i]
-            if isinstance(value, tuple):
-                signature, _ = value
-                if signature == b"N":
-                    s.append("%s=<Node>" % (field,))
-                elif signature == b"R":
-                    s.append("%s=<Relationship>" % (field,))
-                else:
-                    s.append("%s=<?>" % (field,))
-            else:
-                s.append("%s=%r" % (field, value))
+            s.append("%s=%r" % (field, values[i]))
         return "<Record %s>" % " ".join(s)
 
     def __eq__(self, other):
@@ -129,7 +119,7 @@ class Record(object):
         elif isinstance(item, integer):
             return getattr(self, self.__fields__[item])
         else:
-            raise LookupError(item)
+            raise TypeError(item)
 
     def __getattr__(self, item):
         try:
@@ -137,10 +127,7 @@ class Record(object):
         except ValueError:
             raise AttributeError("No field %r" % item)
         else:
-            value = self.__values__[i]
-            if isinstance(value, tuple):
-                value = self.__values__[i] = hydrated(value)
-            return value
+            return self.__values__[i]
 
 
 class ChunkWriter(object):
