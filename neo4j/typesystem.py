@@ -216,7 +216,7 @@ class Path(object):
         return self.nodes[-1]
 
 
-hydrants = {
+hydration_functions = {
     b"N": Node.hydrate,
     b"R": Relationship.hydrate,
     b"r": UnboundRelationship.hydrate,
@@ -231,13 +231,13 @@ def hydrated(obj):
     if isinstance(obj, Structure):
         signature, args = obj
         try:
-            hydrant = hydrants[signature]
+            hydration_function = hydration_functions[signature]
         except KeyError:
             # If we don't recognise the structure type, just return it as-is
             return obj
         else:
-            # Otherwise pass the structural data to the appropriate builder
-            return hydrant(*map(hydrated, args))
+            # Otherwise pass the structural data to the appropriate hydration function
+            return hydration_function(*map(hydrated, args))
     elif isinstance(obj, list):
         return list(map(hydrated, obj))
     elif isinstance(obj, dict):
