@@ -69,6 +69,13 @@ log_error = log.error
 Latency = namedtuple("Latency", ["overall", "network", "wait"])
 
 
+def hex2(x):
+    if x < 0x10:
+        return "0" + hex(x)[2:].upper()
+    else:
+        return hex(x)[2:].upper()
+
+
 class ProtocolError(Exception):
 
     pass
@@ -226,7 +233,7 @@ class SessionV1(object):
             flush(zero_chunk=True)
 
         data = raw.to_bytes()
-        if __debug__: log_debug("C: %r", data)
+        if __debug__: log_debug("C: %s", ":".join(map(hex2, data)))
         t1 = perf_counter()
         self.socket.sendall(data)
         t2 = perf_counter()
@@ -262,7 +269,7 @@ class SessionV1(object):
                 if b:
                     if start_recv is None:
                         start_recv = perf_counter()
-                    if __debug__: log_debug("S: %r", b)
+                    if __debug__: log_debug("S: %s", ":".join(map(hex2, b)))
                 else:
                     if ready_to_read is not None:
                         raise ProtocolError("Server closed connection")
@@ -449,7 +456,7 @@ class Driver(object):
         supported_versions = [1, 0, 0, 0]
         if __debug__: log_info("C: [HANDSHAKE] %r", supported_versions)
         data = b"".join(struct_pack(">I", version) for version in supported_versions)
-        if __debug__: log_debug("C: %r", data)
+        if __debug__: log_debug("C: %s", ":".join(map(hex2, data)))
         s.sendall(data)
 
         # Handle the handshake response
@@ -464,7 +471,7 @@ class Driver(object):
             log_error("S: [CLOSE]")
             raise ProtocolError("Server closed connection without responding to handshake")
         if data_size == 4:
-            if __debug__: log_debug("S: %r", data)
+            if __debug__: log_debug("S: %s", ":".join(map(hex2, data)))
         else:
             # Some other garbled data has been received
             log_error("S: @*#!")
@@ -472,7 +479,7 @@ class Driver(object):
         agreed_version, = struct_unpack(">I", data)
         if __debug__: log_info("S: [HANDSHAKE] %d", agreed_version)
         if agreed_version == 0:
-            if __debug__: log_debug("~~ [CLOSE]")
+            if __debug__: log_info("~~ [CLOSE]")
             s.shutdown(SHUT_RDWR)
             s.close()
         else:
