@@ -89,7 +89,7 @@ def main():
         Watcher("neo4j").watch(level, stderr)
 
     parameters = {}
-    for parameter in args.parameter:
+    for parameter in args.parameter or []:
         name, _, value = parameter.partition("=")
         if value == "" and name in parameters:
             del parameters[name]
