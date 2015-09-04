@@ -22,6 +22,7 @@
 from __future__ import unicode_literals
 
 from argparse import ArgumentParser
+from json import loads as json_loads
 import logging
 from sys import stdout, stderr
 
@@ -75,7 +76,8 @@ class Watcher(object):
 def main():
     parser = ArgumentParser(description="Execute one or more Cypher statements using Bolt.")
     parser.add_argument("statement", nargs="+")
-    parser.add_argument("-u", "--url", default="bolt://localhost")
+    parser.add_argument("-u", "--url", default="bolt://localhost", metavar="CONNECTION_URL")
+    parser.add_argument("-p", "--parameter", action="append", metavar="NAME=VALUE")
     parser.add_argument("-q", "--quiet", action="store_true")
     parser.add_argument("-s", "--secure", action="store_true")
     parser.add_argument("-v", "--verbose", action="count")
@@ -86,13 +88,24 @@ def main():
         level = logging.INFO if args.verbose == 1 else logging.DEBUG
         Watcher("neo4j").watch(level, stderr)
 
+    parameters = {}
+    for parameter in args.parameter:
+        name, _, value = parameter.partition("=")
+        if value == "" and name in parameters:
+            del parameters[name]
+        else:
+            try:
+                parameters[name] = json_loads(value)
+            except ValueError:
+                parameters[name] = value
+
     driver = GraphDatabase.driver(args.url, secure=args.secure)
     session = driver.session()
     if session:
         for _ in range(args.times):
             for statement in args.statement:
                 try:
-                    records = session.run(statement, {})
+                    records = session.run(statement, parameters)
                 except CypherError as error:
                     stderr.write("%s: %s\r\n" % (error.code, error.message))
                 else:
