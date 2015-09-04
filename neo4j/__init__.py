@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#! -*- encoding: UTF-8 -*-
+# -*- encoding: UTF-8 -*-
 
 # Copyright (c) 2002-2015 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
@@ -19,5 +19,5 @@
 # limitations under the License.
 
 
-from .driver import *
+from .bolt import *
 from .typesystem import *

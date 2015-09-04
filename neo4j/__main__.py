@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#! -*- encoding: UTF-8 -*-
+# -*- encoding: UTF-8 -*-
 
 # Copyright (c) 2002-2015 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
@@ -26,7 +26,7 @@ from json import loads as json_loads
 import logging
 from sys import stdout, stderr
 
-from neo4j.driver import GraphDatabase, CypherError
+from neo4j.bolt import GraphDatabase, CypherError
 
 
 class ColourFormatter(logging.Formatter):
