@@ -185,6 +185,31 @@ class PackStreamTestCase(TestCase):
     def test_nested_lists(self):
         assert_packable([[[]]], b"\x91\x91\x90")
 
+    def test_list_stream(self):
+        packed_value = b"\xD7\x01\x02\x03\xDF"
+        unpacked_value = [1, 2, 3]
+        stream_out = BytesIO()
+        packer = Packer(stream_out)
+        packer.pack_list_stream_header()
+        packer.pack(1)
+        packer.pack(2)
+        packer.pack(3)
+        packer.pack_end_of_stream()
+        packed = stream_out.getvalue()
+        try:
+            assert packed == packed_value
+        except AssertionError:
+            raise AssertionError("Packed value is %r instead of expected %r" %
+                                 (packed, packed_value))
+        stream_in = BytesIO(packed)
+        unpacker = Unpacker(stream_in)
+        unpacked = next(unpacker.unpack())
+        try:
+            assert unpacked == unpacked_value
+        except AssertionError:
+            raise AssertionError("Unpacked value %r is not equal to expected %r" %
+                                 (unpacked, unpacked_value))
+
     def test_empty_map(self):
         assert_packable({}, b"\xA0")
 
@@ -206,6 +231,32 @@ class PackStreamTestCase(TestCase):
         d = OrderedDict([(u"A%s" % i, 1) for i in range(80000)])
         b = b"".join(packb(u"A%s" % i, 1) for i in range(80000))
         assert_packable(d, b"\xDA\x00\x01\x38\x80" + b)
+
+    def test_map_stream(self):
+        packed_value = b"\xDB\x81A\x01\x81B\x02\xDF"
+        unpacked_value = {u"A": 1, u"B": 2}
+        stream_out = BytesIO()
+        packer = Packer(stream_out)
+        packer.pack_map_stream_header()
+        packer.pack(u"A")
+        packer.pack(1)
+        packer.pack(u"B")
+        packer.pack(2)
+        packer.pack_end_of_stream()
+        packed = stream_out.getvalue()
+        try:
+            assert packed == packed_value
+        except AssertionError:
+            raise AssertionError("Packed value is %r instead of expected %r" %
+                                 (packed, packed_value))
+        stream_in = BytesIO(packed)
+        unpacker = Unpacker(stream_in)
+        unpacked = next(unpacker.unpack())
+        try:
+            assert unpacked == unpacked_value
+        except AssertionError:
+            raise AssertionError("Unpacked value %r is not equal to expected %r" %
+                                 (unpacked, unpacked_value))
 
     def test_illegal_signature(self):
         try:

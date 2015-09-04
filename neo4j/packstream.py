@@ -204,12 +204,13 @@ types within the same list. The size of a list denotes the number of items
 within that list, not the total packed byte size. The markers used to denote
 a list are described in the table below:
 
-  Marker | Size                                        | Maximum size
- ========|=============================================|=====================
-  90..9F | contained within low-order nibble of marker | 15 bytes
-  D4     | 8-bit big-endian unsigned integer           | 255 items
-  D5     | 16-bit big-endian unsigned integer          | 65 535 items
-  D6     | 32-bit big-endian unsigned integer          | 4 294 967 295 items
+  Marker | Size                                         | Maximum size
+ ========|==============================================|=====================
+  90..9F | contained within low-order nibble of marker  | 15 bytes
+  D4     | 8-bit big-endian unsigned integer            | 255 items
+  D5     | 16-bit big-endian unsigned integer           | 65 535 items
+  D6     | 32-bit big-endian unsigned integer           | 4 294 967 295 items
+  D7     | no size, runs until DF marker is encountered | unlimited
 
 For lists containing fewer than 16 items, including empty lists, the marker
 byte should contain the high-order nibble `1001` followed by a low-order
@@ -227,6 +228,10 @@ serialized in order. Examples follow below:
     D4 14 01 02  03 04 05 06  07 08 09 00  01 02 03 04
     05 06 07 08  09 00  -- [1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0]
 
+List streams (marker 0xD7) can be used for lists where the total number of
+items is not known ahead of time. The items immediately follow the marker
+and a final END_OF_STREAM (0xDF) marker denotes the end of the list.
+
 
 Maps
 ----
@@ -236,12 +241,13 @@ within the same map. The size of a map denotes the number of pairs within
 that map, not the total packed byte size. The markers used to denote a map
 are described in the table below:
 
-  Marker | Size                                        | Maximum size
- ========|=============================================|=======================
-  A0..AF | contained within low-order nibble of marker | 15 entries
-  D8     | 8-bit big-endian unsigned integer           | 255 entries
-  D9     | 16-bit big-endian unsigned integer          | 65 535 entries
-  DA     | 32-bit big-endian unsigned integer          | 4 294 967 295 entries
+  Marker | Size                                         | Maximum size
+ ========|==============================================|=======================
+  A0..AF | contained within low-order nibble of marker  | 15 entries
+  D8     | 8-bit big-endian unsigned integer            | 255 entries
+  D9     | 16-bit big-endian unsigned integer           | 65 535 entries
+  DA     | 32-bit big-endian unsigned integer           | 4 294 967 295 entries
+  DB     | no size, runs until DF marker is encountered | unlimited
 
 For maps containing fewer than 16 key-value pairs, including empty maps,
 the marker byte should contain the high-order nibble `1010` followed by a
@@ -261,6 +267,10 @@ entries, serialised in key-value-key-value order. Examples follow below:
     05 81 66 06  81 67 07 81  68 08 81 69  09 81 6A 00
     81 6B 01 81  6C 02 81 6D  03 81 6E 04  81 6F 05 81
     70 06  -- {a:1,b:1,c:3,d:4,e:5,f:6,g:7,h:8,i:9,j:0,k:1,l:2,m:3,n:4,o:5,p:6}
+
+Map streams (marker 0xDB) can be used for maps where the total number of
+entries is not known ahead of time. The key-value pairs immediately follow
+the marker and a final END_OF_STREAM (0xDF) marker denotes the end of the map.
 
 
 Structures
@@ -312,6 +322,8 @@ else:
 
 __all__ = ["Packer", "pack", "packb", "Unpacker", "unpack", "unpackb"]
 
+INFINITY = 1e309
+
 PLUS_2_TO_THE_63 = 2 ** 63
 PLUS_2_TO_THE_32 = 4294967296
 PLUS_2_TO_THE_31 = 2147483648
@@ -359,11 +371,14 @@ TEXT_32 = b"\xD2"
 LIST_8 = b"\xD4"
 LIST_16 = b"\xD5"
 LIST_32 = b"\xD6"
+LIST_STREAM = b"\xD7"
 MAP_8 = b"\xD8"
 MAP_16 = b"\xD9"
 MAP_32 = b"\xDA"
+MAP_STREAM = b"\xDB"
 STRUCT_8 = b"\xDC"
 STRUCT_16 = b"\xDD"
+END_OF_STREAM = b"\xDF"
 
 PACKED_UINT_8 = [struct_pack(UINT_8_STRUCT, value) for value in range(PLUS_2_TO_THE_8)]
 PACKED_UINT_16 = [struct_pack(UINT_16_STRUCT, value) for value in range(PLUS_2_TO_THE_16)]
@@ -382,14 +397,16 @@ UNPACKED_MARKERS.update({bytes(bytearray([z])): z for z in range(0, PLUS_2_TO_TH
 UNPACKED_MARKERS.update({bytes(bytearray([z + 256])): z for z in range(MINUS_2_TO_THE_4, 0)})
 
 
-class UnlimitedList(list):
-    capacity = 1e309  # infinity
-
-
 class List(list):
 
     def __init__(self, capacity):
         self.capacity = capacity
+
+    def append(self, item):
+        if item is END_OF_STREAM:
+            self.capacity = len(self)
+        else:
+            list.append(self, item)
 
 
 class Map(dict):
@@ -401,7 +418,10 @@ class Map(dict):
     def append(self, item):
         key = self.__key
         if key is NotImplemented:
-            self.__key = item
+            if item is END_OF_STREAM:
+                self.capacity = len(self)
+            else:
+                self.__key = item
         else:
             self[key] = item
             self.__key = NotImplemented
@@ -558,6 +578,9 @@ class Packer(object):
         else:
             raise OverflowError("List header size out of range")
 
+    def pack_list_stream_header(self):
+        self.stream.write(LIST_STREAM)
+
     def pack_map_header(self, size):
         stream = self.stream
         if size < PLUS_2_TO_THE_4:
@@ -573,6 +596,9 @@ class Packer(object):
             stream.write(struct_pack(UINT_32_STRUCT, size))
         else:
             raise OverflowError("Map header size out of range")
+
+    def pack_map_stream_header(self):
+        self.stream.write(MAP_STREAM)
 
     def pack_struct_header(self, size, signature):
         if isinstance(signature, bytes) and len(signature) == 1:
@@ -593,6 +619,9 @@ class Packer(object):
         else:
             raise ValueError("Structure signature must be a single byte value")
 
+    def pack_end_of_stream(self):
+        self.stream.write(END_OF_STREAM)
+
 
 def pack(stream, *values):
     for value in values:
@@ -611,7 +640,7 @@ class Unpacker(object):
         self.stream = stream
 
     def unpack(self):
-        current_collection = UnlimitedList()
+        current_collection = List(INFINITY)
         current_capacity = current_collection.capacity
         current_size = len(current_collection)
         push_item = current_collection.append
@@ -690,6 +719,10 @@ class Unpacker(object):
                     size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
                     value = List(size)
                     is_collection = True
+                elif marker_byte == LIST_STREAM:
+                    size = INFINITY
+                    value = List(size)
+                    is_collection = True
 
                 # Map
                 elif marker_high == 0xA0:
@@ -707,6 +740,10 @@ class Unpacker(object):
                     size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
                     value = Map(size)
                     is_collection = True
+                elif marker_byte == MAP_STREAM:
+                    size = INFINITY
+                    value = Map(size)
+                    is_collection = True
 
                 # Structure
                 elif marker_high == 0xB0:
@@ -721,6 +758,9 @@ class Unpacker(object):
                     data = stream_read(3)
                     value = Structure(UNPACKED_UINT_16[data[0:2]], data[2])
                     is_collection = True
+
+                elif marker_byte == END_OF_STREAM:
+                    value = END_OF_STREAM
 
             appended = False
             while not appended:
