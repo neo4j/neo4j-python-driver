@@ -16,11 +16,12 @@
 
 ACTION="download"
 DIST="http://dist.neo4j.org"
-ALPHA="http://alpha.neotechnology.com.s3-website-eu-west-1.amazonaws.com"
+ALPHA="http://alpha.neohq.net/dist"
 EDITION="community"
 MODE=""
 CHECK_EXISTS=0
 ALL_VERSIONS="2.3.0-M02 2.2.2 2.1.8 2.0.4"
+ALPHA_VERSION="3.0.0-alpha"
 
 function usage {
     SCRIPT=$(basename $0)
@@ -107,7 +108,7 @@ while getopts ":acdefhluvx" OPTION
 do
   case ${OPTION} in
     a)
-      ALL_VERSIONS="3.0.0-alpha.LATEST"
+      ALL_VERSIONS="$ALPHA_VERSION"
       ;;
     c)
       EDITION="community"
@@ -160,3 +161,4 @@ then
 else
     download
 fi
+
