@@ -196,28 +196,21 @@ class ChunkWriter(object):
         self.raw.close()
 
 
-class Session(object):
+class Connection(object):
     """ Server connection through which all protocol messages
     are sent and received. This class is designed for protocol
     version 1.
     """
 
-    def __init__(self, s, **config):
-        self.socket = s
+    def __init__(self, sock, **config):
+        self.socket = sock
         self._recv_buffer = b""
-        self._init("neo4j-python/0.0")
         if config.get("bench"):
             self._bench = []
         else:
             self._bench = None
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-
-    def _send_messages(self, *messages):
+    def send_messages(self, *messages):
         """ Send one or more messages to the server.
         """
         raw = ChunkWriter()
@@ -242,7 +235,7 @@ class Session(object):
 
         return t1, t2
 
-    def _recv_message(self, times=None):
+    def recv_message(self, times=None):
         """ Receive exactly one message from the server.
         """
         raw = BytesIO()
@@ -310,11 +303,11 @@ class Session(object):
 
         # Acknowledge any failures immediately
         if signature == FAILURE:
-            self._ack_failure()
+            self.ack_failure()
 
         return signature, fields
 
-    def _init(self, user_agent):
+    def init(self, user_agent):
         """ Initialise a connection with a user agent string.
         """
 
@@ -323,26 +316,26 @@ class Session(object):
             user_agent = user_agent.decode("UTF-8")
 
         if __debug__: log_info("C: INIT %r", user_agent)
-        self._send_messages((INIT, (user_agent,)))
+        self.send_messages((INIT, (user_agent,)))
 
-        signature, (data,) = self._recv_message()
+        signature, (data,) = self.recv_message()
         if signature == SUCCESS:
             if __debug__: log_info("S: SUCCESS %r", data)
         else:
             if __debug__: log_info("S: FAILURE %r", data)
             raise ProtocolError("Initialisation failed")
 
-    def _ack_failure(self):
+    def ack_failure(self):
         """ Send an acknowledgement for a previous failure.
         """
         if __debug__: log_info("C: ACK_FAILURE")
-        self._send_messages((ACK_FAILURE, ()))
+        self.send_messages((ACK_FAILURE, ()))
 
         # Skip any ignored responses
-        signature, fields = self._recv_message()
+        signature, fields = self.recv_message()
         while signature == IGNORED:
             if __debug__: log_info("S: IGNORED")
-            signature, fields = self._recv_message()
+            signature, fields = self.recv_message()
 
         # Check the acknowledgement was successful
         data, = fields
@@ -352,6 +345,40 @@ class Session(object):
             if __debug__: log_info("S: FAILURE %r", data)
             raise ProtocolError("Could not acknowledge failure")
 
+    def close(self):
+        """ Shut down and close the connection.
+        """
+        if __debug__: log_info("~~ [CLOSE]")
+        socket = self.socket
+        socket.shutdown(SHUT_RDWR)
+        socket.close()
+
+    @property
+    def bench(self):
+        if self._bench:
+            return [Latency(return_ - init, end_recv - start_send, start_recv - end_send)
+                    for init, start_send, end_send, start_recv, end_recv, return_ in self._bench]
+
+    def append_times(self, t):
+        if self._bench is not None:
+            t[5] = perf_counter()
+            self._bench.append(t)
+
+
+class Session(object):
+    """ Logical session carried out over the current physical connection.
+    """
+
+    def __init__(self, connection):
+        self.connection = connection
+        self.connection.init("neo4j-python/0.0")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def run(self, statement, parameters=None):
         """ Run a parameterised Cypher statement.
         """
@@ -359,7 +386,7 @@ class Session(object):
         # INIT | START_SEND | END_SEND | START_RECV | END_RECV | RETURN
         t = [perf_counter(), None, None, None, None, None]
 
-        recv_message = self._recv_message
+        recv_message = self.connection.recv_message
 
         # Ensure the statement is a Unicode value
         if isinstance(statement, bytes):
@@ -369,7 +396,7 @@ class Session(object):
         if __debug__:
             log_info("C: RUN %r %r", statement, parameters)
             log_info("C: PULL_ALL")
-        t[1], t[2] = self._send_messages((RUN, (statement, parameters)),
+        t[1], t[2] = self.connection.send_messages((RUN, (statement, parameters)),
                                          (PULL_ALL, ()))
 
         signature, (data,) = recv_message(t)
@@ -395,26 +422,14 @@ class Session(object):
                 if __debug__: log_info("S: FAILURE %r", data)
                 raise CypherError(data)
 
-        bench = self._bench
-        if bench is not None:
-            t[5] = perf_counter()
-            bench.append(t)
+        self.connection.append_times(t)
 
         return records
 
     def close(self):
         """ Shut down and close the connection.
         """
-        if __debug__: log_info("~~ [CLOSE]")
-        socket = self.socket
-        socket.shutdown(SHUT_RDWR)
-        socket.close()
-
-    @property
-    def bench(self):
-        if self._bench:
-            return [Latency(return_ - init, end_recv - start_send, start_recv - end_send)
-                    for init, start_send, end_send, start_recv, end_recv, return_ in self._bench]
+        self.connection.close()
 
 
 class Driver(object):
@@ -483,7 +498,7 @@ class Driver(object):
             s.shutdown(SHUT_RDWR)
             s.close()
         else:
-            return Session(s, **config)
+            return Session(Connection(s, **config))
 
 
 class GraphDatabase(object):

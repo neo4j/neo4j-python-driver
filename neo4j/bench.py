@@ -193,7 +193,7 @@ class Bolt(Process):
         run_count = self.run_count
         for i in range(run_count):
             run(statement)
-        bench = session.bench
+        bench = session.connection.bench
         for i, latency in enumerate(bench):
             self.overall[i] = latency.overall
             self.network[i] = latency.network
