@@ -1,0 +1,1 @@
+Search.setIndex({envversion:47,filenames:["index"],objects:{},objnames:{},objtypes:{},terms:{content:0,index:0,modul:0,page:0,search:0},titles:["Welcome to Neo4j Bolt Driver for Python&#8217;s documentation!"],titleterms:{bolt:0,document:0,driver:0,indic:0,neo4j:0,python:0,tabl:0,welcom:0}})
