@@ -60,7 +60,7 @@ except ImportError:
     def Array(typecode, size):
         return array(typecode, [0] * size)
 
-from .driver import GraphDatabase
+from .bolt import GraphDatabase
 driver = GraphDatabase.driver(getenv("NEO4J_BOLT_URI", "bolt://localhost"))
 
 
