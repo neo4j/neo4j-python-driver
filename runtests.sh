@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 HOME=$(pwd)/$(dirname $0)
+DOWNLOAD=0
 RUNNING=0
 
 function runserverandtests {
@@ -15,6 +16,10 @@ function runserverandtests {
     mkdir -p ${HOME}/.test 2> /dev/null
 
     cd ${HOME}/.test
+    if [ ${DOWNLOAD} -ne 0 ]
+    then
+        rm -rf *
+    fi
     tar xf $(${HOME}/neoget.sh -ex ${NEO_VERSION})
     NEO_HOME=$(ls -1Ft | grep "/$" | head -1)      # finds the newest directory
     echo "xx.bolt.enabled=true" >> ${NEO_HOME}/conf/neo4j-server.properties
@@ -61,9 +66,12 @@ function runtests {
 
 }
 
-while getopts ":r" OPTION
+while getopts ":dr" OPTION
 do
   case ${OPTION} in
+    d)
+      DOWNLOAD=1
+      ;;
     r)
       RUNNING=1
       ;;
