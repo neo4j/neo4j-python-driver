@@ -17,6 +17,7 @@ function runserverandtests {
     cd ${HOME}/.test
     tar xf $(${HOME}/neoget.sh -ex ${NEO_VERSION})
     NEO_HOME=$(ls -1Ft | grep "/$" | head -1)      # finds the newest directory
+    echo "xx.bolt.enabled=true" >> ${NEO_HOME}/conf/neo4j-server.properties
     ${NEO_HOME}/bin/neo4j start
     STATUS=$?
     if [ ${STATUS} -ne 0 ]
