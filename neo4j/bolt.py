@@ -196,7 +196,7 @@ class ChunkWriter(object):
         self.raw.close()
 
 
-class SessionV1(object):
+class Session(object):
     """ Server connection through which all protocol messages
     are sent and received. This class is designed for protocol
     version 1.
@@ -205,7 +205,7 @@ class SessionV1(object):
     def __init__(self, s, **config):
         self.socket = s
         self._recv_buffer = b""
-        self.init("neo4j-python/0.0")
+        self._init("neo4j-python/0.0")
         if config.get("bench"):
             self._bench = []
         else:
@@ -310,11 +310,11 @@ class SessionV1(object):
 
         # Acknowledge any failures immediately
         if signature == FAILURE:
-            self.ack_failure()
+            self._ack_failure()
 
         return signature, fields
 
-    def init(self, user_agent):
+    def _init(self, user_agent):
         """ Initialise a connection with a user agent string.
         """
 
@@ -331,6 +331,26 @@ class SessionV1(object):
         else:
             if __debug__: log_info("S: FAILURE %r", data)
             raise ProtocolError("Initialisation failed")
+
+    def _ack_failure(self):
+        """ Send an acknowledgement for a previous failure.
+        """
+        if __debug__: log_info("C: ACK_FAILURE")
+        self._send_messages((ACK_FAILURE, ()))
+
+        # Skip any ignored responses
+        signature, fields = self._recv_message()
+        while signature == IGNORED:
+            if __debug__: log_info("S: IGNORED")
+            signature, fields = self._recv_message()
+
+        # Check the acknowledgement was successful
+        data, = fields
+        if signature == SUCCESS:
+            if __debug__: log_info("S: SUCCESS %r", data)
+        else:
+            if __debug__: log_info("S: FAILURE %r", data)
+            raise ProtocolError("Could not acknowledge failure")
 
     def run(self, statement, parameters=None):
         """ Run a parameterised Cypher statement.
@@ -381,26 +401,6 @@ class SessionV1(object):
             bench.append(t)
 
         return records
-
-    def ack_failure(self):
-        """ Send an acknowledgement for a previous failure.
-        """
-        if __debug__: log_info("C: ACK_FAILURE")
-        self._send_messages((ACK_FAILURE, ()))
-
-        # Skip any ignored responses
-        signature, fields = self._recv_message()
-        while signature == IGNORED:
-            if __debug__: log_info("S: IGNORED")
-            signature, fields = self._recv_message()
-
-        # Check the acknowledgement was successful
-        data, = fields
-        if signature == SUCCESS:
-            if __debug__: log_info("S: SUCCESS %r", data)
-        else:
-            if __debug__: log_info("S: FAILURE %r", data)
-            raise ProtocolError("Could not acknowledge failure")
 
     def close(self):
         """ Shut down and close the connection.
@@ -483,7 +483,7 @@ class Driver(object):
             s.shutdown(SHUT_RDWR)
             s.close()
         else:
-            return SessionV1(s, **config)
+            return Session(s, **config)
 
 
 class GraphDatabase(object):
