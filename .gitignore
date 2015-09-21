@@ -8,3 +8,5 @@ __pycache__
 htmlcov
 .coverage
 .test
+
+docs/build

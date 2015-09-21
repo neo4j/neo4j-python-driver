@@ -77,7 +77,8 @@ Performance Testing
          100.0% |  29,740.3µs |  25,134.4µs |  25,065.5µs
 
 
-## Profiling
+Profiling
+=========
 
 .. code:: bash
 
