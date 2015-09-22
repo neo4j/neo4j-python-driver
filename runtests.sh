@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
-HOME=$(dirname $0)
+if [[ $0 == /* ]]
+then
+    HOME=$(dirname $0)
+else
+    HOME=$(pwd)/$(dirname $0)
+fi
 cd ${HOME}
 
 DOT_TEST=${HOME}/.test
@@ -27,7 +32,7 @@ function runserverandtests {
     mkdir -p ${DOT_TEST} 2> /dev/null
 
     pushd ${DOT_TEST} > /dev/null
-    tar xf $(../${NEOGET} -ex ${NEO_VERSION})
+    tar xf $(${NEOGET} -ex ${NEO_VERSION})
     NEO_HOME=$(ls -1Ft | grep "/$" | head -1)      # finds the newest directory relative to .test
     echo "xx.bolt.enabled=true" >> ${NEO_HOME}/conf/neo4j-server.properties
     ${NEO_HOME}/bin/neo4j start
@@ -36,7 +41,7 @@ function runserverandtests {
     then
         exit ${STATUS}
     fi
-    popd
+    popd > /dev/null
 
     echo -n "Testing"
     coverage run -m unittest test
@@ -44,7 +49,7 @@ function runserverandtests {
     pushd ${DOT_TEST} > /dev/null
     ${NEO_HOME}/bin/neo4j stop
     rm -rf ${NEO_HOME}
-    popd
+    popd > /dev/null
 
     coverage report --show-missing
 
