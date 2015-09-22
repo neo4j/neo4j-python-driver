@@ -33,35 +33,8 @@ import subprocess
 from math import log, ceil, floor
 from sys import version, platform
 
-# Support Python 2, Python 3 and Jython :-/
-try:
-    from java.lang.System import nanoTime
-except ImportError:
-    JYTHON = False
-
-    try:
-        from time import perf_counter
-    except ImportError:
-        from time import time as perf_counter
-else:
-    JYTHON = True
-
-    def perf_counter():
-        return nanoTime() / 1000000000
-
-try:
-    from multiprocessing import Array, Process
-except ImportError:
-    # Workaround for Jython
-
-    from array import array
-    from threading import Thread as Process
-
-    def Array(typecode, size):
-        return array(typecode, [0] * size)
-
-from .bolt import GraphDatabase
-driver = GraphDatabase.driver(getenv("NEO4J_BOLT_URI", "bolt://localhost"))
+from .compat import JYTHON, perf_counter, Array, Process
+from .session import GraphDatabase
 
 
 USAGE = """\
@@ -82,6 +55,8 @@ Environment:
 
 Report bugs to nigel@neotechnology.com
 """
+
+driver = GraphDatabase.driver(getenv("NEO4J_BOLT_URI", "bolt://localhost"))
 
 
 def percentile(values, nth):

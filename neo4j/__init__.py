@@ -19,5 +19,5 @@
 # limitations under the License.
 
 
-from .bolt import *
+from .session import *
 from .typesystem import *

@@ -1,29 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: UTF-8 -*-
-
-# Copyright (c) 2002-2015 "Neo Technology,"
-# Network Engine for Objects in Lund AB [http://neotechnology.com]
-#
-# This file is part of Neo4j.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-"""
-This module contains the main Bolt driver components as well as several
-helper and exception classes. The main entry point is the `GraphDatabase`
-class which can be used to obtain `Driver` instances that are used for
-managing sessions.
-"""
 
 
 from __future__ import division
@@ -36,13 +10,9 @@ from select import select
 from socket import create_connection, SHUT_RDWR
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
-from .compat import integer, perf_counter, secure_socket, string, urlparse
-
-# Serialisation and deserialisation routines plus the structure data type
+from .compat import perf_counter, secure_socket
+from .exceptions import ProtocolError
 from .packstream import Packer, Unpacker, Structure
-
-# Hydration function for turning structures into their actual types
-from .typesystem import hydrated
 
 
 DEFAULT_PORT = 7687
@@ -74,67 +44,6 @@ def hex2(x):
         return "0" + hex(x)[2:].upper()
     else:
         return hex(x)[2:].upper()
-
-
-class ProtocolError(Exception):
-
-    pass
-
-
-class CypherError(Exception):
-
-    code = None
-    message = None
-
-    def __init__(self, data):
-        super(CypherError, self).__init__(data.get("message"))
-        for key, value in data.items():
-            if not key.startswith("_"):
-                setattr(self, key, value)
-
-
-class Record(object):
-    """ Record object for storing result values along with field names.
-    """
-
-    def __init__(self, fields, values):
-        self.__fields__ = fields
-        self.__values__ = values
-
-    def __repr__(self):
-        values = self.__values__
-        s = []
-        for i, field in enumerate(self.__fields__):
-            s.append("%s=%r" % (field, values[i]))
-        return "<Record %s>" % " ".join(s)
-
-    def __eq__(self, other):
-        try:
-            return vars(self) == vars(other)
-        except TypeError:
-            return tuple(self) == tuple(other)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __len__(self):
-        return self.__fields__.__len__()
-
-    def __getitem__(self, item):
-        if isinstance(item, string):
-            return getattr(self, item)
-        elif isinstance(item, integer):
-            return getattr(self, self.__fields__[item])
-        else:
-            raise TypeError(item)
-
-    def __getattr__(self, item):
-        try:
-            i = self.__fields__.index(item)
-        except ValueError:
-            raise AttributeError("No field %r" % item)
-        else:
-            return self.__values__[i]
 
 
 class ChunkWriter(object):
@@ -365,148 +274,54 @@ class Connection(object):
             self._bench.append(t)
 
 
-class Session(object):
-    """ Logical session carried out over the current physical connection.
+def connect(host, port=None, **config):
+    """ Connect and perform a handshake and return a valid Connection object, assuming
+    a protocol version can be agreed.
     """
 
-    def __init__(self, connection):
-        self.connection = connection
-        self.connection.init("neo4j-python/0.0")
+    # Establish a connection to the host and port specified
+    port = port or DEFAULT_PORT
+    if __debug__: log_info("~~ [CONNECT] %s %d", host, port)
+    s = create_connection((host, port))
 
-    def __enter__(self):
-        return self
+    # Secure the connection if so requested
+    try:
+        secure = environ["NEO4J_SECURE"]
+    except KeyError:
+        secure = config.get("secure", False)
+    if secure:
+        if __debug__: log_info("~~ [SECURE] %s", host)
+        s = secure_socket(s, host)
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
+    # Send details of the protocol versions supported
+    supported_versions = [1, 0, 0, 0]
+    if __debug__: log_info("C: [HANDSHAKE] %r", supported_versions)
+    data = b"".join(struct_pack(">I", version) for version in supported_versions)
+    if __debug__: log_debug("C: %s", ":".join(map(hex2, data)))
+    s.sendall(data)
 
-    def run(self, statement, parameters=None):
-        """ Run a parameterised Cypher statement.
-        """
-        # Collect six checkpoint times for each run
-        # INIT | START_SEND | END_SEND | START_RECV | END_RECV | RETURN
-        t = [perf_counter(), None, None, None, None, None]
-
-        recv_message = self.connection.recv_message
-
-        # Ensure the statement is a Unicode value
-        if isinstance(statement, bytes):
-            statement = statement.decode("UTF-8")
-
-        parameters = dict(parameters or {})
-        if __debug__:
-            log_info("C: RUN %r %r", statement, parameters)
-            log_info("C: PULL_ALL")
-        t[1], t[2] = self.connection.send_messages((RUN, (statement, parameters)),
-                                         (PULL_ALL, ()))
-
-        signature, (data,) = recv_message(t)
-        if signature == SUCCESS:
-            fields = data["fields"]
-            if __debug__: log_info("S: SUCCESS %r", data)
-        else:
-            if __debug__: log_info("S: FAILURE %r", data)
-            raise CypherError(data)
-
-        records = []
-        append = records.append
-        more = True
-        while more:
-            signature, (data,) = recv_message()
-            if signature == RECORD:
-                if __debug__: log_info("S: RECORD %r", data)
-                append(Record(fields, tuple(map(hydrated, data))))
-            elif signature == SUCCESS:
-                if __debug__: log_info("S: SUCCESS %r", data)
-                more = False
-            else:
-                if __debug__: log_info("S: FAILURE %r", data)
-                raise CypherError(data)
-
-        self.connection.append_times(t)
-
-        return records
-
-    def close(self):
-        """ Shut down and close the connection.
-        """
-        self.connection.close()
-
-
-class Driver(object):
-    """ Accessor for a specific graph database resource.
-    """
-
-    def __init__(self, url, **config):
-        self.url = url
-        parsed = urlparse(self.url)
-        if parsed.scheme == "bolt":
-            self.host = parsed.hostname
-            self.port = parsed.port
-        else:
-            raise ProtocolError("Unsupported URL scheme: %s" % parsed.scheme)
-        self.config = config
-
-    def session(self, **config):
-        """ Connect and perform a handshake in order to return a valid
-        Connection object, assuming a protocol version can be agreed.
-        """
-        config = dict(self.config, **config)
-
-        # Establish a connection to the host and port specified
-        host = self.host
-        port = self.port or DEFAULT_PORT
-        if __debug__: log_info("~~ [CONNECT] %s %d", host, port)
-        s = create_connection((host, port))
-
-        # Secure the connection if so requested
-        try:
-            secure = environ["NEO4J_SECURE"]
-        except KeyError:
-            secure = config.get("secure", False)
-        if secure:
-            if __debug__: log_info("~~ [SECURE] %s", host)
-            s = secure_socket(s, host)
-
-        # Send details of the protocol versions supported
-        supported_versions = [1, 0, 0, 0]
-        if __debug__: log_info("C: [HANDSHAKE] %r", supported_versions)
-        data = b"".join(struct_pack(">I", version) for version in supported_versions)
-        if __debug__: log_debug("C: %s", ":".join(map(hex2, data)))
-        s.sendall(data)
-
-        # Handle the handshake response
+    # Handle the handshake response
+    ready_to_read, _, _ = select((s,), (), (), 0)
+    while not ready_to_read:
         ready_to_read, _, _ = select((s,), (), (), 0)
-        while not ready_to_read:
-            ready_to_read, _, _ = select((s,), (), (), 0)
-        data = s.recv(4)
-        data_size = len(data)
-        if data_size == 0:
-            # If no data is returned after a successful select
-            # response, the server has closed the connection
-            log_error("S: [CLOSE]")
-            raise ProtocolError("Server closed connection without responding to handshake")
-        if data_size == 4:
-            if __debug__: log_debug("S: %s", ":".join(map(hex2, data)))
-        else:
-            # Some other garbled data has been received
-            log_error("S: @*#!")
-            raise ProtocolError("Expected four byte handshake response, received %r instead" % data)
-        agreed_version, = struct_unpack(">I", data)
-        if __debug__: log_info("S: [HANDSHAKE] %d", agreed_version)
-        if agreed_version == 0:
-            if __debug__: log_info("~~ [CLOSE]")
-            s.shutdown(SHUT_RDWR)
-            s.close()
-        else:
-            return Session(Connection(s, **config))
-
-
-class GraphDatabase(object):
-    """ Top level accessor for all graph database functionality.
-    """
-
-    @classmethod
-    def driver(cls, url, **config):
-        """ Acquire a driver instance for the given URL and configuration.
-        """
-        return Driver(url, **config)
+    data = s.recv(4)
+    data_size = len(data)
+    if data_size == 0:
+        # If no data is returned after a successful select
+        # response, the server has closed the connection
+        log_error("S: [CLOSE]")
+        raise ProtocolError("Server closed connection without responding to handshake")
+    if data_size == 4:
+        if __debug__: log_debug("S: %s", ":".join(map(hex2, data)))
+    else:
+        # Some other garbled data has been received
+        log_error("S: @*#!")
+        raise ProtocolError("Expected four byte handshake response, received %r instead" % data)
+    agreed_version, = struct_unpack(">I", data)
+    if __debug__: log_info("S: [HANDSHAKE] %d", agreed_version)
+    if agreed_version == 0:
+        if __debug__: log_info("~~ [CLOSE]")
+        s.shutdown(SHUT_RDWR)
+        s.close()
+    else:
+        return Connection(s, **config)

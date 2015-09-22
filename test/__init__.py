@@ -19,6 +19,6 @@
 # limitations under the License.
 
 
-from .bolt_test import *
+from .session_test import *
 from .packstream_test import *
 from .typesystem_test import *

@@ -26,6 +26,14 @@ from neo4j import GraphDatabase, Node, Relationship, Path, CypherError
 
 class RunTestCase(TestCase):
 
+    def test_must_use_valid_url_scheme(self):
+        try:
+            GraphDatabase.driver("x://xxx")
+        except ValueError:
+            assert True
+        else:
+            assert False
+
     def test_can_run_simple_statement(self):
         session = GraphDatabase.driver("bolt://localhost").session()
         count = 0
@@ -51,6 +59,19 @@ class RunTestCase(TestCase):
                 assert True
             else:
                 assert False
+            assert repr(record)
+            assert len(record) == 1
+            count += 1
+        session.close()
+        assert count == 1
+
+    def test_can_run_simple_statement_from_bytes_string(self):
+        session = GraphDatabase.driver("bolt://localhost").session()
+        count = 0
+        for record in session.run(b"RETURN 1 AS n"):
+            assert record[0] == 1
+            assert record["n"] == 1
+            assert record.n == 1
             assert repr(record)
             assert len(record) == 1
             count += 1

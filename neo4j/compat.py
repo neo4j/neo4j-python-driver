@@ -39,6 +39,18 @@ else:
     string = (str, unicode)
 
 
+try:
+    from multiprocessing import Array, Process
+except ImportError:
+    # Workaround for Jython
+
+    from array import array
+    from threading import Thread as Process
+
+    def Array(typecode, size):
+        return array(typecode, [0] * size)
+
+
 # Obtain a performance timer - this varies by platform and
 # Jython support is even more tricky as the standard timer
 # does not support nanoseconds. The combination below
@@ -46,11 +58,15 @@ else:
 try:
     from java.lang.System import nanoTime
 except ImportError:
+    JYTHON = False
+
     try:
         from time import perf_counter
     except ImportError:
         from time import time as perf_counter
 else:
+    JYTHON = True
+
     def perf_counter():
         return nanoTime() / 1000000000
 
