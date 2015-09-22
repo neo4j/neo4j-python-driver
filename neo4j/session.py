@@ -56,6 +56,8 @@ log_error = log.error
 
 class Record(object):
     """ Record object for storing result values along with field names.
+    Fields can be accessed by numeric or named index (``record[0]`` or
+    ``record["field"]``) or by attribute (``record.field``).
     """
 
     def __init__(self, fields, values):

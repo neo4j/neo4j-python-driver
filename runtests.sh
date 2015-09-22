@@ -62,7 +62,7 @@ function runtests {
     echo "----------------------------------------------------------------------"
 
     cd ${HOME}
-    
+
     echo -n "Testing"
     coverage run -m unittest test
 
