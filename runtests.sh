@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
-HOME=$(pwd)/$(dirname $0)
-DOWNLOAD=0
+HOME=$(dirname $0)
+cd ${HOME}
+
+DOT_TEST=${HOME}/.test
+NEOGET=${HOME}/neoget.sh
+
+FORCE_DOWNLOAD=0
 RUNNING=0
 
 function runserverandtests {
@@ -13,15 +18,17 @@ function runserverandtests {
     echo "Running with ${PYTHON_VERSION} against Neo4j ${NEO_VERSION}"
     echo "----------------------------------------------------------------------"
 
-    mkdir -p ${HOME}/.test 2> /dev/null
+    cd ${HOME}
 
-    cd ${HOME}/.test
-    if [ ${DOWNLOAD} -ne 0 ]
+    if [ ${FORCE_DOWNLOAD} -ne 0 ]
     then
-        rm -rf *
+        rm -rf ${DOT_TEST}
     fi
-    tar xf $(${HOME}/neoget.sh -ex ${NEO_VERSION})
-    NEO_HOME=$(ls -1Ft | grep "/$" | head -1)      # finds the newest directory
+    mkdir -p ${DOT_TEST} 2> /dev/null
+
+    pushd ${DOT_TEST} > /dev/null
+    tar xf $(../${NEOGET} -ex ${NEO_VERSION})
+    NEO_HOME=$(ls -1Ft | grep "/$" | head -1)      # finds the newest directory relative to .test
     echo "xx.bolt.enabled=true" >> ${NEO_HOME}/conf/neo4j-server.properties
     ${NEO_HOME}/bin/neo4j start
     STATUS=$?
@@ -29,16 +36,16 @@ function runserverandtests {
     then
         exit ${STATUS}
     fi
+    popd
 
-    cd ${HOME}
     echo -n "Testing"
     coverage run -m unittest test
 
-    cd ${HOME}/.test
+    pushd ${DOT_TEST} > /dev/null
     ${NEO_HOME}/bin/neo4j stop
     rm -rf ${NEO_HOME}
+    popd
 
-    cd ${HOME}
     coverage report --show-missing
 
     echo "======================================================================"
@@ -55,10 +62,10 @@ function runtests {
     echo "----------------------------------------------------------------------"
 
     cd ${HOME}
+    
     echo -n "Testing"
     coverage run -m unittest test
 
-    cd ${HOME}
     coverage report --show-missing
 
     echo "======================================================================"
@@ -70,7 +77,7 @@ while getopts ":dr" OPTION
 do
   case ${OPTION} in
     d)
-      DOWNLOAD=1
+      FORCE_DOWNLOAD=1
       ;;
     r)
       RUNNING=1
