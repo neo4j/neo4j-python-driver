@@ -54,50 +54,46 @@ log_warning = log.warning
 log_error = log.error
 
 
-class Record(object):
-    """ Record object for storing result values along with field names.
-    Fields can be accessed by numeric or named index (``record[0]`` or
-    ``record["field"]``) or by attribute (``record.field``).
+class GraphDatabase(object):
+    """ The :class:`.GraphDatabase` class provides access to all graph
+    database functionality. This is primarily used to construct a driver
+    instance, using the :meth:`.driver` method.
     """
 
-    def __init__(self, fields, values):
-        self.__fields__ = fields
-        self.__values__ = values
+    @staticmethod
+    def driver(url, **config):
+        """ Acquire a :class:`.Driver` instance for the given URL and
+        configuration:
 
-    def __repr__(self):
-        values = self.__values__
-        s = []
-        for i, field in enumerate(self.__fields__):
-            s.append("%s=%r" % (field, values[i]))
-        return "<Record %s>" % " ".join(s)
+            >>> from neo4j import GraphDatabase
+            >>> driver = GraphDatabase.driver("bolt://localhost")
 
-    def __eq__(self, other):
-        try:
-            return vars(self) == vars(other)
-        except TypeError:
-            return tuple(self) == tuple(other)
+        """
+        return Driver(url, **config)
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
-    def __len__(self):
-        return self.__fields__.__len__()
+class Driver(object):
+    """ Accessor for a specific graph database resource.
+    """
 
-    def __getitem__(self, item):
-        if isinstance(item, string):
-            return getattr(self, item)
-        elif isinstance(item, integer):
-            return getattr(self, self.__fields__[item])
+    def __init__(self, url, **config):
+        self.url = url
+        parsed = urlparse(self.url)
+        if parsed.scheme == "bolt":
+            self.host = parsed.hostname
+            self.port = parsed.port
         else:
-            raise TypeError(item)
+            raise ValueError("Unsupported URL scheme: %s" % parsed.scheme)
+        self.config = config
 
-    def __getattr__(self, item):
-        try:
-            i = self.__fields__.index(item)
-        except ValueError:
-            raise AttributeError("No field %r" % item)
-        else:
-            return self.__values__[i]
+    def session(self, **config):
+        """ Create a new session based on the graph database details
+        specified within this driver:
+
+            >>> session = driver.session()
+
+        """
+        return Session(connect(self.host, self.port, **config))
 
 
 class Session(object):
@@ -109,6 +105,7 @@ class Session(object):
     def __init__(self, connection):
         self.connection = connection
         self.connection.init("neo4j-python/0.0")
+        self.transaction = None
 
     def __enter__(self):
         return self
@@ -118,6 +115,10 @@ class Session(object):
 
     def run(self, statement, parameters=None):
         """ Run a parameterised Cypher statement.
+
+        :param statement: Cypher statement to execute
+        :param parameters: dictionary of parameters
+        :return: list of :class:`.Record` objects
         """
         # Collect six checkpoint times for each run
         # INIT | START_SEND | END_SEND | START_RECV | END_RECV | RETURN
@@ -164,48 +165,128 @@ class Session(object):
         return records
 
     def close(self):
-        """ Shut down and close the connection.
+        """ Shut down and close the session.
         """
         self.connection.close()
 
+    def new_transaction(self):
+        """ Create a new :class:`.Transaction` within this session.
 
-class Driver(object):
-    """ Accessor for a specific graph database resource.
+        :return: new :class:`.Transaction` instance.
+        """
+        assert not self.transaction
+        self.transaction = Transaction(self)
+        return self.transaction
+
+
+class Transaction(object):
+    """ Container for multiple Cypher queries to be executed within
+    a single context. Transactions can be used within a :py:const:`with`
+    block where the value of :attr:`.success` will determine whether
+    the transaction is committed or rolled back on :meth:`.Transaction.close`::
+
+        with session.new_transaction() as tx:
+            pass
+
     """
 
-    def __init__(self, url, **config):
-        self.url = url
-        parsed = urlparse(self.url)
-        if parsed.scheme == "bolt":
-            self.host = parsed.hostname
-            self.port = parsed.port
+    #: When closed, the transaction will be committed if marked as successful
+    #: and rolled back otherwise. This attribute can be set in user code
+    #: multiple times before a transaction completes with only the final
+    #: value taking effect.
+    success = False
+
+    #: Indicator to show whether the transaction has been closed, either
+    #: with commit or rollback.
+    closed = False
+
+    def __init__(self, session):
+        self.session = session
+        self.session.run("BEGIN")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def run(self, statement, parameters=None):
+        """ Run a Cypher statement within the context of this transaction.
+
+        :param statement:
+        :param parameters:
+        :return:
+        """
+        assert not self.closed
+        return self.session.run(statement, parameters)
+
+    def commit(self):
+        """ Mark this transaction as successful and close in order to
+        trigger a COMMIT.
+        """
+        self.success = True
+        self.close()
+
+    def rollback(self):
+        """ Mark this transaction as unsuccessful and close in order to
+        trigger a ROLLBACK.
+        """
+        self.success = False
+        self.close()
+
+    def close(self):
+        """ Close this transaction, triggering either a COMMIT or a ROLLBACK.
+        """
+        assert not self.closed
+        if self.success:
+            self.session.run("COMMIT")
         else:
-            raise ValueError("Unsupported URL scheme: %s" % parsed.scheme)
-        self.config = config
-
-    def session(self, **config):
-        """ Create a new session based on the graph database details
-        specified within this driver:
-
-            >>> session = driver.session()
-
-        """
-        return Session(connect(self.host, self.port, **config))
+            self.session.run("ROLLBACK")
+        self.closed = True
+        self.session.transaction = None
 
 
-class GraphDatabase(object):
-    """ The :class:`.GraphDatabase` class provides access to all graph
-    database functionality. This is primarily used to construct a driver
-    instance, using the :meth:`.driver` method.
+class Record(object):
+    """ Record object for storing result values along with field names.
+    Fields can be accessed by numeric or named index (``record[0]`` or
+    ``record["field"]``) or by attribute (``record.field``).
     """
 
-    @staticmethod
-    def driver(url, **config):
-        """ Acquire a :class:`.Driver` instance for the given URL and
-        configuration:
+    def __init__(self, fields, values):
+        self.__fields__ = fields
+        self.__values__ = values
 
-            >>> from neo4j import GraphDatabase
-            >>> driver = GraphDatabase.driver("bolt://localhost")
+    def __repr__(self):
+        values = self.__values__
+        s = []
+        for i, field in enumerate(self.__fields__):
+            s.append("%s=%r" % (field, values[i]))
+        return "<Record %s>" % " ".join(s)
 
-        """
-        return Driver(url, **config)
+    def __eq__(self, other):
+        try:
+            return vars(self) == vars(other)
+        except TypeError:
+            return tuple(self) == tuple(other)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __len__(self):
+        return self.__fields__.__len__()
+
+    def __getitem__(self, item):
+        if isinstance(item, string):
+            return getattr(self, item)
+        elif isinstance(item, integer):
+            return getattr(self, self.__fields__[item])
+        else:
+            raise TypeError(item)
+
+    def __getattr__(self, item):
+        try:
+            i = self.__fields__.index(item)
+        except ValueError:
+            raise AttributeError("No field %r" % item)
+        else:
+            return self.__values__[i]

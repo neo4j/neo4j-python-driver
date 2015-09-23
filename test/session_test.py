@@ -143,5 +143,88 @@ class RunTestCase(TestCase):
             assert records[0] != "this is not a record"
 
 
+class TransactionTestCase(TestCase):
+
+    def test_can_commit_transaction(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            tx = session.new_transaction()
+
+            # Create a node
+            records = tx.run("CREATE (a) RETURN id(a)")
+            node_id = records[0][0]
+            assert isinstance(node_id, int)
+
+            # Update a property
+            tx.run("MATCH (a) WHERE id(a) = {n} "
+                   "SET a.foo = {foo}", {"n": node_id, "foo": "bar"})
+
+            tx.commit()
+
+            # Check the property value
+            records = session.run("MATCH (a) WHERE id(a) = {n} "
+                                  "RETURN a.foo", {"n": node_id})
+            foo = records[0][0]
+            assert foo == "bar"
+
+    def test_can_rollback_transaction(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            tx = session.new_transaction()
+
+            # Create a node
+            records = tx.run("CREATE (a) RETURN id(a)")
+            node_id = records[0][0]
+            assert isinstance(node_id, int)
+
+            # Update a property
+            tx.run("MATCH (a) WHERE id(a) = {n} "
+                   "SET a.foo = {foo}", {"n": node_id, "foo": "bar"})
+
+            tx.rollback()
+
+            # Check the property value
+            records = session.run("MATCH (a) WHERE id(a) = {n} "
+                                  "RETURN a.foo", {"n": node_id})
+            assert len(records) == 0
+
+    def test_can_commit_transaction_using_with_block(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            with session.new_transaction() as tx:
+
+                # Create a node
+                records = tx.run("CREATE (a) RETURN id(a)")
+                node_id = records[0][0]
+                assert isinstance(node_id, int)
+
+                # Update a property
+                tx.run("MATCH (a) WHERE id(a) = {n} "
+                       "SET a.foo = {foo}", {"n": node_id, "foo": "bar"})
+
+                tx.success = True
+
+            # Check the property value
+            records = session.run("MATCH (a) WHERE id(a) = {n} "
+                                  "RETURN a.foo", {"n": node_id})
+            foo = records[0][0]
+            assert foo == "bar"
+
+    def test_can_rollback_transaction_using_with_block(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            with session.new_transaction() as tx:
+
+                # Create a node
+                records = tx.run("CREATE (a) RETURN id(a)")
+                node_id = records[0][0]
+                assert isinstance(node_id, int)
+
+                # Update a property
+                tx.run("MATCH (a) WHERE id(a) = {n} "
+                       "SET a.foo = {foo}", {"n": node_id, "foo": "bar"})
+
+            # Check the property value
+            records = session.run("MATCH (a) WHERE id(a) = {n} "
+                                  "RETURN a.foo", {"n": node_id})
+            assert len(records) == 0
+
+
 if __name__ == "__main__":
     main()
