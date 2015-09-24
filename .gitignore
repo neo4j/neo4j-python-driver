@@ -12,3 +12,4 @@ htmlcov
 docs/build
 dist
 UNKNOWN.egg-info
+build
