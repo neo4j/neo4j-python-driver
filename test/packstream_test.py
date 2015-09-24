@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- encoding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2002-2015 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
@@ -36,7 +36,7 @@ def assert_packable(value, packed_value):
     try:
         assert packed == packed_value
     except AssertionError:
-        raise AssertionError("Packed value %r is %r instead of expected %r" % 
+        raise AssertionError("Packed value %r is %r instead of expected %r" %
                              (value, packed, packed_value))
     stream_in = BytesIO(packed)
     unpacker = Unpacker(stream_in)
@@ -48,7 +48,7 @@ def assert_packable(value, packed_value):
 
 
 class PackStreamTestCase(TestCase):
-    
+
     def test_none(self):
         assert_packable(None, b"\xC0")
 
