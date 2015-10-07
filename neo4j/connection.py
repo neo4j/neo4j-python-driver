@@ -167,31 +167,6 @@ class Connection(object):
 
         return t1, t2
 
-    def send_messages(self, *messages):
-        """ Send one or more messages to the server.
-        """
-        raw = ChunkWriter()
-        packer = Packer(raw)
-        pack_struct_header = packer.pack_struct_header
-        pack = packer.pack
-        flush = raw.flush
-
-        for signature, fields in messages:
-            pack_struct_header(len(fields), signature)
-            for field in fields:
-                pack(field)
-            flush(zero_chunk=True)
-
-        data = raw.to_bytes()
-        if __debug__: log_debug("C: %s", ":".join(map(hex2, data)))
-        t1 = perf_counter()
-        self.socket.sendall(data)
-        t2 = perf_counter()
-
-        raw.close()
-
-        return t1, t2
-
     def recv_message(self, times=None):
         """ Receive exactly one message from the server.
         """
