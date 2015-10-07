@@ -159,10 +159,9 @@ class Bolt(Process):
         self.overall = overall
         self.network = network
         self.wait = wait
-        self.session = driver.session(bench=True)
 
     def run(self):
-        session = self.session
+        session = driver.session(bench=True)
         run = session.run
         statement = self.statement
         run_count = self.run_count
@@ -173,6 +172,7 @@ class Bolt(Process):
             self.overall[i] = latency.overall
             self.network[i] = latency.network
             self.wait[i] = latency.wait
+        session.close()
 
 
 def help_(**kwargs):
