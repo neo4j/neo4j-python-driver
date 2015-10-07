@@ -116,11 +116,12 @@ class ChunkWriter(object):
         """
         return self.raw.getvalue()
 
-    def close(self, zero_chunk=False):
-        """ Close the stream.
+    def reset(self):
+        """ Reset the stream.
         """
-        self.flush(zero_chunk=zero_chunk)
-        self.raw.close()
+        self.flush()
+        raw = self.raw
+        return raw.seek(raw.truncate(0))
 
 
 class Connection(object):
@@ -131,6 +132,8 @@ class Connection(object):
 
     def __init__(self, sock, **config):
         self.socket = sock
+        self.raw = ChunkWriter()
+        self.packer = Packer(self.raw)
         self.outbox = []
         self._recv_buffer = b""
         if config.get("bench"):
@@ -144,8 +147,8 @@ class Connection(object):
     def send(self):
         """ Send all queued messages to the server.
         """
-        raw = ChunkWriter()
-        packer = Packer(raw)
+        raw = self.raw
+        packer = self.packer
         pack_struct_header = packer.pack_struct_header
         pack = packer.pack
         flush = raw.flush
@@ -162,7 +165,7 @@ class Connection(object):
         self.socket.sendall(data)
         t2 = perf_counter()
 
-        raw.close()
+        raw.reset()
         self.outbox.clear()
 
         return t1, t2
