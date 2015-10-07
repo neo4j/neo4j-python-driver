@@ -26,7 +26,7 @@ from json import loads as json_loads
 import logging
 from sys import stdout, stderr
 
-from neo4j.bolt import GraphDatabase, CypherError
+from neo4j.session import GraphDatabase, CypherError
 
 
 class ColourFormatter(logging.Formatter):
