@@ -134,8 +134,9 @@ class Session(object):
         if __debug__:
             log_info("C: RUN %r %r", statement, parameters)
             log_info("C: PULL_ALL")
-        t[1], t[2] = self.connection.send_messages((RUN, (statement, parameters)),
-                                                   (PULL_ALL, ()))
+        self.connection.append(RUN, statement, parameters)
+        self.connection.append(PULL_ALL)
+        t[1], t[2] = self.connection.send()
 
         signature, (data,) = recv_message(t)
         if signature == SUCCESS:

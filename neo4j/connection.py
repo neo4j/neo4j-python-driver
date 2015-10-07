@@ -131,11 +131,41 @@ class Connection(object):
 
     def __init__(self, sock, **config):
         self.socket = sock
+        self.outbox = []
         self._recv_buffer = b""
         if config.get("bench"):
             self._bench = []
         else:
             self._bench = None
+
+    def append(self, signature, *fields):
+        self.outbox.append((signature, fields))
+
+    def send(self):
+        """ Send all queued messages to the server.
+        """
+        raw = ChunkWriter()
+        packer = Packer(raw)
+        pack_struct_header = packer.pack_struct_header
+        pack = packer.pack
+        flush = raw.flush
+
+        for signature, fields in self.outbox:
+            pack_struct_header(len(fields), signature)
+            for field in fields:
+                pack(field)
+            flush(zero_chunk=True)
+
+        data = raw.to_bytes()
+        if __debug__: log_debug("C: %s", ":".join(map(hex2, data)))
+        t1 = perf_counter()
+        self.socket.sendall(data)
+        t2 = perf_counter()
+
+        raw.close()
+        self.outbox.clear()
+
+        return t1, t2
 
     def send_messages(self, *messages):
         """ Send one or more messages to the server.
@@ -243,7 +273,8 @@ class Connection(object):
             user_agent = user_agent.decode("UTF-8")
 
         if __debug__: log_info("C: INIT %r", user_agent)
-        self.send_messages((INIT, (user_agent,)))
+        self.append(INIT, user_agent)
+        self.send()
 
         signature, (data,) = self.recv_message()
         if signature == SUCCESS:
@@ -256,7 +287,8 @@ class Connection(object):
         """ Send an acknowledgement for a previous failure.
         """
         if __debug__: log_info("C: ACK_FAILURE")
-        self.send_messages((ACK_FAILURE, ()))
+        self.append(ACK_FAILURE)
+        self.send()
 
         # Skip any ignored responses
         signature, fields = self.recv_message()
