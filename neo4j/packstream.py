@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- encoding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2002-2015 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
@@ -382,7 +382,7 @@ END_OF_STREAM = b"\xDF"
 
 PACKED_UINT_8 = [struct_pack(UINT_8_STRUCT, value) for value in range(PLUS_2_TO_THE_8)]
 PACKED_UINT_16 = [struct_pack(UINT_16_STRUCT, value) for value in range(PLUS_2_TO_THE_16)]
-PACKED_INT_8 = {value: struct_pack(INT_8_STRUCT, value) 
+PACKED_INT_8 = {value: struct_pack(INT_8_STRUCT, value)
                 for value in range(MINUS_2_TO_THE_7, PLUS_2_TO_THE_7)}
 PACKED_INT_16 = {value: struct_pack(INT_16_STRUCT, value)
                  for value in range(MINUS_2_TO_THE_15, PLUS_2_TO_THE_15)}
@@ -794,4 +794,3 @@ def unpack(stream):
 
 def unpackb(b):
     return unpack(BytesIO(b))
-
