@@ -20,7 +20,7 @@
 
 from __future__ import division
 
-from collections import namedtuple
+from collections import deque, namedtuple
 from io import BytesIO
 import logging
 from os import environ
@@ -46,15 +46,15 @@ RECORD = b"\x71"           # 0111 0001 // RECORD <value>
 IGNORED = b"\x7E"          # 0111 1110 // IGNORED <metadata>
 FAILURE = b"\x7F"          # 0111 1111 // FAILURE <metadata>
 
+DETAIL = {RECORD}
+SUMMARY = {SUCCESS, IGNORED, FAILURE}
+
 # Set up logger
 log = logging.getLogger("neo4j")
 log_debug = log.debug
 log_info = log.info
 log_warning = log.warning
 log_error = log.error
-
-
-Latency = namedtuple("Latency", ["overall", "network", "wait"])
 
 
 def hex2(x):
@@ -124,6 +124,51 @@ class ChunkWriter(object):
         return raw.seek(raw.truncate(0))
 
 
+class Response(object):
+
+    def __init__(self, connection, on_detail, on_summary):
+        self.connection = connection
+        self.on_detail = on_detail
+        self.on_summary = on_summary
+        self.__messages = deque()
+
+    def extend(self, messages):
+        self.__messages.extend(messages)
+
+    def last(self):
+        try:
+            return self.__messages[-1]
+        except IndexError:
+            return None
+
+    def summary(self):
+        if self.complete():
+            return self.__messages[-1]
+        else:
+            return None
+
+    def complete(self):
+        return self.__messages and self.__messages[-1].signature in SUMMARY
+
+    def consume(self):
+        receive_next = self.connection.receive_next
+        while not self.complete():
+            receive_next()
+        signature, (data,) = self.__messages[-1]
+        if signature == SUCCESS:
+            name = "SUCCESS"
+            value = True
+        elif signature == FAILURE:
+            name = "FAILURE"
+            value = False
+        else:
+            name = "IGNORED"
+            value = None
+        if __debug__:
+            log_info("S: %s %r", name, data)
+        return value
+
+
 class Connection(object):
     """ Server connection through which all protocol messages
     are sent and received. This class is designed for protocol
@@ -134,19 +179,28 @@ class Connection(object):
         self.socket = sock
         self.raw = ChunkWriter()
         self.packer = Packer(self.raw)
-        self.outbox = []
+        self.inbox = deque()
+        self.outbox = deque()
         self._recv_buffer = b""
-        if config.get("bench"):
-            self._bench = []
-        else:
-            self._bench = None
 
-    def append(self, signature, *fields):
+    def append(self, signature, fields=(), on_detail=None, on_summary=None):
+        """ Add a message to the outgoing queue.
+
+        :param signature:
+        :param fields:
+        :return: a response collector
+        :rtype: Response
+        """
         self.outbox.append((signature, fields))
+        response = Response(self, on_detail, on_summary)
+        self.inbox.append(response)
+        return response
 
     def send(self):
         """ Send all queued messages to the server.
         """
+
+        # Shortcuts to avoid too many dots
         raw = self.raw
         packer = self.packer
         pack_struct_header = packer.pack_struct_header
@@ -161,16 +215,12 @@ class Connection(object):
 
         data = raw.to_bytes()
         if __debug__: log_debug("C: %s", ":".join(map(hex2, data)))
-        t1 = perf_counter()
         self.socket.sendall(data)
-        t2 = perf_counter()
 
         raw.reset()
         self.outbox.clear()
 
-        return t1, t2
-
-    def recv_message(self, times=None):
+    def receive_next(self):
         """ Receive exactly one message from the server.
         """
         raw = BytesIO()
@@ -221,26 +271,21 @@ class Connection(object):
                 write(data)
                 chunk_size = None
 
-        if times:
-            times[3] = start_recv
-            times[4] = perf_counter()
-
-        # Unpack the message structure from the raw byte stream
-        # (there should be only one)
+        # Unpack the message from the raw byte stream into the inbox
         raw.seek(0)
-        message = next(unpack())
-        if not isinstance(message, Structure):
-            # Something other than a message has been received
-            log_error("S: @*#!")
-            raise ProtocolError("Non-message data received from server")
-        signature, fields = message
+        inbox = self.inbox
+        response = inbox[0]
+        response.extend(unpack())
+        message = response.last()
+        if response.complete():
+            inbox.popleft()
         raw.close()
 
         # Acknowledge any failures immediately
-        if signature == FAILURE:
+        if message.signature == FAILURE:
             self.ack_failure()
 
-        return signature, fields
+        return message
 
     def init(self, user_agent):
         """ Initialise a connection with a user agent string.
@@ -251,35 +296,18 @@ class Connection(object):
             user_agent = user_agent.decode("UTF-8")
 
         if __debug__: log_info("C: INIT %r", user_agent)
-        self.append(INIT, user_agent)
+        response = self.append(INIT, (user_agent,))
         self.send()
-
-        signature, (data,) = self.recv_message()
-        if signature == SUCCESS:
-            if __debug__: log_info("S: SUCCESS %r", data)
-        else:
-            if __debug__: log_info("S: FAILURE %r", data)
+        if not response.consume():
             raise ProtocolError("Initialisation failed")
 
     def ack_failure(self):
         """ Send an acknowledgement for a previous failure.
         """
         if __debug__: log_info("C: ACK_FAILURE")
-        self.append(ACK_FAILURE)
+        response = self.append(ACK_FAILURE)
         self.send()
-
-        # Skip any ignored responses
-        signature, fields = self.recv_message()
-        while signature == IGNORED:
-            if __debug__: log_info("S: IGNORED")
-            signature, fields = self.recv_message()
-
-        # Check the acknowledgement was successful
-        data, = fields
-        if signature == SUCCESS:
-            if __debug__: log_info("S: SUCCESS %r", data)
-        else:
-            if __debug__: log_info("S: FAILURE %r", data)
+        if not response.consume():
             raise ProtocolError("Could not acknowledge failure")
 
     def close(self):
@@ -289,17 +317,6 @@ class Connection(object):
         socket = self.socket
         socket.shutdown(SHUT_RDWR)
         socket.close()
-
-    @property
-    def bench(self):
-        if self._bench:
-            return [Latency(return_ - init, end_recv - start_send, start_recv - end_send)
-                    for init, start_send, end_send, start_recv, end_recv, return_ in self._bench]
-
-    def append_times(self, t):
-        if self._bench is not None:
-            t[5] = perf_counter()
-            self._bench.append(t)
 
 
 def connect(host, port=None, **config):

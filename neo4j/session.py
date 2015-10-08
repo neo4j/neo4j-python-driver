@@ -28,11 +28,12 @@ managing sessions.
 
 from __future__ import division
 
+from collections import namedtuple
 import logging
 
 from .compat import integer, perf_counter, string, urlparse
 from .connection import connect
-from .exceptions import CypherError, ProtocolError
+from .exceptions import CypherError
 from .typesystem import hydrated
 
 # Signature bytes for each message type
@@ -52,6 +53,24 @@ log_debug = log.debug
 log_info = log.info
 log_warning = log.warning
 log_error = log.error
+
+
+Latency = namedtuple("Latency", ["overall", "network", "wait"])
+
+
+class BenchTest(object):
+
+    init = None
+    start_send = None
+    end_send = None
+    start_recv = None
+    end_recv = None
+    done = None
+
+    def latency(self):
+        return Latency(self.done - self.init,
+                       self.end_recv - self.start_send,
+                       self.start_recv - self.end_send)
 
 
 class GraphDatabase(object):
@@ -106,6 +125,7 @@ class Session(object):
         self.connection = connection
         self.connection.init("neo4j-python/0.0")
         self.transaction = None
+        self.bench_tests = []
 
     def __enter__(self):
         return self
@@ -120,25 +140,28 @@ class Session(object):
         :param parameters: dictionary of parameters
         :return: list of :class:`.Record` objects
         """
-        # Collect six checkpoint times for each run
-        # INIT | START_SEND | END_SEND | START_RECV | END_RECV | RETURN
-        t = [perf_counter(), None, None, None, None, None]
+        t = BenchTest()
 
-        recv_message = self.connection.recv_message
+        receive_next = self.connection.receive_next
 
         # Ensure the statement is a Unicode value
         if isinstance(statement, bytes):
             statement = statement.decode("UTF-8")
 
         parameters = dict(parameters or {})
+
+        t.init = perf_counter()
         if __debug__:
             log_info("C: RUN %r %r", statement, parameters)
             log_info("C: PULL_ALL")
-        self.connection.append(RUN, statement, parameters)
+        self.connection.append(RUN, (statement, parameters))
         self.connection.append(PULL_ALL)
-        t[1], t[2] = self.connection.send()
+        t.start_send = perf_counter()
+        self.connection.send()
+        t.end_send = perf_counter()
 
-        signature, (data,) = recv_message(t)
+        signature, (data,) = receive_next()
+        t.start_recv = perf_counter()
         if signature == SUCCESS:
             fields = data["fields"]
             if __debug__: log_info("S: SUCCESS %r", data)
@@ -150,7 +173,7 @@ class Session(object):
         append = records.append
         more = True
         while more:
-            signature, (data,) = recv_message()
+            signature, (data,) = receive_next()
             if signature == RECORD:
                 if __debug__: log_info("S: RECORD %r", data)
                 append(Record(fields, tuple(map(hydrated, data))))
@@ -161,7 +184,9 @@ class Session(object):
                 if __debug__: log_info("S: FAILURE %r", data)
                 raise CypherError(data)
 
-        self.connection.append_times(t)
+        t.end_recv = perf_counter()
+        t.done = perf_counter()
+        self.bench_tests.append(t)
 
         return records
 
