@@ -29,30 +29,11 @@ managing sessions.
 from __future__ import division
 
 from collections import namedtuple
-import logging
 
 from .compat import integer, perf_counter, string, urlparse
-from .connection import connect, ResponseSubscriber
+from .connection import connect, Response, RUN, PULL_ALL
 from .exceptions import CypherError
 from .typesystem import hydrated
-
-# Signature bytes for each message type
-INIT = b"\x01"             # 0000 0001 // INIT <user_agent>
-ACK_FAILURE = b"\x0F"      # 0000 1111 // ACK_FAILURE
-RUN = b"\x10"              # 0001 0000 // RUN <statement> <parameters>
-DISCARD_ALL = b"\x2F"      # 0010 1111 // DISCARD *
-PULL_ALL = b"\x3F"         # 0011 1111 // PULL *
-SUCCESS = b"\x70"          # 0111 0000 // SUCCESS <metadata>
-RECORD = b"\x71"           # 0111 0001 // RECORD <value>
-IGNORED = b"\x7E"          # 0111 1110 // IGNORED <metadata>
-FAILURE = b"\x7F"          # 0111 1111 // FAILURE <metadata>
-
-# Set up logger
-log = logging.getLogger("neo4j")
-log_debug = log.debug
-log_info = log.info
-log_warning = log.warning
-log_error = log.error
 
 
 Latency = namedtuple("Latency", ["overall", "network", "wait"])
@@ -123,7 +104,6 @@ class Session(object):
 
     def __init__(self, connection):
         self.connection = connection
-        self.connection.init("neo4j-python/0.0")
         self.transaction = None
         self.bench_tests = []
 
@@ -166,26 +146,23 @@ class Session(object):
         def on_failure(metadata):
             raise CypherError("FAILURE")
 
-        run_subscriber = ResponseSubscriber(self.connection)
-        run_subscriber.on_success = on_header
-        run_subscriber.on_failure = on_failure
+        run_response = Response(self.connection)
+        run_response.on_success = on_header
+        run_response.on_failure = on_failure
 
-        pull_all_subscriber = ResponseSubscriber(self.connection)
-        pull_all_subscriber.on_record = on_record
-        pull_all_subscriber.on_success = on_footer
-        pull_all_subscriber.on_failure = on_failure
+        pull_all_response = Response(self.connection)
+        pull_all_response.on_record = on_record
+        pull_all_response.on_success = on_footer
+        pull_all_response.on_failure = on_failure
 
-        if __debug__:
-            log_info("C: RUN %r %r", statement, parameters)
-            log_info("C: PULL_ALL")
-        self.connection.append(RUN, (statement, parameters), subscriber=run_subscriber)
-        self.connection.append(PULL_ALL, subscriber=pull_all_subscriber)
+        self.connection.append(RUN, (statement, parameters), response=run_response)
+        self.connection.append(PULL_ALL, response=pull_all_response)
         t.start_send = perf_counter()
         self.connection.send()
         t.end_send = perf_counter()
 
-        run_subscriber.consume()
-        pull_all_subscriber.consume()
+        run_response.consume()
+        pull_all_response.consume()
 
         t.done = perf_counter()
         self.bench_tests.append(t)

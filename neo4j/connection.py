@@ -34,6 +34,7 @@ from .packstream import Packer, Unpacker, Structure
 
 
 DEFAULT_PORT = 7687
+DEFAULT_USER_AGENT = "neo4j-python/0.0"
 
 # Signature bytes for each message type
 INIT = b"\x01"             # 0000 0001 // INIT <user_agent>
@@ -76,16 +77,20 @@ def hex2(x):
         return hex(x)[2:].upper()
 
 
-class ChunkWriter(object):
-    """ Writer for chunked data.
+class ChunkChannel(object):
+    """ Reader/writer for chunked data.
+
+    .. note:: logs at DEBUG level
     """
 
     max_chunk_size = 65535
 
-    def __init__(self):
+    def __init__(self, sock):
+        self.socket = sock
         self.raw = BytesIO()
         self.output_buffer = []
         self.output_size = 0
+        self._recv_buffer = b""
 
     def write(self, b):
         """ Write some bytes, splitting into chunks if necessary.
@@ -106,7 +111,7 @@ class ChunkWriter(object):
                 self.output_size = future_size
                 b = b""
 
-    def flush(self, zero_chunk=False):
+    def flush(self, end_of_message=False):
         """ Flush everything written since the last chunk to the
         stream, followed by a zero-chunk if required.
         """
@@ -115,7 +120,7 @@ class ChunkWriter(object):
             lines = [struct_pack(">H", self.output_size)] + output_buffer
         else:
             lines = []
-        if zero_chunk:
+        if end_of_message:
             lines.append(b"\x00\x00")
         if lines:
             self.raw.writelines(lines)
@@ -123,92 +128,15 @@ class ChunkWriter(object):
             del output_buffer[:]
             self.output_size = 0
 
-    def to_bytes(self):
-        """ Extract the written data as bytes.
-        """
-        return self.raw.getvalue()
-
-    def reset(self):
-        """ Reset the stream.
-        """
-        self.flush()
-        raw = self.raw
-        return raw.seek(raw.truncate(0))
-
-
-class ResponseSubscriber(object):
-
-    def __init__(self, connection):
-        self.connection = connection
-        self.__complete = False
-
-    @property
-    def complete(self):
-        return self.__complete
-
-    def deliver(self, messages):
-        for message in messages:
-            signature = message.signature
-            fields = tuple(message)
-            if __debug__:
-                log_info("S: %s %s", message_names[signature], " ".join(map(repr, fields)))
-            handler_name = "on_%s" % message_names[signature].lower()
-            try:
-                getattr(self, handler_name)(*fields)
-            except AttributeError:
-                pass
-            if signature in SUMMARY:
-                self.__complete = True
-            if signature == FAILURE:
-                self.connection.ack_failure()
-
-    def consume(self):
-        self.connection.receive_all(self)
-
-
-class Connection(object):
-    """ Server connection through which all protocol messages
-    are sent and received. This class is designed for protocol
-    version 1.
-    """
-
-    def __init__(self, sock, **config):
-        self.socket = sock
-        self.raw = ChunkWriter()
-        self.packer = Packer(self.raw)
-        self.inbox = deque()
-        self.outbox = deque()
-        self._recv_buffer = b""
-
-    def append(self, signature, fields=(), subscriber=None):
-        """ Add a message to the outgoing queue.
-        """
-        self.outbox.append((signature, fields))
-        self.inbox.append(subscriber)
-
     def send(self):
         """ Send all queued messages to the server.
         """
-
-        # Shortcuts to avoid too many dots
-        raw = self.raw
-        packer = self.packer
-        pack_struct_header = packer.pack_struct_header
-        pack = packer.pack
-        flush = raw.flush
-
-        for signature, fields in self.outbox:
-            pack_struct_header(len(fields), signature)
-            for field in fields:
-                pack(field)
-            flush(zero_chunk=True)
-
-        data = raw.to_bytes()
-        if __debug__: log_debug("C: %s", ":".join(map(hex2, data)))
+        data = self.raw.getvalue()
+        if __debug__:
+            log_debug("C: %s", ":".join(map(hex2, data)))
         self.socket.sendall(data)
 
-        raw.reset()
-        self.outbox.clear()
+        self.raw.seek(self.raw.truncate(0))
 
     def _recv(self, size):
         # If data is needed, keep reading until all bytes have been received
@@ -235,68 +163,14 @@ class Connection(object):
         data, self._recv_buffer = self._recv_buffer[:size], self._recv_buffer[size:]
         return data
 
-    def receive_next(self):
-        """ Receive exactly one message from the server.
-        """
-        raw = BytesIO()
-        unpack = Unpacker(raw).unpack
-
-        # Receive chunks of data until chunk_size == 0
-        chunk_size = None
+    def chunk_reader(self):
+        chunk_size = -1
         while chunk_size != 0:
-            if chunk_size is None:
-                # Chunk header
-                data = self._recv(2)
-                chunk_size, = struct_unpack_from(">H", data)
-            else:
-                # Chunk content
+            chunk_header = self._recv(2)
+            chunk_size, = struct_unpack_from(">H", chunk_header)
+            if chunk_size > 0:
                 data = self._recv(chunk_size)
-                raw.write(data)
-                chunk_size = None
-
-        # Unpack the message from the raw byte stream into the inbox
-        raw.seek(0)
-        response = self.inbox[0]
-        response.deliver(unpack())
-        if response.complete:
-            self.inbox.popleft()
-        raw.close()
-
-    def receive_all(self, response):
-        receive_next = self.receive_next
-        while not response.complete:
-            receive_next()
-
-    def init(self, user_agent):
-        """ Initialise a connection with a user agent string.
-        """
-
-        # Ensure the user agent is a Unicode value
-        if isinstance(user_agent, bytes):
-            user_agent = user_agent.decode("UTF-8")
-
-        if __debug__: log_info("C: INIT %r", user_agent)
-
-        def on_failure(metadata):
-            raise ProtocolError("Initialisation failed")
-
-        subscriber = ResponseSubscriber(self)
-        subscriber.on_failure = on_failure
-        self.append(INIT, (user_agent,), subscriber=subscriber)
-        self.send()
-        subscriber.consume()
-
-    def ack_failure(self):
-        """ Queue an acknowledgement for a previous failure.
-        """
-        if __debug__: log_info("C: ACK_FAILURE")
-
-        def on_failure(metadata):
-            raise ProtocolError("Could not acknowledge failure")
-
-        subscriber = ResponseSubscriber(self)
-        subscriber.on_failure = on_failure
-        self.append(ACK_FAILURE, subscriber=subscriber)
+                yield data
 
     def close(self):
         """ Shut down and close the connection.
@@ -305,6 +179,121 @@ class Connection(object):
         socket = self.socket
         socket.shutdown(SHUT_RDWR)
         socket.close()
+
+
+class Response(object):
+    """ Subscriber object for a full response (zero or
+    more detail messages followed by one summary message).
+    """
+
+    def __init__(self, connection):
+        self.connection = connection
+        self.__complete = False
+
+    @property
+    def complete(self):
+        return self.__complete
+
+    def deliver(self, messages):
+        for message in messages:
+            signature = message.signature
+            fields = tuple(message)
+            if __debug__:
+                log_info("S: %s %s", message_names[signature], " ".join(map(repr, fields)))
+            handler_name = "on_%s" % message_names[signature].lower()
+            try:
+                getattr(self, handler_name)(*fields)
+            except AttributeError:
+                pass
+            if signature in SUMMARY:
+                self.__complete = True
+            if signature == FAILURE:
+                self.ack_failure()
+
+    def consume(self):
+        self.connection.fetch_all(self)
+
+    def ack_failure(self):
+        """ Queue an acknowledgement for a previous failure.
+        """
+
+        def on_failure(metadata):
+            raise ProtocolError("Could not acknowledge failure")
+
+        subscriber = Response(self)
+        subscriber.on_failure = on_failure
+        self.connection.append(ACK_FAILURE, response=subscriber)
+
+
+class Connection(object):
+    """ Server connection through which all protocol messages
+    are sent and received. This class is designed for protocol
+    version 1.
+
+    .. note:: logs at INFO level
+    """
+
+    def __init__(self, sock, **config):
+        self.channel = ChunkChannel(sock)
+        self.packer = Packer(self.channel)
+        self.responses = deque()
+
+        # Determine the user agent and ensure it is a Unicode value
+        user_agent = config.get("user-agent", DEFAULT_USER_AGENT)
+        if isinstance(user_agent, bytes):
+            user_agent = user_agent.decode("UTF-8")
+
+        def on_failure(metadata):
+            raise ProtocolError("Initialisation failed")
+
+        response = Response(self)
+        response.on_failure = on_failure
+
+        self.append(INIT, (user_agent,), response=response)
+        self.send()
+        response.consume()
+
+    def append(self, signature, fields=(), response=None):
+        """ Add a message to the outgoing queue.
+        """
+        if __debug__:
+            log_info("C: %s %s", message_names[signature], " ".join(map(repr, fields)))
+
+        self.packer.pack_struct_header(len(fields), signature)
+        for field in fields:
+            self.packer.pack(field)
+        self.channel.flush(end_of_message=True)
+        self.responses.append(response)
+
+    def send(self):
+        """ Send all queued messages to the server.
+        """
+        self.channel.send()
+
+    def fetch_next(self):
+        """ Receive exactly one message from the server.
+        """
+        raw = BytesIO()
+        unpack = Unpacker(raw).unpack
+        raw.writelines(self.channel.chunk_reader())
+
+        # Unpack the message from the raw byte stream into the inbox
+        raw.seek(0)
+        response = self.responses[0]
+        response.deliver(unpack())
+        if response.complete:
+            self.responses.popleft()
+        raw.close()
+
+    def fetch_all(self, response):
+        fetch_next = self.fetch_next
+        while not response.complete:
+            fetch_next()
+
+    def close(self):
+        """ Shut down and close the connection.
+        """
+        self.channel.close()
 
 
 def connect(host, port=None, **config):
