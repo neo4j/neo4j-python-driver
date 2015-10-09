@@ -190,29 +190,6 @@ class Response(object):
         self.connection = connection
         self.complete = False
 
-    def deliver(self, messages):
-        for message in messages:
-            signature = message.signature
-            fields = tuple(message)
-            if __debug__:
-                log_info("S: %s %s", message_names[signature], " ".join(map(repr, fields)))
-            handler_name = "on_%s" % message_names[signature].lower()
-            try:
-                handler = getattr(self, handler_name)
-            except AttributeError:
-                pass
-            else:
-                handler(*fields)
-            if signature in SUMMARY:
-                self.complete = True
-            if signature == FAILURE:
-                def on_failure(metadata):
-                    raise ProtocolError("Could not acknowledge failure")
-
-                subscriber = Response(self)
-                subscriber.on_failure = on_failure
-                self.connection.append(ACK_FAILURE, response=subscriber)
-
     def on_record(self, values):
         pass
 
@@ -224,6 +201,12 @@ class Response(object):
 
     def on_ignored(self, metadata):
         pass
+
+
+class AckFailureResponse(Response):
+
+    def on_failure(self, metadata):
+        raise ProtocolError("Could not acknowledge failure")
 
 
 class Connection(object):
@@ -278,12 +261,26 @@ class Connection(object):
         unpack = Unpacker(raw).unpack
         raw.writelines(self.channel.chunk_reader())
 
-        # Unpack the message from the raw byte stream into the inbox
+        # Unpack from the raw byte stream and call the relevant message handler(s)
         raw.seek(0)
         response = self.responses[0]
-        response.deliver(unpack())
-        if response.complete:
-            self.responses.popleft()
+        for message in unpack():
+            signature = message.signature
+            fields = tuple(message)
+            if __debug__:
+                log_info("S: %s %s", message_names[signature], " ".join(map(repr, fields)))
+            handler_name = "on_%s" % message_names[signature].lower()
+            try:
+                handler = getattr(response, handler_name)
+            except AttributeError:
+                pass
+            else:
+                handler(*fields)
+            if signature in SUMMARY:
+                response.complete = True
+                self.responses.popleft()
+            if signature == FAILURE:
+                self.append(ACK_FAILURE, response=AckFailureResponse(self))
         raw.close()
 
     def fetch_all(self, response):
