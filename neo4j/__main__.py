@@ -115,7 +115,7 @@ def main():
                         for i, record in enumerate(records):
                             has_results = True
                             if i == 0:
-                                stdout.write("%s\r\n" % "\t".join(record.__fields__))
+                                stdout.write("%s\r\n" % "\t".join(record.__keys__))
                             stdout.write("%s\r\n" % "\t".join(map(repr, record)))
                         if has_results:
                             stdout.write("\r\n")

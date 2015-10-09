@@ -96,6 +96,29 @@ class Driver(object):
         return Session(connect(self.host, self.port, **config))
 
 
+class Result(list):
+
+    def __init__(self):
+        super(Result, self).__init__()
+        self.keys = None
+        self.bench_test = None
+
+    def on_header(self, metadata):
+        self.keys = metadata["fields"]
+        if self.bench_test:
+            self.bench_test.start_recv = perf_counter()
+
+    def on_record(self, values):
+        self.append(Record(self.keys, tuple(map(hydrated, values))))
+
+    def on_footer(self, metadata):
+        if self.bench_test:
+            self.bench_test.end_recv = perf_counter()
+
+    def on_failure(self, metadata):
+        raise CypherError(metadata)
+
+
 class Session(object):
     """ Logical session carried out over an established TCP connection.
     Sessions should generally be constructed using the :meth:`.Driver.session`
@@ -118,9 +141,9 @@ class Session(object):
 
         :param statement: Cypher statement to execute
         :param parameters: dictionary of parameters
-        :return: list of :class:`.Record` objects
+        :return: Cypher result
+        :rtype: :class:`.Result`
         """
-        t = BenchTest()
 
         # Ensure the statement is a Unicode value
         if isinstance(statement, bytes):
@@ -128,32 +151,20 @@ class Session(object):
 
         parameters = dict(parameters or {})
 
+        t = BenchTest()
         t.init = perf_counter()
 
-        fields = []
-        records = []
-
-        def on_header(metadata):
-            fields.extend(metadata["fields"])
-            t.start_recv = perf_counter()
-
-        def on_record(values):
-            records.append(Record(fields, tuple(map(hydrated, values))))
-
-        def on_footer(metadata):
-            t.end_recv = perf_counter()
-
-        def on_failure(metadata):
-            raise CypherError("FAILURE")
+        result = Result()
+        result.bench_test = t
 
         run_response = Response(self.connection)
-        run_response.on_success = on_header
-        run_response.on_failure = on_failure
+        run_response.on_success = result.on_header
+        run_response.on_failure = result.on_failure
 
         pull_all_response = Response(self.connection)
-        pull_all_response.on_record = on_record
-        pull_all_response.on_success = on_footer
-        pull_all_response.on_failure = on_failure
+        pull_all_response.on_record = result.on_record
+        pull_all_response.on_success = result.on_footer
+        pull_all_response.on_failure = result.on_failure
 
         self.connection.append(RUN, (statement, parameters), response=run_response)
         self.connection.append(PULL_ALL, response=pull_all_response)
@@ -161,13 +172,12 @@ class Session(object):
         self.connection.send()
         t.end_send = perf_counter()
 
-        run_response.consume()
-        pull_all_response.consume()
-
+        self.connection.fetch_all(run_response)
+        self.connection.fetch_all(pull_all_response)
         t.done = perf_counter()
         self.bench_tests.append(t)
 
-        return records
+        return result
 
     def close(self):
         """ Shut down and close the session.
@@ -257,14 +267,14 @@ class Record(object):
     ``record["field"]``) or by attribute (``record.field``).
     """
 
-    def __init__(self, fields, values):
-        self.__fields__ = fields
+    def __init__(self, keys, values):
+        self.__keys__ = keys
         self.__values__ = values
 
     def __repr__(self):
         values = self.__values__
         s = []
-        for i, field in enumerate(self.__fields__):
+        for i, field in enumerate(self.__keys__):
             s.append("%s=%r" % (field, values[i]))
         return "<Record %s>" % " ".join(s)
 
@@ -278,20 +288,20 @@ class Record(object):
         return not self.__eq__(other)
 
     def __len__(self):
-        return self.__fields__.__len__()
+        return self.__keys__.__len__()
 
     def __getitem__(self, item):
         if isinstance(item, string):
             return getattr(self, item)
         elif isinstance(item, integer):
-            return getattr(self, self.__fields__[item])
+            return getattr(self, self.__keys__[item])
         else:
             raise TypeError(item)
 
     def __getattr__(self, item):
         try:
-            i = self.__fields__.index(item)
+            i = self.__keys__.index(item)
         except ValueError:
-            raise AttributeError("No field %r" % item)
+            raise AttributeError("No key %r" % item)
         else:
             return self.__values__[i]

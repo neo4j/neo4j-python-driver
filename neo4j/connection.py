@@ -188,11 +188,7 @@ class Response(object):
 
     def __init__(self, connection):
         self.connection = connection
-        self.__complete = False
-
-    @property
-    def complete(self):
-        return self.__complete
+        self.complete = False
 
     def deliver(self, messages):
         for message in messages:
@@ -202,27 +198,32 @@ class Response(object):
                 log_info("S: %s %s", message_names[signature], " ".join(map(repr, fields)))
             handler_name = "on_%s" % message_names[signature].lower()
             try:
-                getattr(self, handler_name)(*fields)
+                handler = getattr(self, handler_name)
             except AttributeError:
                 pass
+            else:
+                handler(*fields)
             if signature in SUMMARY:
-                self.__complete = True
+                self.complete = True
             if signature == FAILURE:
-                self.ack_failure()
+                def on_failure(metadata):
+                    raise ProtocolError("Could not acknowledge failure")
 
-    def consume(self):
-        self.connection.fetch_all(self)
+                subscriber = Response(self)
+                subscriber.on_failure = on_failure
+                self.connection.append(ACK_FAILURE, response=subscriber)
 
-    def ack_failure(self):
-        """ Queue an acknowledgement for a previous failure.
-        """
+    def on_record(self, values):
+        pass
 
-        def on_failure(metadata):
-            raise ProtocolError("Could not acknowledge failure")
+    def on_success(self, metadata):
+        pass
 
-        subscriber = Response(self)
-        subscriber.on_failure = on_failure
-        self.connection.append(ACK_FAILURE, response=subscriber)
+    def on_failure(self, metadata):
+        pass
+
+    def on_ignored(self, metadata):
+        pass
 
 
 class Connection(object):
@@ -251,7 +252,7 @@ class Connection(object):
 
         self.append(INIT, (user_agent,), response=response)
         self.send()
-        response.consume()
+        self.fetch_all(response)
 
     def append(self, signature, fields=(), response=None):
         """ Add a message to the outgoing queue.
