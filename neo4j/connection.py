@@ -235,9 +235,8 @@ class Connection(object):
 
         self.append(INIT, (user_agent,), response=response)
         self.send()
-        fetch_next = self.fetch_next
         while not response.complete:
-            fetch_next()
+            self.fetch_next()
 
     def append(self, signature, fields=(), response=None):
         """ Add a message to the outgoing queue.

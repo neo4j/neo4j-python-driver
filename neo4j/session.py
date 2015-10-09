@@ -98,9 +98,11 @@ class Driver(object):
 
 class Result(list):
 
-    def __init__(self):
+    def __init__(self, session):
+        self.session = session
         super(Result, self).__init__()
         self.keys = None
+        self.complete = False
         self.bench_test = None
 
     def on_header(self, metadata):
@@ -112,11 +114,17 @@ class Result(list):
         self.append(Record(self.keys, tuple(map(hydrated, values))))
 
     def on_footer(self, metadata):
+        self.complete = True
         if self.bench_test:
             self.bench_test.end_recv = perf_counter()
 
     def on_failure(self, metadata):
         raise CypherError(metadata)
+
+    def consume(self):
+        fetch_next = self.session.connection.fetch_next
+        while not self.complete:
+            fetch_next()
 
 
 class Session(object):
@@ -154,7 +162,7 @@ class Session(object):
         t = BenchTest()
         t.init = perf_counter()
 
-        result = Result()
+        result = Result(self)
         result.bench_test = t
 
         run_response = Response(self.connection)
@@ -172,9 +180,7 @@ class Session(object):
         self.connection.send()
         t.end_send = perf_counter()
 
-        fetch_next = self.connection.fetch_next
-        while not pull_all_response.complete:
-            fetch_next()
+        result.consume()
 
         t.done = perf_counter()
         self.bench_tests.append(t)
