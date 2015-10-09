@@ -32,7 +32,7 @@ from collections import namedtuple
 import logging
 
 from .compat import integer, perf_counter, string, urlparse
-from .connection import connect
+from .connection import connect, ResponseSubscriber
 from .exceptions import CypherError
 from .typesystem import hydrated
 
@@ -142,8 +142,6 @@ class Session(object):
         """
         t = BenchTest()
 
-        receive_next = self.connection.receive_next
-
         # Ensure the statement is a Unicode value
         if isinstance(statement, bytes):
             statement = statement.decode("UTF-8")
@@ -151,40 +149,44 @@ class Session(object):
         parameters = dict(parameters or {})
 
         t.init = perf_counter()
+
+        fields = []
+        records = []
+
+        def on_header(metadata):
+            fields.extend(metadata["fields"])
+            t.start_recv = perf_counter()
+
+        def on_record(values):
+            records.append(Record(fields, tuple(map(hydrated, values))))
+
+        def on_footer(metadata):
+            t.end_recv = perf_counter()
+
+        def on_failure(metadata):
+            raise CypherError("FAILURE")
+
+        run_subscriber = ResponseSubscriber(self.connection)
+        run_subscriber.on_success = on_header
+        run_subscriber.on_failure = on_failure
+
+        pull_all_subscriber = ResponseSubscriber(self.connection)
+        pull_all_subscriber.on_record = on_record
+        pull_all_subscriber.on_success = on_footer
+        pull_all_subscriber.on_failure = on_failure
+
         if __debug__:
             log_info("C: RUN %r %r", statement, parameters)
             log_info("C: PULL_ALL")
-        self.connection.append(RUN, (statement, parameters))
-        self.connection.append(PULL_ALL)
+        self.connection.append(RUN, (statement, parameters), subscriber=run_subscriber)
+        self.connection.append(PULL_ALL, subscriber=pull_all_subscriber)
         t.start_send = perf_counter()
         self.connection.send()
         t.end_send = perf_counter()
 
-        signature, (data,) = receive_next()
-        t.start_recv = perf_counter()
-        if signature == SUCCESS:
-            fields = data["fields"]
-            if __debug__: log_info("S: SUCCESS %r", data)
-        else:
-            if __debug__: log_info("S: FAILURE %r", data)
-            raise CypherError(data)
+        run_subscriber.consume()
+        pull_all_subscriber.consume()
 
-        records = []
-        append = records.append
-        more = True
-        while more:
-            signature, (data,) = receive_next()
-            if signature == RECORD:
-                if __debug__: log_info("S: RECORD %r", data)
-                append(Record(fields, tuple(map(hydrated, data))))
-            elif signature == SUCCESS:
-                if __debug__: log_info("S: SUCCESS %r", data)
-                more = False
-            else:
-                if __debug__: log_info("S: FAILURE %r", data)
-                raise CypherError(data)
-
-        t.end_recv = perf_counter()
         t.done = perf_counter()
         self.bench_tests.append(t)
 

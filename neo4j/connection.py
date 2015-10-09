@@ -49,6 +49,18 @@ FAILURE = b"\x7F"          # 0111 1111 // FAILURE <metadata>
 DETAIL = {RECORD}
 SUMMARY = {SUCCESS, IGNORED, FAILURE}
 
+message_names = {
+    INIT: "INIT",
+    ACK_FAILURE: "ACK_FAILURE",
+    RUN: "RUN",
+    DISCARD_ALL: "DISCARD_ALL",
+    PULL_ALL: "PULL_ALL",
+    SUCCESS: "SUCCESS",
+    RECORD: "RECORD",
+    IGNORED: "IGNORED",
+    FAILURE: "FAILURE",
+}
+
 # Set up logger
 log = logging.getLogger("neo4j")
 log_debug = log.debug
@@ -124,49 +136,34 @@ class ChunkWriter(object):
         return raw.seek(raw.truncate(0))
 
 
-class Response(object):
+class ResponseSubscriber(object):
 
-    def __init__(self, connection, on_detail, on_summary):
+    def __init__(self, connection):
         self.connection = connection
-        self.on_detail = on_detail
-        self.on_summary = on_summary
-        self.__messages = deque()
+        self.__complete = False
 
-    def extend(self, messages):
-        self.__messages.extend(messages)
-
-    def last(self):
-        try:
-            return self.__messages[-1]
-        except IndexError:
-            return None
-
-    def summary(self):
-        if self.complete():
-            return self.__messages[-1]
-        else:
-            return None
-
+    @property
     def complete(self):
-        return self.__messages and self.__messages[-1].signature in SUMMARY
+        return self.__complete
+
+    def deliver(self, messages):
+        for message in messages:
+            signature = message.signature
+            fields = tuple(message)
+            if __debug__:
+                log_info("S: %s %s", message_names[signature], " ".join(map(repr, fields)))
+            handler_name = "on_%s" % message_names[signature].lower()
+            try:
+                getattr(self, handler_name)(*fields)
+            except AttributeError:
+                pass
+            if signature in SUMMARY:
+                self.__complete = True
+            if signature == FAILURE:
+                self.connection.ack_failure()
 
     def consume(self):
-        receive_next = self.connection.receive_next
-        while not self.complete():
-            receive_next()
-        signature, (data,) = self.__messages[-1]
-        if signature == SUCCESS:
-            name = "SUCCESS"
-            value = True
-        elif signature == FAILURE:
-            name = "FAILURE"
-            value = False
-        else:
-            name = "IGNORED"
-            value = None
-        if __debug__:
-            log_info("S: %s %r", name, data)
-        return value
+        self.connection.receive_all(self)
 
 
 class Connection(object):
@@ -183,18 +180,11 @@ class Connection(object):
         self.outbox = deque()
         self._recv_buffer = b""
 
-    def append(self, signature, fields=(), on_detail=None, on_summary=None):
+    def append(self, signature, fields=(), subscriber=None):
         """ Add a message to the outgoing queue.
-
-        :param signature:
-        :param fields:
-        :return: a response collector
-        :rtype: Response
         """
         self.outbox.append((signature, fields))
-        response = Response(self, on_detail, on_summary)
-        self.inbox.append(response)
-        return response
+        self.inbox.append(subscriber)
 
     def send(self):
         """ Send all queued messages to the server.
@@ -220,72 +210,62 @@ class Connection(object):
         raw.reset()
         self.outbox.clear()
 
+    def _recv(self, size):
+        # If data is needed, keep reading until all bytes have been received
+        remaining = size - len(self._recv_buffer)
+        ready_to_read = None
+        while remaining > 0:
+            # Read up to the required amount remaining
+            b = self.socket.recv(8192)
+            if b:
+                if __debug__: log_debug("S: %s", ":".join(map(hex2, b)))
+            else:
+                if ready_to_read is not None:
+                    raise ProtocolError("Server closed connection")
+            remaining -= len(b)
+            self._recv_buffer += b
+
+            # If more is required, wait for available network data
+            if remaining > 0:
+                ready_to_read, _, _ = select((self.socket,), (), (), 0)
+                while not ready_to_read:
+                    ready_to_read, _, _ = select((self.socket,), (), (), 0)
+
+        # Split off the amount of data required and keep the rest in the buffer
+        data, self._recv_buffer = self._recv_buffer[:size], self._recv_buffer[size:]
+        return data
+
     def receive_next(self):
         """ Receive exactly one message from the server.
         """
         raw = BytesIO()
         unpack = Unpacker(raw).unpack
 
-        socket = self.socket
-        recv = socket.recv
-        write = raw.write
-
-        start_recv = None
-
         # Receive chunks of data until chunk_size == 0
         chunk_size = None
         while chunk_size != 0:
-            # Determine how much to read depending on header or data
-            size = 2 if chunk_size is None else chunk_size
-
-            # If data is needed, keep reading until all bytes have been received
-            remaining = size - len(self._recv_buffer)
-            ready_to_read = None
-            while remaining > 0:
-                # Read up to the required amount remaining
-                b = recv(8192)
-                if b:
-                    if start_recv is None:
-                        start_recv = perf_counter()
-                    if __debug__: log_debug("S: %s", ":".join(map(hex2, b)))
-                else:
-                    if ready_to_read is not None:
-                        raise ProtocolError("Server closed connection")
-                remaining -= len(b)
-                self._recv_buffer += b
-
-                # If more is required, wait for available network data
-                if remaining > 0:
-                    ready_to_read, _, _ = select((socket,), (), (), 0)
-                    while not ready_to_read:
-                        ready_to_read, _, _ = select((socket,), (), (), 0)
-
-            # Split off the amount of data required and keep the rest in the buffer
-            data, self._recv_buffer = self._recv_buffer[:size], self._recv_buffer[size:]
-
             if chunk_size is None:
-                # Interpret data as chunk header
+                # Chunk header
+                data = self._recv(2)
                 chunk_size, = struct_unpack_from(">H", data)
-            elif chunk_size > 0:
-                # Interpret data as chunk
-                write(data)
+            else:
+                # Chunk content
+                data = self._recv(chunk_size)
+                raw.write(data)
                 chunk_size = None
 
         # Unpack the message from the raw byte stream into the inbox
         raw.seek(0)
-        inbox = self.inbox
-        response = inbox[0]
-        response.extend(unpack())
-        message = response.last()
-        if response.complete():
-            inbox.popleft()
+        response = self.inbox[0]
+        response.deliver(unpack())
+        if response.complete:
+            self.inbox.popleft()
         raw.close()
 
-        # Acknowledge any failures immediately
-        if message.signature == FAILURE:
-            self.ack_failure()
-
-        return message
+    def receive_all(self, response):
+        receive_next = self.receive_next
+        while not response.complete:
+            receive_next()
 
     def init(self, user_agent):
         """ Initialise a connection with a user agent string.
@@ -296,19 +276,27 @@ class Connection(object):
             user_agent = user_agent.decode("UTF-8")
 
         if __debug__: log_info("C: INIT %r", user_agent)
-        response = self.append(INIT, (user_agent,))
-        self.send()
-        if not response.consume():
+
+        def on_failure(metadata):
             raise ProtocolError("Initialisation failed")
 
+        subscriber = ResponseSubscriber(self)
+        subscriber.on_failure = on_failure
+        self.append(INIT, (user_agent,), subscriber=subscriber)
+        self.send()
+        subscriber.consume()
+
     def ack_failure(self):
-        """ Send an acknowledgement for a previous failure.
+        """ Queue an acknowledgement for a previous failure.
         """
         if __debug__: log_info("C: ACK_FAILURE")
-        response = self.append(ACK_FAILURE)
-        self.send()
-        if not response.consume():
+
+        def on_failure(metadata):
             raise ProtocolError("Could not acknowledge failure")
+
+        subscriber = ResponseSubscriber(self)
+        subscriber.on_failure = on_failure
+        self.append(ACK_FAILURE, subscriber=subscriber)
 
     def close(self):
         """ Shut down and close the connection.
