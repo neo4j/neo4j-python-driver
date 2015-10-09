@@ -172,8 +172,10 @@ class Session(object):
         self.connection.send()
         t.end_send = perf_counter()
 
-        self.connection.fetch_all(run_response)
-        self.connection.fetch_all(pull_all_response)
+        fetch_next = self.connection.fetch_next
+        while not pull_all_response.complete:
+            fetch_next()
+
         t.done = perf_counter()
         self.bench_tests.append(t)
 

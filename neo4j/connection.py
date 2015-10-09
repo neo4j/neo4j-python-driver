@@ -235,7 +235,9 @@ class Connection(object):
 
         self.append(INIT, (user_agent,), response=response)
         self.send()
-        self.fetch_all(response)
+        fetch_next = self.fetch_next
+        while not response.complete:
+            fetch_next()
 
     def append(self, signature, fields=(), response=None):
         """ Add a message to the outgoing queue.
@@ -282,11 +284,6 @@ class Connection(object):
             if signature == FAILURE:
                 self.append(ACK_FAILURE, response=AckFailureResponse(self))
         raw.close()
-
-    def fetch_all(self, response):
-        fetch_next = self.fetch_next
-        while not response.complete:
-            fetch_next()
 
     def close(self):
         """ Shut down and close the connection.
