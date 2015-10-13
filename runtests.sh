@@ -97,5 +97,5 @@ if [ ${RUNNING} -eq 1 ]
 then
     runtests
 else
-    runserverandtests "3.0.0-alpha"
+    runserverandtests "3.0.0-M01"
 fi

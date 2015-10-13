@@ -190,6 +190,8 @@ class TransactionTestCase(TestCase):
 
             tx.rollback()
 
+            # I do not know how this framework works to close the tx after each method call
+            # But it should be closed due to the rollback
             # Check the property value
             result = session.run("MATCH (a) WHERE id(a) = {n} "
                                   "RETURN a.foo", {"n": node_id})

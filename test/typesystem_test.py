@@ -168,7 +168,7 @@ class HydrationTestCase(TestCase):
         alice = hydrated(struct)
         assert alice.identity == "node/123"
         assert alice.labels == {"Person"}
-        assert alice.keys() == {"name"}
+        assert alice.keys()[0] == "name"
         assert alice.get("name") == "Alice"
 
     def test_hydrating_unknown_structure_returns_same(self):
@@ -187,7 +187,7 @@ class HydrationTestCase(TestCase):
         alice, = alice_in_list
         assert alice.identity == "node/123"
         assert alice.labels == {"Person"}
-        assert alice.keys() == {"name"}
+        assert alice.keys()[0] == "name"
         assert alice.get("name") == "Alice"
 
     def test_can_hydrate_in_dict(self):
@@ -200,7 +200,7 @@ class HydrationTestCase(TestCase):
         alice = alice_in_dict["foo"]
         assert alice.identity == "node/123"
         assert alice.labels == {"Person"}
-        assert alice.keys() == {"name"}
+        assert alice.keys()[0] == "name"
         assert alice.get("name") == "Alice"
 
 
