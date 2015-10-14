@@ -83,6 +83,7 @@ def main():
     parser.add_argument("-s", "--secure", action="store_true")
     parser.add_argument("-v", "--verbose", action="count")
     parser.add_argument("-x", "--times", type=int, default=1)
+    parser.add_argument("-z", "--summarize", action="store_true")
     args = parser.parse_args()
 
     if args.verbose:
@@ -102,24 +103,30 @@ def main():
 
     driver = GraphDatabase.driver(args.url, secure=args.secure)
     session = driver.session()
-    if session:
-        for _ in range(args.times):
-            for statement in args.statement:
-                try:
-                    records = session.run(statement, parameters)
-                except CypherError as error:
-                    stderr.write("%s: %s\r\n" % (error.code, error.message))
-                else:
-                    if not args.quiet:
-                        has_results = False
-                        for i, record in enumerate(records):
-                            has_results = True
-                            if i == 0:
-                                stdout.write("%s\r\n" % "\t".join(record.__keys__))
-                            stdout.write("%s\r\n" % "\t".join(map(repr, record)))
-                        if has_results:
-                            stdout.write("\r\n")
-        session.close()
+    for _ in range(args.times):
+        for statement in args.statement:
+            try:
+                result = session.run(statement, parameters)
+            except CypherError as error:
+                stderr.write("%s: %s\r\n" % (error.code, error.message))
+            else:
+                if not args.quiet:
+                    has_results = False
+                    for i, record in enumerate(result):
+                        has_results = True
+                        if i == 0:
+                            stdout.write("%s\r\n" % "\t".join(record.__keys__))
+                        stdout.write("%s\r\n" % "\t".join(map(repr, record)))
+                    if has_results:
+                        stdout.write("\r\n")
+                    if args.summarize:
+                        summary = result.summarize()
+                        stdout.write("Statement      : %r\r\n" % summary.statement)
+                        stdout.write("Parameters     : %r\r\n" % summary.parameters)
+                        stdout.write("Statement Type : %r\r\n" % summary.statement_type)
+                        stdout.write("Statistics     : %r\r\n" % summary.statistics)
+                        stdout.write("\r\n")
+    session.close()
 
 
 if __name__ == "__main__":
