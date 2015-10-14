@@ -89,16 +89,16 @@ class RunTestCase(TestCase):
 
     def test_can_use_with_to_auto_close_session(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            records = session.run("RETURN 1")
-            assert len(records) == 1
-            for record in records:
+            result = session.run("RETURN 1")
+            assert len(result) == 1
+            for record in result:
                 assert record[0] == 1
 
     def test_can_return_node(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            records = session.run("MERGE (a:Person {name:'Alice'}) RETURN a")
-            assert len(records) == 1
-            for record in records:
+            result = session.run("MERGE (a:Person {name:'Alice'}) RETURN a")
+            assert len(result) == 1
+            for record in result:
                 alice = record[0]
                 assert isinstance(alice, Node)
                 assert alice.labels == {"Person"}
@@ -106,9 +106,9 @@ class RunTestCase(TestCase):
 
     def test_can_return_relationship(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            records = session.run("MERGE ()-[r:KNOWS {since:1999}]->() RETURN r")
-            assert len(records) == 1
-            for record in records:
+            result = session.run("MERGE ()-[r:KNOWS {since:1999}]->() RETURN r")
+            assert len(result) == 1
+            for record in result:
                 rel = record[0]
                 assert isinstance(rel, Relationship)
                 assert rel.type == "KNOWS"
@@ -116,9 +116,9 @@ class RunTestCase(TestCase):
 
     def test_can_return_path(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            records = session.run("MERGE p=({name:'Alice'})-[:KNOWS]->({name:'Bob'}) RETURN p")
-            assert len(records) == 1
-            for record in records:
+            result = session.run("MERGE p=({name:'Alice'})-[:KNOWS]->({name:'Bob'}) RETURN p")
+            assert len(result) == 1
+            for record in result:
                 path = record[0]
                 assert isinstance(path, Path)
                 assert path.start.properties == {"name": "Alice"}
@@ -138,9 +138,18 @@ class RunTestCase(TestCase):
 
     def test_record_equality(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            records = session.run("unwind([1, 1]) AS a RETURN a")
-            assert records[0] == records[1]
-            assert records[0] != "this is not a record"
+            result = session.run("unwind([1, 1]) AS a RETURN a")
+            assert result[0] == result[1]
+            assert result[0] != "this is not a record"
+
+    def test_can_obtain_summary_info(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            result = session.run("CREATE (n) RETURN n")
+            summary = result.summarize()
+            assert summary.statement == "CREATE (n) RETURN n"
+            assert summary.parameters == {}
+            assert summary.statement_type == "rw"
+            assert summary.statistics.nodes_created == 1
 
 
 class TransactionTestCase(TestCase):
@@ -150,8 +159,8 @@ class TransactionTestCase(TestCase):
             tx = session.new_transaction()
 
             # Create a node
-            records = tx.run("CREATE (a) RETURN id(a)")
-            node_id = records[0][0]
+            result = tx.run("CREATE (a) RETURN id(a)")
+            node_id = result[0][0]
             assert isinstance(node_id, int)
 
             # Update a property
@@ -161,9 +170,9 @@ class TransactionTestCase(TestCase):
             tx.commit()
 
             # Check the property value
-            records = session.run("MATCH (a) WHERE id(a) = {n} "
+            result = session.run("MATCH (a) WHERE id(a) = {n} "
                                   "RETURN a.foo", {"n": node_id})
-            foo = records[0][0]
+            foo = result[0][0]
             assert foo == "bar"
 
     def test_can_rollback_transaction(self):
@@ -171,8 +180,8 @@ class TransactionTestCase(TestCase):
             tx = session.new_transaction()
 
             # Create a node
-            records = tx.run("CREATE (a) RETURN id(a)")
-            node_id = records[0][0]
+            result = tx.run("CREATE (a) RETURN id(a)")
+            node_id = result[0][0]
             assert isinstance(node_id, int)
 
             # Update a property
@@ -182,17 +191,17 @@ class TransactionTestCase(TestCase):
             tx.rollback()
 
             # Check the property value
-            records = session.run("MATCH (a) WHERE id(a) = {n} "
+            result = session.run("MATCH (a) WHERE id(a) = {n} "
                                   "RETURN a.foo", {"n": node_id})
-            assert len(records) == 0
+            assert len(result) == 0
 
     def test_can_commit_transaction_using_with_block(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             with session.new_transaction() as tx:
 
                 # Create a node
-                records = tx.run("CREATE (a) RETURN id(a)")
-                node_id = records[0][0]
+                result = tx.run("CREATE (a) RETURN id(a)")
+                node_id = result[0][0]
                 assert isinstance(node_id, int)
 
                 # Update a property
@@ -202,9 +211,9 @@ class TransactionTestCase(TestCase):
                 tx.success = True
 
             # Check the property value
-            records = session.run("MATCH (a) WHERE id(a) = {n} "
+            result = session.run("MATCH (a) WHERE id(a) = {n} "
                                   "RETURN a.foo", {"n": node_id})
-            foo = records[0][0]
+            foo = result[0][0]
             assert foo == "bar"
 
     def test_can_rollback_transaction_using_with_block(self):
@@ -212,8 +221,8 @@ class TransactionTestCase(TestCase):
             with session.new_transaction() as tx:
 
                 # Create a node
-                records = tx.run("CREATE (a) RETURN id(a)")
-                node_id = records[0][0]
+                result = tx.run("CREATE (a) RETURN id(a)")
+                node_id = result[0][0]
                 assert isinstance(node_id, int)
 
                 # Update a property
@@ -221,9 +230,9 @@ class TransactionTestCase(TestCase):
                        "SET a.foo = {foo}", {"n": node_id, "foo": "bar"})
 
             # Check the property value
-            records = session.run("MATCH (a) WHERE id(a) = {n} "
+            result = session.run("MATCH (a) WHERE id(a) = {n} "
                                   "RETURN a.foo", {"n": node_id})
-            assert len(records) == 0
+            assert len(result) == 0
 
 
 if __name__ == "__main__":
