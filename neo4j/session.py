@@ -204,7 +204,14 @@ class Session(object):
         if isinstance(statement, bytes):
             statement = statement.decode("UTF-8")
 
-        parameters = dict(parameters or {})
+        parameters = {}
+        for key, value in (parameters or {}).items():
+            if isinstance(key, bytes):
+                key = key.decode("UTF-8")
+            if isinstance(value, bytes):
+                parameters[key] = value.decode("UTF-8")
+            else:
+                parameters[key] = value
 
         t = BenchTest()
         t.init = perf_counter()
