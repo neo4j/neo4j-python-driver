@@ -70,8 +70,7 @@ log_warning = log.warning
 log_error = log.error
 
 
-def hex2(str):
-    x = ord(str)
+def hex2(x):
     if x < 0x10:
         return "0" + hex(x)[2:].upper()
     else:
