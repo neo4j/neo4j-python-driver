@@ -44,7 +44,7 @@ function runserverandtests {
     popd > /dev/null
 
     echo -n "Testing"
-    coverage run -m unittest test
+    coverage run -m unittest "${TESTS}"
 
     pushd ${DOT_TEST} > /dev/null
     ${NEO_HOME}/bin/neo4j stop
@@ -92,6 +92,12 @@ do
       ;;
   esac
 done
+
+TESTS=$1
+if [ "${TESTS}" == "" ]
+then
+    TESTS="test"
+fi
 
 if [ ${RUNNING} -eq 1 ]
 then
