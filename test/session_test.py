@@ -65,6 +65,24 @@ class RunTestCase(TestCase):
         session.close()
         assert count == 1
 
+    def test_fails_on_bad_syntax(self):
+        session = GraphDatabase.driver("bolt://localhost").session()
+        try:
+            session.run("X").consume()
+        except CypherError:
+            assert True
+        else:
+            assert False
+
+    def test_fails_on_missing_parameter(self):
+        session = GraphDatabase.driver("bolt://localhost").session()
+        try:
+            session.run("RETURN {x}").consume()
+        except CypherError:
+            assert True
+        else:
+            assert False
+
     def test_can_run_simple_statement_from_bytes_string(self):
         session = GraphDatabase.driver("bolt://localhost").session()
         count = 0
