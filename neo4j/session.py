@@ -103,6 +103,14 @@ class Driver(object):
 
 
 class Result(list):
+    """ A handler for the result of Cypher statement execution.
+    """
+
+    #: The statement that was executed to produce this result.
+    statement = None
+
+    #: Dictionary of parameters passed with the statement.
+    parameters = None
 
     def __init__(self, session, statement, parameters):
         super(Result, self).__init__()
@@ -115,14 +123,20 @@ class Result(list):
         self.bench_test = None
 
     def on_header(self, metadata):
+        """ Called on receipt of the result header.
+        """
         self.keys = metadata["fields"]
         if self.bench_test:
             self.bench_test.start_recv = perf_counter()
 
     def on_record(self, values):
+        """ Called on receipt of each result record.
+        """
         self.append(Record(self.keys, tuple(map(hydrated, values))))
 
     def on_footer(self, metadata):
+        """ Called on receipt of the result footer.
+        """
         self.complete = True
         self.summary = ResultSummary(self.statement, self.parameters,
                                      metadata.get("type"), metadata.get("stats"))
@@ -130,19 +144,42 @@ class Result(list):
             self.bench_test.end_recv = perf_counter()
 
     def on_failure(self, metadata):
+        """ Called on execution failure.
+        """
         raise CypherError(metadata)
 
     def consume(self):
+        """ Consume the remainder of this result, triggering all appropriate
+        callback functions.
+        """
         fetch_next = self.session.connection.fetch_next
         while not self.complete:
             fetch_next()
 
     def summarize(self):
+        """ Consume the remainder of this result and produce a summary.
+
+        :rtype: ResultSummary
+        """
         self.consume()
         return self.summary
 
 
 class ResultSummary(object):
+    """ A summary of execution returned with a :class:`.Result` object.
+    """
+
+    #: The statement that was executed to produce this result.
+    statement = None
+
+    #: Dictionary of parameters passed with the statement.
+    parameters = None
+
+    #: The type of statement (``'r'`` = read-only, ``'rw'`` = read/write).
+    statement_type = None
+
+    #: A set of statistical information held in a :class:`.StatementStatistics` instance.
+    statistics = None
 
     def __init__(self, statement, parameters, statement_type, statistics):
         self.statement = statement
@@ -152,17 +189,43 @@ class ResultSummary(object):
 
 
 class StatementStatistics(object):
+    """ Set of statistics from a Cypher statement execution.
+    """
+
+    #:
     contains_updates = False
+
+    #:
     nodes_created = 0
+
+    #:
     nodes_deleted = 0
+
+    #:
     relationships_created = 0
+
+    #:
     relationships_deleted = 0
+
+    #:
     properties_set = 0
+
+    #:
     labels_added = 0
+
+    #:
     labels_removed = 0
+
+    #:
     indexes_added = 0
+
+    #:
     indexes_removed = 0
+
+    #:
     constraints_added = 0
+
+    #:
     constraints_removed = 0
 
     def __init__(self, statistics):

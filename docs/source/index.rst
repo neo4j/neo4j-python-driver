@@ -24,14 +24,20 @@ Session API
 .. autoclass:: neo4j.Record
    :members:
 
+.. autoclass:: neo4j.Result
+   :members:
+
+.. autoclass:: neo4j.ResultSummary
+   :members:
+
+.. autoclass:: neo4j.StatementStatistics
+   :members:
+
 
 Exceptions
 ==========
 
 .. autoclass:: neo4j.CypherError
-   :members:
-
-.. autoclass:: neo4j.ProtocolError
    :members:
 
 
