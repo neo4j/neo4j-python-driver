@@ -192,7 +192,7 @@ class Response(object):
     def on_failure(self, metadata):
         pass
 
-    def on_ignored(self, metadata):
+    def on_ignored(self, metadata=None):
         pass
 
 
