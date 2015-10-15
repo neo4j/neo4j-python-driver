@@ -36,6 +36,12 @@ from .exceptions import CypherError
 from .typesystem import hydrated
 
 
+STATEMENT_TYPE_READ_ONLY = "r"
+STATEMENT_TYPE_READ_WRITE = "rw"
+STATEMENT_TYPE_WRITE_ONLY = "w"
+STATEMENT_TYPE_SCHEMA_WRITE = "sw"
+
+
 Latency = namedtuple("Latency", ["overall", "network", "wait"])
 
 
@@ -98,11 +104,14 @@ class Driver(object):
 
 class Result(list):
 
-    def __init__(self, session):
-        self.session = session
+    def __init__(self, session, statement, parameters):
         super(Result, self).__init__()
+        self.session = session
+        self.statement = statement
+        self.parameters = parameters
         self.keys = None
         self.complete = False
+        self.summary = None
         self.bench_test = None
 
     def on_header(self, metadata):
@@ -115,6 +124,8 @@ class Result(list):
 
     def on_footer(self, metadata):
         self.complete = True
+        self.summary = ResultSummary(self.statement, self.parameters,
+                                     metadata.get("type"), metadata.get("stats"))
         if self.bench_test:
             self.bench_test.end_recv = perf_counter()
 
@@ -125,6 +136,42 @@ class Result(list):
         fetch_next = self.session.connection.fetch_next
         while not self.complete:
             fetch_next()
+
+    def summarize(self):
+        self.consume()
+        return self.summary
+
+
+class ResultSummary(object):
+
+    def __init__(self, statement, parameters, statement_type, statistics):
+        self.statement = statement
+        self.parameters = parameters
+        self.statement_type = statement_type
+        self.statistics = StatementStatistics(statistics or {})
+
+
+class StatementStatistics(object):
+    contains_updates = False
+    nodes_created = 0
+    nodes_deleted = 0
+    relationships_created = 0
+    relationships_deleted = 0
+    properties_set = 0
+    labels_added = 0
+    labels_removed = 0
+    indexes_added = 0
+    indexes_removed = 0
+    constraints_added = 0
+    constraints_removed = 0
+
+    def __init__(self, statistics):
+        for key, value in dict(statistics).items():
+            key = key.replace("-", "_")
+            setattr(self, key, value)
+
+    def __repr__(self):
+        return repr(vars(self))
 
 
 class Session(object):
@@ -162,7 +209,7 @@ class Session(object):
         t = BenchTest()
         t.init = perf_counter()
 
-        result = Result(self)
+        result = Result(self, statement, parameters)
         result.bench_test = t
 
         run_response = Response(self.connection)
