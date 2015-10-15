@@ -32,7 +32,7 @@ function runserverandtests {
     mkdir -p ${DOT_TEST} 2> /dev/null
 
     pushd ${DOT_TEST} > /dev/null
-    tar xf $(${NEOGET} -ex ${NEO_VERSION})
+    tar xf $(${NEOGET} ${NEOGET_ARGS})
     NEO_HOME=$(ls -1Ft | grep "/$" | head -1)      # finds the newest directory relative to .test
     echo "xx.bolt.enabled=true" >> ${NEO_HOME}/conf/neo4j-server.properties
     ${NEO_HOME}/bin/neo4j start
@@ -44,7 +44,7 @@ function runserverandtests {
     popd > /dev/null
 
     echo -n "Testing"
-    coverage run -m unittest test
+    coverage run -m unittest "${TESTS}"
 
     pushd ${DOT_TEST} > /dev/null
     ${NEO_HOME}/bin/neo4j stop
@@ -93,9 +93,16 @@ do
   esac
 done
 
+TESTS=$1
+if [ "${TESTS}" == "" ]
+then
+    TESTS="test"
+fi
+
 if [ ${RUNNING} -eq 1 ]
 then
     runtests
 else
-    runserverandtests "3.0.0-alpha"
+    NEOGET_ARGS="-eax"
+    runserverandtests "3.0.0-M01"
 fi

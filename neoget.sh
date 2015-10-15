@@ -21,7 +21,7 @@ EDITION="community"
 MODE=""
 CHECK_EXISTS=0
 ALL_VERSIONS="2.3.0-M02 2.2.2 2.1.8 2.0.4"
-ALPHA_VERSION="3.0.0-alpha"
+ALPHA_VERSION="3.0.0-M01"
 
 function usage {
     SCRIPT=$(basename $0)
@@ -83,7 +83,7 @@ function download {
         fi
         if [ $DOWNLOAD -eq 1 ]
         then
-            if [[ "${VERSION}" == *"alpha"* ]]
+            if [[ "$ALL_VERSIONS" == "$ALPHA_VERSION" ]]
             then
                 URL="${ALPHA}/${ARCHIVE}"
             else
@@ -161,4 +161,3 @@ then
 else
     download
 fi
-
