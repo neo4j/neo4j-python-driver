@@ -20,7 +20,7 @@
 
 from __future__ import division
 
-from collections import deque, namedtuple
+from collections import deque
 from io import BytesIO
 import logging
 from os import environ
@@ -28,9 +28,9 @@ from select import select
 from socket import create_connection, SHUT_RDWR
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
-from .compat import perf_counter, secure_socket
+from .compat import hex2, secure_socket
 from .exceptions import ProtocolError
-from .packstream import Packer, Unpacker, Structure
+from .packstream import Packer, Unpacker
 
 
 DEFAULT_PORT = 7687
@@ -68,13 +68,6 @@ log_debug = log.debug
 log_info = log.info
 log_warning = log.warning
 log_error = log.error
-
-
-def hex2(x):
-    if x < 0x10:
-        return "0" + hex(x)[2:].upper()
-    else:
-        return hex(x)[2:].upper()
 
 
 class ChunkChannel(object):
