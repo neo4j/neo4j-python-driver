@@ -25,7 +25,6 @@ from neo4j import GraphDatabase, Node, Relationship, Path, CypherError
 
 
 class RunTestCase(TestCase):
-
     def test_must_use_valid_url_scheme(self):
         try:
             GraphDatabase.driver("x://xxx")
@@ -169,9 +168,38 @@ class RunTestCase(TestCase):
             assert summary.statement_type == "rw"
             assert summary.statistics.nodes_created == 1
 
+    def test_no_plan_info(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            result = session.run("CREATE (n) RETURN n")
+            assert result.summarize().plan is None
+            assert result.summarize().profile is None
+
+    def test_can_obtain_plan_info(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            result = session.run("EXPLAIN CREATE (n) RETURN n")
+            plan = result.summarize().plan
+            assert plan.operator_type == "ProduceResults"
+            assert plan.identifiers == ["n"]
+            assert plan.arguments == {"planner": "COST", "EstimatedRows": 1.0, "version": "CYPHER 3.0",
+                                      "KeyNames": "n", "runtime-impl": "INTERPRETED", "planner-impl": "IDP",
+                                      "runtime": "INTERPRETED"}
+            assert len(plan.children) == 1
+
+    def test_can_obtain_profile_info(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            result = session.run("PROFILE CREATE (n) RETURN n")
+            profile = result.summarize().profile
+            assert profile.db_hits == 0
+            assert profile.rows == 1
+            assert profile.operator_type == "ProduceResults"
+            assert profile.identifiers == ["n"]
+            assert profile.arguments == {"planner": "COST", "EstimatedRows": 1.0, "version": "CYPHER 3.0",
+                                         "KeyNames": "n", "runtime-impl": "INTERPRETED", "planner-impl": "IDP",
+                                         "runtime": "INTERPRETED", "Rows": 1, "DbHits": 0}
+            assert len(profile.children) == 1
+
 
 class TransactionTestCase(TestCase):
-
     def test_can_commit_transaction(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             tx = session.new_transaction()
@@ -189,7 +217,7 @@ class TransactionTestCase(TestCase):
 
             # Check the property value
             result = session.run("MATCH (a) WHERE id(a) = {n} "
-                                  "RETURN a.foo", {"n": node_id})
+                                 "RETURN a.foo", {"n": node_id})
             foo = result[0][0]
             assert foo == "bar"
 
@@ -210,13 +238,12 @@ class TransactionTestCase(TestCase):
 
             # Check the property value
             result = session.run("MATCH (a) WHERE id(a) = {n} "
-                                  "RETURN a.foo", {"n": node_id})
+                                 "RETURN a.foo", {"n": node_id})
             assert len(result) == 0
 
     def test_can_commit_transaction_using_with_block(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             with session.new_transaction() as tx:
-
                 # Create a node
                 result = tx.run("CREATE (a) RETURN id(a)")
                 node_id = result[0][0]
@@ -230,14 +257,13 @@ class TransactionTestCase(TestCase):
 
             # Check the property value
             result = session.run("MATCH (a) WHERE id(a) = {n} "
-                                  "RETURN a.foo", {"n": node_id})
+                                 "RETURN a.foo", {"n": node_id})
             foo = result[0][0]
             assert foo == "bar"
 
     def test_can_rollback_transaction_using_with_block(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             with session.new_transaction() as tx:
-
                 # Create a node
                 result = tx.run("CREATE (a) RETURN id(a)")
                 node_id = result[0][0]
@@ -249,7 +275,7 @@ class TransactionTestCase(TestCase):
 
             # Check the property value
             result = session.run("MATCH (a) WHERE id(a) = {n} "
-                                  "RETURN a.foo", {"n": node_id})
+                                 "RETURN a.foo", {"n": node_id})
             assert len(result) == 0
 
 

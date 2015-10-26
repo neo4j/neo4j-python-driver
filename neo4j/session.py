@@ -139,7 +139,8 @@ class Result(list):
         """
         self.complete = True
         self.summary = ResultSummary(self.statement, self.parameters,
-                                     metadata.get("type"), metadata.get("stats"))
+                                     metadata.get("type"), metadata.get("stats"),
+                                     metadata.get("plan"), metadata.get("profile"))
         if self.bench_test:
             self.bench_test.end_recv = perf_counter()
 
@@ -181,11 +182,22 @@ class ResultSummary(object):
     #: A set of statistical information held in a :class:`.StatementStatistics` instance.
     statistics = None
 
-    def __init__(self, statement, parameters, statement_type, statistics):
+    #: A :class:`.Plan` instance
+    plan = None
+
+    #: A :class:`.ProfiledPlan` instance
+    profile = None
+
+    def __init__(self, statement, parameters, statement_type, statistics, plan, profile):
         self.statement = statement
         self.parameters = parameters
         self.statement_type = statement_type
         self.statistics = StatementStatistics(statistics or {})
+        if plan is not None:
+            self.plan = Plan(plan)
+        if profile is not None:
+            self.profile = ProfiledPlan(profile)
+            self.plan = self.profile
 
 
 class StatementStatistics(object):
@@ -235,6 +247,45 @@ class StatementStatistics(object):
 
     def __repr__(self):
         return repr(vars(self))
+
+
+class Plan(object):
+    """ This describes how the database will execute your statement.
+    """
+
+    #: The operation name performed by the plan
+    operator_type = None
+
+    #: A list of identifiers used by this plan
+    identifiers = None
+
+    #: A map of arguments used in the specific operation performed by the plan
+    arguments = None
+
+    #: A list of sub plans
+    children = None
+
+    def __init__(self, plan):
+        self.operator_type = plan["operatorType"]
+        self.identifiers = plan.get("identifiers", [])
+        self.arguments = plan.get("args", [])
+        self.children = [Plan(child) for child in plan.get("children", [])]
+
+
+class ProfiledPlan(Plan):
+    """ This describes how the database excuted your statement.
+    """
+
+    #: The number of times this part of the plan touched the underlying data stores
+    db_hits = 0
+
+    #: The number of records this part of the plan produced
+    rows = 0
+
+    def __init__(self, profile):
+        self.db_hits = profile.get("dbHits", 0);
+        self.rows = profile.get("rows", 0);
+        super(ProfiledPlan, self).__init__(profile)
 
 
 class Session(object):
