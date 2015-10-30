@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 
 # Copyright (c) 2002-2015 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
@@ -17,7 +17,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 
 from collections import OrderedDict
 from io import BytesIO
