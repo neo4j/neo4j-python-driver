@@ -140,7 +140,8 @@ class Result(list):
         self.complete = True
         self.summary = ResultSummary(self.statement, self.parameters,
                                      metadata.get("type"), metadata.get("stats"),
-                                     metadata.get("plan"), metadata.get("profile"))
+                                     metadata.get("plan"), metadata.get("profile"),
+                                     metadata.get("notifications", []))
         if self.bench_test:
             self.bench_test.end_recv = perf_counter()
 
@@ -188,7 +189,12 @@ class ResultSummary(object):
     #: A :class:`.ProfiledPlan` instance
     profile = None
 
-    def __init__(self, statement, parameters, statement_type, statistics, plan, profile):
+    #: Notifications provide extra information for a user executing a statement.
+    #: They can be warnings about problematic queries or other valuable information that can be presented in a client.
+    #: Unlike failures or errors, notifications do not affect the execution of a statement.
+    notifications = None
+
+    def __init__(self, statement, parameters, statement_type, statistics, plan, profile, notifications):
         self.statement = statement
         self.parameters = parameters
         self.statement_type = statement_type
@@ -198,6 +204,7 @@ class ResultSummary(object):
         if profile is not None:
             self.profile = ProfiledPlan(profile)
             self.plan = self.profile
+        self.notifications = list(map(Notification, notifications))
 
 
 class StatementStatistics(object):
@@ -283,9 +290,45 @@ class ProfiledPlan(Plan):
     rows = 0
 
     def __init__(self, profile):
-        self.db_hits = profile.get("dbHits", 0);
-        self.rows = profile.get("rows", 0);
+        self.db_hits = profile.get("dbHits", 0)
+        self.rows = profile.get("rows", 0)
         super(ProfiledPlan, self).__init__(profile)
+
+
+class Notification(object):
+    """ Representation for notifications found when executing a statement.
+    A notification can be visualized in a client pinpointing problems or other information about the statement.
+    """
+
+    #: A notification code for the discovered issue.
+    code = None
+
+    #: A short summary of the notification
+    title = None
+
+    #: A long description of the notification
+    description = None
+
+    #: The position in the statement where this notification points to, if relevant. This is a namedtuple
+    #: consisting of offset, line and column:
+    #:
+    #: - offset - the character offset referred to by this position; offset numbers start at 0
+    #:
+    #: - line - the line number referred to by the position; line numbers start at 1
+    #:
+    #: - column - the column number referred to by the position; column numbers start at 1
+    position = None
+
+    def __init__(self, notification):
+        self.code = notification["code"]
+        self.title = notification["title"]
+        self.description = notification["description"]
+        position = notification.get("position")
+        if position is not None:
+            self.position = Position(position["offset"], position["line"], position["column"])
+
+
+Position = namedtuple('Position', ['offset', 'line', 'column'])
 
 
 class Session(object):

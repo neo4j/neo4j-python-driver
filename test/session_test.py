@@ -198,6 +198,33 @@ class RunTestCase(TestCase):
                                          "runtime": "INTERPRETED", "Rows": 1, "DbHits": 0}
             assert len(profile.children) == 1
 
+    def test_no_notification_info(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            result = session.run("CREATE (n) RETURN n")
+            notifications = result.summarize().notifications
+            assert notifications == []
+
+    def test_can_obtain_notification_info(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            result = session.run("EXPLAIN MATCH (n), (m) RETURN n, m")
+            notifications = result.summarize().notifications
+
+            assert len(notifications) == 1
+            notification = notifications[0]
+            assert notification.code == "Neo.ClientNotification.Statement.CartesianProduct"
+            assert notification.title == "This query builds a cartesian product between disconnected patterns."
+            assert notification.description == \
+                   "If a part of a query contains multiple disconnected patterns, " \
+                   "this will build a cartesian product between all those parts. " \
+                   "This may produce a large amount of data and slow down query processing. " \
+                   "While occasionally intended, it may often be possible to reformulate the query " \
+                   "that avoids the use of this cross product, perhaps by adding a relationship between " \
+                   "the different parts or by using OPTIONAL MATCH (identifier is: (m))"
+            position = notification.position
+            assert position.offset == 0
+            assert position.line == 1
+            assert position.column == 1
+
 
 class TransactionTestCase(TestCase):
     def test_can_commit_transaction(self):
