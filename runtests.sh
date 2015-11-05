@@ -59,7 +59,7 @@ then
     ${TEST_RUNNER}
     EXIT_STATUS=$?
 else
-    neokit/neotest "${TEST_RUNNER}" ${VERSIONS}
+    neokit/neorun "${TEST_RUNNER}" ${VERSIONS}
     EXIT_STATUS=$?
     if [ ${EXIT_STATUS} -eq 0 ]
     then
