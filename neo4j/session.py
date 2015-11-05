@@ -139,7 +139,9 @@ class Result(list):
         """
         self.complete = True
         self.summary = ResultSummary(self.statement, self.parameters,
-                                     metadata.get("type"), metadata.get("stats"))
+                                     metadata.get("type"), metadata.get("stats"),
+                                     metadata.get("plan"), metadata.get("profile"),
+                                     metadata.get("notifications", []))
         if self.bench_test:
             self.bench_test.end_recv = perf_counter()
 
@@ -181,11 +183,28 @@ class ResultSummary(object):
     #: A set of statistical information held in a :class:`.StatementStatistics` instance.
     statistics = None
 
-    def __init__(self, statement, parameters, statement_type, statistics):
+    #: A :class:`.Plan` instance
+    plan = None
+
+    #: A :class:`.ProfiledPlan` instance
+    profile = None
+
+    #: Notifications provide extra information for a user executing a statement.
+    #: They can be warnings about problematic queries or other valuable information that can be presented in a client.
+    #: Unlike failures or errors, notifications do not affect the execution of a statement.
+    notifications = None
+
+    def __init__(self, statement, parameters, statement_type, statistics, plan, profile, notifications):
         self.statement = statement
         self.parameters = parameters
         self.statement_type = statement_type
         self.statistics = StatementStatistics(statistics or {})
+        if plan is not None:
+            self.plan = Plan(plan)
+        if profile is not None:
+            self.profile = ProfiledPlan(profile)
+            self.plan = self.profile
+        self.notifications = list(map(Notification, notifications))
 
 
 class StatementStatistics(object):
@@ -235,6 +254,81 @@ class StatementStatistics(object):
 
     def __repr__(self):
         return repr(vars(self))
+
+
+class Plan(object):
+    """ This describes how the database will execute your statement.
+    """
+
+    #: The operation name performed by the plan
+    operator_type = None
+
+    #: A list of identifiers used by this plan
+    identifiers = None
+
+    #: A map of arguments used in the specific operation performed by the plan
+    arguments = None
+
+    #: A list of sub plans
+    children = None
+
+    def __init__(self, plan):
+        self.operator_type = plan["operatorType"]
+        self.identifiers = plan.get("identifiers", [])
+        self.arguments = plan.get("args", [])
+        self.children = [Plan(child) for child in plan.get("children", [])]
+
+
+class ProfiledPlan(Plan):
+    """ This describes how the database excuted your statement.
+    """
+
+    #: The number of times this part of the plan touched the underlying data stores
+    db_hits = 0
+
+    #: The number of records this part of the plan produced
+    rows = 0
+
+    def __init__(self, profile):
+        self.db_hits = profile.get("dbHits", 0)
+        self.rows = profile.get("rows", 0)
+        super(ProfiledPlan, self).__init__(profile)
+
+
+class Notification(object):
+    """ Representation for notifications found when executing a statement.
+    A notification can be visualized in a client pinpointing problems or other information about the statement.
+    """
+
+    #: A notification code for the discovered issue.
+    code = None
+
+    #: A short summary of the notification
+    title = None
+
+    #: A long description of the notification
+    description = None
+
+    #: The position in the statement where this notification points to, if relevant. This is a namedtuple
+    #: consisting of offset, line and column:
+    #:
+    #: - offset - the character offset referred to by this position; offset numbers start at 0
+    #:
+    #: - line - the line number referred to by the position; line numbers start at 1
+    #:
+    #: - column - the column number referred to by the position; column numbers start at 1
+    position = None
+
+    def __init__(self, notification):
+        self.code = notification["code"]
+        self.title = notification["title"]
+        self.description = notification["description"]
+        position = notification.get("position")
+        if position is not None:
+            self.position = Position(position["offset"], position["line"], position["column"])
+
+
+Position = namedtuple('Position', ['offset', 'line', 'column'])
 
 
 class Session(object):
