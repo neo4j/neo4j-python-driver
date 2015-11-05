@@ -18,7 +18,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest import main, TestCase
+
+from unittest import TestCase
 
 from neo4j import GraphDatabase, Node, Relationship, Path, CypherError
 
@@ -26,12 +27,8 @@ from neo4j import GraphDatabase, Node, Relationship, Path, CypherError
 class RunTestCase(TestCase):
 
     def test_must_use_valid_url_scheme(self):
-        try:
+        with self.assertRaises(ValueError):
             GraphDatabase.driver("x://xxx")
-        except ValueError:
-            assert True
-        else:
-            assert False
 
     def test_can_run_simple_statement(self):
         session = GraphDatabase.driver("bolt://localhost").session()
@@ -39,25 +36,13 @@ class RunTestCase(TestCase):
         for record in session.run("RETURN 1 AS n"):
             assert record[0] == 1
             assert record["n"] == 1
-            try:
-                record["x"]
-            except AttributeError:
-                assert True
-            else:
-                assert False
+            with self.assertRaises(AttributeError):
+                _ = record["x"]
             assert record.n == 1
-            try:
-                record.x
-            except AttributeError:
-                assert True
-            else:
-                assert False
-            try:
-                record[object()]
-            except TypeError:
-                assert True
-            else:
-                assert False
+            with self.assertRaises(AttributeError):
+                _ = record.x
+            with self.assertRaises(TypeError):
+                _ = record[object()]
             assert repr(record)
             assert len(record) == 1
             count += 1
@@ -66,21 +51,13 @@ class RunTestCase(TestCase):
 
     def test_fails_on_bad_syntax(self):
         session = GraphDatabase.driver("bolt://localhost").session()
-        try:
+        with self.assertRaises(CypherError):
             session.run("X").consume()
-        except CypherError:
-            assert True
-        else:
-            assert False
 
     def test_fails_on_missing_parameter(self):
         session = GraphDatabase.driver("bolt://localhost").session()
-        try:
+        with self.assertRaises(CypherError):
             session.run("RETURN {x}").consume()
-        except CypherError:
-            assert True
-        else:
-            assert False
 
     def test_can_run_simple_statement_from_bytes_string(self):
         session = GraphDatabase.driver("bolt://localhost").session()
@@ -146,12 +123,8 @@ class RunTestCase(TestCase):
 
     def test_can_handle_cypher_error(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            try:
+            with self.assertRaises(CypherError):
                 session.run("X")
-            except CypherError:
-                assert True
-            else:
-                assert False
 
     def test_record_equality(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
@@ -250,7 +223,3 @@ class TransactionTestCase(TestCase):
             result = session.run("MATCH (a) WHERE id(a) = {n} "
                                   "RETURN a.foo", {"n": node_id})
             assert len(result) == 0
-
-
-if __name__ == "__main__":
-    main()
