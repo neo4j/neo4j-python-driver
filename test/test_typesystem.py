@@ -18,7 +18,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest import main, TestCase
+
+from unittest import TestCase
 
 from neo4j.typesystem import Node, Relationship, UnboundRelationship, Path, hydrated
 from neo4j.packstream import Structure
@@ -201,7 +202,3 @@ class HydrationTestCase(TestCase):
         assert alice.labels == {"Person"}
         assert set(alice.keys()) == {"name"}
         assert alice.get("name") == "Alice"
-
-
-if __name__ == "__main__":
-    main()

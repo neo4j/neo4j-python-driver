@@ -18,11 +18,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from collections import OrderedDict
 from io import BytesIO
 from math import pi
 import struct
-from unittest import main, TestCase
+from unittest import TestCase
 
 from neo4j.packstream import Packer, Unpacker, packb
 
@@ -270,7 +271,3 @@ class PackStreamTestCase(TestCase):
 
     def test_tiny_struct(self):
         assert_packable((b"Z", (u"A", 1)), b"\xB2Z\x81A\x01")
-
-
-if __name__ == "__main__":
-    main()

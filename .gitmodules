@@ -1,0 +1,3 @@
+[submodule "neokit"]
+	path = neokit
+	url = git@github.com:nigelsmall/neokit.git
