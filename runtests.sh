@@ -53,7 +53,7 @@ done
 echo "Running tests with $(python --version)"
 pip install --upgrade -r ${DRIVER_HOME}/test_requirements.txt
 echo ""
-TEST_RUNNER="coverage run -m unittest discover -vfs ${TEST}"
+TEST_RUNNER="coverage run -m teamcity.unittestpy discover -vfs ${TEST}"
 if [ ${RUNNING} -eq 1 ]
 then
     ${TEST_RUNNER}
