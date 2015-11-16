@@ -22,6 +22,13 @@ DRIVER_HOME=$(dirname $0)
 FORCE_DOWNLOAD=0
 RUNNING=0
 
+if [ -z "${TEAMCITY_VERSION}" ]
+then
+    UNITTEST="unittest"
+else
+    UNITTEST="teamcity.unittestpy"
+fi
+
 if [ -z "${TEST}" ]
 then
     TEST="test"
@@ -53,7 +60,7 @@ done
 echo "Running tests with $(python --version)"
 pip install --upgrade -r ${DRIVER_HOME}/test_requirements.txt
 echo ""
-TEST_RUNNER="coverage run -m teamcity.unittestpy discover -vfs ${TEST}"
+TEST_RUNNER="coverage run -m ${UNITTEST} discover -vfs ${TEST}"
 if [ ${RUNNING} -eq 1 ]
 then
     ${TEST_RUNNER}
