@@ -19,8 +19,25 @@
 
 DRIVER_HOME=$(dirname $0)
 
-FORCE_DOWNLOAD=0
+NEORUN_OPTIONS=""
 RUNNING=0
+
+# Parse options
+while getopts ":dr" OPTION
+do
+  case ${OPTION} in
+    d)
+      NEORUN_OPTIONS="-f"
+      ;;
+    r)
+      RUNNING=1
+      ;;
+    \?)
+      echo "Invalid option: -${OPTARG}" >&2
+      ;;
+  esac
+done
+shift $(($OPTIND - 1))
 
 if [ -z "${TEAMCITY_VERSION}" ]
 then
@@ -40,22 +57,6 @@ then
     VERSIONS="nightly"
 fi
 
-# Parse options
-while getopts ":dr" OPTION
-do
-  case ${OPTION} in
-    d)
-      FORCE_DOWNLOAD=1
-      ;;
-    r)
-      RUNNING=1
-      ;;
-    \?)
-      echo "Invalid option: -${OPTARG}" >&2
-      ;;
-  esac
-done
-
 # Run tests
 echo "Running tests with $(python --version)"
 pip install --upgrade -r ${DRIVER_HOME}/test_requirements.txt
@@ -66,7 +67,7 @@ then
     ${TEST_RUNNER}
     EXIT_STATUS=$?
 else
-    neokit/neorun "${TEST_RUNNER}" ${VERSIONS}
+    neokit/neorun ${NEORUN_OPTIONS} "${TEST_RUNNER}" ${VERSIONS}
     EXIT_STATUS=$?
     if [ ${EXIT_STATUS} -eq 0 ]
     then
