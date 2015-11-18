@@ -138,28 +138,28 @@ class PackStreamTestCase(TestCase):
         b = bytes(bytearray(80000))
         assert_packable(b, b"\xCE\x00\x01\x38\x80" + b)
 
-    def test_empty_text(self):
+    def test_empty_string(self):
         assert_packable(u"", b"\x80")
 
-    def test_tiny_text(self):
+    def test_tiny_string(self):
         assert_packable(u"hello", b"\x85hello")
 
-    def test_text_8(self):
+    def test_string_8(self):
         t = u"A" * 40
         b = t.encode("utf-8")
         assert_packable(t, b"\xD0\x28" + b)
 
-    def test_text_16(self):
+    def test_string_16(self):
         t = u"A" * 40000
         b = t.encode("utf-8")
         assert_packable(t, b"\xD1\x9C\x40" + b)
 
-    def test_text_32(self):
+    def test_string_32(self):
         t = u"A" * 80000
         b = t.encode("utf-8")
         assert_packable(t, b"\xD2\x00\x01\x38\x80" + b)
 
-    def test_unicode_text(self):
+    def test_unicode_string(self):
         t = u"héllö"
         b = t.encode("utf-8")
         assert_packable(t, bytes(bytearray([0x80 + len(b)])) + b)
