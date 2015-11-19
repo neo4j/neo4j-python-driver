@@ -48,6 +48,18 @@ class RunTestCase(TestCase):
         session.close()
         assert count == 1
 
+    def test_can_run_simple_statement_with_params(self):
+        session = GraphDatabase.driver("bolt://localhost").session()
+        count = 0
+        for record in session.run("RETURN {x} AS n", {"x": {"abc":["d", "e", "f"]}}):
+            assert record[0] == {"abc":["d", "e", "f"]}
+            assert record["n"] == {"abc":["d", "e", "f"]}
+            assert repr(record)
+            assert len(record) == 1
+            count += 1
+        session.close()
+        assert count == 1
+
     def test_fails_on_bad_syntax(self):
         session = GraphDatabase.driver("bolt://localhost").session()
         with self.assertRaises(CypherError):
