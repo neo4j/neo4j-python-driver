@@ -201,7 +201,7 @@ class RunTestCase(TestCase):
 class TransactionTestCase(TestCase):
     def test_can_commit_transaction(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            tx = session.new_transaction()
+            tx = session.begin_transaction()
 
             # Create a node
             result = tx.run("CREATE (a) RETURN id(a)")
@@ -222,7 +222,7 @@ class TransactionTestCase(TestCase):
 
     def test_can_rollback_transaction(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            tx = session.new_transaction()
+            tx = session.begin_transaction()
 
             # Create a node
             result = tx.run("CREATE (a) RETURN id(a)")
@@ -242,7 +242,7 @@ class TransactionTestCase(TestCase):
 
     def test_can_commit_transaction_using_with_block(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            with session.new_transaction() as tx:
+            with session.begin_transaction() as tx:
                 # Create a node
                 result = tx.run("CREATE (a) RETURN id(a)")
                 node_id = result[0][0]
@@ -262,7 +262,7 @@ class TransactionTestCase(TestCase):
 
     def test_can_rollback_transaction_using_with_block(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            with session.new_transaction() as tx:
+            with session.begin_transaction() as tx:
                 # Create a node
                 result = tx.run("CREATE (a) RETURN id(a)")
                 node_id = result[0][0]

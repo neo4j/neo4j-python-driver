@@ -404,7 +404,7 @@ class Session(object):
         """
         self.connection.close()
 
-    def new_transaction(self):
+    def begin_transaction(self):
         """ Create a new :class:`.Transaction` within this session.
 
         :return: new :class:`.Transaction` instance.
