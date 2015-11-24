@@ -21,8 +21,8 @@
 
 from unittest import TestCase
 
-from neo4j import GraphDatabase, Node, Relationship, Path, CypherError
-
+from neo4j.v1.session import GraphDatabase, CypherError
+from neo4j.v1.typesystem import Node, Relationship, Path
 
 class RunTestCase(TestCase):
     def test_must_use_valid_url_scheme(self):

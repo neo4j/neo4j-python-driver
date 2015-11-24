@@ -21,12 +21,12 @@
 
 from __future__ import unicode_literals
 
+import logging
 from argparse import ArgumentParser
 from json import loads as json_loads
-import logging
 from sys import stdout, stderr
 
-from neo4j.session import GraphDatabase, CypherError
+from .session import GraphDatabase, CypherError
 
 
 class ColourFormatter(logging.Formatter):

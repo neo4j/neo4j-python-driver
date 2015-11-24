@@ -71,7 +71,7 @@ class GraphDatabase(object):
         """ Acquire a :class:`.Driver` instance for the given URL and
         configuration:
 
-            >>> from neo4j import GraphDatabase
+            >>> from neo4j.v1 import GraphDatabase
             >>> driver = GraphDatabase.driver("bolt://localhost")
 
         """

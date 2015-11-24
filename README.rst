@@ -4,7 +4,7 @@ Neo4j Bolt Driver for Python
 
 .. code:: python
 
-    from neo4j import GraphDatabase
+    from neo4j.v1.session import GraphDatabase
     driver = GraphDatabase.driver("bolt://localhost")
     session = driver.session()
     session.run("CREATE (a:Person {name:'Bob'})")
