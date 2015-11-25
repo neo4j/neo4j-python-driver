@@ -11,5 +11,5 @@ htmlcov
 
 docs/build
 dist
-UNKNOWN.egg-info
+*.egg-info
 build

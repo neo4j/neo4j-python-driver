@@ -20,11 +20,9 @@
 
 import os
 try:
-    from setuptools import setup, find_packages
-    from setuptools.extension import Extension
+    from setuptools import setup
 except ImportError:
-    from distutils.core import setup, find_packages
-    from distutils.extension import Extension
+    from distutils.core import setup
 
 
 # Used for reading the README into long_description below.
@@ -32,14 +30,13 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
-packages = find_packages(exclude=("test", "test.*"))
-
-setup(name=__package__,
-      version="1.0.0",
-      description="Python driver for Neo4j",
-      license="Apache",
+setup(name="neo4j-driver",
+      version="1.0.0-b01",
+      description="Neo4j Bolt driver for Python",
+      license="Apache License, Version 2.0",
       long_description=read("README.rst"),
       author="Neo Technology",
+      author_email="drivers@neo4j.com",
       keywords="neo4j graph database",
       url="https://github.com/neo4j/neo4j-python-driver",
       classifiers=[
@@ -55,4 +52,4 @@ setup(name=__package__,
           "Programming Language :: Python :: 3.5",
           "Programming Language :: Python :: Implementation :: Jython",
       ],
-      packages=packages)
+      packages=["neo4j"])
