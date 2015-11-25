@@ -4,8 +4,8 @@ Neo4j Bolt Driver for Python
 
 .. code:: python
 
-    import neo4j
-    driver = neo4j.driver("bolt://localhost")
+    from neo4j import GraphDatabase
+    driver = GraphDatabase.driver("bolt://localhost")
     session = driver.session()
     session.run("CREATE (a:Person {name:'Bob'})")
     for name, in session.run("MATCH (a:Person) RETURN a.name AS name"):

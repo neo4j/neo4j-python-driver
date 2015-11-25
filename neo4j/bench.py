@@ -51,7 +51,7 @@ Options:
                          (default: 1,2,4,8,16)
 
 Environment:
-  NEO4J_URI - base URI of Neo4j database, e.g. neo4j://localhost
+  NEO4J_URI - base URI of Neo4j database, e.g. bolt://localhost
 
 Report bugs to nigel@neotechnology.com
 """

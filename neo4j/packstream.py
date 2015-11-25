@@ -40,7 +40,7 @@ PackStream allows serialisation of most common data types as well as a generic
 - Boolean (true or false)
 - Integer (signed 64-bit integer)
 - Float (64-bit floating point number)
-- Text (UTF-8 encoded text data)
+- String (UTF-8 encoded string data)
 - List (ordered collection of values)
 - Map (keyed collection of values)
 - Structure (composite set of values with a type signature)
@@ -162,12 +162,12 @@ following table shows the optimal representation for every possible integer:
               +2 147 483 648 | +9 223 372 036 854 775 807 | INT_64
 
 
-Text
+String
 ----
 
-Text data is represented as UTF-8 encoded binary data. Note that sizes used
-for text are the byte counts of the UTF-8 encoded data, not the character count
-of the original text.
+String data is represented as UTF-8 encoded binary data. Note that sizes used
+for string are the byte counts of the UTF-8 encoded data, not the character count
+of the original string.
 
   Marker | Size                                        | Maximum size
  ========|=============================================|=====================
@@ -176,12 +176,12 @@ of the original text.
   D1     | 16-bit big-endian unsigned integer          | 65 535 bytes
   D2     | 32-bit big-endian unsigned integer          | 4 294 967 295 bytes
 
-For encoded text containing fewer than 16 bytes, including empty strings,
+For encoded string containing fewer than 16 bytes, including empty strings,
 the marker byte should contain the high-order nibble `1000` followed by a
 low-order nibble containing the size. The encoded data then immediately
 follows the marker.
 
-For encoded text containing 16 bytes or more, the marker 0xD0, 0xD1 or 0xD2
+For encoded string containing 16 bytes or more, the marker 0xD0, 0xD1 or 0xD2
 should be used, depending on scale. This marker is followed by the size and
 the UTF-8 encoded data. Examples follow below:
 
@@ -253,7 +253,7 @@ For maps containing fewer than 16 key-value pairs, including empty maps,
 the marker byte should contain the high-order nibble `1010` followed by a
 low-order nibble containing the size. The items within the map are then
 serialised in key-value-key-value order immediately after the marker. Keys
-are typically text values.
+are typically string values.
 
 For maps containing 16 pairs or more, the marker 0xD8, 0xD9 or 0xDA should be
 used, depending on scale. This marker is followed by the size and map
@@ -315,10 +315,10 @@ import sys
 
 if sys.version_info >= (3,):
     INTEGER_TYPE = int
-    TEXT_TYPE = str
+    STRING_TYPE = str
 else:
     INTEGER_TYPE = (int, long)
-    TEXT_TYPE = unicode
+    STRING_TYPE = unicode
 
 __all__ = ["Packer", "pack", "packb", "Unpacker", "unpack", "unpackb"]
 
@@ -349,7 +349,7 @@ INT_16_STRUCT = ">h"
 INT_32_STRUCT = ">i"
 INT_64_STRUCT = ">q"
 
-TINY_TEXT = [bytes(bytearray([x])) for x in range(0x80, 0x90)]
+TINY_STRING = [bytes(bytearray([x])) for x in range(0x80, 0x90)]
 TINY_LIST = [bytes(bytearray([x])) for x in range(0x90, 0xA0)]
 TINY_MAP = [bytes(bytearray([x])) for x in range(0xA0, 0xB0)]
 TINY_STRUCT = [bytes(bytearray([x])) for x in range(0xB0, 0xC0)]
@@ -365,9 +365,9 @@ INT_64 = b"\xCB"
 BYTES_8 = b"\xCC"
 BYTES_16 = b"\xCD"
 BYTES_32 = b"\xCE"
-TEXT_8 = b"\xD0"
-TEXT_16 = b"\xD1"
-TEXT_32 = b"\xD2"
+STRING_8 = b"\xD0"
+STRING_16 = b"\xD1"
+STRING_32 = b"\xD2"
 LIST_8 = b"\xD4"
 LIST_16 = b"\xD5"
 LIST_32 = b"\xD6"
@@ -498,10 +498,10 @@ class Packer(object):
             self.pack_bytes_header(len(value))
             self.pack_raw(value)
 
-        # Text
-        elif isinstance(value, TEXT_TYPE):
+        # String
+        elif isinstance(value, STRING_TYPE):
             value_bytes = value.encode(ENCODING)
-            self.pack_text_header(len(value_bytes))
+            self.pack_string_header(len(value_bytes))
             self.pack_raw(value_bytes)
 
         # List
@@ -546,21 +546,21 @@ class Packer(object):
         else:
             raise OverflowError("Bytes header size out of range")
 
-    def pack_text_header(self, size):
+    def pack_string_header(self, size):
         stream = self.stream
         if size < PLUS_2_TO_THE_4:
-            stream.write(TINY_TEXT[size])
+            stream.write(TINY_STRING[size])
         elif size < PLUS_2_TO_THE_8:
-            stream.write(TEXT_8)
+            stream.write(STRING_8)
             stream.write(PACKED_UINT_8[size])
         elif size < PLUS_2_TO_THE_16:
-            stream.write(TEXT_16)
+            stream.write(STRING_16)
             stream.write(PACKED_UINT_16[size])
         elif size < PLUS_2_TO_THE_32:
-            stream.write(TEXT_32)
+            stream.write(STRING_32)
             stream.write(struct_pack(UINT_32_STRUCT, size))
         else:
-            raise OverflowError("Text header size out of range")
+            raise OverflowError("String header size out of range")
 
     def pack_list_header(self, size):
         stream = self.stream
@@ -690,16 +690,16 @@ class Unpacker(object):
                     byte_size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
                     value = stream_read(byte_size)
 
-                # Text
+                # String
                 elif marker_high == 0x80:
                     value = stream_read(marker & 0x0F).decode(ENCODING)
-                elif marker_byte == TEXT_8:
+                elif marker_byte == STRING_8:
                     byte_size = UNPACKED_UINT_8[stream_read(1)]
                     value = stream_read(byte_size).decode(ENCODING)
-                elif marker_byte == TEXT_16:
+                elif marker_byte == STRING_16:
                     byte_size = UNPACKED_UINT_16[stream_read(2)]
                     value = stream_read(byte_size).decode(ENCODING)
-                elif marker_byte == TEXT_32:
+                elif marker_byte == STRING_32:
                     byte_size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
                     value = stream_read(byte_size).decode(ENCODING)
 
