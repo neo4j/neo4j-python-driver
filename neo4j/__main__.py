@@ -26,7 +26,7 @@ from argparse import ArgumentParser
 from json import loads as json_loads
 from sys import stdout, stderr
 
-from .session import GraphDatabase, CypherError
+from .v1.session import GraphDatabase, CypherError
 
 
 class ColourFormatter(logging.Formatter):
