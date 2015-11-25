@@ -124,17 +124,17 @@ class PackStreamTestCase(TestCase):
             assert_packable(r, expected)
 
     def test_empty_bytes(self):
-        assert_packable(b"", b"\xCC\x00")
+        assert_packable(bytearray(), b"\xCC\x00")
 
     def test_bytes_8(self):
-        assert_packable(b"hello", b"\xCC\x05hello")
+        assert_packable(bytearray(b"hello"), b"\xCC\x05hello")
 
     def test_bytes_16(self):
-        b = bytes(bytearray(40000))
+        b = bytearray(40000)
         assert_packable(b, b"\xCD\x9C\x40" + b)
 
     def test_bytes_32(self):
-        b = bytes(bytearray(80000))
+        b = bytearray(80000)
         assert_packable(b, b"\xCE\x00\x01\x38\x80" + b)
 
     def test_empty_string(self):

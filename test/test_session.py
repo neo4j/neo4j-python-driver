@@ -24,6 +24,7 @@ from unittest import TestCase
 from neo4j.v1.session import GraphDatabase, CypherError
 from neo4j.v1.typesystem import Node, Relationship, Path
 
+
 class RunTestCase(TestCase):
     def test_must_use_valid_url_scheme(self):
         with self.assertRaises(ValueError):
@@ -42,6 +43,18 @@ class RunTestCase(TestCase):
                 _ = record.x
             with self.assertRaises(TypeError):
                 _ = record[object()]
+            assert repr(record)
+            assert len(record) == 1
+            count += 1
+        session.close()
+        assert count == 1
+
+    def test_can_run_simple_statement_with_params(self):
+        session = GraphDatabase.driver("bolt://localhost").session()
+        count = 0
+        for record in session.run("RETURN {x} AS n", {"x": {"abc": ["d", "e", "f"]}}):
+            assert record[0] == {"abc": ["d", "e", "f"]}
+            assert record["n"] == {"abc": ["d", "e", "f"]}
             assert repr(record)
             assert len(record) == 1
             count += 1

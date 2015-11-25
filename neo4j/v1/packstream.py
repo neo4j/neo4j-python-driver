@@ -318,7 +318,7 @@ if sys.version_info >= (3,):
     STRING_TYPE = str
 else:
     INTEGER_TYPE = (int, long)
-    STRING_TYPE = unicode
+    STRING_TYPE = (str, unicode)
 
 __all__ = ["Packer", "pack", "packb", "Unpacker", "unpack", "unpackb"]
 
@@ -493,16 +493,20 @@ class Packer(object):
             else:
                 raise OverflowError("Integer %s out of range" % value)
 
-        # Bytes
-        elif isinstance(value, bytes):
-            self.pack_bytes_header(len(value))
-            self.pack_raw(value)
-
         # String
         elif isinstance(value, STRING_TYPE):
-            value_bytes = value.encode(ENCODING)
+            if isinstance(value, bytes):
+                value_bytes = value
+            else:
+                value_bytes = value.encode(ENCODING)
             self.pack_string_header(len(value_bytes))
             self.pack_raw(value_bytes)
+
+        # Bytes (deliberately listed after String since in
+        # Python 2, bytes should be treated as a String)
+        elif isinstance(value, (bytes, bytearray)):
+            self.pack_bytes_header(len(value))
+            self.pack_raw(value)
 
         # List
         elif isinstance(value, list):
