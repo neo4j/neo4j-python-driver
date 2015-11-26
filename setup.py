@@ -31,7 +31,7 @@ def read(fname):
 
 
 setup(name="neo4j-driver",
-      version="1.0.0-b01",
+      version="1.0.0b2",
       description="Neo4j Bolt driver for Python",
       license="Apache License, Version 2.0",
       long_description=read("README.rst"),
