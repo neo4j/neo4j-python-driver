@@ -9,35 +9,35 @@ Neo4j Bolt Driver for Python
 Session API
 ===========
 
-.. autoclass:: neo4j.GraphDatabase
+.. autoclass:: neo4j.v1.GraphDatabase
    :members:
 
-.. autoclass:: neo4j.Driver
+.. autoclass:: neo4j.v1.Driver
    :members:
 
-.. autoclass:: neo4j.Session
+.. autoclass:: neo4j.v1.Session
    :members:
 
-.. autoclass:: neo4j.Transaction
+.. autoclass:: neo4j.v1.Transaction
    :members:
 
-.. autoclass:: neo4j.Record
+.. autoclass:: neo4j.v1.Record
    :members:
 
-.. autoclass:: neo4j.Result
+.. autoclass:: neo4j.v1.Result
    :members:
 
-.. autoclass:: neo4j.ResultSummary
+.. autoclass:: neo4j.v1.ResultSummary
    :members:
 
-.. autoclass:: neo4j.StatementStatistics
+.. autoclass:: neo4j.v1.StatementStatistics
    :members:
 
 
 Exceptions
 ==========
 
-.. autoclass:: neo4j.CypherError
+.. autoclass:: neo4j.v1.CypherError
    :members:
 
 
@@ -46,7 +46,7 @@ Example
 
 .. code-block:: python
 
-    from neo4j import GraphDatabase
+    from neo4j.v1 import GraphDatabase
 
     driver = GraphDatabase.driver("bolt://localhost")
     session = driver.session()
