@@ -19,4 +19,4 @@
 # limitations under the License.
 
 
-from neo4j.meta import version as __version__
+version = "1.0.0b2"

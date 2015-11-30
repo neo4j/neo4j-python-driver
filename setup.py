@@ -24,6 +24,8 @@ try:
 except ImportError:
     from distutils.core import setup
 
+from neo4j.meta import version
+
 
 # Used for reading the README into long_description below.
 def read(fname):
@@ -31,7 +33,7 @@ def read(fname):
 
 
 setup(name="neo4j-driver",
-      version="1.0.0b2",
+      version=version,
       description="Neo4j Bolt driver for Python",
       license="Apache License, Version 2.0",
       long_description=read("README.rst"),
