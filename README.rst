@@ -2,6 +2,26 @@
 Neo4j Bolt Driver for Python
 ============================
 
+
+Installation
+============
+
+To install the latest stable version, use:
+
+.. code:: bash
+
+    pip install neo4j-driver
+
+For the most up-to-date version (possibly unstable), use:
+
+.. code:: bash
+
+    pip install git+https://github.com/neo4j/neo4j-python-driver.git#egg=neo4j-driver
+
+
+Example Usage
+=============
+
 .. code:: python
 
     from neo4j.v1 import GraphDatabase
