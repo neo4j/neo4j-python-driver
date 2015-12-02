@@ -138,10 +138,7 @@ class Result(list):
         """ Called on receipt of the result footer.
         """
         self.complete = True
-        self.summary = ResultSummary(self.statement, self.parameters,
-                                     metadata.get("type"), metadata.get("stats"),
-                                     metadata.get("plan"), metadata.get("profile"),
-                                     metadata.get("notifications", []))
+        self.summary = ResultSummary(self.statement, self.parameters, **metadata)
         if self.bench_test:
             self.bench_test.end_recv = perf_counter()
 
@@ -195,18 +192,18 @@ class ResultSummary(object):
     #: Unlike failures or errors, notifications do not affect the execution of a statement.
     notifications = None
 
-    def __init__(self, statement, parameters, statement_type, statistics, plan, profile, notifications):
+    def __init__(self, statement, parameters, **metadata):
         self.statement = statement
         self.parameters = parameters
-        self.statement_type = statement_type
-        self.statistics = StatementStatistics(statistics or {})
-        if plan is not None:
-            self.plan = make_plan(plan)
-        if profile is not None:
-            self.profile = make_plan(profile)
+        self.statement_type = metadata.get("type")
+        self.statistics = StatementStatistics(metadata.get("stats", {}))
+        if "plan" in metadata:
+            self.plan = make_plan(metadata["plan"])
+        if "profile" in metadata:
+            self.profile = make_plan(metadata["profile"])
             self.plan = self.profile
         self.notifications = []
-        for notification in notifications:
+        for notification in metadata.get("notifications", []):
             position = notification.get("position")
             if position is not None:
                 position = Position(position["offset"], position["line"], position["column"])
