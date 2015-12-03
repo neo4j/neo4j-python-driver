@@ -38,6 +38,8 @@ from .packstream import Packer, Unpacker
 DEFAULT_PORT = 7687
 DEFAULT_USER_AGENT = "neo4j-python/%s" % version
 
+MAGIC_PREAMBLE = 0x6060B017
+
 # Signature bytes for each message type
 INIT = b"\x01"             # 0000 0001 // INIT <user_agent>
 ACK_FAILURE = b"\x0F"      # 0000 1111 // ACK_FAILURE
@@ -306,8 +308,9 @@ def connect(host, port=None, **config):
 
     # Send details of the protocol versions supported
     supported_versions = [1, 0, 0, 0]
-    if __debug__: log_info("C: [HANDSHAKE] %r", supported_versions)
-    data = b"".join(struct_pack(">I", version) for version in supported_versions)
+    handshake = [MAGIC_PREAMBLE] + supported_versions
+    if __debug__: log_info("C: [HANDSHAKE] 0x%X %r", MAGIC_PREAMBLE, supported_versions)
+    data = b"".join(struct_pack(">I", num) for num in handshake)
     if __debug__: log_debug("C: %s", ":".join(map(hex2, data)))
     s.sendall(data)
 
