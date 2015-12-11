@@ -473,48 +473,95 @@ class Transaction(object):
         self.closed = True
         self.session.transaction = None
 
-
 class Record(object):
-    """ Record object for storing result values along with field names.
+    """ Record is an ordered collection of fields.
+
+    A Record object is used for storing result values along with field names.
     Fields can be accessed by numeric or named index (``record[0]`` or
-    ``record["field"]``) or by attribute (``record.field``).
+    ``record["field"]``).
     """
 
     def __init__(self, keys, values):
-        self.__keys__ = keys
-        self.__values__ = values
+        self._keys = tuple(keys)
+        self._values = tuple(values)
+
+    def keys(self):
+        """ Return the keys (key names) of the record
+        """
+        return self._keys
+
+    def values(self):
+        """ Return the values of the record
+        """
+        return self._values
+
+    def items(self):
+        """ Return the fields of the record as a list of key and value tuples
+        """
+        return zip(self._keys, self._values)
+
+    def index(self, key):
+        """ Return the index of the given key
+        """
+        try:
+            return self._keys.index(key)
+        except ValueError:
+            raise KeyError(key)
+
+    def __record__(self):
+        return self
+
+    def __contains__(self, key):
+        return self._keys.__contains__(key)
+
+    def __iter__(self):
+        return iter(self._keys)
+
+    def copy(self):
+        return Record(self._keys, self._values)
+
+    def __getitem__(self, item):
+        if isinstance(item, string):
+            return self._values[self.index(item)]
+        elif isinstance(item, integer):
+            return self._values[item]
+        else:
+            raise TypeError(item)
+
+    def __len__(self):
+        return len(self._keys)
 
     def __repr__(self):
-        values = self.__values__
+        values = self._values
         s = []
-        for i, field in enumerate(self.__keys__):
+        for i, field in enumerate(self._keys):
             s.append("%s=%r" % (field, values[i]))
         return "<Record %s>" % " ".join(s)
 
+    def __hash__(self):
+        return hash(self._keys) ^ hash(self._values)
+
     def __eq__(self, other):
         try:
-            return vars(self) == vars(other)
-        except TypeError:
-            return tuple(self) == tuple(other)
+            return self._keys == tuple(other.keys()) and self._values == tuple(other.values())
+        except AttributeError:
+            return False
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __len__(self):
-        return self.__keys__.__len__()
+def record(obj):
+    """ Obtain an immutable record for the given object
+    (either by calling obj.__record__() or by copying out the record data)
+    """
+    try:
+        return obj.__record__()
+    except AttributeError:
+        keys = obj.keys()
+        values = []
+        for key in keys:
+            values.append(obj[key])
+        return Record(keys, values)
 
-    def __getitem__(self, item):
-        if isinstance(item, string):
-            return getattr(self, item)
-        elif isinstance(item, integer):
-            return getattr(self, self.__keys__[item])
-        else:
-            raise TypeError(item)
 
-    def __getattr__(self, item):
-        try:
-            i = self.__keys__.index(item)
-        except ValueError:
-            raise AttributeError("No key %r" % item)
-        else:
-            return self.__values__[i]
+
