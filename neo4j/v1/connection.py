@@ -262,9 +262,7 @@ class Connection(object):
         # Unpack from the raw byte stream and call the relevant message handler(s)
         raw.seek(0)
         response = self.responses[0]
-        for message in unpack():
-            signature = message.signature
-            fields = tuple(message)
+        for signature, fields in unpack():
             if __debug__:
                 log_info("S: %s %s", message_names[signature], " ".join(map(repr, fields)))
             handler_name = "on_%s" % message_names[signature].lower()
