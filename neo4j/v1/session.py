@@ -102,7 +102,7 @@ class Driver(object):
         return Session(connect(self.host, self.port, **config))
 
 
-class Result(list):
+class ResultCursor(list):
     """ A handler for the result of Cypher statement execution.
     """
 
@@ -112,56 +112,50 @@ class Result(list):
     #: Dictionary of parameters passed with the statement.
     parameters = None
 
-    def __init__(self, session, statement, parameters):
-        super(Result, self).__init__()
-        self.session = session
+    def __init__(self, connection, statement, parameters):
+        super(ResultCursor, self).__init__()
         self.statement = statement
         self.parameters = parameters
         self.keys = None
-        self.complete = False
-        self.summary = None
-        self.bench_test = None
-
-    def on_header(self, metadata):
-        """ Called on receipt of the result header.
-        """
-        self.keys = metadata["fields"]
-        if self.bench_test:
-            self.bench_test.start_recv = perf_counter()
-
-    def on_record(self, values):
-        """ Called on receipt of each result record.
-        """
-        self.append(Record(self.keys, tuple(map(hydrated, values))))
-
-    def on_footer(self, metadata):
-        """ Called on receipt of the result footer.
-        """
-        self.complete = True
-        self.summary = ResultSummary(self.statement, self.parameters, **metadata)
-        if self.bench_test:
-            self.bench_test.end_recv = perf_counter()
-
-    def on_failure(self, metadata):
-        """ Called on execution failure.
-        """
-        raise CypherError(metadata)
-
-    def consume(self):
-        """ Consume the remainder of this result, triggering all appropriate
-        callback functions.
-        """
-        fetch_next = self.session.connection.fetch_next
-        while not self.complete:
-            fetch_next()
+        self._connection = connection
+        self._complete = False
+        self._summary = None
+        self._bench_test = None
 
     def summarize(self):
         """ Consume the remainder of this result and produce a summary.
 
         :rtype: ResultSummary
         """
-        self.consume()
-        return self.summary
+        self._consume()
+        return self._summary
+
+    def _on_header(self, metadata):
+        # Called on receipt of the result header.
+        self.keys = metadata["fields"]
+        if self._bench_test:
+            self._bench_test.start_recv = perf_counter()
+
+    def _on_record(self, values):
+        # Called on receipt of each result record.
+        self.append(Record(self.keys, tuple(map(hydrated, values))))
+
+    def _on_footer(self, metadata):
+        # Called on receipt of the result footer.
+        self._complete = True
+        self._summary = ResultSummary(self.statement, self.parameters, **metadata)
+        if self._bench_test:
+            self._bench_test.end_recv = perf_counter()
+
+    def _on_failure(self, metadata):
+        # Called on execution failure.
+        raise CypherError(metadata)
+
+    def _consume(self):
+        # Consume the remainder of this result, triggering all appropriate callback functions.
+        fetch_next = self._connection.fetch_next
+        while not self._complete:
+            fetch_next()
 
 
 class ResultSummary(object):
@@ -367,17 +361,17 @@ class Session(object):
         t = BenchTest()
         t.init = perf_counter()
 
-        result = Result(self, statement, parameters)
-        result.bench_test = t
+        result = ResultCursor(self.connection, statement, parameters)
+        result._bench_test = t
 
         run_response = Response(self.connection)
-        run_response.on_success = result.on_header
-        run_response.on_failure = result.on_failure
+        run_response.on_success = result._on_header
+        run_response.on_failure = result._on_failure
 
         pull_all_response = Response(self.connection)
-        pull_all_response.on_record = result.on_record
-        pull_all_response.on_success = result.on_footer
-        pull_all_response.on_failure = result.on_failure
+        pull_all_response.on_record = result._on_record
+        pull_all_response.on_success = result._on_footer
+        pull_all_response.on_failure = result._on_failure
 
         self.connection.append(RUN, (statement, parameters), response=run_response)
         self.connection.append(PULL_ALL, response=pull_all_response)
@@ -385,7 +379,7 @@ class Session(object):
         self.connection.send()
         t.end_send = perf_counter()
 
-        result.consume()
+        result._consume()
 
         t.done = perf_counter()
         self.bench_tests.append(t)
