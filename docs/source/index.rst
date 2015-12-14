@@ -24,6 +24,8 @@ Session API
 .. autoclass:: neo4j.v1.Record
    :members:
 
+.. autofunction:: neo4j.v1.record
+
 .. autoclass:: neo4j.v1.Result
    :members:
 

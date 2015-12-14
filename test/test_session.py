@@ -21,7 +21,7 @@
 
 from unittest import TestCase
 
-from neo4j.v1.session import GraphDatabase, CypherError
+from neo4j.v1.session import GraphDatabase, CypherError, Record, record
 from neo4j.v1.typesystem import Node, Relationship, Path
 
 
@@ -36,11 +36,11 @@ class RunTestCase(TestCase):
         for record in session.run("RETURN 1 AS n"):
             assert record[0] == 1
             assert record["n"] == 1
-            with self.assertRaises(AttributeError):
+            with self.assertRaises(KeyError):
                 _ = record["x"]
-            assert record.n == 1
-            with self.assertRaises(AttributeError):
-                _ = record.x
+            assert record["n"] == 1
+            with self.assertRaises(KeyError):
+                _ = record["x"]
             with self.assertRaises(TypeError):
                 _ = record[object()]
             assert repr(record)
@@ -77,7 +77,6 @@ class RunTestCase(TestCase):
         for record in session.run(b"RETURN 1 AS n"):
             assert record[0] == 1
             assert record["n"] == 1
-            assert record.n == 1
             assert repr(record)
             assert len(record) == 1
             count += 1
@@ -137,12 +136,6 @@ class RunTestCase(TestCase):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             with self.assertRaises(CypherError):
                 session.run("X")
-
-    def test_record_equality(self):
-        with GraphDatabase.driver("bolt://localhost").session() as session:
-            result = session.run("unwind([1, 1]) AS a RETURN a")
-            assert result[0] == result[1]
-            assert result[0] != "this is not a record"
 
     def test_can_obtain_summary_info(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
@@ -210,6 +203,79 @@ class RunTestCase(TestCase):
             assert position.line == 1
             assert position.column == 1
 
+
+class RecordTestCase(TestCase):
+    def test_record_equality(self):
+        record1 = Record(["name","empire"], ["Nigel", "The British Empire"])
+        record2 = Record(["name","empire"], ["Nigel", "The British Empire"])
+        record3 = Record(["name","empire"], ["Stefan", "Das Deutschland"])
+        assert record1 == record2
+        assert record1 != record3
+        assert record2 != record3
+
+    def test_record_hashing(self):
+        record1 = Record(["name","empire"], ["Nigel", "The British Empire"])
+        record2 = Record(["name","empire"], ["Nigel", "The British Empire"])
+        record3 = Record(["name","empire"], ["Stefan", "Das Deutschland"])
+        assert hash(record1) == hash(record2)
+        assert hash(record1) != hash(record3)
+        assert hash(record2) != hash(record3)
+
+    def test_record_keys(self):
+        aRecord = Record(["name","empire"], ["Nigel", "The British Empire"])
+        assert list(aRecord.keys()) == ["name", "empire"]
+
+    def test_record_values(self):
+        aRecord = Record(["name","empire"], ["Nigel", "The British Empire"])
+        assert list(aRecord.values()) == ["Nigel", "The British Empire"]
+
+    def test_record_items(self):
+        aRecord = Record(["name","empire"], ["Nigel", "The British Empire"])
+        assert list(aRecord.items()) == [("name", "Nigel"), ("empire", "The British Empire")]
+
+    def test_record_index(self):
+        aRecord = Record(["name","empire"], ["Nigel", "The British Empire"])
+        assert aRecord.index("name") == 0
+        assert aRecord.index("empire") == 1
+        with self.assertRaises(KeyError):
+            aRecord.index("crap")
+
+    def test_record_contains(self):
+        aRecord = Record(["name","empire"], ["Nigel", "The British Empire"])
+        assert "name" in aRecord
+        assert "empire" in aRecord
+        assert "Germans" not in aRecord
+
+    def test_record_iter(self):
+        aRecord = Record(["name","empire"], ["Nigel", "The British Empire"])
+        assert list(aRecord.__iter__()) == ["name", "empire"]
+
+    def test_record_record(self):
+        aRecord = Record(["name","empire"], ["Nigel", "The British Empire"])
+        assert record(aRecord) is aRecord
+
+    def test_record_copy(self):
+        original = Record(["name","empire"], ["Nigel", "The British Empire"])
+        duplicate = original.copy()
+        assert dict(original) == dict(duplicate)
+        assert original.keys() == duplicate.keys()
+        assert original is not duplicate
+
+    def test_record_as_dict(self):
+        aRecord = Record(["name","empire"], ["Nigel", "The British Empire"])
+        assert dict(aRecord) == { "name": "Nigel", "empire": "The British Empire" }
+
+    def test_record_as_list(self):
+        aRecord = Record(["name","empire"], ["Nigel", "The British Empire"])
+        assert list(aRecord) == ["name", "empire"]
+
+    def test_record_len(self):
+        aRecord = Record(["name","empire"], ["Nigel", "The British Empire"])
+        assert len(aRecord) == 2
+
+    def test_record_repr(self):
+        aRecord = Record(["name","empire"], ["Nigel", "The British Empire"])
+        assert repr(aRecord) == "<Record name='Nigel' empire='The British Empire'>"
 
 class TransactionTestCase(TestCase):
     def test_can_commit_transaction(self):
