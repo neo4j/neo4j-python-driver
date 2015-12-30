@@ -29,7 +29,7 @@ from select import select
 from socket import create_connection, SHUT_RDWR
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
-from neo4j.meta import version
+from ..meta import version
 from .compat import hex2, secure_socket
 from .exceptions import ProtocolError
 from .packstream import Packer, Unpacker
