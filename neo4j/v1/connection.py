@@ -220,7 +220,7 @@ class Connection(object):
         self.responses = deque()
 
         # Determine the user agent and ensure it is a Unicode value
-        user_agent = config.get("user-agent", DEFAULT_USER_AGENT)
+        user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
         if isinstance(user_agent, bytes):
             user_agent = user_agent.decode("UTF-8")
 
