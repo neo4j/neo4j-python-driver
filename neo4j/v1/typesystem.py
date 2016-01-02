@@ -178,6 +178,7 @@ class Path(object):
             else:
                 entities.append(rels[-rel_index - 1].bind(next_node.identity, last_node.identity))
             entities.append(next_node)
+            last_node = next_node
         return cls(*entities)
 
     def __init__(self, start_node, *rels_and_nodes):
