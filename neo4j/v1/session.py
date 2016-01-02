@@ -28,7 +28,7 @@ managing sessions.
 
 from __future__ import division
 
-from collections import namedtuple
+from collections import deque, namedtuple
 
 from .compat import integer, perf_counter, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
@@ -91,15 +91,19 @@ class Driver(object):
         else:
             raise ValueError("Unsupported URL scheme: %s" % parsed.scheme)
         self.config = config
+        self.sessions = deque()
 
-    def session(self, **config):
+    def session(self):
         """ Create a new session based on the graph database details
         specified within this driver:
 
             >>> session = driver.session()
 
         """
-        return Session(connect(self.host, self.port, **dict(self.config, **config)))
+        try:
+            return self.sessions.pop()
+        except IndexError:
+            return Session(self)
 
 
 class Result(list):
@@ -330,10 +334,14 @@ class Session(object):
     method.
     """
 
-    def __init__(self, connection):
-        self.connection = connection
+    def __init__(self, driver):
+        self.driver = driver
+        self.connection = connect(driver.host, driver.port, **driver.config)
         self.transaction = None
         self.bench_tests = []
+
+    def __del__(self):
+        self.connection.close()
 
     def __enter__(self):
         return self
@@ -393,9 +401,9 @@ class Session(object):
         return result
 
     def close(self):
-        """ Shut down and close the session.
+        """ Return this session to the driver pool it came from.
         """
-        self.connection.close()
+        self.driver.sessions.appendleft(self)
 
     def begin_transaction(self):
         """ Create a new :class:`.Transaction` within this session.
