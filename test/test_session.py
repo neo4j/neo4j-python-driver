@@ -30,6 +30,22 @@ class RunTestCase(TestCase):
         with self.assertRaises(ValueError):
             GraphDatabase.driver("x://xxx")
 
+    def test_sessions_are_reused(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        session_1 = driver.session()
+        session_1.close()
+        session_2 = driver.session()
+        session_2.close()
+        assert session_1 is session_2
+
+    def test_sessions_are_not_reused_if_still_in_use(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        session_1 = driver.session()
+        session_2 = driver.session()
+        session_2.close()
+        session_1.close()
+        assert session_1 is not session_2
+
     def test_can_run_simple_statement(self):
         session = GraphDatabase.driver("bolt://localhost").session()
         count = 0
