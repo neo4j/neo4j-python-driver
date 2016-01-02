@@ -119,6 +119,8 @@ class Relationship(BaseRelationship):
         return inst
 
     def __init__(self, start, end, type, properties=None, **kwproperties):
+        assert isinstance(start, int)
+        assert isinstance(end, int)
         super(Relationship, self).__init__(type, properties, **kwproperties)
         self.start = start
         self.end = end
@@ -172,10 +174,11 @@ class Path(object):
             assert rel_index != 0
             next_node = nodes[sequence[2 * i + 1]]
             if rel_index > 0:
-                entities.append(rels[rel_index - 1].bind(last_node, next_node))
+                entities.append(rels[rel_index - 1].bind(last_node.identity, next_node.identity))
             else:
-                entities.append(rels[-rel_index - 1].bind(next_node, last_node))
+                entities.append(rels[-rel_index - 1].bind(next_node.identity, last_node.identity))
             entities.append(next_node)
+            last_node = next_node
         return cls(*entities)
 
     def __init__(self, start_node, *rels_and_nodes):
