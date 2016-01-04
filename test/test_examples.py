@@ -60,7 +60,7 @@ class ExamplesTestCase(TestCase):
         result = session.run("CREATE (p:Person { name: 'The One' })")
         ones_created = result.summary.statistics.nodes_created
         print("There were {0} the ones created.".format(ones_created))
-        #end::statement-without-parameterst[]
+        #end::statement-without-parameters[]
         assert ones_created == 1
         session.close()
 

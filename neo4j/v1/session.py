@@ -99,7 +99,7 @@ class Driver(object):
             >>> session = driver.session()
 
         """
-        return Session(connect(self.host, self.port, **config))
+        return Session(connect(self.host, self.port, **dict(self.config, **config)))
 
 
 class Result(list):

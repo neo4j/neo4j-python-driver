@@ -4,7 +4,7 @@ import urllib2
 
 
 def clean_up():
-    dir_path = (os.path.dirname(os.path.realpath(__file__)))#'test/tck/'
+    dir_path = (os.path.dirname(os.path.realpath(__file__)))
     files = os.listdir(dir_path)
     for f in files:
         if not os.path.isdir(f) and ".feature" in f:

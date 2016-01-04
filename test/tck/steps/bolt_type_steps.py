@@ -38,16 +38,6 @@ def step_impl(context):
     context.M = {}
 
 
-@given("an empty node N")
-def step_impl(context):
-    context.N = Node()
-
-
-@given("a node N with properties and labels")
-def step_impl(context):
-    context.N = Node({"Person"}, {"name": "Alice", "age": 33})
-
-
 @given("a String of size (?P<size>\d+)")
 def step_impl(context, size):
     context.expected = tck_util.get_random_string(int(size))
@@ -120,13 +110,6 @@ def step_impl(context):
     context.results["as_parameters"] = tck_util.send_parameters("RETURN {input}", {'input': context.expected})
 
 
-@when("the driver asks the server to echo this node back")
-def step_impl(context):
-    context.expected = context.N
-    context.results = {}
-    context.results["as_parameters"] = tck_util.send_parameters("RETURN {input}", {'input': context.expected})
-
-
 @then("the result returned from the server should be a single record with a single value")
 def step_impl(context):
     assert len(context.results) > 0
@@ -155,87 +138,3 @@ def step_impl(context):
         assert result_value.items() == context.expected.items()
         assert len(result_value) == len(context.expected)
         assert iter(result_value) == iter(context.expected)
-
-
-##CURRENTLY NOT SUPPORTED IN PYTHON DRIVERS
-
-@given("a relationship R")
-def step_impl(context):
-    alice = Node({"Person"}, {"name": "Alice", "age": 33})
-    bob = Node({"Person"}, {"name": "Bob", "age": 44})
-    context.R = Relationship(alice, bob, "KNOWS", {"since": 1999})
-
-
-@when("the driver asks the server to echo this relationship R back")
-def step_impl(context):
-    context.expected = context.R
-    context.results = {}
-    context.results["as_parameters"] = tck_util.send_parameters("RETURN {input}", {'input': context.expected})
-
-
-@step("the relationship value given in the result should be the same as what was sent")
-def step_impl(context):
-    assert len(context.results) > 0
-    for result in context.results.values():
-        result_value = result[0].values()[0]
-        assert result_value == context.expected
-        assert result_value.start == context.expected.start
-        assert result_value.type == context.expected.type
-        assert result_value.end == context.expected.end
-        assert result_value.items() == context.expected.items()
-        assert result_value.keys() == context.expected.keys()
-        assert result_value.values() == context.expected.values()
-
-
-@given("a zero length path P")
-def step_impl(context):
-    context.P = Path(Node({"Person"}, {"name": "Alice", "age": 33}))
-
-
-@given("a arbitrary long path P")
-def step_impl(context):
-    alice = Node({"Person"}, {"name": "Alice", "age": 33})
-    bob = Node({"Person"}, {"name": "Bob", "age": 44})
-    carol = Node({"Person"}, {"name": "Carol", "age": 55})
-    alice_knows_bob = Relationship(alice, bob, "KNOWS", {"since": 1999})
-    carol_dislikes_bob = Relationship(carol, bob, "DISLIKES")
-    context.P = Path(alice, alice_knows_bob, bob, carol_dislikes_bob, carol)
-
-
-@when("the driver asks the server to echo this path back")
-def step_impl(context):
-    context.expected = context.P
-    context.results = {}
-    context.results["as_parameters"] = tck_util.send_parameters("RETURN {input}", {'input': context.expected})
-
-
-@step("the path value given in the result should be the same as what was sent")
-def step_impl(context):
-    assert len(context.results) > 0
-    for result in context.results.values():
-        result_value = result[0].values()[0]
-        assert result_value == context.expected
-        assert result_value.start == context.expected.start
-        assert result_value.end == context.expected.end
-        assert result_value.nodes == context.expected.nodes
-        assert result_value.relationships == context.expected.relationships
-        assert list(result_value) == list(context.expected)
-
-
-@given("a Node with great amount of properties and labels")
-def step_impl(context):
-    context.N = Node(tck_util.get_list_of_random_type(1000, "String"),
-                     tck_util.get_dict_of_random_type(1000, "String"))
-
-
-@given("a path P of size (?P<size>\d+)")
-def step_impl(context, size):
-    nodes_and_rels = [Node({tck_util.get_random_string(5)}, tck_util.get_dict_of_random_type(3, "String"))]
-    for i in range(1, int(12)):
-        n = nodes_and_rels.append(Node({tck_util.get_random_string(5)}, tck_util.get_dict_of_random_type(3, "String")))
-        r = Relationship(nodes_and_rels[-1], n, tck_util.get_random_string(4),
-                         tck_util.get_dict_of_random_type(3, "String"))
-        nodes_and_rels.append(r)
-        nodes_and_rels.append(n)
-
-    context.P = Path(nodes_and_rels[0], nodes_and_rels[1:])
