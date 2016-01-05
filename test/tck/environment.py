@@ -15,8 +15,8 @@ def after_scenario(context, scenario):
     for step in scenario.steps:
         if step.status == 'failed':
             logging.error("Scenario :'%s' at step: '%s' failed! ", scenario.name, step.name)
-            logging.debug("Expected result: %s", tck_util.as_cypger_text(context.expected))
-            logging.debug("Actual result: %s", tck_util.as_cypger_text(context.results))
+            logging.debug("Expected result: %s", tck_util.as_cypher_text(context.expected))
+            logging.debug("Actual result: %s", tck_util.as_cypher_text(context.results))
         if step.status == 'skipped':
             logging.warn("Scenario :'%s' at step: '%s' was skipped! ", scenario.name, step.name)
         if step.status == 'passed':

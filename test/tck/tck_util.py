@@ -1,7 +1,6 @@
 import string
 import random
-
-import sys
+from neo4j.v1 import compat
 
 from neo4j.v1 import GraphDatabase
 
@@ -28,25 +27,25 @@ def get_bolt_value(type, value):
     if type == 'Float':
         return float(value)
     if type == 'String':
-        return value
+        return to_unicode(value)
     if type == 'Null':
         return None
     if type == 'Boolean':
         return bool(value)
-    raise ValueError('No such type : %s', type)
+    raise ValueError('No such type : %s' % type)
 
 
-def as_cypger_text(expected):
+def as_cypher_text(expected):
     if expected is None:
         return "Null"
-    if isinstance(expected, unicode):
-        return '"' + expected + '"'
+    if isinstance(expected, (str, compat.string)):
+            return '"' + expected + '"'
     if isinstance(expected, float):
         return repr(expected).replace('+', '')
     if isinstance(expected, list):
         l = u'['
         for i, val in enumerate(expected):
-            l += as_cypger_text(val)
+            l += as_cypher_text(val)
             if i < len(expected)-1:
                 l+= u','
         l += u']'
@@ -54,14 +53,14 @@ def as_cypger_text(expected):
     if isinstance(expected, dict):
         d = u'{'
         for i, (key, val) in enumerate(expected.items()):
-            d += unicode(key) + ':'
-            d += as_cypger_text(val)
+            d += to_unicode(key) + ':'
+            d += as_cypher_text(val)
             if i < len(expected.items())-1:
                 d+= u','
         d += u'}'
         return d
     else:
-        return unicode(expected)
+        return to_unicode(expected)
 
 
 def get_list_from_feature_file(string_list, bolt_type):
@@ -89,7 +88,7 @@ def _get_random_func(type):
 
     if type == 'Integer':
         fu = random.randint
-        args = [-sys.maxint - 1, sys.maxint]
+        args = [-9223372036854775808, 9223372036854775808]
     elif type == 'Float':
         fu = random.random
         args = []
@@ -103,7 +102,7 @@ def _get_random_func(type):
         fu = get_random_bool
         args = []
     else:
-        raise ValueError('No such type : %s', type)
+        raise ValueError('No such type : %s' % type)
     return (fu, args)
 
 
@@ -114,7 +113,11 @@ def get_list_of_random_type(size, type):
 
 def get_dict_of_random_type(size, type):
     fu, args = _get_random_func(type)
-    map = {}
-    for i in range(size):
-        map['a' + str(i)] = fu(*args)
-    return map
+    return {'a%d' % i: fu(*args) for i in range(size)}
+
+def to_unicode(val):
+    try:
+        return unicode(val)
+    except NameError:
+        return str(val)
+
