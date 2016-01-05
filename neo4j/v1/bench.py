@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 
-# Copyright (c) 2002-2015 "Neo Technology,"
+# Copyright (c) 2002-2016 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # This file is part of Neo4j.
@@ -182,7 +182,7 @@ def help_(**kwargs):
 def main():
     processor_count = processors()
     print("Neo4j Benchmarking Tool for Python")
-    print("Copyright (c) 2002-2015 \"Neo Technology,\"")
+    print("Copyright (c) 2002-2016 \"Neo Technology,\"")
     print("Network Engine for Objects in Lund AB [http://neotechnology.com]")
     print("Report bugs to nigel@neotechnology.com")
     print()
