@@ -62,6 +62,7 @@ echo "Running tests with $(python --version)"
 pip install --upgrade -r ${DRIVER_HOME}/test_requirements.txt
 echo ""
 TEST_RUNNER="coverage run -m ${UNITTEST} discover -vfs ${TEST}"
+BEHAVE_RUNNER="behave test/tck"
 if [ ${RUNNING} -eq 1 ]
 then
     ${TEST_RUNNER}
@@ -73,6 +74,11 @@ else
     then
         coverage report --show-missing
     fi
+    python -c 'from test.tck.configure_feature_files import *; set_up()'
+    echo "Feature files downloaded"
+    neokit/neorun ${NEORUN_OPTIONS} "${BEHAVE_RUNNER}" ${VERSIONS}
+    python -c 'from test.tck.configure_feature_files import *; clean_up()'
+    echo "Feature files removed"
 fi
 
 # Exit correctly
