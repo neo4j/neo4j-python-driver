@@ -220,6 +220,27 @@ class RunTestCase(TestCase):
             assert position.column == 1
 
 
+class ResetTestCase(TestCase):
+
+    def test_explicit_reset(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            result = session.run("RETURN 1")
+            assert result[0][0] == 1
+            session.reset()
+            result = session.run("RETURN 1")
+            assert result[0][0] == 1
+
+    def test_automatic_reset_after_failure(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            try:
+                session.run("X")
+            except CypherError:
+                result = session.run("RETURN 1")
+                assert result[0][0] == 1
+            else:
+                assert False, "A Cypher error should have occurred"
+
+
 class RecordTestCase(TestCase):
     def test_record_equality(self):
         record1 = Record(["name","empire"], ["Nigel", "The British Empire"])

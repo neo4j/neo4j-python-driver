@@ -101,7 +101,8 @@ class Driver(object):
 
         """
         try:
-            return self.sessions.pop()
+            session = self.sessions.pop()
+            session.reset()
         except IndexError:
             return Session(self)
 
@@ -348,6 +349,11 @@ class Session(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+    def reset(self):
+        """ Reset the connection so it can be reused from a clean state.
+        """
+        self.connection.append_reset()
 
     def run(self, statement, parameters=None):
         """ Run a parameterised Cypher statement.
