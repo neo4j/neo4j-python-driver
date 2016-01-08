@@ -42,7 +42,7 @@ MAGIC_PREAMBLE = 0x6060B017
 
 # Signature bytes for each message type
 INIT = b"\x01"             # 0000 0001 // INIT <user_agent>
-ACK_FAILURE = b"\x0F"      # 0000 1111 // ACK_FAILURE
+RESET = b"\x0F"            # 0000 1111 // RESET
 RUN = b"\x10"              # 0001 0000 // RUN <statement> <parameters>
 DISCARD_ALL = b"\x2F"      # 0010 1111 // DISCARD *
 PULL_ALL = b"\x3F"         # 0011 1111 // PULL *
@@ -56,7 +56,7 @@ SUMMARY = {SUCCESS, IGNORED, FAILURE}
 
 message_names = {
     INIT: "INIT",
-    ACK_FAILURE: "ACK_FAILURE",
+    RESET: "RESET",
     RUN: "RUN",
     DISCARD_ALL: "DISCARD_ALL",
     PULL_ALL: "PULL_ALL",
@@ -200,12 +200,6 @@ class Response(object):
         pass
 
 
-class AckFailureResponse(Response):
-
-    def on_failure(self, metadata):
-        raise ProtocolError("Could not acknowledge failure")
-
-
 class Connection(object):
     """ Server connection through which all protocol messages
     are sent and received. This class is designed for protocol
@@ -215,6 +209,7 @@ class Connection(object):
     """
 
     def __init__(self, sock, **config):
+        self.defunct = False
         self.channel = ChunkChannel(sock)
         self.packer = Packer(self.channel)
         self.responses = deque()
@@ -237,6 +232,10 @@ class Connection(object):
 
     def append(self, signature, fields=(), response=None):
         """ Add a message to the outgoing queue.
+
+        :arg signature: the signature of the message
+        :arg fields: the fields of the message as a tuple
+        :arg response: a response object to handle callbacks
         """
         if __debug__:
             log_info("C: %s %s", message_names[signature], " ".join(map(repr, fields)))
@@ -246,6 +245,18 @@ class Connection(object):
             self.packer.pack(field)
         self.channel.flush(end_of_message=True)
         self.responses.append(response)
+
+    def append_reset(self):
+        """ Add a RESET message to the outgoing queue.
+        """
+
+        def on_failure(metadata):
+            raise ProtocolError("Reset failed")
+
+        response = Response(self)
+        response.on_failure = on_failure
+
+        self.append(RESET, response=response)
 
     def send(self):
         """ Send all queued messages to the server.
@@ -257,8 +268,12 @@ class Connection(object):
         """
         raw = BytesIO()
         unpack = Unpacker(raw).unpack
-        raw.writelines(self.channel.chunk_reader())
-
+        try:
+            raw.writelines(self.channel.chunk_reader())
+        except ProtocolError:
+            self.defunct = True
+            self.close()
+            return
         # Unpack from the raw byte stream and call the relevant message handler(s)
         raw.seek(0)
         response = self.responses[0]
@@ -276,7 +291,7 @@ class Connection(object):
                 response.complete = True
                 self.responses.popleft()
             if signature == FAILURE:
-                self.append(ACK_FAILURE, response=AckFailureResponse(self))
+                self.append_reset()
         raw.close()
 
     def close(self):
