@@ -26,51 +26,8 @@ from argparse import ArgumentParser
 from json import loads as json_loads
 from sys import stdout, stderr
 
+from .util import Watcher
 from .v1.session import GraphDatabase, CypherError
-
-
-class ColourFormatter(logging.Formatter):
-    """ Colour formatter for pretty log output.
-    """
-
-    def format(self, record):
-        s = super(ColourFormatter, self).format(record)
-        if record.levelno == logging.CRITICAL:
-            return "\x1b[31;1m%s\x1b[0m" % s  # bright red
-        elif record.levelno == logging.ERROR:
-            return "\x1b[33;1m%s\x1b[0m" % s  # bright yellow
-        elif record.levelno == logging.WARNING:
-            return "\x1b[33m%s\x1b[0m" % s    # yellow
-        elif record.levelno == logging.INFO:
-            return "\x1b[36m%s\x1b[0m" % s    # cyan
-        elif record.levelno == logging.DEBUG:
-            return "\x1b[34m%s\x1b[0m" % s    # blue
-        else:
-            return s
-
-
-class Watcher(object):
-    """ Log watcher for debug output.
-    """
-
-    handlers = {}
-
-    def __init__(self, logger_name):
-        super(Watcher, self).__init__()
-        self.logger_name = logger_name
-        self.logger = logging.getLogger(self.logger_name)
-        self.formatter = ColourFormatter("%(asctime)s  %(message)s")
-
-    def watch(self, level=logging.INFO, out=stdout):
-        try:
-            self.logger.removeHandler(self.handlers[self.logger_name])
-        except KeyError:
-            pass
-        handler = logging.StreamHandler(out)
-        handler.setFormatter(self.formatter)
-        self.handlers[self.logger_name] = handler
-        self.logger.addHandler(handler)
-        self.logger.setLevel(level)
 
 
 def main():
