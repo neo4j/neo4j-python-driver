@@ -23,6 +23,7 @@ from unittest import TestCase
 
 from neo4j.v1.session import GraphDatabase, CypherError, Record, record
 from neo4j.v1.typesystem import Node, Relationship, Path
+from test.util import watch
 
 
 class RunTestCase(TestCase):

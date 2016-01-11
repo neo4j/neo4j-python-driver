@@ -97,14 +97,18 @@ class Driver(object):
         """ Create a new session based on the graph database details
         specified within this driver:
 
+            >>> from neo4j.v1 import GraphDatabase
+            >>> driver = GraphDatabase.driver("bolt://localhost")
             >>> session = driver.session()
 
         """
         try:
             session = self.sessions.pop()
-            session.reset()
         except IndexError:
-            return Session(self)
+            session = Session(self)
+        else:
+            session.reset()
+        return session
 
 
 class Result(list):
@@ -123,7 +127,7 @@ class Result(list):
         self.statement = statement
         self.parameters = parameters
         self.keys = None
-        self.complete = False
+        self.more = True
         self.summary = None
         self.bench_test = None
 
@@ -142,7 +146,7 @@ class Result(list):
     def on_footer(self, metadata):
         """ Called on receipt of the result footer.
         """
-        self.complete = True
+        self.more = False
         self.summary = ResultSummary(self.statement, self.parameters, **metadata)
         if self.bench_test:
             self.bench_test.end_recv = perf_counter()
@@ -157,7 +161,7 @@ class Result(list):
         callback functions.
         """
         fetch_next = self.session.connection.fetch_next
-        while not self.complete:
+        while self.more:
             fetch_next()
 
     def summarize(self):
@@ -340,6 +344,7 @@ class Session(object):
         self.connection = connect(driver.host, driver.port, **driver.config)
         self.transaction = None
         self.bench_tests = []
+        self.closed = False
 
     def __del__(self):
         self.connection.close()
@@ -353,7 +358,7 @@ class Session(object):
     def reset(self):
         """ Reset the connection so it can be reused from a clean state.
         """
-        self.connection.append_reset()
+        self.connection.reset()
 
     def run(self, statement, parameters=None):
         """ Run a parameterised Cypher statement.
@@ -407,9 +412,12 @@ class Session(object):
         return result
 
     def close(self):
-        """ Return this session to the driver pool it came from.
+        """ If still usable, return this session to the driver pool it came from.
         """
-        self.driver.sessions.appendleft(self)
+        self.reset()
+        if not self.connection.defunct:
+            self.driver.sessions.appendleft(self)
+        self.closed = True
 
     def begin_transaction(self):
         """ Create a new :class:`.Transaction` within this session.
@@ -486,6 +494,7 @@ class Transaction(object):
             self.session.run("ROLLBACK")
         self.closed = True
         self.session.transaction = None
+
 
 class Record(object):
     """ Record is an ordered collection of fields.

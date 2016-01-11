@@ -200,6 +200,10 @@ class Response(object):
         pass
 
 
+class Completable(object):
+    complete = False
+
+
 class Connection(object):
     """ Server connection through which all protocol messages
     are sent and received. This class is designed for protocol
@@ -246,17 +250,22 @@ class Connection(object):
         self.channel.flush(end_of_message=True)
         self.responses.append(response)
 
-    def append_reset(self):
-        """ Add a RESET message to the outgoing queue.
+    def reset(self):
+        """ Add a RESET message to the outgoing queue, send
+        it and consume all remaining messages.
         """
+        response = Response(self)
 
         def on_failure(metadata):
             raise ProtocolError("Reset failed")
 
-        response = Response(self)
         response.on_failure = on_failure
 
         self.append(RESET, response=response)
+        self.send()
+        fetch_next = self.fetch_next
+        while not response.complete:
+            fetch_next()
 
     def send(self):
         """ Send all queued messages to the server.
@@ -280,6 +289,11 @@ class Connection(object):
         for signature, fields in unpack():
             if __debug__:
                 log_info("S: %s %s", message_names[signature], " ".join(map(repr, fields)))
+            if signature in SUMMARY:
+                response.complete = True
+                self.responses.popleft()
+            if signature == FAILURE:
+                self.reset()
             handler_name = "on_%s" % message_names[signature].lower()
             try:
                 handler = getattr(response, handler_name)
@@ -287,11 +301,6 @@ class Connection(object):
                 pass
             else:
                 handler(*fields)
-            if signature in SUMMARY:
-                response.complete = True
-                self.responses.popleft()
-            if signature == FAILURE:
-                self.append_reset()
         raw.close()
 
     def close(self):
