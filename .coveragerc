@@ -2,4 +2,4 @@
 branch = True
 omit =
     test/*
-    neo4j/compat.py
+    neo4j/v1/compat.py
