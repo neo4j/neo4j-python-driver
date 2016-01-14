@@ -21,6 +21,7 @@
 
 from unittest import TestCase
 
+from mock import patch
 from neo4j.v1.session import GraphDatabase, CypherError, Record, record
 from neo4j.v1.typesystem import Node, Relationship, Path
 from test.util import watch
@@ -223,14 +224,6 @@ class RunTestCase(TestCase):
 
 class ResetTestCase(TestCase):
 
-    def test_explicit_reset(self):
-        with GraphDatabase.driver("bolt://localhost").session() as session:
-            result = session.run("RETURN 1")
-            assert result[0][0] == 1
-            session.reset()
-            result = session.run("RETURN 1")
-            assert result[0][0] == 1
-
     def test_automatic_reset_after_failure(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             try:
@@ -240,6 +233,15 @@ class ResetTestCase(TestCase):
                 assert result[0][0] == 1
             else:
                 assert False, "A Cypher error should have occurred"
+
+    @watch
+    def test_defunct(self):
+        from neo4j.v1.connection import ChunkChannel, ProtocolError
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            assert not session.connection.defunct
+            with patch.object(ChunkChannel, "chunk_reader", side_effect=ProtocolError()):
+                session.run("RETURN 1")
+            assert session.connection.defunct
 
 
 class RecordTestCase(TestCase):

@@ -169,14 +169,6 @@ class ChunkChannel(object):
                 data = self._recv(chunk_size)
                 yield data
 
-    def close(self):
-        """ Shut down and close the connection.
-        """
-        if __debug__: log_info("~~ [CLOSE]")
-        socket = self.socket
-        socket.shutdown(SHUT_RDWR)
-        socket.close()
-
 
 class Response(object):
     """ Subscriber object for a full response (zero or
@@ -200,10 +192,6 @@ class Response(object):
         pass
 
 
-class Completable(object):
-    complete = False
-
-
 class Connection(object):
     """ Server connection through which all protocol messages
     are sent and received. This class is designed for protocol
@@ -217,6 +205,7 @@ class Connection(object):
         self.channel = ChunkChannel(sock)
         self.packer = Packer(self.channel)
         self.responses = deque()
+        self.closed = False
 
         # Determine the user agent and ensure it is a Unicode value
         user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
@@ -233,6 +222,9 @@ class Connection(object):
         self.send()
         while not response.complete:
             self.fetch_next()
+
+    def __del__(self):
+        self.close()
 
     def append(self, signature, fields=(), response=None):
         """ Add a message to the outgoing queue.
@@ -304,9 +296,13 @@ class Connection(object):
         raw.close()
 
     def close(self):
-        """ Shut down and close the connection.
+        """ Close the connection.
         """
-        self.channel.close()
+        if not self.closed:
+            if __debug__:
+                log_info("~~ [CLOSE]")
+            self.channel.socket.close()
+            self.closed = True
 
 
 def connect(host, port=None, **config):
