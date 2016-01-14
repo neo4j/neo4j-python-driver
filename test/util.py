@@ -26,7 +26,8 @@ from neo4j.util import Watcher
 
 def watch(f):
     """ Decorator to enable log watching for the lifetime of a function.
-    Useful for debugging unit tests.
+    Useful for debugging unit tests, simply add `@watch` to the top of
+    the test function.
 
     :param f: the function to decorate
     :return: a decorated function
