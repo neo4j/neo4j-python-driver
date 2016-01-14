@@ -251,7 +251,7 @@ def step_impl(context):
 @then('result should be node "(?P<n1>.+)" node "(?P<n2>.+)" and int "(?P<len>\d+)"')
 def step_impl(context, n1, n2, len):
     result = context.results["as_string"]
-    given = tck_util.single_result_to_values(result)
+    given = tck_util.result_to_set(result)
     expected = tck_util.node_node_int_to_values(n1, n2, len)
     if given != expected:
         raise Exception("Mixed response does not match given: %s expected: %s" % (given, expected))

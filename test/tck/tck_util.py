@@ -289,22 +289,11 @@ def text_string_to_set(table):
     return result_to_set(table)
 
 
-def single_result_to_values(result):
-    l = []
-
-    for val in result[0].values():
-        if not isinstance(val,list):
-            val = [val]
-        val = [Value(v) for v in val]
-        l.append(tuple(val))
-    return tuple(l)
-
-
 def node_node_int_to_values(n1, n2, len):
-    n1 = tuple([Value(get_node(n1)[0])])
-    n2 = tuple([Value(get_node(n2)[0])])
-    len = tuple([Value(int(len))])
-    return tuple([n1,n2,len])
+    n1 = Value(get_node(n1)[0])
+    n2 = Value(get_node(n2)[0])
+    len = Value(int(len))
+    return {n1, n2, len}
 
 
 class Value:
