@@ -241,28 +241,30 @@ def get_path(string_path):
     return path, string_path
 
 
+def record_value_to_comparable(val, func=None, rel=False):
+    def get_val(v):
+        if func is not None:
+            return Value(func(v)[0])
+        else:
+            return Value(v)
+
+    if val == 'null':
+        return Value(None)
+    if isinstance(val, compat.string) and val[0] == '[':
+        if not rel or (rel and val[1] == '['):
+            val = val[1:-1].split(", ")
+    if isinstance(val,list):
+        return tuple([get_val(v) for v in val])
+    else:
+        return get_val(val)
+
 def result_to_set(result, func=None, rel=False):
-    s = set([])
-    for row in result:
-        l = []
-        for i,_ in enumerate(row):
-            cell = row[i]
-            if cell == 'null':
-                cell = None
-            if isinstance(cell, compat.string) and cell[0] == '[':
-                if rel and cell[1] != '[':
-                    cell = [cell]
-                else:
-                    cell = cell[1:-1].split(", ")
-            if not isinstance(cell,list):
-                cell = [cell]
-            if func is not None:
-                cell = [Value(func(val)[0]) for val in cell]
-            else:
-                cell = [Value(val) for val in cell]
-            l.append(tuple(cell))
-        s.add(tuple(l))
-    return s
+    records = set([])
+    for record in result:
+        for i,_ in enumerate(record):
+            cell = record_value_to_comparable(record[i], func, rel)
+            records.add(cell)
+    return records
 
 
 def text_path_to_set(table):
