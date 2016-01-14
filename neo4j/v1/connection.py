@@ -262,11 +262,19 @@ class Connection(object):
     def send(self):
         """ Send all queued messages to the server.
         """
+        if self.closed:
+            raise ProtocolError("Cannot write to a closed connection")
+        if self.defunct:
+            raise ProtocolError("Cannot write to a defunct connection")
         self.channel.send()
 
     def fetch_next(self):
         """ Receive exactly one message from the server.
         """
+        if self.closed:
+            raise ProtocolError("Cannot read from a closed connection")
+        if self.defunct:
+            raise ProtocolError("Cannot read from a defunct connection")
         raw = BytesIO()
         unpack = Unpacker(raw).unpack
         try:
@@ -274,7 +282,7 @@ class Connection(object):
         except ProtocolError:
             self.defunct = True
             self.close()
-            return
+            raise
         # Unpack from the raw byte stream and call the relevant message handler(s)
         raw.seek(0)
         response = self.responses[0]
