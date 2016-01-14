@@ -107,7 +107,7 @@ class Driver(object):
         except IndexError:
             session = Session(self)
         else:
-            session.reset()
+            session.connection.reset()
         return session
 
 
@@ -347,18 +347,15 @@ class Session(object):
         self.closed = False
 
     def __del__(self):
-        self.connection.close()
+        if not self.closed:
+            self.connection.close()
+        self.closed = True
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
-
-    def reset(self):
-        """ Reset the connection so it can be reused from a clean state.
-        """
-        self.connection.reset()
 
     def run(self, statement, parameters=None):
         """ Run a parameterised Cypher statement.
@@ -414,7 +411,6 @@ class Session(object):
     def close(self):
         """ If still usable, return this session to the driver pool it came from.
         """
-        self.reset()
         if not self.connection.defunct:
             self.driver.sessions.appendleft(self)
         self.closed = True
