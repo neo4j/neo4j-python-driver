@@ -50,6 +50,15 @@ class DriverTestCase(TestCase):
         driver.session().close()
         assert len(driver.session_pool) == 1
 
+    def test_session_that_dies_in_the_pool_will_not_be_given_out(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        session_1 = driver.session()
+        session_1.close()
+        assert len(driver.session_pool) == 1
+        session_1.connection.close()
+        session_2 = driver.session()
+        assert session_2 is not session_1
+
 
 class RunTestCase(TestCase):
 
