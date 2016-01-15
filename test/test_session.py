@@ -24,10 +24,35 @@ from unittest import TestCase
 from mock import patch
 from neo4j.v1.session import GraphDatabase, CypherError, Record, record
 from neo4j.v1.typesystem import Node, Relationship, Path
-from test.util import watch
+
+
+class DriverTestCase(TestCase):
+
+    def test_healthy_session_will_be_returned_to_the_pool_on_close(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        assert len(driver.session_pool) == 0
+        driver.session().close()
+        assert len(driver.session_pool) == 1
+
+    def test_unhealthy_session_will_not_be_returned_to_the_pool_on_close(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        assert len(driver.session_pool) == 0
+        session = driver.session()
+        session.connection.defunct = True
+        session.close()
+        assert len(driver.session_pool) == 0
+
+    def session_pool_cannot_exceed_max_size(self):
+        driver = GraphDatabase.driver("bolt://localhost", max_pool_size=1)
+        assert len(driver.session_pool) == 0
+        driver.session().close()
+        assert len(driver.session_pool) == 1
+        driver.session().close()
+        assert len(driver.session_pool) == 1
 
 
 class RunTestCase(TestCase):
+
     def test_must_use_valid_url_scheme(self):
         with self.assertRaises(ValueError):
             GraphDatabase.driver("x://xxx")
