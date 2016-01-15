@@ -36,6 +36,8 @@ from .exceptions import CypherError
 from .typesystem import hydrated
 
 
+DEFAULT_MAX_POOL_SIZE = 50
+
 STATEMENT_TYPE_READ_ONLY = "r"
 STATEMENT_TYPE_READ_WRITE = "rw"
 STATEMENT_TYPE_WRITE_ONLY = "w"
@@ -91,7 +93,8 @@ class Driver(object):
         else:
             raise ValueError("Unsupported URL scheme: %s" % parsed.scheme)
         self.config = config
-        self.sessions = deque()
+        self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
+        self.session_pool = deque()
 
     def session(self):
         """ Create a new session based on the graph database details
@@ -102,13 +105,32 @@ class Driver(object):
             >>> session = driver.session()
 
         """
-        try:
-            session = self.sessions.pop()
-        except IndexError:
-            session = Session(self)
-        else:
-            session.connection.reset()
+        session = None
+        done = False
+        while not done:
+            try:
+                session = self.session_pool.pop()
+            except IndexError:
+                session = Session(self)
+                done = True
+            else:
+                if session.healthy:
+                    session.connection.reset()
+                    done = session.healthy
         return session
+
+    def recycle(self, session):
+        """ Pass a session back to the driver for recycling, if healthy.
+
+        :param session:
+        :return:
+        """
+        pool = self.session_pool
+        for s in pool:
+            if not s.healthy:
+                pool.remove(s)
+        if session.healthy and len(pool) < self.max_pool_size and session not in pool:
+            pool.appendleft(session)
 
 
 class Result(list):
@@ -344,18 +366,24 @@ class Session(object):
         self.connection = connect(driver.host, driver.port, **driver.config)
         self.transaction = None
         self.bench_tests = []
-        self.closed = False
 
     def __del__(self):
-        if not self.closed:
+        if not self.connection.closed:
             self.connection.close()
-        self.closed = True
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+    @property
+    def healthy(self):
+        """ Return ``True`` if this session is healthy, ``False`` if
+        unhealthy and ``None`` if closed.
+        """
+        connection = self.connection
+        return None if connection.closed else not connection.defunct
 
     def run(self, statement, parameters=None):
         """ Run a parameterised Cypher statement.
@@ -411,9 +439,7 @@ class Session(object):
     def close(self):
         """ If still usable, return this session to the driver pool it came from.
         """
-        if not self.connection.defunct:
-            self.driver.sessions.appendleft(self)
-        self.closed = True
+        self.driver.recycle(self)
 
     def begin_transaction(self):
         """ Create a new :class:`.Transaction` within this session.
