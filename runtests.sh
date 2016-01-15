@@ -73,12 +73,12 @@ else
     if [ ${EXIT_STATUS} -eq 0 ]
     then
         coverage report --show-missing
+        python -c 'from test.tck.configure_feature_files import *; set_up()'
+        echo "Feature files downloaded"
+        neokit/neorun ${NEORUN_OPTIONS} "${BEHAVE_RUNNER}" ${VERSIONS}
+        python -c 'from test.tck.configure_feature_files import *; clean_up()'
+        echo "Feature files removed"
     fi
-    python -c 'from test.tck.configure_feature_files import *; set_up()'
-    echo "Feature files downloaded"
-    neokit/neorun ${NEORUN_OPTIONS} "${BEHAVE_RUNNER}" ${VERSIONS}
-    python -c 'from test.tck.configure_feature_files import *; clean_up()'
-    echo "Feature files removed"
 fi
 
 # Exit correctly

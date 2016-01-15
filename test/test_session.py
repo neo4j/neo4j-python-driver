@@ -21,14 +21,66 @@
 
 from unittest import TestCase
 
+from mock import patch
 from neo4j.v1.session import GraphDatabase, CypherError, Record, record
 from neo4j.v1.typesystem import Node, Relationship, Path
 
 
+class DriverTestCase(TestCase):
+
+    def test_healthy_session_will_be_returned_to_the_pool_on_close(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        assert len(driver.session_pool) == 0
+        driver.session().close()
+        assert len(driver.session_pool) == 1
+
+    def test_unhealthy_session_will_not_be_returned_to_the_pool_on_close(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        assert len(driver.session_pool) == 0
+        session = driver.session()
+        session.connection.defunct = True
+        session.close()
+        assert len(driver.session_pool) == 0
+
+    def session_pool_cannot_exceed_max_size(self):
+        driver = GraphDatabase.driver("bolt://localhost", max_pool_size=1)
+        assert len(driver.session_pool) == 0
+        driver.session().close()
+        assert len(driver.session_pool) == 1
+        driver.session().close()
+        assert len(driver.session_pool) == 1
+
+    def test_session_that_dies_in_the_pool_will_not_be_given_out(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        session_1 = driver.session()
+        session_1.close()
+        assert len(driver.session_pool) == 1
+        session_1.connection.close()
+        session_2 = driver.session()
+        assert session_2 is not session_1
+
+
 class RunTestCase(TestCase):
+
     def test_must_use_valid_url_scheme(self):
         with self.assertRaises(ValueError):
             GraphDatabase.driver("x://xxx")
+
+    def test_sessions_are_reused(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        session_1 = driver.session()
+        session_1.close()
+        session_2 = driver.session()
+        session_2.close()
+        assert session_1 is session_2
+
+    def test_sessions_are_not_reused_if_still_in_use(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        session_1 = driver.session()
+        session_2 = driver.session()
+        session_2.close()
+        session_1.close()
+        assert session_1 is not session_2
 
     def test_can_run_simple_statement(self):
         session = GraphDatabase.driver("bolt://localhost").session()
@@ -202,6 +254,29 @@ class RunTestCase(TestCase):
             assert position.offset == 0
             assert position.line == 1
             assert position.column == 1
+
+
+class ResetTestCase(TestCase):
+
+    def test_automatic_reset_after_failure(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            try:
+                session.run("X")
+            except CypherError:
+                result = session.run("RETURN 1")
+                assert result[0][0] == 1
+            else:
+                assert False, "A Cypher error should have occurred"
+
+    def test_defunct(self):
+        from neo4j.v1.connection import ChunkChannel, ProtocolError
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            assert not session.connection.defunct
+            with patch.object(ChunkChannel, "chunk_reader", side_effect=ProtocolError()):
+                with self.assertRaises(ProtocolError):
+                    session.run("RETURN 1")
+            assert session.connection.defunct
+            assert session.connection.closed
 
 
 class RecordTestCase(TestCase):

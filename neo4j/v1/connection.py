@@ -42,7 +42,7 @@ MAGIC_PREAMBLE = 0x6060B017
 
 # Signature bytes for each message type
 INIT = b"\x01"             # 0000 0001 // INIT <user_agent>
-ACK_FAILURE = b"\x0F"      # 0000 1111 // ACK_FAILURE
+RESET = b"\x0F"            # 0000 1111 // RESET
 RUN = b"\x10"              # 0001 0000 // RUN <statement> <parameters>
 DISCARD_ALL = b"\x2F"      # 0010 1111 // DISCARD *
 PULL_ALL = b"\x3F"         # 0011 1111 // PULL *
@@ -56,7 +56,7 @@ SUMMARY = {SUCCESS, IGNORED, FAILURE}
 
 message_names = {
     INIT: "INIT",
-    ACK_FAILURE: "ACK_FAILURE",
+    RESET: "RESET",
     RUN: "RUN",
     DISCARD_ALL: "DISCARD_ALL",
     PULL_ALL: "PULL_ALL",
@@ -169,14 +169,6 @@ class ChunkChannel(object):
                 data = self._recv(chunk_size)
                 yield data
 
-    def close(self):
-        """ Shut down and close the connection.
-        """
-        if __debug__: log_info("~~ [CLOSE]")
-        socket = self.socket
-        socket.shutdown(SHUT_RDWR)
-        socket.close()
-
 
 class Response(object):
     """ Subscriber object for a full response (zero or
@@ -200,12 +192,6 @@ class Response(object):
         pass
 
 
-class AckFailureResponse(Response):
-
-    def on_failure(self, metadata):
-        raise ProtocolError("Could not acknowledge failure")
-
-
 class Connection(object):
     """ Server connection through which all protocol messages
     are sent and received. This class is designed for protocol
@@ -215,9 +201,11 @@ class Connection(object):
     """
 
     def __init__(self, sock, **config):
+        self.defunct = False
         self.channel = ChunkChannel(sock)
         self.packer = Packer(self.channel)
         self.responses = deque()
+        self.closed = False
 
         # Determine the user agent and ensure it is a Unicode value
         user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
@@ -235,8 +223,15 @@ class Connection(object):
         while not response.complete:
             self.fetch_next()
 
+    def __del__(self):
+        self.close()
+
     def append(self, signature, fields=(), response=None):
         """ Add a message to the outgoing queue.
+
+        :arg signature: the signature of the message
+        :arg fields: the fields of the message as a tuple
+        :arg response: a response object to handle callbacks
         """
         if __debug__:
             log_info("C: %s %s", message_names[signature], " ".join(map(repr, fields)))
@@ -247,24 +242,58 @@ class Connection(object):
         self.channel.flush(end_of_message=True)
         self.responses.append(response)
 
+    def reset(self):
+        """ Add a RESET message to the outgoing queue, send
+        it and consume all remaining messages.
+        """
+        response = Response(self)
+
+        def on_failure(metadata):
+            raise ProtocolError("Reset failed")
+
+        response.on_failure = on_failure
+
+        self.append(RESET, response=response)
+        self.send()
+        fetch_next = self.fetch_next
+        while not response.complete:
+            fetch_next()
+
     def send(self):
         """ Send all queued messages to the server.
         """
+        if self.closed:
+            raise ProtocolError("Cannot write to a closed connection")
+        if self.defunct:
+            raise ProtocolError("Cannot write to a defunct connection")
         self.channel.send()
 
     def fetch_next(self):
         """ Receive exactly one message from the server.
         """
+        if self.closed:
+            raise ProtocolError("Cannot read from a closed connection")
+        if self.defunct:
+            raise ProtocolError("Cannot read from a defunct connection")
         raw = BytesIO()
         unpack = Unpacker(raw).unpack
-        raw.writelines(self.channel.chunk_reader())
-
+        try:
+            raw.writelines(self.channel.chunk_reader())
+        except ProtocolError:
+            self.defunct = True
+            self.close()
+            raise
         # Unpack from the raw byte stream and call the relevant message handler(s)
         raw.seek(0)
         response = self.responses[0]
         for signature, fields in unpack():
             if __debug__:
                 log_info("S: %s %s", message_names[signature], " ".join(map(repr, fields)))
+            if signature in SUMMARY:
+                response.complete = True
+                self.responses.popleft()
+            if signature == FAILURE:
+                self.reset()
             handler_name = "on_%s" % message_names[signature].lower()
             try:
                 handler = getattr(response, handler_name)
@@ -272,17 +301,16 @@ class Connection(object):
                 pass
             else:
                 handler(*fields)
-            if signature in SUMMARY:
-                response.complete = True
-                self.responses.popleft()
-            if signature == FAILURE:
-                self.append(ACK_FAILURE, response=AckFailureResponse(self))
         raw.close()
 
     def close(self):
-        """ Shut down and close the connection.
+        """ Close the connection.
         """
-        self.channel.close()
+        if not self.closed:
+            if __debug__:
+                log_info("~~ [CLOSE]")
+            self.channel.socket.close()
+            self.closed = True
 
 
 def connect(host, port=None, **config):
