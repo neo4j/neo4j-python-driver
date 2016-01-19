@@ -30,7 +30,7 @@ from __future__ import division
 
 from collections import deque, namedtuple
 
-from .compat import integer, perf_counter, string, urlparse
+from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
 from .exceptions import CypherError
 from .typesystem import hydrated
@@ -42,24 +42,6 @@ STATEMENT_TYPE_READ_ONLY = "r"
 STATEMENT_TYPE_READ_WRITE = "rw"
 STATEMENT_TYPE_WRITE_ONLY = "w"
 STATEMENT_TYPE_SCHEMA_WRITE = "sw"
-
-
-Latency = namedtuple("Latency", ("overall", "network", "wait"))
-
-
-class BenchTest(object):
-
-    init = None
-    start_send = None
-    end_send = None
-    start_recv = None
-    end_recv = None
-    done = None
-
-    def latency(self):
-        return Latency(self.done - self.init,
-                       self.end_recv - self.start_send,
-                       self.start_recv - self.end_send)
 
 
 class GraphDatabase(object):
@@ -153,7 +135,6 @@ class ResultCursor(object):
         self._next = deque()
         self._position = -1
         self._summary = None
-        self._bench_test = None
 
     def is_open(self):
         """ Return ``True`` if this cursor is still open, ``False`` otherwise.
@@ -269,8 +250,6 @@ class ResultCursor(object):
     def _on_header(self, metadata):
         # Called on receipt of the result header.
         self.keys = metadata["fields"]
-        if self._bench_test:
-            self._bench_test.start_recv = perf_counter()
 
     def _on_record(self, values):
         # Called on receipt of each result record.
@@ -279,8 +258,6 @@ class ResultCursor(object):
     def _on_footer(self, metadata):
         # Called on receipt of the result footer.
         self._summary = ResultSummary(self.statement, self.parameters, **metadata)
-        if self._bench_test:
-            self._bench_test.end_recv = perf_counter()
 
     def _on_failure(self, metadata):
         # Called on execution failure.
@@ -457,7 +434,6 @@ class Session(object):
         self.driver = driver
         self.connection = connect(driver.host, driver.port, **driver.config)
         self.transaction = None
-        self.bench_tests = []
 
     def __del__(self):
         if not self.connection.closed:
@@ -500,11 +476,7 @@ class Session(object):
                 params[key] = value
         parameters = params
 
-        t = BenchTest()
-        t.init = perf_counter()
-
         cursor = ResultCursor(self.connection, statement, parameters)
-        cursor._bench_test = t
 
         run_response = Response(self.connection)
         run_response.on_success = cursor._on_header
@@ -517,12 +489,7 @@ class Session(object):
 
         self.connection.append(RUN, (statement, parameters), response=run_response)
         self.connection.append(PULL_ALL, response=pull_all_response)
-        t.start_send = perf_counter()
         self.connection.send()
-        t.end_send = perf_counter()
-
-        t.done = perf_counter()
-        self.bench_tests.append(t)
 
         return cursor
 
