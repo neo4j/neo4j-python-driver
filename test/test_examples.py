@@ -37,7 +37,7 @@ class ExamplesTestCase(TestCase):
         session = driver.session()
         session.run("CREATE (neo:Person {name:'Neo', age:23})")
 
-        for record in session.run("MATCH (p:Person) WHERE p.name = 'Neo' RETURN p.age"):
+        for record in session.run("MATCH (p:Person) WHERE p.name = 'Neo' RETURN p.age").records():
             print("Neo is {0} years old.".format(record["p.age"]))
         session.close()
         #end::minimum-snippet[]
@@ -46,8 +46,8 @@ class ExamplesTestCase(TestCase):
         driver = GraphDatabase.driver("bolt://localhost")
         session = driver.session()
         #tag::statement[]
-        result = session.run("CREATE (p:Person { name: {name} })", {"name": "The One"})
-        ones_created = result.summary.statistics.nodes_created
+        cursor = session.run("CREATE (p:Person { name: {name} })", {"name": "The One"})
+        ones_created = cursor.summarize().statistics.nodes_created
         print("There were {0} the ones created.".format(ones_created))
         #end::statement[]
         assert ones_created == 1
@@ -57,8 +57,8 @@ class ExamplesTestCase(TestCase):
         driver = GraphDatabase.driver("bolt://localhost")
         session = driver.session()
         #tag::statement-without-parameters[]
-        result = session.run("CREATE (p:Person { name: 'The One' })")
-        ones_created = result.summary.statistics.nodes_created
+        cursor = session.run("CREATE (p:Person { name: 'The One' })")
+        ones_created = cursor.summarize().statistics.nodes_created
         print("There were {0} the ones created.".format(ones_created))
         #end::statement-without-parameters[]
         assert ones_created == 1
@@ -72,8 +72,9 @@ class ExamplesTestCase(TestCase):
         tx.run("CREATE (p:Person { name: 'The One' })")
         tx.commit()
         #end::transaction-commit[]
-        res = session.run("MATCH (p:Person { name: 'The One' }) RETURN count(p)")
-        assert res[0]["count(p)"] == 1
+        cursor = session.run("MATCH (p:Person { name: 'The One' }) RETURN count(p)")
+        assert cursor.single()
+        assert cursor.record()["count(p)"] == 1
         session.close()
 
     def test_rollback_a_transaction(self):
@@ -84,8 +85,9 @@ class ExamplesTestCase(TestCase):
         tx.run("CREATE (p:Person { name: 'The One' })")
         tx.rollback()
         #end::transaction-rollback[]
-        res = session.run("MATCH (p:Person { name: 'The One' }) RETURN count(p)")
-        assert res[0]["count(p)"] == 0
+        cursor = session.run("MATCH (p:Person { name: 'The One' }) RETURN count(p)")
+        assert cursor.single()
+        assert cursor.record()["count(p)"] == 0
         session.close()
 
     def test_require_encryption(self):
