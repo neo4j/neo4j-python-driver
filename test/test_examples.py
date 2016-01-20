@@ -158,7 +158,7 @@ class ExamplesTestCase(TestCase):
         # end::result-summary-query-profile[]
         session.close()
         driver.close()
-\
+
     def test_result_summary_notifications(self):
         driver = GraphDatabase.driver("bolt://localhost")
         session = driver.session()
