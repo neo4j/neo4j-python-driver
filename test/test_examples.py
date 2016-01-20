@@ -21,89 +21,151 @@
 
 from unittest import TestCase
 
+# tag::minimal-example-import[]
 from neo4j.v1 import GraphDatabase
+# end::minimal-example-import[]
+
+
+class MinimalWorkingExampleTestCase(TestCase):
+
+    def setUp(self):
+        session = GraphDatabase.driver("bolt://localhost").session()
+        session.run("MATCH (n) DETACH DELETE n").close()
+        session.close()
+
+    def test_minimal_working_example(self):
+        # tag::minimal-example[]
+        driver = GraphDatabase.driver("bolt://localhost")
+        session = driver.session()
+
+        session.run("CREATE (neo:Person {name:'Neo', age:23})")
+
+        cursor = session.run("MATCH (p:Person) WHERE p.name = 'Neo' RETURN p.age")
+        while cursor.next():
+            print("Neo is %d years old." % cursor["p.age"])
+
+        session.close()
+        driver.close()
+        # end::minimal-example[]
 
 
 class ExamplesTestCase(TestCase):
 
     def setUp(self):
         session = GraphDatabase.driver("bolt://localhost").session()
-        session.run("MATCH (n) DETACH DELETE n")
+        session.run("MATCH (n) DETACH DELETE n").close()
         session.close()
 
-    def test_minimum_snippet(self):
-        #tag::minimum-snippet[]
+    def test_construct_driver(self):
+        # tag::construct-driver[]
+        driver = GraphDatabase.driver("bolt://localhost")
+        # end::construct-driver[]
+        return driver
+
+    def test_configuration(self):
+        # tag::configuration[]
+        driver = GraphDatabase.driver("bolt://localhost", max_pool_size=10)
+        # end::configuration[]
+        return driver
+
+    def test_tls_require_encryption(self):
+        # tag::tls-require-encryption[]
+        # TODO: Unfortunately, this feature is not yet implemented for Python
+        pass
+        # end::tls-require-encryption[]
+
+    def test_tls_trust_on_first_use(self):
+        # tag::tls-trust-on-first-use[]
+        # TODO: Unfortunately, this feature is not yet implemented for Python
+        pass
+        # end::tls-trust-on-first-use[]
+
+    def test_tls_signed(self):
+        # tag::tls-signed[]
+        # TODO: Unfortunately, this feature is not yet implemented for Python
+        pass
+        # end::tls-signed[]
+
+    def test_statement(self):
         driver = GraphDatabase.driver("bolt://localhost")
         session = driver.session()
-        session.run("CREATE (neo:Person {name:'Neo', age:23})")
-
-        for record in session.run("MATCH (p:Person) WHERE p.name = 'Neo' RETURN p.age").records():
-            print("Neo is {0} years old.".format(record["p.age"]))
+        # tag::statement[]
+        session.run("CREATE (person:Person {name: {name}})", {"name": "Neo"}).close()
+        # end::statement[]
         session.close()
-        #end::minimum-snippet[]
-
-    def test_statement_with_parameters(self):
-        driver = GraphDatabase.driver("bolt://localhost")
-        session = driver.session()
-        #tag::statement[]
-        cursor = session.run("CREATE (p:Person { name: {name} })", {"name": "The One"})
-        ones_created = cursor.summarize().statistics.nodes_created
-        print("There were {0} the ones created.".format(ones_created))
-        #end::statement[]
-        assert ones_created == 1
-        session.close()
+        driver.close()
 
     def test_statement_without_parameters(self):
         driver = GraphDatabase.driver("bolt://localhost")
         session = driver.session()
-        #tag::statement-without-parameters[]
-        cursor = session.run("CREATE (p:Person { name: 'The One' })")
-        ones_created = cursor.summarize().statistics.nodes_created
-        print("There were {0} the ones created.".format(ones_created))
-        #end::statement-without-parameters[]
-        assert ones_created == 1
+        # tag::statement-without-parameters[]
+        session.run("CREATE (person:Person {name: 'Neo'})").close()
+        # end::statement-without-parameters[]
         session.close()
+        driver.close()
 
-    def test_commit_a_transaction(self):
+    def test_result_cursor(self):
         driver = GraphDatabase.driver("bolt://localhost")
         session = driver.session()
-        #tag::transaction-commit[]
+        # tag::result-cursor[]
+        search_term = "hammer"
+        cursor = session.run("MATCH (tool:Tool) WHERE tool.name CONTAINS {term} "
+                             "RETURN tool.name", {"term": search_term})
+        print("List of tools called %r:" % search_term)
+        while cursor.next():
+            print(cursor["tool.name"])
+        # end::result-cursor[]
+        session.close()
+        driver.close()
+
+    def test_transaction_commit(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        session = driver.session()
+        # tag::transaction-commit[]
         tx = session.begin_transaction()
-        tx.run("CREATE (p:Person { name: 'The One' })")
+        tx.run("CREATE (p:Person {name: 'The One'})")
         tx.commit()
-        #end::transaction-commit[]
-        cursor = session.run("MATCH (p:Person { name: 'The One' }) RETURN count(p)")
+        # end::transaction-commit[]
+        cursor = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
         assert cursor.single()
         assert cursor.record()["count(p)"] == 1
         session.close()
+        driver.close()
 
-    def test_rollback_a_transaction(self):
+    def test_transaction_rollback(self):
         driver = GraphDatabase.driver("bolt://localhost")
         session = driver.session()
-        #tag::transaction-rollback[]
+        # tag::transaction-rollback[]
         tx = session.begin_transaction()
-        tx.run("CREATE (p:Person { name: 'The One' })")
+        tx.run("CREATE (p:Person {name: 'The One'})")
         tx.rollback()
-        #end::transaction-rollback[]
-        cursor = session.run("MATCH (p:Person { name: 'The One' }) RETURN count(p)")
+        # end::transaction-rollback[]
+        cursor = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
         assert cursor.single()
         assert cursor.record()["count(p)"] == 0
         session.close()
+        driver.close()
 
-    def test_require_encryption(self):
-        #tag::tls-require-encryption[]
-        #Unfortunately, this feature is not yet implemented for Python
-        pass
-        #end::tls-require-encryption[]
-
-    def test_trust_on_first_use(self):
-        #tag::tls-trust-on-first-use[]
-        #Unfortunately, this feature is not yet implemented for Python
-        pass
-        #end::tls-trust-on-first-use[]
-
-    def test_signed_certificate(self):
-        #tag::tls-signed[]
-        #Unfortunately, this feature is not yet implemented for Python
-        pass
-        #end::tls-signed[]
+    def test_result_summary_query_profile(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        session = driver.session()
+        # tag::result-summary-query-profile[]
+        cursor = session.run("PROFILE MATCH (p:Person {name: {name}}) "
+                             "RETURN id(p)", {"name": "The One"})
+        summary = cursor.summarize()
+        print(summary.statement_type)
+        print(summary.profile)
+        # end::result-summary-query-profile[]
+        session.close()
+        driver.close()
+\
+    def test_result_summary_notifications(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        session = driver.session()
+        # tag::result-summary-notifications[]
+        summary = session.run("EXPLAIN MATCH (a), (b) RETURN a,b").summarize()
+        for notification in summary.notifications:
+            print(notification)
+        # end::result-summary-notifications[]
+        session.close()
+        driver.close()
