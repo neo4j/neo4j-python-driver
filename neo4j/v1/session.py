@@ -28,13 +28,15 @@ managing sessions.
 
 from __future__ import division
 
-from collections import namedtuple
+from collections import deque, namedtuple
 
 from .compat import integer, perf_counter, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
 from .exceptions import CypherError
 from .typesystem import hydrated
 
+
+DEFAULT_MAX_POOL_SIZE = 50
 
 STATEMENT_TYPE_READ_ONLY = "r"
 STATEMENT_TYPE_READ_WRITE = "rw"
@@ -91,15 +93,44 @@ class Driver(object):
         else:
             raise ValueError("Unsupported URL scheme: %s" % parsed.scheme)
         self.config = config
+        self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
+        self.session_pool = deque()
 
-    def session(self, **config):
+    def session(self):
         """ Create a new session based on the graph database details
         specified within this driver:
 
+            >>> from neo4j.v1 import GraphDatabase
+            >>> driver = GraphDatabase.driver("bolt://localhost")
             >>> session = driver.session()
 
         """
-        return Session(connect(self.host, self.port, **dict(self.config, **config)))
+        session = None
+        done = False
+        while not done:
+            try:
+                session = self.session_pool.pop()
+            except IndexError:
+                session = Session(self)
+                done = True
+            else:
+                if session.healthy:
+                    session.connection.reset()
+                    done = session.healthy
+        return session
+
+    def recycle(self, session):
+        """ Pass a session back to the driver for recycling, if healthy.
+
+        :param session:
+        :return:
+        """
+        pool = self.session_pool
+        for s in pool:
+            if not s.healthy:
+                pool.remove(s)
+        if session.healthy and len(pool) < self.max_pool_size and session not in pool:
+            pool.appendleft(session)
 
 
 class Result(list):
@@ -118,7 +149,7 @@ class Result(list):
         self.statement = statement
         self.parameters = parameters
         self.keys = None
-        self.complete = False
+        self.more = True
         self.summary = None
         self.bench_test = None
 
@@ -137,7 +168,7 @@ class Result(list):
     def on_footer(self, metadata):
         """ Called on receipt of the result footer.
         """
-        self.complete = True
+        self.more = False
         self.summary = ResultSummary(self.statement, self.parameters, **metadata)
         if self.bench_test:
             self.bench_test.end_recv = perf_counter()
@@ -152,7 +183,7 @@ class Result(list):
         callback functions.
         """
         fetch_next = self.session.connection.fetch_next
-        while not self.complete:
+        while self.more:
             fetch_next()
 
     def summarize(self):
@@ -330,16 +361,29 @@ class Session(object):
     method.
     """
 
-    def __init__(self, connection):
-        self.connection = connection
+    def __init__(self, driver):
+        self.driver = driver
+        self.connection = connect(driver.host, driver.port, **driver.config)
         self.transaction = None
         self.bench_tests = []
+
+    def __del__(self):
+        if not self.connection.closed:
+            self.connection.close()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+    @property
+    def healthy(self):
+        """ Return ``True`` if this session is healthy, ``False`` if
+        unhealthy and ``None`` if closed.
+        """
+        connection = self.connection
+        return None if connection.closed else not connection.defunct
 
     def run(self, statement, parameters=None):
         """ Run a parameterised Cypher statement.
@@ -393,9 +437,9 @@ class Session(object):
         return result
 
     def close(self):
-        """ Shut down and close the session.
+        """ If still usable, return this session to the driver pool it came from.
         """
-        self.connection.close()
+        self.driver.recycle(self)
 
     def begin_transaction(self):
         """ Create a new :class:`.Transaction` within this session.
@@ -472,6 +516,7 @@ class Transaction(object):
             self.session.run("ROLLBACK")
         self.closed = True
         self.session.transaction = None
+
 
 class Record(object):
     """ Record is an ordered collection of fields.
