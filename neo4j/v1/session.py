@@ -518,6 +518,7 @@ class Transaction(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        self.success = False if exc_type else True
         self.close()
 
     def run(self, statement, parameters=None):
