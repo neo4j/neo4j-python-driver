@@ -68,7 +68,7 @@ def main():
             else:
                 if not args.quiet:
                     has_results = False
-                    for i, record in enumerate(cursor.records()):
+                    for i, record in enumerate(cursor.stream()):
                         has_results = True
                         if i == 0:
                             stdout.write("%s\r\n" % "\t".join(record.keys()))

@@ -187,7 +187,7 @@ class ResultCursor(object):
             self._connection.fetch_next()
             return self.at_end()
 
-    def records(self):
+    def stream(self):
         """ Yield all subsequent records.
         """
         while self.next():
@@ -518,7 +518,8 @@ class Transaction(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.success = False if exc_type else True
+        if exc_value:
+            self.success = False
         self.close()
 
     def run(self, statement, parameters=None):

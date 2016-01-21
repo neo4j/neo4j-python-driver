@@ -85,7 +85,7 @@ class RunTestCase(TestCase):
     def test_can_run_simple_statement(self):
         session = GraphDatabase.driver("bolt://localhost").session()
         count = 0
-        for record in session.run("RETURN 1 AS n").records():
+        for record in session.run("RETURN 1 AS n").stream():
             assert record[0] == 1
             assert record["n"] == 1
             with self.assertRaises(KeyError):
@@ -104,7 +104,7 @@ class RunTestCase(TestCase):
     def test_can_run_simple_statement_with_params(self):
         session = GraphDatabase.driver("bolt://localhost").session()
         count = 0
-        for record in session.run("RETURN {x} AS n", {"x": {"abc": ["d", "e", "f"]}}).records():
+        for record in session.run("RETURN {x} AS n", {"x": {"abc": ["d", "e", "f"]}}).stream():
             assert record[0] == {"abc": ["d", "e", "f"]}
             assert record["n"] == {"abc": ["d", "e", "f"]}
             assert repr(record)
@@ -126,7 +126,7 @@ class RunTestCase(TestCase):
     def test_can_run_simple_statement_from_bytes_string(self):
         session = GraphDatabase.driver("bolt://localhost").session()
         count = 0
-        for record in session.run(b"RETURN 1 AS n").records():
+        for record in session.run(b"RETURN 1 AS n").stream():
             assert record[0] == 1
             assert record["n"] == 1
             assert repr(record)
@@ -138,7 +138,7 @@ class RunTestCase(TestCase):
     def test_can_run_statement_that_returns_multiple_records(self):
         session = GraphDatabase.driver("bolt://localhost").session()
         count = 0
-        for record in session.run("unwind(range(1, 10)) AS z RETURN z").records():
+        for record in session.run("unwind(range(1, 10)) AS z RETURN z").stream():
             assert 1 <= record[0] <= 10
             count += 1
         session.close()
@@ -146,14 +146,14 @@ class RunTestCase(TestCase):
 
     def test_can_use_with_to_auto_close_session(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            record_list = list(session.run("RETURN 1").records())
+            record_list = list(session.run("RETURN 1").stream())
             assert len(record_list) == 1
             for record in record_list:
                 assert record[0] == 1
 
     def test_can_return_node(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            record_list = list(session.run("MERGE (a:Person {name:'Alice'}) RETURN a").records())
+            record_list = list(session.run("MERGE (a:Person {name:'Alice'}) RETURN a").stream())
             assert len(record_list) == 1
             for record in record_list:
                 alice = record[0]
@@ -164,7 +164,7 @@ class RunTestCase(TestCase):
     def test_can_return_relationship(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             reocrd_list = list(session.run("MERGE ()-[r:KNOWS {since:1999}]->() "
-                                           "RETURN r").records())
+                                           "RETURN r").stream())
             assert len(reocrd_list) == 1
             for record in reocrd_list:
                 rel = record[0]
@@ -175,7 +175,7 @@ class RunTestCase(TestCase):
     def test_can_return_path(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             record_list = list(session.run("MERGE p=({name:'Alice'})-[:KNOWS]->({name:'Bob'}) "
-                                           "RETURN p").records())
+                                           "RETURN p").stream())
             assert len(record_list) == 1
             for record in record_list:
                 path = record[0]
@@ -403,7 +403,7 @@ class TransactionTestCase(TestCase):
             # Check the property value
             cursor = session.run("MATCH (a) WHERE id(a) = {n} "
                                  "RETURN a.foo", {"n": node_id})
-            assert len(list(cursor.records())) == 0
+            assert len(list(cursor.stream())) == 0
 
     def test_can_commit_transaction_using_with_block(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
@@ -443,4 +443,4 @@ class TransactionTestCase(TestCase):
             # Check the property value
             cursor = session.run("MATCH (a) WHERE id(a) = {n} "
                                  "RETURN a.foo", {"n": node_id})
-            assert len(list(cursor.records())) == 0
+            assert len(list(cursor.stream())) == 0

@@ -11,14 +11,14 @@ def send_string(text):
     session = driver.session()
     cursor = session.run(text)
     session.close()
-    return list(cursor.records())
+    return list(cursor.stream())
 
 
 def send_parameters(statement, parameters):
     session = driver.session()
     cursor = session.run(statement, parameters)
     session.close()
-    return list(cursor.records())
+    return list(cursor.stream())
 
 
 def get_bolt_value(type, value):

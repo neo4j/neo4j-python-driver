@@ -131,7 +131,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # tag::retain-result-process[]
         cursor = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
                              "RETURN id(person) AS minion", {"dept": "IT"})
-        minion_records = list(cursor.records())
+        minion_records = list(cursor.stream())
 
         for record in minion_records:
             session.run("MATCH (person) WHERE id(person) = {id} "
