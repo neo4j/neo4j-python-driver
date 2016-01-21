@@ -127,8 +127,9 @@ class ExamplesTestCase(TestCase):
         tx.commit()
         # end::transaction-commit[]
         cursor = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
-        assert cursor.single()
-        assert cursor.record()["count(p)"] == 1
+        assert cursor.next()
+        assert cursor["count(p)"] == 1
+        assert cursor.at_end()
         session.close()
         driver.close()
 
@@ -141,8 +142,9 @@ class ExamplesTestCase(TestCase):
         tx.rollback()
         # end::transaction-rollback[]
         cursor = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
-        assert cursor.single()
-        assert cursor.record()["count(p)"] == 0
+        assert cursor.next()
+        assert cursor["count(p)"] == 0
+        assert cursor.at_end()
         session.close()
         driver.close()
 

@@ -218,32 +218,6 @@ class ResultCursor(object):
         self._consume()
         return self._summary
 
-    def skip(self, records):
-        """ Move the cursor forward by a number of records.
-
-        :arg records: the number of records to step over
-        """
-        if records < 0:
-            raise ValueError("Cannot skip a negative number of records")
-        skipped = 0
-        while skipped < records and self.next():
-            skipped += 1
-        return skipped
-
-    def first(self):
-        """ Attempt to navigate to the first record in this stream, returning
-        ``True`` if this is possible, ``False`` otherwise.
-        """
-        if self._position < 0:
-            return self.next()
-        else:
-            return self._position == 0
-
-    def single(self):
-        """ Return ``True`` if able to navigate to first and only record.
-        """
-        return self.first() and self.at_end()
-
     def _consume(self):
         # Consume the remainder of this result, triggering all appropriate callback functions.
         fetch_next = self._connection.fetch_next
