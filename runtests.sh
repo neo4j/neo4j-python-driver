@@ -62,6 +62,7 @@ echo "Running tests with $(python --version)"
 pip install --upgrade -r ${DRIVER_HOME}/test_requirements.txt
 echo ""
 TEST_RUNNER="coverage run -m ${UNITTEST} discover -vfs ${TEST}"
+EXAMPLES_RUNNER="coverage run -m ${UNITTEST} discover -vfs examples"
 BEHAVE_RUNNER="behave test/tck"
 if [ ${RUNNING} -eq 1 ]
 then
@@ -70,15 +71,25 @@ then
 else
     neokit/neorun ${NEORUN_OPTIONS} "${TEST_RUNNER}" ${VERSIONS}
     EXIT_STATUS=$?
-    if [ ${EXIT_STATUS} -eq 0 ]
+    if [ ${EXIT_STATUS} -ne 0 ]
     then
-        coverage report --show-missing
-        python -c 'from test.tck.configure_feature_files import *; set_up()'
-        echo "Feature files downloaded"
-        neokit/neorun ${NEORUN_OPTIONS} "${BEHAVE_RUNNER}" ${VERSIONS}
-        python -c 'from test.tck.configure_feature_files import *; clean_up()'
-        echo "Feature files removed"
+        exit ${EXIT_STATUS}
     fi
+
+    neokit/neorun ${NEORUN_OPTIONS} "${EXAMPLES_RUNNER}" ${VERSIONS}
+    EXIT_STATUS=$?
+    if [ ${EXIT_STATUS} -ne 0 ]
+    then
+        exit ${EXIT_STATUS}
+    fi
+
+    coverage report --show-missing
+    python -c 'from test.tck.configure_feature_files import *; set_up()'
+    echo "Feature files downloaded"
+    neokit/neorun ${NEORUN_OPTIONS} "${BEHAVE_RUNNER}" ${VERSIONS}
+    python -c 'from test.tck.configure_feature_files import *; clean_up()'
+    echo "Feature files removed"
+
 fi
 
 # Exit correctly

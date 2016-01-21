@@ -26,12 +26,15 @@ from neo4j.v1 import GraphDatabase
 # end::minimal-example-import[]
 
 
-class MinimalWorkingExampleTestCase(TestCase):
+class FreshDatabaseTestCase(TestCase):
 
     def setUp(self):
         session = GraphDatabase.driver("bolt://localhost").session()
         session.run("MATCH (n) DETACH DELETE n").close()
         session.close()
+
+
+class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
 
     def test_minimal_working_example(self):
         # tag::minimal-example[]
@@ -49,12 +52,7 @@ class MinimalWorkingExampleTestCase(TestCase):
         # end::minimal-example[]
 
 
-class ExamplesTestCase(TestCase):
-
-    def setUp(self):
-        session = GraphDatabase.driver("bolt://localhost").session()
-        session.run("MATCH (n) DETACH DELETE n").close()
-        session.close()
+class ExamplesTestCase(FreshDatabaseTestCase):
 
     def test_construct_driver(self):
         # tag::construct-driver[]
