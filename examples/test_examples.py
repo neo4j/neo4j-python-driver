@@ -30,7 +30,7 @@ class FreshDatabaseTestCase(TestCase):
 
     def setUp(self):
         session = GraphDatabase.driver("bolt://localhost").session()
-        session.run("MATCH (n) DETACH DELETE n").close()
+        session.run("MATCH (n) DETACH DELETE n")
         session.close()
 
 
@@ -48,7 +48,6 @@ class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
             print("Neo is %d years old." % cursor["p.age"])
 
         session.close()
-        driver.close()
         # end::minimal-example[]
 
 
@@ -91,7 +90,6 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.run("CREATE (person:Person {name: {name}})", {"name": "Neo"}).close()
         # end::statement[]
         session.close()
-        driver.close()
 
     def test_statement_without_parameters(self):
         driver = GraphDatabase.driver("bolt://localhost")
@@ -100,7 +98,6 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.run("CREATE (person:Person {name: 'Neo'})").close()
         # end::statement-without-parameters[]
         session.close()
-        driver.close()
 
     def test_result_cursor(self):
         driver = GraphDatabase.driver("bolt://localhost")
@@ -114,7 +111,6 @@ class ExamplesTestCase(FreshDatabaseTestCase):
             print(cursor["tool.name"])
         # end::result-cursor[]
         session.close()
-        driver.close()
 
     def test_cursor_nesting(self):
         driver = GraphDatabase.driver("bolt://localhost")
@@ -128,7 +124,6 @@ class ExamplesTestCase(FreshDatabaseTestCase):
                         "CREATE (person)-[:REPORTS_TO]->(boss)", {"id": cursor["minion"], "boss": "Bob"})
         # end::retain-result-query[]
         session.close()
-        driver.close()
 
     def test_result_retention(self):
         driver = GraphDatabase.driver("bolt://localhost")
@@ -144,7 +139,6 @@ class ExamplesTestCase(FreshDatabaseTestCase):
                         "CREATE (person)-[:REPORTS_TO]->(boss)", {"id": record["minion"], "boss": "Bob"})
         # end::retain-result-process[]
         session.close()
-        driver.close()
 
     def test_transaction_commit(self):
         driver = GraphDatabase.driver("bolt://localhost")
@@ -159,7 +153,6 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         assert cursor["count(p)"] == 1
         assert cursor.at_end()
         session.close()
-        driver.close()
 
     def test_transaction_rollback(self):
         driver = GraphDatabase.driver("bolt://localhost")
@@ -174,7 +167,6 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         assert cursor["count(p)"] == 0
         assert cursor.at_end()
         session.close()
-        driver.close()
 
     def test_result_summary_query_profile(self):
         driver = GraphDatabase.driver("bolt://localhost")
@@ -187,7 +179,6 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         print(summary.profile)
         # end::result-summary-query-profile[]
         session.close()
-        driver.close()
 
     def test_result_summary_notifications(self):
         driver = GraphDatabase.driver("bolt://localhost")
@@ -198,4 +189,3 @@ class ExamplesTestCase(FreshDatabaseTestCase):
             print(notification)
         # end::result-summary-notifications[]
         session.close()
-        driver.close()

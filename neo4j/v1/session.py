@@ -102,7 +102,7 @@ class Driver(object):
         return session
 
     def recycle(self, session):
-        """ Pass a session back to the driver for recycling, if healthy.
+        """ Accept a session for recycling, if healthy.
 
         :param session:
         :return:
@@ -113,9 +113,6 @@ class Driver(object):
                 pool.remove(s)
         if session.healthy and len(pool) < self.max_pool_size and session not in pool:
             pool.appendleft(session)
-
-    def close(self):
-        pass  # TODO
 
 
 class ResultCursor(object):
@@ -138,6 +135,7 @@ class ResultCursor(object):
         self._next = deque()
         self._position = -1
         self._summary = None
+        self._consumed = False
 
     def is_open(self):
         """ Return ``True`` if this cursor is still open, ``False`` otherwise.
@@ -161,7 +159,7 @@ class ResultCursor(object):
             self._current = Record(self.keys, tuple(map(hydrated, values)))
             self._position += 1
             return True
-        elif self._summary:
+        elif self._consumed:
             return False
         else:
             self._connection.fetch_next()
@@ -183,7 +181,7 @@ class ResultCursor(object):
         """
         if self._next:
             return False
-        elif self._summary:
+        elif self._consumed:
             return True
         else:
             self._connection.fetch_next()
@@ -221,7 +219,7 @@ class ResultCursor(object):
     def _consume(self):
         # Consume the remainder of this result, triggering all appropriate callback functions.
         fetch_next = self._connection.fetch_next
-        while self._summary is None:
+        while not self._consumed:
             fetch_next()
 
     def _on_header(self, metadata):
@@ -235,9 +233,11 @@ class ResultCursor(object):
     def _on_footer(self, metadata):
         # Called on receipt of the result footer.
         self._summary = ResultSummary(self.statement, self.parameters, **metadata)
+        self._consumed = True
 
     def _on_failure(self, metadata):
         # Called on execution failure.
+        self._consumed = True
         raise CypherError(metadata)
 
 
@@ -411,6 +411,7 @@ class Session(object):
         self.driver = driver
         self.connection = connect(driver.host, driver.port, **driver.config)
         self.transaction = None
+        self.last_cursor = None
 
     def __del__(self):
         if not self.connection.closed:
@@ -468,11 +469,14 @@ class Session(object):
         self.connection.append(PULL_ALL, response=pull_all_response)
         self.connection.send()
 
+        self.last_cursor = cursor
         return cursor
 
     def close(self):
-        """ If still usable, return this session to the driver pool it came from.
+        """ Recycle this session through the driver it came from.
         """
+        if self.last_cursor:
+            self.last_cursor.close()
         self.driver.recycle(self)
 
     def begin_transaction(self):
