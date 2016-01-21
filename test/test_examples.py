@@ -118,6 +118,36 @@ class ExamplesTestCase(TestCase):
         session.close()
         driver.close()
 
+    def test_cursor_nesting(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        session = driver.session()
+        # tag::retain-result-query[]
+        cursor = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
+                             "RETURN id(person) AS minion", {"dept": "IT"})
+        while cursor.next():
+            session.run("MATCH (person) WHERE id(person) = {id} "
+                        "MATCH (boss:Person) WHERE boss.name = {boss} "
+                        "CREATE (person)-[:REPORTS_TO]->(boss)", {"id": cursor["minion"], "boss": "Bob"})
+        # end::retain-result-query[]
+        session.close()
+        driver.close()
+
+    def test_result_retention(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        session = driver.session()
+        # tag::retain-result-process[]
+        cursor = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
+                             "RETURN id(person) AS minion", {"dept": "IT"})
+        minion_records = list(cursor.records())
+
+        for record in minion_records:
+            session.run("MATCH (person) WHERE id(person) = {id} "
+                        "MATCH (boss:Person) WHERE boss.name = {boss} "
+                        "CREATE (person)-[:REPORTS_TO]->(boss)", {"id": record["minion"], "boss": "Bob"})
+        # end::retain-result-process[]
+        session.close()
+        driver.close()
+
     def test_transaction_commit(self):
         driver = GraphDatabase.driver("bolt://localhost")
         session = driver.session()
