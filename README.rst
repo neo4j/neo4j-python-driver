@@ -28,8 +28,10 @@ Example Usage
     driver = GraphDatabase.driver("bolt://localhost")
     session = driver.session()
     session.run("CREATE (a:Person {name:'Bob'})")
-    for name, in session.run("MATCH (a:Person) RETURN a.name AS name"):
-        print(name)
+    cursor = session.run("MATCH (a:Person) RETURN a.name AS name")
+    while cursor.next()
+        print(cursor["name"])
+    cursor.close()
     session.close()
 
 

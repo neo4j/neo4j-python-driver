@@ -30,7 +30,7 @@ from __future__ import division
 
 from collections import deque, namedtuple
 
-from .compat import integer, perf_counter, string, urlparse
+from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
 from .exceptions import CypherError
 from .typesystem import hydrated
@@ -42,24 +42,6 @@ STATEMENT_TYPE_READ_ONLY = "r"
 STATEMENT_TYPE_READ_WRITE = "rw"
 STATEMENT_TYPE_WRITE_ONLY = "w"
 STATEMENT_TYPE_SCHEMA_WRITE = "sw"
-
-
-Latency = namedtuple("Latency", ("overall", "network", "wait"))
-
-
-class BenchTest(object):
-
-    init = None
-    start_send = None
-    end_send = None
-    start_recv = None
-    end_recv = None
-    done = None
-
-    def latency(self):
-        return Latency(self.done - self.init,
-                       self.end_recv - self.start_send,
-                       self.start_recv - self.end_send)
 
 
 class GraphDatabase(object):
@@ -120,7 +102,7 @@ class Driver(object):
         return session
 
     def recycle(self, session):
-        """ Pass a session back to the driver for recycling, if healthy.
+        """ Accept a session for recycling, if healthy.
 
         :param session:
         :return:
@@ -133,7 +115,7 @@ class Driver(object):
             pool.appendleft(session)
 
 
-class Result(list):
+class ResultCursor(object):
     """ A handler for the result of Cypher statement execution.
     """
 
@@ -143,60 +125,124 @@ class Result(list):
     #: Dictionary of parameters passed with the statement.
     parameters = None
 
-    def __init__(self, session, statement, parameters):
-        super(Result, self).__init__()
-        self.session = session
+    def __init__(self, connection, statement, parameters):
+        super(ResultCursor, self).__init__()
         self.statement = statement
         self.parameters = parameters
         self.keys = None
-        self.more = True
-        self.summary = None
-        self.bench_test = None
+        self._connection = connection
+        self._current = None
+        self._next = deque()
+        self._position = -1
+        self._summary = None
+        self._consumed = False
 
-    def on_header(self, metadata):
-        """ Called on receipt of the result header.
+    def is_open(self):
+        """ Return ``True`` if this cursor is still open, ``False`` otherwise.
         """
-        self.keys = metadata["fields"]
-        if self.bench_test:
-            self.bench_test.start_recv = perf_counter()
+        return bool(self._connection)
 
-    def on_record(self, values):
-        """ Called on receipt of each result record.
+    def close(self):
+        """ Consume the remainder of this result and detach the connection
+        from this cursor.
         """
-        self.append(Record(self.keys, tuple(map(hydrated, values))))
+        if self._connection and not self._connection.closed:
+            self._consume()
+            self._connection = None
 
-    def on_footer(self, metadata):
-        """ Called on receipt of the result footer.
+    def next(self):
+        """ Advance to the next record, if available, and return a boolean
+        to indicate whether or not the cursor has moved.
         """
-        self.more = False
-        self.summary = ResultSummary(self.statement, self.parameters, **metadata)
-        if self.bench_test:
-            self.bench_test.end_recv = perf_counter()
+        if self._next:
+            values = self._next.popleft()
+            self._current = Record(self.keys, tuple(map(hydrated, values)))
+            self._position += 1
+            return True
+        elif self._consumed:
+            return False
+        else:
+            self._connection.fetch_next()
+            return self.next()
 
-    def on_failure(self, metadata):
-        """ Called on execution failure.
+    def record(self):
+        """ Return the current record.
         """
-        raise CypherError(metadata)
+        return self._current
 
-    def consume(self):
-        """ Consume the remainder of this result, triggering all appropriate
-        callback functions.
+    def position(self):
+        """ Return the current cursor position.
         """
-        fetch_next = self.session.connection.fetch_next
-        while self.more:
-            fetch_next()
+        return self._position
+
+    def at_end(self):
+        """ Return ``True`` if at the end of the record stream, ``False``
+        otherwise.
+        """
+        if self._next:
+            return False
+        elif self._consumed:
+            return True
+        else:
+            self._connection.fetch_next()
+            return self.at_end()
+
+    def stream(self):
+        """ Yield all subsequent records.
+        """
+        while self.next():
+            yield self.record()
+
+    def __getitem__(self, item):
+        current = self._current
+        if current is None:
+            raise TypeError("No current record")
+        return current[item]
+
+    def get(self, item, default=None):
+        current = self._current
+        if current is None:
+            raise TypeError("No current record")
+        try:
+            return current[item]
+        except (IndexError, KeyError):
+            return default
 
     def summarize(self):
         """ Consume the remainder of this result and produce a summary.
 
         :rtype: ResultSummary
         """
-        self.consume()
-        return self.summary
+        self._consume()
+        return self._summary
+
+    def _consume(self):
+        # Consume the remainder of this result, triggering all appropriate callback functions.
+        fetch_next = self._connection.fetch_next
+        while not self._consumed:
+            fetch_next()
+
+    def _on_header(self, metadata):
+        # Called on receipt of the result header.
+        self.keys = metadata["fields"]
+
+    def _on_record(self, values):
+        # Called on receipt of each result record.
+        self._next.append(values)
+
+    def _on_footer(self, metadata):
+        # Called on receipt of the result footer.
+        self._summary = ResultSummary(self.statement, self.parameters, **metadata)
+        self._consumed = True
+
+    def _on_failure(self, metadata):
+        # Called on execution failure.
+        self._consumed = True
+        raise CypherError(metadata)
 
 
 class ResultSummary(object):
-    """ A summary of execution returned with a :class:`.Result` object.
+    """ A summary of execution returned with a :class:`.ResultCursor` object.
     """
 
     #: The statement that was executed to produce this result.
@@ -365,7 +411,7 @@ class Session(object):
         self.driver = driver
         self.connection = connect(driver.host, driver.port, **driver.config)
         self.transaction = None
-        self.bench_tests = []
+        self.last_cursor = None
 
     def __del__(self):
         if not self.connection.closed:
@@ -391,7 +437,7 @@ class Session(object):
         :param statement: Cypher statement to execute
         :param parameters: dictionary of parameters
         :return: Cypher result
-        :rtype: :class:`.Result`
+        :rtype: :class:`.ResultCursor`
         """
 
         # Ensure the statement is a Unicode value
@@ -408,37 +454,29 @@ class Session(object):
                 params[key] = value
         parameters = params
 
-        t = BenchTest()
-        t.init = perf_counter()
-
-        result = Result(self, statement, parameters)
-        result.bench_test = t
+        cursor = ResultCursor(self.connection, statement, parameters)
 
         run_response = Response(self.connection)
-        run_response.on_success = result.on_header
-        run_response.on_failure = result.on_failure
+        run_response.on_success = cursor._on_header
+        run_response.on_failure = cursor._on_failure
 
         pull_all_response = Response(self.connection)
-        pull_all_response.on_record = result.on_record
-        pull_all_response.on_success = result.on_footer
-        pull_all_response.on_failure = result.on_failure
+        pull_all_response.on_record = cursor._on_record
+        pull_all_response.on_success = cursor._on_footer
+        pull_all_response.on_failure = cursor._on_failure
 
         self.connection.append(RUN, (statement, parameters), response=run_response)
         self.connection.append(PULL_ALL, response=pull_all_response)
-        t.start_send = perf_counter()
         self.connection.send()
-        t.end_send = perf_counter()
 
-        result.consume()
-
-        t.done = perf_counter()
-        self.bench_tests.append(t)
-
-        return result
+        self.last_cursor = cursor
+        return cursor
 
     def close(self):
-        """ If still usable, return this session to the driver pool it came from.
+        """ Recycle this session through the driver it came from.
         """
+        if self.last_cursor:
+            self.last_cursor.close()
         self.driver.recycle(self)
 
     def begin_transaction(self):
@@ -480,6 +518,8 @@ class Transaction(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        if exc_value:
+            self.success = False
         self.close()
 
     def run(self, statement, parameters=None):
