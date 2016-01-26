@@ -18,9 +18,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-
-from behave.log_capture import capture
 from test.tck import tck_util
 
 
