@@ -18,12 +18,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
+import string
+
 from behave import *
-import json
 
 from neo4j.v1 import GraphDatabase
 from test.tck import tck_util
+from test.tck.tck_util import to_unicode
 
+from neo4j.v1 import compat
 use_step_matcher("re")
 
 
@@ -34,17 +38,17 @@ def step_impl(context):
 
 @given("a value (?P<input>.+) of type (?P<bolt_type>.+)")
 def step_impl(context, input, bolt_type):
-    context.expected = tck_util.get_bolt_value(bolt_type, input)
+    context.expected = get_bolt_value(bolt_type, input)
 
 
 @given("a value  of type (?P<bolt_type>.+)")
 def step_impl(context, bolt_type):
-    context.expected = tck_util.get_bolt_value(bolt_type, u' ')
+    context.expected = get_bolt_value(bolt_type, u' ')
 
 
 @given("a list value (?P<input>.+) of type (?P<bolt_type>.+)")
 def step_impl(context, input, bolt_type):
-    context.expected = tck_util.get_list_from_feature_file(input, bolt_type)
+    context.expected = get_list_from_feature_file(input, bolt_type)
 
 
 @given("an empty list L")
@@ -59,35 +63,35 @@ def step_impl(context):
 
 @given("a String of size (?P<size>\d+)")
 def step_impl(context, size):
-    context.expected = tck_util.get_random_string(int(size))
+    context.expected = get_random_string(int(size))
 
 
 @given("a List of size (?P<size>\d+) and type (?P<type>.+)")
 def step_impl(context, size, type):
-    context.expected = tck_util.get_list_of_random_type(int(size), type)
+    context.expected = get_list_of_random_type(int(size), type)
 
 
 @given("a Map of size (?P<size>\d+) and type (?P<type>.+)")
 def step_impl(context, size, type):
-    context.expected = tck_util.get_dict_of_random_type(int(size), type)
+    context.expected = get_dict_of_random_type(int(size), type)
 
 
 @step("adding a table of lists to the list L")
 def step_impl(context):
     for row in context.table:
-        context.L.append(tck_util.get_list_from_feature_file(row[1], row[0]))
+        context.L.append(get_list_from_feature_file(row[1], row[0]))
 
 
 @step("adding a table of values to the list L")
 def step_impl(context):
     for row in context.table:
-        context.L.append(tck_util.get_bolt_value(row[0], row[1]))
+        context.L.append(get_bolt_value(row[0], row[1]))
 
 
 @step("adding a table of values to the map M")
 def step_impl(context):
     for row in context.table:
-        context.M['a%d' % len(context.M)] = tck_util.get_bolt_value(row[0], row[1])
+        context.M['a%d' % len(context.M)] = get_bolt_value(row[0], row[1])
 
 
 @step("adding map M to list L")
@@ -98,7 +102,7 @@ def step_impl(context):
 @when("adding a table of lists to the map M")
 def step_impl(context):
     for row in context.table:
-        context.M['a%d' % len(context.M)] = tck_util.get_list_from_feature_file(row[1], row[0])
+        context.M['a%d' % len(context.M)] = get_list_from_feature_file(row[1], row[0])
 
 
 @step("adding a copy of map M to map M")
@@ -109,7 +113,7 @@ def step_impl(context):
 @when("the driver asks the server to echo this value back")
 def step_impl(context):
     context.results = {}
-    context.results["as_string"] = tck_util.send_string("RETURN " + tck_util.as_cypher_text(context.expected))
+    context.results["as_string"] = tck_util.send_string("RETURN " + as_cypher_text(context.expected))
     context.results["as_parameters"] = tck_util.send_parameters("RETURN {input}", {'input': context.expected})
 
 
@@ -117,7 +121,7 @@ def step_impl(context):
 def step_impl(context):
     context.expected = context.L
     context.results = {}
-    context.results["as_string"] = tck_util.send_string("RETURN " + tck_util.as_cypher_text(context.expected))
+    context.results["as_string"] = tck_util.send_string("RETURN " + as_cypher_text(context.expected))
     context.results["as_parameters"] = tck_util.send_parameters("RETURN {input}", {'input': context.expected})
 
 
@@ -125,16 +129,8 @@ def step_impl(context):
 def step_impl(context):
     context.expected = context.M
     context.results = {}
-    context.results["as_string"] = tck_util.send_string("RETURN " + tck_util.as_cypher_text(context.expected))
+    context.results["as_string"] = tck_util.send_string("RETURN " + as_cypher_text(context.expected))
     context.results["as_parameters"] = tck_util.send_parameters("RETURN {input}", {'input': context.expected})
-
-
-@then("the result returned from the server should be a single record with a single value")
-def step_impl(context):
-    assert context.results
-    for result in context.results.values():
-        assert len(result) == 1
-        assert len(result[0]) == 1
 
 
 @step("the value given in the result should be the same as what was sent")
@@ -181,83 +177,96 @@ def step_impl(context):
     assert True
 
 
-@given("init: (?P<statement>.+);")
-def step_impl(context, statement):
-    tck_util.send_string(statement)
+def get_bolt_value(type, value):
+    if type == 'Integer':
+        return int(value)
+    if type == 'Float':
+        return float(value)
+    if type == 'String':
+        return to_unicode(value)
+    if type == 'Null':
+        return None
+    if type == 'Boolean':
+        return bool(value)
+    raise ValueError('No such type : %s' % type)
 
 
-@when("running: (?P<statement>.+);")
-def step_impl(context, statement):
-    context.results = {"as_string": tck_util.send_string(statement)}
+def as_cypher_text(expected):
+    if expected is None:
+        return "Null"
+    if isinstance(expected, (str, compat.string)):
+        return '"' + expected + '"'
+    if isinstance(expected, float):
+        return repr(expected).replace('+', '')
+    if isinstance(expected, list):
+        l = u'['
+        for i, val in enumerate(expected):
+            l += as_cypher_text(val)
+            if i < len(expected) - 1:
+                l += u','
+        l += u']'
+        return l
+    if isinstance(expected, dict):
+        d = u'{'
+        for i, (key, val) in enumerate(expected.items()):
+            d += to_unicode(key) + ':'
+            d += as_cypher_text(val)
+            if i < len(expected.items()) - 1:
+                d += u','
+        d += u'}'
+        return d
+    else:
+        return to_unicode(expected)
 
 
-@given("an empty database")
-def step_impl(context):
-    tck_util.send_string("MATCH (n) DETACH DELETE n")
+def get_list_from_feature_file(string_list, bolt_type):
+    inputs = string_list.strip('[]')
+    inputs = inputs.split(',')
+    list_to_return = []
+    for value in inputs:
+        list_to_return.append(get_bolt_value(bolt_type, value))
+    return list_to_return
 
 
-@then("result should be a path p containing")
-def step_impl(context):
-    result = context.results["as_string"]
-    given = tck_util.result_to_set(result)
-    expected = tck_util.text_path_to_set(context.table)
-    if given != expected:
-        raise Exception("Path does not match given: %s expected: %s" % (given, expected))
+def get_random_string(size):
+    return u''.join(
+            random.SystemRandom().choice(list(string.ascii_uppercase + string.digits + string.ascii_lowercase)) for _ in
+            range(size))
 
 
-@then("result should be integer\(s\)")
-def step_impl(context):
-    result = context.results["as_string"]
-    given = tck_util.result_to_set(result)
-    expected = tck_util.text_int_to_set(context.table)
-    if given != expected:
-        raise Exception("Integers does not match given: %s expected: %s" % (given, expected))
+def get_random_bool():
+    return bool(random.randint(0, 1))
 
 
-@then("result should be node\(s\)")
-def step_impl(context):
-    result = context.results["as_string"]
-    given = tck_util.result_to_set(result)
-    expected = tck_util.text_node_to_set(context.table)
-    if given != expected:
-        raise Exception("Nodes does not match given: %s expected: %s" % (given, expected))
+def _get_random_func(type):
+    def get_none():
+        return None
+
+    if type == 'Integer':
+        fu = random.randint
+        args = [-9223372036854775808, 9223372036854775808]
+    elif type == 'Float':
+        fu = random.random
+        args = []
+    elif type == 'String':
+        fu = get_random_string
+        args = [3]
+    elif type == 'Null':
+        fu = get_none
+        args = []
+    elif type == 'Boolean':
+        fu = get_random_bool
+        args = []
+    else:
+        raise ValueError('No such type : %s' % type)
+    return (fu, args)
 
 
-@then("result should be string\(s\)")
-def step_impl(context):
-    result = context.results["as_string"]
-    given = tck_util.result_to_set(result)
-    expected = tck_util.text_string_to_set(context.table)
-    if given != expected:
-        raise Exception("Strings does not match given: %s expected: %s" % (given, expected))
+def get_list_of_random_type(size, type):
+    fu, args = _get_random_func(type)
+    return [fu(*args) for _ in range(size)]
 
 
-@then("result should be relationship\(s\)")
-def step_impl(context):
-    result = context.results["as_string"]
-    given = tck_util.result_to_set(result)
-    expected = tck_util.text_relationship_to_set(context.table)
-    if given != expected:
-        raise Exception("Relationship does not match given: %s expected: %s" % (given, expected))
-
-
-@then("result should be empty")
-def step_impl(context):
-    assert context.results
-    for result in context.results.values():
-        assert len(result) == 0
-
-
-@then('result should be node "(?P<n1>.+)" node "(?P<n2>.+)" and int "(?P<len>\d+)"')
-def step_impl(context, n1, n2, len):
-    result = context.results["as_string"]
-    given = tck_util.result_to_set(result)
-    expected = tck_util.node_node_int_to_values(n1, n2, len)
-    if given != expected:
-        raise Exception("Mixed response does not match given: %s expected: %s" % (given, expected))
-
-
-@when('running "(?P<parameters>.+)": (?P<statement>.+);')
-def step_impl(context, parameters, statement):
-    parameters = json.loads(parameters)
-    context.results = {"as_string": tck_util.send_parameters(statement, parameters)}
+def get_dict_of_random_type(size, type):
+    fu, args = _get_random_func(type)
+    return {'a%d' % i: fu(*args) for i in range(size)}

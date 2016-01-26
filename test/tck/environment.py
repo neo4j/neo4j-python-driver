@@ -23,20 +23,18 @@ import logging
 from behave.log_capture import capture
 from test.tck import tck_util
 
+
 def before_all(context):
     context.config.setup_logging()
 
-def before_scenario(context,scenario):
-    #Empty database
-    tck_util.send_string("MATCH (n) DETACH DELETE n")
+
+def before_feature(context, feature):
+    # Workaround. Behave has a different way of tagging than cucumber
+    if "reset_database" in feature.tags:
+        for scenario in feature.scenarios:
+            scenario.tags.append("reset_database")
 
 
-@capture
-def after_scenario(context, scenario):
-    for step in scenario.steps:
-        if step.status == 'failed':
-            logging.error("Scenario :'%s' at step: '%s' failed! ", scenario.name, step.name)
-        if step.status == 'skipped':
-            logging.warn("Scenario :'%s' at step: '%s' was skipped! ", scenario.name, step.name)
-        if step.status == 'passed':
-            logging.debug("Scenario :'%s' at step: '%s' was passed! ", scenario.name, step.name)
+def before_scenario(context, scenario):
+    if "reset_database" in scenario.tags:
+        tck_util.send_string("MATCH (n) DETACH DELETE n")
