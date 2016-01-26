@@ -30,16 +30,16 @@ driver = GraphDatabase.driver("bolt://localhost")
 
 def send_string(text):
     session = driver.session()
-    result = session.run(text)
+    cursor = session.run(text)
     session.close()
-    return result
+    return list(cursor.stream())
 
 
 def send_parameters(statement, parameters):
     session = driver.session()
-    result = session.run(statement, parameters)
+    cursor = session.run(statement, parameters)
     session.close()
-    return result
+    return list(cursor.stream())
 
 
 def get_bolt_value(type, value):
