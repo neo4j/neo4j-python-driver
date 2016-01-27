@@ -23,20 +23,19 @@ import json
 from behave import *
 
 from neo4j.v1 import compat, Node, Relationship, Path
-from test.tck import tck_util
-from test.tck.tck_util import Value
+from test.tck.tck_util import Value, Type, string_to_type, send_string, send_parameters
 
 use_step_matcher("re")
 
 
 @given("init: (?P<statement>.+);")
 def step_impl(context, statement):
-    tck_util.send_string(statement)
+    send_string(statement)
 
 
 @when("running: (?P<statement>.+);")
 def step_impl(context, statement):
-    context.results = {"as_string": tck_util.send_string(statement)}
+    context.results = {"as_string": send_string(statement)}
 
 
 @then("result should be (?P<type>.+)\(s\)")
@@ -55,12 +54,18 @@ def step_impl(context):
         assert len(result) == 0
 
 
-@then("result should be mixed: (?P<types>.+)")
-def step_impl(context, types):
+@then("result should map to types")
+def step_impl(context):
+    keys = context.table.headings
+    values = context.table.rows[0]
+    context.types = {keys[i]: values[i] for i in range(len(keys))}
+
+
+@then("result should be mixed")
+def step_impl(context):
     result = context.results["as_string"]
     given = driver_result_to_comparable_result(result)
-    types = get_properties(types)[0]
-    expected = table_to_comparable_result(context.table, types)
+    expected = table_to_comparable_result(context.table, context.types)
     if given != expected:
         raise Exception("Mixed response does not match given: %s expected: %s" % (given, expected))
 
@@ -78,7 +83,7 @@ def step_impl(context, statement):
             val = int(v)
         parameters[keys[i]] = val
 
-    context.results = {"as_string": tck_util.send_parameters(statement, parameters)}
+    context.results = {"as_string": send_parameters(statement, parameters)}
 
 
 def get_properties(prop):
@@ -181,15 +186,15 @@ def get_path(string_path):
 
 def _string_value_to_comparable(val, type):
     def get_val(v):
-        if type == "integer":
+        if type == Type.INTEGER:
             return Value(int(v))
-        elif type == "string":
+        elif type == Type.STRING:
             return Value(v)
-        elif type == "node":
+        elif type == Type.NODE:
             return Value(get_node(v)[0])
-        elif type == "relationship":
+        elif type == Type.RELATIONSHIP:
             return Value(get_relationship(v)[0])
-        elif type == "path":
+        elif type == Type.PATH:
             return Value(get_path(v)[0])
         else:
             raise ValueError("Not recognized type: %s" % type)
@@ -198,7 +203,7 @@ def _string_value_to_comparable(val, type):
     if val == 'null':
         return Value(None)
     if val[0] == '[':
-        if type != "relationship" or (type == "relationship" and val[1] == '['):
+        if type != Type.RELATIONSHIP or (type == Type.RELATIONSHIP and val[1] == '['):
             val = val[1:-1].split(", ")
     if isinstance(val, list):
         return tuple([get_val(v) for v in val])
@@ -217,14 +222,15 @@ def table_to_comparable_result(table, types):
     result = []
     keys = table.headings
     if isinstance(types, compat.string):
-        types = {key: types for key in keys}
+        types = {key: string_to_type(types) for key in keys}
     elif isinstance(types, dict):
         assert set(types.keys()) == set(keys)
     else:
         raise ValueError("types must be either string of single type or map of types corresponding to result keys Got:"
                          " %s" % types)
     for row in table:
-        result.append({keys[i]: _string_value_to_comparable(row[i], types[keys[i]]) for i in range(len(row))})
+        result.append(
+                {keys[i]: _string_value_to_comparable(row[i], string_to_type(types[keys[i]])) for i in range(len(row))})
     return result
 
 

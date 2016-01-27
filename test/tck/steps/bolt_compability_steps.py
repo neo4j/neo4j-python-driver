@@ -24,8 +24,7 @@ import string
 from behave import *
 
 from neo4j.v1 import GraphDatabase
-from test.tck import tck_util
-from test.tck.tck_util import to_unicode
+from test.tck.tck_util import to_unicode, Type, send_string, send_parameters, string_to_type
 
 from neo4j.v1 import compat
 use_step_matcher("re")
@@ -33,22 +32,22 @@ use_step_matcher("re")
 
 @given("A running database")
 def step_impl(context):
-    tck_util.send_string("RETURN 1")
+    send_string("RETURN 1")
 
 
 @given("a value (?P<input>.+) of type (?P<bolt_type>.+)")
 def step_impl(context, input, bolt_type):
-    context.expected = get_bolt_value(bolt_type, input)
+    context.expected = get_bolt_value(string_to_type(bolt_type), input)
 
 
 @given("a value  of type (?P<bolt_type>.+)")
 def step_impl(context, bolt_type):
-    context.expected = get_bolt_value(bolt_type, u' ')
+    context.expected = get_bolt_value(string_to_type(bolt_type), u' ')
 
 
 @given("a list value (?P<input>.+) of type (?P<bolt_type>.+)")
 def step_impl(context, input, bolt_type):
-    context.expected = get_list_from_feature_file(input, bolt_type)
+    context.expected = get_list_from_feature_file(input, string_to_type(bolt_type))
 
 
 @given("an empty list L")
@@ -68,12 +67,12 @@ def step_impl(context, size):
 
 @given("a List of size (?P<size>\d+) and type (?P<type>.+)")
 def step_impl(context, size, type):
-    context.expected = get_list_of_random_type(int(size), type)
+    context.expected = get_list_of_random_type(int(size), string_to_type(type))
 
 
 @given("a Map of size (?P<size>\d+) and type (?P<type>.+)")
 def step_impl(context, size, type):
-    context.expected = get_dict_of_random_type(int(size), type)
+    context.expected = get_dict_of_random_type(int(size), string_to_type(type))
 
 
 @step("adding a table of lists to the list L")
@@ -112,25 +111,22 @@ def step_impl(context):
 
 @when("the driver asks the server to echo this value back")
 def step_impl(context):
-    context.results = {}
-    context.results["as_string"] = tck_util.send_string("RETURN " + as_cypher_text(context.expected))
-    context.results["as_parameters"] = tck_util.send_parameters("RETURN {input}", {'input': context.expected})
+    context.results = {"as_string": send_string("RETURN " + as_cypher_text(context.expected)),
+                       "as_parameters": send_parameters("RETURN {input}", {'input': context.expected})}
 
 
 @when("the driver asks the server to echo this list back")
 def step_impl(context):
     context.expected = context.L
-    context.results = {}
-    context.results["as_string"] = tck_util.send_string("RETURN " + as_cypher_text(context.expected))
-    context.results["as_parameters"] = tck_util.send_parameters("RETURN {input}", {'input': context.expected})
+    context.results = {"as_string": send_string("RETURN " + as_cypher_text(context.expected)),
+                       "as_parameters": send_parameters("RETURN {input}", {'input': context.expected})}
 
 
 @when("the driver asks the server to echo this map back")
 def step_impl(context):
     context.expected = context.M
-    context.results = {}
-    context.results["as_string"] = tck_util.send_string("RETURN " + as_cypher_text(context.expected))
-    context.results["as_parameters"] = tck_util.send_parameters("RETURN {input}", {'input': context.expected})
+    context.results = {"as_string": send_string("RETURN " + as_cypher_text(context.expected)),
+                       "as_parameters": send_parameters("RETURN {input}", {'input': context.expected})}
 
 
 @step("the value given in the result should be the same as what was sent")
@@ -178,15 +174,15 @@ def step_impl(context):
 
 
 def get_bolt_value(type, value):
-    if type == 'Integer':
+    if type == Type.INTEGER:
         return int(value)
-    if type == 'Float':
+    if type == Type.FLOAT:
         return float(value)
-    if type == 'String':
+    if type == Type.STRING:
         return to_unicode(value)
-    if type == 'Null':
+    if type == Type.NULL:
         return None
-    if type == 'Boolean':
+    if type == Type.BOOLEAN:
         return bool(value)
     raise ValueError('No such type : %s' % type)
 
@@ -242,19 +238,19 @@ def _get_random_func(type):
     def get_none():
         return None
 
-    if type == 'Integer':
+    if type == Type.INTEGER:
         fu = random.randint
         args = [-9223372036854775808, 9223372036854775808]
-    elif type == 'Float':
+    elif type == Type.FLOAT:
         fu = random.random
         args = []
-    elif type == 'String':
+    elif type == Type.STRING:
         fu = get_random_string
         args = [3]
-    elif type == 'Null':
+    elif type == Type.NULL:
         fu = get_none
         args = []
-    elif type == 'Boolean':
+    elif type == Type.BOOLEAN:
         fu = get_random_bool
         args = []
     else:

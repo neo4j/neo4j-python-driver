@@ -46,6 +46,39 @@ def to_unicode(val):
         return str(val)
 
 
+def string_to_type(str):
+    str = str.upper()
+    if str == Type.INTEGER.upper():
+        return Type.INTEGER
+    elif str == Type.FLOAT.upper():
+        return Type.FLOAT
+    elif str == Type.BOOLEAN.upper():
+        return Type.BOOLEAN
+    elif str == Type.NULL.upper():
+        return Type.NULL
+    elif str == Type.STRING.upper():
+        return Type.STRING
+    elif str == Type.NODE.upper():
+        return Type.NODE
+    elif str == Type.RELATIONSHIP.upper():
+        return Type.RELATIONSHIP
+    elif str == Type.PATH.upper():
+        return Type.PATH
+    else:
+        raise ValueError("Not recognized type: %s" % str)
+
+
+class Type:
+    INTEGER = "Integer"
+    FLOAT = "Float"
+    BOOLEAN = "Boolean"
+    STRING = "String"
+    NODE = "Node"
+    RELATIONSHIP = "Relationship"
+    PATH = "Path"
+    NULL = "Null"
+
+
 class Value:
     content = None
 
@@ -57,10 +90,11 @@ class Value:
             self.content = self.create_relationship(entity)
         elif isinstance(entity, Path):
             self.content = self.create_path(entity)
-        elif isinstance(entity, int) or isinstance(entity, float) or isinstance(entity, (str, compat.string)) or entity is None:
+        elif isinstance(entity, int) or isinstance(entity, float) or isinstance(entity,
+                                                                                (str, compat.string)) or entity is None:
             self.content['value'] = entity
         else:
-            raise ValueError("Do not support object type: %s" %entity)
+            raise ValueError("Do not support object type: %s" % entity)
 
     def __hash__(self):
         return hash(repr(self))
@@ -72,34 +106,36 @@ class Value:
     def __repr__(self):
         return str(self.content)
 
-    def create_node(self,entity):
+    def create_node(self, entity):
         content = {'properties': entity.properties, 'labels': entity.labels, 'obj': "node"}
 
         return content
 
-    def create_path(self,entity):
+    def create_path(self, entity):
         content = {}
         prev_id = entity.start.identity
         p = []
         for i, rel in enumerate(list(entity)):
-            n = entity.nodes[i+1]
+            n = entity.nodes[i + 1]
             current_id = n.identity
             if rel.start == prev_id and rel.end == current_id:
                 rel.start = i
-                rel.end = i+1
+                rel.end = i + 1
             elif rel.start == current_id and rel.end == prev_id:
-                rel.start = i+1
+                rel.start = i + 1
                 rel.end = i
             else:
-                raise ValueError("Relationships end and start should point to surrounding nodes. Rel: %s N1id: %s N2id: %s. At entity#%s" % (rel, current_id, prev_id, i))
-            p += [self.create_relationship(rel, True),self.create_node(n)]
+                raise ValueError(
+                        "Relationships end and start should point to surrounding nodes. Rel: %s N1id: %s N2id: %s. At entity#%s" % (
+                            rel, current_id, prev_id, i))
+            p += [self.create_relationship(rel, True), self.create_node(n)]
             prev_id = current_id
         content['path'] = p
         content['obj'] = "path"
         content['start'] = self.create_node(entity.start)
         return content
 
-    def create_relationship(self,entity, include_start_end=False):
+    def create_relationship(self, entity, include_start_end=False):
         content = {'obj': "relationship"}
         if include_start_end:
             self.content['start'] = entity.start
