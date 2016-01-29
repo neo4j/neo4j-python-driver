@@ -261,6 +261,19 @@ class RunTestCase(TestCase):
             assert position.line == 1
             assert position.column == 1
 
+    def test_keys_are_available_before_and_after_stream(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            cursor = session.run("UNWIND range(1, 10) AS n RETURN n")
+            assert list(cursor.keys()) == ["n"]
+            _ = list(cursor.stream())
+            assert list(cursor.keys()) == ["n"]
+
+    def test_keys_with_an_error(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            cursor = session.run("X")
+            with self.assertRaises(CypherError):
+                _ = list(cursor.keys())
+
 
 class ResetTestCase(TestCase):
 
