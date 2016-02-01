@@ -1,6 +1,24 @@
-import string
-import random
-from neo4j.v1 import compat
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+
+# Copyright (c) 2002-2016 "Neo Technology,"
+# Network Engine for Objects in Lund AB [http://neotechnology.com]
+#
+# This file is part of Neo4j.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from neo4j.v1 import compat, Relationship, Node, Path
 
 from neo4j.v1 import GraphDatabase
 
@@ -21,103 +39,107 @@ def send_parameters(statement, parameters):
     return list(cursor.stream())
 
 
-def get_bolt_value(type, value):
-    if type == 'Integer':
-        return int(value)
-    if type == 'Float':
-        return float(value)
-    if type == 'String':
-        return to_unicode(value)
-    if type == 'Null':
-        return None
-    if type == 'Boolean':
-        return bool(value)
-    raise ValueError('No such type : %s' % type)
-
-
-def as_cypher_text(expected):
-    if expected is None:
-        return "Null"
-    if isinstance(expected, (str, compat.string)):
-            return '"' + expected + '"'
-    if isinstance(expected, float):
-        return repr(expected).replace('+', '')
-    if isinstance(expected, list):
-        l = u'['
-        for i, val in enumerate(expected):
-            l += as_cypher_text(val)
-            if i < len(expected)-1:
-                l+= u','
-        l += u']'
-        return l
-    if isinstance(expected, dict):
-        d = u'{'
-        for i, (key, val) in enumerate(expected.items()):
-            d += to_unicode(key) + ':'
-            d += as_cypher_text(val)
-            if i < len(expected.items())-1:
-                d+= u','
-        d += u'}'
-        return d
-    else:
-        return to_unicode(expected)
-
-
-def get_list_from_feature_file(string_list, bolt_type):
-    inputs = string_list.strip('[]')
-    inputs = inputs.split(',')
-    list_to_return = []
-    for value in inputs:
-        list_to_return.append(get_bolt_value(bolt_type, value))
-    return list_to_return
-
-
-def get_random_string(size):
-    return u''.join(
-            random.SystemRandom().choice(list(string.ascii_uppercase + string.digits + string.ascii_lowercase)) for _ in
-            range(size))
-
-
-def get_random_bool():
-    return bool(random.randint(0, 1))
-
-
-def _get_random_func(type):
-    def get_none():
-        return None
-
-    if type == 'Integer':
-        fu = random.randint
-        args = [-9223372036854775808, 9223372036854775808]
-    elif type == 'Float':
-        fu = random.random
-        args = []
-    elif type == 'String':
-        fu = get_random_string
-        args = [3]
-    elif type == 'Null':
-        fu = get_none
-        args = []
-    elif type == 'Boolean':
-        fu = get_random_bool
-        args = []
-    else:
-        raise ValueError('No such type : %s' % type)
-    return (fu, args)
-
-
-def get_list_of_random_type(size, type):
-    fu, args = _get_random_func(type)
-    return [fu(*args) for _ in range(size)]
-
-
-def get_dict_of_random_type(size, type):
-    fu, args = _get_random_func(type)
-    return {'a%d' % i: fu(*args) for i in range(size)}
-
 def to_unicode(val):
     try:
         return unicode(val)
     except NameError:
         return str(val)
 
+
+def string_to_type(str):
+    str = str.upper()
+    if str == Type.INTEGER.upper():
+        return Type.INTEGER
+    elif str == Type.FLOAT.upper():
+        return Type.FLOAT
+    elif str == Type.BOOLEAN.upper():
+        return Type.BOOLEAN
+    elif str == Type.NULL.upper():
+        return Type.NULL
+    elif str == Type.STRING.upper():
+        return Type.STRING
+    elif str == Type.NODE.upper():
+        return Type.NODE
+    elif str == Type.RELATIONSHIP.upper():
+        return Type.RELATIONSHIP
+    elif str == Type.PATH.upper():
+        return Type.PATH
+    else:
+        raise ValueError("Not recognized type: %s" % str)
+
+
+class Type:
+    INTEGER = "Integer"
+    FLOAT = "Float"
+    BOOLEAN = "Boolean"
+    STRING = "String"
+    NODE = "Node"
+    RELATIONSHIP = "Relationship"
+    PATH = "Path"
+    NULL = "Null"
+
+
+class Value:
+    content = None
+
+    def __init__(self, entity):
+        self.content = {}
+        if isinstance(entity, Node):
+            self.content = self.create_node(entity)
+        elif isinstance(entity, Relationship):
+            self.content = self.create_relationship(entity)
+        elif isinstance(entity, Path):
+            self.content = self.create_path(entity)
+        elif isinstance(entity, int) or isinstance(entity, float) or isinstance(entity,
+                                                                                (str, compat.string)) or entity is None:
+            self.content['value'] = entity
+        else:
+            raise ValueError("Do not support object type: %s" % entity)
+
+    def __hash__(self):
+        return hash(repr(self))
+
+    def __eq__(self, other):
+        assert isinstance(other, Value)
+        return self.content == other.content
+
+    def __repr__(self):
+        return str(self.content)
+
+    def create_node(self, entity):
+        content = {'properties': entity.properties, 'labels': entity.labels, 'obj': "node"}
+
+        return content
+
+    def create_path(self, entity):
+        content = {}
+        prev_id = entity.start.identity
+        p = []
+        for i, rel in enumerate(list(entity)):
+            n = entity.nodes[i + 1]
+            current_id = n.identity
+            if rel.start == prev_id and rel.end == current_id:
+                rel.start = i
+                rel.end = i + 1
+            elif rel.start == current_id and rel.end == prev_id:
+                rel.start = i + 1
+                rel.end = i
+            else:
+                raise ValueError(
+                        "Relationships end and start should point to surrounding nodes. Rel: %s N1id: %s N2id: %s. At entity#%s" % (
+                            rel, current_id, prev_id, i))
+            p += [self.create_relationship(rel, True), self.create_node(n)]
+            prev_id = current_id
+        content['path'] = p
+        content['obj'] = "path"
+        content['start'] = self.create_node(entity.start)
+        return content
+
+    def create_relationship(self, entity, include_start_end=False):
+        content = {'obj': "relationship"}
+        if include_start_end:
+            self.content['start'] = entity.start
+            self.content['end'] = entity.end
+        content['type'] = entity.type
+        content['properties'] = entity.properties
+        return content
