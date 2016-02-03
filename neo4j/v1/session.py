@@ -150,7 +150,7 @@ class ResultCursor(object):
             self._consume()
             self._connection = None
 
-    def next(self):
+    def move_to_next(self):
         """ Advance to the next record, if available, and return a boolean
         to indicate whether or not the cursor has moved.
         """
@@ -164,6 +164,24 @@ class ResultCursor(object):
         else:
             self._connection.fetch_next()
             return self.next()
+
+    def next(self):
+        """ Return the next record, or raise StopIteration if no more records.
+        """
+        # Python3 iteration will call this method. Python2 iteration
+        # will call self.next() instead.
+        return self.__next__()
+
+    def __next__(self):
+        # Python3 iteration will call this method. Python2 iteration
+        # will call self.next() instead.
+        if self.move_to_next():
+            return self.record()
+        else:
+            raise StopIteration("No more records")
+
+    def __iter__(self):
+        return self
 
     def record(self):
         """ Return the current record.
@@ -655,6 +673,3 @@ def record(obj):
         for key in keys:
             values.append(obj[key])
         return Record(keys, values)
-
-
-
