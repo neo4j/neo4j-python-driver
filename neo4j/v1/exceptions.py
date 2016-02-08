@@ -38,3 +38,10 @@ class CypherError(Exception):
         for key, value in data.items():
             if not key.startswith("_"):
                 setattr(self, key, value)
+
+
+class DriverError(Exception):
+    """ Raised when the driver is used incorrectly.
+    """
+
+    pass

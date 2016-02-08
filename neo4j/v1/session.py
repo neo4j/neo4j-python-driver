@@ -32,7 +32,7 @@ from collections import deque, namedtuple
 
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
-from .exceptions import CypherError
+from .exceptions import CypherError,  DriverError
 from .typesystem import hydrated
 
 
@@ -216,13 +216,18 @@ class ResultCursor(object):
         except (IndexError, KeyError):
             return default
 
-    def summarize(self):
-        """ Consume the remainder of this result and produce a summary.
+    def summary(self):
+        """ Return the summary from the trailing metadata. Note that this is
+        only available once the entire result stream has been consumed.
+        Attempting to access the summary before then will raise an error.
 
         :rtype: ResultSummary
+        :raises DriverError: if the entire result has not yet been consumed
         """
-        self._consume()
-        return self._summary
+        if self._consumed:
+            return self._summary
+        else:
+            raise DriverError("Summary not available until the entire result has been consumed")
 
     def _consume(self):
         # Consume the remainder of this result, triggering all appropriate callback functions.
