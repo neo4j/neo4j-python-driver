@@ -76,7 +76,7 @@ def main():
                     if has_results:
                         stdout.write("\r\n")
                     if args.summary:
-                        summary = cursor.summary()
+                        summary = cursor.summary
                         stdout.write("Statement      : %r\r\n" % summary.statement)
                         stdout.write("Parameters     : %r\r\n" % summary.parameters)
                         stdout.write("Statement Type : %r\r\n" % summary.statement_type)
