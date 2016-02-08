@@ -216,6 +216,7 @@ class ResultCursor(object):
         except (IndexError, KeyError):
             return default
 
+    @property
     def summary(self):
         """ Return the summary from the trailing metadata. Note that this is
         only available once the entire result stream has been consumed.

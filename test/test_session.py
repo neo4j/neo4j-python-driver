@@ -212,7 +212,7 @@ class SummaryTestCase(TestCase):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             cursor = session.run("CREATE (n) RETURN n")
             list(cursor.stream())
-            summary = cursor.summary()
+            summary = cursor.summary
             assert summary.statement == "CREATE (n) RETURN n"
             assert summary.parameters == {}
             assert summary.statement_type == "rw"
@@ -222,12 +222,12 @@ class SummaryTestCase(TestCase):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             cursor = session.run("CREATE (n) RETURN n")
             with self.assertRaises(ResultError):
-                _ = cursor.summary()
+                _ = cursor.summary
 
     # def test_can_obtain_summary_immediately_if_empty_result(self):
     #     with GraphDatabase.driver("bolt://localhost").session() as session:
     #         cursor = session.run("CREATE (n)")
-    #         summary = cursor.summary()
+    #         summary = cursor.summary
     #         assert summary.statement == "CREATE (n)"
     #         assert summary.parameters == {}
     #         assert summary.statement_type == "rw"
@@ -237,14 +237,14 @@ class SummaryTestCase(TestCase):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             cursor = session.run("CREATE (n) RETURN n")
             list(cursor.stream())
-            assert cursor.summary().plan is None
-            assert cursor.summary().profile is None
+            assert cursor.summary.plan is None
+            assert cursor.summary.profile is None
 
     def test_can_obtain_plan_info(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             cursor = session.run("EXPLAIN CREATE (n) RETURN n")
             list(cursor.stream())
-            plan = cursor.summary().plan
+            plan = cursor.summary.plan
             assert plan.operator_type == "ProduceResults"
             assert plan.identifiers == ["n"]
             assert plan.arguments == {"planner": "COST", "EstimatedRows": 1.0, "version": "CYPHER 3.0",
@@ -256,7 +256,7 @@ class SummaryTestCase(TestCase):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             cursor = session.run("PROFILE CREATE (n) RETURN n")
             list(cursor.stream())
-            profile = cursor.summary().profile
+            profile = cursor.summary.profile
             assert profile.db_hits == 0
             assert profile.rows == 1
             assert profile.operator_type == "ProduceResults"
@@ -270,14 +270,14 @@ class SummaryTestCase(TestCase):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             cursor = session.run("CREATE (n) RETURN n")
             list(cursor.stream())
-            notifications = cursor.summary().notifications
+            notifications = cursor.summary.notifications
             assert notifications == []
 
     def test_can_obtain_notification_info(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             cursor = session.run("EXPLAIN MATCH (n), (m) RETURN n, m")
             list(cursor.stream())
-            notifications = cursor.summary().notifications
+            notifications = cursor.summary.notifications
 
             assert len(notifications) == 1
             notification = notifications[0]
