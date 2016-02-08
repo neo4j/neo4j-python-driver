@@ -32,7 +32,7 @@ Session API
 .. autoclass:: neo4j.v1.ResultSummary
    :members:
 
-.. autoclass:: neo4j.v1.StatementStatistics
+.. autoclass:: neo4j.v1.Counters
    :members:
 
 

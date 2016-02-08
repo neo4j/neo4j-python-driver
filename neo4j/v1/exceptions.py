@@ -40,8 +40,8 @@ class CypherError(Exception):
                 setattr(self, key, value)
 
 
-class DriverError(Exception):
-    """ Raised when the driver is used incorrectly.
+class ResultError(Exception):
+    """ Raised when the cursor encounters a problem.
     """
 
     pass

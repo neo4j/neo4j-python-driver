@@ -22,7 +22,7 @@
 from unittest import TestCase
 
 from mock import patch
-from neo4j.v1.exceptions import DriverError
+from neo4j.v1.exceptions import ResultError
 from neo4j.v1.session import GraphDatabase, CypherError, Record, record
 from neo4j.v1.typesystem import Node, Relationship, Path
 
@@ -216,12 +216,12 @@ class SummaryTestCase(TestCase):
             assert summary.statement == "CREATE (n) RETURN n"
             assert summary.parameters == {}
             assert summary.statement_type == "rw"
-            assert summary.statistics.nodes_created == 1
+            assert summary.counters.nodes_created == 1
 
     def test_cannot_obtain_summary_without_consuming_result(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             cursor = session.run("CREATE (n) RETURN n")
-            with self.assertRaises(DriverError):
+            with self.assertRaises(ResultError):
                 _ = cursor.summary()
 
     # def test_can_obtain_summary_immediately_if_empty_result(self):
@@ -231,7 +231,7 @@ class SummaryTestCase(TestCase):
     #         assert summary.statement == "CREATE (n)"
     #         assert summary.parameters == {}
     #         assert summary.statement_type == "rw"
-    #         assert summary.statistics.nodes_created == 1
+    #         assert summary.counters.nodes_created == 1
 
     def test_no_plan_info(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:

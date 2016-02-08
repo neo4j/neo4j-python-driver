@@ -32,7 +32,7 @@ from collections import deque, namedtuple
 
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
-from .exceptions import CypherError,  DriverError
+from .exceptions import CypherError,  ResultError
 from .typesystem import hydrated
 
 
@@ -222,12 +222,12 @@ class ResultCursor(object):
         Attempting to access the summary before then will raise an error.
 
         :rtype: ResultSummary
-        :raises DriverError: if the entire result has not yet been consumed
+        :raises ResultError: if the entire result has not yet been consumed
         """
         if self._consumed:
             return self._summary
         else:
-            raise DriverError("Summary not available until the entire result has been consumed")
+            raise ResultError("Summary not available until the entire result has been consumed")
 
     def _consume(self):
         # Consume the remainder of this result, triggering all appropriate callback functions.
@@ -267,8 +267,8 @@ class ResultSummary(object):
     #: The type of statement (``'r'`` = read-only, ``'rw'`` = read/write).
     statement_type = None
 
-    #: A set of statistical information held in a :class:`.StatementStatistics` instance.
-    statistics = None
+    #: A set of statistical information held in a :class:`.Counters` instance.
+    counters = None
 
     #: A :class:`.Plan` instance
     plan = None
@@ -286,7 +286,7 @@ class ResultSummary(object):
         self.statement = statement
         self.parameters = parameters
         self.statement_type = metadata.get("type")
-        self.statistics = StatementStatistics(metadata.get("stats", {}))
+        self.counters = Counters(metadata.get("stats", {}))
         if "plan" in metadata:
             self.plan = make_plan(metadata["plan"])
         if "profile" in metadata:
@@ -301,7 +301,7 @@ class ResultSummary(object):
                                                    notification["description"], position))
 
 
-class StatementStatistics(object):
+class Counters(object):
     """ Set of statistics from a Cypher statement execution.
     """
 
