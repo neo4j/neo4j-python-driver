@@ -170,6 +170,7 @@ class ResultCursor(object):
         """
         return self._current
 
+    @property
     def position(self):
         """ Return the current cursor position.
         """
