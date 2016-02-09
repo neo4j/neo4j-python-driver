@@ -172,11 +172,12 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost")
         session = driver.session()
         # tag::result-summary-query-profile[]
-        cursor = session.run("PROFILE MATCH (p:Person {name: {name}}) "
+        result = session.run("PROFILE MATCH (p:Person {name: {name}}) "
                              "RETURN id(p)", {"name": "The One"})
-        summary = cursor.summary()
-        print(summary.statement_type)
-        print(summary.profile)
+        while result.next():
+            pass  # skip the records to get to the summary
+        print(result.summary.statement_type)
+        print(result.summary.profile)
         # end::result-summary-query-profile[]
         session.close()
 
@@ -184,8 +185,10 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost")
         session = driver.session()
         # tag::result-summary-notifications[]
-        summary = session.run("EXPLAIN MATCH (a), (b) RETURN a,b").summary()
-        for notification in summary.notifications:
+        result = session.run("EXPLAIN MATCH (a), (b) RETURN a,b")
+        while result.next():
+            pass  # skip the records to get to the summary
+        for notification in result.summary.notifications:
             print(notification)
         # end::result-summary-notifications[]
         session.close()
