@@ -176,6 +176,7 @@ class ResultCursor(object):
         """
         return self._position
 
+    @property
     def at_end(self):
         """ Return ``True`` if at the end of the record stream, ``False``
         otherwise.
@@ -186,7 +187,7 @@ class ResultCursor(object):
             return True
         else:
             self._connection.fetch()
-            return self.at_end()
+            return self.at_end
 
     def stream(self):
         """ Yield all subsequent records.

@@ -151,7 +151,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         cursor = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
         assert cursor.next()
         assert cursor["count(p)"] == 1
-        assert cursor.at_end()
+        assert cursor.at_end
         session.close()
 
     def test_transaction_rollback(self):
@@ -165,7 +165,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         cursor = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
         assert cursor.next()
         assert cursor["count(p)"] == 0
-        assert cursor.at_end()
+        assert cursor.at_end
         session.close()
 
     def test_result_summary_query_profile(self):
