@@ -19,6 +19,8 @@
 # limitations under the License.
 
 
+from socket import socket
+from ssl import SSLSocket
 from unittest import TestCase
 
 from mock import patch
@@ -60,9 +62,6 @@ class DriverTestCase(TestCase):
         session_2 = driver.session()
         assert session_2 is not session_1
 
-
-class RunTestCase(TestCase):
-
     def test_must_use_valid_url_scheme(self):
         with self.assertRaises(ValueError):
             GraphDatabase.driver("x://xxx")
@@ -82,6 +81,21 @@ class RunTestCase(TestCase):
         session_2.close()
         session_1.close()
         assert session_1 is not session_2
+
+    def test_insecure_session_uses_insecure_socket(self):
+        driver = GraphDatabase.driver("bolt://localhost", secure=False)
+        session = driver.session()
+        assert isinstance(session.connection.channel.socket, socket)
+        session.close()
+
+    def test_secure_session_uses_secure_socket(self):
+        driver = GraphDatabase.driver("bolt://localhost", secure=True)
+        session = driver.session()
+        assert isinstance(session.connection.channel.socket, SSLSocket)
+        session.close()
+
+
+class RunTestCase(TestCase):
 
     def test_can_run_simple_statement(self):
         session = GraphDatabase.driver("bolt://localhost").session()

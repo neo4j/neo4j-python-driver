@@ -324,11 +324,7 @@ def connect(host, port=None, **config):
     s = create_connection((host, port))
 
     # Secure the connection if so requested
-    try:
-        secure = environ["NEO4J_SECURE"]
-    except KeyError:
-        secure = config.get("secure", False)
-    if secure:
+    if config.get("secure", False):
         if __debug__: log_info("~~ [SECURE] %s", host)
         s = secure_socket(s, host)
 
