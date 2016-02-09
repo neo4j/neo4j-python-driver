@@ -32,7 +32,7 @@ from collections import deque, namedtuple
 
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
-from .exceptions import CypherError,  ResultError
+from .exceptions import CypherError, ResultError
 from .typesystem import hydrated
 
 
