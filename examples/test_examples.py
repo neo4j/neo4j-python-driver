@@ -43,9 +43,9 @@ class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
 
         session.run("CREATE (neo:Person {name:'Neo', age:23})")
 
-        cursor = session.run("MATCH (p:Person) WHERE p.name = 'Neo' RETURN p.age")
-        while cursor.next():
-            print("Neo is %d years old." % cursor["p.age"])
+        result = session.run("MATCH (p:Person) WHERE p.name = 'Neo' RETURN p.age")
+        while result.next():
+            print("Neo is %d years old." % result["p.age"])
 
         session.close()
         # end::minimal-example[]
@@ -104,11 +104,11 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session = driver.session()
         # tag::result-cursor[]
         search_term = "hammer"
-        cursor = session.run("MATCH (tool:Tool) WHERE tool.name CONTAINS {term} "
+        result = session.run("MATCH (tool:Tool) WHERE tool.name CONTAINS {term} "
                              "RETURN tool.name", {"term": search_term})
         print("List of tools called %r:" % search_term)
-        while cursor.next():
-            print(cursor["tool.name"])
+        while result.next():
+            print(result["tool.name"])
         # end::result-cursor[]
         session.close()
 
@@ -116,12 +116,12 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost")
         session = driver.session()
         # tag::retain-result-query[]
-        cursor = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
+        result = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
                              "RETURN id(person) AS minion", {"dept": "IT"})
-        while cursor.next():
+        while result.next():
             session.run("MATCH (person) WHERE id(person) = {id} "
                         "MATCH (boss:Person) WHERE boss.name = {boss} "
-                        "CREATE (person)-[:REPORTS_TO]->(boss)", {"id": cursor["minion"], "boss": "Bob"})
+                        "CREATE (person)-[:REPORTS_TO]->(boss)", {"id": result["minion"], "boss": "Bob"})
         # end::retain-result-query[]
         session.close()
 
@@ -129,9 +129,9 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost")
         session = driver.session()
         # tag::retain-result-process[]
-        cursor = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
+        result = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
                              "RETURN id(person) AS minion", {"dept": "IT"})
-        minion_records = list(cursor.stream())
+        minion_records = list(result.stream())
 
         for record in minion_records:
             session.run("MATCH (person) WHERE id(person) = {id} "
@@ -148,10 +148,10 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         tx.run("CREATE (p:Person {name: 'The One'})")
         tx.commit()
         # end::transaction-commit[]
-        cursor = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
-        assert cursor.next()
-        assert cursor["count(p)"] == 1
-        assert cursor.at_end
+        result = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
+        assert result.next()
+        assert result["count(p)"] == 1
+        assert result.at_end
         session.close()
 
     def test_transaction_rollback(self):
@@ -162,10 +162,10 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         tx.run("CREATE (p:Person {name: 'The One'})")
         tx.rollback()
         # end::transaction-rollback[]
-        cursor = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
-        assert cursor.next()
-        assert cursor["count(p)"] == 0
-        assert cursor.at_end
+        result = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
+        assert result.next()
+        assert result["count(p)"] == 0
+        assert result.at_end
         session.close()
 
     def test_result_summary_query_profile(self):
