@@ -21,24 +21,23 @@
 
 from __future__ import division
 
+from base64 import b64encode
 from collections import deque
 from io import BytesIO
 import logging
-from os import environ
+from os import makedirs, open as os_open, write as os_write, close as os_close, O_CREAT, O_APPEND, O_WRONLY
+from os.path import dirname, isfile
 from select import select
 from socket import create_connection, SHUT_RDWR
+from ssl import HAS_SNI, SSLError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
-from ..meta import version
-from .compat import hex2, secure_socket
+from .constants import DEFAULT_PORT, DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, \
+    SECURITY_NONE, SECURITY_TRUST_ON_FIRST_USE
+from .compat import hex2
 from .exceptions import ProtocolError
 from .packstream import Packer, Unpacker
 
-
-DEFAULT_PORT = 7687
-DEFAULT_USER_AGENT = "neo4j-python/%s" % version
-
-MAGIC_PREAMBLE = 0x6060B017
 
 # Signature bytes for each message type
 INIT = b"\x01"             # 0000 0001 // INIT <user_agent>
@@ -211,6 +210,10 @@ class Connection(object):
         user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
         if isinstance(user_agent, bytes):
             user_agent = user_agent.decode("UTF-8")
+        self.user_agent = user_agent
+
+        # Pick up the server certificate, if any
+        self.der_encoded_server_certificate = config.get("der_encoded_server_certificate")
 
         def on_failure(metadata):
             raise ProtocolError("Initialisation failed")
@@ -218,7 +221,7 @@ class Connection(object):
         response = Response(self)
         response.on_failure = on_failure
 
-        self.append(INIT, (user_agent,), response=response)
+        self.append(INIT, (self.user_agent,), response=response)
         self.send()
         while not response.complete:
             self.fetch()
@@ -313,7 +316,39 @@ class Connection(object):
             self.closed = True
 
 
-def connect(host, port=None, **config):
+def verify_certificate(host, der_encoded_certificate):
+    base64_encoded_certificate = b64encode(der_encoded_certificate)
+    if isfile(KNOWN_HOSTS):
+        with open(KNOWN_HOSTS) as f_in:
+            for line in f_in:
+                known_host, _, known_cert = line.strip().partition(":")
+                if host == known_host:
+                    if base64_encoded_certificate == known_cert:
+                        # Certificate match
+                        return
+                    else:
+                        # Certificate mismatch
+                        print(base64_encoded_certificate)
+                        print(known_cert)
+                        raise ProtocolError("Server certificate does not match known certificate for %r; check "
+                                            "details in file %r" % (host, KNOWN_HOSTS))
+    # First use (no hosts match)
+    try:
+        makedirs(dirname(KNOWN_HOSTS))
+    except OSError:
+        pass
+    f_out = os_open(KNOWN_HOSTS, O_CREAT | O_APPEND | O_WRONLY, 0o600)  # TODO: Windows
+    if isinstance(host, bytes):
+        os_write(f_out, host)
+    else:
+        os_write(f_out, host.encode("utf-8"))
+    os_write(f_out, b":")
+    os_write(f_out, base64_encoded_certificate)
+    os_write(f_out, b"\n")
+    os_close(f_out)
+
+
+def connect(host, port=None, ssl_context=None, **config):
     """ Connect and perform a handshake and return a valid Connection object, assuming
     a protocol version can be agreed.
     """
@@ -323,10 +358,25 @@ def connect(host, port=None, **config):
     if __debug__: log_info("~~ [CONNECT] %s %d", host, port)
     s = create_connection((host, port))
 
-    # Secure the connection if so requested
-    if config.get("secure", False):
+    # Secure the connection if an SSL context has been provided
+    if ssl_context:
         if __debug__: log_info("~~ [SECURE] %s", host)
-        s = secure_socket(s, host)
+        try:
+            s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
+        except SSLError as cause:
+            error = ProtocolError("Cannot establish secure connection; %s" % cause.args[1])
+            error.__cause__ = cause
+            raise error
+        else:
+            # Check that the server provides a certificate
+            der_encoded_server_certificate = s.getpeercert(binary_form=True)
+            if der_encoded_server_certificate is None:
+                raise ProtocolError("When using a secure socket, the server should always provide a certificate")
+            security = config.get("security", SECURITY_NONE)
+            if security == SECURITY_TRUST_ON_FIRST_USE:
+                verify_certificate(host, der_encoded_server_certificate)
+    else:
+        der_encoded_server_certificate = None
 
     # Send details of the protocol versions supported
     supported_versions = [1, 0, 0, 0]
@@ -360,4 +410,4 @@ def connect(host, port=None, **config):
         s.shutdown(SHUT_RDWR)
         s.close()
     else:
-        return Connection(s, **config)
+        return Connection(s, der_encoded_server_certificate=der_encoded_server_certificate, **config)

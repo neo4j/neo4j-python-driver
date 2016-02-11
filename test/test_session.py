@@ -19,14 +19,20 @@
 # limitations under the License.
 
 
+from os import remove, rename
+from os.path import isfile
 from socket import socket
 from ssl import SSLSocket
 from unittest import TestCase
 
 from mock import patch
-from neo4j.v1.exceptions import ResultError
-from neo4j.v1.session import GraphDatabase, CypherError, Record, record
+from neo4j.v1.constants import KNOWN_HOSTS, SECURITY_NONE, SECURITY_TRUST_ON_FIRST_USE, SECURITY_VERIFIED
+from neo4j.v1.exceptions import CypherError, ResultError
+from neo4j.v1.session import GraphDatabase, Record, record
 from neo4j.v1.typesystem import Node, Relationship, Path
+
+
+KNOWN_HOSTS_BACKUP = KNOWN_HOSTS + ".backup"
 
 
 class DriverTestCase(TestCase):
@@ -82,17 +88,57 @@ class DriverTestCase(TestCase):
         session_1.close()
         assert session_1 is not session_2
 
-    def test_insecure_session_uses_insecure_socket(self):
-        driver = GraphDatabase.driver("bolt://localhost", secure=False)
+
+class SecurityTestCase(TestCase):
+
+    def setUp(self):
+        if isfile(KNOWN_HOSTS):
+            rename(KNOWN_HOSTS, KNOWN_HOSTS_BACKUP)
+
+    def tearDown(self):
+        if isfile(KNOWN_HOSTS_BACKUP):
+            rename(KNOWN_HOSTS_BACKUP, KNOWN_HOSTS)
+
+    def test_default_session_uses_security_none(self):
+        # TODO: verify this is the correct default (maybe TOFU?)
+        driver = GraphDatabase.driver("bolt://localhost")
+        assert driver.security == SECURITY_NONE
+
+    def test_insecure_session_uses_normal_socket(self):
+        driver = GraphDatabase.driver("bolt://localhost", security=SECURITY_NONE)
         session = driver.session()
-        assert isinstance(session.connection.channel.socket, socket)
+        connection = session.connection
+        assert isinstance(connection.channel.socket, socket)
+        assert connection.der_encoded_server_certificate is None
         session.close()
 
-    def test_secure_session_uses_secure_socket(self):
-        driver = GraphDatabase.driver("bolt://localhost", secure=True)
+    def test_tofu_session_uses_secure_socket(self):
+        driver = GraphDatabase.driver("bolt://localhost", security=SECURITY_TRUST_ON_FIRST_USE)
         session = driver.session()
-        assert isinstance(session.connection.channel.socket, SSLSocket)
+        connection = session.connection
+        assert isinstance(connection.channel.socket, SSLSocket)
+        assert connection.der_encoded_server_certificate is not None
         session.close()
+
+    def test_tofu_session_trusts_certificate_after_first_use(self):
+        driver = GraphDatabase.driver("bolt://localhost", security=SECURITY_TRUST_ON_FIRST_USE)
+        session = driver.session()
+        connection = session.connection
+        certificate = connection.der_encoded_server_certificate
+        session.close()
+        session = driver.session()
+        connection = session.connection
+        assert connection.der_encoded_server_certificate == certificate
+        session.close()
+
+    # TODO: Find a way to run this test
+    # def test_verified_session_uses_secure_socket(self):
+    #     driver = GraphDatabase.driver("bolt://localhost", security=SECURITY_VERIFIED)
+    #     session = driver.session()
+    #     connection = session.connection
+    #     assert isinstance(connection.channel.socket, SSLSocket)
+    #     assert connection.der_encoded_server_certificate is not None
+    #     session.close()
 
 
 class RunTestCase(TestCase):
