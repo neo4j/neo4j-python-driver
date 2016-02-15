@@ -129,7 +129,7 @@ class ResultCursor(object):
         super(ResultCursor, self).__init__()
         self.statement = statement
         self.parameters = parameters
-        self.keys = None
+        self._keys = None
         self._connection = connection
         self._current = None
         self._next = deque()
@@ -156,7 +156,7 @@ class ResultCursor(object):
         """
         if self._next:
             values = self._next.popleft()
-            self._current = Record(self.keys, tuple(map(hydrated, values)))
+            self._current = Record(self.keys(), tuple(map(hydrated, values)))
             self._position += 1
             return True
         elif self._consumed:
@@ -199,6 +199,14 @@ class ResultCursor(object):
             raise TypeError("No current record")
         return current[item]
 
+    def keys(self):
+        """ Return the keys for the records.
+        """
+        # Fetch messages until we have the header or a failure
+        while self._keys is None and not self._consumed:
+            self._connection.fetch_next()
+        return self._keys
+
     def get(self, item, default=None):
         current = self._current
         if current is None:
@@ -224,7 +232,7 @@ class ResultCursor(object):
 
     def _on_header(self, metadata):
         # Called on receipt of the result header.
-        self.keys = metadata["fields"]
+        self._keys = metadata["fields"]
 
     def _on_record(self, values):
         # Called on receipt of each result record.
