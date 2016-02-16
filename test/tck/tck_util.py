@@ -79,7 +79,7 @@ class Type:
     NULL = "Null"
 
 
-class Value:
+class TestValue:
     content = None
 
     def __init__(self, entity):
@@ -100,7 +100,6 @@ class Value:
         return hash(repr(self))
 
     def __eq__(self, other):
-        assert isinstance(other, Value)
         return self.content == other.content
 
     def __repr__(self):

@@ -20,10 +20,11 @@
 
 import random
 import string
+import copy
 
 from behave import *
 
-from neo4j.v1 import GraphDatabase
+from test.tck.resultparser import parse_values
 from test.tck.tck_util import to_unicode, Type, send_string, send_parameters, string_to_type
 
 from neo4j.v1 import compat
@@ -35,29 +36,31 @@ def step_impl(context):
     send_string("RETURN 1")
 
 
-@given("a value (?P<input>.+) of type (?P<bolt_type>.+)")
-def step_impl(context, input, bolt_type):
-    context.expected = get_bolt_value(string_to_type(bolt_type), input)
+@given("a value (?P<input>.+)")
+def step_impl(context, input):
+    context.expected = parse_values(input)
 
 
-@given("a value  of type (?P<bolt_type>.+)")
-def step_impl(context, bolt_type):
-    context.expected = get_bolt_value(string_to_type(bolt_type), u' ')
-
-
-@given("a list value (?P<input>.+) of type (?P<bolt_type>.+)")
-def step_impl(context, input, bolt_type):
-    context.expected = get_list_from_feature_file(input, string_to_type(bolt_type))
-
-
-@given("an empty list L")
+@given("a list containing")
 def step_impl(context):
-    context.L = []
+    context.expected = [parse_values(row[0]) for row in context.table.rows]
 
 
-@given("an empty map M")
+@step("adding this list to itself")
 def step_impl(context):
-    context.M = {}
+    clone = context.expected[:]
+    context.expected.append(clone)
+
+
+@given("a map containing")
+def step_impl(context):
+    context.expected = {parse_values(row[0]): parse_values(row[1]) for row in context.table.rows}
+
+
+@step('adding this map to itself with key "(?P<key>.+)"')
+def step_impl(context, key):
+    clone = copy.deepcopy(context.expected)
+    context.expected[key] = clone
 
 
 @given("a String of size (?P<size>\d+)")
@@ -75,56 +78,8 @@ def step_impl(context, size, type):
     context.expected = get_dict_of_random_type(int(size), string_to_type(type))
 
 
-@step("adding a table of lists to the list L")
-def step_impl(context):
-    for row in context.table:
-        context.L.append(get_list_from_feature_file(row[1], row[0]))
-
-
-@step("adding a table of values to the list L")
-def step_impl(context):
-    for row in context.table:
-        context.L.append(get_bolt_value(row[0], row[1]))
-
-
-@step("adding a table of values to the map M")
-def step_impl(context):
-    for row in context.table:
-        context.M['a%d' % len(context.M)] = get_bolt_value(row[0], row[1])
-
-
-@step("adding map M to list L")
-def step_impl(context):
-    context.L.append(context.M)
-
-
-@when("adding a table of lists to the map M")
-def step_impl(context):
-    for row in context.table:
-        context.M['a%d' % len(context.M)] = get_list_from_feature_file(row[1], row[0])
-
-
-@step("adding a copy of map M to map M")
-def step_impl(context):
-    context.M['a%d' % len(context.M)] = context.M.copy()
-
-
-@when("the driver asks the server to echo this value back")
-def step_impl(context):
-    context.results = {"as_string": send_string("RETURN " + as_cypher_text(context.expected)),
-                       "as_parameters": send_parameters("RETURN {input}", {'input': context.expected})}
-
-
-@when("the driver asks the server to echo this list back")
-def step_impl(context):
-    context.expected = context.L
-    context.results = {"as_string": send_string("RETURN " + as_cypher_text(context.expected)),
-                       "as_parameters": send_parameters("RETURN {input}", {'input': context.expected})}
-
-
-@when("the driver asks the server to echo this map back")
-def step_impl(context):
-    context.expected = context.M
+@when("the driver asks the server to echo this (?P<unused>.+) back")
+def step_impl(context, unused):
     context.results = {"as_string": send_string("RETURN " + as_cypher_text(context.expected)),
                        "as_parameters": send_parameters("RETURN {input}", {'input': context.expected})}
 
@@ -135,56 +90,6 @@ def step_impl(context):
     for result in context.results.values():
         result_value = result[0].values()[0]
         assert result_value == context.expected
-
-
-@given("A driver containing a session pool of size (?P<size>\d+)")
-def step_impl(context, size):
-    context.driver = GraphDatabase.driver("bolt://localhost", max_pool_size=1)
-
-
-@when("acquiring a session from the driver")
-def step_impl(context):
-    context.session = context.driver.session()
-
-
-@step('with the session running the Cypher statement "(?P<statement>.+)"')
-def step_impl(context, statement):
-    context.cursor = context.session.run(statement)
-
-
-@step("pulling the result records")
-def step_impl(context):
-    context.cursor.consume()
-
-
-@then("acquiring a session from the driver should not be possible")
-def step_impl(context):
-    try:
-        context.session = context.driver.session()
-    except:
-        assert True
-    else:
-        assert False
-
-
-@then("acquiring a session from the driver should be possible")
-def step_impl(context):
-    _ = context.driver.session()
-    assert True
-
-
-def get_bolt_value(type, value):
-    if type == Type.INTEGER:
-        return int(value)
-    if type == Type.FLOAT:
-        return float(value)
-    if type == Type.STRING:
-        return to_unicode(value)
-    if type == Type.NULL:
-        return None
-    if type == Type.BOOLEAN:
-        return bool(value)
-    raise ValueError('No such type : %s' % type)
 
 
 def as_cypher_text(expected):
@@ -213,15 +118,6 @@ def as_cypher_text(expected):
         return d
     else:
         return to_unicode(expected)
-
-
-def get_list_from_feature_file(string_list, bolt_type):
-    inputs = string_list.strip('[]')
-    inputs = inputs.split(',')
-    list_to_return = []
-    for value in inputs:
-        list_to_return.append(get_bolt_value(bolt_type, value))
-    return list_to_return
 
 
 def get_random_string(size):
