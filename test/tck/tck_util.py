@@ -100,7 +100,6 @@ class TestValue:
         return hash(repr(self))
 
     def __eq__(self, other):
-        assert isinstance(other, TestValue)
         return self.content == other.content
 
     def __repr__(self):

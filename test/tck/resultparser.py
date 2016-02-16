@@ -21,7 +21,7 @@
 import json
 import re
 from neo4j.v1 import Node, Relationship, Path
-from tck_util import Value
+from tck_util import TestValue
 
 
 def parse_values_to_comparable(row):
@@ -67,13 +67,11 @@ def get_map(val):
 
 
 def value_to_comparable_object(val):
-    return Value(value_to_object(val))
+    return TestValue(value_to_object(val))
 
 
 def value_to_object(val):
     val = val.strip()
-    print("VAL")
-    print(val)
     PATH = '^(<\().*(\)>)$'
     NODE = '^(\().*(\))$'
     RELATIONSHIP = '^(\[:).*(\])$'

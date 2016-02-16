@@ -20,7 +20,7 @@
 
 from behave import *
 
-from test.tck.tck_util import Value, send_string, send_parameters
+from test.tck.tck_util import TestValue, send_string, send_parameters
 from test.tck.resultparser import parse_values, parse_values_to_comparable
 
 use_step_matcher("re")
@@ -60,7 +60,7 @@ def _driver_value_to_comparable(val):
         l = [_driver_value_to_comparable(v) for v in val]
         return l
     else:
-        return Value(val)
+        return TestValue(val)
 
 
 def table_to_comparable_result(table):
@@ -84,14 +84,10 @@ def unordered_equal(given, expected):
     l2 = expected[:]
     assert isinstance(l1, list)
     assert isinstance(l2, list)
-    print(len(l1))
-    print(len(l2))
     assert len(l1) == len(l2)
     for d1 in l1:
         size = len(l2)
         for d2 in l2:
-            print(d2)
-            print(d1)
             if d1 == d2:
                 l2.remove(d2)
                 break
