@@ -27,11 +27,15 @@ def before_all(context):
 
 def before_feature(context, feature):
     # Workaround. Behave has a different way of tagging than cucumber
-    if "reset_database" in feature.tags:
-        for scenario in feature.scenarios:
-            scenario.tags.append("reset_database")
-
+    for scenario in feature.scenarios:
+        scenario.tags += feature.tags
 
 def before_scenario(context, scenario):
     if "reset_database" in scenario.tags:
         tck_util.send_string("MATCH (n) DETACH DELETE n")
+
+
+def after_scenario(context, scenario):
+    if scenario.status != "passed":
+        raise Exception("%s did not pass" %scenario)
+
