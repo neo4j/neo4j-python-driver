@@ -221,7 +221,7 @@ class Connection(object):
         self.append(INIT, (user_agent,), response=response)
         self.send()
         while not response.complete:
-            self.fetch_next()
+            self.fetch()
 
     def __del__(self):
         self.close()
@@ -255,9 +255,9 @@ class Connection(object):
 
         self.append(RESET, response=response)
         self.send()
-        fetch_next = self.fetch_next
+        fetch = self.fetch
         while not response.complete:
-            fetch_next()
+            fetch()
 
     def send(self):
         """ Send all queued messages to the server.
@@ -268,7 +268,7 @@ class Connection(object):
             raise ProtocolError("Cannot write to a defunct connection")
         self.channel.send()
 
-    def fetch_next(self):
+    def fetch(self):
         """ Receive exactly one message from the server.
         """
         if self.closed:

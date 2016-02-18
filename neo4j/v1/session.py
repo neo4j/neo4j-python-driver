@@ -132,7 +132,7 @@ class ResultCursor(object):
         self._keys = None
         self._connection = connection
         self._current = None
-        self._next = deque()
+        self._record_buffer = deque()
         self._position = -1
         self._summary = None
         self._consumed = False
@@ -154,15 +154,15 @@ class ResultCursor(object):
         """ Advance to the next record, if available, and return a boolean
         to indicate whether or not the cursor has moved.
         """
-        if self._next:
-            values = self._next.popleft()
+        if self._record_buffer:
+            values = self._record_buffer.popleft()
             self._current = Record(self.keys(), tuple(map(hydrated, values)))
             self._position += 1
             return True
         elif self._consumed:
             return False
         else:
-            self._connection.fetch_next()
+            self._connection.fetch()
             return self.next()
 
     def record(self):
@@ -179,12 +179,12 @@ class ResultCursor(object):
         """ Return ``True`` if at the end of the record stream, ``False``
         otherwise.
         """
-        if self._next:
+        if self._record_buffer:
             return False
         elif self._consumed:
             return True
         else:
-            self._connection.fetch_next()
+            self._connection.fetch()
             return self.at_end()
 
     def stream(self):
@@ -204,7 +204,7 @@ class ResultCursor(object):
         """
         # Fetch messages until we have the header or a failure
         while self._keys is None and not self._consumed:
-            self._connection.fetch_next()
+            self._connection.fetch()
         return self._keys
 
     def get(self, item, default=None):
@@ -226,9 +226,9 @@ class ResultCursor(object):
 
     def _consume(self):
         # Consume the remainder of this result, triggering all appropriate callback functions.
-        fetch_next = self._connection.fetch_next
+        fetch = self._connection.fetch
         while not self._consumed:
-            fetch_next()
+            fetch()
 
     def _on_header(self, metadata):
         # Called on receipt of the result header.
@@ -236,7 +236,7 @@ class ResultCursor(object):
 
     def _on_record(self, values):
         # Called on receipt of each result record.
-        self._next.append(values)
+        self._record_buffer.append(values)
 
     def _on_footer(self, metadata):
         # Called on receipt of the result footer.
