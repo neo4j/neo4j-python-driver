@@ -33,7 +33,7 @@ from ssl import HAS_SNI, SSLError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
 from .constants import DEFAULT_PORT, DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, \
-    SECURITY_NONE, SECURITY_TRUST_ON_FIRST_USE
+    SECURITY_DEFAULT, SECURITY_TRUST_ON_FIRST_USE
 from .compat import hex2
 from .exceptions import ProtocolError
 from .packstream import Packer, Unpacker
@@ -316,36 +316,51 @@ class Connection(object):
             self.closed = True
 
 
-def verify_certificate(host, der_encoded_certificate):
-    base64_encoded_certificate = b64encode(der_encoded_certificate)
-    if isfile(KNOWN_HOSTS):
-        with open(KNOWN_HOSTS) as f_in:
-            for line in f_in:
-                known_host, _, known_cert = line.strip().partition(":")
-                if host == known_host:
-                    if base64_encoded_certificate == known_cert:
-                        # Certificate match
-                        return
-                    else:
-                        # Certificate mismatch
-                        print(base64_encoded_certificate)
-                        print(known_cert)
-                        raise ProtocolError("Server certificate does not match known certificate for %r; check "
-                                            "details in file %r" % (host, KNOWN_HOSTS))
-    # First use (no hosts match)
-    try:
-        makedirs(dirname(KNOWN_HOSTS))
-    except OSError:
-        pass
-    f_out = os_open(KNOWN_HOSTS, O_CREAT | O_APPEND | O_WRONLY, 0o600)  # TODO: Windows
-    if isinstance(host, bytes):
-        os_write(f_out, host)
-    else:
-        os_write(f_out, host.encode("utf-8"))
-    os_write(f_out, b":")
-    os_write(f_out, base64_encoded_certificate)
-    os_write(f_out, b"\n")
-    os_close(f_out)
+class CertificateStore(object):
+
+    def match_or_trust(self, host, der_encoded_certificate):
+        """ Check whether the supplied certificate matches that stored for the
+        specified host. If it does, return ``True``, if it doesn't, return
+        ``False``. If no entry for that host is found, add it to the store
+        and return ``True``.
+
+        :arg host:
+        :arg der_encoded_certificate:
+        :return:
+        """
+        raise NotImplementedError()
+
+
+class PersonalCertificateStore(CertificateStore):
+
+    def __init__(self, path=None):
+        self.path = path or KNOWN_HOSTS
+
+    def match_or_trust(self, host, der_encoded_certificate):
+        base64_encoded_certificate = b64encode(der_encoded_certificate)
+        if isfile(self.path):
+            with open(self.path) as f_in:
+                for line in f_in:
+                    known_host, _, known_cert = line.strip().partition(":")
+                    if host == known_host:
+                        print("Received: %s" % base64_encoded_certificate)
+                        print("Known: %s" % known_cert)
+                        return base64_encoded_certificate == known_cert
+        # First use (no hosts match)
+        try:
+            makedirs(dirname(self.path))
+        except OSError:
+            pass
+        f_out = os_open(self.path, O_CREAT | O_APPEND | O_WRONLY, 0o600)  # TODO: Windows
+        if isinstance(host, bytes):
+            os_write(f_out, host)
+        else:
+            os_write(f_out, host.encode("utf-8"))
+        os_write(f_out, b":")
+        os_write(f_out, base64_encoded_certificate)
+        os_write(f_out, b"\n")
+        os_close(f_out)
+        return True
 
 
 def connect(host, port=None, ssl_context=None, **config):
@@ -372,9 +387,12 @@ def connect(host, port=None, ssl_context=None, **config):
             der_encoded_server_certificate = s.getpeercert(binary_form=True)
             if der_encoded_server_certificate is None:
                 raise ProtocolError("When using a secure socket, the server should always provide a certificate")
-            security = config.get("security", SECURITY_NONE)
+            security = config.get("security", SECURITY_DEFAULT)
             if security == SECURITY_TRUST_ON_FIRST_USE:
-                verify_certificate(host, der_encoded_server_certificate)
+                store = PersonalCertificateStore()
+                if not store.match_or_trust(host, der_encoded_server_certificate):
+                    raise ProtocolError("Server certificate does not match known certificate for %r; check "
+                                        "details in file %r" % (host, KNOWN_HOSTS))
     else:
         der_encoded_server_certificate = None
 

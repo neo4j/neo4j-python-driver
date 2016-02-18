@@ -33,7 +33,7 @@ from ssl import SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED, Purpose
 
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
-from .constants import SECURITY_NONE, SECURITY_VERIFIED
+from .constants import SECURITY_NONE, SECURITY_VERIFIED, SECURITY_DEFAULT
 from .exceptions import CypherError, ResultError
 from .typesystem import hydrated
 
@@ -79,7 +79,7 @@ class Driver(object):
         self.config = config
         self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
         self.session_pool = deque()
-        self.security = security = config.get("security", SECURITY_NONE)
+        self.security = security = config.get("security", SECURITY_DEFAULT)
         if security > SECURITY_NONE:
             ssl_context = SSLContext(PROTOCOL_SSLv23)
             ssl_context.options |= OP_NO_SSLv2

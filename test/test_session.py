@@ -19,23 +19,19 @@
 # limitations under the License.
 
 
-from os import remove, rename
-from os.path import isfile
 from socket import socket
 from ssl import SSLSocket
-from unittest import TestCase
 
 from mock import patch
-from neo4j.v1.constants import KNOWN_HOSTS, SECURITY_NONE, SECURITY_TRUST_ON_FIRST_USE, SECURITY_VERIFIED
+from neo4j.v1.constants import SECURITY_NONE, SECURITY_TRUST_ON_FIRST_USE
 from neo4j.v1.exceptions import CypherError, ResultError
 from neo4j.v1.session import GraphDatabase, Record, record
 from neo4j.v1.typesystem import Node, Relationship, Path
 
+from test.util import ServerTestCase
 
-KNOWN_HOSTS_BACKUP = KNOWN_HOSTS + ".backup"
 
-
-class DriverTestCase(TestCase):
+class DriverTestCase(ServerTestCase):
 
     def test_healthy_session_will_be_returned_to_the_pool_on_close(self):
         driver = GraphDatabase.driver("bolt://localhost")
@@ -89,20 +85,11 @@ class DriverTestCase(TestCase):
         assert session_1 is not session_2
 
 
-class SecurityTestCase(TestCase):
+class SecurityTestCase(ServerTestCase):
 
-    def setUp(self):
-        if isfile(KNOWN_HOSTS):
-            rename(KNOWN_HOSTS, KNOWN_HOSTS_BACKUP)
-
-    def tearDown(self):
-        if isfile(KNOWN_HOSTS_BACKUP):
-            rename(KNOWN_HOSTS_BACKUP, KNOWN_HOSTS)
-
-    def test_default_session_uses_security_none(self):
-        # TODO: verify this is the correct default (maybe TOFU?)
+    def test_default_session_uses_tofu(self):
         driver = GraphDatabase.driver("bolt://localhost")
-        assert driver.security == SECURITY_NONE
+        assert driver.security == SECURITY_TRUST_ON_FIRST_USE
 
     def test_insecure_session_uses_normal_socket(self):
         driver = GraphDatabase.driver("bolt://localhost", security=SECURITY_NONE)
@@ -141,7 +128,7 @@ class SecurityTestCase(TestCase):
     #     session.close()
 
 
-class RunTestCase(TestCase):
+class RunTestCase(ServerTestCase):
 
     def test_can_run_simple_statement(self):
         session = GraphDatabase.driver("bolt://localhost").session()
@@ -363,7 +350,7 @@ class SummaryTestCase(TestCase):
             assert position.column == 1
 
 
-class ResetTestCase(TestCase):
+class ResetTestCase(ServerTestCase):
 
     def test_automatic_reset_after_failure(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
@@ -387,7 +374,7 @@ class ResetTestCase(TestCase):
             assert session.connection.closed
 
 
-class RecordTestCase(TestCase):
+class RecordTestCase(ServerTestCase):
     def test_record_equality(self):
         record1 = Record(["name", "empire"], ["Nigel", "The British Empire"])
         record2 = Record(["name", "empire"], ["Nigel", "The British Empire"])
@@ -461,7 +448,8 @@ class RecordTestCase(TestCase):
         assert repr(a_record) == "<Record name='Nigel' empire='The British Empire'>"
 
 
-class TransactionTestCase(TestCase):
+class TransactionTestCase(ServerTestCase):
+
     def test_can_commit_transaction(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             tx = session.begin_transaction()
