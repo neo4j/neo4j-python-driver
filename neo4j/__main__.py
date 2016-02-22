@@ -75,8 +75,8 @@ def main():
                         stdout.write("%s\r\n" % "\t".join(map(repr, record)))
                     if has_results:
                         stdout.write("\r\n")
-                    if args.summarize:
-                        summary = cursor.summarize()
+                    if args.summary:
+                        summary = cursor.summary
                         stdout.write("Statement      : %r\r\n" % summary.statement)
                         stdout.write("Parameters     : %r\r\n" % summary.parameters)
                         stdout.write("Statement Type : %r\r\n" % summary.statement_type)

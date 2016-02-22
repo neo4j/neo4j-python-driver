@@ -32,7 +32,7 @@ from collections import deque, namedtuple
 
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
-from .exceptions import CypherError
+from .exceptions import CypherError, ResultError
 from .typesystem import hydrated
 
 
@@ -170,11 +170,13 @@ class ResultCursor(object):
         """
         return self._current
 
+    @property
     def position(self):
         """ Return the current cursor position.
         """
         return self._position
 
+    @property
     def at_end(self):
         """ Return ``True`` if at the end of the record stream, ``False``
         otherwise.
@@ -185,7 +187,7 @@ class ResultCursor(object):
             return True
         else:
             self._connection.fetch()
-            return self.at_end()
+            return self.at_end
 
     def stream(self):
         """ Yield all subsequent records.
@@ -216,13 +218,19 @@ class ResultCursor(object):
         except (IndexError, KeyError):
             return default
 
-    def summarize(self):
-        """ Consume the remainder of this result and produce a summary.
+    @property
+    def summary(self):
+        """ Return the summary from the trailing metadata. Note that this is
+        only available once the entire result stream has been consumed.
+        Attempting to access the summary before then will raise an error.
 
         :rtype: ResultSummary
+        :raises ResultError: if the entire result has not yet been consumed
         """
-        self._consume()
-        return self._summary
+        if self._consumed:
+            return self._summary
+        else:
+            raise ResultError("Summary not available until the entire result has been consumed")
 
     def _consume(self):
         # Consume the remainder of this result, triggering all appropriate callback functions.
@@ -262,8 +270,8 @@ class ResultSummary(object):
     #: The type of statement (``'r'`` = read-only, ``'rw'`` = read/write).
     statement_type = None
 
-    #: A set of statistical information held in a :class:`.StatementStatistics` instance.
-    statistics = None
+    #: A set of statistical information held in a :class:`.Counters` instance.
+    counters = None
 
     #: A :class:`.Plan` instance
     plan = None
@@ -281,7 +289,7 @@ class ResultSummary(object):
         self.statement = statement
         self.parameters = parameters
         self.statement_type = metadata.get("type")
-        self.statistics = StatementStatistics(metadata.get("stats", {}))
+        self.counters = Counters(metadata.get("stats", {}))
         if "plan" in metadata:
             self.plan = make_plan(metadata["plan"])
         if "profile" in metadata:
@@ -296,7 +304,7 @@ class ResultSummary(object):
                                                    notification["description"], position))
 
 
-class StatementStatistics(object):
+class Counters(object):
     """ Set of statistics from a Cypher statement execution.
     """
 

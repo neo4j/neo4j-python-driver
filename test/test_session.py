@@ -22,6 +22,7 @@
 from unittest import TestCase
 
 from mock import patch
+from neo4j.v1.exceptions import ResultError
 from neo4j.v1.session import GraphDatabase, CypherError, Record, record
 from neo4j.v1.typesystem import Node, Relationship, Path
 
@@ -85,7 +86,9 @@ class RunTestCase(TestCase):
     def test_can_run_simple_statement(self):
         session = GraphDatabase.driver("bolt://localhost").session()
         count = 0
-        for record in session.run("RETURN 1 AS n").stream():
+        cursor = session.run("RETURN 1 AS n")
+        assert cursor.position == -1
+        for record in cursor.stream():
             assert record[0] == 1
             assert record["n"] == 1
             with self.assertRaises(KeyError):
@@ -97,6 +100,7 @@ class RunTestCase(TestCase):
                 _ = record[object()]
             assert repr(record)
             assert len(record) == 1
+            assert cursor.position == count
             count += 1
         session.close()
         assert count == 1
@@ -191,25 +195,59 @@ class RunTestCase(TestCase):
             with self.assertRaises(CypherError):
                 session.run("X").close()
 
-    def test_can_obtain_summary_info(self):
+    def test_keys_are_available_before_and_after_stream(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            cursor = session.run("UNWIND range(1, 10) AS n RETURN n")
+            assert list(cursor.keys()) == ["n"]
+            _ = list(cursor.stream())
+            assert list(cursor.keys()) == ["n"]
+
+    def test_keys_with_an_error(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            cursor = session.run("X")
+            with self.assertRaises(CypherError):
+                _ = list(cursor.keys())
+
+
+class SummaryTestCase(TestCase):
+
+    def test_can_obtain_summary_after_consuming_result(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             cursor = session.run("CREATE (n) RETURN n")
-            summary = cursor.summarize()
+            list(cursor.stream())
+            summary = cursor.summary
             assert summary.statement == "CREATE (n) RETURN n"
             assert summary.parameters == {}
             assert summary.statement_type == "rw"
-            assert summary.statistics.nodes_created == 1
+            assert summary.counters.nodes_created == 1
+
+    def test_cannot_obtain_summary_without_consuming_result(self):
+        with GraphDatabase.driver("bolt://localhost").session() as session:
+            cursor = session.run("CREATE (n) RETURN n")
+            with self.assertRaises(ResultError):
+                _ = cursor.summary
+
+    # def test_can_obtain_summary_immediately_if_empty_result(self):
+    #     with GraphDatabase.driver("bolt://localhost").session() as session:
+    #         cursor = session.run("CREATE (n)")
+    #         summary = cursor.summary
+    #         assert summary.statement == "CREATE (n)"
+    #         assert summary.parameters == {}
+    #         assert summary.statement_type == "rw"
+    #         assert summary.counters.nodes_created == 1
 
     def test_no_plan_info(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             cursor = session.run("CREATE (n) RETURN n")
-            assert cursor.summarize().plan is None
-            assert cursor.summarize().profile is None
+            list(cursor.stream())
+            assert cursor.summary.plan is None
+            assert cursor.summary.profile is None
 
     def test_can_obtain_plan_info(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             cursor = session.run("EXPLAIN CREATE (n) RETURN n")
-            plan = cursor.summarize().plan
+            list(cursor.stream())
+            plan = cursor.summary.plan
             assert plan.operator_type == "ProduceResults"
             assert plan.identifiers == ["n"]
             assert plan.arguments == {"planner": "COST", "EstimatedRows": 1.0, "version": "CYPHER 3.0",
@@ -220,7 +258,8 @@ class RunTestCase(TestCase):
     def test_can_obtain_profile_info(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             cursor = session.run("PROFILE CREATE (n) RETURN n")
-            profile = cursor.summarize().profile
+            list(cursor.stream())
+            profile = cursor.summary.profile
             assert profile.db_hits == 0
             assert profile.rows == 1
             assert profile.operator_type == "ProduceResults"
@@ -232,14 +271,16 @@ class RunTestCase(TestCase):
 
     def test_no_notification_info(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            result = session.run("CREATE (n) RETURN n")
-            notifications = result.summarize().notifications
+            cursor = session.run("CREATE (n) RETURN n")
+            list(cursor.stream())
+            notifications = cursor.summary.notifications
             assert notifications == []
 
     def test_can_obtain_notification_info(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
-            result = session.run("EXPLAIN MATCH (n), (m) RETURN n, m")
-            notifications = result.summarize().notifications
+            cursor = session.run("EXPLAIN MATCH (n), (m) RETURN n, m")
+            list(cursor.stream())
+            notifications = cursor.summary.notifications
 
             assert len(notifications) == 1
             notification = notifications[0]
@@ -260,19 +301,6 @@ class RunTestCase(TestCase):
             assert position.offset == 0
             assert position.line == 1
             assert position.column == 1
-
-    def test_keys_are_available_before_and_after_stream(self):
-        with GraphDatabase.driver("bolt://localhost").session() as session:
-            cursor = session.run("UNWIND range(1, 10) AS n RETURN n")
-            assert list(cursor.keys()) == ["n"]
-            _ = list(cursor.stream())
-            assert list(cursor.keys()) == ["n"]
-
-    def test_keys_with_an_error(self):
-        with GraphDatabase.driver("bolt://localhost").session() as session:
-            cursor = session.run("X")
-            with self.assertRaises(CypherError):
-                _ = list(cursor.keys())
 
 
 class ResetTestCase(TestCase):
