@@ -430,8 +430,11 @@ class Session(object):
         self.last_cursor = None
 
     def __del__(self):
-        if not self.connection.closed:
-            self.connection.close()
+        try:
+            if not self.connection.closed:
+                self.connection.close()
+        except AttributeError:
+            pass
 
     def __enter__(self):
         return self
