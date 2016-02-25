@@ -61,6 +61,8 @@ fi
 echo "Running tests with $(python --version)"
 pip install --upgrade -r ${DRIVER_HOME}/test_requirements.txt
 echo ""
+python -c 'from test.util import *; change_password("neo4j", "neo4j", "tmp")'
+python -c 'from test.util import *; change_password("neo4j", "tmp", "neo4j")'
 TEST_RUNNER="coverage run -m ${UNITTEST} discover -vfs ${TEST}"
 EXAMPLES_RUNNER="coverage run -m ${UNITTEST} discover -vfs examples"
 BEHAVE_RUNNER="behave --tags=-db --tags=-in_dev test/tck"

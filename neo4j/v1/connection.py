@@ -218,16 +218,23 @@ class Connection(object):
         def on_failure(metadata):
             raise ProtocolError("Initialisation failed")
 
+        self.auth_token = config.get("auth")
         response = Response(self)
         response.on_failure = on_failure
 
-        self.append(INIT, (self.user_agent,), response=response)
+        self.append(INIT, (self.user_agent,self._auth_token_dict(),), response=response)
         self.send()
         while not response.complete:
             self.fetch()
 
     def __del__(self):
         self.close()
+
+    def _auth_token_dict(self):
+        if self.auth_token:
+            return self.auth_token._asdict()
+        else:
+            return {}
 
     def append(self, signature, fields=(), response=None):
         """ Add a message to the outgoing queue.
