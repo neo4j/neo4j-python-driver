@@ -29,9 +29,11 @@ managing sessions.
 from __future__ import division
 
 from collections import deque, namedtuple
+from ssl import SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED, Purpose
 
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
+from .constants import SECURITY_NONE, SECURITY_VERIFIED, SECURITY_DEFAULT
 from .exceptions import CypherError, ResultError
 from .typesystem import hydrated
 
@@ -77,6 +79,16 @@ class Driver(object):
         self.config = config
         self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
         self.session_pool = deque()
+        self.security = security = config.get("security", SECURITY_DEFAULT)
+        if security > SECURITY_NONE:
+            ssl_context = SSLContext(PROTOCOL_SSLv23)
+            ssl_context.options |= OP_NO_SSLv2
+            if security >= SECURITY_VERIFIED:
+                ssl_context.verify_mode = CERT_REQUIRED
+            ssl_context.load_default_certs(Purpose.SERVER_AUTH)
+            self.ssl_context = ssl_context
+        else:
+            self.ssl_context = None
 
     def session(self):
         """ Create a new session based on the graph database details
@@ -425,7 +437,7 @@ class Session(object):
 
     def __init__(self, driver):
         self.driver = driver
-        self.connection = connect(driver.host, driver.port, **driver.config)
+        self.connection = connect(driver.host, driver.port, driver.ssl_context, **driver.config)
         self.transaction = None
         self.last_cursor = None
 
@@ -653,6 +665,7 @@ class Record(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
 
 def record(obj):
     """ Obtain an immutable record for the given object

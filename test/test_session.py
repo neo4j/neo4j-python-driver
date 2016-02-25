@@ -19,15 +19,19 @@
 # limitations under the License.
 
 
-from unittest import TestCase
+from socket import socket
+from ssl import SSLSocket
 
 from mock import patch
-from neo4j.v1.exceptions import ResultError
-from neo4j.v1.session import GraphDatabase, CypherError, Record, record
+from neo4j.v1.constants import SECURITY_NONE, SECURITY_TRUST_ON_FIRST_USE
+from neo4j.v1.exceptions import CypherError, ResultError
+from neo4j.v1.session import GraphDatabase, Record, record
 from neo4j.v1.typesystem import Node, Relationship, Path
 
+from test.util import ServerTestCase
 
-class DriverTestCase(TestCase):
+
+class DriverTestCase(ServerTestCase):
 
     def test_healthy_session_will_be_returned_to_the_pool_on_close(self):
         driver = GraphDatabase.driver("bolt://localhost")
@@ -60,9 +64,6 @@ class DriverTestCase(TestCase):
         session_2 = driver.session()
         assert session_2 is not session_1
 
-
-class RunTestCase(TestCase):
-
     def test_must_use_valid_url_scheme(self):
         with self.assertRaises(ValueError):
             GraphDatabase.driver("x://xxx")
@@ -82,6 +83,52 @@ class RunTestCase(TestCase):
         session_2.close()
         session_1.close()
         assert session_1 is not session_2
+
+
+class SecurityTestCase(ServerTestCase):
+
+    def test_default_session_uses_tofu(self):
+        driver = GraphDatabase.driver("bolt://localhost")
+        assert driver.security == SECURITY_TRUST_ON_FIRST_USE
+
+    def test_insecure_session_uses_normal_socket(self):
+        driver = GraphDatabase.driver("bolt://localhost", security=SECURITY_NONE)
+        session = driver.session()
+        connection = session.connection
+        assert isinstance(connection.channel.socket, socket)
+        assert connection.der_encoded_server_certificate is None
+        session.close()
+
+    def test_tofu_session_uses_secure_socket(self):
+        driver = GraphDatabase.driver("bolt://localhost", security=SECURITY_TRUST_ON_FIRST_USE)
+        session = driver.session()
+        connection = session.connection
+        assert isinstance(connection.channel.socket, SSLSocket)
+        assert connection.der_encoded_server_certificate is not None
+        session.close()
+
+    def test_tofu_session_trusts_certificate_after_first_use(self):
+        driver = GraphDatabase.driver("bolt://localhost", security=SECURITY_TRUST_ON_FIRST_USE)
+        session = driver.session()
+        connection = session.connection
+        certificate = connection.der_encoded_server_certificate
+        session.close()
+        session = driver.session()
+        connection = session.connection
+        assert connection.der_encoded_server_certificate == certificate
+        session.close()
+
+    # TODO: Find a way to run this test
+    # def test_verified_session_uses_secure_socket(self):
+    #     driver = GraphDatabase.driver("bolt://localhost", security=SECURITY_VERIFIED)
+    #     session = driver.session()
+    #     connection = session.connection
+    #     assert isinstance(connection.channel.socket, SSLSocket)
+    #     assert connection.der_encoded_server_certificate is not None
+    #     session.close()
+
+
+class RunTestCase(ServerTestCase):
 
     def test_can_run_simple_statement(self):
         session = GraphDatabase.driver("bolt://localhost").session()
@@ -209,7 +256,7 @@ class RunTestCase(TestCase):
                 _ = list(cursor.keys())
 
 
-class SummaryTestCase(TestCase):
+class SummaryTestCase(ServerTestCase):
 
     def test_can_obtain_summary_after_consuming_result(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
@@ -303,7 +350,7 @@ class SummaryTestCase(TestCase):
             assert position.column == 1
 
 
-class ResetTestCase(TestCase):
+class ResetTestCase(ServerTestCase):
 
     def test_automatic_reset_after_failure(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
@@ -327,7 +374,7 @@ class ResetTestCase(TestCase):
             assert session.connection.closed
 
 
-class RecordTestCase(TestCase):
+class RecordTestCase(ServerTestCase):
     def test_record_equality(self):
         record1 = Record(["name", "empire"], ["Nigel", "The British Empire"])
         record2 = Record(["name", "empire"], ["Nigel", "The British Empire"])
@@ -401,7 +448,8 @@ class RecordTestCase(TestCase):
         assert repr(a_record) == "<Record name='Nigel' empire='The British Empire'>"
 
 
-class TransactionTestCase(TestCase):
+class TransactionTestCase(ServerTestCase):
+
     def test_can_commit_transaction(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
             tx = session.begin_transaction()
