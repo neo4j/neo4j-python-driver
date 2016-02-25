@@ -342,9 +342,8 @@ class PersonalCertificateStore(CertificateStore):
             with open(self.path) as f_in:
                 for line in f_in:
                     known_host, _, known_cert = line.strip().partition(":")
+                    known_cert = known_cert.encode("utf-8")
                     if host == known_host:
-                        print("Received: %s" % base64_encoded_certificate)
-                        print("Known: %s" % known_cert)
                         return base64_encoded_certificate == known_cert
         # First use (no hosts match)
         try:

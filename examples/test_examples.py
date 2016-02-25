@@ -19,16 +19,17 @@
 # limitations under the License.
 
 
-from unittest import TestCase
+from test.util import ServerTestCase
 
 # tag::minimal-example-import[]
 from neo4j.v1 import GraphDatabase
 # end::minimal-example-import[]
 
 
-class FreshDatabaseTestCase(TestCase):
+class FreshDatabaseTestCase(ServerTestCase):
 
     def setUp(self):
+        ServerTestCase.setUp(self)
         session = GraphDatabase.driver("bolt://localhost").session()
         session.run("MATCH (n) DETACH DELETE n")
         session.close()

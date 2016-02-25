@@ -256,7 +256,7 @@ class RunTestCase(ServerTestCase):
                 _ = list(cursor.keys())
 
 
-class SummaryTestCase(TestCase):
+class SummaryTestCase(ServerTestCase):
 
     def test_can_obtain_summary_after_consuming_result(self):
         with GraphDatabase.driver("bolt://localhost").session() as session:
