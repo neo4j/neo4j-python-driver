@@ -32,8 +32,18 @@ __all__ = ["integer", "perf_counter", "secure_socket", "string", "urlparse"]
 try:
     unicode
 except NameError:
+    # Python 3
+
     integer = int
     string = str
+
+    def ustr(x):
+        if isinstance(x, bytes):
+            return x.decode("utf-8")
+        elif isinstance(x, str):
+            return x
+        else:
+            return str(x)
 
     def hex2(x):
         if x < 0x10:
@@ -42,8 +52,18 @@ except NameError:
             return hex(x)[2:].upper()
 
 else:
+    # Python 2
+
     integer = (int, long)
     string = (str, unicode)
+
+    def ustr(x):
+        if isinstance(x, str):
+            return x.decode("utf-8")
+        elif isinstance(x, unicode):
+            return x
+        else:
+            return unicode(x)
 
     def hex2(x):
         x = ord(x)

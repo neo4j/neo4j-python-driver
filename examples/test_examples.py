@@ -42,11 +42,11 @@ class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
 
-        session.run("CREATE (neo:Person {name:'Neo', age:23})")
+        session.run("CREATE (a:Person {name:'Arthur', title:'King'})", )
 
-        result = session.run("MATCH (p:Person) WHERE p.name = 'Neo' RETURN p.age")
+        result = session.run("MATCH (a:Person) WHERE a.name = 'Arthur' RETURN a.name AS name, a.title AS title")
         while result.next():
-            print("Neo is %d years old." % result["p.age"])
+            print("%s %s" % (result["title"], result["name"]))
 
         session.close()
         # end::minimal-example[]
