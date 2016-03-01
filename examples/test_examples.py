@@ -30,7 +30,7 @@ class FreshDatabaseTestCase(ServerTestCase):
 
     def setUp(self):
         ServerTestCase.setUp(self)
-        session = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j")).session()
+        session = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password")).session()
         session.run("MATCH (n) DETACH DELETE n")
         session.close()
 
@@ -39,7 +39,7 @@ class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
 
     def test_minimal_working_example(self):
         # tag::minimal-example[]
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
 
         session.run("CREATE (neo:Person {name:'Neo', age:23})")
@@ -56,7 +56,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
 
     def test_construct_driver(self):
         # tag::construct-driver[]
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         # end::construct-driver[]
         return driver
 
@@ -85,7 +85,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # end::tls-signed[]
 
     def test_statement(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
         # tag::statement[]
         session.run("CREATE (person:Person {name: {name}})", {"name": "Neo"}).close()
@@ -93,7 +93,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_statement_without_parameters(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
         # tag::statement-without-parameters[]
         session.run("CREATE (person:Person {name: 'Neo'})").close()
@@ -101,7 +101,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_result_cursor(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
         # tag::result-cursor[]
         search_term = "hammer"
@@ -114,7 +114,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_cursor_nesting(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
         # tag::retain-result-query[]
         result = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
@@ -127,7 +127,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_result_retention(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
         # tag::retain-result-process[]
         result = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
@@ -142,7 +142,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_transaction_commit(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
         # tag::transaction-commit[]
         tx = session.begin_transaction()
@@ -156,7 +156,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_transaction_rollback(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
         # tag::transaction-rollback[]
         tx = session.begin_transaction()
@@ -170,7 +170,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_result_summary_query_profile(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
         # tag::result-summary-query-profile[]
         result = session.run("PROFILE MATCH (p:Person {name: {name}}) "
@@ -183,7 +183,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_result_summary_notifications(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
         # tag::result-summary-notifications[]
         result = session.run("EXPLAIN MATCH (a), (b) RETURN a,b")

@@ -28,7 +28,7 @@ import logging
 from os import makedirs, open as os_open, write as os_write, close as os_close, O_CREAT, O_APPEND, O_WRONLY
 from os.path import dirname, isfile
 from select import select
-from socket import create_connection, SHUT_RDWR
+from socket import create_connection, SHUT_RDWR, error as SocketError
 from ssl import HAS_SNI, SSLError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
@@ -66,7 +66,7 @@ message_names = {
 }
 
 # Set up logger
-log = logging.getLogger("neo4j")
+log = logging.getLogger("neo4j.bolt")
 log_debug = log.debug
 log_info = log.info
 log_warning = log.warning
@@ -212,29 +212,28 @@ class Connection(object):
             user_agent = user_agent.decode("UTF-8")
         self.user_agent = user_agent
 
+        # Determine auth details
+        try:
+            self.auth_dict = vars(config["auth"])
+        except KeyError:
+            self.auth_dict = {}
+
         # Pick up the server certificate, if any
         self.der_encoded_server_certificate = config.get("der_encoded_server_certificate")
 
         def on_failure(metadata):
-            raise ProtocolError("Initialisation failed")
+            raise ProtocolError(metadata.get("message", "Inititalisation failed"))
 
-        self.auth_token = config.get("auth")
         response = Response(self)
         response.on_failure = on_failure
 
-        self.append(INIT, (self.user_agent,self._auth_token_dict(),), response=response)
+        self.append(INIT, (self.user_agent, self.auth_dict), response=response)
         self.send()
         while not response.complete:
             self.fetch()
 
     def __del__(self):
         self.close()
-
-    def _auth_token_dict(self):
-        if self.auth_token:
-            return self.auth_token._asdict()
-        else:
-            return {}
 
     def append(self, signature, fields=(), response=None):
         """ Add a message to the outgoing queue.
@@ -377,7 +376,13 @@ def connect(host, port=None, ssl_context=None, **config):
     # Establish a connection to the host and port specified
     port = port or DEFAULT_PORT
     if __debug__: log_info("~~ [CONNECT] %s %d", host, port)
-    s = create_connection((host, port))
+    try:
+        s = create_connection((host, port))
+    except SocketError as error:
+        if error.errno == 111:
+            raise ProtocolError("Unable to connect to %s on port %d - is the server running?" % (host, port))
+        else:
+            raise
 
     # Secure the connection if an SSL context has been provided
     if ssl_context:

@@ -18,8 +18,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from neo4j.v1.session import GraphDatabase
-from neo4j.v1.auth import basic_auth
+from neo4j.v1.session import GraphDatabase, basic_auth
+
 
 driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
 session = driver.session()

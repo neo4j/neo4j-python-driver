@@ -21,6 +21,11 @@ DRIVER_HOME=$(dirname $0)
 
 NEORUN_OPTIONS=""
 RUNNING=0
+KNOWN_HOSTS="${HOME}/.neo4j/known_hosts"
+KNOWN_HOSTS_BACKUP="${KNOWN_HOSTS}.backup"
+
+FG_BRIGHT_RED='\033[1;31m'
+FG_DEFAULT='\033[0m'
 
 # Parse options
 while getopts ":dr" OPTION
@@ -57,33 +62,45 @@ then
     VERSIONS="nightly"
 fi
 
+function check_exit_status {
+    EXIT_STATUS=$1
+    if [ ${EXIT_STATUS} -ne 0 ]
+    then
+        echo ""
+        echo -e "${FG_BRIGHT_RED}Tests failed with status ${EXIT_STATUS}${FG_DEFAULT}"
+        exit ${EXIT_STATUS}
+    fi
+}
+
 # Run tests
-echo "Running tests with $(python --version)"
+echo "Using $(python --version)"
 pip install --upgrade -r ${DRIVER_HOME}/test_requirements.txt
 echo ""
-python -c 'from test.util import *; change_password("neo4j", "neo4j", "tmp")'
-python -c 'from test.util import *; change_password("neo4j", "tmp", "neo4j")'
+
 TEST_RUNNER="coverage run -m ${UNITTEST} discover -vfs ${TEST}"
 EXAMPLES_RUNNER="coverage run -m ${UNITTEST} discover -vfs examples"
 BEHAVE_RUNNER="behave --tags=-db --tags=-in_dev test/tck"
+
 if [ ${RUNNING} -eq 1 ]
 then
     ${TEST_RUNNER}
-    EXIT_STATUS=$?
+    check_exit_status $?
 else
-    neokit/neorun ${NEORUN_OPTIONS} "${TEST_RUNNER}" ${VERSIONS}
-    EXIT_STATUS=$?
-    if [ ${EXIT_STATUS} -ne 0 ]
-    then
-        exit ${EXIT_STATUS}
-    fi
+    #echo "Updating password"
+    #mv ${KNOWN_HOSTS} ${KNOWN_HOSTS_BACKUP}
+    #neokit/neorun ${NEORUN_OPTIONS} "python -m test.auth password" ${VERSIONS}
+    #EXIT_STATUS=$?
+    #mv ${KNOWN_HOSTS_BACKUP} ${KNOWN_HOSTS}
+    #check_exit_status ${EXIT_STATUS}
+    export NEO4J_PASSWORD="password"
 
+    echo "Running unit tests"
+    neokit/neorun ${NEORUN_OPTIONS} "${TEST_RUNNER}" ${VERSIONS}
+    check_exit_status $?
+
+    echo "Testing example code"
     neokit/neorun ${NEORUN_OPTIONS} "${EXAMPLES_RUNNER}" ${VERSIONS}
-    EXIT_STATUS=$?
-    if [ ${EXIT_STATUS} -ne 0 ]
-    then
-        exit ${EXIT_STATUS}
-    fi
+    check_exit_status $?
 
     coverage report --show-missing
     python -c 'from test.tck.configure_feature_files import *; set_up()'
@@ -92,10 +109,4 @@ else
     python -c 'from test.tck.configure_feature_files import *; clean_up()'
     echo "Feature files removed"
 
-fi
-
-# Exit correctly
-if [ ${EXIT_STATUS} -ne 0 ]
-then
-    exit ${EXIT_STATUS}
 fi

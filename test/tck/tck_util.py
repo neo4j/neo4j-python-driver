@@ -22,7 +22,7 @@ from neo4j.v1 import GraphDatabase, Relationship, Node, Path, SECURITY_NONE, bas
 from neo4j.v1.compat import string
 
 
-driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"), security=SECURITY_NONE)
+driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), security=SECURITY_NONE)
 
 def send_string(text):
     session = driver.session()

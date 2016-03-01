@@ -30,7 +30,6 @@ from neo4j.v1.constants import KNOWN_HOSTS
 
 KNOWN_HOSTS_BACKUP = KNOWN_HOSTS + ".backup"
 
-from neo4j.v1 import GraphDatabase
 
 def watch(f):
     """ Decorator to enable log watching for the lifetime of a function.
@@ -42,7 +41,7 @@ def watch(f):
     """
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        watcher = Watcher("neo4j")
+        watcher = Watcher("neo4j.bolt")
         watcher.watch()
         f(*args, **kwargs)
         watcher.stop()
@@ -63,29 +62,3 @@ class ServerTestCase(TestCase):
     def tearDown(self):
         if isfile(self.known_hosts_backup):
             rename(self.known_hosts_backup, self.known_hosts)
-
-
-def change_password(user, password, new_password):
-    """Util only used for test for doing the initial password update
-    :param user: user name
-    :param password: current password
-    :param new_password: new password to set
-    """
-
-    token = _UpdateCredToken(user, password, new_password)
-    driver = GraphDatabase.driver("bolt://localhost", auth=token)
-    driver.session().close()
-
-
-class _UpdateCredToken:
-    """Util only used for test for doing the initial password update"""
-
-    def __init__(self, user, password, new_password):
-        self._user = user
-        self._password = password
-        self._new_password = new_password
-
-    def _asdict(self):
-        return {"principal": self._user, "credentials": self._password,
-                "new-credentials": self._new_password, "scheme": "basic"}
-

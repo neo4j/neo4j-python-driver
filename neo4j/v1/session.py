@@ -46,6 +46,26 @@ STATEMENT_TYPE_WRITE_ONLY = "w"
 STATEMENT_TYPE_SCHEMA_WRITE = "sw"
 
 
+def basic_auth(user, password):
+    """ Generate a basic auth token for a given user and password.
+
+    :param user: user name
+    :param password: current password
+    :return: auth token for use with :meth:`GraphDatabase.driver`
+    """
+    return AuthToken("basic", user, password)
+
+
+class AuthToken(object):
+    """ Container for auth information
+    """
+
+    def __init__(self, scheme, principal, credentials):
+        self.scheme = scheme
+        self.principal = principal
+        self.credentials = credentials
+
+
 class GraphDatabase(object):
     """ The :class:`.GraphDatabase` class provides access to all graph
     database functionality. This is primarily used to construct a driver

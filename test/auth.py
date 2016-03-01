@@ -18,10 +18,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import namedtuple
 
-AuthToken = namedtuple("AuthToken", ("scheme", "principal", "credentials"))
+from sys import argv
+
+from neo4j.v1 import GraphDatabase, basic_auth
+from neo4j.util import Watcher
 
 
-def basic_auth(user, password):
-    return AuthToken("basic", user, password)
+def update_password(user, password, new_password):
+    """ Test utility for setting the initial password.
+
+    :param user: user name
+    :param password: current password
+    :param new_password: new password
+    """
+
+    token = basic_auth(user, password)
+    setattr(token, "new-credentials", new_password)  # TODO: hopefully switch hyphen to underscore on server
+    GraphDatabase.driver("bolt://localhost", auth=token).session().close()
+
+
+if __name__ == "__main__":
+    Watcher("neo4j.bolt").watch()
+    update_password("neo4j", "neo4j", argv[1])
