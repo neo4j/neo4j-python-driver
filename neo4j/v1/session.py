@@ -140,7 +140,7 @@ class Driver(object):
         :return:
         """
         pool = self.session_pool
-        for s in pool:
+        for s in list(pool):  # freezing the pool into a list for iteration allows pool mutation inside the loop
             if not s.healthy:
                 pool.remove(s)
         if session.healthy and len(pool) < self.max_pool_size and session not in pool:
