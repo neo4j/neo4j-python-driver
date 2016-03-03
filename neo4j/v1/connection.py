@@ -33,7 +33,7 @@ from ssl import HAS_SNI, SSLError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
 from .constants import DEFAULT_PORT, DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, \
-    SECURITY_DEFAULT, SECURITY_TRUST_ON_FIRST_USE
+    TRUST_DEFAULT, TRUST_ON_FIRST_USE
 from .compat import hex2
 from .exceptions import ProtocolError
 from .packstream import Packer, Unpacker
@@ -398,8 +398,8 @@ def connect(host, port=None, ssl_context=None, **config):
             der_encoded_server_certificate = s.getpeercert(binary_form=True)
             if der_encoded_server_certificate is None:
                 raise ProtocolError("When using a secure socket, the server should always provide a certificate")
-            security = config.get("security", SECURITY_DEFAULT)
-            if security == SECURITY_TRUST_ON_FIRST_USE:
+            trust = config.get("trust", TRUST_DEFAULT)
+            if trust == TRUST_ON_FIRST_USE:
                 store = PersonalCertificateStore()
                 if not store.match_or_trust(host, der_encoded_server_certificate):
                     raise ProtocolError("Server certificate does not match known certificate for %r; check "

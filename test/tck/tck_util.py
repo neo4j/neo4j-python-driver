@@ -18,11 +18,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from neo4j.v1 import GraphDatabase, Relationship, Node, Path, SECURITY_NONE, basic_auth
+
+from neo4j.v1 import GraphDatabase, Relationship, Node, Path, basic_auth
 from neo4j.v1.compat import string
 
 
-driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), security=SECURITY_NONE)
+driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=False)
+
 
 def send_string(text):
     session = driver.session()

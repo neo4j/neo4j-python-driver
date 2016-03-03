@@ -33,7 +33,7 @@ from ssl import SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED, Purpose
 
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
-from .constants import SECURITY_NONE, SECURITY_VERIFIED, SECURITY_DEFAULT
+from .constants import ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
 from .exceptions import CypherError, ResultError
 from .typesystem import hydrated
 
@@ -99,11 +99,12 @@ class Driver(object):
         self.config = config
         self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
         self.session_pool = deque()
-        self.security = security = config.get("security", SECURITY_DEFAULT)
-        if security > SECURITY_NONE:
+        self.encrypted = encrypted = config.get("encrypted", ENCRYPTED_DEFAULT)
+        self.trust = trust = config.get("trust", TRUST_DEFAULT)
+        if encrypted:
             ssl_context = SSLContext(PROTOCOL_SSLv23)
             ssl_context.options |= OP_NO_SSLv2
-            if security >= SECURITY_VERIFIED:
+            if trust >= TRUST_SIGNED_CERTIFICATES:
                 ssl_context.verify_mode = CERT_REQUIRED
             ssl_context.load_default_certs(Purpose.SERVER_AUTH)
             self.ssl_context = ssl_context
