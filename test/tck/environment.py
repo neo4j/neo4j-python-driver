@@ -20,6 +20,8 @@
 
 from test.tck import tck_util
 
+failing_features = {}
+
 
 def before_all(context):
     context.config.setup_logging()
@@ -27,11 +29,32 @@ def before_all(context):
 
 def before_feature(context, feature):
     # Workaround. Behave has a different way of tagging than cucumber
-    if "reset_database" in feature.tags:
-        for scenario in feature.scenarios:
-            scenario.tags.append("reset_database")
+    for scenario in feature.scenarios:
+        scenario.tags += feature.tags
 
 
 def before_scenario(context, scenario):
     if "reset_database" in scenario.tags:
         tck_util.send_string("MATCH (n) DETACH DELETE n")
+    if "equality_test" in scenario.tags:
+        context.values = {}
+
+
+def after_feature(context, feature):
+    failed_scenarios = []
+    for scenario in feature.scenarios:
+        if scenario.status != "passed":
+            failed_scenarios.append(scenario.name)
+    if len(failed_scenarios) > 0:
+        failing_features[feature.name] = failed_scenarios
+
+
+def after_all(context):
+    if len(failing_features) != 0:
+        print("Following Features failed in TCK:")
+        for feature, list_of_scenarios in failing_features.items():
+            print("Feature: %s" %feature)
+            for scenario in list_of_scenarios:
+                print("Failing scenario: %s" % scenario)
+        raise Exception("TCK FAILED!")
+
