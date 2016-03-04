@@ -80,15 +80,17 @@ def step_impl(context, size, type):
 
 @when("the driver asks the server to echo this (?P<unused>.+) back")
 def step_impl(context, unused):
-    context.results = [ send_string("RETURN " + as_cypher_text(context.expected)).stream(), send_parameters("RETURN {input}", {'input': context.expected}).stream()]
+    context.results = [ send_string("RETURN " + as_cypher_text(context.expected)), send_parameters("RETURN {input}", {'input': context.expected})]
 
 
 @step("the value given in the result should be the same as what was sent")
 def step_impl(context):
     assert len(context.results) > 0
     for result in context.results:
-        result_value = result.next().values()[0]
+        assert result.next()
+        result_value = result.record().values()[0]
         assert result_value == context.expected
+        assert result.at_end()
 
 
 def as_cypher_text(expected):

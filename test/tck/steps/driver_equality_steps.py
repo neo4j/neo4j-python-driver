@@ -37,7 +37,7 @@ def step_impl(context, key1, key2):
 
 @step("saved values should all equal")
 def step_impl(context):
-    values = context.values.values()
+    values = list(context.values.values())
     assert len(values) > 1
     first_val = values.pop()
     for item in values:
@@ -46,7 +46,7 @@ def step_impl(context):
 
 @step("none of the saved values should be equal")
 def step_impl(context):
-    values = context.values.values()
+    values = list(context.values.values())
     assert len(values) > 1
     first_val = values.pop()
     for item in values:
