@@ -43,7 +43,7 @@ def before_scenario(context, scenario):
 def after_feature(context, feature):
     failed_scenarios = []
     for scenario in feature.scenarios:
-        if scenario.status != "passed":
+        if scenario.status == "untested" or scenario.status == "failed" :
             failed_scenarios.append(scenario.name)
     if len(failed_scenarios) > 0:
         failing_features[feature.name] = failed_scenarios
@@ -56,5 +56,5 @@ def after_all(context):
             print("Feature: %s" %feature)
             for scenario in list_of_scenarios:
                 print("Failing scenario: %s" % scenario)
-        raise Exception("TCK FAILED!")
+        raise Exception("\tTCK FAILED!")
 
