@@ -23,20 +23,17 @@ from neo4j.v1 import compat, Relationship, Node, Path
 from neo4j.v1 import GraphDatabase
 
 driver = GraphDatabase.driver("bolt://localhost")
+session = driver.session()
 
 
 def send_string(text):
-    session = driver.session()
     cursor = session.run(text)
-    session.close()
-    return list(cursor.stream())
+    return cursor
 
 
 def send_parameters(statement, parameters):
-    session = driver.session()
     cursor = session.run(statement, parameters)
-    session.close()
-    return list(cursor.stream())
+    return cursor
 
 
 def to_unicode(val):

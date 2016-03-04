@@ -120,14 +120,26 @@ def step_impl(context, plan_type):
             assert getattr(plan, row[0].replace(" ", "_")) is not None
 
 
-@step("the summaries collection of `notifications` is empty")
+@step("the summaries `notifications` is empty list")
 def step_impl(context):
     for summary in context.summaries:
         assert len(summary.notifications) == 0
 
 
-@step("the summaries collection of `notifications` is not empty")
+@step("the summaries `notifications` has one notification with")
 def step_impl(context):
+
     for summary in context.summaries:
-        print(summary.notifications)
-        assert len(summary.notifications) != 0
+        assert len(summary.notifications) == 1
+        notification = summary.notifications[0]
+        for row in context.table:
+            if row[0] == 'position':
+                position = getattr(notification, row[0].replace(" ","_"))
+                expected_position = parse_values(row[1])
+                for position_key, value in expected_position.items():
+                    assert value == getattr(position, position_key.replace(" ", "_"))
+            else:
+                assert getattr(notification, row[0].replace(" ","_")) == parse_values(row[1])
+
+
+
