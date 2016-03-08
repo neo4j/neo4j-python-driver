@@ -21,12 +21,12 @@
 
 from unittest import skip
 
-from neo4j.v1 import basic_auth, TRUST_ON_FIRST_USE, TRUST_SIGNED_CERTIFICATES
+from neo4j.v1 import TRUST_ON_FIRST_USE, TRUST_SIGNED_CERTIFICATES
 from test.util import ServerTestCase
 
 # Do not change the contents of this tagged section without good reason*
 # tag::minimal-example-import[]
-from neo4j.v1 import GraphDatabase
+from neo4j.v1 import GraphDatabase, basic_auth
 # end::minimal-example-import[]
 # (* "good reason" is defined as knowing what you are doing)
 
@@ -96,7 +96,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::statement[]
-        session.run("CREATE (person:Person {name: {name}})", {"name": "Neo"}).close()
+        session.run("CREATE (person:Person {name: {name}})", {"name": "Arthur"}).close()
         # end::statement[]
         session.close()
 
@@ -104,7 +104,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::statement-without-parameters[]
-        session.run("CREATE (person:Person {name: 'Neo'})").close()
+        session.run("CREATE (person:Person {name: 'Arthur'})").close()
         # end::statement-without-parameters[]
         session.close()
 
@@ -125,12 +125,12 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::retain-result-query[]
-        result = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
-                             "RETURN id(person) AS minion", {"dept": "IT"})
+        result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
+                             "RETURN id(knight) AS knight_id", {"castle": "Camelot"})
         while result.next():
-            session.run("MATCH (person) WHERE id(person) = {id} "
-                        "MATCH (boss:Person) WHERE boss.name = {boss} "
-                        "CREATE (person)-[:REPORTS_TO]->(boss)", {"id": result["minion"], "boss": "Bob"})
+            session.run("MATCH (knight) WHERE id(knight) = {id} "
+                        "MATCH (king:Person) WHERE king.name = {king} "
+                        "CREATE (knight)-[:DEFENDS]->(king)", {"id": result["knight_id"], "king": "Arthur"})
         # end::retain-result-query[]
         session.close()
 
@@ -138,14 +138,14 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::retain-result-process[]
-        result = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
-                             "RETURN id(person) AS minion", {"dept": "IT"})
-        minion_records = list(result.stream())
+        result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
+                             "RETURN id(knight) AS knight_id", {"castle": "Camelot"})
+        id_records = list(result.stream())
 
-        for record in minion_records:
-            session.run("MATCH (person) WHERE id(person) = {id} "
-                        "MATCH (boss:Person) WHERE boss.name = {boss} "
-                        "CREATE (person)-[:REPORTS_TO]->(boss)", {"id": record["minion"], "boss": "Bob"})
+        for record in id_records:
+            session.run("MATCH (knight) WHERE id(knight) = {id} "
+                        "MATCH (king:Person) WHERE king.name = {king} "
+                        "CREATE (knight)-[:DEFENDS]->(king)", {"id": record["knight_id"], "king": "Arthur"})
         # end::retain-result-process[]
         session.close()
 
@@ -154,10 +154,10 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session = driver.session()
         # tag::transaction-commit[]
         tx = session.begin_transaction()
-        tx.run("CREATE (p:Person {name: 'The One'})")
+        tx.run("CREATE (:Person {name: 'Guinevere'})")
         tx.commit()
         # end::transaction-commit[]
-        result = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
+        result = session.run("MATCH (p:Person {name: 'Guinevere'}) RETURN count(p)")
         assert result.next()
         assert result["count(p)"] == 1
         assert result.at_end
@@ -168,10 +168,10 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session = driver.session()
         # tag::transaction-rollback[]
         tx = session.begin_transaction()
-        tx.run("CREATE (p:Person {name: 'The One'})")
+        tx.run("CREATE (:Person {name: 'Merlin'})")
         tx.rollback()
         # end::transaction-rollback[]
-        result = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
+        result = session.run("MATCH (p:Person {name: 'Merlin'}) RETURN count(p)")
         assert result.next()
         assert result["count(p)"] == 0
         assert result.at_end
@@ -182,7 +182,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session = driver.session()
         # tag::result-summary-query-profile[]
         result = session.run("PROFILE MATCH (p:Person {name: {name}}) "
-                             "RETURN id(p)", {"name": "The One"})
+                             "RETURN id(p)", {"name": "Arthur"})
         while result.next():
             pass  # skip the records to get to the summary
         print(result.summary.statement_type)
@@ -194,7 +194,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::result-summary-notifications[]
-        result = session.run("EXPLAIN MATCH (a), (b) RETURN a,b")
+        result = session.run("EXPLAIN MATCH (king), (queen) RETURN king, queen")
         while result.next():
             pass  # skip the records to get to the summary
         for notification in result.summary.notifications:
