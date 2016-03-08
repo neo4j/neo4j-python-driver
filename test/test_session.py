@@ -23,7 +23,7 @@ from socket import socket
 from ssl import SSLSocket
 
 from mock import patch
-from neo4j.v1.constants import SECURITY_NONE, SECURITY_TRUST_ON_FIRST_USE
+from neo4j.v1.constants import TRUST_ON_FIRST_USE
 from neo4j.v1.exceptions import CypherError, ResultError
 from neo4j.v1.session import GraphDatabase, basic_auth, Record, record
 from neo4j.v1.typesystem import Node, Relationship, Path
@@ -92,10 +92,10 @@ class SecurityTestCase(ServerTestCase):
 
     def test_default_session_uses_tofu(self):
         driver = GraphDatabase.driver("bolt://localhost")
-        assert driver.security == SECURITY_TRUST_ON_FIRST_USE
+        assert driver.trust == TRUST_ON_FIRST_USE
 
     def test_insecure_session_uses_normal_socket(self):
-        driver = GraphDatabase.driver("bolt://localhost",  auth=auth_token, security=SECURITY_NONE)
+        driver = GraphDatabase.driver("bolt://localhost",  auth=auth_token, encrypted=False)
         session = driver.session()
         connection = session.connection
         assert isinstance(connection.channel.socket, socket)
@@ -103,7 +103,7 @@ class SecurityTestCase(ServerTestCase):
         session.close()
 
     def test_tofu_session_uses_secure_socket(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token, security=SECURITY_TRUST_ON_FIRST_USE)
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token, encrypted=True, trust=TRUST_ON_FIRST_USE)
         session = driver.session()
         connection = session.connection
         assert isinstance(connection.channel.socket, SSLSocket)
@@ -111,7 +111,7 @@ class SecurityTestCase(ServerTestCase):
         session.close()
 
     def test_tofu_session_trusts_certificate_after_first_use(self):
-        driver = GraphDatabase.driver("bolt://localhost",  auth=auth_token, security=SECURITY_TRUST_ON_FIRST_USE)
+        driver = GraphDatabase.driver("bolt://localhost",  auth=auth_token, encrypted=True, trust=TRUST_ON_FIRST_USE)
         session = driver.session()
         connection = session.connection
         certificate = connection.der_encoded_server_certificate

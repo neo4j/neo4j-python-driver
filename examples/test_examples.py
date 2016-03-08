@@ -19,18 +19,26 @@
 # limitations under the License.
 
 
+from unittest import skip
+
+from neo4j.v1 import TRUST_ON_FIRST_USE, TRUST_SIGNED_CERTIFICATES
 from test.util import ServerTestCase
 
+# Do not change the contents of this tagged section without good reason*
 # tag::minimal-example-import[]
 from neo4j.v1 import GraphDatabase, basic_auth
 # end::minimal-example-import[]
+# (* "good reason" is defined as knowing what you are doing)
+
+
+auth_token = basic_auth("neo4j", "password")
 
 
 class FreshDatabaseTestCase(ServerTestCase):
 
     def setUp(self):
         ServerTestCase.setUp(self)
-        session = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password")).session()
+        session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
         session.run("MATCH (n) DETACH DELETE n")
         session.close()
 
@@ -42,11 +50,11 @@ class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
 
-        session.run("CREATE (neo:Person {name:'Neo', age:23})")
+        session.run("CREATE (a:Person {name:'Arthur', title:'King'})", )
 
-        result = session.run("MATCH (p:Person) WHERE p.name = 'Neo' RETURN p.age")
+        result = session.run("MATCH (a:Person) WHERE a.name = 'Arthur' RETURN a.name AS name, a.title AS title")
         while result.next():
-            print("Neo is %d years old." % result["p.age"])
+            print("%s %s" % (result["title"], result["name"]))
 
         session.close()
         # end::minimal-example[]
@@ -68,40 +76,40 @@ class ExamplesTestCase(FreshDatabaseTestCase):
 
     def test_tls_require_encryption(self):
         # tag::tls-require-encryption[]
-        # TODO: Unfortunately, this feature is not yet implemented for Python
-        pass
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=True)
         # end::tls-require-encryption[]
 
     def test_tls_trust_on_first_use(self):
         # tag::tls-trust-on-first-use[]
-        # TODO: Unfortunately, this feature is not yet implemented for Python
-        pass
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=True, trust=TRUST_ON_FIRST_USE)
         # end::tls-trust-on-first-use[]
+        assert driver
 
+    @skip("testing verified certificates not yet supported ")
     def test_tls_signed(self):
         # tag::tls-signed[]
-        # TODO: Unfortunately, this feature is not yet implemented for Python
-        pass
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=True, trust=TRUST_SIGNED_CERTIFICATES)
         # end::tls-signed[]
+        assert driver
 
     def test_statement(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::statement[]
-        session.run("CREATE (person:Person {name: {name}})", {"name": "Neo"}).close()
+        session.run("CREATE (person:Person {name: {name}})", {"name": "Arthur"}).close()
         # end::statement[]
         session.close()
 
     def test_statement_without_parameters(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::statement-without-parameters[]
-        session.run("CREATE (person:Person {name: 'Neo'})").close()
+        session.run("CREATE (person:Person {name: 'Arthur'})").close()
         # end::statement-without-parameters[]
         session.close()
 
     def test_result_cursor(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::result-cursor[]
         search_term = "hammer"
@@ -114,67 +122,67 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_cursor_nesting(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::retain-result-query[]
-        result = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
-                             "RETURN id(person) AS minion", {"dept": "IT"})
+        result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
+                             "RETURN id(knight) AS knight_id", {"castle": "Camelot"})
         while result.next():
-            session.run("MATCH (person) WHERE id(person) = {id} "
-                        "MATCH (boss:Person) WHERE boss.name = {boss} "
-                        "CREATE (person)-[:REPORTS_TO]->(boss)", {"id": result["minion"], "boss": "Bob"})
+            session.run("MATCH (knight) WHERE id(knight) = {id} "
+                        "MATCH (king:Person) WHERE king.name = {king} "
+                        "CREATE (knight)-[:DEFENDS]->(king)", {"id": result["knight_id"], "king": "Arthur"})
         # end::retain-result-query[]
         session.close()
 
     def test_result_retention(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::retain-result-process[]
-        result = session.run("MATCH (person:Person) WHERE person.dept = {dept} "
-                             "RETURN id(person) AS minion", {"dept": "IT"})
-        minion_records = list(result.stream())
+        result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
+                             "RETURN id(knight) AS knight_id", {"castle": "Camelot"})
+        id_records = list(result.stream())
 
-        for record in minion_records:
-            session.run("MATCH (person) WHERE id(person) = {id} "
-                        "MATCH (boss:Person) WHERE boss.name = {boss} "
-                        "CREATE (person)-[:REPORTS_TO]->(boss)", {"id": record["minion"], "boss": "Bob"})
+        for record in id_records:
+            session.run("MATCH (knight) WHERE id(knight) = {id} "
+                        "MATCH (king:Person) WHERE king.name = {king} "
+                        "CREATE (knight)-[:DEFENDS]->(king)", {"id": record["knight_id"], "king": "Arthur"})
         # end::retain-result-process[]
         session.close()
 
     def test_transaction_commit(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::transaction-commit[]
         tx = session.begin_transaction()
-        tx.run("CREATE (p:Person {name: 'The One'})")
+        tx.run("CREATE (:Person {name: 'Guinevere'})")
         tx.commit()
         # end::transaction-commit[]
-        result = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
+        result = session.run("MATCH (p:Person {name: 'Guinevere'}) RETURN count(p)")
         assert result.next()
         assert result["count(p)"] == 1
         assert result.at_end
         session.close()
 
     def test_transaction_rollback(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::transaction-rollback[]
         tx = session.begin_transaction()
-        tx.run("CREATE (p:Person {name: 'The One'})")
+        tx.run("CREATE (:Person {name: 'Merlin'})")
         tx.rollback()
         # end::transaction-rollback[]
-        result = session.run("MATCH (p:Person {name: 'The One'}) RETURN count(p)")
+        result = session.run("MATCH (p:Person {name: 'Merlin'}) RETURN count(p)")
         assert result.next()
         assert result["count(p)"] == 0
         assert result.at_end
         session.close()
 
     def test_result_summary_query_profile(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::result-summary-query-profile[]
         result = session.run("PROFILE MATCH (p:Person {name: {name}}) "
-                             "RETURN id(p)", {"name": "The One"})
+                             "RETURN id(p)", {"name": "Arthur"})
         while result.next():
             pass  # skip the records to get to the summary
         print(result.summary.statement_type)
@@ -183,10 +191,10 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_result_summary_notifications(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::result-summary-notifications[]
-        result = session.run("EXPLAIN MATCH (a), (b) RETURN a,b")
+        result = session.run("EXPLAIN MATCH (king), (queen) RETURN king, queen")
         while result.next():
             pass  # skip the records to get to the summary
         for notification in result.summary.notifications:
