@@ -76,19 +76,19 @@ class ExamplesTestCase(FreshDatabaseTestCase):
 
     def test_tls_require_encryption(self):
         # tag::tls-require-encryption[]
-        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token, encrypted=True)
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=True)
         # end::tls-require-encryption[]
 
     def test_tls_trust_on_first_use(self):
         # tag::tls-trust-on-first-use[]
-        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token, encrypted=True, trust=TRUST_ON_FIRST_USE)
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=True, trust=TRUST_ON_FIRST_USE)
         # end::tls-trust-on-first-use[]
         assert driver
 
     @skip("testing verified certificates not yet supported ")
     def test_tls_signed(self):
         # tag::tls-signed[]
-        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token, encrypted=True, trust=TRUST_SIGNED_CERTIFICATES)
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=True, trust=TRUST_SIGNED_CERTIFICATES)
         # end::tls-signed[]
         assert driver
 
