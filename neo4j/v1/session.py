@@ -152,96 +152,89 @@ class ResultCursor(object):
     """ A handler for the result of Cypher statement execution.
     """
 
-    #: The statement that was executed to produce this result.
+    #: The statement text that was executed to produce this result.
     statement = None
 
     #: Dictionary of parameters passed with the statement.
     parameters = None
 
-    def __init__(self, connection, statement, parameters):
+    #: The result summary (only available after the result has
+    #: been fully consumed)
+    summary = None
+
+    def __init__(self, connection, run_response, pull_all_response):
         super(ResultCursor, self).__init__()
-        self.statement = statement
-        self.parameters = parameters
+
+        # The Connection instance behind this cursor.
+        self.connection = connection
+
+        # The keys for the records in the result stream. These are
+        # lazily populated on request.
         self._keys = None
-        self._connection = connection
-        self._current = None
-        self._record_buffer = deque()
-        self._position = -1
-        self._summary = None
+
+        # Buffer for incoming records to be queued before yielding. If
+        # the result is used immediately, this buffer will be ignored.
+        self._buffer = deque()
+
+        # Flag to indicate whether the entire stream has been consumed
+        # from the network (but not necessarily yielded).
         self._consumed = False
 
+        def on_header(metadata):
+            # Called on receipt of the result header.
+            self._keys = metadata["fields"]
+
+        def on_record(values):
+            # Called on receipt of each result record.
+            self._buffer.append(values)
+
+        def on_footer(metadata):
+            # Called on receipt of the result footer.
+            self.summary = ResultSummary(self.statement, self.parameters, **metadata)
+            self._consumed = True
+
+        def on_failure(metadata):
+            # Called on execution failure.
+            self._consumed = True
+            raise CypherError(metadata)
+
+        run_response.on_success = on_header
+        run_response.on_failure = on_failure
+
+        pull_all_response.on_record = on_record
+        pull_all_response.on_success = on_footer
+        pull_all_response.on_failure = on_failure
+
     def __next__(self):
-        if self._record_buffer:
-            values = self._record_buffer.popleft()
-            self._position += 1
-            self._current = Record(self.keys(), tuple(map(hydrated, values)))
-            return self._current
+        if self._buffer:
+            values = self._buffer.popleft()
+            return Record(self.keys(), tuple(map(hydrated, values)))
         elif self._consumed:
             raise StopIteration()
         else:
-            self._connection.fetch()
+            self.connection.fetch()
             return self.__next__()
 
     def __iter__(self):
         return self
 
-    def is_open(self):
-        """ Return ``True`` if this cursor is still open, ``False`` otherwise.
-        """
-        return bool(self._connection)
-
     def close(self):
         """ Consume the remainder of this result and detach the connection
         from this cursor.
         """
-        if self._connection and not self._connection.closed:
-            self._consume()
-            self._connection = None
+        if self.connection and not self.connection.closed:
+            fetch = self.connection.fetch
+            while not self._consumed:
+                fetch()
+            self.connection = None
 
     def keys(self):
         """ Return the keys for the records.
         """
         # Fetch messages until we have the header or a failure
         while self._keys is None and not self._consumed:
-            self._connection.fetch()
+            self.connection.fetch()
         return self._keys
-
-    @property
-    def summary(self):
-        """ Return the summary from the trailing metadata. Note that this is
-        only available once the entire result stream has been consumed.
-        Accessing the summary before then will return :py:const:`None`.
-
-        :rtype: ResultSummary or :py:const:`None`
-        """
-        if self._consumed:
-            return self._summary
-        else:
-            return None
-
-    def _consume(self):
-        # Consume the remainder of this result, triggering all appropriate callback functions.
-        fetch = self._connection.fetch
-        while not self._consumed:
-            fetch()
-
-    def _on_header(self, metadata):
-        # Called on receipt of the result header.
-        self._keys = metadata["fields"]
-
-    def _on_record(self, values):
-        # Called on receipt of each result record.
-        self._record_buffer.append(values)
-
-    def _on_footer(self, metadata):
-        # Called on receipt of the result footer.
-        self._summary = ResultSummary(self.statement, self.parameters, **metadata)
-        self._consumed = True
-
-    def _on_failure(self, metadata):
-        # Called on execution failure.
-        self._consumed = True
-        raise CypherError(metadata)
 
 
 class ResultSummary(object):
@@ -460,16 +453,11 @@ class Session(object):
                 params[key] = value
         parameters = params
 
-        cursor = ResultCursor(self.connection, statement, parameters)
-
         run_response = Response(self.connection)
-        run_response.on_success = cursor._on_header
-        run_response.on_failure = cursor._on_failure
-
         pull_all_response = Response(self.connection)
-        pull_all_response.on_record = cursor._on_record
-        pull_all_response.on_success = cursor._on_footer
-        pull_all_response.on_failure = cursor._on_failure
+        cursor = ResultCursor(self.connection, run_response, pull_all_response)
+        cursor.statement = statement
+        cursor.parameters = parameters
 
         self.connection.append(RUN, (statement, parameters), response=run_response)
         self.connection.append(PULL_ALL, response=pull_all_response)
