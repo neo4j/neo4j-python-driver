@@ -199,12 +199,6 @@ class ResultCursor(object):
             self._connection = None
 
     @property
-    def position(self):
-        """ Return the current cursor position.
-        """
-        return self._position
-
-    @property
     def at_end(self):
         """ Return ``True`` if at the end of the record stream, ``False``
         otherwise.

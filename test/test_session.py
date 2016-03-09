@@ -126,9 +126,7 @@ class RunTestCase(ServerTestCase):
 
     def test_can_run_simple_statement(self):
         session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
-        count = 0
         result = session.run("RETURN 1 AS n")
-        assert result.position == -1
         for record in result:
             assert record[0] == 1
             assert record["n"] == 1
@@ -141,10 +139,7 @@ class RunTestCase(ServerTestCase):
                 _ = record[object()]
             assert repr(record)
             assert len(record) == 1
-            assert result.position == count
-            count += 1
         session.close()
-        assert count == 1
 
     def test_can_run_simple_statement_with_params(self):
         session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
