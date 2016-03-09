@@ -170,6 +170,27 @@ class ResultCursor(object):
         self._summary = None
         self._consumed = False
 
+    def __next__(self):
+        if self._record_buffer:
+            values = self._record_buffer.popleft()
+            self._position += 1
+            self._current = Record(self.keys(), tuple(map(hydrated, values)))
+            return self._current
+        elif self._consumed:
+            raise StopIteration()
+        else:
+            self._connection.fetch()
+            return self.__next__()
+
+    def __iter__(self):
+        return self
+
+    def __getitem__(self, item):
+        current = self._current
+        if current is None:
+            raise TypeError("No current record")
+        return current[item]
+
     def is_open(self):
         """ Return ``True`` if this cursor is still open, ``False`` otherwise.
         """
@@ -182,26 +203,6 @@ class ResultCursor(object):
         if self._connection and not self._connection.closed:
             self._consume()
             self._connection = None
-
-    def next(self):
-        """ Advance to the next record, if available, and return a boolean
-        to indicate whether or not the cursor has moved.
-        """
-        if self._record_buffer:
-            values = self._record_buffer.popleft()
-            self._current = Record(self.keys(), tuple(map(hydrated, values)))
-            self._position += 1
-            return True
-        elif self._consumed:
-            return False
-        else:
-            self._connection.fetch()
-            return self.next()
-
-    def record(self):
-        """ Return the current record.
-        """
-        return self._current
 
     @property
     def position(self):
@@ -221,18 +222,6 @@ class ResultCursor(object):
         else:
             self._connection.fetch()
             return self.at_end
-
-    def stream(self):
-        """ Yield all subsequent records.
-        """
-        while self.next():
-            yield self.record()
-
-    def __getitem__(self, item):
-        current = self._current
-        if current is None:
-            raise TypeError("No current record")
-        return current[item]
 
     def keys(self):
         """ Return the keys for the records.
@@ -686,20 +675,3 @@ class Record(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
-
-
-def record(obj):
-    """ Obtain an immutable record for the given object
-    (either by calling obj.__record__() or by copying out the record data)
-    """
-    try:
-        return obj.__record__()
-    except AttributeError:
-        keys = obj.keys()
-        values = []
-        for key in keys:
-            values.append(obj[key])
-        return Record(keys, values)
-
-
-

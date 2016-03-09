@@ -62,13 +62,13 @@ def main():
     for _ in range(args.times):
         for statement in args.statement:
             try:
-                cursor = session.run(statement, parameters)
+                result = session.run(statement, parameters)
             except CypherError as error:
                 stderr.write("%s: %s\r\n" % (error.code, error.message))
             else:
                 if not args.quiet:
                     has_results = False
-                    for i, record in enumerate(cursor.stream()):
+                    for i, record in enumerate(result):
                         has_results = True
                         if i == 0:
                             stdout.write("%s\r\n" % "\t".join(record.keys()))
@@ -76,7 +76,7 @@ def main():
                     if has_results:
                         stdout.write("\r\n")
                     if args.summary:
-                        summary = cursor.summary
+                        summary = result.summary
                         stdout.write("Statement      : %r\r\n" % summary.statement)
                         stdout.write("Parameters     : %r\r\n" % summary.parameters)
                         stdout.write("Statement Type : %r\r\n" % summary.statement_type)
