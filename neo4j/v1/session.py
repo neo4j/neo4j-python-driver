@@ -34,7 +34,7 @@ from ssl import SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED, Purpose
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
 from .constants import ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
-from .exceptions import CypherError, ResultError
+from .exceptions import CypherError
 from .typesystem import hydrated
 
 
@@ -198,19 +198,6 @@ class ResultCursor(object):
             self._consume()
             self._connection = None
 
-    @property
-    def at_end(self):
-        """ Return ``True`` if at the end of the record stream, ``False``
-        otherwise.
-        """
-        if self._record_buffer:
-            return False
-        elif self._consumed:
-            return True
-        else:
-            self._connection.fetch()
-            return self.at_end
-
     def keys(self):
         """ Return the keys for the records.
         """
@@ -223,15 +210,14 @@ class ResultCursor(object):
     def summary(self):
         """ Return the summary from the trailing metadata. Note that this is
         only available once the entire result stream has been consumed.
-        Attempting to access the summary before then will raise an error.
+        Accessing the summary before then will return :py:const:`None`.
 
-        :rtype: ResultSummary
-        :raises ResultError: if the entire result has not yet been consumed
+        :rtype: ResultSummary or :py:const:`None`
         """
         if self._consumed:
             return self._summary
         else:
-            raise ResultError("Summary not available until the entire result has been consumed")
+            return None
 
     def _consume(self):
         # Consume the remainder of this result, triggering all appropriate callback functions.

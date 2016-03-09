@@ -38,10 +38,3 @@ class CypherError(Exception):
         for key, value in data.items():
             if not key.startswith("_"):
                 setattr(self, key, value)
-
-
-class ResultError(Exception):
-    """ Raised when the cursor encounters a problem.
-    """
-
-    pass

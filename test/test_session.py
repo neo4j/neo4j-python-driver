@@ -24,7 +24,7 @@ from ssl import SSLSocket
 
 from mock import patch
 from neo4j.v1.constants import TRUST_ON_FIRST_USE
-from neo4j.v1.exceptions import CypherError, ResultError
+from neo4j.v1.exceptions import CypherError
 from neo4j.v1.session import GraphDatabase, basic_auth, Record
 from neo4j.v1.typesystem import Node, Relationship, Path
 
@@ -258,20 +258,19 @@ class SummaryTestCase(ServerTestCase):
     def test_cannot_obtain_summary_without_consuming_result(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             result = session.run("CREATE (n) RETURN n")
-            with self.assertRaises(ResultError):
-                _ = result.summary
+            assert result.summary is None
 
     def test_no_plan_info(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
-            cursor = session.run("CREATE (n) RETURN n")
-            list(cursor)
-            assert cursor.summary.plan is None
-            assert cursor.summary.profile is None
+            result = session.run("CREATE (n) RETURN n")
+            list(result)  # consume the result
+            assert result.summary.plan is None
+            assert result.summary.profile is None
 
     def test_can_obtain_plan_info(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             result = session.run("EXPLAIN CREATE (n) RETURN n")
-            list(result)
+            list(result)  # consume the result
             plan = result.summary.plan
             assert plan.operator_type == "ProduceResults"
             assert plan.identifiers == ["n"]
@@ -283,7 +282,7 @@ class SummaryTestCase(ServerTestCase):
     def test_can_obtain_profile_info(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             result = session.run("PROFILE CREATE (n) RETURN n")
-            list(result)
+            list(result)  # consume the result
             profile = result.summary.profile
             assert profile.db_hits == 0
             assert profile.rows == 1
@@ -297,14 +296,14 @@ class SummaryTestCase(ServerTestCase):
     def test_no_notification_info(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             result = session.run("CREATE (n) RETURN n")
-            list(result)
+            list(result)  # consume the result
             notifications = result.summary.notifications
             assert notifications == []
 
     def test_can_obtain_notification_info(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             result = session.run("EXPLAIN MATCH (n), (m) RETURN n, m")
-            list(result)
+            list(result)  # consume the result
             notifications = result.summary.notifications
 
             assert len(notifications) == 1
