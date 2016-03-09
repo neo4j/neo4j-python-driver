@@ -341,8 +341,8 @@ class ResetTestCase(ServerTestCase):
                 session.run("X").close()
             except CypherError:
                 result = session.run("RETURN 1")
-                next(result)
-                assert result[0] == 1
+                record = next(result)
+                assert record[0] == 1
             else:
                 assert False, "A Cypher error should have occurred"
 
@@ -435,8 +435,8 @@ class TransactionTestCase(ServerTestCase):
 
             # Create a node
             result = tx.run("CREATE (a) RETURN id(a)")
-            next(result)
-            node_id = result[0]
+            record = next(result)
+            node_id = record[0]
             assert isinstance(node_id, int)
 
             # Update a property
@@ -448,9 +448,9 @@ class TransactionTestCase(ServerTestCase):
             # Check the property value
             result = session.run("MATCH (a) WHERE id(a) = {n} "
                                  "RETURN a.foo", {"n": node_id})
-            next(result)
-            foo = result[0]
-            assert foo == "bar"
+            record = next(result)
+            value = record[0]
+            assert value == "bar"
 
     def test_can_rollback_transaction(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
@@ -458,8 +458,8 @@ class TransactionTestCase(ServerTestCase):
 
             # Create a node
             result = tx.run("CREATE (a) RETURN id(a)")
-            next(result)
-            node_id = result[0]
+            record = next(result)
+            node_id = record[0]
             assert isinstance(node_id, int)
 
             # Update a property
@@ -478,8 +478,8 @@ class TransactionTestCase(ServerTestCase):
             with session.begin_transaction() as tx:
                 # Create a node
                 result = tx.run("CREATE (a) RETURN id(a)")
-                next(result)
-                node_id = result[0]
+                record = next(result)
+                node_id = record[0]
                 assert isinstance(node_id, int)
 
                 # Update a property
@@ -491,17 +491,17 @@ class TransactionTestCase(ServerTestCase):
             # Check the property value
             result = session.run("MATCH (a) WHERE id(a) = {n} "
                                  "RETURN a.foo", {"n": node_id})
-            next(result)
-            foo = result[0]
-            assert foo == "bar"
+            record = next(result)
+            value = record[0]
+            assert value == "bar"
 
     def test_can_rollback_transaction_using_with_block(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             with session.begin_transaction() as tx:
                 # Create a node
                 result = tx.run("CREATE (a) RETURN id(a)")
-                next(result)
-                node_id = result[0]
+                record = next(result)
+                node_id = record[0]
                 assert isinstance(node_id, int)
 
                 # Update a property

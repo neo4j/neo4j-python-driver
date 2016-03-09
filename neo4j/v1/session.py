@@ -185,12 +185,6 @@ class ResultCursor(object):
     def __iter__(self):
         return self
 
-    def __getitem__(self, item):
-        current = self._current
-        if current is None:
-            raise TypeError("No current record")
-        return current[item]
-
     def is_open(self):
         """ Return ``True`` if this cursor is still open, ``False`` otherwise.
         """
