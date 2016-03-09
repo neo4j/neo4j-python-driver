@@ -225,15 +225,6 @@ class ResultCursor(object):
             self._connection.fetch()
         return self._keys
 
-    def get(self, item, default=None):
-        current = self._current
-        if current is None:
-            raise TypeError("No current record")
-        try:
-            return current[item]
-        except (IndexError, KeyError):
-            return default
-
     @property
     def summary(self):
         """ Return the summary from the trailing metadata. Note that this is
