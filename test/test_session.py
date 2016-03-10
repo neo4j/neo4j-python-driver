@@ -26,7 +26,7 @@ from mock import patch
 from neo4j.v1.constants import TRUST_ON_FIRST_USE
 from neo4j.v1.exceptions import CypherError
 from neo4j.v1.session import GraphDatabase, basic_auth, Record
-from neo4j.v1.typesystem import Node, Relationship, Path
+from neo4j.v1.types import Node, Relationship, Path
 
 from test.util import ServerTestCase
 

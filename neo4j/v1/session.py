@@ -35,7 +35,7 @@ from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
 from .constants import ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
 from .exceptions import CypherError
-from .typesystem import hydrated
+from .types import hydrated
 
 
 DEFAULT_MAX_POOL_SIZE = 50
