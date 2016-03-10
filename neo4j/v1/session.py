@@ -148,7 +148,7 @@ class Driver(object):
             pool.appendleft(session)
 
 
-class ResultCursor(object):
+class StatementResult(object):
     """ A handler for the result of Cypher statement execution.
     """
 
@@ -163,7 +163,7 @@ class ResultCursor(object):
     summary = None
 
     def __init__(self, connection, run_response, pull_all_response):
-        super(ResultCursor, self).__init__()
+        super(StatementResult, self).__init__()
 
         # The Connection instance behind this cursor.
         self.connection = connection
@@ -205,6 +205,9 @@ class ResultCursor(object):
         pull_all_response.on_success = on_footer
         pull_all_response.on_failure = on_failure
 
+    def __iter__(self):
+        return self
+
     def __next__(self):
         if self._buffer:
             values = self._buffer.popleft()
@@ -216,10 +219,15 @@ class ResultCursor(object):
                 self.connection.fetch()
             return self.__next__()
 
-    def __iter__(self):
-        return self
+    def keys(self):
+        """ Return the keys for the records.
+        """
+        # Fetch messages until we have the header or a failure
+        while self._keys is None and not self._consumed:
+            self.connection.fetch()
+        return self._keys
 
-    def close(self):
+    def discard(self):
         """ Consume the remainder of this result and detach the connection
         from this cursor.
         """
@@ -229,17 +237,9 @@ class ResultCursor(object):
                 fetch()
             self.connection = None
 
-    def keys(self):
-        """ Return the keys for the records.
-        """
-        # Fetch messages until we have the header or a failure
-        while self._keys is None and not self._consumed:
-            self.connection.fetch()
-        return self._keys
-
 
 class ResultSummary(object):
-    """ A summary of execution returned with a :class:`.ResultCursor` object.
+    """ A summary of execution returned with a :class:`.StatementResult` object.
     """
 
     #: The statement that was executed to produce this result.
@@ -408,7 +408,7 @@ class Session(object):
         self.driver = driver
         self.connection = connect(driver.host, driver.port, driver.ssl_context, **driver.config)
         self.transaction = None
-        self.last_cursor = None
+        self.last_result = None
 
     def __del__(self):
         try:
@@ -437,7 +437,7 @@ class Session(object):
         :param statement: Cypher statement to execute
         :param parameters: dictionary of parameters
         :return: Cypher result
-        :rtype: :class:`.ResultCursor`
+        :rtype: :class:`.StatementResult`
         """
 
         # Ensure the statement is a Unicode value
@@ -456,7 +456,7 @@ class Session(object):
 
         run_response = Response(self.connection)
         pull_all_response = Response(self.connection)
-        cursor = ResultCursor(self.connection, run_response, pull_all_response)
+        cursor = StatementResult(self.connection, run_response, pull_all_response)
         cursor.statement = statement
         cursor.parameters = parameters
 
@@ -464,14 +464,14 @@ class Session(object):
         self.connection.append(PULL_ALL, response=pull_all_response)
         self.connection.send()
 
-        self.last_cursor = cursor
+        self.last_result = cursor
         return cursor
 
     def close(self):
         """ Recycle this session through the driver it came from.
         """
-        if self.last_cursor:
-            self.last_cursor.close()
+        if self.last_result:
+            self.last_result.discard()
         self.driver.recycle(self)
 
     def begin_transaction(self):

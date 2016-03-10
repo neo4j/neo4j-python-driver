@@ -156,12 +156,12 @@ class RunTestCase(ServerTestCase):
     def test_fails_on_bad_syntax(self):
         session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
         with self.assertRaises(CypherError):
-            session.run("X").close()
+            session.run("X").discard()
 
     def test_fails_on_missing_parameter(self):
         session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
         with self.assertRaises(CypherError):
-            session.run("RETURN {x}").close()
+            session.run("RETURN {x}").discard()
 
     def test_can_run_simple_statement_from_bytes_string(self):
         session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
@@ -227,7 +227,7 @@ class RunTestCase(ServerTestCase):
     def test_can_handle_cypher_error(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             with self.assertRaises(CypherError):
-                session.run("X").close()
+                session.run("X").discard()
 
     def test_keys_are_available_before_and_after_stream(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
@@ -332,7 +332,7 @@ class ResetTestCase(ServerTestCase):
     def test_automatic_reset_after_failure(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             try:
-                session.run("X").close()
+                session.run("X").discard()
             except CypherError:
                 result = session.run("RETURN 1")
                 record = next(result)
@@ -346,7 +346,7 @@ class ResetTestCase(ServerTestCase):
             assert not session.connection.defunct
             with patch.object(ChunkChannel, "chunk_reader", side_effect=ProtocolError()):
                 with self.assertRaises(ProtocolError):
-                    session.run("RETURN 1").close()
+                    session.run("RETURN 1").discard()
             assert session.connection.defunct
             assert session.connection.closed
 

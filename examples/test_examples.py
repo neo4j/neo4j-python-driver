@@ -96,16 +96,18 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::statement[]
-        session.run("CREATE (person:Person {name: {name}})", {"name": "Arthur"}).close()
+        result = session.run("CREATE (person:Person {name: {name}})", {"name": "Arthur"})
         # end::statement[]
+        result.discard()
         session.close()
 
     def test_statement_without_parameters(self):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::statement-without-parameters[]
-        session.run("CREATE (person:Person {name: 'Arthur'})").close()
+        result = session.run("CREATE (person:Person {name: 'Arthur'})")
         # end::statement-without-parameters[]
+        result.discard()
         session.close()
 
     def test_result_cursor(self):
