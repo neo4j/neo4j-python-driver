@@ -212,7 +212,8 @@ class ResultCursor(object):
         elif self._consumed:
             raise StopIteration()
         else:
-            self.connection.fetch()
+            while not self._buffer and not self._consumed:
+                self.connection.fetch()
             return self.__next__()
 
     def __iter__(self):
