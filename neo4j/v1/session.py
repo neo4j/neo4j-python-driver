@@ -165,7 +165,7 @@ class StatementResult(object):
     def __init__(self, connection, run_response, pull_all_response):
         super(StatementResult, self).__init__()
 
-        # The Connection instance behind this cursor.
+        # The Connection instance behind this result.
         self.connection = connection
 
         # The keys for the records in the result stream. These are
@@ -229,7 +229,7 @@ class StatementResult(object):
 
     def discard(self):
         """ Consume the remainder of this result and detach the connection
-        from this cursor.
+        from this result.
         """
         if self.connection and not self.connection.closed:
             fetch = self.connection.fetch
@@ -456,16 +456,16 @@ class Session(object):
 
         run_response = Response(self.connection)
         pull_all_response = Response(self.connection)
-        cursor = StatementResult(self.connection, run_response, pull_all_response)
-        cursor.statement = statement
-        cursor.parameters = parameters
+        result = StatementResult(self.connection, run_response, pull_all_response)
+        result.statement = statement
+        result.parameters = parameters
 
         self.connection.append(RUN, (statement, parameters), response=run_response)
         self.connection.append(PULL_ALL, response=pull_all_response)
         self.connection.send()
 
-        self.last_result = cursor
-        return cursor
+        self.last_result = result
+        return result
 
     def close(self):
         """ Recycle this session through the driver it came from.

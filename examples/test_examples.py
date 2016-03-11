@@ -110,44 +110,43 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         result.discard()
         session.close()
 
-    def test_result_cursor(self):
+    def test_result_traversal(self):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
-        # tag::result-cursor[]
-        search_term = "hammer"
-        result = session.run("MATCH (tool:Tool) WHERE tool.name CONTAINS {term} "
-                             "RETURN tool.name", {"term": search_term})
-        print("List of tools called %r:" % search_term)
+        # tag::result-traversal[]
+        search_term = "sword"
+        result = session.run("MATCH (weapon:Weapon) WHERE weapon.name CONTAINS {term} "
+                             "RETURN weapon.name", {"term": search_term})
+        print("List of weapons called %r:" % search_term)
         for record in result:
-            print(record["tool.name"])
-        # end::result-cursor[]
-        session.close()
-
-    def test_cursor_nesting(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
-        session = driver.session()
-        # tag::retain-result-query[]
-        result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
-                             "RETURN id(knight) AS knight_id", {"castle": "Camelot"})
-        for record in result:
-            session.run("MATCH (knight) WHERE id(knight) = {id} "
-                        "MATCH (king:Person) WHERE king.name = {king} "
-                        "CREATE (knight)-[:DEFENDS]->(king)", {"id": record["knight_id"], "king": "Arthur"})
-        # end::retain-result-query[]
+            print(record["weapon.name"])
+        # end::result-traversal[]
         session.close()
 
     def test_result_retention(self):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
+        # tag::retain-result[]
         session = driver.session()
-        # tag::retain-result-process[]
+        result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
+                             "RETURN knight.name AS name", {"castle": "Camelot"})
+        retained_result = list(result)
+        session.close()
+        for record in retained_result:
+            print("%s is a knight of Camelot" % record["name"])
+        # end::retain-result[]
+        assert isinstance(retained_result, list)
+
+    def test_nested_statements(self):
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
+        session = driver.session()
+        # tag::nested-statements[]
         result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
                              "RETURN id(knight) AS knight_id", {"castle": "Camelot"})
-        retained_result = list(result)
-        for record in retained_result:
+        for record in result:
             session.run("MATCH (knight) WHERE id(knight) = {id} "
                         "MATCH (king:Person) WHERE king.name = {king} "
                         "CREATE (knight)-[:DEFENDS]->(king)", {"id": record["knight_id"], "king": "Arthur"})
-        # end::retain-result-process[]
+        # end::nested-statements[]
         session.close()
 
     def test_transaction_commit(self):
