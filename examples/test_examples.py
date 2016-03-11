@@ -53,8 +53,8 @@ class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
         session.run("CREATE (a:Person {name:'Arthur', title:'King'})", )
 
         result = session.run("MATCH (a:Person) WHERE a.name = 'Arthur' RETURN a.name AS name, a.title AS title")
-        while result.next():
-            print("%s %s" % (result["title"], result["name"]))
+        for record in result:
+            print("%s %s" % (record["title"], record["name"]))
 
         session.close()
         # end::minimal-example[]
@@ -96,16 +96,18 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::statement[]
-        session.run("CREATE (person:Person {name: {name}})", {"name": "Arthur"}).close()
+        result = session.run("CREATE (person:Person {name: {name}})", {"name": "Arthur"})
         # end::statement[]
+        result.discard()
         session.close()
 
     def test_statement_without_parameters(self):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::statement-without-parameters[]
-        session.run("CREATE (person:Person {name: 'Arthur'})").close()
+        result = session.run("CREATE (person:Person {name: 'Arthur'})")
         # end::statement-without-parameters[]
+        result.discard()
         session.close()
 
     def test_result_cursor(self):
@@ -116,8 +118,8 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         result = session.run("MATCH (tool:Tool) WHERE tool.name CONTAINS {term} "
                              "RETURN tool.name", {"term": search_term})
         print("List of tools called %r:" % search_term)
-        while result.next():
-            print(result["tool.name"])
+        for record in result:
+            print(record["tool.name"])
         # end::result-cursor[]
         session.close()
 
@@ -127,10 +129,10 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # tag::retain-result-query[]
         result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
                              "RETURN id(knight) AS knight_id", {"castle": "Camelot"})
-        while result.next():
+        for record in result:
             session.run("MATCH (knight) WHERE id(knight) = {id} "
                         "MATCH (king:Person) WHERE king.name = {king} "
-                        "CREATE (knight)-[:DEFENDS]->(king)", {"id": result["knight_id"], "king": "Arthur"})
+                        "CREATE (knight)-[:DEFENDS]->(king)", {"id": record["knight_id"], "king": "Arthur"})
         # end::retain-result-query[]
         session.close()
 
@@ -140,9 +142,8 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # tag::retain-result-process[]
         result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
                              "RETURN id(knight) AS knight_id", {"castle": "Camelot"})
-        id_records = list(result.stream())
-
-        for record in id_records:
+        retained_result = list(result)
+        for record in retained_result:
             session.run("MATCH (knight) WHERE id(knight) = {id} "
                         "MATCH (king:Person) WHERE king.name = {king} "
                         "CREATE (knight)-[:DEFENDS]->(king)", {"id": record["knight_id"], "king": "Arthur"})
@@ -158,9 +159,8 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         tx.commit()
         # end::transaction-commit[]
         result = session.run("MATCH (p:Person {name: 'Guinevere'}) RETURN count(p)")
-        assert result.next()
-        assert result["count(p)"] == 1
-        assert result.at_end
+        record = next(result)
+        assert record["count(p)"] == 1
         session.close()
 
     def test_transaction_rollback(self):
@@ -172,9 +172,8 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         tx.rollback()
         # end::transaction-rollback[]
         result = session.run("MATCH (p:Person {name: 'Merlin'}) RETURN count(p)")
-        assert result.next()
-        assert result["count(p)"] == 0
-        assert result.at_end
+        record = next(result)
+        assert record["count(p)"] == 0
         session.close()
 
     def test_result_summary_query_profile(self):
@@ -183,8 +182,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # tag::result-summary-query-profile[]
         result = session.run("PROFILE MATCH (p:Person {name: {name}}) "
                              "RETURN id(p)", {"name": "Arthur"})
-        while result.next():
-            pass  # skip the records to get to the summary
+        list(result)  # skip the records to get to the summary
         print(result.summary.statement_type)
         print(result.summary.profile)
         # end::result-summary-query-profile[]
@@ -195,8 +193,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session = driver.session()
         # tag::result-summary-notifications[]
         result = session.run("EXPLAIN MATCH (king), (queen) RETURN king, queen")
-        while result.next():
-            pass  # skip the records to get to the summary
+        list(result)  # skip the records to get to the summary
         for notification in result.summary.notifications:
             print(notification)
         # end::result-summary-notifications[]

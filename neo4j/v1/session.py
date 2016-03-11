@@ -34,8 +34,8 @@ from ssl import SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED, Purpose
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
 from .constants import ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
-from .exceptions import CypherError, ResultError
-from .typesystem import hydrated
+from .exceptions import CypherError
+from .types import hydrated
 
 
 DEFAULT_MAX_POOL_SIZE = 50
@@ -148,150 +148,98 @@ class Driver(object):
             pool.appendleft(session)
 
 
-class ResultCursor(object):
+class StatementResult(object):
     """ A handler for the result of Cypher statement execution.
     """
 
-    #: The statement that was executed to produce this result.
+    #: The statement text that was executed to produce this result.
     statement = None
 
     #: Dictionary of parameters passed with the statement.
     parameters = None
 
-    def __init__(self, connection, statement, parameters):
-        super(ResultCursor, self).__init__()
-        self.statement = statement
-        self.parameters = parameters
+    #: The result summary (only available after the result has
+    #: been fully consumed)
+    summary = None
+
+    def __init__(self, connection, run_response, pull_all_response):
+        super(StatementResult, self).__init__()
+
+        # The Connection instance behind this cursor.
+        self.connection = connection
+
+        # The keys for the records in the result stream. These are
+        # lazily populated on request.
         self._keys = None
-        self._connection = connection
-        self._current = None
-        self._record_buffer = deque()
-        self._position = -1
-        self._summary = None
+
+        # Buffer for incoming records to be queued before yielding. If
+        # the result is used immediately, this buffer will be ignored.
+        self._buffer = deque()
+
+        # Flag to indicate whether the entire stream has been consumed
+        # from the network (but not necessarily yielded).
         self._consumed = False
 
-    def is_open(self):
-        """ Return ``True`` if this cursor is still open, ``False`` otherwise.
-        """
-        return bool(self._connection)
+        def on_header(metadata):
+            # Called on receipt of the result header.
+            self._keys = metadata["fields"]
 
-    def close(self):
-        """ Consume the remainder of this result and detach the connection
-        from this cursor.
-        """
-        if self._connection and not self._connection.closed:
-            self._consume()
-            self._connection = None
+        def on_record(values):
+            # Called on receipt of each result record.
+            self._buffer.append(values)
 
-    def next(self):
-        """ Advance to the next record, if available, and return a boolean
-        to indicate whether or not the cursor has moved.
-        """
-        if self._record_buffer:
-            values = self._record_buffer.popleft()
-            self._current = Record(self.keys(), tuple(map(hydrated, values)))
-            self._position += 1
-            return True
+        def on_footer(metadata):
+            # Called on receipt of the result footer.
+            self.summary = ResultSummary(self.statement, self.parameters, **metadata)
+            self._consumed = True
+
+        def on_failure(metadata):
+            # Called on execution failure.
+            self._consumed = True
+            raise CypherError(metadata)
+
+        run_response.on_success = on_header
+        run_response.on_failure = on_failure
+
+        pull_all_response.on_record = on_record
+        pull_all_response.on_success = on_footer
+        pull_all_response.on_failure = on_failure
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._buffer:
+            values = self._buffer.popleft()
+            return Record(self.keys(), tuple(map(hydrated, values)))
         elif self._consumed:
-            return False
+            raise StopIteration()
         else:
-            self._connection.fetch()
-            return self.next()
-
-    def record(self):
-        """ Return the current record.
-        """
-        return self._current
-
-    @property
-    def position(self):
-        """ Return the current cursor position.
-        """
-        return self._position
-
-    @property
-    def at_end(self):
-        """ Return ``True`` if at the end of the record stream, ``False``
-        otherwise.
-        """
-        if self._record_buffer:
-            return False
-        elif self._consumed:
-            return True
-        else:
-            self._connection.fetch()
-            return self.at_end
-
-    def stream(self):
-        """ Yield all subsequent records.
-        """
-        while self.next():
-            yield self.record()
-
-    def __getitem__(self, item):
-        current = self._current
-        if current is None:
-            raise TypeError("No current record")
-        return current[item]
+            while not self._buffer and not self._consumed:
+                self.connection.fetch()
+            return self.__next__()
 
     def keys(self):
         """ Return the keys for the records.
         """
         # Fetch messages until we have the header or a failure
         while self._keys is None and not self._consumed:
-            self._connection.fetch()
+            self.connection.fetch()
         return self._keys
 
-    def get(self, item, default=None):
-        current = self._current
-        if current is None:
-            raise TypeError("No current record")
-        try:
-            return current[item]
-        except (IndexError, KeyError):
-            return default
-
-    @property
-    def summary(self):
-        """ Return the summary from the trailing metadata. Note that this is
-        only available once the entire result stream has been consumed.
-        Attempting to access the summary before then will raise an error.
-
-        :rtype: ResultSummary
-        :raises ResultError: if the entire result has not yet been consumed
+    def discard(self):
+        """ Consume the remainder of this result and detach the connection
+        from this cursor.
         """
-        if self._consumed:
-            return self._summary
-        else:
-            raise ResultError("Summary not available until the entire result has been consumed")
-
-    def _consume(self):
-        # Consume the remainder of this result, triggering all appropriate callback functions.
-        fetch = self._connection.fetch
-        while not self._consumed:
-            fetch()
-
-    def _on_header(self, metadata):
-        # Called on receipt of the result header.
-        self._keys = metadata["fields"]
-
-    def _on_record(self, values):
-        # Called on receipt of each result record.
-        self._record_buffer.append(values)
-
-    def _on_footer(self, metadata):
-        # Called on receipt of the result footer.
-        self._summary = ResultSummary(self.statement, self.parameters, **metadata)
-        self._consumed = True
-
-    def _on_failure(self, metadata):
-        # Called on execution failure.
-        self._consumed = True
-        raise CypherError(metadata)
+        if self.connection and not self.connection.closed:
+            fetch = self.connection.fetch
+            while not self._consumed:
+                fetch()
+            self.connection = None
 
 
 class ResultSummary(object):
-    """ A summary of execution returned with a :class:`.ResultCursor` object.
+    """ A summary of execution returned with a :class:`.StatementResult` object.
     """
 
     #: The statement that was executed to produce this result.
@@ -460,7 +408,7 @@ class Session(object):
         self.driver = driver
         self.connection = connect(driver.host, driver.port, driver.ssl_context, **driver.config)
         self.transaction = None
-        self.last_cursor = None
+        self.last_result = None
 
     def __del__(self):
         try:
@@ -489,7 +437,7 @@ class Session(object):
         :param statement: Cypher statement to execute
         :param parameters: dictionary of parameters
         :return: Cypher result
-        :rtype: :class:`.ResultCursor`
+        :rtype: :class:`.StatementResult`
         """
 
         # Ensure the statement is a Unicode value
@@ -506,29 +454,24 @@ class Session(object):
                 params[key] = value
         parameters = params
 
-        cursor = ResultCursor(self.connection, statement, parameters)
-
         run_response = Response(self.connection)
-        run_response.on_success = cursor._on_header
-        run_response.on_failure = cursor._on_failure
-
         pull_all_response = Response(self.connection)
-        pull_all_response.on_record = cursor._on_record
-        pull_all_response.on_success = cursor._on_footer
-        pull_all_response.on_failure = cursor._on_failure
+        cursor = StatementResult(self.connection, run_response, pull_all_response)
+        cursor.statement = statement
+        cursor.parameters = parameters
 
         self.connection.append(RUN, (statement, parameters), response=run_response)
         self.connection.append(PULL_ALL, response=pull_all_response)
         self.connection.send()
 
-        self.last_cursor = cursor
+        self.last_result = cursor
         return cursor
 
     def close(self):
         """ Recycle this session through the driver it came from.
         """
-        if self.last_cursor:
-            self.last_cursor.close()
+        if self.last_result:
+            self.last_result.discard()
         self.driver.recycle(self)
 
     def begin_transaction(self):
@@ -686,20 +629,3 @@ class Record(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
-
-
-def record(obj):
-    """ Obtain an immutable record for the given object
-    (either by calling obj.__record__() or by copying out the record data)
-    """
-    try:
-        return obj.__record__()
-    except AttributeError:
-        keys = obj.keys()
-        values = []
-        for key in keys:
-            values.append(obj[key])
-        return Record(keys, values)
-
-
-
