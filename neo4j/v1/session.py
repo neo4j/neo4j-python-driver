@@ -94,6 +94,8 @@ class Driver(object):
         if parsed.scheme == "bolt":
             self.host = parsed.hostname
             self.port = parsed.port
+            if parsed.username:
+                config["auth"] = basic_auth(parsed.username, parsed.password)
         else:
             raise ValueError("Unsupported URL scheme: %s" % parsed.scheme)
         self.config = config
