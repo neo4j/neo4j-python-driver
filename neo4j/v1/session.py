@@ -282,7 +282,7 @@ class ResultSummary(object):
             if position is not None:
                 position = Position(position["offset"], position["line"], position["column"])
             self.notifications.append(Notification(notification["code"], notification["title"],
-                                                   notification["description"], position))
+                                                   notification["description"], notification["severity"], position))
 
 
 class Counters(object):
@@ -365,9 +365,11 @@ ProfiledPlan = namedtuple("ProfiledPlan", Plan._fields + ("db_hits", "rows"))
 #:   a short summary of the notification
 #: description:
 #:   a long description of the notification
+#: severity:
+#:   the severity level of the notification
 #: position:
 #:   the position in the statement where this notification points to, if relevant.
-Notification = namedtuple("Notification", ("code", "title", "description", "position"))
+Notification = namedtuple("Notification", ("code", "title", "description", "severity", "position"))
 
 #: A position within a statement, consisting of offset, line and column.
 #:

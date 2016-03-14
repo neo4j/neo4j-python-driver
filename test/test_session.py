@@ -311,6 +311,7 @@ class SummaryTestCase(ServerTestCase):
             assert notification.code == "Neo.ClientNotification.Statement.CartesianProduct"
             assert notification.title == "This query builds a cartesian product between " \
                                          "disconnected patterns."
+            assert notification.severity == "WARNING"
             assert notification.description == "If a part of a query contains multiple " \
                                                "disconnected patterns, this will build a " \
                                                "cartesian product between all those parts. This " \
