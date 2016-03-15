@@ -29,7 +29,7 @@ managing sessions.
 from __future__ import division
 
 from collections import deque, namedtuple
-from ssl import SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED, Purpose
+from ssl import SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
@@ -106,7 +106,7 @@ class Driver(object):
             ssl_context.options |= OP_NO_SSLv2
             if trust >= TRUST_SIGNED_CERTIFICATES:
                 ssl_context.verify_mode = CERT_REQUIRED
-            ssl_context.load_default_certs(Purpose.SERVER_AUTH)
+            ssl_context.set_default_verify_paths()
             self.ssl_context = ssl_context
         else:
             self.ssl_context = None
