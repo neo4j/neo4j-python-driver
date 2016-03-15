@@ -158,10 +158,6 @@ class StatementResult(object):
     #: Dictionary of parameters passed with the statement.
     parameters = None
 
-    #: The result summary (only available after the result has
-    #: been fully consumed)
-    summary = None
-
     def __init__(self, connection, run_response, pull_all_response):
         super(StatementResult, self).__init__()
 
@@ -175,6 +171,10 @@ class StatementResult(object):
         # Buffer for incoming records to be queued before yielding. If
         # the result is used immediately, this buffer will be ignored.
         self._buffer = deque()
+
+        # The result summary (populated after the records have been
+        # fully consumed).
+        self._summary = None
 
         # Flag to indicate whether the entire stream has been consumed
         # from the network (but not necessarily yielded).
@@ -190,7 +190,7 @@ class StatementResult(object):
 
         def on_footer(metadata):
             # Called on receipt of the result footer.
-            self.summary = ResultSummary(self.statement, self.parameters, **metadata)
+            self._summary = ResultSummary(self.statement, self.parameters, **metadata)
             self._consumed = True
 
         def on_failure(metadata):
@@ -215,8 +215,9 @@ class StatementResult(object):
         elif self._consumed:
             raise StopIteration()
         else:
+            fetch = self.connection.fetch
             while not self._buffer and not self._consumed:
-                self.connection.fetch()
+                fetch()
             return self.__next__()
 
     def keys(self):
@@ -227,15 +228,16 @@ class StatementResult(object):
             self.connection.fetch()
         return self._keys
 
-    def discard(self):
-        """ Consume the remainder of this result and detach the connection
-        from this result.
+    def consume(self):
+        """ Consume the remainder of this result and return the
+        summary.
         """
         if self.connection and not self.connection.closed:
             fetch = self.connection.fetch
             while not self._consumed:
                 fetch()
             self.connection = None
+        return self._summary
 
 
 class ResultSummary(object):
@@ -473,7 +475,7 @@ class Session(object):
         """ Recycle this session through the driver it came from.
         """
         if self.last_result:
-            self.last_result.discard()
+            self.last_result.consume()
         self.driver.recycle(self)
 
     def begin_transaction(self):

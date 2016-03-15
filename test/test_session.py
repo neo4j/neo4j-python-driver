@@ -156,12 +156,12 @@ class RunTestCase(ServerTestCase):
     def test_fails_on_bad_syntax(self):
         session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
         with self.assertRaises(CypherError):
-            session.run("X").discard()
+            session.run("X").consume()
 
     def test_fails_on_missing_parameter(self):
         session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
         with self.assertRaises(CypherError):
-            session.run("RETURN {x}").discard()
+            session.run("RETURN {x}").consume()
 
     def test_can_run_simple_statement_from_bytes_string(self):
         session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
@@ -227,7 +227,7 @@ class RunTestCase(ServerTestCase):
     def test_can_handle_cypher_error(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             with self.assertRaises(CypherError):
-                session.run("X").discard()
+                session.run("X").consume()
 
     def test_keys_are_available_before_and_after_stream(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
@@ -248,30 +248,24 @@ class SummaryTestCase(ServerTestCase):
     def test_can_obtain_summary_after_consuming_result(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             result = session.run("CREATE (n) RETURN n")
-            list(result)
-            summary = result.summary
+            summary = result.consume()
             assert summary.statement == "CREATE (n) RETURN n"
             assert summary.parameters == {}
             assert summary.statement_type == "rw"
             assert summary.counters.nodes_created == 1
 
-    def test_cannot_obtain_summary_without_consuming_result(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
-            result = session.run("CREATE (n) RETURN n")
-            assert result.summary is None
-
     def test_no_plan_info(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             result = session.run("CREATE (n) RETURN n")
-            list(result)  # consume the result
-            assert result.summary.plan is None
-            assert result.summary.profile is None
+            summary = result.consume()
+            assert summary.plan is None
+            assert summary.profile is None
 
     def test_can_obtain_plan_info(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             result = session.run("EXPLAIN CREATE (n) RETURN n")
-            list(result)  # consume the result
-            plan = result.summary.plan
+            summary = result.consume()
+            plan = summary.plan
             assert plan.operator_type == "ProduceResults"
             assert plan.identifiers == ["n"]
             assert plan.arguments == {"planner": "COST", "EstimatedRows": 1.0, "version": "CYPHER 3.0",
@@ -282,8 +276,8 @@ class SummaryTestCase(ServerTestCase):
     def test_can_obtain_profile_info(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             result = session.run("PROFILE CREATE (n) RETURN n")
-            list(result)  # consume the result
-            profile = result.summary.profile
+            summary = result.consume()
+            profile = summary.profile
             assert profile.db_hits == 0
             assert profile.rows == 1
             assert profile.operator_type == "ProduceResults"
@@ -296,15 +290,15 @@ class SummaryTestCase(ServerTestCase):
     def test_no_notification_info(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             result = session.run("CREATE (n) RETURN n")
-            list(result)  # consume the result
-            notifications = result.summary.notifications
+            summary = result.consume()
+            notifications = summary.notifications
             assert notifications == []
 
     def test_can_obtain_notification_info(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             result = session.run("EXPLAIN MATCH (n), (m) RETURN n, m")
-            list(result)  # consume the result
-            notifications = result.summary.notifications
+            summary = result.consume()
+            notifications = summary.notifications
 
             assert len(notifications) == 1
             notification = notifications[0]
@@ -333,7 +327,7 @@ class ResetTestCase(ServerTestCase):
     def test_automatic_reset_after_failure(self):
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             try:
-                session.run("X").discard()
+                session.run("X").consume()
             except CypherError:
                 result = session.run("RETURN 1")
                 record = next(result)
@@ -347,7 +341,7 @@ class ResetTestCase(ServerTestCase):
             assert not session.connection.defunct
             with patch.object(ChunkChannel, "chunk_reader", side_effect=ProtocolError()):
                 with self.assertRaises(ProtocolError):
-                    session.run("RETURN 1").discard()
+                    session.run("RETURN 1").consume()
             assert session.connection.defunct
             assert session.connection.closed
 
