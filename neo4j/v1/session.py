@@ -292,9 +292,6 @@ class SummaryCounters(object):
     """
 
     #:
-    contains_updates = False
-
-    #:
     nodes_created = 0
 
     #:
@@ -334,6 +331,14 @@ class SummaryCounters(object):
 
     def __repr__(self):
         return repr(vars(self))
+
+    @property
+    def contains_updates(self):
+        return self.nodes_created or self.nodes_deleted or \
+               self.relationships_created or self.relationships_deleted or \
+               self.properties_set or self.labels_added or self.labels_removed or \
+               self.indexes_added or self.indexes_removed or \
+               self.constraints_added or self.constraints_removed
 
 
 #: A plan describes how the database will execute your statement.
