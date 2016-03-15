@@ -308,7 +308,7 @@ class SummaryTestCase(ServerTestCase):
 
             assert len(notifications) == 1
             notification = notifications[0]
-            assert notification.code == "Neo.ClientNotification.Statement.CartesianProduct"
+            assert notification.code == "Neo.ClientNotification.Statement.CartesianProductWarning"
             assert notification.title == "This query builds a cartesian product between " \
                                          "disconnected patterns."
             assert notification.severity == "WARNING"

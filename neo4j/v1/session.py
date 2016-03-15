@@ -270,7 +270,7 @@ class ResultSummary(object):
         self.statement = statement
         self.parameters = parameters
         self.statement_type = metadata.get("type")
-        self.counters = Counters(metadata.get("stats", {}))
+        self.counters = SummaryCounters(metadata.get("stats", {}))
         if "plan" in metadata:
             self.plan = make_plan(metadata["plan"])
         if "profile" in metadata:
@@ -285,7 +285,7 @@ class ResultSummary(object):
                                                    notification["description"], notification["severity"], position))
 
 
-class Counters(object):
+class SummaryCounters(object):
     """ Set of statistics from a Cypher statement execution.
     """
 
