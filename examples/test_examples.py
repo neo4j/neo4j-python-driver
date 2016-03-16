@@ -98,7 +98,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # tag::statement[]
         result = session.run("CREATE (person:Person {name: {name}})", {"name": "Arthur"})
         # end::statement[]
-        result.discard()
+        result.consume()
         session.close()
 
     def test_statement_without_parameters(self):
@@ -107,7 +107,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # tag::statement-without-parameters[]
         result = session.run("CREATE (person:Person {name: 'Arthur'})")
         # end::statement-without-parameters[]
-        result.discard()
+        result.consume()
         session.close()
 
     def test_result_traversal(self):
@@ -181,9 +181,9 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # tag::result-summary-query-profile[]
         result = session.run("PROFILE MATCH (p:Person {name: {name}}) "
                              "RETURN id(p)", {"name": "Arthur"})
-        list(result)  # skip the records to get to the summary
-        print(result.summary.statement_type)
-        print(result.summary.profile)
+        summary = result.consume()
+        print(summary.statement_type)
+        print(summary.profile)
         # end::result-summary-query-profile[]
         session.close()
 
@@ -192,8 +192,8 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session = driver.session()
         # tag::result-summary-notifications[]
         result = session.run("EXPLAIN MATCH (king), (queen) RETURN king, queen")
-        list(result)  # skip the records to get to the summary
-        for notification in result.summary.notifications:
+        summary = result.consume()
+        for notification in summary.notifications:
             print(notification)
         # end::result-summary-notifications[]
         session.close()
