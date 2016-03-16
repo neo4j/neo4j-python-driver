@@ -18,22 +18,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from neo4j.v1.session import GraphDatabase, basic_auth
+
+from sys import argv
+
+from neo4j.v1 import GraphDatabase, basic_auth
+from neo4j.util import Watcher
 
 
-driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
-session = driver.session()
+def update_password(user, password, new_password):
+    """ Test utility for setting the initial password.
 
-session.run("MERGE (a:Person {name:'Alice'})")
+    :param user: user name
+    :param password: current password
+    :param new_password: new password
+    """
 
-friends = ["Bob", "Carol", "Dave", "Eve", "Frank"]
-with session.begin_transaction() as tx:
-    for friend in friends:
-        tx.run("MATCH (a:Person {name:'Alice'}) "
-               "MERGE (a)-[:KNOWS]->(x:Person {name:{n}})", {"n": friend})
-    tx.success = True
+    token = basic_auth(user, password)
+    setattr(token, "new-credentials", new_password)  # TODO: hopefully switch hyphen to underscore on server
+    GraphDatabase.driver("bolt://localhost", auth=token).session().close()
 
-for friend, in session.run("MATCH (a:Person {name:'Alice'})-[:KNOWS]->(x) RETURN x"):
-    print('Alice says, "hello, %s"' % friend["name"])
 
-session.close()
+if __name__ == "__main__":
+    Watcher("neo4j.bolt").watch()
+    update_password("neo4j", "neo4j", argv[1])

@@ -29,11 +29,13 @@ managing sessions.
 from __future__ import division
 
 from collections import deque, namedtuple
+from ssl import SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
+from .constants import ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
 from .exceptions import CypherError
-from .typesystem import hydrated
+from .types import hydrated
 
 
 DEFAULT_MAX_POOL_SIZE = 50
@@ -42,6 +44,26 @@ STATEMENT_TYPE_READ_ONLY = "r"
 STATEMENT_TYPE_READ_WRITE = "rw"
 STATEMENT_TYPE_WRITE_ONLY = "w"
 STATEMENT_TYPE_SCHEMA_WRITE = "s"
+
+
+def basic_auth(user, password):
+    """ Generate a basic auth token for a given user and password.
+
+    :param user: user name
+    :param password: current password
+    :return: auth token for use with :meth:`GraphDatabase.driver`
+    """
+    return AuthToken("basic", user, password)
+
+
+class AuthToken(object):
+    """ Container for auth information
+    """
+
+    def __init__(self, scheme, principal, credentials):
+        self.scheme = scheme
+        self.principal = principal
+        self.credentials = credentials
 
 
 class GraphDatabase(object):
@@ -77,6 +99,17 @@ class Driver(object):
         self.config = config
         self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
         self.session_pool = deque()
+        self.encrypted = encrypted = config.get("encrypted", ENCRYPTED_DEFAULT)
+        self.trust = trust = config.get("trust", TRUST_DEFAULT)
+        if encrypted:
+            ssl_context = SSLContext(PROTOCOL_SSLv23)
+            ssl_context.options |= OP_NO_SSLv2
+            if trust >= TRUST_SIGNED_CERTIFICATES:
+                ssl_context.verify_mode = CERT_REQUIRED
+            ssl_context.set_default_verify_paths()
+            self.ssl_context = ssl_context
+        else:
+            self.ssl_context = None
 
     def session(self):
         """ Create a new session based on the graph database details
@@ -108,149 +141,107 @@ class Driver(object):
         :return:
         """
         pool = self.session_pool
-        for s in pool:
+        for s in list(pool):  # freezing the pool into a list for iteration allows pool mutation inside the loop
             if not s.healthy:
                 pool.remove(s)
         if session.healthy and len(pool) < self.max_pool_size and session not in pool:
             pool.appendleft(session)
 
 
-class ResultCursor(object):
+class StatementResult(object):
     """ A handler for the result of Cypher statement execution.
     """
 
-    #: The statement that was executed to produce this result.
+    #: The statement text that was executed to produce this result.
     statement = None
 
     #: Dictionary of parameters passed with the statement.
     parameters = None
 
-    def __init__(self, connection, statement, parameters):
-        super(ResultCursor, self).__init__()
-        self.statement = statement
-        self.parameters = parameters
+    def __init__(self, connection, run_response, pull_all_response):
+        super(StatementResult, self).__init__()
+
+        # The Connection instance behind this result.
+        self.connection = connection
+
+        # The keys for the records in the result stream. These are
+        # lazily populated on request.
         self._keys = None
-        self._connection = connection
-        self._current = None
-        self._next = deque()
-        self._position = -1
+
+        # Buffer for incoming records to be queued before yielding. If
+        # the result is used immediately, this buffer will be ignored.
+        self._buffer = deque()
+
+        # The result summary (populated after the records have been
+        # fully consumed).
         self._summary = None
+
+        # Flag to indicate whether the entire stream has been consumed
+        # from the network (but not necessarily yielded).
         self._consumed = False
 
-    def is_open(self):
-        """ Return ``True`` if this cursor is still open, ``False`` otherwise.
-        """
-        return bool(self._connection)
+        def on_header(metadata):
+            # Called on receipt of the result header.
+            self._keys = metadata["fields"]
 
-    def close(self):
-        """ Consume the remainder of this result and detach the connection
-        from this cursor.
-        """
-        if self._connection and not self._connection.closed:
-            self._consume()
-            self._connection = None
+        def on_record(values):
+            # Called on receipt of each result record.
+            self._buffer.append(values)
 
-    def next(self):
-        """ Advance to the next record, if available, and return a boolean
-        to indicate whether or not the cursor has moved.
-        """
-        if self._next:
-            values = self._next.popleft()
-            self._current = Record(self.keys(), tuple(map(hydrated, values)))
-            self._position += 1
-            return True
+        def on_footer(metadata):
+            # Called on receipt of the result footer.
+            self._summary = ResultSummary(self.statement, self.parameters, **metadata)
+            self._consumed = True
+
+        def on_failure(metadata):
+            # Called on execution failure.
+            self._consumed = True
+            raise CypherError(metadata)
+
+        run_response.on_success = on_header
+        run_response.on_failure = on_failure
+
+        pull_all_response.on_record = on_record
+        pull_all_response.on_success = on_footer
+        pull_all_response.on_failure = on_failure
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._buffer:
+            values = self._buffer.popleft()
+            return Record(self.keys(), tuple(map(hydrated, values)))
         elif self._consumed:
-            return False
+            raise StopIteration()
         else:
-            self._connection.fetch_next()
-            return self.next()
-
-    def record(self):
-        """ Return the current record.
-        """
-        return self._current
-
-    def position(self):
-        """ Return the current cursor position.
-        """
-        return self._position
-
-    def at_end(self):
-        """ Return ``True`` if at the end of the record stream, ``False``
-        otherwise.
-        """
-        if self._next:
-            return False
-        elif self._consumed:
-            return True
-        else:
-            self._connection.fetch_next()
-            return self.at_end()
-
-    def stream(self):
-        """ Yield all subsequent records.
-        """
-        while self.next():
-            yield self.record()
-
-    def __getitem__(self, item):
-        current = self._current
-        if current is None:
-            raise TypeError("No current record")
-        return current[item]
+            fetch = self.connection.fetch
+            while not self._buffer and not self._consumed:
+                fetch()
+            return self.__next__()
 
     def keys(self):
         """ Return the keys for the records.
         """
         # Fetch messages until we have the header or a failure
         while self._keys is None and not self._consumed:
-            self._connection.fetch_next()
+            self.connection.fetch()
         return self._keys
 
-    def get(self, item, default=None):
-        current = self._current
-        if current is None:
-            raise TypeError("No current record")
-        try:
-            return current[item]
-        except (IndexError, KeyError):
-            return default
-
-    def summarize(self):
-        """ Consume the remainder of this result and produce a summary.
-
-        :rtype: ResultSummary
+    def consume(self):
+        """ Consume the remainder of this result and return the
+        summary.
         """
-        self._consume()
+        if self.connection and not self.connection.closed:
+            fetch = self.connection.fetch
+            while not self._consumed:
+                fetch()
+            self.connection = None
         return self._summary
-
-    def _consume(self):
-        # Consume the remainder of this result, triggering all appropriate callback functions.
-        fetch_next = self._connection.fetch_next
-        while not self._consumed:
-            fetch_next()
-
-    def _on_header(self, metadata):
-        # Called on receipt of the result header.
-        self._keys = metadata["fields"]
-
-    def _on_record(self, values):
-        # Called on receipt of each result record.
-        self._next.append(values)
-
-    def _on_footer(self, metadata):
-        # Called on receipt of the result footer.
-        self._summary = ResultSummary(self.statement, self.parameters, **metadata)
-        self._consumed = True
-
-    def _on_failure(self, metadata):
-        # Called on execution failure.
-        self._consumed = True
-        raise CypherError(metadata)
 
 
 class ResultSummary(object):
-    """ A summary of execution returned with a :class:`.ResultCursor` object.
+    """ A summary of execution returned with a :class:`.StatementResult` object.
     """
 
     #: The statement that was executed to produce this result.
@@ -262,8 +253,8 @@ class ResultSummary(object):
     #: The type of statement (``'r'`` = read-only, ``'rw'`` = read/write).
     statement_type = None
 
-    #: A set of statistical information held in a :class:`.StatementStatistics` instance.
-    statistics = None
+    #: A set of statistical information held in a :class:`.Counters` instance.
+    counters = None
 
     #: A :class:`.Plan` instance
     plan = None
@@ -281,7 +272,7 @@ class ResultSummary(object):
         self.statement = statement
         self.parameters = parameters
         self.statement_type = metadata.get("type")
-        self.statistics = StatementStatistics(metadata.get("stats", {}))
+        self.counters = SummaryCounters(metadata.get("stats", {}))
         if "plan" in metadata:
             self.plan = make_plan(metadata["plan"])
         if "profile" in metadata:
@@ -293,15 +284,12 @@ class ResultSummary(object):
             if position is not None:
                 position = Position(position["offset"], position["line"], position["column"])
             self.notifications.append(Notification(notification["code"], notification["title"],
-                                                   notification["description"], position))
+                                                   notification["description"], notification["severity"], position))
 
 
-class StatementStatistics(object):
+class SummaryCounters(object):
     """ Set of statistics from a Cypher statement execution.
     """
-
-    #:
-    contains_updates = False
 
     #:
     nodes_created = 0
@@ -344,6 +332,14 @@ class StatementStatistics(object):
     def __repr__(self):
         return repr(vars(self))
 
+    @property
+    def contains_updates(self):
+        return self.nodes_created or self.nodes_deleted or \
+               self.relationships_created or self.relationships_deleted or \
+               self.properties_set or self.labels_added or self.labels_removed or \
+               self.indexes_added or self.indexes_removed or \
+               self.constraints_added or self.constraints_removed
+
 
 #: A plan describes how the database will execute your statement.
 #:
@@ -376,9 +372,11 @@ ProfiledPlan = namedtuple("ProfiledPlan", Plan._fields + ("db_hits", "rows"))
 #:   a short summary of the notification
 #: description:
 #:   a long description of the notification
+#: severity:
+#:   the severity level of the notification
 #: position:
 #:   the position in the statement where this notification points to, if relevant.
-Notification = namedtuple("Notification", ("code", "title", "description", "position"))
+Notification = namedtuple("Notification", ("code", "title", "description", "severity", "position"))
 
 #: A position within a statement, consisting of offset, line and column.
 #:
@@ -417,13 +415,16 @@ class Session(object):
 
     def __init__(self, driver):
         self.driver = driver
-        self.connection = connect(driver.host, driver.port, **driver.config)
+        self.connection = connect(driver.host, driver.port, driver.ssl_context, **driver.config)
         self.transaction = None
-        self.last_cursor = None
+        self.last_result = None
 
     def __del__(self):
-        if not self.connection.closed:
-            self.connection.close()
+        try:
+            if not self.connection.closed:
+                self.connection.close()
+        except AttributeError:
+            pass
 
     def __enter__(self):
         return self
@@ -445,7 +446,7 @@ class Session(object):
         :param statement: Cypher statement to execute
         :param parameters: dictionary of parameters
         :return: Cypher result
-        :rtype: :class:`.ResultCursor`
+        :rtype: :class:`.StatementResult`
         """
 
         # Ensure the statement is a Unicode value
@@ -462,29 +463,24 @@ class Session(object):
                 params[key] = value
         parameters = params
 
-        cursor = ResultCursor(self.connection, statement, parameters)
-
         run_response = Response(self.connection)
-        run_response.on_success = cursor._on_header
-        run_response.on_failure = cursor._on_failure
-
         pull_all_response = Response(self.connection)
-        pull_all_response.on_record = cursor._on_record
-        pull_all_response.on_success = cursor._on_footer
-        pull_all_response.on_failure = cursor._on_failure
+        result = StatementResult(self.connection, run_response, pull_all_response)
+        result.statement = statement
+        result.parameters = parameters
 
         self.connection.append(RUN, (statement, parameters), response=run_response)
         self.connection.append(PULL_ALL, response=pull_all_response)
         self.connection.send()
 
-        self.last_cursor = cursor
-        return cursor
+        self.last_result = result
+        return result
 
     def close(self):
         """ Recycle this session through the driver it came from.
         """
-        if self.last_cursor:
-            self.last_cursor.close()
+        if self.last_result:
+            self.last_result.consume()
         self.driver.recycle(self)
 
     def begin_transaction(self):
@@ -642,19 +638,3 @@ class Record(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
-
-def record(obj):
-    """ Obtain an immutable record for the given object
-    (either by calling obj.__record__() or by copying out the record data)
-    """
-    try:
-        return obj.__record__()
-    except AttributeError:
-        keys = obj.keys()
-        values = []
-        for key in keys:
-            values.append(obj[key])
-        return Record(keys, values)
-
-
-

@@ -86,8 +86,13 @@ def step_impl(context, unused):
 @step("the value given in the result should be the same as what was sent")
 def step_impl(context):
     assert len(context.results) > 0
+    print(context.results[0])
+    print(list(context.results[0]))
     for result in context.results:
-        assert result.next()
+        print(result)
+        for record in result:
+            print(record)
+        assert len(list(result)) == 1
         result_value = result.record().values()[0]
         assert result_value == context.expected
         assert result.at_end()

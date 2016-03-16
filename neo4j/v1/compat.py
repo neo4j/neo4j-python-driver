@@ -32,8 +32,18 @@ __all__ = ["integer", "perf_counter", "secure_socket", "string", "urlparse"]
 try:
     unicode
 except NameError:
+    # Python 3
+
     integer = int
     string = str
+
+    def ustr(x):
+        if isinstance(x, bytes):
+            return x.decode("utf-8")
+        elif isinstance(x, str):
+            return x
+        else:
+            return str(x)
 
     def hex2(x):
         if x < 0x10:
@@ -42,8 +52,18 @@ except NameError:
             return hex(x)[2:].upper()
 
 else:
+    # Python 2
+
     integer = (int, long)
     string = (str, unicode)
+
+    def ustr(x):
+        if isinstance(x, str):
+            return x.decode("utf-8")
+        elif isinstance(x, unicode):
+            return x
+        else:
+            return unicode(x)
 
     def hex2(x):
         x = ord(x)
@@ -90,19 +110,3 @@ try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
-
-
-try:
-    from ssl import SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, HAS_SNI
-except ImportError:
-    from ssl import wrap_socket, PROTOCOL_SSLv23
-
-    def secure_socket(s, host):
-        return wrap_socket(s, ssl_version=PROTOCOL_SSLv23)
-
-else:
-
-    def secure_socket(s, host):
-        ssl_context = SSLContext(PROTOCOL_SSLv23)
-        ssl_context.options |= OP_NO_SSLv2
-        return ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)

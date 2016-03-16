@@ -21,24 +21,23 @@
 
 from __future__ import division
 
+from base64 import b64encode
 from collections import deque
 from io import BytesIO
 import logging
-from os import environ
+from os import makedirs, open as os_open, write as os_write, close as os_close, O_CREAT, O_APPEND, O_WRONLY
+from os.path import dirname, isfile
 from select import select
-from socket import create_connection, SHUT_RDWR
+from socket import create_connection, SHUT_RDWR, error as SocketError
+from ssl import HAS_SNI, SSLError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
-from ..meta import version
-from .compat import hex2, secure_socket
+from .constants import DEFAULT_PORT, DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, \
+    TRUST_DEFAULT, TRUST_ON_FIRST_USE
+from .compat import hex2
 from .exceptions import ProtocolError
 from .packstream import Packer, Unpacker
 
-
-DEFAULT_PORT = 7687
-DEFAULT_USER_AGENT = "neo4j-python/%s" % version
-
-MAGIC_PREAMBLE = 0x6060B017
 
 # Signature bytes for each message type
 INIT = b"\x01"             # 0000 0001 // INIT <user_agent>
@@ -67,7 +66,7 @@ message_names = {
 }
 
 # Set up logger
-log = logging.getLogger("neo4j")
+log = logging.getLogger("neo4j.bolt")
 log_debug = log.debug
 log_info = log.info
 log_warning = log.warning
@@ -211,17 +210,27 @@ class Connection(object):
         user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
         if isinstance(user_agent, bytes):
             user_agent = user_agent.decode("UTF-8")
+        self.user_agent = user_agent
+
+        # Determine auth details
+        try:
+            self.auth_dict = vars(config["auth"])
+        except KeyError:
+            self.auth_dict = {}
+
+        # Pick up the server certificate, if any
+        self.der_encoded_server_certificate = config.get("der_encoded_server_certificate")
 
         def on_failure(metadata):
-            raise ProtocolError("Initialisation failed")
+            raise ProtocolError(metadata.get("message", "Inititalisation failed"))
 
         response = Response(self)
         response.on_failure = on_failure
 
-        self.append(INIT, (user_agent,), response=response)
+        self.append(INIT, (self.user_agent, self.auth_dict), response=response)
         self.send()
         while not response.complete:
-            self.fetch_next()
+            self.fetch()
 
     def __del__(self):
         self.close()
@@ -255,9 +264,9 @@ class Connection(object):
 
         self.append(RESET, response=response)
         self.send()
-        fetch_next = self.fetch_next
+        fetch = self.fetch
         while not response.complete:
-            fetch_next()
+            fetch()
 
     def send(self):
         """ Send all queued messages to the server.
@@ -268,7 +277,7 @@ class Connection(object):
             raise ProtocolError("Cannot write to a defunct connection")
         self.channel.send()
 
-    def fetch_next(self):
+    def fetch(self):
         """ Receive exactly one message from the server.
         """
         if self.closed:
@@ -313,7 +322,53 @@ class Connection(object):
             self.closed = True
 
 
-def connect(host, port=None, **config):
+class CertificateStore(object):
+
+    def match_or_trust(self, host, der_encoded_certificate):
+        """ Check whether the supplied certificate matches that stored for the
+        specified host. If it does, return ``True``, if it doesn't, return
+        ``False``. If no entry for that host is found, add it to the store
+        and return ``True``.
+
+        :arg host:
+        :arg der_encoded_certificate:
+        :return:
+        """
+        raise NotImplementedError()
+
+
+class PersonalCertificateStore(CertificateStore):
+
+    def __init__(self, path=None):
+        self.path = path or KNOWN_HOSTS
+
+    def match_or_trust(self, host, der_encoded_certificate):
+        base64_encoded_certificate = b64encode(der_encoded_certificate)
+        if isfile(self.path):
+            with open(self.path) as f_in:
+                for line in f_in:
+                    known_host, _, known_cert = line.strip().partition(":")
+                    known_cert = known_cert.encode("utf-8")
+                    if host == known_host:
+                        return base64_encoded_certificate == known_cert
+        # First use (no hosts match)
+        try:
+            makedirs(dirname(self.path))
+        except OSError:
+            pass
+        f_out = os_open(self.path, O_CREAT | O_APPEND | O_WRONLY, 0o600)  # TODO: Windows
+        if isinstance(host, bytes):
+            os_write(f_out, host)
+        else:
+            os_write(f_out, host.encode("utf-8"))
+        os_write(f_out, b":")
+        os_write(f_out, base64_encoded_certificate)
+        os_write(f_out, b"\n")
+        os_close(f_out)
+        return True
+
+
+def connect(host, port=None, ssl_context=None, **config):
     """ Connect and perform a handshake and return a valid Connection object, assuming
     a protocol version can be agreed.
     """
@@ -321,16 +376,36 @@ def connect(host, port=None, **config):
     # Establish a connection to the host and port specified
     port = port or DEFAULT_PORT
     if __debug__: log_info("~~ [CONNECT] %s %d", host, port)
-    s = create_connection((host, port))
-
-    # Secure the connection if so requested
     try:
-        secure = environ["NEO4J_SECURE"]
-    except KeyError:
-        secure = config.get("secure", False)
-    if secure:
+        s = create_connection((host, port))
+    except SocketError as error:
+        if error.errno == 111:
+            raise ProtocolError("Unable to connect to %s on port %d - is the server running?" % (host, port))
+        else:
+            raise
+
+    # Secure the connection if an SSL context has been provided
+    if ssl_context:
         if __debug__: log_info("~~ [SECURE] %s", host)
-        s = secure_socket(s, host)
+        try:
+            s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
+        except SSLError as cause:
+            error = ProtocolError("Cannot establish secure connection; %s" % cause.args[1])
+            error.__cause__ = cause
+            raise error
+        else:
+            # Check that the server provides a certificate
+            der_encoded_server_certificate = s.getpeercert(binary_form=True)
+            if der_encoded_server_certificate is None:
+                raise ProtocolError("When using a secure socket, the server should always provide a certificate")
+            trust = config.get("trust", TRUST_DEFAULT)
+            if trust == TRUST_ON_FIRST_USE:
+                store = PersonalCertificateStore()
+                if not store.match_or_trust(host, der_encoded_server_certificate):
+                    raise ProtocolError("Server certificate does not match known certificate for %r; check "
+                                        "details in file %r" % (host, KNOWN_HOSTS))
+    else:
+        der_encoded_server_certificate = None
 
     # Send details of the protocol versions supported
     supported_versions = [1, 0, 0, 0]
@@ -364,4 +439,4 @@ def connect(host, port=None, **config):
         s.shutdown(SHUT_RDWR)
         s.close()
     else:
-        return Connection(s, **config)
+        return Connection(s, der_encoded_server_certificate=der_encoded_server_certificate, **config)

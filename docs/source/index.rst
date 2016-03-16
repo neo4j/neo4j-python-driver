@@ -24,15 +24,13 @@ Session API
 .. autoclass:: neo4j.v1.Record
    :members:
 
-.. autofunction:: neo4j.v1.record
-
-.. autoclass:: neo4j.v1.ResultCursor
+.. autoclass:: neo4j.v1.StatementResult
    :members:
 
 .. autoclass:: neo4j.v1.ResultSummary
    :members:
 
-.. autoclass:: neo4j.v1.StatementStatistics
+.. autoclass:: neo4j.v1.Counters
    :members:
 
 

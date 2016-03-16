@@ -58,3 +58,9 @@ def after_all(context):
                 print("Failing scenario: %s" % scenario)
         raise Exception("\tTCK FAILED!")
 
+
+
+def after_scenario(context, scenario):
+    if scenario.status != "passed":
+        raise Exception("%s did not pass" %scenario)
+

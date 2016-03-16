@@ -18,29 +18,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from neo4j.v1 import compat, Relationship, Node, Path
 
-from neo4j.v1 import GraphDatabase
+from neo4j.v1 import GraphDatabase, Relationship, Node, Path, basic_auth
+from neo4j.v1.compat import string
 
 driver = GraphDatabase.driver("bolt://localhost")
 session = driver.session()
 
 
 def send_string(text):
-    cursor = session.run(text)
-    return cursor
+    statement_result = session.run(text)
+    return statement_result
 
 
 def send_parameters(statement, parameters):
-    cursor = session.run(statement, parameters)
-    return cursor
+    statement_result = session.run(statement, parameters)
+    return statement_result
 
 
-def to_unicode(val):
-    try:
-        return unicode(val)
-    except NameError:
-        return str(val)
+try:
+    to_unicode = unicode
+except NameError:
+    to_unicode = str
 
 
 def string_to_type(str):
@@ -88,7 +87,7 @@ class TestValue:
         elif isinstance(entity, Path):
             self.content = self.create_path(entity)
         elif isinstance(entity, int) or isinstance(entity, float) or isinstance(entity,
-                                                                                (str, compat.string)) or entity is None:
+                                                                                (str, string)) or entity is None:
             self.content['value'] = entity
         else:
             raise ValueError("Do not support object type: %s" % entity)

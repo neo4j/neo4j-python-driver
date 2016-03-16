@@ -20,8 +20,15 @@
 
 
 import functools
+from os import rename
+from os.path import isfile
+from unittest import TestCase
 
 from neo4j.util import Watcher
+from neo4j.v1.constants import KNOWN_HOSTS
+
+
+KNOWN_HOSTS_BACKUP = KNOWN_HOSTS + ".backup"
 
 
 def watch(f):
@@ -34,8 +41,24 @@ def watch(f):
     """
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        watcher = Watcher("neo4j")
+        watcher = Watcher("neo4j.bolt")
         watcher.watch()
         f(*args, **kwargs)
         watcher.stop()
     return wrapper
+
+
+class ServerTestCase(TestCase):
+    """ Base class for test cases that use a remote server.
+    """
+
+    known_hosts = KNOWN_HOSTS
+    known_hosts_backup = known_hosts + ".backup"
+
+    def setUp(self):
+        if isfile(self.known_hosts):
+            rename(self.known_hosts, self.known_hosts_backup)
+
+    def tearDown(self):
+        if isfile(self.known_hosts_backup):
+            rename(self.known_hosts_backup, self.known_hosts)

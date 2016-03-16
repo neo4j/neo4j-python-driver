@@ -27,19 +27,21 @@ from json import loads as json_loads
 from sys import stdout, stderr
 
 from .util import Watcher
-from .v1.session import GraphDatabase, CypherError
+from .v1.session import GraphDatabase, CypherError, basic_auth
 
 
 def main():
     parser = ArgumentParser(description="Execute one or more Cypher statements using Bolt.")
     parser.add_argument("statement", nargs="+")
-    parser.add_argument("-u", "--url", default="bolt://localhost", metavar="CONNECTION_URL")
+    parser.add_argument("-k", "--keys", action="store_true")
+    parser.add_argument("-P", "--password")
     parser.add_argument("-p", "--parameter", action="append", metavar="NAME=VALUE")
     parser.add_argument("-q", "--quiet", action="store_true")
-    parser.add_argument("-s", "--secure", action="store_true")
+    parser.add_argument("-U", "--user", default="neo4j")
+    parser.add_argument("-u", "--url", default="bolt://localhost", metavar="CONNECTION_URL")
     parser.add_argument("-v", "--verbose", action="count")
     parser.add_argument("-x", "--times", type=int, default=1)
-    parser.add_argument("-z", "--summarize", action="store_true")
+    parser.add_argument("-z", "--summary", action="store_true")
     args = parser.parse_args()
 
     if args.verbose:
@@ -57,30 +59,26 @@ def main():
             except ValueError:
                 parameters[name] = value
 
-    driver = GraphDatabase.driver(args.url, secure=args.secure)
+    driver = GraphDatabase.driver(args.url, auth=basic_auth(args.user, args.password))
     session = driver.session()
     for _ in range(args.times):
         for statement in args.statement:
             try:
-                cursor = session.run(statement, parameters)
+                result = session.run(statement, parameters)
             except CypherError as error:
                 stderr.write("%s: %s\r\n" % (error.code, error.message))
             else:
                 if not args.quiet:
-                    has_results = False
-                    for i, record in enumerate(cursor.stream()):
-                        has_results = True
-                        if i == 0:
-                            stdout.write("%s\r\n" % "\t".join(record.keys()))
-                        stdout.write("%s\r\n" % "\t".join(map(repr, record)))
-                    if has_results:
-                        stdout.write("\r\n")
-                    if args.summarize:
-                        summary = cursor.summarize()
+                    if args.keys:
+                        stdout.write("%s\r\n" % "\t".join(result.keys()))
+                    for i, record in enumerate(result):
+                        stdout.write("%s\r\n" % "\t".join(map(repr, record.values())))
+                    if args.summary:
+                        summary = result.summary
                         stdout.write("Statement      : %r\r\n" % summary.statement)
                         stdout.write("Parameters     : %r\r\n" % summary.parameters)
                         stdout.write("Statement Type : %r\r\n" % summary.statement_type)
-                        stdout.write("Statistics     : %r\r\n" % summary.statistics)
+                        stdout.write("Counters       : %r\r\n" % summary.counters)
                         stdout.write("\r\n")
     session.close()
 
