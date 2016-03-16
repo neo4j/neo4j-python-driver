@@ -158,7 +158,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         tx.commit()
         # end::transaction-commit[]
         result = session.run("MATCH (p:Person {name: 'Guinevere'}) RETURN count(p)")
-        record = next(result)
+        record = next(iter(result))
         assert record["count(p)"] == 1
         session.close()
 
@@ -171,7 +171,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         tx.rollback()
         # end::transaction-rollback[]
         result = session.run("MATCH (p:Person {name: 'Merlin'}) RETURN count(p)")
-        record = next(result)
+        record = next(iter(result))
         assert record["count(p)"] == 0
         session.close()
 

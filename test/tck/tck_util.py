@@ -29,15 +29,17 @@ driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "pass
 def send_string(text):
     session = driver.session()
     result = session.run(text)
+    records = list(result)
     session.close()
-    return list(result)
+    return records
 
 
 def send_parameters(statement, parameters):
     session = driver.session()
     result = session.run(statement, parameters)
+    records = list(result)
     session.close()
-    return list(result)
+    return records
 
 
 try:

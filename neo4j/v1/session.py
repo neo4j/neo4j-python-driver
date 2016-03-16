@@ -206,19 +206,14 @@ class StatementResult(object):
         pull_all_response.on_failure = on_failure
 
     def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._buffer:
+        while self._buffer and not self._consumed:
             values = self._buffer.popleft()
-            return Record(self.keys(), tuple(map(hydrated, values)))
-        elif self._consumed:
-            raise StopIteration()
-        else:
-            fetch = self.connection.fetch
-            while not self._buffer and not self._consumed:
-                fetch()
-            return self.__next__()
+            yield Record(self.keys(), tuple(map(hydrated, values)))
+        while not self._consumed:
+            self.connection.fetch()
+            if self._buffer:
+                values = self._buffer.popleft()
+                yield Record(self.keys(), tuple(map(hydrated, values)))
 
     def keys(self):
         """ Return the keys for the records.

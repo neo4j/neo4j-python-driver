@@ -330,7 +330,7 @@ class ResetTestCase(ServerTestCase):
                 session.run("X").consume()
             except CypherError:
                 result = session.run("RETURN 1")
-                record = next(result)
+                record = next(iter(result))
                 assert record[0] == 1
             else:
                 assert False, "A Cypher error should have occurred"
@@ -424,7 +424,7 @@ class TransactionTestCase(ServerTestCase):
 
             # Create a node
             result = tx.run("CREATE (a) RETURN id(a)")
-            record = next(result)
+            record = next(iter(result))
             node_id = record[0]
             assert isinstance(node_id, int)
 
@@ -437,7 +437,7 @@ class TransactionTestCase(ServerTestCase):
             # Check the property value
             result = session.run("MATCH (a) WHERE id(a) = {n} "
                                  "RETURN a.foo", {"n": node_id})
-            record = next(result)
+            record = next(iter(result))
             value = record[0]
             assert value == "bar"
 
@@ -447,7 +447,7 @@ class TransactionTestCase(ServerTestCase):
 
             # Create a node
             result = tx.run("CREATE (a) RETURN id(a)")
-            record = next(result)
+            record = next(iter(result))
             node_id = record[0]
             assert isinstance(node_id, int)
 
@@ -467,7 +467,7 @@ class TransactionTestCase(ServerTestCase):
             with session.begin_transaction() as tx:
                 # Create a node
                 result = tx.run("CREATE (a) RETURN id(a)")
-                record = next(result)
+                record = next(iter(result))
                 node_id = record[0]
                 assert isinstance(node_id, int)
 
@@ -480,7 +480,7 @@ class TransactionTestCase(ServerTestCase):
             # Check the property value
             result = session.run("MATCH (a) WHERE id(a) = {n} "
                                  "RETURN a.foo", {"n": node_id})
-            record = next(result)
+            record = next(iter(result))
             value = record[0]
             assert value == "bar"
 
@@ -489,7 +489,7 @@ class TransactionTestCase(ServerTestCase):
             with session.begin_transaction() as tx:
                 # Create a node
                 result = tx.run("CREATE (a) RETURN id(a)")
-                record = next(result)
+                record = next(iter(result))
                 node_id = record[0]
                 assert isinstance(node_id, int)
 
