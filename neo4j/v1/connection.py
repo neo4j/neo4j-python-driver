@@ -215,7 +215,7 @@ class Connection(object):
         # Determine auth details
         try:
             self.auth_dict = vars(config["auth"])
-        except KeyError:
+        except (KeyError, TypeError):
             self.auth_dict = {}
 
         # Pick up the server certificate, if any
