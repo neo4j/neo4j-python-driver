@@ -206,12 +206,12 @@ class StatementResult(object):
         pull_all_response.on_failure = on_failure
 
     def __iter__(self):
-        while self._buffer and not self._consumed:
+        while self._buffer:
             values = self._buffer.popleft()
             yield Record(self.keys(), tuple(map(hydrated, values)))
         while not self._consumed:
             self.connection.fetch()
-            if self._buffer:
+            while self._buffer:
                 values = self._buffer.popleft()
                 yield Record(self.keys(), tuple(map(hydrated, values)))
 
@@ -223,14 +223,18 @@ class StatementResult(object):
             self.connection.fetch()
         return self._keys
 
+    def buffer(self):
+        if self.connection and not self.connection.closed:
+            while not self._consumed:
+                self.connection.fetch()
+            self.connection = None
+
     def consume(self):
         """ Consume the remainder of this result and return the
         summary.
         """
         if self.connection and not self.connection.closed:
-            fetch = self.connection.fetch
-            while not self._consumed:
-                fetch()
+            list(self)
             self.connection = None
         return self._summary
 
@@ -475,7 +479,7 @@ class Session(object):
         """ Recycle this session through the driver it came from.
         """
         if self.last_result:
-            self.last_result.consume()
+            self.last_result.buffer()
         self.driver.recycle(self)
 
     def begin_transaction(self):

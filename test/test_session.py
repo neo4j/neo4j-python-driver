@@ -501,3 +501,67 @@ class TransactionTestCase(ServerTestCase):
             result = session.run("MATCH (a) WHERE id(a) = {n} "
                                  "RETURN a.foo", {"n": node_id})
             assert len(list(result)) == 0
+
+
+class ResultConsumptionTestCase(ServerTestCase):
+
+    def setUp(self):
+        self.driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
+
+    def test_can_consume_result_immediately(self):
+        session = self.driver.session()
+        tx = session.begin_transaction()
+        result = tx.run("UNWIND range(1, 3) AS n RETURN n")
+        assert [record[0] for record in result] == [1, 2, 3]
+        tx.commit()
+        session.close()
+
+    def test_can_consume_result_after_commit(self):
+        session = self.driver.session()
+        tx = session.begin_transaction()
+        result = tx.run("UNWIND range(1, 3) AS n RETURN n")
+        tx.commit()
+        assert [record[0] for record in result] == [1, 2, 3]
+        session.close()
+
+    def test_can_consume_result_after_rollback(self):
+        session = self.driver.session()
+        tx = session.begin_transaction()
+        result = tx.run("UNWIND range(1, 3) AS n RETURN n")
+        tx.rollback()
+        assert [record[0] for record in result] == [1, 2, 3]
+        session.close()
+
+    def test_can_consume_result_after_session_close(self):
+        session = self.driver.session()
+        tx = session.begin_transaction()
+        result = tx.run("UNWIND range(1, 3) AS n RETURN n")
+        tx.commit()
+        session.close()
+        assert [record[0] for record in result] == [1, 2, 3]
+
+    def test_can_consume_result_after_session_reuse(self):
+        session = self.driver.session()
+        tx = session.begin_transaction()
+        result_a = tx.run("UNWIND range(1, 3) AS n RETURN n")
+        tx.commit()
+        session.close()
+        session = self.driver.session()
+        tx = session.begin_transaction()
+        result_b = tx.run("UNWIND range(4, 6) AS n RETURN n")
+        tx.commit()
+        session.close()
+        assert [record[0] for record in result_a] == [1, 2, 3]
+        assert [record[0] for record in result_b] == [4, 5, 6]
+
+    def test_can_consume_result_after_session_with_error(self):
+        session = self.driver.session()
+        with self.assertRaises(CypherError):
+            session.run("X").consume()
+        session.close()
+        session = self.driver.session()
+        tx = session.begin_transaction()
+        result = tx.run("UNWIND range(1, 3) AS n RETURN n")
+        tx.commit()
+        session.close()
+        assert [record[0] for record in result] == [1, 2, 3]
