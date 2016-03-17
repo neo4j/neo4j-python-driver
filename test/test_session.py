@@ -506,7 +506,7 @@ class TransactionTestCase(ServerTestCase):
 class ResultConsumptionTestCase(ServerTestCase):
 
     def setUp(self):
-        self.driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
+        self.driver = GraphDatabase.driver("bolt://localhost", auth=auth_token, encrypted=False)
 
     def test_can_consume_result_immediately(self):
         session = self.driver.session()
