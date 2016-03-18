@@ -25,14 +25,13 @@ also included, allows PackStream structures to be turned into instances
 of these classes.
 """
 
-
 from .packstream import Structure
 
 
 class Entity(object):
     """ Base class for Node and Relationship.
     """
-    identity = None
+    id = None
     properties = None
 
     def __init__(self, properties=None, **kwproperties):
@@ -41,7 +40,7 @@ class Entity(object):
 
     def __eq__(self, other):
         try:
-            return self.identity == other.identity
+            return self.id == other.id
         except AttributeError:
             return False
 
@@ -49,7 +48,7 @@ class Entity(object):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash(self.identity)
+        return hash(self.id)
 
     def __len__(self):
         return len(self.properties)
@@ -82,9 +81,9 @@ class Node(Entity):
     labels = None
 
     @classmethod
-    def hydrate(cls, identity, labels, properties=None):
+    def hydrate(cls, id_, labels, properties=None):
         inst = cls(labels, properties)
-        inst.identity = identity
+        inst.id = id_
         return inst
 
     def __init__(self, labels=None, properties=None, **kwproperties):
@@ -92,8 +91,8 @@ class Node(Entity):
         self.labels = set(labels or set())
 
     def __repr__(self):
-        return "<Node identity=%r labels=%r properties=%r>" % \
-               (self.identity, self.labels, self.properties)
+        return "<Node id=%r labels=%r properties=%r>" % \
+               (self.id, self.labels, self.properties)
 
 
 class BaseRelationship(Entity):
@@ -113,9 +112,9 @@ class Relationship(BaseRelationship):
     end = None
 
     @classmethod
-    def hydrate(cls, identity, start, end, type, properties=None):
+    def hydrate(cls, id_, start, end, type, properties=None):
         inst = cls(start, end, type, properties)
-        inst.identity = identity
+        inst.id = id_
         return inst
 
     def __init__(self, start, end, type, properties=None, **kwproperties):
@@ -126,12 +125,12 @@ class Relationship(BaseRelationship):
         self.end = end
 
     def __repr__(self):
-        return "<Relationship identity=%r start=%r end=%r type=%r properties=%r>" % \
-               (self.identity, self.start, self.end, self.type, self.properties)
+        return "<Relationship id=%r start=%r end=%r type=%r properties=%r>" % \
+               (self.id, self.start, self.end, self.type, self.properties)
 
     def unbind(self):
         inst = UnboundRelationship(self.type, self.properties)
-        inst.identity = self.identity
+        inst.id = self.id
         return inst
 
 
@@ -140,21 +139,21 @@ class UnboundRelationship(BaseRelationship):
     """
 
     @classmethod
-    def hydrate(cls, identity, type, properties=None):
+    def hydrate(cls, id_, type, properties=None):
         inst = cls(type, properties)
-        inst.identity = identity
+        inst.id = id_
         return inst
 
     def __init__(self, type, properties=None, **kwproperties):
         super(UnboundRelationship, self).__init__(type, properties, **kwproperties)
 
     def __repr__(self):
-        return "<UnboundRelationship identity=%r type=%r properties=%r>" % \
-               (self.identity, self.type, self.properties)
+        return "<UnboundRelationship id=%r type=%r properties=%r>" % \
+               (self.id, self.type, self.properties)
 
     def bind(self, start, end):
         inst = Relationship(start, end, self.type, self.properties)
-        inst.identity = self.identity
+        inst.id = self.id
         return inst
 
 
@@ -174,9 +173,9 @@ class Path(object):
             assert rel_index != 0
             next_node = nodes[sequence[2 * i + 1]]
             if rel_index > 0:
-                entities.append(rels[rel_index - 1].bind(last_node.identity, next_node.identity))
+                entities.append(rels[rel_index - 1].bind(last_node.id, next_node.id))
             else:
-                entities.append(rels[-rel_index - 1].bind(next_node.identity, last_node.identity))
+                entities.append(rels[-rel_index - 1].bind(next_node.id, last_node.id))
             entities.append(next_node)
             last_node = next_node
         return cls(*entities)
@@ -187,7 +186,7 @@ class Path(object):
 
     def __repr__(self):
         return "<Path start=%r end=%r size=%s>" % \
-               (self.start.identity, self.end.identity, len(self))
+               (self.start.id, self.end.id, len(self))
 
     def __eq__(self, other):
         try:
