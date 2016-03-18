@@ -554,6 +554,16 @@ class ResultConsumptionTestCase(ServerTestCase):
         assert [record[0] for record in result_a] == [1, 2, 3]
         assert [record[0] for record in result_b] == [4, 5, 6]
 
+    def test_can_consume_results_after_harsh_session_death(self):
+        session = self.driver.session()
+        result_a = session.run("UNWIND range(1, 3) AS n RETURN n")
+        del session
+        session = self.driver.session()
+        result_b = session.run("UNWIND range(4, 6) AS n RETURN n")
+        del session
+        assert [record[0] for record in result_a] == [1, 2, 3]
+        assert [record[0] for record in result_b] == [4, 5, 6]
+
     def test_can_consume_result_after_session_with_error(self):
         session = self.driver.session()
         with self.assertRaises(CypherError):

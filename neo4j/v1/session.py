@@ -418,13 +418,6 @@ class Session(object):
         self.transaction = None
         self.last_result = None
 
-    def __del__(self):
-        try:
-            if not self.connection.closed:
-                self.connection.close()
-        except AttributeError:
-            pass
-
     def __enter__(self):
         return self
 
