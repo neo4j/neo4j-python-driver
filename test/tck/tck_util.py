@@ -114,11 +114,11 @@ class TestValue:
 
     def create_path(self, entity):
         content = {}
-        prev_id = entity.start.identity
+        prev_id = entity.start.id
         p = []
         for i, rel in enumerate(list(entity)):
             n = entity.nodes[i + 1]
-            current_id = n.identity
+            current_id = n.id
             if rel.start == prev_id and rel.end == current_id:
                 rel.start = i
                 rel.end = i + 1
