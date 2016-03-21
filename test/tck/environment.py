@@ -23,10 +23,6 @@ from test.tck import tck_util
 failing_features = {}
 
 
-# def before_all(context):
-#     context.config.setup_logging()
-
-
 def before_feature(context, feature):
     # Workaround. Behave has a different way of tagging than cucumber
     for scenario in feature.scenarios:
@@ -66,6 +62,4 @@ def after_scenario(context, scenario):
     pass
     for runner in tck_util.runners:
         runner.close()
-    # if scenario.status != "passed":
-    #     raise Exception("%s did not pass" %scenario)
 

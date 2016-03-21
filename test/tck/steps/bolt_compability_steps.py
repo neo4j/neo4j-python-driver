@@ -26,7 +26,7 @@ from behave import *
 
 from test.tck import tck_util
 from test.tck.resultparser import parse_values
-from test.tck.tck_util import to_unicode, Type, send_string, send_parameters, string_to_type
+from test.tck.tck_util import to_unicode, Type, string_to_type
 
 from neo4j.v1 import compat
 use_step_matcher("re")
