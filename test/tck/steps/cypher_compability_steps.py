@@ -17,9 +17,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import time
 from behave import *
 
+from test.tck import tck_util
 from test.tck.tck_util import TestValue, send_string, send_parameters
 from test.tck.resultparser import parse_values, parse_values_to_comparable
 
@@ -28,13 +29,16 @@ use_step_matcher("re")
 
 @given("init: (?P<statement>.+)")
 def step_impl(context, statement):
-    send_string(statement)
+    session = tck_util.driver.session()
+    session.run(statement)
+    session.close()
 
 
 @step("running: (?P<statement>.+)")
 def step_impl(context, statement):
-    context.rcs = [send_string(statement)]
-    context.results = [x.stream() for x in context.rcs]
+    runner = tck_util.Runner(statement).run()
+    context.runners.append(runner)
+    context.results = [runner.result]
 
 
 @step('running parametrized: (?P<statement>.+)')
@@ -43,16 +47,18 @@ def step_impl(context, statement):
     keys = context.table.headings
     values = context.table.rows[0]
     parameters = {keys[i]: parse_values(values[i]) for i in range(len(keys))}
-
-    context.rcs = [send_parameters(statement, parameters)]
-    context.results = [x.stream() for x in context.rcs]
+    runner = tck_util.Runner(statement, parameters).run()
+    context.runners.append(runner)
+    context.results = [runner.result]
 
 
 @then("result")
 def step_impl(context):
     expected = table_to_comparable_result(context.table)
+    assert(len(context.results) > 0)
     for result in context.results:
-        given = driver_result_to_comparable_result(result)
+        records = list(result)
+        given = driver_result_to_comparable_result(records)
         if not unordered_equal(given, expected):
             raise Exception("Does not match given: \n%s expected: \n%s" % (given, expected))
 

@@ -206,19 +206,14 @@ class StatementResult(object):
         pull_all_response.on_failure = on_failure
 
     def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._buffer:
+        while self._buffer:
             values = self._buffer.popleft()
-            return Record(self.keys(), tuple(map(hydrated, values)))
-        elif self._consumed:
-            raise StopIteration()
-        else:
-            fetch = self.connection.fetch
-            while not self._buffer and not self._consumed:
-                fetch()
-            return self.__next__()
+            yield Record(self.keys(), tuple(map(hydrated, values)))
+        while not self._consumed:
+            self.connection.fetch()
+            while self._buffer:
+                values = self._buffer.popleft()
+                yield Record(self.keys(), tuple(map(hydrated, values)))
 
     def keys(self):
         """ Return the keys for the records.
@@ -228,14 +223,18 @@ class StatementResult(object):
             self.connection.fetch()
         return self._keys
 
+    def buffer(self):
+        if self.connection and not self.connection.closed:
+            while not self._consumed:
+                self.connection.fetch()
+            self.connection = None
+
     def consume(self):
         """ Consume the remainder of this result and return the
         summary.
         """
         if self.connection and not self.connection.closed:
-            fetch = self.connection.fetch
-            while not self._consumed:
-                fetch()
+            list(self)
             self.connection = None
         return self._summary
 
@@ -334,11 +333,11 @@ class SummaryCounters(object):
 
     @property
     def contains_updates(self):
-        return self.nodes_created or self.nodes_deleted or \
+        return bool(self.nodes_created or self.nodes_deleted or \
                self.relationships_created or self.relationships_deleted or \
                self.properties_set or self.labels_added or self.labels_removed or \
                self.indexes_added or self.indexes_removed or \
-               self.constraints_added or self.constraints_removed
+               self.constraints_added or self.constraints_removed)
 
 
 #: A plan describes how the database will execute your statement.
@@ -419,13 +418,6 @@ class Session(object):
         self.transaction = None
         self.last_result = None
 
-    def __del__(self):
-        try:
-            if not self.connection.closed:
-                self.connection.close()
-        except AttributeError:
-            pass
-
     def __enter__(self):
         return self
 
@@ -480,7 +472,7 @@ class Session(object):
         """ Recycle this session through the driver it came from.
         """
         if self.last_result:
-            self.last_result.consume()
+            self.last_result.buffer()
         self.driver.recycle(self)
 
     def begin_transaction(self):

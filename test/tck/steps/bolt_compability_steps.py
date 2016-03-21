@@ -24,6 +24,7 @@ import copy
 
 from behave import *
 
+from test.tck import tck_util
 from test.tck.resultparser import parse_values
 from test.tck.tck_util import to_unicode, Type, send_string, send_parameters, string_to_type
 
@@ -33,7 +34,9 @@ use_step_matcher("re")
 
 @given("A running database")
 def step_impl(context):
-    send_string("RETURN 1")
+    session = tck_util.driver.session()
+    session.run("RETURN 1")
+    session.close()
 
 
 @given("a value (?P<input>.+)")
@@ -80,22 +83,21 @@ def step_impl(context, size, type):
 
 @when("the driver asks the server to echo this (?P<unused>.+) back")
 def step_impl(context, unused):
-    context.results = [ send_string("RETURN " + as_cypher_text(context.expected)), send_parameters("RETURN {input}", {'input': context.expected})]
+    str_runner = tck_util.Runner("RETURN " + as_cypher_text(context.expected)).run()
+    param_runner = tck_util.Runner("RETURN {input}", {'input': context.expected}).run()
+    context.runners += [str_runner, param_runner]
+    context.results = [str_runner.result, param_runner.result]
 
 
 @step("the value given in the result should be the same as what was sent")
 def step_impl(context):
     assert len(context.results) > 0
-    print(context.results[0])
-    print(list(context.results[0]))
     for result in context.results:
-        print(result)
-        for record in result:
-            print(record)
-        assert len(list(result)) == 1
-        result_value = result.record().values()[0]
+        records = list(result)
+        assert len(records) == 1
+        assert len(records[0].values()) == 1
+        result_value = records[0].values()[0]
         assert result_value == context.expected
-        assert result.at_end()
 
 
 def as_cypher_text(expected):

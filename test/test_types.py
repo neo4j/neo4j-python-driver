@@ -57,22 +57,22 @@ class NodeTestCase(TestCase):
 
     def test_node_equality(self):
         node_1 = Node()
-        node_1.identity = 1234
+        node_1.id = 1234
         node_2 = Node()
-        node_2.identity = 1234
+        node_2.id = 1234
         node_3 = Node()
-        node_3.identity = 5678
+        node_3.id = 5678
         assert node_1 == node_2
         assert node_1 != node_3
         assert node_1 != "this is not a node"
 
     def test_node_hashing(self):
         node_1 = Node()
-        node_1.identity = 1234
+        node_1.id = 1234
         node_2 = Node()
-        node_2.identity = 1234
+        node_2.id = 1234
         node_3 = Node()
-        node_3.identity = 5678
+        node_3.id = 5678
         assert hash(node_1) == hash(node_2)
         assert hash(node_1) != hash(node_3)
 
@@ -82,10 +82,10 @@ class RelationshipTestCase(TestCase):
     def test_can_create_relationship(self):
         alice = Node.hydrate(1, {"Person"}, {"name": "Alice", "age": 33})
         bob = Node.hydrate(2, {"Person"}, {"name": "Bob", "age": 44})
-        alice_knows_bob = Relationship(alice.identity, bob.identity, "KNOWS", {"since": 1999})
-        assert alice_knows_bob.start == alice.identity
+        alice_knows_bob = Relationship(alice.id, bob.id, "KNOWS", {"since": 1999})
+        assert alice_knows_bob.start == alice.id
         assert alice_knows_bob.type == "KNOWS"
-        assert alice_knows_bob.end == bob.identity
+        assert alice_knows_bob.end == bob.id
         assert set(alice_knows_bob.keys()) == {"since"}
         assert set(alice_knows_bob.values()) == {1999}
         assert set(alice_knows_bob.items()) == {("since", 1999)}
@@ -111,8 +111,8 @@ class PathTestCase(TestCase):
         alice = Node.hydrate(1, {"Person"}, {"name": "Alice", "age": 33})
         bob = Node.hydrate(2, {"Person"}, {"name": "Bob", "age": 44})
         carol = Node.hydrate(3, {"Person"}, {"name": "Carol", "age": 55})
-        alice_knows_bob = Relationship(alice.identity, bob.identity, "KNOWS", {"since": 1999})
-        carol_dislikes_bob = Relationship(carol.identity, bob.identity, "DISLIKES")
+        alice_knows_bob = Relationship(alice.id, bob.id, "KNOWS", {"since": 1999})
+        carol_dislikes_bob = Relationship(carol.id, bob.id, "DISLIKES")
         path = Path(alice, alice_knows_bob, bob, carol_dislikes_bob, carol)
         assert path.start == alice
         assert path.end == carol
@@ -125,8 +125,8 @@ class PathTestCase(TestCase):
         alice = Node.hydrate(1, {"Person"}, {"name": "Alice", "age": 33})
         bob = Node.hydrate(2, {"Person"}, {"name": "Bob", "age": 44})
         carol = Node.hydrate(3, {"Person"}, {"name": "Carol", "age": 55})
-        alice_knows_bob = Relationship(alice.identity, bob.identity, "KNOWS", {"since": 1999})
-        carol_dislikes_bob = Relationship(carol.identity, bob.identity, "DISLIKES")
+        alice_knows_bob = Relationship(alice.id, bob.id, "KNOWS", {"since": 1999})
+        carol_dislikes_bob = Relationship(carol.id, bob.id, "DISLIKES")
         path = Path.hydrate([alice, bob, carol],
                             [alice_knows_bob.unbind(), carol_dislikes_bob.unbind()],
                             [1, 1, -2, 2])
@@ -141,8 +141,8 @@ class PathTestCase(TestCase):
         alice = Node.hydrate(1, {"Person"}, {"name": "Alice", "age": 33})
         bob = Node.hydrate(2, {"Person"}, {"name": "Bob", "age": 44})
         carol = Node.hydrate(3, {"Person"}, {"name": "Carol", "age": 55})
-        alice_knows_bob = Relationship(alice.identity, bob.identity, "KNOWS", {"since": 1999})
-        carol_dislikes_bob = Relationship(carol.identity, bob.identity, "DISLIKES")
+        alice_knows_bob = Relationship(alice.id, bob.id, "KNOWS", {"since": 1999})
+        carol_dislikes_bob = Relationship(carol.id, bob.id, "DISLIKES")
         path_1 = Path(alice, alice_knows_bob, bob, carol_dislikes_bob, carol)
         path_2 = Path(alice, alice_knows_bob, bob, carol_dislikes_bob, carol)
         assert path_1 == path_2
@@ -152,8 +152,8 @@ class PathTestCase(TestCase):
         alice = Node.hydrate(1, {"Person"}, {"name": "Alice", "age": 33})
         bob = Node.hydrate(2, {"Person"}, {"name": "Bob", "age": 44})
         carol = Node.hydrate(3, {"Person"}, {"name": "Carol", "age": 55})
-        alice_knows_bob = Relationship(alice.identity, bob.identity, "KNOWS", {"since": 1999})
-        carol_dislikes_bob = Relationship(carol.identity, bob.identity, "DISLIKES")
+        alice_knows_bob = Relationship(alice.id, bob.id, "KNOWS", {"since": 1999})
+        carol_dislikes_bob = Relationship(carol.id, bob.id, "DISLIKES")
         path_1 = Path(alice, alice_knows_bob, bob, carol_dislikes_bob, carol)
         path_2 = Path(alice, alice_knows_bob, bob, carol_dislikes_bob, carol)
         assert hash(path_1) == hash(path_2)
@@ -167,7 +167,7 @@ class HydrationTestCase(TestCase):
         struct.append(["Person"])
         struct.append({"name": "Alice"})
         alice = hydrated(struct)
-        assert alice.identity == 123
+        assert alice.id == 123
         assert alice.labels == {"Person"}
         assert set(alice.keys()) == {"name"}
         assert alice.get("name") == "Alice"
@@ -186,7 +186,7 @@ class HydrationTestCase(TestCase):
         alice_in_list = hydrated([struct])
         assert isinstance(alice_in_list, list)
         alice, = alice_in_list
-        assert alice.identity == 123
+        assert alice.id == 123
         assert alice.labels == {"Person"}
         assert set(alice.keys()) == {"name"}
         assert alice.get("name") == "Alice"
@@ -199,7 +199,7 @@ class HydrationTestCase(TestCase):
         alice_in_dict = hydrated({"foo": struct})
         assert isinstance(alice_in_dict, dict)
         alice = alice_in_dict["foo"]
-        assert alice.identity == 123
+        assert alice.id == 123
         assert alice.labels == {"Person"}
         assert set(alice.keys()) == {"name"}
         assert alice.get("name") == "Alice"

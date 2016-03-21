@@ -22,18 +22,20 @@
 from neo4j.v1 import GraphDatabase, Relationship, Node, Path, basic_auth
 from neo4j.v1.compat import string
 
-driver = GraphDatabase.driver("bolt://localhost")
-session = driver.session()
+driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=False)
+runners = []
 
 
-def send_string(text):
-    statement_result = session.run(text)
-    return statement_result
+def send_string(statement):
+    runner = Runner(statement).run()
+    runners.append(runner)
+    return runner
 
 
 def send_parameters(statement, parameters):
-    statement_result = session.run(statement, parameters)
-    return statement_result
+    runner = Runner(statement, parameters).run()
+    runners.append(runner)
+    return runner
 
 
 try:
@@ -75,6 +77,20 @@ class Type:
     NULL = "Null"
 
 
+class Runner:
+    def __init__(self, statement, parameter=None):
+        self.session = driver.session()
+        self.statement = statement
+        self.parameter = parameter
+        self.result = None
+
+    def run(self):
+        self.result = self.session.run(self.statement, self.parameter)
+        return self
+
+    def close(self):
+        self.session.close()
+
 class TestValue:
     content = None
 
@@ -108,11 +124,11 @@ class TestValue:
 
     def create_path(self, entity):
         content = {}
-        prev_id = entity.start.identity
+        prev_id = entity.start.id
         p = []
         for i, rel in enumerate(list(entity)):
             n = entity.nodes[i + 1]
-            current_id = n.identity
+            current_id = n.id
             if rel.start == prev_id and rel.end == current_id:
                 rel.start = i
                 rel.end = i + 1

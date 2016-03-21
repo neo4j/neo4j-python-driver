@@ -8,27 +8,19 @@ from test.tck.resultparser import parse_values
 use_step_matcher("re")
 
 
-@step("the `Result Cursor` is summarized")
+@step("the `Statement Result` is consumed a `Result Summary` is returned")
 def step_impl(context):
-    context.summaries = []
-    for rc in context.rcs:
-        context.summaries.append(rc.summarize())
+    context.summaries = [x.consume() for x in context.results]
+    assert context.summaries[0] is not None
 
 
-@then("the `Result Cursor` is fully consumed")
+@then("the `Statement Result` is closed")
 def step_impl(context):
-    for rc in context.rcs:
-        assert rc.at_end()
-        assert rc.record() is None
+    for result in context.results:
+        assert result.connection is None
 
 
-@then("a `Result Summary` is returned")
-def step_impl(context):
-    for summary in context.summaries:
-        assert isinstance(summary, ResultSummary)
-
-
-@step("I request a `statement` from the `Result Summary`")
+@step("I request a `Statement` from the `Result Summary`")
 def step_impl(context):
     context.statements = []
     for summary in context.summaries:
@@ -47,11 +39,13 @@ def step_impl(context, expected):
         assert summary.parameters == parse_values(expected)
 
 
-@step("requesting `update statistics` from it should give")
+@step("requesting `Counters` from `Result Summary` should give")
 def step_impl(context):
     for summary in context.summaries:
         for row in context.table:
-            assert getattr(summary.statistics, row[0].replace(" ","_")) == parse_values(row[1])
+            print(row[0].replace(" ","_"))
+            print(getattr(summary.counters, row[0].replace(" ","_")))
+            assert getattr(summary.counters, row[0].replace(" ","_")) == parse_values(row[1])
 
 
 @step("requesting the `Statement Type` should give (?P<expected>.+)")
@@ -70,25 +64,25 @@ def step_impl(context, expected):
         assert summary.statement_type == statement_type
 
 
-@step("the summary has a `plan`")
+@step("the `Result Summary` has a `Plan`")
 def step_impl(context):
     for summary in context.summaries:
         assert summary.plan is not None
 
 
-@step("the summary has a `profile`")
+@step("the `Result Summary` has a `Profile`")
 def step_impl(context):
     for summary in context.summaries:
         assert summary.profile is not None
 
 
-@step("the summary does not have a `plan`")
+@step("the `Result Summary` does not have a `Plan`")
 def step_impl(context):
     for summary in context.summaries:
         assert summary.plan is None
 
 
-@step("the summary does not have a `profile`")
+@step("the `Result Summary` does not have a `Profile`")
 def step_impl(context):
     for summary in context.summaries:
         assert summary.profile is None
@@ -97,22 +91,25 @@ def step_impl(context):
 @step("requesting the `(?P<plan_type>.+)` it contains")
 def step_impl(context, plan_type):
     for summary in context.summaries:
-        if plan_type == "plan":
+        if plan_type == "Plan":
             plan = summary.plan
-        elif plan_type == "profile":
+        elif plan_type == "Profile":
             plan = summary.profile
         else:
             raise ValueError("Expected 'plan' or 'profile'. Got: %s" % plan_type)
         for row in context.table:
-            assert getattr(plan, row[0].replace(" ", "_")) == parse_values(row[1])
+            attr = row[0].replace(" ", "_")
+            if attr == 'records':
+                attr = 'rows'
+            assert getattr(plan, attr) == parse_values(row[1])
 
 
 @step("the `(?P<plan_type>.+)` also contains method calls for")
 def step_impl(context, plan_type):
     for summary in context.summaries:
-        if plan_type == "plan":
+        if plan_type == "Plan":
             plan = summary.plan
-        elif plan_type == "profile":
+        elif plan_type == "Profile":
             plan = summary.profile
         else:
             raise ValueError("Expected 'plan' or 'profile'. Got: %s" % plan_type)
@@ -120,13 +117,13 @@ def step_impl(context, plan_type):
             assert getattr(plan, row[0].replace(" ", "_")) is not None
 
 
-@step("the summaries `notifications` is empty list")
+@step("the `Result Summary` `Notifications` is empty")
 def step_impl(context):
     for summary in context.summaries:
         assert len(summary.notifications) == 0
 
 
-@step("the summaries `notifications` has one notification with")
+@step("the `Result Summary` `Notifications` has one notification with")
 def step_impl(context):
 
     for summary in context.summaries:

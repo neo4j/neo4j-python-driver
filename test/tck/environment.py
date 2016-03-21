@@ -23,8 +23,8 @@ from test.tck import tck_util
 failing_features = {}
 
 
-def before_all(context):
-    context.config.setup_logging()
+# def before_all(context):
+#     context.config.setup_logging()
 
 
 def before_feature(context, feature):
@@ -34,8 +34,11 @@ def before_feature(context, feature):
 
 
 def before_scenario(context, scenario):
+    context.runners = []
     if "reset_database" in scenario.tags:
-        tck_util.send_string("MATCH (n) DETACH DELETE n")
+        session = tck_util.driver.session()
+        session.run("MATCH (n) DETACH DELETE n")
+        session.close()
     if "equality_test" in scenario.tags:
         context.values = {}
 
@@ -59,8 +62,10 @@ def after_all(context):
         raise Exception("\tTCK FAILED!")
 
 
-
 def after_scenario(context, scenario):
-    if scenario.status != "passed":
-        raise Exception("%s did not pass" %scenario)
+    pass
+    for runner in tck_util.runners:
+        runner.close()
+    # if scenario.status != "passed":
+    #     raise Exception("%s did not pass" %scenario)
 
