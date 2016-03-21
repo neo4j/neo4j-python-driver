@@ -78,7 +78,6 @@ pip install --upgrade -r ${DRIVER_HOME}/test_requirements.txt
 echo ""
 
 TEST_RUNNER="coverage run -m ${UNITTEST} discover -vfs ${TEST}"
-BEHAVE_RUNNER="behave --tags=-db --tags=-tls test/tck"
 EXAMPLES_RUNNER="coverage run -m ${UNITTEST} discover -vfs examples"
 BEHAVE_RUNNER="behave --tags=-db --tags=-in_dev test/tck"
 
