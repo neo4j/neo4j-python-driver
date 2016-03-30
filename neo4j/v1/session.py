@@ -43,7 +43,7 @@ DEFAULT_MAX_POOL_SIZE = 50
 STATEMENT_TYPE_READ_ONLY = "r"
 STATEMENT_TYPE_READ_WRITE = "rw"
 STATEMENT_TYPE_WRITE_ONLY = "w"
-STATEMENT_TYPE_SCHEMA_WRITE = "sw"
+STATEMENT_TYPE_SCHEMA_WRITE = "s"
 
 
 def basic_auth(user, password):
@@ -333,11 +333,11 @@ class SummaryCounters(object):
 
     @property
     def contains_updates(self):
-        return self.nodes_created or self.nodes_deleted or \
+        return bool(self.nodes_created or self.nodes_deleted or \
                self.relationships_created or self.relationships_deleted or \
                self.properties_set or self.labels_added or self.labels_removed or \
                self.indexes_added or self.indexes_removed or \
-               self.constraints_added or self.constraints_removed
+               self.constraints_added or self.constraints_removed)
 
 
 #: A plan describes how the database will execute your statement.

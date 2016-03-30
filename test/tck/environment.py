@@ -20,9 +20,7 @@
 
 from test.tck import tck_util
 
-
-def before_all(context):
-    context.config.setup_logging()
+failing_features = {}
 
 
 def before_feature(context, feature):
@@ -30,12 +28,38 @@ def before_feature(context, feature):
     for scenario in feature.scenarios:
         scenario.tags += feature.tags
 
+
 def before_scenario(context, scenario):
+    context.runners = []
     if "reset_database" in scenario.tags:
-        tck_util.send_string("MATCH (n) DETACH DELETE n")
+        session = tck_util.driver.session()
+        session.run("MATCH (n) DETACH DELETE n")
+        session.close()
+    if "equality_test" in scenario.tags:
+        context.values = {}
+
+
+def after_feature(context, feature):
+    failed_scenarios = []
+    for scenario in feature.scenarios:
+        if scenario.status == "untested" or scenario.status == "failed" :
+            failed_scenarios.append(scenario.name)
+    if len(failed_scenarios) > 0:
+        failing_features[feature.name] = failed_scenarios
+
+
+def after_all(context):
+    if len(failing_features) != 0:
+        print("Following Features failed in TCK:")
+        for feature, list_of_scenarios in failing_features.items():
+            print("Feature: %s" %feature)
+            for scenario in list_of_scenarios:
+                print("Failing scenario: %s" % scenario)
+        raise Exception("\tTCK FAILED!")
 
 
 def after_scenario(context, scenario):
-    if scenario.status != "passed":
-        raise Exception("%s did not pass" %scenario)
+    pass
+    for runner in tck_util.runners:
+        runner.close()
 

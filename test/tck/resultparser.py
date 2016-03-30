@@ -181,11 +181,13 @@ def get_path(string_path):
     string_path = string_path[1:-1]
     n, string_path = get_node(string_path)
     list_of_nodes_and_rel = [n]
-    n.id = ++id
+    id+=1
+    n.id = id
     while string_path != '':
         r, string_path, point_up = get_relationship(string_path)
         n, string_path = get_node(string_path)
-        n.id = ++id
+        id+=1
+        n.id = id
         if point_up:
             r.start = list_of_nodes_and_rel[-1].id
             r.end = n.id

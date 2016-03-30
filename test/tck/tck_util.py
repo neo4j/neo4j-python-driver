@@ -22,24 +22,20 @@
 from neo4j.v1 import GraphDatabase, Relationship, Node, Path, basic_auth
 from neo4j.v1.compat import string
 
-
 driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=False)
+runners = []
 
 
-def send_string(text):
-    session = driver.session()
-    result = session.run(text)
-    records = list(result)
-    session.close()
-    return records
+def send_string(statement):
+    runner = Runner(statement).run()
+    runners.append(runner)
+    return runner
 
 
 def send_parameters(statement, parameters):
-    session = driver.session()
-    result = session.run(statement, parameters)
-    records = list(result)
-    session.close()
-    return records
+    runner = Runner(statement, parameters).run()
+    runners.append(runner)
+    return runner
 
 
 try:
@@ -80,6 +76,20 @@ class Type:
     PATH = "Path"
     NULL = "Null"
 
+
+class Runner:
+    def __init__(self, statement, parameter=None):
+        self.session = driver.session()
+        self.statement = statement
+        self.parameter = parameter
+        self.result = None
+
+    def run(self):
+        self.result = self.session.run(self.statement, self.parameter)
+        return self
+
+    def close(self):
+        self.session.close()
 
 class TestValue:
     content = None

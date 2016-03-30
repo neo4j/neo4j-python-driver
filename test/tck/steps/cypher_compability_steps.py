@@ -20,6 +20,7 @@
 
 from behave import *
 
+from test.tck import tck_util
 from test.tck.tck_util import TestValue, send_string, send_parameters
 from test.tck.resultparser import parse_values, parse_values_to_comparable
 
@@ -28,31 +29,38 @@ use_step_matcher("re")
 
 @given("init: (?P<statement>.+)")
 def step_impl(context, statement):
-    send_string(statement)
+    session = tck_util.driver.session()
+    session.run(statement)
+    session.close()
 
 
-@when("running: (?P<statement>.+)")
+@step("running: (?P<statement>.+)")
 def step_impl(context, statement):
-    context.results = {"as_string": send_string(statement)}
+    runner = tck_util.Runner(statement).run()
+    context.runners.append(runner)
+    context.results = [runner.result]
 
 
-@then("result")
-def step_impl(context):
-    result = context.results["as_string"]
-    given = driver_result_to_comparable_result(result)
-    expected = table_to_comparable_result(context.table)
-    if not unordered_equal(given, expected):
-        raise Exception("Does not match given: \n%s expected: \n%s" % (given, expected))
-
-
-@when('running parametrized: (?P<statement>.+)')
+@step('running parametrized: (?P<statement>.+)')
 def step_impl(context, statement):
     assert len(context.table.rows) == 1
     keys = context.table.headings
     values = context.table.rows[0]
     parameters = {keys[i]: parse_values(values[i]) for i in range(len(keys))}
+    runner = tck_util.Runner(statement, parameters).run()
+    context.runners.append(runner)
+    context.results = [runner.result]
 
-    context.results = {"as_string": send_parameters(statement, parameters)}
+
+@then("result")
+def step_impl(context):
+    expected = table_to_comparable_result(context.table)
+    assert(len(context.results) > 0)
+    for result in context.results:
+        records = list(result)
+        given = driver_result_to_comparable_result(records)
+        if not unordered_equal(given, expected):
+            raise Exception("Does not match given: \n%s expected: \n%s" % (given, expected))
 
 
 def _driver_value_to_comparable(val):
