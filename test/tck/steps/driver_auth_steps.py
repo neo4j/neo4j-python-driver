@@ -53,7 +53,7 @@ def step_impl(context):
         session.run("CREATE (:label1)")
         session.close()
         assert False
-    except exceptions.ProtocolError, e:
+    except exceptions.ProtocolError as e:
         pass
 
 
