@@ -29,12 +29,12 @@ managing sessions.
 from __future__ import division
 
 from collections import deque, namedtuple
-from ssl import SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
 from .constants import ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
 from .exceptions import CypherError
+from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 from .types import hydrated
 
 
@@ -102,6 +102,8 @@ class Driver(object):
         self.encrypted = encrypted = config.get("encrypted", ENCRYPTED_DEFAULT)
         self.trust = trust = config.get("trust", TRUST_DEFAULT)
         if encrypted:
+            if not SSL_AVAILABLE:
+                raise RuntimeError("Bolt over TLS is only available in Python 2.7.9+ and Python 3.3+")
             ssl_context = SSLContext(PROTOCOL_SSLv23)
             ssl_context.options |= OP_NO_SSLv2
             if trust >= TRUST_SIGNED_CERTIFICATES:
