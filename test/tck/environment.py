@@ -35,7 +35,7 @@ def before_scenario(context, scenario):
         session = tck_util.driver.session()
         session.run("MATCH (n) DETACH DELETE n")
         session.close()
-    if "equality_test" in scenario.tags:
+    if "equality" in scenario.tags:
         context.values = {}
 
 
