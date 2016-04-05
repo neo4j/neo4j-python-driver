@@ -84,6 +84,18 @@ class GraphDatabase(object):
         return Driver(url, **config)
 
 
+_warned_about_insecure_default = False
+
+
+def _warn_about_insecure_default():
+    global _warned_about_insecure_default
+    if not SSL_AVAILABLE and not _warned_about_insecure_default:
+        from warnings import warn
+        warn("Bolt over TLS is only available in Python 2.7.9+ and Python 3.3+ "
+             "so communications are not secure")
+        _warned_about_insecure_default = True
+
+
 class Driver(object):
     """ Accessor for a specific graph database resource.
     """
@@ -99,7 +111,11 @@ class Driver(object):
         self.config = config
         self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
         self.session_pool = deque()
-        self.encrypted = encrypted = config.get("encrypted", ENCRYPTED_DEFAULT)
+        try:
+            self.encrypted = encrypted = config["encrypted"]
+        except KeyError:
+            _warn_about_insecure_default()
+            self.encrypted = encrypted = ENCRYPTED_DEFAULT
         self.trust = trust = config.get("trust", TRUST_DEFAULT)
         if encrypted:
             if not SSL_AVAILABLE:
