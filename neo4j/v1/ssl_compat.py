@@ -18,23 +18,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from os.path import expanduser, join
-
-from ..meta import version
-from .ssl_compat import SSL_AVAILABLE
-
-
-DEFAULT_PORT = 7687
-DEFAULT_USER_AGENT = "neo4j-python/%s" % version
-
-KNOWN_HOSTS = join(expanduser("~"), ".neo4j", "known_hosts")
-
-MAGIC_PREAMBLE = 0x6060B017
-
-ENCRYPTED_DEFAULT = SSL_AVAILABLE
-
-TRUST_ON_FIRST_USE = 0
-TRUST_SIGNED_CERTIFICATES = 1
-
-TRUST_DEFAULT = TRUST_ON_FIRST_USE
+try:
+    from ssl import SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED, HAS_SNI, SSLError
+except ImportError:
+    SSL_AVAILABLE = False
+    SSLContext = None
+    PROTOCOL_SSLv23 = None
+    OP_NO_SSLv2 = None
+    CERT_REQUIRED = None
+    HAS_SNI = None
+    SSLError = None
+else:
+    SSL_AVAILABLE = True

@@ -21,11 +21,13 @@
 
 from socket import socket
 from ssl import SSLSocket
+from unittest import skipUnless
 
 from mock import patch
+
 from neo4j.v1.constants import TRUST_ON_FIRST_USE
 from neo4j.v1.exceptions import CypherError
-from neo4j.v1.session import GraphDatabase, basic_auth, Record
+from neo4j.v1.session import GraphDatabase, basic_auth, Record, SSL_AVAILABLE
 from neo4j.v1.types import Node, Relationship, Path
 
 from test.util import ServerTestCase
@@ -90,10 +92,6 @@ class DriverTestCase(ServerTestCase):
 
 class SecurityTestCase(ServerTestCase):
 
-    def test_default_session_uses_tofu(self):
-        driver = GraphDatabase.driver("bolt://localhost")
-        assert driver.trust == TRUST_ON_FIRST_USE
-
     def test_insecure_session_uses_normal_socket(self):
         driver = GraphDatabase.driver("bolt://localhost",  auth=auth_token, encrypted=False)
         session = driver.session()
@@ -102,6 +100,7 @@ class SecurityTestCase(ServerTestCase):
         assert connection.der_encoded_server_certificate is None
         session.close()
 
+    @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_tofu_session_uses_secure_socket(self):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token, encrypted=True, trust=TRUST_ON_FIRST_USE)
         session = driver.session()
@@ -110,6 +109,7 @@ class SecurityTestCase(ServerTestCase):
         assert connection.der_encoded_server_certificate is not None
         session.close()
 
+    @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_tofu_session_trusts_certificate_after_first_use(self):
         driver = GraphDatabase.driver("bolt://localhost",  auth=auth_token, encrypted=True, trust=TRUST_ON_FIRST_USE)
         session = driver.session()

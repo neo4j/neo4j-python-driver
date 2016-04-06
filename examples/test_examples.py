@@ -19,9 +19,9 @@
 # limitations under the License.
 
 
-from unittest import skip
+from unittest import skip, skipUnless
 
-from neo4j.v1 import TRUST_ON_FIRST_USE, TRUST_SIGNED_CERTIFICATES
+from neo4j.v1 import TRUST_ON_FIRST_USE, TRUST_SIGNED_CERTIFICATES, SSL_AVAILABLE
 from test.util import ServerTestCase
 
 # Do not change the contents of this tagged section without good reason*
@@ -74,11 +74,13 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # end::configuration[]
         return driver
 
+    @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_tls_require_encryption(self):
         # tag::tls-require-encryption[]
         driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=True)
         # end::tls-require-encryption[]
 
+    @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_tls_trust_on_first_use(self):
         # tag::tls-trust-on-first-use[]
         driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=True, trust=TRUST_ON_FIRST_USE)
