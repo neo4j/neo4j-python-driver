@@ -21,7 +21,7 @@
 from behave import *
 
 from test.tck import tck_util
-from test.tck.tck_util import TestValue, send_string, send_parameters
+from test.tck.tck_util import TestValue
 from test.tck.resultparser import parse_values, parse_values_to_comparable
 
 use_step_matcher("re")
