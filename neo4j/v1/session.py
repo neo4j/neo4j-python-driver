@@ -89,11 +89,13 @@ class Driver(object):
     def __init__(self, url, **config):
         self.url = url
         parsed = urlparse(self.url)
-        if parsed.scheme == "bolt":
+        transports = ['bolt']
+        if parsed.scheme in transports:
             self.host = parsed.hostname
             self.port = parsed.port
         else:
-            raise ValueError("Unsupported URL scheme: %s" % parsed.scheme)
+            raise ProtocolError("Unsupported transport: '%s' in url: '%s'. Supported transports are: '%s'." %
+                                (parsed.scheme, url, transports))
         self.config = config
         self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
         self.session_pool = deque()
