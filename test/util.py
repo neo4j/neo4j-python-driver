@@ -20,7 +20,7 @@
 
 
 import functools
-from os import rename
+from os import remove, rename
 from os.path import isfile
 from unittest import TestCase
 
@@ -57,8 +57,12 @@ class ServerTestCase(TestCase):
 
     def setUp(self):
         if isfile(self.known_hosts):
+            if isfile(self.known_hosts_backup):
+                remove(self.known_hosts_backup)
             rename(self.known_hosts, self.known_hosts_backup)
 
     def tearDown(self):
         if isfile(self.known_hosts_backup):
+            if isfile(self.known_hosts):
+                remove(self.known_hosts)
             rename(self.known_hosts_backup, self.known_hosts)
