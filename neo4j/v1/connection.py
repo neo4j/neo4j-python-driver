@@ -379,7 +379,7 @@ def connect(host, port=None, ssl_context=None, **config):
     try:
         s = create_connection((host, port))
     except SocketError as error:
-        if error.errno == 111:
+        if error.errno == 111 or error.errno == 61:
             raise ProtocolError("Unable to connect to %s on port %d - is the server running?" % (host, port))
         else:
             raise
