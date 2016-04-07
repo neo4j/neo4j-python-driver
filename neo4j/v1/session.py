@@ -25,7 +25,6 @@ class which can be used to obtain `Driver` instances that are used for
 managing sessions.
 """
 
-
 from __future__ import division
 
 from collections import deque, namedtuple
@@ -34,9 +33,8 @@ from ssl import SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
 from .constants import ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
-from .exceptions import CypherError
+from .exceptions import CypherError, ProtocolError
 from .types import hydrated
-
 
 DEFAULT_MAX_POOL_SIZE = 50
 
@@ -352,7 +350,6 @@ class SummaryCounters(object):
 #:   a list of sub-plans
 Plan = namedtuple("Plan", ("operator_type", "identifiers", "arguments", "children"))
 
-
 #: A profiled plan describes how the database executed your statement.
 #:
 #: db_hits:
@@ -440,6 +437,9 @@ class Session(object):
         :return: Cypher result
         :rtype: :class:`.StatementResult`
         """
+        if self.transaction:
+            raise ProtocolError("Please close the currently open transaction object before running more "
+                                "statements/transactions in the current session.")
 
         # Ensure the statement is a Unicode value
         if isinstance(statement, bytes):
@@ -480,7 +480,9 @@ class Session(object):
 
         :return: new :class:`.Transaction` instance.
         """
-        assert not self.transaction
+        if self.transaction:
+            raise ProtocolError("Please close the currently open transaction object before running more "
+                                "statements/transactions in the current session.")
         self.transaction = Transaction(self)
         return self.transaction
 
