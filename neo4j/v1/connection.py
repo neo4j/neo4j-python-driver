@@ -29,7 +29,6 @@ from os import makedirs, open as os_open, write as os_write, close as os_close, 
 from os.path import dirname, isfile
 from select import select
 from socket import create_connection, SHUT_RDWR, error as SocketError
-from ssl import HAS_SNI, SSLError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
 from .constants import DEFAULT_PORT, DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, \
@@ -37,6 +36,7 @@ from .constants import DEFAULT_PORT, DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREA
 from .compat import hex2
 from .exceptions import ProtocolError
 from .packstream import Packer, Unpacker
+from .ssl_compat import SSL_AVAILABLE, HAS_SNI, SSLError
 
 
 # Signature bytes for each message type
@@ -385,7 +385,7 @@ def connect(host, port=None, ssl_context=None, **config):
             raise
 
     # Secure the connection if an SSL context has been provided
-    if ssl_context:
+    if ssl_context and SSL_AVAILABLE:
         if __debug__: log_info("~~ [SECURE] %s", host)
         try:
             s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
