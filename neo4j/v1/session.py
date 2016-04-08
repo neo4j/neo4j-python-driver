@@ -268,6 +268,20 @@ class StatementResult(object):
         else:
             return records[0]
 
+    def peek(self):
+        """ Return the next record without advancing the cursor. Fails
+        if no records remain.
+        """
+        if self._buffer:
+            values = self._buffer[0]
+            return Record(self.keys(), tuple(map(hydrated, values)))
+        while not self._buffer and not self._consumed:
+            self.connection.fetch()
+            if self._buffer:
+                values = self._buffer[0]
+                return Record(self.keys(), tuple(map(hydrated, values)))
+        raise ResultError("End of stream")
+
 
 class ResultSummary(object):
     """ A summary of execution returned with a :class:`.StatementResult` object.
