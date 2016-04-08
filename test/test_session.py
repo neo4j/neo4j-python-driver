@@ -26,7 +26,7 @@ from unittest import skipUnless
 from mock import patch
 
 from neo4j.v1.constants import TRUST_ON_FIRST_USE
-from neo4j.v1.exceptions import CypherError
+from neo4j.v1.exceptions import CypherError, ResultError
 from neo4j.v1.session import GraphDatabase, basic_auth, Record, SSL_AVAILABLE
 from neo4j.v1.types import Node, Relationship, Path
 
@@ -575,3 +575,27 @@ class ResultConsumptionTestCase(ServerTestCase):
         tx.commit()
         session.close()
         assert [record[0] for record in result] == [1, 2, 3]
+
+    def test_single_with_exactly_one_record(self):
+        session = self.driver.session()
+        result = session.run("UNWIND range(1, 1) AS n RETURN n")
+        record = result.single()
+        assert list(record.values()) == [1]
+
+    def test_single_with_no_records(self):
+        session = self.driver.session()
+        result = session.run("CREATE ()")
+        with self.assertRaises(ResultError):
+            _ = result.single()
+
+    def test_single_with_multiple_records(self):
+        session = self.driver.session()
+        result = session.run("UNWIND range(1, 3) AS n RETURN n")
+        with self.assertRaises(ResultError):
+            _ = result.single()
+
+    def test_single_consumes_entire_result(self):
+        session = self.driver.session()
+        result = session.run("UNWIND range(1, 1) AS n RETURN n")
+        _ = result.single()
+        assert result._consumed
