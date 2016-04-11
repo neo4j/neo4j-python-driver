@@ -23,8 +23,6 @@ class ProtocolError(Exception):
     """ Raised when an unexpected or unsupported protocol event occurs.
     """
 
-    pass
-
 
 class CypherError(Exception):
     """ Raised when the Cypher engine returns an error to the client.
@@ -38,3 +36,8 @@ class CypherError(Exception):
         for key, value in data.items():
             if not key.startswith("_"):
                 setattr(self, key, value)
+
+
+class ResultError(Exception):
+    """ Raised when an error occurs while consuming a result.
+    """
