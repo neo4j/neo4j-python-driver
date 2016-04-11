@@ -34,6 +34,7 @@ from test.util import ServerTestCase
 
 
 auth_token = basic_auth("neo4j", "password")
+from neo4j.v1.exceptions import ProtocolError
 
 
 class DriverTestCase(ServerTestCase):
@@ -70,7 +71,7 @@ class DriverTestCase(ServerTestCase):
         assert session_2 is not session_1
 
     def test_must_use_valid_url_scheme(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ProtocolError):
             GraphDatabase.driver("x://xxx", auth=auth_token)
 
     def test_sessions_are_reused(self):

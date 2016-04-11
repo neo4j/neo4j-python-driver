@@ -30,7 +30,6 @@ from unittest import TestCase
 from neo4j.util import Watcher
 from neo4j.v1.constants import KNOWN_HOSTS
 
-
 KNOWN_HOSTS_BACKUP = KNOWN_HOSTS + ".backup"
 
 
@@ -42,12 +41,14 @@ def watch(f):
     :param f: the function to decorate
     :return: a decorated function
     """
+
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         watcher = Watcher("neo4j.bolt")
         watcher.watch()
         f(*args, **kwargs)
         watcher.stop()
+
     return wrapper
 
 

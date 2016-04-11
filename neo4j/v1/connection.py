@@ -31,6 +31,8 @@ from select import select
 from socket import create_connection, SHUT_RDWR, error as SocketError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
+import errno
+
 from .constants import DEFAULT_PORT, DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, \
     TRUST_DEFAULT, TRUST_ON_FIRST_USE
 from .compat import hex2
@@ -374,6 +376,8 @@ def connect(host, port=None, ssl_context=None, **config):
     """
 
     # Establish a connection to the host and port specified
+    # Catches refused connections see:
+    # https://docs.python.org/2/library/errno.html
     port = port or DEFAULT_PORT
     if __debug__: log_info("~~ [CONNECT] %s %d", host, port)
     try:

@@ -19,8 +19,9 @@
 # limitations under the License.
 
 
-from neo4j.v1 import GraphDatabase, Relationship, Node, Path, basic_auth
-from neo4j.v1.compat import string
+from neo4j.v1 import GraphDatabase, basic_auth
+from test.tck.test_value import TestValue
+from test.tck.resultparser import parse_values_to_comparable
 
 driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=False)
 runners = []
@@ -36,7 +37,6 @@ def send_parameters(statement, parameters):
     runner = Runner(statement, parameters).run()
     runners.append(runner)
     return runner
-
 
 try:
     to_unicode = unicode
@@ -91,66 +91,47 @@ class Runner:
     def close(self):
         self.session.close()
 
-class TestValue:
-    content = None
 
-    def __init__(self, entity):
-        self.content = {}
-        if isinstance(entity, Node):
-            self.content = self.create_node(entity)
-        elif isinstance(entity, Relationship):
-            self.content = self.create_relationship(entity)
-        elif isinstance(entity, Path):
-            self.content = self.create_path(entity)
-        elif isinstance(entity, int) or isinstance(entity, float) or isinstance(entity,
-                                                                                (str, string)) or entity is None:
-            self.content['value'] = entity
-        else:
-            raise ValueError("Do not support object type: %s" % entity)
+def table_to_comparable_result(table):
+    result = []
+    keys = table.headings
+    for row in table:
+        result.append(
+            {keys[i]: parse_values_to_comparable(row[i]) for i in range(len(row))})
+    return result
 
-    def __hash__(self):
-        return hash(repr(self))
 
-    def __eq__(self, other):
-        return self.content == other.content
+def driver_value_to_comparable(val):
+    if isinstance(val, list):
+        l = [driver_value_to_comparable(v) for v in val]
+        return l
+    else:
+        return TestValue(val)
 
-    def __repr__(self):
-        return str(self.content)
 
-    def create_node(self, entity):
-        content = {'properties': entity.properties, 'labels': entity.labels, 'obj': "node"}
+def driver_single_result_to_comparable(record):
+    return [{key: driver_value_to_comparable(record[key]) for key in record}]
 
-        return content
 
-    def create_path(self, entity):
-        content = {}
-        prev_id = entity.start.id
-        p = []
-        for i, rel in enumerate(list(entity)):
-            n = entity.nodes[i + 1]
-            current_id = n.id
-            if rel.start == prev_id and rel.end == current_id:
-                rel.start = i
-                rel.end = i + 1
-            elif rel.start == current_id and rel.end == prev_id:
-                rel.start = i + 1
-                rel.end = i
-            else:
-                raise ValueError(
-                        "Relationships end and start should point to surrounding nodes. Rel: %s N1id: %s N2id: %s. At entity#%s" % (
-                            rel, current_id, prev_id, i))
-            p += [self.create_relationship(rel, True), self.create_node(n)]
-            prev_id = current_id
-        content['path'] = p
-        content['obj'] = "path"
-        content['start'] = self.create_node(entity.start)
-        return content
+def driver_result_to_comparable_result(result):
+    records = []
+    for record in result:
+        records.append({key: driver_value_to_comparable(record[key]) for key in record})
+    return records
 
-    def create_relationship(self, entity, include_start_end=False):
-        content = {'obj': "relationship"}
-        if include_start_end:
-            self.content['start'] = entity.start
-            self.content['end'] = entity.end
-        content['type'] = entity.type
-        content['properties'] = entity.properties
-        return content
+
+def unordered_equal(given, expected):
+    l1 = given[:]
+    l2 = expected[:]
+    assert isinstance(l1, list)
+    assert isinstance(l2, list)
+    assert len(l1) == len(l2)
+    for d1 in l1:
+        size = len(l2)
+        for d2 in l2:
+            if d1 == d2:
+                l2.remove(d2)
+                break
+        if size == len(l2):
+            return False
+    return True

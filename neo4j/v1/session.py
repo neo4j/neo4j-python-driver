@@ -103,13 +103,12 @@ class Driver(object):
     def __init__(self, url, **config):
         self.url = url
         parsed = urlparse(self.url)
-        transports = ['bolt']
-        if parsed.scheme in transports:
+        if parsed.scheme == "bolt":
             self.host = parsed.hostname
             self.port = parsed.port
         else:
-            raise ProtocolError("Unsupported transport: '%s' in url: '%s'. Supported transports are: '%s'." %
-                                (parsed.scheme, url, transports))
+            raise ProtocolError("Unsupported URI scheme: '%s' in url: '%s'. Currently only supported 'bolt'." %
+                                (parsed.scheme, url))
         self.config = config
         self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
         self.session_pool = deque()
@@ -241,7 +240,7 @@ class StatementResult(object):
         # Fetch messages until we have the header or a failure
         while self._keys is None and not self._consumed:
             self.connection.fetch()
-        return self._keys
+        return tuple(self._keys)
 
     def buffer(self):
         if self.connection and not self.connection.closed:
@@ -264,9 +263,9 @@ class StatementResult(object):
         records = list(self)
         num_records = len(records)
         if num_records == 0:
-            raise ResultError("No records found in stream")
+            raise ResultError("Cannot retrieve a single record, because this result is empty.")
         elif num_records != 1:
-            raise ResultError("Multiple records found in stream")
+            raise ResultError("Expected a result with a single record, but this result contains at least one more.")
         else:
             return records[0]
 
@@ -486,9 +485,11 @@ class Session(object):
         :rtype: :class:`.StatementResult`
         """
         if self.transaction:
-            raise ProtocolError("Please close the currently open transaction object before running more "
-                                "statements/transactions in the current session.")
+            raise ProtocolError("Statements cannot be run directly on a session with an open transaction;"
+                                " either run from within the transaction or use a different session.")
+        return self._run(statement, parameters)
 
+    def _run(self, statement, parameters=None):
         # Ensure the statement is a Unicode value
         if isinstance(statement, bytes):
             statement = statement.decode("UTF-8")
@@ -521,6 +522,8 @@ class Session(object):
         """
         if self.last_result:
             self.last_result.buffer()
+        if self.transaction:
+            self.transaction.close()
         self.driver.recycle(self)
 
     def begin_transaction(self):
@@ -529,8 +532,8 @@ class Session(object):
         :return: new :class:`.Transaction` instance.
         """
         if self.transaction:
-            raise ProtocolError("Please close the currently open transaction object before running more "
-                                "statements/transactions in the current session.")
+            raise ProtocolError("You cannot begin a transaction on a session with an open transaction;"
+                                " either run from within the transaction or use a different session.")
         self.transaction = Transaction(self)
         return self.transaction
 
@@ -558,7 +561,7 @@ class Transaction(object):
 
     def __init__(self, session):
         self.session = session
-        self.session.run("BEGIN")
+        self.session._run("BEGIN")
 
     def __enter__(self):
         return self
@@ -576,7 +579,7 @@ class Transaction(object):
         :return:
         """
         assert not self.closed
-        return self.session.run(statement, parameters)
+        return self.session._run(statement, parameters)
 
     def commit(self):
         """ Mark this transaction as successful and close in order to
@@ -597,9 +600,9 @@ class Transaction(object):
         """
         assert not self.closed
         if self.success:
-            self.session.run("COMMIT")
+            self.session._run("COMMIT")
         else:
-            self.session.run("ROLLBACK")
+            self.session._run("ROLLBACK")
         self.closed = True
         self.session.transaction = None
 

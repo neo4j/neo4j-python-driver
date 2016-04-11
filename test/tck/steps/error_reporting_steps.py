@@ -23,7 +23,7 @@ from behave import *
 from neo4j.v1.exceptions import ProtocolError, CypherError
 from test.tck import tck_util
 
-from neo4j.v1 import compat, GraphDatabase, basic_auth
+from neo4j.v1 import GraphDatabase
 
 use_step_matcher("re")
 
@@ -45,6 +45,8 @@ def step_impl(context):
         context.session.run("CREATE (:n)")
     except Exception as e:
         context.exception = e
+    finally:
+        context.session.close()
 
 
 @step("I start a new `Transaction` with the same session before closing the previous")
@@ -53,12 +55,16 @@ def step_impl(context):
         context.session.begin_transaction()
     except Exception as e:
         context.exception = e
+    finally:
+        context.session.close()
 
 
 @step("I run a non valid cypher statement")
 def step_impl(context):
     try:
-        context.driver.session().run("NOT VALID").consume()
+        s = context.driver.session()
+        print(s.transaction)
+        s.run("NOT VALID").consume()
     except Exception as e:
         context.exception = e
 
@@ -83,6 +89,7 @@ def step_impl(context):
 
 @step("it throws a `ClientException`")
 def step_impl(context):
+    print(context.exception)
     assert context.exception is not None
     assert type(context.exception) == ProtocolError or type(context.exception) == CypherError
     assert isinstance(context.exception, ProtocolError) or isinstance(context.exception, CypherError)

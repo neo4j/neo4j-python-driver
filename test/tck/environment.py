@@ -59,7 +59,6 @@ def after_all(context):
 
 
 def after_scenario(context, scenario):
-    pass
     for runner in tck_util.runners:
         runner.close()
 
