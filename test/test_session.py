@@ -594,10 +594,17 @@ class ResultConsumptionTestCase(ServerTestCase):
         with self.assertRaises(ResultError):
             result.single()
 
-    def test_single_consumes_entire_result(self):
+    def test_single_consumes_entire_result_if_one_record(self):
         session = self.driver.session()
         result = session.run("UNWIND range(1, 1) AS n RETURN n")
         _ = result.single()
+        assert result._consumed
+
+    def test_single_consumes_entire_result_if_multiple_records(self):
+        session = self.driver.session()
+        result = session.run("UNWIND range(1, 3) AS n RETURN n")
+        with self.assertRaises(ResultError):
+            _ = result.single()
         assert result._consumed
 
     def test_peek_can_look_one_ahead(self):
