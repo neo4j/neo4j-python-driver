@@ -26,7 +26,7 @@ from unittest import skipUnless
 from mock import patch
 
 from neo4j.v1.constants import TRUST_ON_FIRST_USE
-from neo4j.v1.exceptions import CypherError
+from neo4j.v1.exceptions import CypherError, ResultError
 from neo4j.v1.session import GraphDatabase, basic_auth, Record, SSL_AVAILABLE
 from neo4j.v1.types import Node, Relationship, Path
 
@@ -575,3 +575,74 @@ class ResultConsumptionTestCase(ServerTestCase):
         tx.commit()
         session.close()
         assert [record[0] for record in result] == [1, 2, 3]
+
+    def test_single_with_exactly_one_record(self):
+        session = self.driver.session()
+        result = session.run("UNWIND range(1, 1) AS n RETURN n")
+        record = result.single()
+        assert list(record.values()) == [1]
+
+    def test_single_with_no_records(self):
+        session = self.driver.session()
+        result = session.run("CREATE ()")
+        with self.assertRaises(ResultError):
+            result.single()
+
+    def test_single_with_multiple_records(self):
+        session = self.driver.session()
+        result = session.run("UNWIND range(1, 3) AS n RETURN n")
+        with self.assertRaises(ResultError):
+            result.single()
+
+    def test_single_consumes_entire_result_if_one_record(self):
+        session = self.driver.session()
+        result = session.run("UNWIND range(1, 1) AS n RETURN n")
+        _ = result.single()
+        assert result._consumed
+
+    def test_single_consumes_entire_result_if_multiple_records(self):
+        session = self.driver.session()
+        result = session.run("UNWIND range(1, 3) AS n RETURN n")
+        with self.assertRaises(ResultError):
+            _ = result.single()
+        assert result._consumed
+
+    def test_peek_can_look_one_ahead(self):
+        session = self.driver.session()
+        result = session.run("UNWIND range(1, 3) AS n RETURN n")
+        record = result.peek()
+        assert list(record.values()) == [1]
+
+    def test_peek_fails_if_nothing_remains(self):
+        session = self.driver.session()
+        result = session.run("CREATE ()")
+        with self.assertRaises(ResultError):
+            result.peek()
+
+    def test_peek_does_not_advance_cursor(self):
+        session = self.driver.session()
+        result = session.run("UNWIND range(1, 3) AS n RETURN n")
+        result.peek()
+        assert [record[0] for record in result] == [1, 2, 3]
+
+    def test_peek_at_different_stages(self):
+        session = self.driver.session()
+        result = session.run("UNWIND range(0, 9) AS n RETURN n")
+        # Peek ahead to the first record
+        expected_next = 0
+        upcoming = result.peek()
+        assert upcoming[0] == expected_next
+        # Then look through all the other records
+        for expected, record in enumerate(result):
+            # Check this record is as expected
+            assert record[0] == expected
+            # Check the upcoming record is as expected...
+            if expected < 9:
+                # ...when one should follow
+                expected_next = expected + 1
+                upcoming = result.peek()
+                assert upcoming[0] == expected_next
+            else:
+                # ...when none should follow
+                with self.assertRaises(ResultError):
+                    result.peek()

@@ -20,8 +20,11 @@
 
 
 import functools
-from os import rename
+from os import getenv, remove, rename
 from os.path import isfile
+from socket import create_connection
+from subprocess import check_call, CalledProcessError
+from time import sleep
 from unittest import TestCase
 
 from neo4j.util import Watcher
@@ -48,6 +51,32 @@ def watch(f):
     return wrapper
 
 
+def restart_server(http_port=7474):
+    try:
+        check_call("%s/bin/neo4j restart" % getenv("NEO4J_HOME"), shell=True)
+    except CalledProcessError as error:
+        if error.returncode == 2:
+            raise OSError("Another process is listening on the server port")
+        elif error.returncode == 512:
+            raise OSError("Another server process is already running")
+        else:
+            raise OSError("An error occurred while trying to start "
+                          "the server [%s]" % error.returncode)
+    else:
+        running = False
+        t = 0
+        while not running and t < 30:
+            try:
+                s = create_connection(("localhost", http_port))
+            except IOError:
+                sleep(1)
+                t += 1
+            else:
+                s.close()
+                running = True
+        return running
+
+
 class ServerTestCase(TestCase):
     """ Base class for test cases that use a remote server.
     """
@@ -57,8 +86,12 @@ class ServerTestCase(TestCase):
 
     def setUp(self):
         if isfile(self.known_hosts):
+            if isfile(self.known_hosts_backup):
+                remove(self.known_hosts_backup)
             rename(self.known_hosts, self.known_hosts_backup)
 
     def tearDown(self):
         if isfile(self.known_hosts_backup):
+            if isfile(self.known_hosts):
+                remove(self.known_hosts)
             rename(self.known_hosts_backup, self.known_hosts)
