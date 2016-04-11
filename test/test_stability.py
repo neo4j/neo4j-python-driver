@@ -19,6 +19,9 @@
 # limitations under the License.
 
 
+import platform
+from unittest import skipIf
+
 from neo4j.v1 import GraphDatabase, basic_auth, ProtocolError
 
 from test.util import ServerTestCase, restart_server
@@ -29,6 +32,7 @@ auth_token = basic_auth("neo4j", "password")
 
 class ServerRestartTestCase(ServerTestCase):
 
+    @skipIf(platform.system() == "Windows", "restart testing not supported on Windows")
     def test_server_shutdown_detection(self):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
