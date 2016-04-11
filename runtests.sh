@@ -21,6 +21,7 @@ DRIVER_HOME=$(dirname $0)
 
 NEORUN_OPTIONS=""
 RUNNING=0
+QUICK=0
 KNOWN_HOSTS="${HOME}/.neo4j/known_hosts"
 KNOWN_HOSTS_BACKUP="${KNOWN_HOSTS}.backup"
 
@@ -28,11 +29,14 @@ FG_BRIGHT_RED='\033[1;31m'
 FG_DEFAULT='\033[0m'
 
 # Parse options
-while getopts ":dr" OPTION
+while getopts ":dqr" OPTION
 do
   case ${OPTION} in
     d)
       NEORUN_OPTIONS="-f"
+      ;;
+    q)
+      QUICK=1
       ;;
     r)
       RUNNING=1
@@ -79,34 +83,33 @@ echo ""
 
 TEST_RUNNER="coverage run -m ${UNITTEST} discover -vfs ${TEST}"
 EXAMPLES_RUNNER="coverage run -m ${UNITTEST} discover -vfs examples"
-BEHAVE_RUNNER="behave --tags=-db --tags=-in_dev --tags=-streaming_and_cursor_navigation test/tck"
+BEHAVE_RUNNER="behave --tags=-db --tags=-in_dev test/tck"
 
 if [ ${RUNNING} -eq 1 ]
 then
     ${TEST_RUNNER}
     check_exit_status $?
 else
-    #echo "Updating password"
-    #mv ${KNOWN_HOSTS} ${KNOWN_HOSTS_BACKUP}
-    #neokit/neorun ${NEORUN_OPTIONS} "python -m test.auth password" ${VERSIONS}
-    #EXIT_STATUS=$?
-    #mv ${KNOWN_HOSTS_BACKUP} ${KNOWN_HOSTS}
-    #check_exit_status ${EXIT_STATUS}
     export NEO4J_PASSWORD="password"
 
     echo "Running unit tests"
     neokit/neorun ${NEORUN_OPTIONS} "${TEST_RUNNER}" ${VERSIONS}
     check_exit_status $?
 
-    echo "Testing example code"
-    neokit/neorun ${NEORUN_OPTIONS} "${EXAMPLES_RUNNER}" ${VERSIONS}
-    check_exit_status $?
+    if [ ${QUICK} -eq 0 ]
+    then
+        echo "Testing example code"
+        neokit/neorun ${NEORUN_OPTIONS} "${EXAMPLES_RUNNER}" ${VERSIONS}
+        check_exit_status $?
 
-    coverage report --show-missing
-    python -c 'from test.tck.configure_feature_files import *; set_up()'
-    echo "Feature files downloaded"
-    neokit/neorun ${NEORUN_OPTIONS} "${BEHAVE_RUNNER}" ${VERSIONS}
-    python -c 'from test.tck.configure_feature_files import *; clean_up()'
-    echo "Feature files removed"
+        echo "Testing TCK"
+        coverage report --show-missing
+        python -c 'from test.tck.configure_feature_files import *; set_up()'
+        echo "Feature files downloaded"
+        neokit/neorun ${NEORUN_OPTIONS} "${BEHAVE_RUNNER}" ${VERSIONS}
+        python -c 'from test.tck.configure_feature_files import *; clean_up()'
+        echo "Feature files removed"
+
+    fi
 
 fi

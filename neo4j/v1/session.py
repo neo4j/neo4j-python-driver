@@ -33,7 +33,7 @@ from collections import deque, namedtuple
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
 from .constants import ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
-from .exceptions import CypherError
+from .exceptions import CypherError, ResultError
 from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 from .types import hydrated
 
@@ -255,6 +255,32 @@ class StatementResult(object):
             list(self)
             self.connection = None
         return self._summary
+
+    def single(self):
+        """ Return the next record, failing if none or more than one remain.
+        """
+        records = list(self)
+        num_records = len(records)
+        if num_records == 0:
+            raise ResultError("No records found in stream")
+        elif num_records != 1:
+            raise ResultError("Multiple records found in stream")
+        else:
+            return records[0]
+
+    def peek(self):
+        """ Return the next record without advancing the cursor. Fails
+        if no records remain.
+        """
+        if self._buffer:
+            values = self._buffer[0]
+            return Record(self.keys(), tuple(map(hydrated, values)))
+        while not self._buffer and not self._consumed:
+            self.connection.fetch()
+            if self._buffer:
+                values = self._buffer[0]
+                return Record(self.keys(), tuple(map(hydrated, values)))
+        raise ResultError("End of stream")
 
 
 class ResultSummary(object):
