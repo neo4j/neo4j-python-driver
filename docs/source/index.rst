@@ -30,14 +30,20 @@ Session API
 .. autoclass:: neo4j.v1.ResultSummary
    :members:
 
-.. autoclass:: neo4j.v1.Counters
+.. autoclass:: neo4j.v1.SummaryCounters
    :members:
 
 
 Exceptions
 ==========
 
+.. autoclass:: neo4j.v1.ProtocolError
+   :members:
+
 .. autoclass:: neo4j.v1.CypherError
+   :members:
+
+.. autoclass:: neo4j.v1.ResultError
    :members:
 
 
