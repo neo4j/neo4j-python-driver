@@ -63,8 +63,6 @@ def step_impl(context, expected):
 def step_impl(context):
     for summary in context.summaries:
         for row in context.table:
-            print(row[0].replace(" ","_"))
-            print(getattr(summary.counters, row[0].replace(" ","_")))
             assert getattr(summary.counters, row[0].replace(" ","_")) == parse_values(row[1])
 
 

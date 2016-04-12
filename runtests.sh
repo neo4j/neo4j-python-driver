@@ -83,7 +83,7 @@ echo ""
 
 TEST_RUNNER="coverage run -m ${UNITTEST} discover -vfs ${TEST}"
 EXAMPLES_RUNNER="coverage run -m ${UNITTEST} discover -vfs examples"
-BEHAVE_RUNNER="behave --tags=-db --tags=-in_dev test/tck"
+BEHAVE_RUNNER="behave --tags=-db --tags=-tls --tags=-fixed_session_pool test/tck"
 
 if [ ${RUNNING} -eq 1 ]
 then

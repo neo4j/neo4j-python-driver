@@ -21,7 +21,7 @@
 import json
 import re
 from neo4j.v1 import Node, Relationship, Path
-from tck_util import TestValue
+from test_value import TestValue
 
 
 def parse_values_to_comparable(row):
