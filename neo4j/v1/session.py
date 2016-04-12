@@ -33,7 +33,7 @@ from collections import deque, namedtuple
 from .compat import integer, string, urlparse
 from .connection import connect, Response, RUN, PULL_ALL
 from .constants import ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
-from .exceptions import CypherError, ResultError
+from .exceptions import CypherError, ProtocolError, ResultError
 from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 from .types import hydrated
 
@@ -107,7 +107,8 @@ class Driver(object):
             self.host = parsed.hostname
             self.port = parsed.port
         else:
-            raise ValueError("Unsupported URL scheme: %s" % parsed.scheme)
+            raise ProtocolError("Unsupported URI scheme: '%s' in url: '%s'. Currently only supported 'bolt'." %
+                                (parsed.scheme, url))
         self.config = config
         self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
         self.session_pool = deque()
@@ -239,7 +240,7 @@ class StatementResult(object):
         # Fetch messages until we have the header or a failure
         while self._keys is None and not self._consumed:
             self.connection.fetch()
-        return self._keys
+        return tuple(self._keys)
 
     def buffer(self):
         if self.connection and not self.connection.closed:
@@ -262,9 +263,9 @@ class StatementResult(object):
         records = list(self)
         num_records = len(records)
         if num_records == 0:
-            raise ResultError("No records found in stream")
+            raise ResultError("Cannot retrieve a single record, because this result is empty.")
         elif num_records != 1:
-            raise ResultError("Multiple records found in stream")
+            raise ResultError("Expected a result with a single record, but this result contains at least one more.")
         else:
             return records[0]
 
@@ -396,7 +397,6 @@ class SummaryCounters(object):
 #:   a list of sub-plans
 Plan = namedtuple("Plan", ("operator_type", "identifiers", "arguments", "children"))
 
-
 #: A profiled plan describes how the database executed your statement.
 #:
 #: db_hits:
@@ -484,7 +484,12 @@ class Session(object):
         :return: Cypher result
         :rtype: :class:`.StatementResult`
         """
+        if self.transaction:
+            raise ProtocolError("Statements cannot be run directly on a session with an open transaction;"
+                                " either run from within the transaction or use a different session.")
+        return self._run(statement, parameters)
 
+    def _run(self, statement, parameters=None):
         # Ensure the statement is a Unicode value
         if isinstance(statement, bytes):
             statement = statement.decode("UTF-8")
@@ -517,6 +522,8 @@ class Session(object):
         """
         if self.last_result:
             self.last_result.buffer()
+        if self.transaction:
+            self.transaction.close()
         self.driver.recycle(self)
 
     def begin_transaction(self):
@@ -524,7 +531,9 @@ class Session(object):
 
         :return: new :class:`.Transaction` instance.
         """
-        assert not self.transaction
+        if self.transaction:
+            raise ProtocolError("You cannot begin a transaction on a session with an open transaction;"
+                                " either run from within the transaction or use a different session.")
         self.transaction = Transaction(self)
         return self.transaction
 
@@ -552,7 +561,7 @@ class Transaction(object):
 
     def __init__(self, session):
         self.session = session
-        self.session.run("BEGIN")
+        self.session._run("BEGIN")
 
     def __enter__(self):
         return self
@@ -570,7 +579,7 @@ class Transaction(object):
         :return:
         """
         assert not self.closed
-        return self.session.run(statement, parameters)
+        return self.session._run(statement, parameters)
 
     def commit(self):
         """ Mark this transaction as successful and close in order to
@@ -591,9 +600,9 @@ class Transaction(object):
         """
         assert not self.closed
         if self.success:
-            self.session.run("COMMIT")
+            self.session._run("COMMIT")
         else:
-            self.session.run("ROLLBACK")
+            self.session._run("ROLLBACK")
         self.closed = True
         self.session.transaction = None
 
