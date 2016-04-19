@@ -22,6 +22,7 @@
 from unittest import skip, skipUnless
 
 from neo4j.v1 import TRUST_ON_FIRST_USE, TRUST_SIGNED_CERTIFICATES, SSL_AVAILABLE
+from neo4j.v1.exceptions import CypherError
 from test.util import ServerTestCase
 
 # Do not change the contents of this tagged section without good reason*
@@ -50,7 +51,7 @@ class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
         session = driver.session()
 
-        session.run("CREATE (a:Person {name:'Arthur', title:'King'})", )
+        session.run("CREATE (a:Person {name:'Arthur', title:'King'})")
 
         result = session.run("MATCH (a:Person) WHERE a.name = 'Arthur' RETURN a.name AS name, a.title AS title")
         for record in result:
@@ -70,7 +71,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
 
     def test_configuration(self):
         # tag::configuration[]
-        driver = GraphDatabase.driver("bolt://localhost", max_pool_size=10)
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), max_pool_size=10)
         # end::configuration[]
         return driver
 
@@ -92,6 +93,13 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # tag::tls-signed[]
         driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=True, trust=TRUST_SIGNED_CERTIFICATES)
         # end::tls-signed[]
+        assert driver
+
+    @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
+    def test_connect_with_auth_disabled(self):
+        # tag::connect-with-auth-disabled[]
+        driver = GraphDatabase.driver("bolt://localhost", encrypted=True)
+        # end::connect-with-auth-disabled[]
         assert driver
 
     def test_statement(self):
@@ -116,13 +124,26 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::result-traversal[]
-        search_term = "sword"
+        search_term = "Sword"
         result = session.run("MATCH (weapon:Weapon) WHERE weapon.name CONTAINS {term} "
                              "RETURN weapon.name", {"term": search_term})
         print("List of weapons called %r:" % search_term)
         for record in result:
             print(record["weapon.name"])
         # end::result-traversal[]
+        session.close()
+
+    def test_access_record(self):
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
+        session = driver.session()
+        # tag::access-record[]
+        search_term = "Arthur"
+        result = session.run("MATCH (weapon:Weapon) WHERE weapon.owner CONTAINS {term} "
+                             "RETURN weapon.name, weapon.material, weapon.size", {"term": search_term})
+        print("List of weapons owned by %r:" % search_term)
+        for record in result:
+            print(", ".join("%s: %s" % (key, record[key]) for key in record.keys()))
+        # end::access-record[]
         session.close()
 
     def test_result_retention(self):
@@ -199,3 +220,16 @@ class ExamplesTestCase(FreshDatabaseTestCase):
             print(notification)
         # end::result-summary-notifications[]
         session.close()
+
+    def test_handle_cypher_error(self):
+        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
+        session = driver.session()
+        with self.assertRaises(RuntimeError):
+            # tag::handle-cypher-error
+            try:
+                session.run("This will cause a syntax error").consume()
+            except CypherError:
+                raise RuntimeError("Something really bad has happened!")
+            finally:
+                session.close()
+            # end::handle-cypher-error
