@@ -225,11 +225,11 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         with self.assertRaises(RuntimeError):
-            # tag::handle-cypher-error
+            # tag::handle-cypher-error[]
             try:
                 session.run("This will cause a syntax error").consume()
             except CypherError:
                 raise RuntimeError("Something really bad has happened!")
             finally:
                 session.close()
-            # end::handle-cypher-error
+            # end::handle-cypher-error[]
