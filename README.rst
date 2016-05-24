@@ -41,3 +41,8 @@ Command Line
 .. code:: bash
 
     python -m neo4j "CREATE (a:Person {name:'Alice'}) RETURN a, labels(a), a.name"
+
+Changelog
+============
+
+Find the changelog in the wiki of this repo
