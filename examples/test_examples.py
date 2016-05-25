@@ -32,7 +32,7 @@ from neo4j.v1 import GraphDatabase, basic_auth
 # (* "good reason" is defined as knowing what you are doing)
 
 
-auth_token = basic_auth("neo4j", "password")
+auth_token = basic_auth("neo4j", "neo4j")
 
 
 class FreshDatabaseTestCase(ServerTestCase):
@@ -48,7 +48,7 @@ class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
 
     def test_minimal_working_example(self):
         # tag::minimal-example[]
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
         session = driver.session()
 
         session.run("CREATE (a:Person {name:'Arthur', title:'King'})")
@@ -65,33 +65,33 @@ class ExamplesTestCase(FreshDatabaseTestCase):
 
     def test_construct_driver(self):
         # tag::construct-driver[]
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"))
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
         # end::construct-driver[]
         return driver
 
     def test_configuration(self):
         # tag::configuration[]
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), max_pool_size=10)
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"), max_pool_size=10)
         # end::configuration[]
         return driver
 
     @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_tls_require_encryption(self):
         # tag::tls-require-encryption[]
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=True)
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"), encrypted=True)
         # end::tls-require-encryption[]
 
     @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_tls_trust_on_first_use(self):
         # tag::tls-trust-on-first-use[]
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=True, trust=TRUST_ON_FIRST_USE)
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"), encrypted=True, trust=TRUST_ON_FIRST_USE)
         # end::tls-trust-on-first-use[]
         assert driver
 
     @skip("testing verified certificates not yet supported ")
     def test_tls_signed(self):
         # tag::tls-signed[]
-        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=True, trust=TRUST_SIGNED_CERTIFICATES)
+        driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"), encrypted=True, trust=TRUST_SIGNED_CERTIFICATES)
         # end::tls-signed[]
         assert driver
 
