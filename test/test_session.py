@@ -90,6 +90,15 @@ class DriverTestCase(ServerTestCase):
         session_1.close()
         assert session_1 is not session_2
 
+    def test_fail_nicely_when_connecting_to_http_port(self):
+        driver = GraphDatabase.driver("bolt://localhost:7474", auth=auth_token, encrypted=False)
+        with self.assertRaises(ProtocolError) as context:
+            driver.session()
+
+        assert str(context.exception) == "Server responded HTTP. Make sure you are not trying to connect to the http " \
+                                    "endpoint (HTTP defaults to port 7474 whereas BOLT defaults to port 7687)"
+
+
 
 class SecurityTestCase(ServerTestCase):
 

@@ -442,5 +442,12 @@ def connect(host, port=None, ssl_context=None, **config):
         if __debug__: log_info("~~ [CLOSE]")
         s.shutdown(SHUT_RDWR)
         s.close()
-    else:
+    elif agreed_version == 1:
         return Connection(s, der_encoded_server_certificate=der_encoded_server_certificate, **config)
+    elif agreed_version == 1213486160:
+        log_error("S: [CLOSE]")
+        raise ProtocolError("Server responded HTTP. Make sure you are not trying to connect to the http endpoint " +
+                            "(HTTP defaults to port 7474 whereas BOLT defaults to port 7687)")
+    else:
+        log_error("S: [CLOSE]")
+        raise ProtocolError("Unknown Bolt protocol version: %d", agreed_version)
