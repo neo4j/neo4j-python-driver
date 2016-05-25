@@ -45,6 +45,13 @@ NEO4J_HOME = path.abspath('./build/neo4jhome')
 is_windows = (name == 'nt')
 
 
+def runpymodule(command):
+    commands = command.split()
+    if is_windows:
+        commands = ['powershell.exe', 'python', '-m'] + commands
+    return run0(commands)
+
+
 def runcommand(command):
     commands = command.split()
     return runcommands(commands)
@@ -88,7 +95,7 @@ def main():
 
         stdout.write("Using python version:\n")
         runcommand('python --version')
-        runcommand('pip install --upgrade -r ./test_requirements.txt')
+        runpymodule('pip install --upgrade -r ./test_requirements.txt')
         retcode = 0
 
         register(neorun, '--stop=' + NEO4J_HOME)
@@ -106,16 +113,16 @@ def main():
                 retcode = 2
 
             elif opt == "--tests":
-                retcode = retcode or runcommand(UNITTEST_RUNNER + "test")
+                retcode = retcode or runpymodule(UNITTEST_RUNNER + "test")
             elif opt == "--test=":
-                retcode = retcode or runcommand(UNITTEST_RUNNER + arg)
+                retcode = retcode or runpymodule(UNITTEST_RUNNER + arg)
             elif opt == "--example":
-                retcode = retcode or runcommand(UNITTEST_RUNNER + "examples")
+                retcode = retcode or runpymodule(UNITTEST_RUNNER + "examples")
             elif opt == "--tck":
-                retcode = runcommand('coverage report --show-missing') or\
-                runcommands(["python", "-c", "from test.tck.configure_feature_files import *; set_up()"]) or\
-                runcommand(BEHAVE_RUNNER) or\
-                runcommands(["python", "-c", "from test.tck.configure_feature_files import *; clean_up()"])
+                retcode = runpymodule('coverage report --show-missing') or \
+                          runcommands(["python", "-c", "\"from test.tck.configure_feature_files import *; set_up()\""]) or \
+                          runpymodule(BEHAVE_RUNNER) or \
+                          runcommands(["python", "-c", "\"from test.tck.configure_feature_files import *; clean_up()\""])
 
             if retcode != 0:
                 break
