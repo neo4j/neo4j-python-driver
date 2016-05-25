@@ -30,7 +30,7 @@ def step_impl(context):
 
 @given("a driver is configured with auth enabled and correct password is provided")
 def step_impl(context):
-    context.driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "password"), encrypted=False)
+    context.driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"), encrypted=False)
 
 
 @given("a driver is configured with auth enabled and the wrong password is provided")

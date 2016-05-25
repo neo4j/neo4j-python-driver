@@ -20,13 +20,15 @@
 
 """
 Usage:   runtests.py
+         -h          : show this help message
          --test=name : run this specific test
-         --test      : run all unit tests
+         --tests     : run all unit tests
          --examples  : run all example tests
          --tck       : run tck tests
-         -h          : show this help message
+         --neorun.start.args : args to neorun script
 example:
-         python ./runtests.py --test --examples --tck
+         python ./runtests.py --tests --examples --tck
+         python ./runtests.py --tests --examples --tck --neorun.start.args="-n 3.1 -p neo4j"
 """
 from sys import argv, stdout, exit
 from os import name, path
@@ -38,7 +40,7 @@ UNITTEST_RUNNER = "coverage run -m unittest discover -vfs "
 BEHAVE_RUNNER="behave --tags=-db --tags=-tls --tags=-fixed_session_pool test/tck"
 
 NEORUN_PATH = path.abspath('./neokit/neorun.py')
-NEO4J_HOME = path.abspath('./resources/neo4jhome')
+NEO4J_HOME = path.abspath('./build/neo4jhome')
 
 is_windows = (name == 'nt')
 
@@ -73,7 +75,7 @@ def main():
         print_help()
         exit(2)
     try:
-        opts, args = getopt.getopt(argv[1:], "h", ["test=", "test", "examples", "tck"])
+        opts, args = getopt.getopt(argv[1:], "h", ["test=", "tests", "examples", "tck", "neorun.start.args="])
     except getopt.GetoptError as err:
         print(str(err))
         print_help()
@@ -86,13 +88,20 @@ def main():
         retcode = 0
 
         register(neorun, '--stop=' + NEO4J_HOME)
-        neorun('--start=' + NEO4J_HOME + ' -v 3.0.1 -p password')
+
+        neorun_args = '-p neo4j'
+        for opt, arg in opts:
+            if opt == '--neorun.start.args':
+                neorun_args = arg
+                break
+        neorun('--start=' + NEO4J_HOME + ' ' + neorun_args)
+
         for opt, arg in opts:
             if opt == '-h':
                 print_help()
                 retcode = 2
 
-            elif opt == "--test":
+            elif opt == "--tests":
                 retcode = retcode or runcommand(UNITTEST_RUNNER + "test")
             elif opt == "--test=":
                 retcode = retcode or runcommand(UNITTEST_RUNNER + arg)

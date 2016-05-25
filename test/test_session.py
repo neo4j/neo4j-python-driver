@@ -33,7 +33,7 @@ from neo4j.v1.types import Node, Relationship, Path
 from test.util import ServerTestCase
 
 
-auth_token = basic_auth("neo4j", "password")
+auth_token = basic_auth("neo4j", "neo4j")
 from neo4j.v1.exceptions import ProtocolError
 
 
