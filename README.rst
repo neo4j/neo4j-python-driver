@@ -24,8 +24,8 @@ Example Usage
 
 .. code:: python
 
-    from neo4j.v1 import GraphDatabase
-    driver = GraphDatabase.driver("bolt://localhost")
+    from neo4j.v1 import GraphDatabase, basic_auth
+    driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
     session = driver.session()
     session.run("CREATE (a:Person {name:'Bob'})")
     result = session.run("MATCH (a:Person) RETURN a.name AS name")
@@ -41,3 +41,8 @@ Command Line
 .. code:: bash
 
     python -m neo4j "CREATE (a:Person {name:'Alice'}) RETURN a, labels(a), a.name"
+
+Changelog
+============
+
+Find the changelog in the wiki of this repo
