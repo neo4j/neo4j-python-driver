@@ -30,7 +30,7 @@ example:
          python ./runtests.py --tests --examples --tck
          python ./runtests.py --tests --examples --tck --neorun.start.args="-n 3.1 -p neo4j"
 """
-from sys import argv, stdout, exit
+from sys import argv, stdout, exit, version_info
 from os import name, path
 from atexit import register
 import subprocess
@@ -61,8 +61,12 @@ def run0(commands):
     p = subprocess.Popen(commands, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     retcode = p.wait()
-    stdout.write(out)
-    stdout.write(err)
+    if version_info < (3, 0):
+        stdout.write(out)
+        stdout.write(err)
+    else:
+        stdout.write(out.decode(stdout.encoding))
+        stdout.write(err.decode(stdout.encoding))
     return retcode
 
 
