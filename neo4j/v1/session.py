@@ -32,7 +32,7 @@ from collections import deque, namedtuple
 
 from .compat import integer, string, urlparse
 from .bolt import connect, Response, RUN, PULL_ALL
-from .constants import ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
+from .constants import DEFAULT_PORT, ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
 from .exceptions import CypherError, ProtocolError, ResultError
 from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 from .types import hydrated
@@ -100,15 +100,21 @@ class Driver(object):
     """ Accessor for a specific graph database resource.
     """
 
-    def __init__(self, url, **config):
-        self.url = url
-        parsed = urlparse(self.url)
-        if parsed.scheme == "bolt":
-            self.host = parsed.hostname
-            self.port = parsed.port
+    def __init__(self, address, **config):
+        if "://" in address:
+            parsed = urlparse(address)
+            if parsed.scheme == "bolt":
+                host = parsed.hostname
+                port = parsed.port or DEFAULT_PORT
+            else:
+                raise ProtocolError("Only the 'bolt' URI scheme is supported [%s]" % address)
+        elif ":" in address:
+            host, port = address.split(":")
+            port = int(port)
         else:
-            raise ProtocolError("Unsupported URI scheme: '%s' in url: '%s'. Currently only supported 'bolt'." %
-                                (parsed.scheme, url))
+            host = address
+            port = DEFAULT_PORT
+        self.address = (host, port)
         self.config = config
         self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
         self.session_pool = deque()
@@ -137,20 +143,20 @@ class Driver(object):
             >>> from neo4j.v1 import GraphDatabase
             >>> driver = GraphDatabase.driver("bolt://localhost")
             >>> session = driver.session()
-
         """
         session = None
-        done = False
-        while not done:
+        connected = False
+        while not connected:
             try:
                 session = self.session_pool.pop()
             except IndexError:
-                session = Session(self)
-                done = True
+                connection = connect(self.address, self.ssl_context, **self.config)
+                session = Session(self, connection)
+                connected = True
             else:
                 if session.healthy:
                     session.connection.reset()
-                    done = session.healthy
+                    connected = session.healthy
         return session
 
     def recycle(self, session):
@@ -450,17 +456,51 @@ def make_plan(plan_dict):
         return Plan(operator_type, identifiers, arguments, children)
 
 
+def run(connection, statement, parameters=None):
+    """ Run a Cypher statement on a given connection.
+
+    :param connection: connection to carry the request and response
+    :param statement: Cypher statement
+    :param parameters: optional dictionary of parameters
+    :return: statement result
+    """
+    # Ensure the statement is a Unicode value
+    if isinstance(statement, bytes):
+        statement = statement.decode("UTF-8")
+
+    params = {}
+    for key, value in (parameters or {}).items():
+        if isinstance(key, bytes):
+            key = key.decode("UTF-8")
+        if isinstance(value, bytes):
+            params[key] = value.decode("UTF-8")
+        else:
+            params[key] = value
+    parameters = params
+
+    run_response = Response(connection)
+    pull_all_response = Response(connection)
+    result = StatementResult(connection, run_response, pull_all_response)
+    result.statement = statement
+    result.parameters = parameters
+
+    connection.append(RUN, (statement, parameters), response=run_response)
+    connection.append(PULL_ALL, response=pull_all_response)
+    connection.send()
+
+    return result
+
+
 class Session(object):
     """ Logical session carried out over an established TCP connection.
     Sessions should generally be constructed using the :meth:`.Driver.session`
     method.
     """
 
-    def __init__(self, driver):
+    def __init__(self, driver, connection):
         self.driver = driver
-        self.connection = connect(driver.host, driver.port, driver.ssl_context, **driver.config)
+        self.connection = connection
         self.transaction = None
-        self.last_result = None
 
     def __enter__(self):
         return self
@@ -473,8 +513,7 @@ class Session(object):
         """ Return ``True`` if this session is healthy, ``False`` if
         unhealthy and ``None`` if closed.
         """
-        connection = self.connection
-        return None if connection.closed else not connection.defunct
+        return self.connection.healthy
 
     def run(self, statement, parameters=None):
         """ Run a parameterised Cypher statement.
@@ -487,41 +526,13 @@ class Session(object):
         if self.transaction:
             raise ProtocolError("Statements cannot be run directly on a session with an open transaction;"
                                 " either run from within the transaction or use a different session.")
-        return self._run(statement, parameters)
-
-    def _run(self, statement, parameters=None):
-        # Ensure the statement is a Unicode value
-        if isinstance(statement, bytes):
-            statement = statement.decode("UTF-8")
-
-        params = {}
-        for key, value in (parameters or {}).items():
-            if isinstance(key, bytes):
-                key = key.decode("UTF-8")
-            if isinstance(value, bytes):
-                params[key] = value.decode("UTF-8")
-            else:
-                params[key] = value
-        parameters = params
-
-        run_response = Response(self.connection)
-        pull_all_response = Response(self.connection)
-        result = StatementResult(self.connection, run_response, pull_all_response)
-        result.statement = statement
-        result.parameters = parameters
-
-        self.connection.append(RUN, (statement, parameters), response=run_response)
-        self.connection.append(PULL_ALL, response=pull_all_response)
-        self.connection.send()
-
-        self.last_result = result
-        return result
+        return run(self.connection, statement, parameters)
 
     def close(self):
         """ Recycle this session through the driver it came from.
         """
-        if self.last_result:
-            self.last_result.buffer()
+        if self.connection and not self.connection.closed:
+            self.connection.fetch_all()
         if self.transaction:
             self.transaction.close()
         self.driver.recycle(self)
@@ -534,7 +545,11 @@ class Session(object):
         if self.transaction:
             raise ProtocolError("You cannot begin a transaction on a session with an open transaction;"
                                 " either run from within the transaction or use a different session.")
-        self.transaction = Transaction(self)
+
+        def clear_transaction():
+            self.transaction = None
+
+        self.transaction = Transaction(self.connection, on_close=clear_transaction)
         return self.transaction
 
 
@@ -559,9 +574,10 @@ class Transaction(object):
     #: with commit or rollback.
     closed = False
 
-    def __init__(self, session):
-        self.session = session
-        self.session._run("BEGIN")
+    def __init__(self, connection, on_close):
+        self.connection = connection
+        self.on_close = on_close
+        run(self.connection, "BEGIN")
 
     def __enter__(self):
         return self
@@ -574,12 +590,12 @@ class Transaction(object):
     def run(self, statement, parameters=None):
         """ Run a Cypher statement within the context of this transaction.
 
-        :param statement:
-        :param parameters:
-        :return:
+        :param statement: Cypher statement
+        :param parameters: dictionary of parameters
+        :return: result object
         """
         assert not self.closed
-        return self.session._run(statement, parameters)
+        return run(self.connection, statement, parameters)
 
     def commit(self):
         """ Mark this transaction as successful and close in order to
@@ -600,11 +616,11 @@ class Transaction(object):
         """
         assert not self.closed
         if self.success:
-            self.session._run("COMMIT")
+            run(self.connection, "COMMIT")
         else:
-            self.session._run("ROLLBACK")
+            run(self.connection, "ROLLBACK")
         self.closed = True
-        self.session.transaction = None
+        self.on_close()
 
 
 class Record(object):

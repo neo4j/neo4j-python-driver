@@ -400,7 +400,7 @@ class PersonalCertificateStore(CertificateStore):
         return True
 
 
-def connect(host, port=None, ssl_context=None, **config):
+def connect(host_port, ssl_context=None, **config):
     """ Connect and perform a handshake and return a valid Connection object, assuming
     a protocol version can be agreed.
     """
@@ -408,18 +408,18 @@ def connect(host, port=None, ssl_context=None, **config):
     # Establish a connection to the host and port specified
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
-    port = port or DEFAULT_PORT
-    if __debug__: log_info("~~ [CONNECT] %s %d", host, port)
+    if __debug__: log_info("~~ [CONNECT] %s", host_port)
     try:
-        s = create_connection((host, port))
+        s = create_connection(host_port)
     except SocketError as error:
         if error.errno == 111 or error.errno == 61:
-            raise ProtocolError("Unable to connect to %s on port %d - is the server running?" % (host, port))
+            raise ProtocolError("Unable to connect to %s on port %d - is the server running?" % host_port)
         else:
             raise
 
     # Secure the connection if an SSL context has been provided
     if ssl_context and SSL_AVAILABLE:
+        host, port = host_port
         if __debug__: log_info("~~ [SECURE] %s", host)
         try:
             s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
