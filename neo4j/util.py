@@ -19,14 +19,8 @@
 # limitations under the License.
 
 
-from __future__ import unicode_literals
-
 import logging
-from argparse import ArgumentParser
-from json import loads as json_loads
-from sys import stdout, stderr
-
-from .v1.session import GraphDatabase, CypherError
+from sys import stdout
 
 
 class ColourFormatter(logging.Formatter):
@@ -50,7 +44,7 @@ class ColourFormatter(logging.Formatter):
 
 
 class Watcher(object):
-    """ Log watcher for debug output.
+    """ Log watcher for monitoring driver and protocol activity.
     """
 
     handlers = {}
@@ -74,3 +68,16 @@ class Watcher(object):
             self.logger.removeHandler(self.handlers[self.logger_name])
         except KeyError:
             pass
+
+
+def watch(logger_name, level=logging.INFO, out=stdout):
+    """ Quick wrapper for using the Watcher.
+
+    :param logger_name: name of logger to watch
+    :param level: minimum log level to show (default INFO)
+    :param out: where to send output (default stdout)
+    :return: Watcher instance
+    """
+    watcher = Watcher(logger_name)
+    watcher.watch(level, out)
+    return watcher
