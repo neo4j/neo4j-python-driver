@@ -19,10 +19,9 @@
 # limitations under the License.
 
 """
-This module contains the main Bolt driver components as well as several
-helper and exception classes. The main entry point is the `GraphDatabase`
-class which can be used to obtain `Driver` instances that are used for
-managing sessions.
+This module contains the main user-facing abstractions. The main entry
+point is the `GraphDatabase` class which can be used to obtain `Driver`
+instances that are in turn used for managing sessions.
 """
 
 
@@ -40,16 +39,6 @@ from .types import hydrated
 
 
 DEFAULT_MAX_POOL_SIZE = 50
-
-
-def basic_auth(user, password):
-    """ Generate a basic auth token for a given user and password.
-
-    :param user: user name
-    :param password: current password
-    :return: auth token for use with :meth:`GraphDatabase.driver`
-    """
-    return AuthToken("basic", user, password)
 
 
 class AuthToken(object):
@@ -78,18 +67,6 @@ class GraphDatabase(object):
 
         """
         return Driver(url, **config)
-
-
-_warned_about_insecure_default = False
-
-
-def _warn_about_insecure_default():
-    global _warned_about_insecure_default
-    if not SSL_AVAILABLE and not _warned_about_insecure_default:
-        from warnings import warn
-        warn("Bolt over TLS is only available in Python 2.7.9+ and Python 3.3+ "
-             "so communications are not secure")
-        _warned_about_insecure_default = True
 
 
 class Driver(object):
@@ -284,41 +261,6 @@ class StatementResult(object):
                 values = self._buffer[0]
                 return Record(self.keys(), tuple(map(hydrated, values)))
         raise ResultError("End of stream")
-
-
-def run(connection, statement, parameters=None):
-    """ Run a Cypher statement on a given connection.
-
-    :param connection: connection to carry the request and response
-    :param statement: Cypher statement
-    :param parameters: optional dictionary of parameters
-    :return: statement result
-    """
-    # Ensure the statement is a Unicode value
-    if isinstance(statement, bytes):
-        statement = statement.decode("UTF-8")
-
-    params = {}
-    for key, value in (parameters or {}).items():
-        if isinstance(key, bytes):
-            key = key.decode("UTF-8")
-        if isinstance(value, bytes):
-            params[key] = value.decode("UTF-8")
-        else:
-            params[key] = value
-    parameters = params
-
-    run_response = Response(connection)
-    pull_all_response = Response(connection)
-    result = StatementResult(connection, run_response, pull_all_response)
-    result.statement = statement
-    result.parameters = parameters
-
-    connection.append(RUN, (statement, parameters), response=run_response)
-    connection.append(PULL_ALL, response=pull_all_response)
-    connection.send()
-
-    return result
 
 
 class Session(object):
@@ -529,3 +471,60 @@ class Record(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+
+def basic_auth(user, password):
+    """ Generate a basic auth token for a given user and password.
+
+    :param user: user name
+    :param password: current password
+    :return: auth token for use with :meth:`GraphDatabase.driver`
+    """
+    return AuthToken("basic", user, password)
+
+
+def run(connection, statement, parameters=None):
+    """ Run a Cypher statement on a given connection.
+
+    :param connection: connection to carry the request and response
+    :param statement: Cypher statement
+    :param parameters: optional dictionary of parameters
+    :return: statement result
+    """
+    # Ensure the statement is a Unicode value
+    if isinstance(statement, bytes):
+        statement = statement.decode("UTF-8")
+
+    params = {}
+    for key, value in (parameters or {}).items():
+        if isinstance(key, bytes):
+            key = key.decode("UTF-8")
+        if isinstance(value, bytes):
+            params[key] = value.decode("UTF-8")
+        else:
+            params[key] = value
+    parameters = params
+
+    run_response = Response(connection)
+    pull_all_response = Response(connection)
+    result = StatementResult(connection, run_response, pull_all_response)
+    result.statement = statement
+    result.parameters = parameters
+
+    connection.append(RUN, (statement, parameters), response=run_response)
+    connection.append(PULL_ALL, response=pull_all_response)
+    connection.send()
+
+    return result
+
+
+_warned_about_insecure_default = False
+
+
+def _warn_about_insecure_default():
+    global _warned_about_insecure_default
+    if not SSL_AVAILABLE and not _warned_about_insecure_default:
+        from warnings import warn
+        warn("Bolt over TLS is only available in Python 2.7.9+ and Python 3.3+ "
+             "so communications are not secure")
+        _warned_about_insecure_default = True

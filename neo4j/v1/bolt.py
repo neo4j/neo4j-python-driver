@@ -19,6 +19,13 @@
 # limitations under the License.
 
 
+"""
+This module contains the low-level functionality required for speaking
+Bolt. It is not intended to be used directly by driver users. Instead,
+the `session` module provides the main user-facing abstractions.
+"""
+
+
 from __future__ import division
 
 from base64 import b64encode
@@ -31,8 +38,7 @@ from select import select
 from socket import create_connection, SHUT_RDWR, error as SocketError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
-from .constants import DEFAULT_PORT, DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, \
-    TRUST_DEFAULT, TRUST_ON_FIRST_USE
+from .constants import DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, TRUST_DEFAULT, TRUST_ON_FIRST_USE
 from .compat import hex2
 from .exceptions import ProtocolError
 from .packstream import Packer, Unpacker
