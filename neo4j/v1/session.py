@@ -28,10 +28,12 @@ instances that are in turn used for managing sessions.
 from __future__ import division
 
 from collections import deque
+from random import choice as random_choice
 
-from .bolt import connect, Response, RUN, PULL_ALL
+from .bolt import connect, log, Response, RUN, PULL_ALL
 from .compat import integer, string, urlparse
-from .constants import DEFAULT_PORT, ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
+from .constants import DEFAULT_PORT, ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES, \
+    DISCOVER_MEMBERS_CALL, ACQUIRE_ENDPOINTS_CALL, DEFAULT_CONCURRENCY_LEVEL, READ_ONLY_CONCURRENCY
 from .exceptions import CypherError, ProtocolError, ResultError
 from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 from .summary import ResultSummary
@@ -87,7 +89,9 @@ class Driver(object):
         else:
             host = address
             port = DEFAULT_PORT
-        self.address = (host, port)
+        self.members = [(host, port)]   # collection of servers for discovery and acquisition as (host, port) tuples
+        self.writers = []               # collection of read/write servers
+        self.readers = []               # collection of read-only servers
         self.config = config
         self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
         self.session_pool = deque()
@@ -108,6 +112,49 @@ class Driver(object):
             self.ssl_context = ssl_context
         else:
             self.ssl_context = None
+        self.discover_members()
+
+    def discover_members(self):
+        """ Request and cache a set of server addresses from which
+        session endpoints can be requested.
+        """
+        server = random_choice(self.members)
+        connection = connect(server, self.ssl_context, **self.config)
+        try:
+            new_servers = [tuple(server.split(":")) for server, in run(connection, DISCOVER_MEMBERS_CALL)]
+        except CypherError:
+            pass  # not supported
+        else:
+            self.members[:] = new_servers
+        finally:
+            connection.close()
+        log.info("~~ [MEMBERS] %s", self.members)
+
+    def acquire_endpoints(self):
+        """ Acquire an up-to-date set of read servers and write servers.
+        """
+        writers = []
+        readers = []
+        connection = connect(random_choice(self.members), self.ssl_context, **self.config)
+        try:
+            for server, mode in run(connection, ACQUIRE_ENDPOINTS_CALL):
+                host_port = tuple(server.split(":"))
+                if mode == "write":
+                    writers.append(host_port)
+                elif mode == "read":
+                    readers.append(host_port)
+        except CypherError:
+            # TODO: catch transient error and retry (can occur when no leader)
+            writers.append(random_choice(self.members))
+        finally:
+            connection.close()
+        if writers:
+            self.writers[:] = writers
+            self.readers[:] = readers
+        else:
+            raise ProtocolError("Server acquisition incomplete")
+        log.info("~~ [WRITERS] %s", self.writers)
+        log.info("~~ [READERS] %s", self.readers)
 
     def session(self):
         """ Create a new session based on the graph database details
@@ -123,8 +170,13 @@ class Driver(object):
             try:
                 session = self.session_pool.pop()
             except IndexError:
-                connection = connect(self.address, self.ssl_context, **self.config)
-                session = Session(self, connection)
+                self.acquire_endpoints()
+                connection = connect(random_choice(self.writers), self.ssl_context, **self.config)
+                if self.readers:
+                    read_only_connection = connect(random_choice(self.readers), self.ssl_context, **self.config)
+                    session = Session(self, connection, read_only_connection)
+                else:
+                    session = Session(self, connection)
                 connected = True
             else:
                 if session.healthy:
@@ -269,9 +321,10 @@ class Session(object):
     method.
     """
 
-    def __init__(self, driver, connection):
+    def __init__(self, driver, connection, read_only_connection=None):
         self.driver = driver
         self.connection = connection
+        self.read_only_connection = read_only_connection or connection
         self.transaction = None
 
     def __enter__(self):
@@ -309,7 +362,7 @@ class Session(object):
             self.transaction.close()
         self.driver.recycle(self)
 
-    def begin_transaction(self):
+    def begin_transaction(self, concurrency_level=DEFAULT_CONCURRENCY_LEVEL):
         """ Create a new :class:`.Transaction` within this session.
 
         :return: new :class:`.Transaction` instance.
@@ -321,7 +374,8 @@ class Session(object):
         def clear_transaction():
             self.transaction = None
 
-        self.transaction = Transaction(self.connection, on_close=clear_transaction)
+        connection = self.read_only_connection if concurrency_level == READ_ONLY_CONCURRENCY else self.connection
+        self.transaction = Transaction(connection, on_close=clear_transaction)
         return self.transaction
 
 
