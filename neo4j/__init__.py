@@ -20,3 +20,12 @@
 
 
 from .meta import version as __version__
+
+# Export current (v1) API. This should be updated to export the latest
+# version of the API when a new one is added. This gives the option to
+# `import neo4j.vX` for a specific version or `import neo4j` for the
+# latest.
+from .v1.constants import *
+from .v1.exceptions import *
+from .v1.session import *
+from .v1.types import *
