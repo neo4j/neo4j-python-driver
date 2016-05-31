@@ -31,7 +31,7 @@ from __future__ import division
 from collections import deque, namedtuple
 
 from .compat import integer, string, urlparse
-from .connection import connect, Response, RUN, PULL_ALL
+from .bolt import connect, Response, RUN, PULL_ALL
 from .constants import ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
 from .exceptions import CypherError, ProtocolError, ResultError
 from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED

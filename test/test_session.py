@@ -346,7 +346,7 @@ class ResetTestCase(ServerTestCase):
                 assert False, "A Cypher error should have occurred"
 
     def test_defunct(self):
-        from neo4j.v1.connection import ChunkChannel, ProtocolError
+        from neo4j.v1.bolt import ChunkChannel, ProtocolError
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             assert not session.connection.defunct
             with patch.object(ChunkChannel, "chunk_reader", side_effect=ProtocolError()):

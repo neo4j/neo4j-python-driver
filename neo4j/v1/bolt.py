@@ -31,8 +31,6 @@ from select import select
 from socket import create_connection, SHUT_RDWR, error as SocketError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
-import errno
-
 from .constants import DEFAULT_PORT, DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, \
     TRUST_DEFAULT, TRUST_ON_FIRST_USE
 from .compat import hex2
@@ -239,6 +237,13 @@ class Connection(object):
     def __del__(self):
         self.close()
 
+    @property
+    def healthy(self):
+        """ Return ``True`` if this connection is healthy, ``False`` if
+        unhealthy and ``None`` if closed.
+        """
+        return None if self.closed else not self.defunct
+
     def append(self, signature, fields=(), response=None):
         """ Add a message to the outgoing queue.
 
@@ -332,6 +337,12 @@ class Connection(object):
             else:
                 handler(*fields)
         raw.close()
+
+    def fetch_all(self):
+        while self.responses:
+            response = self.responses[0]
+            while not response.complete:
+                self.fetch()
 
     def close(self):
         """ Close the connection.
