@@ -226,7 +226,7 @@ class Connection(object):
         self.der_encoded_server_certificate = config.get("der_encoded_server_certificate")
 
         def on_failure(metadata):
-            raise ProtocolError(metadata.get("message", "Initialisation failed"))
+            raise ProtocolError(metadata.get("message", "INIT failed"))
 
         response = Response(self)
         response.on_failure = on_failure
@@ -262,7 +262,7 @@ class Connection(object):
         response = Response(self)
 
         def on_failure(metadata):
-            raise ProtocolError("Failure acknowledgement failed")
+            raise ProtocolError("ACK_FAILURE failed")
 
         response.on_failure = on_failure
 
