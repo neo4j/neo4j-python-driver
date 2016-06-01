@@ -121,7 +121,11 @@ class Driver(object):
         server = random_choice(self.members)
         connection = connect(server, self.ssl_context, **self.config)
         try:
-            new_servers = [tuple(server.split(":")) for server, in run(connection, DISCOVER_MEMBERS_CALL)]
+            new_servers = []
+            for record in run(connection, DISCOVER_MEMBERS_CALL):
+                host, port = record["address"].split(":")
+                port = int(port)
+                new_servers.append((host, port))
         except CypherError:
             pass  # not supported
         else:
@@ -137,11 +141,12 @@ class Driver(object):
         readers = []
         connection = connect(random_choice(self.members), self.ssl_context, **self.config)
         try:
-            for server, mode in run(connection, ACQUIRE_ENDPOINTS_CALL):
-                host_port = tuple(server.split(":"))
-                if mode == "write":
+            for record in run(connection, ACQUIRE_ENDPOINTS_CALL):
+                host_port = tuple(record["address"].split(":"))
+                role = record["role"]
+                if role == "write":
                     writers.append(host_port)
-                elif mode == "read":
+                elif role == "read":
                     readers.append(host_port)
         except CypherError:
             # TODO: catch transient error and retry (can occur when no leader)
