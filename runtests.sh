@@ -20,6 +20,6 @@
 if [ "$1" == "" ]; then
     python ./runtests.py --tests --examples --tck
 else
-    #Example: python ./runtests.py --tests --examples --tck --neorun.start.args=”-n 3.1 -p neo4j”
-    python ./runtests.py --tests --examples --tck --neorun.start.args=\""$1"\"
+    #Example: NEORUN_START_ARGS="-n 3.1 -p neo4j" python ./runtests.py --tests --examples --tck
+    NEORUN_START_ARGS="$1" python ./runtests.py --tests --examples --tck
 fi
