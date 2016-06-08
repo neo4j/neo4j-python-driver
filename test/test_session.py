@@ -26,15 +26,14 @@ from unittest import skipUnless
 from mock import patch
 
 from neo4j.v1.constants import TRUST_ON_FIRST_USE
-from neo4j.v1.exceptions import CypherError, ResultError
+from neo4j.v1.exceptions import CypherError, ProtocolError, ResultError
 from neo4j.v1.session import GraphDatabase, basic_auth, Record, SSL_AVAILABLE
 from neo4j.v1.types import Node, Relationship, Path
 
 from test.util import ServerTestCase
 
 
-auth_token = basic_auth("neo4j", "password")
-from neo4j.v1.exceptions import ProtocolError
+auth_token = basic_auth("neo4j", "neo4j")
 
 
 class DriverTestCase(ServerTestCase):
@@ -346,7 +345,7 @@ class ResetTestCase(ServerTestCase):
                 assert False, "A Cypher error should have occurred"
 
     def test_defunct(self):
-        from neo4j.v1.connection import ChunkChannel, ProtocolError
+        from neo4j.v1.bolt import ChunkChannel, ProtocolError
         with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
             assert not session.connection.defunct
             with patch.object(ChunkChannel, "chunk_reader", side_effect=ProtocolError()):

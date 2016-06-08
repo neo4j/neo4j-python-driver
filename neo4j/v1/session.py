@@ -19,41 +19,26 @@
 # limitations under the License.
 
 """
-This module contains the main Bolt driver components as well as several
-helper and exception classes. The main entry point is the `GraphDatabase`
-class which can be used to obtain `Driver` instances that are used for
-managing sessions.
+This module contains the main user-facing abstractions. The main entry
+point is the `GraphDatabase` class which can be used to obtain `Driver`
+instances that are in turn used for managing sessions.
 """
 
 
 from __future__ import division
 
-from collections import deque, namedtuple
+from collections import deque
 
+from .bolt import connect, Response, RUN, PULL_ALL
 from .compat import integer, string, urlparse
-from .connection import connect, Response, RUN, PULL_ALL
-from .constants import ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
+from .constants import DEFAULT_PORT, ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
 from .exceptions import CypherError, ProtocolError, ResultError
 from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
+from .summary import ResultSummary
 from .types import hydrated
 
 
 DEFAULT_MAX_POOL_SIZE = 50
-
-STATEMENT_TYPE_READ_ONLY = "r"
-STATEMENT_TYPE_READ_WRITE = "rw"
-STATEMENT_TYPE_WRITE_ONLY = "w"
-STATEMENT_TYPE_SCHEMA_WRITE = "s"
-
-
-def basic_auth(user, password):
-    """ Generate a basic auth token for a given user and password.
-
-    :param user: user name
-    :param password: current password
-    :return: auth token for use with :meth:`GraphDatabase.driver`
-    """
-    return AuthToken("basic", user, password)
 
 
 class AuthToken(object):
@@ -84,31 +69,25 @@ class GraphDatabase(object):
         return Driver(url, **config)
 
 
-_warned_about_insecure_default = False
-
-
-def _warn_about_insecure_default():
-    global _warned_about_insecure_default
-    if not SSL_AVAILABLE and not _warned_about_insecure_default:
-        from warnings import warn
-        warn("Bolt over TLS is only available in Python 2.7.9+ and Python 3.3+ "
-             "so communications are not secure")
-        _warned_about_insecure_default = True
-
-
 class Driver(object):
     """ Accessor for a specific graph database resource.
     """
 
-    def __init__(self, url, **config):
-        self.url = url
-        parsed = urlparse(self.url)
-        if parsed.scheme == "bolt":
-            self.host = parsed.hostname
-            self.port = parsed.port
+    def __init__(self, address, **config):
+        if "://" in address:
+            parsed = urlparse(address)
+            if parsed.scheme == "bolt":
+                host = parsed.hostname
+                port = parsed.port or DEFAULT_PORT
+            else:
+                raise ProtocolError("Only the 'bolt' URI scheme is supported [%s]" % address)
+        elif ":" in address:
+            host, port = address.split(":")
+            port = int(port)
         else:
-            raise ProtocolError("Unsupported URI scheme: '%s' in url: '%s'. Currently only supported 'bolt'." %
-                                (parsed.scheme, url))
+            host = address
+            port = DEFAULT_PORT
+        self.address = (host, port)
         self.config = config
         self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
         self.session_pool = deque()
@@ -137,20 +116,20 @@ class Driver(object):
             >>> from neo4j.v1 import GraphDatabase
             >>> driver = GraphDatabase.driver("bolt://localhost")
             >>> session = driver.session()
-
         """
         session = None
-        done = False
-        while not done:
+        connected = False
+        while not connected:
             try:
                 session = self.session_pool.pop()
             except IndexError:
-                session = Session(self)
-                done = True
+                connection = connect(self.address, self.ssl_context, **self.config)
+                session = Session(self, connection)
+                connected = True
             else:
                 if session.healthy:
                     session.connection.reset()
-                    done = session.healthy
+                    connected = session.healthy
         return session
 
     def recycle(self, session):
@@ -284,183 +263,16 @@ class StatementResult(object):
         raise ResultError("End of stream")
 
 
-class ResultSummary(object):
-    """ A summary of execution returned with a :class:`.StatementResult` object.
-    """
-
-    #: The statement that was executed to produce this result.
-    statement = None
-
-    #: Dictionary of parameters passed with the statement.
-    parameters = None
-
-    #: The type of statement (``'r'`` = read-only, ``'rw'`` = read/write).
-    statement_type = None
-
-    #: A set of statistical information held in a :class:`.Counters` instance.
-    counters = None
-
-    #: A :class:`.Plan` instance
-    plan = None
-
-    #: A :class:`.ProfiledPlan` instance
-    profile = None
-
-    #: Notifications provide extra information for a user executing a statement.
-    #: They can be warnings about problematic queries or other valuable information that can be
-    #: presented in a client.
-    #: Unlike failures or errors, notifications do not affect the execution of a statement.
-    notifications = None
-
-    def __init__(self, statement, parameters, **metadata):
-        self.statement = statement
-        self.parameters = parameters
-        self.statement_type = metadata.get("type")
-        self.counters = SummaryCounters(metadata.get("stats", {}))
-        if "plan" in metadata:
-            self.plan = make_plan(metadata["plan"])
-        if "profile" in metadata:
-            self.profile = make_plan(metadata["profile"])
-            self.plan = self.profile
-        self.notifications = []
-        for notification in metadata.get("notifications", []):
-            position = notification.get("position")
-            if position is not None:
-                position = Position(position["offset"], position["line"], position["column"])
-            self.notifications.append(Notification(notification["code"], notification["title"],
-                                                   notification["description"], notification["severity"], position))
-
-
-class SummaryCounters(object):
-    """ Set of statistics from a Cypher statement execution.
-    """
-
-    #:
-    nodes_created = 0
-
-    #:
-    nodes_deleted = 0
-
-    #:
-    relationships_created = 0
-
-    #:
-    relationships_deleted = 0
-
-    #:
-    properties_set = 0
-
-    #:
-    labels_added = 0
-
-    #:
-    labels_removed = 0
-
-    #:
-    indexes_added = 0
-
-    #:
-    indexes_removed = 0
-
-    #:
-    constraints_added = 0
-
-    #:
-    constraints_removed = 0
-
-    def __init__(self, statistics):
-        for key, value in dict(statistics).items():
-            key = key.replace("-", "_")
-            setattr(self, key, value)
-
-    def __repr__(self):
-        return repr(vars(self))
-
-    @property
-    def contains_updates(self):
-        return bool(self.nodes_created or self.nodes_deleted or \
-               self.relationships_created or self.relationships_deleted or \
-               self.properties_set or self.labels_added or self.labels_removed or \
-               self.indexes_added or self.indexes_removed or \
-               self.constraints_added or self.constraints_removed)
-
-
-#: A plan describes how the database will execute your statement.
-#:
-#: operator_type:
-#:   the name of the operation performed by the plan
-#: identifiers:
-#:   the list of identifiers used by this plan
-#: arguments:
-#:   a dictionary of arguments used in the specific operation performed by the plan
-#: children:
-#:   a list of sub-plans
-Plan = namedtuple("Plan", ("operator_type", "identifiers", "arguments", "children"))
-
-#: A profiled plan describes how the database executed your statement.
-#:
-#: db_hits:
-#:   the number of times this part of the plan touched the underlying data stores
-#: rows:
-#:   the number of records this part of the plan produced
-ProfiledPlan = namedtuple("ProfiledPlan", Plan._fields + ("db_hits", "rows"))
-
-#: Representation for notifications found when executing a statement. A
-#: notification can be visualized in a client pinpointing problems or
-#: other information about the statement.
-#:
-#: code:
-#:   a notification code for the discovered issue.
-#: title:
-#:   a short summary of the notification
-#: description:
-#:   a long description of the notification
-#: severity:
-#:   the severity level of the notification
-#: position:
-#:   the position in the statement where this notification points to, if relevant.
-Notification = namedtuple("Notification", ("code", "title", "description", "severity", "position"))
-
-#: A position within a statement, consisting of offset, line and column.
-#:
-#: offset:
-#:   the character offset referred to by this position; offset numbers start at 0
-#: line:
-#:   the line number referred to by the position; line numbers start at 1
-#: column:
-#:   the column number referred to by the position; column numbers start at 1
-Position = namedtuple("Position", ("offset", "line", "column"))
-
-
-def make_plan(plan_dict):
-    """ Construct a Plan or ProfiledPlan from a dictionary of metadata values.
-
-    :param plan_dict:
-    :return:
-    """
-    operator_type = plan_dict["operatorType"]
-    identifiers = plan_dict.get("identifiers", [])
-    arguments = plan_dict.get("args", [])
-    children = [make_plan(child) for child in plan_dict.get("children", [])]
-    if "dbHits" in plan_dict or "rows" in plan_dict:
-        db_hits = plan_dict.get("dbHits", 0)
-        rows = plan_dict.get("rows", 0)
-        return ProfiledPlan(operator_type, identifiers, arguments, children, db_hits, rows)
-    else:
-        return Plan(operator_type, identifiers, arguments, children)
-
-
 class Session(object):
     """ Logical session carried out over an established TCP connection.
     Sessions should generally be constructed using the :meth:`.Driver.session`
     method.
     """
 
-    def __init__(self, driver):
+    def __init__(self, driver, connection):
         self.driver = driver
-        self.connection = connect(driver.host, driver.port, driver.ssl_context, **driver.config)
+        self.connection = connection
         self.transaction = None
-        self.last_result = None
 
     def __enter__(self):
         return self
@@ -473,8 +285,7 @@ class Session(object):
         """ Return ``True`` if this session is healthy, ``False`` if
         unhealthy and ``None`` if closed.
         """
-        connection = self.connection
-        return None if connection.closed else not connection.defunct
+        return self.connection.healthy
 
     def run(self, statement, parameters=None):
         """ Run a parameterised Cypher statement.
@@ -487,41 +298,13 @@ class Session(object):
         if self.transaction:
             raise ProtocolError("Statements cannot be run directly on a session with an open transaction;"
                                 " either run from within the transaction or use a different session.")
-        return self._run(statement, parameters)
-
-    def _run(self, statement, parameters=None):
-        # Ensure the statement is a Unicode value
-        if isinstance(statement, bytes):
-            statement = statement.decode("UTF-8")
-
-        params = {}
-        for key, value in (parameters or {}).items():
-            if isinstance(key, bytes):
-                key = key.decode("UTF-8")
-            if isinstance(value, bytes):
-                params[key] = value.decode("UTF-8")
-            else:
-                params[key] = value
-        parameters = params
-
-        run_response = Response(self.connection)
-        pull_all_response = Response(self.connection)
-        result = StatementResult(self.connection, run_response, pull_all_response)
-        result.statement = statement
-        result.parameters = parameters
-
-        self.connection.append(RUN, (statement, parameters), response=run_response)
-        self.connection.append(PULL_ALL, response=pull_all_response)
-        self.connection.send()
-
-        self.last_result = result
-        return result
+        return run(self.connection, statement, parameters)
 
     def close(self):
         """ Recycle this session through the driver it came from.
         """
-        if self.last_result:
-            self.last_result.buffer()
+        if self.connection and not self.connection.closed:
+            self.connection.fetch_all()
         if self.transaction:
             self.transaction.close()
         self.driver.recycle(self)
@@ -534,7 +317,11 @@ class Session(object):
         if self.transaction:
             raise ProtocolError("You cannot begin a transaction on a session with an open transaction;"
                                 " either run from within the transaction or use a different session.")
-        self.transaction = Transaction(self)
+
+        def clear_transaction():
+            self.transaction = None
+
+        self.transaction = Transaction(self.connection, on_close=clear_transaction)
         return self.transaction
 
 
@@ -559,9 +346,10 @@ class Transaction(object):
     #: with commit or rollback.
     closed = False
 
-    def __init__(self, session):
-        self.session = session
-        self.session._run("BEGIN")
+    def __init__(self, connection, on_close):
+        self.connection = connection
+        self.on_close = on_close
+        run(self.connection, "BEGIN")
 
     def __enter__(self):
         return self
@@ -574,12 +362,12 @@ class Transaction(object):
     def run(self, statement, parameters=None):
         """ Run a Cypher statement within the context of this transaction.
 
-        :param statement:
-        :param parameters:
-        :return:
+        :param statement: Cypher statement
+        :param parameters: dictionary of parameters
+        :return: result object
         """
         assert not self.closed
-        return self.session._run(statement, parameters)
+        return run(self.connection, statement, parameters)
 
     def commit(self):
         """ Mark this transaction as successful and close in order to
@@ -600,11 +388,11 @@ class Transaction(object):
         """
         assert not self.closed
         if self.success:
-            self.session._run("COMMIT")
+            run(self.connection, "COMMIT")
         else:
-            self.session._run("ROLLBACK")
+            run(self.connection, "ROLLBACK")
         self.closed = True
-        self.session.transaction = None
+        self.on_close()
 
 
 class Record(object):
@@ -683,3 +471,60 @@ class Record(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+
+def basic_auth(user, password):
+    """ Generate a basic auth token for a given user and password.
+
+    :param user: user name
+    :param password: current password
+    :return: auth token for use with :meth:`GraphDatabase.driver`
+    """
+    return AuthToken("basic", user, password)
+
+
+def run(connection, statement, parameters=None):
+    """ Run a Cypher statement on a given connection.
+
+    :param connection: connection to carry the request and response
+    :param statement: Cypher statement
+    :param parameters: optional dictionary of parameters
+    :return: statement result
+    """
+    # Ensure the statement is a Unicode value
+    if isinstance(statement, bytes):
+        statement = statement.decode("UTF-8")
+
+    params = {}
+    for key, value in (parameters or {}).items():
+        if isinstance(key, bytes):
+            key = key.decode("UTF-8")
+        if isinstance(value, bytes):
+            params[key] = value.decode("UTF-8")
+        else:
+            params[key] = value
+    parameters = params
+
+    run_response = Response(connection)
+    pull_all_response = Response(connection)
+    result = StatementResult(connection, run_response, pull_all_response)
+    result.statement = statement
+    result.parameters = parameters
+
+    connection.append(RUN, (statement, parameters), response=run_response)
+    connection.append(PULL_ALL, response=pull_all_response)
+    connection.send()
+
+    return result
+
+
+_warned_about_insecure_default = False
+
+
+def _warn_about_insecure_default():
+    global _warned_about_insecure_default
+    if not SSL_AVAILABLE and not _warned_about_insecure_default:
+        from warnings import warn
+        warn("Bolt over TLS is only available in Python 2.7.9+ and Python 3.3+ "
+             "so communications are not secure")
+        _warned_about_insecure_default = True

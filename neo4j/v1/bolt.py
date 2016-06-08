@@ -19,6 +19,13 @@
 # limitations under the License.
 
 
+"""
+This module contains the low-level functionality required for speaking
+Bolt. It is not intended to be used directly by driver users. Instead,
+the `session` module provides the main user-facing abstractions.
+"""
+
+
 from __future__ import division
 
 from base64 import b64encode
@@ -31,10 +38,7 @@ from select import select
 from socket import create_connection, SHUT_RDWR, error as SocketError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
-import errno
-
-from .constants import DEFAULT_PORT, DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, \
-    TRUST_DEFAULT, TRUST_ON_FIRST_USE
+from .constants import DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, TRUST_DEFAULT, TRUST_ON_FIRST_USE
 from .compat import hex2
 from .exceptions import ProtocolError
 from .packstream import Packer, Unpacker
@@ -42,7 +46,8 @@ from .ssl_compat import SSL_AVAILABLE, HAS_SNI, SSLError
 
 
 # Signature bytes for each message type
-INIT = b"\x01"             # 0000 0001 // INIT <user_agent>
+INIT = b"\x01"             # 0000 0001 // INIT <user_agent> <auth>
+ACK_FAILURE = b"\x0E"      # 0000 1110 // ACK_FAILURE
 RESET = b"\x0F"            # 0000 1111 // RESET
 RUN = b"\x10"              # 0001 0000 // RUN <statement> <parameters>
 DISCARD_ALL = b"\x2F"      # 0010 1111 // DISCARD *
@@ -57,6 +62,7 @@ SUMMARY = {SUCCESS, IGNORED, FAILURE}
 
 message_names = {
     INIT: "INIT",
+    ACK_FAILURE: "ACK_FAILURE",
     RESET: "RESET",
     RUN: "RUN",
     DISCARD_ALL: "DISCARD_ALL",
@@ -224,7 +230,7 @@ class Connection(object):
         self.der_encoded_server_certificate = config.get("der_encoded_server_certificate")
 
         def on_failure(metadata):
-            raise ProtocolError(metadata.get("message", "Inititalisation failed"))
+            raise ProtocolError(metadata.get("message", "INIT failed"))
 
         response = Response(self)
         response.on_failure = on_failure
@@ -236,6 +242,13 @@ class Connection(object):
 
     def __del__(self):
         self.close()
+
+    @property
+    def healthy(self):
+        """ Return ``True`` if this connection is healthy, ``False`` if
+        unhealthy and ``None`` if closed.
+        """
+        return None if self.closed else not self.defunct
 
     def append(self, signature, fields=(), response=None):
         """ Add a message to the outgoing queue.
@@ -252,6 +265,23 @@ class Connection(object):
             self.packer.pack(field)
         self.channel.flush(end_of_message=True)
         self.responses.append(response)
+
+    def acknowledge_failure(self):
+        """ Add an ACK_FAILURE message to the outgoing queue, send
+        it and consume all remaining messages.
+        """
+        response = Response(self)
+
+        def on_failure(metadata):
+            raise ProtocolError("ACK_FAILURE failed")
+
+        response.on_failure = on_failure
+
+        self.append(ACK_FAILURE, response=response)
+        self.send()
+        fetch = self.fetch
+        while not response.complete:
+            fetch()
 
     def reset(self):
         """ Add a RESET message to the outgoing queue, send
@@ -304,7 +334,7 @@ class Connection(object):
                 response.complete = True
                 self.responses.popleft()
             if signature == FAILURE:
-                self.reset()
+                self.acknowledge_failure()
             handler_name = "on_%s" % message_names[signature].lower()
             try:
                 handler = getattr(response, handler_name)
@@ -313,6 +343,12 @@ class Connection(object):
             else:
                 handler(*fields)
         raw.close()
+
+    def fetch_all(self):
+        while self.responses:
+            response = self.responses[0]
+            while not response.complete:
+                self.fetch()
 
     def close(self):
         """ Close the connection.
@@ -370,7 +406,7 @@ class PersonalCertificateStore(CertificateStore):
         return True
 
 
-def connect(host, port=None, ssl_context=None, **config):
+def connect(host_port, ssl_context=None, **config):
     """ Connect and perform a handshake and return a valid Connection object, assuming
     a protocol version can be agreed.
     """
@@ -378,18 +414,18 @@ def connect(host, port=None, ssl_context=None, **config):
     # Establish a connection to the host and port specified
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
-    port = port or DEFAULT_PORT
-    if __debug__: log_info("~~ [CONNECT] %s %d", host, port)
+    if __debug__: log_info("~~ [CONNECT] %s", host_port)
     try:
-        s = create_connection((host, port))
+        s = create_connection(host_port)
     except SocketError as error:
         if error.errno == 111 or error.errno == 61:
-            raise ProtocolError("Unable to connect to %s on port %d - is the server running?" % (host, port))
+            raise ProtocolError("Unable to connect to %s on port %d - is the server running?" % host_port)
         else:
             raise
 
     # Secure the connection if an SSL context has been provided
     if ssl_context and SSL_AVAILABLE:
+        host, port = host_port
         if __debug__: log_info("~~ [SECURE] %s", host)
         try:
             s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
