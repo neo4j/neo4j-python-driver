@@ -40,7 +40,7 @@ from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as 
 
 from .constants import DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, TRUST_DEFAULT, TRUST_ON_FIRST_USE
 from .compat import hex2
-from .exceptions import ProtocolError
+from .exceptions import ProtocolError, Unauthorized
 from .packstream import Packer, Unpacker
 from .ssl_compat import SSL_AVAILABLE, HAS_SNI, SSLError
 
@@ -230,7 +230,9 @@ class Connection(object):
         self.der_encoded_server_certificate = config.get("der_encoded_server_certificate")
 
         def on_failure(metadata):
-            raise ProtocolError(metadata.get("message", "INIT failed"))
+            code = metadata.get("code")
+            error = Unauthorized if code == "Neo.ClientError.Security.Unauthorized" else ProtocolError
+            raise error(metadata.get("message", "INIT failed"))
 
         response = Response(self)
         response.on_failure = on_failure

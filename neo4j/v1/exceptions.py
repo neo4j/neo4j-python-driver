@@ -24,6 +24,11 @@ class ProtocolError(Exception):
     """
 
 
+class Unauthorized(Exception):
+    """ Raised when an action is not permitted.
+    """
+
+
 class CypherError(Exception):
     """ Raised when the Cypher engine returns an error to the client.
     """
