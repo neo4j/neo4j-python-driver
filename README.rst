@@ -31,7 +31,6 @@ Example Usage
     result = session.run("MATCH (a:Person) RETURN a.name AS name")
     for record in result:
         print(record["name"])
-    result.close()
     session.close()
 
 
