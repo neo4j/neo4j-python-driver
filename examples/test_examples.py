@@ -176,9 +176,9 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::transaction-commit[]
-        tx = session.begin_transaction()
-        tx.run("CREATE (:Person {name: 'Guinevere'})")
-        tx.commit()
+        with session.begin_transaction() as tx:
+            tx.run("CREATE (:Person {name: 'Guinevere'})")
+            tx.success = True
         # end::transaction-commit[]
         result = session.run("MATCH (p:Person {name: 'Guinevere'}) RETURN count(p)")
         record = next(iter(result))
@@ -189,9 +189,9 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
         session = driver.session()
         # tag::transaction-rollback[]
-        tx = session.begin_transaction()
-        tx.run("CREATE (:Person {name: 'Merlin'})")
-        tx.rollback()
+        with session.begin_transaction() as tx:
+            tx.run("CREATE (:Person {name: 'Merlin'})")
+            tx.success = False
         # end::transaction-rollback[]
         result = session.run("MATCH (p:Person {name: 'Merlin'}) RETURN count(p)")
         record = next(iter(result))
