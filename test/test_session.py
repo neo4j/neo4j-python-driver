@@ -90,13 +90,17 @@ class DriverTestCase(ServerTestCase):
         assert session_1 is not session_2
 
     def test_fail_nicely_when_connecting_to_http_port(self):
-        driver = GraphDatabase.driver("bolt://localhost:7474", auth=auth_token, encrypted=False)
+        # The ProtocolError could be raised from either of the enclosed statements,
+        # depending on driver version. With discovery, the error occurs immediately
+        # on creation of the Driver instance; prior to that, it occurs only on
+        # session acquisition.
         with self.assertRaises(ProtocolError) as context:
+            driver = GraphDatabase.driver("bolt://localhost:7474", auth=auth_token, encrypted=False)
             driver.session()
 
-        assert str(context.exception) == "Server responded HTTP. Make sure you are not trying to connect to the http " \
-                                    "endpoint (HTTP defaults to port 7474 whereas BOLT defaults to port 7687)"
-
+        assert str(context.exception) == ("Server responded HTTP. Make sure you are not trying to connect to the "
+                                          "http endpoint (HTTP defaults to port 7474 whereas BOLT defaults to "
+                                          "port 7687)")
 
 
 class SecurityTestCase(ServerTestCase):
