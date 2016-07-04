@@ -27,10 +27,29 @@ Session API
 .. autoclass:: neo4j.v1.StatementResult
    :members:
 
-.. autoclass:: neo4j.v1.ResultSummary
+
+Encryption Settings
+-------------------
+.. py:attribute:: neo4j.v1.ENCRYPTION_OFF
+.. py:attribute:: neo4j.v1.ENCRYPTION_ON
+.. py:attribute:: neo4j.v1.ENCRYPTION_NON_LOCAL
+.. py:attribute:: neo4j.v1.ENCRYPTION_DEFAULT
+
+
+Trust Settings
+--------------
+.. py:attribute:: neo4j.v1.TRUST_ON_FIRST_USE
+.. py:attribute:: neo4j.v1.TRUST_SIGNED_CERTIFICATES
+.. py:attribute:: neo4j.v1.TRUST_DEFAULT
+
+
+Query Summary Details
+---------------------
+
+.. autoclass:: neo4j.v1.summary.ResultSummary
    :members:
 
-.. autoclass:: neo4j.v1.SummaryCounters
+.. autoclass:: neo4j.v1.summary.SummaryCounters
    :members:
 
 

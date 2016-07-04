@@ -28,10 +28,12 @@ instances that are in turn used for managing sessions.
 from __future__ import division
 
 from collections import deque
+import re
 
 from .bolt import connect, Response, RUN, PULL_ALL
 from .compat import integer, string, urlparse
-from .constants import DEFAULT_PORT, ENCRYPTED_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES
+from .constants import DEFAULT_PORT, ENCRYPTION_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES, ENCRYPTION_ON, \
+    ENCRYPTION_NON_LOCAL
 from .exceptions import CypherError, ProtocolError, ResultError
 from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 from .summary import ResultSummary
@@ -39,6 +41,8 @@ from .types import hydrated
 
 
 DEFAULT_MAX_POOL_SIZE = 50
+
+localhost = re.compile(r"^(localhost|127(\.\d+){3})$", re.IGNORECASE)
 
 
 class AuthToken(object):
@@ -70,7 +74,40 @@ class GraphDatabase(object):
 
 
 class Driver(object):
-    """ Accessor for a specific graph database resource.
+    """ A :class:`.Driver` is an accessor for a specific graph database
+    resource. It provides both a template for sessions and a container
+    for the session pool. All configuration and authentication settings
+    are collected by the `Driver` constructor; should different settings
+    be required, a new `Driver` instance should be created.
+
+    :param address: address of the remote server as either a `bolt` URI
+                    or a `host:port` string
+    :param config: configuration and authentication details (valid keys are listed below)
+
+        `auth`
+          An authentication token for the server, for example
+          ``basic_auth("neo4j", "password")``.
+
+        `der_encoded_server_certificate`
+          The server certificate in DER format, if required.
+
+        `encrypted`
+          Encryption level: one of :attr:`.ENCRYPTION_ON`, :attr:`.ENCRYPTION_OFF`
+          or :attr:`.ENCRYPTION_NON_LOCAL`. The default setting varies
+          depending on whether SSL is available or not. If it is,
+          :attr:`.ENCRYPTION_NON_LOCAL` is the default.
+
+        `max_pool_size`
+          The maximum number of sessions to keep idle in the session
+          pool.
+
+        `trust`
+          Trust level: one of :attr:`.TRUST_ON_FIRST_USE` (default) or
+          :attr:`.TRUST_SIGNED_CERTIFICATES`.
+
+        `user_agent`
+          A custom user agent string, if required.
+
     """
 
     def __init__(self, address, **config):
@@ -91,13 +128,14 @@ class Driver(object):
         self.config = config
         self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
         self.session_pool = deque()
-        try:
-            self.encrypted = encrypted = config["encrypted"]
-        except KeyError:
+        encrypted = config.get("encrypted", None)
+        if encrypted is None:
             _warn_about_insecure_default()
-            self.encrypted = encrypted = ENCRYPTED_DEFAULT
+            encrypted = ENCRYPTION_DEFAULT
+        self.encrypted = encrypted
         self.trust = trust = config.get("trust", TRUST_DEFAULT)
-        if encrypted:
+        if encrypted == ENCRYPTION_ON or \
+           encrypted == ENCRYPTION_NON_LOCAL and not localhost.match(host):
             if not SSL_AVAILABLE:
                 raise RuntimeError("Bolt over TLS is only available in Python 2.7.9+ and Python 3.3+")
             ssl_context = SSLContext(PROTOCOL_SSLv23)
