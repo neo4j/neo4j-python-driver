@@ -37,7 +37,7 @@ import subprocess
 import getopt
 
 UNITTEST_RUNNER = "coverage run -m unittest discover -vfs "
-BEHAVE_RUNNER="behave --tags=-db --tags=-tls --tags=-fixed_session_pool test/tck"
+BEHAVE_RUNNER="behave --format=progress --tags=-db --tags=-tls --tags=-fixed_session_pool test/tck"
 
 NEORUN_PATH = path.abspath('./neokit/neorun.py')
 NEO4J_HOME = path.abspath('./build/neo4jhome')
@@ -59,6 +59,7 @@ def runcommand(command):
 
 def runcommands(commands):
     if is_windows:
+        commands = ["\"" + comm + "\"" if " " in comm else comm for comm in commands]
         commands = ['powershell.exe'] + commands
     return run0(commands)
 
@@ -120,9 +121,9 @@ def main():
                 retcode = retcode or runpymodule(UNITTEST_RUNNER + "examples")
             elif opt == "--tck":
                 retcode = runpymodule('coverage report --show-missing') or \
-                          runcommands(["python", "-c", "\"from test.tck.configure_feature_files import *; set_up()\""]) or \
+                          runcommands(["python", "-c", "from test.tck.configure_feature_files import *; set_up()"]) or \
                           runpymodule(BEHAVE_RUNNER) or \
-                          runcommands(["python", "-c", "\"from test.tck.configure_feature_files import *; clean_up()\""])
+                          runcommands(["python", "-c", "from test.tck.configure_feature_files import *; clean_up()"])
 
             if retcode != 0:
                 break
