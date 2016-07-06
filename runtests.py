@@ -59,6 +59,7 @@ def runcommand(command):
 
 def runcommands(commands):
     if is_windows:
+        commands = ["\"" + comm + "\"" if " " in comm else comm for comm in commands]
         commands = ['powershell.exe'] + commands
     return run0(commands)
 
