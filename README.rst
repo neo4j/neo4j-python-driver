@@ -40,3 +40,9 @@ Command Line
 .. code:: bash
 
     python -m neo4j "CREATE (a:Person {name:'Alice'}) RETURN a, labels(a), a.name"
+
+
+Documentation
+=============
+
+For more information such as manual, driver API documentations, changelogs, please find them in the [wiki](https://github.com/neo4j/neo4j-python-driver/wiki) of this repo.
