@@ -4,6 +4,8 @@ __pycache__
 *.lprof
 *.class
 
+.cache/
+
 .idea
 htmlcov
 .coverage
