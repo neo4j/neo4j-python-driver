@@ -27,7 +27,7 @@ from mock import patch
 
 from neo4j.v1.constants import TRUST_ON_FIRST_USE
 from neo4j.v1.exceptions import CypherError, ProtocolError, ResultError
-from neo4j.v1.session import GraphDatabase, basic_auth, Record, SSL_AVAILABLE
+from neo4j.v1.session import GraphDatabase, basic_auth, custom_auth, Record, SSL_AVAILABLE
 from neo4j.v1.types import Node, Relationship, Path
 
 from test.util import ServerTestCase
@@ -97,6 +97,21 @@ class DriverTestCase(ServerTestCase):
         assert str(context.exception) == "Server responded HTTP. Make sure you are not trying to connect to the http " \
                                     "endpoint (HTTP defaults to port 7474 whereas BOLT defaults to port 7687)"
 
+    def test_can_create_custom_auth_token(self):
+        token = custom_auth("neo4j", "neo4j", "native", "basic")
+        driver = GraphDatabase.driver("bolt://localhost", auth=token)
+        session = driver.session()
+        result = session.run("RETURN 1").consume()
+        session.close()
+        assert result is not None
+
+    def test_can_create_custom_auth_token_with_additional_parameters(self):
+        token = custom_auth("neo4j", "neo4j", "native", "basic", {secret: 42})
+        driver = GraphDatabase.driver("bolt://localhost", auth=token)
+        session = driver.session()
+        result = session.run("RETURN 1").consume()
+        session.close()
+        assert result is not None
 
 
 class SecurityTestCase(ServerTestCase):
