@@ -47,7 +47,10 @@ class AuthToken(object):
     """ Container for auth information
     """
 
-    def __init__(self, scheme, principal, credentials, realm=None, parameters=None):
+    #: By default we should not send any realm
+    realm = None
+
+    def __init__(self, scheme, principal, credentials, realm=None, **parameters):
         self.scheme = scheme
         self.principal = principal
         self.credentials = credentials
@@ -523,7 +526,7 @@ def basic_auth(user, password, realm=None):
     return AuthToken("basic", user, password, realm)
 
 
-def custom_auth(principal, credentials, realm=None, scheme=None, parameters=None):
+def custom_auth(principal, credentials, realm, scheme, **parameters):
     """ Generate a basic auth token for a given user and password.
 
     :param principal: specifies who is being authenticated
@@ -533,7 +536,7 @@ def custom_auth(principal, credentials, realm=None, scheme=None, parameters=None
     :param parameters: parameters passed along to the authenticatin provider
     :return: auth token for use with :meth:`GraphDatabase.driver`
     """
-    return AuthToken(scheme, principal, credentials, realm, parameters)
+    return AuthToken(scheme, principal, credentials, realm, **parameters)
 
 
 def run(connection, statement, parameters=None):
