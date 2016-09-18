@@ -193,7 +193,8 @@ class StatementResult(object):
     #: Dictionary of parameters passed with the statement.
     parameters = None
 
-    def __init__(self, connection, run_response, pull_all_response):
+    def __init__(self, connection, run_response, pull_all_response,
+                 cypher_obj=None):
         super(StatementResult, self).__init__()
 
         # The Connection instance behind this result.
@@ -214,6 +215,9 @@ class StatementResult(object):
         # Flag to indicate whether the entire stream has been consumed
         # from the network (but not necessarily yielded).
         self._consumed = False
+
+        # The ORM Cypher instance that called session.run, if exists
+        self._cypher_obj = cypher_obj
 
         def on_header(metadata):
             # Called on receipt of the result header.
@@ -243,12 +247,20 @@ class StatementResult(object):
     def __iter__(self):
         while self._buffer:
             values = self._buffer.popleft()
-            yield Record(self.keys(), tuple(map(hydrated, values)))
+            entities = self._hydrate_entities(values)
+            yield Record(self.keys(), entities)
         while not self._consumed:
             self.connection.fetch()
             while self._buffer:
                 values = self._buffer.popleft()
-                yield Record(self.keys(), tuple(map(hydrated, values)))
+                entities = self._hydrate_entities(values)
+                yield Record(self.keys(), entities)
+
+    def _hydrate_entities(self, values):
+        return tuple(
+                hydrated(value, cypher_obj=self._cypher_obj)
+                for value in values
+        )
 
     def keys(self):
         """ Return the keys for the records.
@@ -291,12 +303,14 @@ class StatementResult(object):
         """
         if self._buffer:
             values = self._buffer[0]
-            return Record(self.keys(), tuple(map(hydrated, values)))
+            entities = self._hydrate_entities(values)
+            return Record(self.keys(), entities)
         while not self._buffer and not self._consumed:
             self.connection.fetch()
             if self._buffer:
                 values = self._buffer[0]
-                return Record(self.keys(), tuple(map(hydrated, values)))
+                entities = self._hydrate_entities(values)
+                return Record(self.keys(), entities)
         raise ResultError("End of stream")
 
 
@@ -324,7 +338,7 @@ class Session(object):
         """
         return self.connection.healthy
 
-    def run(self, statement, parameters=None):
+    def run(self, statement, parameters=None, cypher_obj=None):
         """ Run a parameterised Cypher statement.
 
         :param statement: Cypher statement to execute
@@ -335,7 +349,8 @@ class Session(object):
         if self.transaction:
             raise ProtocolError("Statements cannot be run directly on a session with an open transaction;"
                                 " either run from within the transaction or use a different session.")
-        return run(self.connection, statement, parameters)
+        return run(self.connection, statement, parameters,
+                   cypher_obj=cypher_obj)
 
     def close(self):
         """ Recycle this session through the driver it came from.
@@ -396,7 +411,7 @@ class Transaction(object):
             self.success = False
         self.close()
 
-    def run(self, statement, parameters=None):
+    def run(self, statement, parameters=None, cypher_obj=None):
         """ Run a Cypher statement within the context of this transaction.
 
         :param statement: Cypher statement
@@ -404,7 +419,8 @@ class Transaction(object):
         :return: result object
         """
         assert not self.closed
-        return run(self.connection, statement, parameters)
+        return run(self.connection, statement, parameters,
+                   cypher_obj=cypher_obj)
 
     def commit(self):
         """ Mark this transaction as successful and close in order to
@@ -520,7 +536,7 @@ def basic_auth(user, password):
     return AuthToken("basic", user, password)
 
 
-def run(connection, statement, parameters=None):
+def run(connection, statement, parameters=None, cypher_obj=None):
     """ Run a Cypher statement on a given connection.
 
     :param connection: connection to carry the request and response
@@ -544,7 +560,8 @@ def run(connection, statement, parameters=None):
 
     run_response = Response(connection)
     pull_all_response = Response(connection)
-    result = StatementResult(connection, run_response, pull_all_response)
+    result = StatementResult(connection, run_response, pull_all_response,
+                             cypher_obj=cypher_obj)
     result.statement = statement
     result.parameters = parameters
 

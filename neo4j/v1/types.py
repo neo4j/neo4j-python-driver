@@ -34,9 +34,9 @@ class Entity(object):
     id = None
     properties = None
 
-    def __init__(self, properties=None, **kwproperties):
-        properties = dict(properties or {}, **kwproperties)
-        self.properties = dict((k, v) for k, v in properties.items() if v is not None)
+    def __init__(self, properties=None, **kw_properties):
+        properties = dict(properties or {}, **kw_properties)
+        self.properties = properties
 
     def __eq__(self, other):
         try:
@@ -62,6 +62,21 @@ class Entity(object):
     def __iter__(self):
         return iter(self.properties)
 
+    @property
+    def props(self):
+        # TODO: deprecate "properties" as the decorated attribute
+        return self.properties
+
+    @property
+    def properties(self):
+        return self._properties
+
+    @properties.setter
+    def properties(self, properties:dict):
+        self._properties = {
+            k: v for k, v in properties.items() if v is not None
+        }
+
     def get(self, key, default=None):
         return self.properties.get(key, default)
 
@@ -81,13 +96,19 @@ class Node(Entity):
     labels = None
 
     @classmethod
-    def hydrate(cls, id_, labels, properties=None):
-        inst = cls(labels, properties)
+    def hydrate(cls, id_, labels, properties=None, cypher_obj=None, **kwargs):
+        if cypher_obj:
+            inst = cypher_obj.new_node(
+                    labels=labels,
+                    properties=properties,
+                    )
+        else:
+            inst = cls(labels, properties)
         inst.id = id_
         return inst
 
-    def __init__(self, labels=None, properties=None, **kwproperties):
-        super(Node, self).__init__(properties, **kwproperties)
+    def __init__(self, labels=None, properties=None, **kw_properties):
+        super(Node, self).__init__(properties, **kw_properties)
         self.labels = set(labels or set())
 
     def __repr__(self):
@@ -100,8 +121,8 @@ class BaseRelationship(Entity):
     """
     type = None
 
-    def __init__(self, type, properties=None, **kwproperties):
-        super(BaseRelationship, self).__init__(properties, **kwproperties)
+    def __init__(self, type, properties=None, **kw_properties):
+        super(BaseRelationship, self).__init__(properties, **kw_properties)
         self.type = type
 
 
@@ -112,15 +133,15 @@ class Relationship(BaseRelationship):
     end = None
 
     @classmethod
-    def hydrate(cls, id_, start, end, type, properties=None):
+    def hydrate(cls, id_, start, end, type, properties=None, **kwargs):
         inst = cls(start, end, type, properties)
         inst.id = id_
         return inst
 
-    def __init__(self, start, end, type, properties=None, **kwproperties):
+    def __init__(self, start, end, type, properties=None, **kw_properties):
         assert isinstance(start, int)
         assert isinstance(end, int)
-        super(Relationship, self).__init__(type, properties, **kwproperties)
+        super(Relationship, self).__init__(type, properties, **kw_properties)
         self.start = start
         self.end = end
 
@@ -139,13 +160,13 @@ class UnboundRelationship(BaseRelationship):
     """
 
     @classmethod
-    def hydrate(cls, id_, type, properties=None):
+    def hydrate(cls, id_, type, properties=None, **kwargs):
         inst = cls(type, properties)
         inst.id = id_
         return inst
 
-    def __init__(self, type, properties=None, **kwproperties):
-        super(UnboundRelationship, self).__init__(type, properties, **kwproperties)
+    def __init__(self, type, properties=None, **kw_properties):
+        super(UnboundRelationship, self).__init__(type, properties, **kw_properties)
 
     def __repr__(self):
         return "<UnboundRelationship id=%r type=%r properties=%r>" % \
@@ -164,7 +185,7 @@ class Path(object):
     relationships = None
 
     @classmethod
-    def hydrate(cls, nodes, rels, sequence):
+    def hydrate(cls, nodes, rels, sequence, **kwargs):
         assert len(nodes) >= 1
         assert len(sequence) % 2 == 0
         last_node = nodes[0]
@@ -226,7 +247,7 @@ hydration_functions = {
 }
 
 
-def hydrated(obj):
+def hydrated(obj, cypher_obj=None):
     """ Hydrate an object or a collection of nested objects by replacing
     structures with entity instances.
     """
@@ -239,10 +260,16 @@ def hydrated(obj):
             return obj
         else:
             # Otherwise pass the structural data to the appropriate hydration function
-            return hydration_function(*map(hydrated, args))
+            hydration_targets = [
+                    hydrated(arg, cypher_obj=cypher_obj) for arg in args
+                    ]
+            return hydration_function(*hydration_targets, cypher_obj=cypher_obj)
     elif isinstance(obj, list):
-        return list(map(hydrated, obj))
+        return [hydrated(arg, cypher_obj=cypher_obj) for arg in obj]
     elif isinstance(obj, dict):
-        return {key: hydrated(value) for key, value in obj.items()}
+        return {
+            key: hydrated(arg, cypher_obj=cypher_obj)
+            for key, arg in obj.items()
+            }
     else:
         return obj
