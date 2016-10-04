@@ -1,0 +1,9 @@
+!: AUTO INIT
+!: AUTO RESET
+
+C: RUN "CALL dbms.cluster.routing.getServers" {}
+   PULL_ALL
+S: FAILURE {"code": "Neo.ClientError.Procedure.ProcedureNotFound", "message": "Not a router"}
+   IGNORED
+C: ACK_FAILURE
+S: SUCCESS {}

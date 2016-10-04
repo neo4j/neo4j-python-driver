@@ -37,9 +37,10 @@ from os.path import dirname, isfile
 from select import select
 from socket import create_connection, SHUT_RDWR, error as SocketError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
+from threading import Lock
 
 from .constants import DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, TRUST_DEFAULT, TRUST_ON_FIRST_USE
-from .exceptions import ProtocolError, Unauthorized
+from .exceptions import ProtocolError, Unauthorized, ServiceUnavailable
 from .packstream import Packer, Unpacker
 from .ssl_compat import SSL_AVAILABLE, HAS_SNI, SSLError
 
@@ -83,6 +84,7 @@ log_error = log.error
 class BufferingSocket(object):
 
     def __init__(self, socket):
+        self.address = socket.getpeername()
         self.socket = socket
         self.buffer = bytearray()
 
@@ -95,7 +97,7 @@ class BufferingSocket(object):
             self.buffer[len(self.buffer):] = received
         else:
             if ready_to_read is not None:
-                raise ProtocolError("Server closed connection")
+                raise ServiceUnavailable("Failed to read from connection %r" % (self.address,))
 
     def read_message(self):
         message_data = bytearray()
@@ -126,6 +128,7 @@ class ChunkChannel(object):
 
     def __init__(self, sock):
         self.socket = sock
+        self.address = sock.getpeername()
         self.raw = BytesIO()
         self.output_buffer = []
         self.output_size = 0
@@ -201,9 +204,11 @@ class Response(object):
 
 
 class Connection(object):
-    """ Server connection through which all protocol messages
-    are sent and received. This class is designed for protocol
-    version 1.
+    """ Server connection for Bolt protocol v1.
+
+    A :class:`.Connection` should be constructed following a
+    successful Bolt handshake and takes the socket over which
+    the handshake was carried out.
 
     .. note:: logs at INFO level
     """
@@ -211,12 +216,14 @@ class Connection(object):
     def __init__(self, sock, **config):
         self.socket = sock
         self.buffering_socket = BufferingSocket(sock)
-        self.defunct = False
+        self.address = sock.getpeername()
         self.channel = ChunkChannel(sock)
         self.packer = Packer(self.channel)
         self.unpacker = Unpacker()
         self.responses = deque()
+        self.in_use = False
         self.closed = False
+        self.defunct = False
 
         # Determine the user agent and ensure it is a Unicode value
         user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
@@ -235,7 +242,8 @@ class Connection(object):
 
         def on_failure(metadata):
             code = metadata.get("code")
-            error = Unauthorized if code == "Neo.ClientError.Security.Unauthorized" else ProtocolError
+            error = (Unauthorized if code == "Neo.ClientError.Security.Unauthorized" else
+                     ServiceUnavailable)
             raise error(metadata.get("message", "INIT failed"))
 
         response = Response(self)
@@ -248,13 +256,6 @@ class Connection(object):
 
     def __del__(self):
         self.close()
-
-    @property
-    def healthy(self):
-        """ Return ``True`` if this connection is healthy, ``False`` if
-        unhealthy and ``None`` if closed.
-        """
-        return None if self.closed else not self.defunct
 
     def append(self, signature, fields=(), response=None):
         """ Add a message to the outgoing queue.
@@ -310,18 +311,18 @@ class Connection(object):
         """ Send all queued messages to the server.
         """
         if self.closed:
-            raise ProtocolError("Cannot write to a closed connection")
+            raise ServiceUnavailable("Failed to write to closed connection %r" % (self.address,))
         if self.defunct:
-            raise ProtocolError("Cannot write to a defunct connection")
+            raise ServiceUnavailable("Failed to write to defunct connection %r" % (self.address,))
         self.channel.send()
 
     def fetch(self):
         """ Receive exactly one message from the server.
         """
         if self.closed:
-            raise ProtocolError("Cannot read from a closed connection")
+            raise ServiceUnavailable("Failed to read from closed connection %r" % (self.address,))
         if self.defunct:
-            raise ProtocolError("Cannot read from a defunct connection")
+            raise ServiceUnavailable("Failed to read from defunct connection %r" % (self.address,))
         try:
             message_data = self.buffering_socket.read_message()
         except ProtocolError:
@@ -370,6 +371,57 @@ class Connection(object):
             self.closed = True
 
 
+class ConnectionPool(object):
+    """ A collection of connections to one or more server addresses.
+    """
+
+    def __init__(self, connector):
+        self.connector = connector
+        self.connections = {}
+        self.lock = Lock()
+
+    def acquire(self, address):
+        """ Acquire a connection to a given address from the pool.
+        This method is thread safe.
+        """
+        with self.lock:
+            try:
+                connections = self.connections[address]
+            except KeyError:
+                connections = self.connections[address] = deque()
+            for connection in list(connections):
+                if connection.closed or connection.defunct:
+                    connections.remove(connection)
+                    continue
+                if not connection.in_use:
+                    connection.in_use = True
+                    return connection
+            connection = self.connector(address)
+            connection.in_use = True
+            connections.append(connection)
+            return connection
+
+    def release(self, connection):
+        """ Release a connection back into the pool.
+        This method is thread safe.
+        """
+        with self.lock:
+            connection.in_use = False
+
+    def close(self):
+        """ Close all connections and empty the pool.
+        This method is thread safe.
+        """
+        with self.lock:
+            for _, connections in self.connections.items():
+                for connection in connections:
+                    try:
+                        connection.close()
+                    except IOError:
+                        pass
+            self.connections.clear()
+
+
 class CertificateStore(object):
 
     def match_or_trust(self, host, der_encoded_certificate):
@@ -416,7 +468,7 @@ class PersonalCertificateStore(CertificateStore):
         return True
 
 
-def connect(host_port, ssl_context=None, **config):
+def connect(address, ssl_context=None, **config):
     """ Connect and perform a handshake and return a valid Connection object, assuming
     a protocol version can be agreed.
     """
@@ -424,36 +476,38 @@ def connect(host_port, ssl_context=None, **config):
     # Establish a connection to the host and port specified
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
-    if __debug__: log_info("~~ [CONNECT] %s", host_port)
+    if __debug__: log_info("~~ [CONNECT] %s", address)
     try:
-        s = create_connection(host_port)
+        s = create_connection(address)
     except SocketError as error:
         if error.errno == 111 or error.errno == 61 or error.errno == 10061:
-            raise ProtocolError("Unable to connect to %s on port %d - is the server running?" % host_port)
+            raise ServiceUnavailable("Failed to establish connection to %r" % (address,))
         else:
             raise
 
     # Secure the connection if an SSL context has been provided
     if ssl_context and SSL_AVAILABLE:
-        host, port = host_port
+        host, port = address
         if __debug__: log_info("~~ [SECURE] %s", host)
         try:
             s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
         except SSLError as cause:
-            error = ProtocolError("Cannot establish secure connection; %s" % cause.args[1])
+            error = ServiceUnavailable("Failed to establish secure "
+                                       "connection to %r" % cause.args[1])
             error.__cause__ = cause
             raise error
         else:
             # Check that the server provides a certificate
             der_encoded_server_certificate = s.getpeercert(binary_form=True)
             if der_encoded_server_certificate is None:
-                raise ProtocolError("When using a secure socket, the server should always provide a certificate")
+                raise ProtocolError("When using a secure socket, the server should always "
+                                    "provide a certificate")
             trust = config.get("trust", TRUST_DEFAULT)
             if trust == TRUST_ON_FIRST_USE:
                 store = PersonalCertificateStore()
                 if not store.match_or_trust(host, der_encoded_server_certificate):
-                    raise ProtocolError("Server certificate does not match known certificate for %r; check "
-                                        "details in file %r" % (host, KNOWN_HOSTS))
+                    raise ProtocolError("Server certificate does not match known certificate "
+                                        "for %r; check details in file %r" % (host, KNOWN_HOSTS))
     else:
         der_encoded_server_certificate = None
 
@@ -475,7 +529,7 @@ def connect(host_port, ssl_context=None, **config):
         # If no data is returned after a successful select
         # response, the server has closed the connection
         log_error("S: [CLOSE]")
-        raise ProtocolError("Server closed connection without responding to handshake")
+        raise ProtocolError("Connection to %r closed without handshake response" % (address,))
     if data_size == 4:
         if __debug__: log_debug("S: b%r", data)
     else:
@@ -490,10 +544,10 @@ def connect(host_port, ssl_context=None, **config):
         s.close()
     elif agreed_version == 1:
         return Connection(s, der_encoded_server_certificate=der_encoded_server_certificate, **config)
-    elif agreed_version == 1213486160:
+    elif agreed_version == 0x48545450:
         log_error("S: [CLOSE]")
-        raise ProtocolError("Server responded HTTP. Make sure you are not trying to connect to the http endpoint " +
-                            "(HTTP defaults to port 7474 whereas BOLT defaults to port 7687)")
+        raise ServiceUnavailable("Cannot to connect to Bolt service on %r "
+                                 "(looks like HTTP)" % (address,))
     else:
         log_error("S: [CLOSE]")
         raise ProtocolError("Unknown Bolt protocol version: %d", agreed_version)

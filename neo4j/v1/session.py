@@ -29,18 +29,26 @@ from __future__ import division
 
 from collections import deque
 import re
+from threading import Lock
+try:
+    from time import monotonic as clock
+except ImportError:
+    from time import clock
+from warnings import warn
 
-from .bolt import connect, Response, RUN, PULL_ALL
+from neo4j.util import RoundRobinSet
+
+from .bolt import connect, Response, RUN, PULL_ALL, ConnectionPool
 from .compat import integer, string, urlparse
-from .constants import DEFAULT_PORT, ENCRYPTION_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES, ENCRYPTION_ON, \
-    ENCRYPTION_NON_LOCAL
-from .exceptions import CypherError, ProtocolError, ResultError
+from .constants import DEFAULT_PORT, ENCRYPTION_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES, \
+    TRUST_ON_FIRST_USE, READ_ACCESS, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES, \
+    TRUST_ALL_CERTIFICATES, TRUST_CUSTOM_CA_SIGNED_CERTIFICATES
+from .exceptions import CypherError, ProtocolError, ResultError, TransactionError, \
+    ServiceUnavailable, SessionExpired
 from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 from .summary import ResultSummary
 from .types import hydrated
 
-
-DEFAULT_MAX_POOL_SIZE = 50
 
 localhost = re.compile(r"^(localhost|127(\.\d+){3})$", re.IGNORECASE)
 
@@ -62,243 +70,229 @@ class GraphDatabase(object):
     """
 
     @staticmethod
-    def driver(url, **config):
+    def driver(uri, **config):
         """ Acquire a :class:`.Driver` instance for the given URL and
         configuration:
 
             >>> from neo4j.v1 import GraphDatabase
             >>> driver = GraphDatabase.driver("bolt://localhost")
 
+        :param uri: URI for a graph database
+        :param config: configuration and authentication details (valid keys are listed below)
+
+            `auth`
+              An authentication token for the server, for example
+              ``basic_auth("neo4j", "password")``.
+
+            `der_encoded_server_certificate`
+              The server certificate in DER format, if required.
+
+            `encrypted`
+              Encryption level: one of :attr:`.ENCRYPTION_ON`, :attr:`.ENCRYPTION_OFF`
+              or :attr:`.ENCRYPTION_NON_LOCAL`. The default setting varies
+              depending on whether SSL is available or not. If it is,
+              :attr:`.ENCRYPTION_NON_LOCAL` is the default.
+
+            `trust`
+              Trust level: one of :attr:`.TRUST_ON_FIRST_USE` (default) or
+              :attr:`.TRUST_SIGNED_CERTIFICATES`.
+
+            `user_agent`
+              A custom user agent string, if required.
+
         """
-        return Driver(url, **config)
+        parsed = urlparse(uri)
+        if parsed.scheme == "bolt":
+            return DirectDriver((parsed.hostname, parsed.port or DEFAULT_PORT), **config)
+        elif parsed.scheme == "bolt+routing":
+            return RoutingDriver((parsed.hostname, parsed.port or DEFAULT_PORT), **config)
+        else:
+            raise ProtocolError("URI scheme %r not supported" % parsed.scheme)
+
+
+class SecurityPlan(object):
+
+    @classmethod
+    def build(cls, address, **config):
+        encrypted = config.get("encrypted", None)
+        if encrypted is None:
+            encrypted = _encryption_default()
+        trust = config.get("trust", TRUST_DEFAULT)
+        if encrypted:
+            if not SSL_AVAILABLE:
+                raise RuntimeError("Bolt over TLS is only available in Python 2.7.9+ and "
+                                   "Python 3.3+")
+            ssl_context = SSLContext(PROTOCOL_SSLv23)
+            ssl_context.options |= OP_NO_SSLv2
+            if trust == TRUST_ON_FIRST_USE:
+                warn("TRUST_ON_FIRST_USE is deprecated, please use "
+                     "TRUST_ALL_CERTIFICATES instead")
+            elif trust == TRUST_SIGNED_CERTIFICATES:
+                warn("TRUST_SIGNED_CERTIFICATES is deprecated, please use "
+                     "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES instead")
+                ssl_context.verify_mode = CERT_REQUIRED
+            elif trust == TRUST_ALL_CERTIFICATES:
+                pass
+            elif trust == TRUST_CUSTOM_CA_SIGNED_CERTIFICATES:
+                raise NotImplementedError("Custom CA support is not implemented")
+            elif trust == TRUST_SYSTEM_CA_SIGNED_CERTIFICATES:
+                ssl_context.verify_mode = CERT_REQUIRED
+            else:
+                raise ValueError("Unknown trust mode")
+            ssl_context.set_default_verify_paths()
+        else:
+            ssl_context = None
+        return cls(encrypted, ssl_context, trust != TRUST_ON_FIRST_USE)
+
+    def __init__(self, requires_encryption, ssl_context, routing_compatible):
+        self.encrypted = bool(requires_encryption)
+        self.ssl_context = ssl_context
+        self.routing_compatible = routing_compatible
 
 
 class Driver(object):
     """ A :class:`.Driver` is an accessor for a specific graph database
-    resource. It provides both a template for sessions and a container
-    for the session pool. All configuration and authentication settings
-    are collected by the `Driver` constructor; should different settings
-    be required, a new `Driver` instance should be created.
+    resource. It is thread-safe, acts as a template for sessions and hosts
+    a connection pool.
 
-    :param address: address of the remote server as either a `bolt` URI
-                    or a `host:port` string
-    :param config: configuration and authentication details (valid keys are listed below)
+    All configuration and authentication settings are held immutably by the
+    `Driver`. Should different settings be required, a new `Driver` instance
+    should be created via the :meth:`.GraphDatabase.driver` method.
+    """
 
-        `auth`
-          An authentication token for the server, for example
-          ``basic_auth("neo4j", "password")``.
+    pool = None
 
-        `der_encoded_server_certificate`
-          The server certificate in DER format, if required.
+    def __init__(self, connector):
+        self.pool = ConnectionPool(connector)
 
-        `encrypted`
-          Encryption level: one of :attr:`.ENCRYPTION_ON`, :attr:`.ENCRYPTION_OFF`
-          or :attr:`.ENCRYPTION_NON_LOCAL`. The default setting varies
-          depending on whether SSL is available or not. If it is,
-          :attr:`.ENCRYPTION_NON_LOCAL` is the default.
+    def __del__(self):
+        self.close()
 
-        `max_pool_size`
-          The maximum number of sessions to keep idle in the session
-          pool.
+    def __enter__(self):
+        return self
 
-        `trust`
-          Trust level: one of :attr:`.TRUST_ON_FIRST_USE` (default) or
-          :attr:`.TRUST_SIGNED_CERTIFICATES`.
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
-        `user_agent`
-          A custom user agent string, if required.
+    def session(self, access_mode=None):
+        """ Create a new session using a connection from the driver connection
+        pool. Session creation is a lightweight operation and sessions are
+        not thread safe, therefore a session should generally be short-lived
+        within a single thread.
+        """
+        pass
 
+    def close(self):
+        if self.pool:
+            self.pool.close()
+
+
+class DirectDriver(Driver):
+    """ A :class:`.DirectDriver` is created from a `bolt` URI and addresses
+    a single database instance.
     """
 
     def __init__(self, address, **config):
-        if "://" in address:
-            parsed = urlparse(address)
-            if parsed.scheme == "bolt":
-                host = parsed.hostname
-                port = parsed.port or DEFAULT_PORT
-            else:
-                raise ProtocolError("Only the 'bolt' URI scheme is supported [%s]" % address)
-        elif ":" in address:
-            host, port = address.split(":")
-            port = int(port)
-        else:
-            host = address
-            port = DEFAULT_PORT
-        self.address = (host, port)
-        self.config = config
-        self.max_pool_size = config.get("max_pool_size", DEFAULT_MAX_POOL_SIZE)
-        self.session_pool = deque()
-        encrypted = config.get("encrypted", None)
-        if encrypted is None:
-            _warn_about_insecure_default()
-            encrypted = ENCRYPTION_DEFAULT
-        self.encrypted = encrypted
-        self.trust = trust = config.get("trust", TRUST_DEFAULT)
-        if encrypted == ENCRYPTION_ON or \
-           encrypted == ENCRYPTION_NON_LOCAL and not localhost.match(host):
-            if not SSL_AVAILABLE:
-                raise RuntimeError("Bolt over TLS is only available in Python 2.7.9+ and Python 3.3+")
-            ssl_context = SSLContext(PROTOCOL_SSLv23)
-            ssl_context.options |= OP_NO_SSLv2
-            if trust >= TRUST_SIGNED_CERTIFICATES:
-                ssl_context.verify_mode = CERT_REQUIRED
-            ssl_context.set_default_verify_paths()
-            self.ssl_context = ssl_context
-        else:
-            self.ssl_context = None
+        self.address = address
+        self.security_plan = security_plan = SecurityPlan.build(address, **config)
+        self.encrypted = security_plan.encrypted
+        Driver.__init__(self, lambda a: connect(a, security_plan.ssl_context, **config))
 
-    def session(self):
-        """ Create a new session based on the graph database details
-        specified within this driver:
-
-            >>> from neo4j.v1 import GraphDatabase
-            >>> driver = GraphDatabase.driver("bolt://localhost")
-            >>> session = driver.session()
-        """
-        session = None
-        connected = False
-        while not connected:
-            try:
-                session = self.session_pool.pop()
-            except IndexError:
-                connection = connect(self.address, self.ssl_context, **self.config)
-                session = Session(self, connection)
-                connected = True
-            else:
-                if session.healthy:
-                    connected = session.healthy
-        return session
-
-    def recycle(self, session):
-        """ Accept a session for recycling, if healthy.
-
-        :param session:
-        :return:
-        """
-        pool = self.session_pool
-        for s in list(pool):  # freezing the pool into a list for iteration allows pool mutation inside the loop
-            if not s.healthy:
-                pool.remove(s)
-        if session.healthy and len(pool) < self.max_pool_size and session not in pool:
-            pool.appendleft(session)
+    def session(self, access_mode=None):
+        return Session(self, self.pool.acquire(self.address))
 
 
-class StatementResult(object):
-    """ A handler for the result of Cypher statement execution.
+class ConnectionRouter(object):
+    """ The `Router` class contains logic for discovering servers within a
+    cluster that supports routing.
     """
 
-    #: The statement text that was executed to produce this result.
-    statement = None
+    timer = clock
 
-    #: Dictionary of parameters passed with the statement.
-    parameters = None
+    def __init__(self, pool, *routers):
+        self.pool = pool
+        self.lock = Lock()
+        self.expiry_time = None
+        self.routers = RoundRobinSet(routers)
+        self.readers = RoundRobinSet()
+        self.writers = RoundRobinSet()
 
-    def __init__(self, connection, run_response, pull_all_response):
-        super(StatementResult, self).__init__()
-
-        # The Connection instance behind this result.
-        self.connection = connection
-
-        # The keys for the records in the result stream. These are
-        # lazily populated on request.
-        self._keys = None
-
-        # Buffer for incoming records to be queued before yielding. If
-        # the result is used immediately, this buffer will be ignored.
-        self._buffer = deque()
-
-        # The result summary (populated after the records have been
-        # fully consumed).
-        self._summary = None
-
-        # Flag to indicate whether the entire stream has been consumed
-        # from the network (but not necessarily yielded).
-        self._consumed = False
-
-        def on_header(metadata):
-            # Called on receipt of the result header.
-            self._keys = metadata["fields"]
-
-        def on_record(values):
-            # Called on receipt of each result record.
-            self._buffer.append(values)
-
-        def on_footer(metadata):
-            # Called on receipt of the result footer.
-            self._summary = ResultSummary(self.statement, self.parameters, **metadata)
-            self._consumed = True
-
-        def on_failure(metadata):
-            # Called on execution failure.
-            self.connection.acknowledge_failure()
-            self._consumed = True
-            raise CypherError(metadata)
-
-        run_response.on_success = on_header
-        run_response.on_failure = on_failure
-
-        pull_all_response.on_record = on_record
-        pull_all_response.on_success = on_footer
-        pull_all_response.on_failure = on_failure
-
-    def __iter__(self):
-        while self._buffer:
-            values = self._buffer.popleft()
-            yield Record(self.keys(), tuple(map(hydrated, values)))
-        while not self._consumed:
-            self.connection.fetch()
-            while self._buffer:
-                values = self._buffer.popleft()
-                yield Record(self.keys(), tuple(map(hydrated, values)))
-
-    def keys(self):
-        """ Return the keys for the records.
+    def stale(self):
+        """ Indicator for whether routing information is out of date or
+        incomplete.
         """
-        # Fetch messages until we have the header or a failure
-        while self._keys is None and not self._consumed:
-            self.connection.fetch()
-        return tuple(self._keys)
+        expired = self.expiry_time is None or self.expiry_time <= self.timer()
+        return expired or len(self.routers) <= 1 or not self.readers or not self.writers
 
-    def buffer(self):
-        if self.connection and not self.connection.closed:
-            while not self._consumed:
-                self.connection.fetch()
-            self.connection = None
-
-    def consume(self):
-        """ Consume the remainder of this result and return the
-        summary.
+    def discover(self):
+        """ Perform cluster member discovery.
         """
-        if self.connection and not self.connection.closed:
-            list(self)
-            self.connection = None
-        return self._summary
+        with self.lock:
+            if not self.routers:
+                raise ServiceUnavailable("No routers available")
+            for router in list(self.routers):
+                connection = self.pool.acquire(router)
+                with Session(self, connection) as session:
+                    try:
+                        record = session.run("CALL dbms.cluster.routing.getServers").single()
+                    except CypherError as error:
+                        if error.code == "Neo.ClientError.Procedure.ProcedureNotFound":
+                            raise ServiceUnavailable("Server %r does not support "
+                                                     "routing" % (router,))
+                        raise
+                    except ResultError:
+                        raise ServiceUnavailable("Server %r returned no record from "
+                                                 "discovery procedure" % (router,))
+                    else:
+                        new_expiry_time = self.timer() + record["ttl"]
+                        servers = record["servers"]
+                        new_routers = [s["addresses"] for s in servers if s["role"] == "ROUTE"][0]
+                        new_readers = [s["addresses"] for s in servers if s["role"] == "READ"][0]
+                        new_writers = [s["addresses"] for s in servers if s["role"] == "WRITE"][0]
+                        if new_routers and new_readers and new_writers:
+                            self.expiry_time = new_expiry_time
+                            self.routers.replace(map(parse_address, new_routers))
+                            self.readers.replace(map(parse_address, new_readers))
+                            self.writers.replace(map(parse_address, new_writers))
+                            return router
+            raise ServiceUnavailable("Unable to establish routing information")
 
-    def single(self):
-        """ Return the next record, failing if none or more than one remain.
+    def acquire_read_connection(self):
+        """ Acquire a connection to a read server.
         """
-        records = list(self)
-        num_records = len(records)
-        if num_records == 0:
-            raise ResultError("Cannot retrieve a single record, because this result is empty.")
-        elif num_records != 1:
-            raise ResultError("Expected a result with a single record, but this result contains at least one more.")
+        if self.stale():
+            self.discover()
+        return self.pool.acquire(next(self.readers))
+
+    def acquire_write_connection(self):
+        """ Acquire a connection to a write server.
+        """
+        if self.stale():
+            self.discover()
+        return self.pool.acquire(next(self.writers))
+
+
+class RoutingDriver(Driver):
+    """ A :class:`.RoutingDriver` is created from a `bolt+routing` URI.
+    """
+
+    def __init__(self, address, **config):
+        self.security_plan = security_plan = SecurityPlan.build(address, **config)
+        self.encrypted = security_plan.encrypted
+        if not security_plan.routing_compatible:
+            # this error message is case-specific as there is only one incompatible
+            # scenario right now
+            raise ValueError("TRUST_ON_FIRST_USE is not compatible with routing")
+        Driver.__init__(self, lambda a: connect(a, security_plan.ssl_context, **config))
+        self.router = ConnectionRouter(self.pool, address)
+        self.router.discover()
+
+    def session(self, access_mode=None):
+        if access_mode == READ_ACCESS:
+            connection = self.router.acquire_read_connection()
         else:
-            return records[0]
-
-    def peek(self):
-        """ Return the next record without advancing the cursor. Fails
-        if no records remain.
-        """
-        if self._buffer:
-            values = self._buffer[0]
-            return Record(self.keys(), tuple(map(hydrated, values)))
-        while not self._buffer and not self._consumed:
-            self.connection.fetch()
-            if self._buffer:
-                values = self._buffer[0]
-                return Record(self.keys(), tuple(map(hydrated, values)))
-        raise ResultError("End of stream")
+            connection = self.router.acquire_write_connection()
+        return Session(self, connection, access_mode)
 
 
 class Session(object):
@@ -307,10 +301,15 @@ class Session(object):
     method.
     """
 
-    def __init__(self, driver, connection):
+    transaction = None
+
+    def __init__(self, driver, connection, access_mode=None):
         self.driver = driver
         self.connection = connection
-        self.transaction = None
+        self.access_mode = access_mode
+
+    def __del__(self):
+        self.close()
 
     def __enter__(self):
         return self
@@ -318,34 +317,56 @@ class Session(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    @property
-    def healthy(self):
-        """ Return ``True`` if this session is healthy, ``False`` if
-        unhealthy and ``None`` if closed.
-        """
-        return self.connection.healthy
-
-    def run(self, statement, parameters=None):
-        """ Run a parameterised Cypher statement.
+    def run(self, statement, parameters=None, **kwparameters):
+        """ Run a parameterised Cypher statement. If an explicit transaction
+        has been created, the statement will be executed within that
+        transactional context. Otherwise, this will take place within an
+        auto-commit transaction.
 
         :param statement: Cypher statement to execute
         :param parameters: dictionary of parameters
         :return: Cypher result
         :rtype: :class:`.StatementResult`
         """
-        if self.transaction:
-            raise ProtocolError("Statements cannot be run directly on a session with an open transaction;"
-                                " either run from within the transaction or use a different session.")
-        return run(self.connection, statement, parameters)
+        statement = _norm_statement(statement)
+        parameters = _norm_parameters(parameters, **kwparameters)
+
+        run_response = Response(self.connection)
+        pull_all_response = Response(self.connection)
+        result = StatementResult(self, run_response, pull_all_response)
+        result.statement = statement
+        result.parameters = parameters
+
+        self.connection.append(RUN, (statement, parameters), response=run_response)
+        self.connection.append(PULL_ALL, response=pull_all_response)
+        self.connection.send()
+
+        return result
+
+    def fetch(self):
+        try:
+            return self.connection.fetch()
+        except ServiceUnavailable as cause:
+            self.connection.in_use = False
+            self.connection = None
+            if self.access_mode:
+                exception = SessionExpired(self, "Session %r is no longer valid for "
+                                           "%r work" % (self, self.access_mode))
+                exception.__cause__ = cause
+                raise exception
+            else:
+                raise
 
     def close(self):
-        """ Recycle this session through the driver it came from.
+        """ Close the session.
         """
-        if self.connection and not self.connection.closed:
-            self.connection.fetch_all()
         if self.transaction:
             self.transaction.close()
-        self.driver.recycle(self)
+        if self.connection:
+            if not self.connection.closed:
+                self.connection.fetch_all()
+            self.connection.in_use = False
+            self.connection = None
 
     def begin_transaction(self):
         """ Create a new :class:`.Transaction` within this session.
@@ -353,14 +374,20 @@ class Session(object):
         :return: new :class:`.Transaction` instance.
         """
         if self.transaction:
-            raise ProtocolError("You cannot begin a transaction on a session with an open transaction;"
-                                " either run from within the transaction or use a different session.")
+            raise TransactionError("Explicit transaction already open")
 
         def clear_transaction():
             self.transaction = None
 
-        self.transaction = Transaction(self.connection, on_close=clear_transaction)
+        self.run("BEGIN")
+        self.transaction = Transaction(self, on_close=clear_transaction)
         return self.transaction
+
+    def commit_transaction(self):
+        self.run("COMMIT")
+
+    def rollback_transaction(self):
+        self.run("ROLLBACK")
 
 
 class Transaction(object):
@@ -384,10 +411,9 @@ class Transaction(object):
     #: with commit or rollback.
     closed = False
 
-    def __init__(self, connection, on_close):
-        self.connection = connection
+    def __init__(self, session, on_close):
+        self.session = session
         self.on_close = on_close
-        run(self.connection, "BEGIN")
 
     def __enter__(self):
         return self
@@ -397,7 +423,7 @@ class Transaction(object):
             self.success = False
         self.close()
 
-    def run(self, statement, parameters=None):
+    def run(self, statement, parameters=None, **kwparameters):
         """ Run a Cypher statement within the context of this transaction.
 
         :param statement: Cypher statement
@@ -405,7 +431,7 @@ class Transaction(object):
         :return: result object
         """
         assert not self.closed
-        return run(self.connection, statement, parameters)
+        return self.session.run(statement, parameters, **kwparameters)
 
     def commit(self):
         """ Mark this transaction as successful and close in order to
@@ -426,11 +452,138 @@ class Transaction(object):
         """
         assert not self.closed
         if self.success:
-            run(self.connection, "COMMIT")
+            self.session.commit_transaction()
         else:
-            run(self.connection, "ROLLBACK")
+            self.session.rollback_transaction()
         self.closed = True
         self.on_close()
+
+
+class StatementResult(object):
+    """ A handler for the result of Cypher statement execution.
+    """
+
+    #: The statement text that was executed to produce this result.
+    statement = None
+
+    #: Dictionary of parameters passed with the statement.
+    parameters = None
+
+    def __init__(self, session, run_response, pull_all_response):
+        super(StatementResult, self).__init__()
+
+        # The Session behind this result. When all data has been
+        # received, this is set to :const:`None` and can therefore
+        # be used as a "consumed" indicator.
+        self.session = session
+
+        # The keys for the records in the result stream. These are
+        # lazily populated on request.
+        self._keys = None
+
+        # Buffer for incoming records to be queued before yielding. If
+        # the result is used immediately, this buffer will be ignored.
+        self._buffer = deque()
+
+        # The result summary (populated after the records have been
+        # fully consumed).
+        self._summary = None
+
+        def on_header(metadata):
+            # Called on receipt of the result header.
+            self._keys = metadata["fields"]
+
+        def on_record(values):
+            # Called on receipt of each result record.
+            self._buffer.append(values)
+
+        def on_footer(metadata):
+            # Called on receipt of the result footer.
+            self._summary = ResultSummary(self.statement, self.parameters, **metadata)
+            self.session = None
+
+        def on_failure(metadata):
+            # Called on execution failure.
+            self.session.connection.acknowledge_failure()
+            self.session = None
+            raise CypherError(metadata)
+
+        run_response.on_success = on_header
+        run_response.on_failure = on_failure
+
+        pull_all_response.on_record = on_record
+        pull_all_response.on_success = on_footer
+        pull_all_response.on_failure = on_failure
+
+    def __iter__(self):
+        while self._buffer:
+            values = self._buffer.popleft()
+            yield Record(self.keys(), tuple(map(hydrated, values)))
+        while self.online():
+            self.session.fetch()
+            while self._buffer:
+                values = self._buffer.popleft()
+                yield Record(self.keys(), tuple(map(hydrated, values)))
+
+    def online(self):
+        """ True if this result is still attached to an active Session.
+        """
+        return self.session and not self.session.connection.closed
+
+    def keys(self):
+        """ Return the keys for the records.
+        """
+        # Fetch messages until we have the header or a failure
+        while self._keys is None and self.online():
+            self.session.fetch()
+        return tuple(self._keys)
+
+    def buffer(self):
+        """ Fetch the remainder of the result from the network and buffer
+        it for future consumption.
+        """
+        while self.online():
+            self.session.fetch()
+
+    def consume(self):
+        """ Consume the remainder of this result and return the summary.
+        """
+        if self.online():
+            list(self)
+        return self._summary
+
+    def summary(self):
+        """ Return the summary, buffering any remaining records.
+        """
+        self.buffer()
+        return self._summary
+
+    def single(self):
+        """ Return the next record, failing if none or more than one remain.
+        """
+        records = list(self)
+        num_records = len(records)
+        if num_records == 0:
+            raise ResultError("Cannot retrieve a single record, because this result is empty.")
+        elif num_records != 1:
+            raise ResultError("Expected a result with a single record, but this result contains "
+                              "at least one more.")
+        else:
+            return records[0]
+
+    def peek(self):
+        """ Return the next record without advancing the cursor. Fails
+        if no records remain.
+        """
+        if self._buffer:
+            values = self._buffer[0]
+            return Record(self.keys(), tuple(map(hydrated, values)))
+        while not self._buffer and self.online():
+            self.session.fetch()
+            if self._buffer:
+                values = self._buffer[0]
+                return Record(self.keys(), tuple(map(hydrated, values)))
+        raise ResultError("End of stream")
 
 
 class Record(object):
@@ -521,48 +674,40 @@ def basic_auth(user, password):
     return AuthToken("basic", user, password)
 
 
-def run(connection, statement, parameters=None):
-    """ Run a Cypher statement on a given connection.
-
-    :param connection: connection to carry the request and response
-    :param statement: Cypher statement
-    :param parameters: optional dictionary of parameters
-    :return: statement result
+def parse_address(address):
+    """ Convert an address string to a tuple.
     """
-    # Ensure the statement is a Unicode value
-    if isinstance(statement, bytes):
-        statement = statement.decode("UTF-8")
-
-    params = {}
-    for key, value in (parameters or {}).items():
-        if isinstance(key, bytes):
-            key = key.decode("UTF-8")
-        if isinstance(value, bytes):
-            params[key] = value.decode("UTF-8")
-        else:
-            params[key] = value
-    parameters = params
-
-    run_response = Response(connection)
-    pull_all_response = Response(connection)
-    result = StatementResult(connection, run_response, pull_all_response)
-    result.statement = statement
-    result.parameters = parameters
-
-    connection.append(RUN, (statement, parameters), response=run_response)
-    connection.append(PULL_ALL, response=pull_all_response)
-    connection.send()
-
-    return result
+    host, _, port = address.partition(":")
+    return host, int(port)
 
 
 _warned_about_insecure_default = False
 
 
-def _warn_about_insecure_default():
+def _encryption_default():
     global _warned_about_insecure_default
     if not SSL_AVAILABLE and not _warned_about_insecure_default:
-        from warnings import warn
         warn("Bolt over TLS is only available in Python 2.7.9+ and Python 3.3+ "
              "so communications are not secure")
         _warned_about_insecure_default = True
+    return ENCRYPTION_DEFAULT
+
+
+def _norm_statement(statement):
+    if isinstance(statement, bytes):
+        statement = statement.decode("UTF-8")
+    return statement
+
+
+def _norm_parameters(parameters=None, **kwparameters):
+    params_in = parameters or {}
+    params_in.update(kwparameters)
+    params_out = {}
+    for key, value in params_in.items():
+        if isinstance(key, bytes):
+            key = key.decode("UTF-8")
+        if isinstance(value, bytes):
+            params_out[key] = value.decode("UTF-8")
+        else:
+            params_out[key] = value
+    return params_out

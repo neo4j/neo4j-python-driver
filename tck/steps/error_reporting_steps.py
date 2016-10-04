@@ -20,10 +20,9 @@
 
 from behave import *
 
-from neo4j.v1.exceptions import ProtocolError, CypherError
-from test.tck import tck_util
-
 from neo4j.v1 import GraphDatabase
+from neo4j.v1.exceptions import ProtocolError, CypherError
+from tck import tck_util
 
 use_step_matcher("re")
 

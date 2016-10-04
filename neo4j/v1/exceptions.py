@@ -43,6 +43,26 @@ class CypherError(Exception):
                 setattr(self, key, value)
 
 
+class TransactionError(Exception):
+    """ Raised when an error occurs while using a transaction.
+    """
+
+
 class ResultError(Exception):
     """ Raised when an error occurs while consuming a result.
     """
+
+
+class ServiceUnavailable(Exception):
+    """ Raised when no database service is available.
+    """
+
+
+class SessionExpired(Exception):
+    """ Raised when no a session is no longer able to fulfil
+    its purpose.
+    """
+
+    def __init__(self, session, *args, **kwargs):
+        self.session = session
+        super(SessionExpired, self).__init__(*args, **kwargs)

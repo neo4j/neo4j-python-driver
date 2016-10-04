@@ -96,7 +96,7 @@ def main():
 
         stdout.write("Using python version:\n")
         runcommand('python --version')
-        runpymodule('pip install --upgrade -r ./test_requirements.txt')
+        runpymodule('pip install --upgrade -r ./test/requirements.txt')
         retcode = 0
 
         register(neorun, '--stop=' + NEO4J_HOME)

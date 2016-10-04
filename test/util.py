@@ -21,9 +21,10 @@
 
 import functools
 from os import getenv, remove, rename
-from os.path import isfile
+from os.path import isfile, dirname, join as path_join
 from socket import create_connection
 from subprocess import check_call, CalledProcessError
+from threading import Thread
 from time import sleep
 from unittest import TestCase
 
@@ -96,3 +97,18 @@ class ServerTestCase(TestCase):
             if isfile(self.known_hosts):
                 remove(self.known_hosts)
             rename(self.known_hosts_backup, self.known_hosts)
+
+    def start_stub_server(self, port, script):
+        StubServer(port, script).start()
+        sleep(0.5)
+
+
+class StubServer(Thread):
+
+    def __init__(self, port, script):
+        super(StubServer, self).__init__()
+        self.port = port
+        self.script = path_join(dirname(__file__), "resources", script)
+
+    def run(self):
+        check_call(["boltstub", str(self.port), self.script])

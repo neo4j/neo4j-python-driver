@@ -18,17 +18,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import random
 import string
-import copy
 
 from behave import *
-
-from test.tck import tck_util
-from test.tck.resultparser import parse_values
-from test.tck.tck_util import to_unicode, Type, string_to_type
+from tck.resultparser import parse_values
 
 from neo4j.v1 import compat
+from tck import tck_util
+from tck.tck_util import to_unicode, Type, string_to_type
+
 use_step_matcher("re")
 
 
