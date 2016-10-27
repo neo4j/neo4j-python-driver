@@ -46,3 +46,13 @@ Documentation
 =============
 
 For more information such as manual, driver API documentations, changelogs, please find them in the wiki of this repo.
+
+* `Driver Wiki`_
+* `Neo4j Manual`_
+* `Neo4j Refcard`_
+* `Sample Project Using Driver`_
+
+.. _`Sample Project Using Driver`: https://github.com/neo4j-examples/movies-python-bolt
+.. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki
+.. _`Neo4j Manual`: https://neo4j.com/docs/
+.. _`Neo4j Refcard`: https://neo4j.com/docs/cypher-refcard/current/
