@@ -39,13 +39,13 @@ auth_token = basic_auth("neo4j", "neo4j")
 class DriverTestCase(ServerTestCase):
 
     def test_healthy_session_will_be_returned_to_the_pool_on_close(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         assert len(driver.session_pool) == 0
         driver.session().close()
         assert len(driver.session_pool) == 1
 
     def test_unhealthy_session_will_not_be_returned_to_the_pool_on_close(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         assert len(driver.session_pool) == 0
         session = driver.session()
         session.connection.defunct = True
@@ -53,7 +53,7 @@ class DriverTestCase(ServerTestCase):
         assert len(driver.session_pool) == 0
 
     def session_pool_cannot_exceed_max_size(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token, max_pool_size=1)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token, max_pool_size=1)
         assert len(driver.session_pool) == 0
         driver.session().close()
         assert len(driver.session_pool) == 1
@@ -61,7 +61,7 @@ class DriverTestCase(ServerTestCase):
         assert len(driver.session_pool) == 1
 
     def test_session_that_dies_in_the_pool_will_not_be_given_out(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session_1 = driver.session()
         session_1.close()
         assert len(driver.session_pool) == 1
@@ -74,7 +74,7 @@ class DriverTestCase(ServerTestCase):
             GraphDatabase.driver("x://xxx", auth=auth_token)
 
     def test_sessions_are_reused(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session_1 = driver.session()
         session_1.close()
         session_2 = driver.session()
@@ -82,7 +82,7 @@ class DriverTestCase(ServerTestCase):
         assert session_1 is session_2
 
     def test_sessions_are_not_reused_if_still_in_use(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session_1 = driver.session()
         session_2 = driver.session()
         session_2.close()
@@ -102,7 +102,7 @@ class DriverTestCase(ServerTestCase):
 class SecurityTestCase(ServerTestCase):
 
     def test_insecure_session_uses_normal_socket(self):
-        driver = GraphDatabase.driver("bolt://localhost",  auth=auth_token, encrypted=False)
+        driver = GraphDatabase.driver("bolt://localhost:7687",  auth=auth_token, encrypted=False)
         session = driver.session()
         connection = session.connection
         assert isinstance(connection.channel.socket, socket)
@@ -111,7 +111,7 @@ class SecurityTestCase(ServerTestCase):
 
     @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_tofu_session_uses_secure_socket(self):
-        driver = GraphDatabase.driver("bolt://localhost", auth=auth_token, encrypted=True, trust=TRUST_ON_FIRST_USE)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token, encrypted=True, trust=TRUST_ON_FIRST_USE)
         session = driver.session()
         connection = session.connection
         assert isinstance(connection.channel.socket, SSLSocket)
@@ -120,7 +120,7 @@ class SecurityTestCase(ServerTestCase):
 
     @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_tofu_session_trusts_certificate_after_first_use(self):
-        driver = GraphDatabase.driver("bolt://localhost",  auth=auth_token, encrypted=True, trust=TRUST_ON_FIRST_USE)
+        driver = GraphDatabase.driver("bolt://localhost:7687",  auth=auth_token, encrypted=True, trust=TRUST_ON_FIRST_USE)
         session = driver.session()
         connection = session.connection
         certificate = connection.der_encoded_server_certificate
@@ -134,7 +134,7 @@ class SecurityTestCase(ServerTestCase):
 class RunTestCase(ServerTestCase):
 
     def test_can_run_simple_statement(self):
-        session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
+        session = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session()
         result = session.run("RETURN 1 AS n")
         for record in result:
             assert record[0] == 1
@@ -151,7 +151,7 @@ class RunTestCase(ServerTestCase):
         session.close()
 
     def test_can_run_simple_statement_with_params(self):
-        session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
+        session = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session()
         count = 0
         for record in session.run("RETURN {x} AS n", {"x": {"abc": ["d", "e", "f"]}}):
             assert record[0] == {"abc": ["d", "e", "f"]}
@@ -163,17 +163,17 @@ class RunTestCase(ServerTestCase):
         assert count == 1
 
     def test_fails_on_bad_syntax(self):
-        session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
+        session = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session()
         with self.assertRaises(CypherError):
             session.run("X").consume()
 
     def test_fails_on_missing_parameter(self):
-        session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
+        session = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session()
         with self.assertRaises(CypherError):
             session.run("RETURN {x}").consume()
 
     def test_can_run_simple_statement_from_bytes_string(self):
-        session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
+        session = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session()
         count = 0
         for record in session.run(b"RETURN 1 AS n"):
             assert record[0] == 1
@@ -185,7 +185,7 @@ class RunTestCase(ServerTestCase):
         assert count == 1
 
     def test_can_run_statement_that_returns_multiple_records(self):
-        session = GraphDatabase.driver("bolt://localhost", auth=auth_token).session()
+        session = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session()
         count = 0
         for record in session.run("unwind(range(1, 10)) AS z RETURN z"):
             assert 1 <= record[0] <= 10
@@ -194,14 +194,14 @@ class RunTestCase(ServerTestCase):
         assert count == 10
 
     def test_can_use_with_to_auto_close_session(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             record_list = list(session.run("RETURN 1"))
             assert len(record_list) == 1
             for record in record_list:
                 assert record[0] == 1
 
     def test_can_return_node(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             record_list = list(session.run("MERGE (a:Person {name:'Alice'}) RETURN a"))
             assert len(record_list) == 1
             for record in record_list:
@@ -211,7 +211,7 @@ class RunTestCase(ServerTestCase):
                 assert alice.properties == {"name": "Alice"}
 
     def test_can_return_relationship(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             reocrd_list = list(session.run("MERGE ()-[r:KNOWS {since:1999}]->() RETURN r"))
             assert len(reocrd_list) == 1
             for record in reocrd_list:
@@ -221,7 +221,7 @@ class RunTestCase(ServerTestCase):
                 assert rel.properties == {"since": 1999}
 
     def test_can_return_path(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             record_list = list(session.run("MERGE p=({name:'Alice'})-[:KNOWS]->({name:'Bob'}) RETURN p"))
             assert len(record_list) == 1
             for record in record_list:
@@ -234,19 +234,19 @@ class RunTestCase(ServerTestCase):
                 assert len(path.relationships) == 1
 
     def test_can_handle_cypher_error(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             with self.assertRaises(CypherError):
                 session.run("X").consume()
 
     def test_keys_are_available_before_and_after_stream(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             result = session.run("UNWIND range(1, 10) AS n RETURN n")
             assert list(result.keys()) == ["n"]
             list(result)
             assert list(result.keys()) == ["n"]
 
     def test_keys_with_an_error(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             result = session.run("X")
             with self.assertRaises(CypherError):
                 list(result.keys())
@@ -255,7 +255,7 @@ class RunTestCase(ServerTestCase):
 class SummaryTestCase(ServerTestCase):
 
     def test_can_obtain_summary_after_consuming_result(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             result = session.run("CREATE (n) RETURN n")
             summary = result.consume()
             assert summary.statement == "CREATE (n) RETURN n"
@@ -264,14 +264,14 @@ class SummaryTestCase(ServerTestCase):
             assert summary.counters.nodes_created == 1
 
     def test_no_plan_info(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             result = session.run("CREATE (n) RETURN n")
             summary = result.consume()
             assert summary.plan is None
             assert summary.profile is None
 
     def test_can_obtain_plan_info(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             result = session.run("EXPLAIN CREATE (n) RETURN n")
             summary = result.consume()
             plan = summary.plan
@@ -283,7 +283,7 @@ class SummaryTestCase(ServerTestCase):
             assert len(plan.children) == 1
 
     def test_can_obtain_profile_info(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             result = session.run("PROFILE CREATE (n) RETURN n")
             summary = result.consume()
             profile = summary.profile
@@ -297,14 +297,14 @@ class SummaryTestCase(ServerTestCase):
             assert len(profile.children) == 1
 
     def test_no_notification_info(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             result = session.run("CREATE (n) RETURN n")
             summary = result.consume()
             notifications = summary.notifications
             assert notifications == []
 
     def test_can_obtain_notification_info(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             result = session.run("EXPLAIN MATCH (n), (m) RETURN n, m")
             summary = result.consume()
             notifications = summary.notifications
@@ -334,7 +334,7 @@ class SummaryTestCase(ServerTestCase):
 class ResetTestCase(ServerTestCase):
 
     def test_automatic_reset_after_failure(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             try:
                 session.run("X").consume()
             except CypherError:
@@ -346,7 +346,7 @@ class ResetTestCase(ServerTestCase):
 
     def test_defunct(self):
         from neo4j.v1.bolt import ChunkChannel, ProtocolError
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             assert not session.connection.defunct
             with patch.object(ChunkChannel, "chunk_reader", side_effect=ProtocolError()):
                 with self.assertRaises(ProtocolError):
@@ -428,7 +428,7 @@ class RecordTestCase(ServerTestCase):
 class TransactionTestCase(ServerTestCase):
 
     def test_can_commit_transaction(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             tx = session.begin_transaction()
 
             # Create a node
@@ -451,7 +451,7 @@ class TransactionTestCase(ServerTestCase):
             assert value == "bar"
 
     def test_can_rollback_transaction(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             tx = session.begin_transaction()
 
             # Create a node
@@ -472,7 +472,7 @@ class TransactionTestCase(ServerTestCase):
             assert len(list(result)) == 0
 
     def test_can_commit_transaction_using_with_block(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             with session.begin_transaction() as tx:
                 # Create a node
                 result = tx.run("CREATE (a) RETURN id(a)")
@@ -494,7 +494,7 @@ class TransactionTestCase(ServerTestCase):
             assert value == "bar"
 
     def test_can_rollback_transaction_using_with_block(self):
-        with GraphDatabase.driver("bolt://localhost", auth=auth_token).session() as session:
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
             with session.begin_transaction() as tx:
                 # Create a node
                 result = tx.run("CREATE (a) RETURN id(a)")
@@ -515,7 +515,7 @@ class TransactionTestCase(ServerTestCase):
 class ResultConsumptionTestCase(ServerTestCase):
 
     def setUp(self):
-        self.driver = GraphDatabase.driver("bolt://localhost", auth=auth_token, encrypted=False)
+        self.driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token, encrypted=False)
 
     def test_can_consume_result_immediately(self):
         session = self.driver.session()

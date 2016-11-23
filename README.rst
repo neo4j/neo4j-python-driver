@@ -25,7 +25,7 @@ Example Usage
 .. code:: python
 
     from neo4j.v1 import GraphDatabase, basic_auth
-    driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
+    driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "neo4j"))
     session = driver.session()
     session.run("CREATE (a:Person {name:'Bob'})")
     result = session.run("MATCH (a:Person) RETURN a.name AS name")
