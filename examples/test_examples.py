@@ -53,12 +53,12 @@ class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
         with driver.session() as session:
 
             with session.begin_transaction() as tx:
-                tx.run("CREATE (a:Person {name: $name, title: $title})",
+                tx.run("CREATE (a:Person {name: {name}, title: {title}})",
                        {"name": "Arthur", "title": "King"})
                 tx.success = True
 
             with session.begin_transaction() as tx:
-                result = tx.run("MATCH (a:Person) WHERE a.name = $name "
+                result = tx.run("MATCH (a:Person) WHERE a.name = {name} "
                                 "RETURN a.name AS name, a.title AS title",
                                 {"name": "Arthur"})
                 for record in result:
