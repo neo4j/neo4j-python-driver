@@ -39,9 +39,10 @@ class FreshDatabaseTestCase(ServerTestCase):
 
     def setUp(self):
         ServerTestCase.setUp(self)
-        session = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session()
-        session.run("MATCH (n) DETACH DELETE n")
-        session.close()
+        with GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session() as session:
+            with session.begin_transaction() as tx:
+                tx.run("MATCH (n) DETACH DELETE n")
+                tx.success = True
 
 
 class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
@@ -111,132 +112,151 @@ class ExamplesTestCase(FreshDatabaseTestCase):
 
     def test_statement(self):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
-        session = driver.session()
-        # tag::statement[]
-        result = session.run("CREATE (person:Person {name: {name}})", {"name": "Arthur"})
-        # end::statement[]
-        result.consume()
-        session.close()
+        with driver.session() as session:
+            with session.begin_transaction() as transaction:
+                # tag::statement[]
+                result = transaction.run("CREATE (person:Person {name: {name}})", {"name": "Arthur"})
+                transaction.success = True
+                # end::statement[]
+                result.consume()
+        # TODO driver.close()
 
     def test_statement_without_parameters(self):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
-        session = driver.session()
-        # tag::statement-without-parameters[]
-        result = session.run("CREATE (person:Person {name: 'Arthur'})")
-        # end::statement-without-parameters[]
-        result.consume()
-        session.close()
+        with driver.session() as session:
+            with session.begin_transaction() as transaction:
+                # tag::statement-without-parameters[]
+                result = transaction.run("CREATE (person:Person {name: 'Arthur'})")
+                transaction.success = True
+                # end::statement-without-parameters[]
+                result.consume()
+        # TODO driver.close()
 
     def test_result_traversal(self):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
-        session = driver.session()
-        # tag::result-traversal[]
-        search_term = "Sword"
-        result = session.run("MATCH (weapon:Weapon) WHERE weapon.name CONTAINS {term} "
-                             "RETURN weapon.name", {"term": search_term})
-        print("List of weapons called %r:" % search_term)
-        for record in result:
-            print(record["weapon.name"])
-        # end::result-traversal[]
-        session.close()
+        with driver.session() as session:
+            with session.begin_transaction() as transaction:
+                # tag::result-traversal[]
+                search_term = "Sword"
+                result = transaction.run("MATCH (weapon:Weapon) WHERE weapon.name CONTAINS {term} "
+                                     "RETURN weapon.name", {"term": search_term})
+                print("List of weapons called %r:" % search_term)
+                for record in result:
+                    print(record["weapon.name"])
+                # end::result-traversal[]
+        # TODO driver.close()
 
     def test_access_record(self):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
-        session = driver.session()
-        # tag::access-record[]
-        search_term = "Arthur"
-        result = session.run("MATCH (weapon:Weapon) WHERE weapon.owner CONTAINS {term} "
-                             "RETURN weapon.name, weapon.material, weapon.size", {"term": search_term})
-        print("List of weapons owned by %r:" % search_term)
-        for record in result:
-            print(", ".join("%s: %s" % (key, record[key]) for key in record.keys()))
-        # end::access-record[]
-        session.close()
+        with driver.session() as session:
+            with session.begin_transaction() as transaction:
+                # tag::access-record[]
+                search_term = "Arthur"
+                result = transaction.run("MATCH (weapon:Weapon) WHERE weapon.owner CONTAINS {term} "
+                                     "RETURN weapon.name, weapon.material, weapon.size",
+                                         {"term": search_term})
+                print("List of weapons owned by %r:" % search_term)
+                for record in result:
+                    print(", ".join("%s: %s" % (key, record[key]) for key in record.keys()))
+                # end::access-record[]
+        # driver.close()
 
     def test_result_retention(self):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         # tag::retain-result[]
-        session = driver.session()
-        result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
-                             "RETURN knight.name AS name", {"castle": "Camelot"})
-        retained_result = list(result)
-        session.close()
-        for record in retained_result:
-            print("%s is a knight of Camelot" % record["name"])
-        # end::retain-result[]
-        assert isinstance(retained_result, list)
+        with driver.session() as session:
+
+            with session.begin_transaction() as tx:
+                result = tx.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
+                                     "RETURN knight.name AS name", {"castle": "Camelot"})
+                retained_result = list(result)
+
+                for record in retained_result:
+                    print("%s is a knight of Camelot" % record["name"])
+                # end::retain-result[]
+                assert isinstance(retained_result, list)
+        # TODO driver.close()
 
     def test_nested_statements(self):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
-        session = driver.session()
-        # tag::nested-statements[]
-        result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
-                             "RETURN id(knight) AS knight_id", {"castle": "Camelot"})
-        for record in result:
-            session.run("MATCH (knight) WHERE id(knight) = {id} "
-                        "MATCH (king:Person) WHERE king.name = {king} "
-                        "CREATE (knight)-[:DEFENDS]->(king)", {"id": record["knight_id"], "king": "Arthur"})
-        # end::nested-statements[]
-        session.close()
+        with driver.session() as session:
+            # tag::nested-statements[]
+            with session.begin_transaction() as transaction:
+                result = transaction.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
+                                     "RETURN id(knight) AS knight_id", {"castle": "Camelot"})
+                for record in result:
+                    with session.begin_transaction() as tx:
+                        tx.run("MATCH (knight) WHERE id(knight) = {id} "
+                                    "MATCH (king:Person) WHERE king.name = {king} "
+                                    "CREATE (knight)-[:DEFENDS]->(king)",
+                               {"id": record["knight_id"], "king": "Arthur"})
+                        tx.success = True
+            # end::nested-statements[]
+        # TODO driver.close()
 
     def test_transaction_commit(self):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
-        session = driver.session()
-        # tag::transaction-commit[]
-        with session.begin_transaction() as tx:
-            tx.run("CREATE (:Person {name: 'Guinevere'})")
-            tx.success = True
-        # end::transaction-commit[]
-        result = session.run("MATCH (p:Person {name: 'Guinevere'}) RETURN count(p)")
-        record = next(iter(result))
-        assert record["count(p)"] == 1
-        session.close()
+        with driver.session() as session:
+            # tag::transaction-commit[]
+            with session.begin_transaction() as tx:
+                tx.run("CREATE (:Person {name: 'Guinevere'})")
+                tx.success = True
+            # end::transaction-commit[]
+            with session.begin_transaction() as tx:
+                result = tx.run("MATCH (p:Person {name: 'Guinevere'}) RETURN count(p)")
+                record = next(iter(result))
+                assert record["count(p)"] == 1
+        # TODO driver.close()
 
     def test_transaction_rollback(self):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
-        session = driver.session()
-        # tag::transaction-rollback[]
-        with session.begin_transaction() as tx:
-            tx.run("CREATE (:Person {name: 'Merlin'})")
-            tx.success = False
-        # end::transaction-rollback[]
-        result = session.run("MATCH (p:Person {name: 'Merlin'}) RETURN count(p)")
-        record = next(iter(result))
-        assert record["count(p)"] == 0
-        session.close()
+        with driver.session() as session:
+            # tag::transaction-rollback[]
+            with session.begin_transaction() as tx:
+                tx.run("CREATE (:Person {name: 'Merlin'})")
+                tx.success = False
+            # end::transaction-rollback[]
+            with session.begin_transaction() as tx:
+                result = tx.run("MATCH (p:Person {name: 'Merlin'}) RETURN count(p)")
+                record = next(iter(result))
+                assert record["count(p)"] == 0
+        # TODO driver.close()
 
     def test_result_summary_query_profile(self):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
-        session = driver.session()
-        # tag::result-summary-query-profile[]
-        result = session.run("PROFILE MATCH (p:Person {name: {name}}) "
-                             "RETURN id(p)", {"name": "Arthur"})
-        summary = result.consume()
-        print(summary.statement_type)
-        print(summary.profile)
-        # end::result-summary-query-profile[]
-        session.close()
+        with driver.session() as session:
+            with session.begin_transaction() as transaction:
+                # tag::result-summary-query-profile[]
+                result = transaction.run("PROFILE MATCH (p:Person {name: {name}}) "
+                                     "RETURN id(p)", {"name": "Arthur"})
+                summary = result.consume()
+                print(summary.statement_type)
+                print(summary.profile)
+                # end::result-summary-query-profile[]
+        # TODO driver.close()
 
     def test_result_summary_notifications(self):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
-        session = driver.session()
-        # tag::result-summary-notifications[]
-        result = session.run("EXPLAIN MATCH (king), (queen) RETURN king, queen")
-        summary = result.consume()
-        for notification in summary.notifications:
-            print(notification)
-        # end::result-summary-notifications[]
-        session.close()
+        with driver.session() as session:
+            with session.begin_transaction() as transaction:
+                # tag::result-summary-notifications[]
+                result = transaction.run("EXPLAIN MATCH (king), (queen) RETURN king, queen")
+                summary = result.consume()
+                for notification in summary.notifications:
+                    print(notification)
+                # end::result-summary-notifications[]
+        # TODO driver.close()
 
     def test_handle_cypher_error(self):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
-        session = driver.session()
-        with self.assertRaises(RuntimeError):
-            # tag::handle-cypher-error[]
-            try:
-                session.run("This will cause a syntax error").consume()
-            except CypherError:
-                raise RuntimeError("Something really bad has happened!")
-            finally:
-                session.close()
-            # end::handle-cypher-error[]
+        with driver.session() as session:
+            with session.begin_transaction() as transaction:
+                with self.assertRaises(RuntimeError):
+                    # tag::handle-cypher-error[]
+                    try:
+                        transaction.run("This will cause a syntax error").consume()
+                    except CypherError:
+                        raise RuntimeError("Something really bad has happened!")
+                    finally:
+                        session.close()
+                    # end::handle-cypher-error[]
