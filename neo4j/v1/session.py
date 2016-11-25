@@ -67,7 +67,7 @@ class GraphDatabase(object):
         configuration:
 
             >>> from neo4j.v1 import GraphDatabase
-            >>> driver = GraphDatabase.driver("bolt://localhost")
+            >>> driver = GraphDatabase.driver("bolt://localhost:7687")
 
         """
         return Driver(url, **config)
@@ -152,7 +152,7 @@ class Driver(object):
         specified within this driver:
 
             >>> from neo4j.v1 import GraphDatabase
-            >>> driver = GraphDatabase.driver("bolt://localhost")
+            >>> driver = GraphDatabase.driver("bolt://localhost:7687")
             >>> session = driver.session()
         """
         session = None

@@ -21,19 +21,22 @@
 from neo4j.v1.session import GraphDatabase, basic_auth
 
 
-driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
-session = driver.session()
+driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "neo4j"))
 
-session.run("MERGE (a:Person {name:'Alice'})")
+with driver.session() as session:
 
-friends = ["Bob", "Carol", "Dave", "Eve", "Frank"]
-with session.begin_transaction() as tx:
-    for friend in friends:
-        tx.run("MATCH (a:Person {name:'Alice'}) "
-               "MERGE (a)-[:KNOWS]->(x:Person {name:{n}})", {"n": friend})
-    tx.success = True
+    with session.begin_transaction() as transaction:
+        transaction.run("MERGE (a:Person {name:'Alice'})")
+        transaction.success = True
 
-for friend, in session.run("MATCH (a:Person {name:'Alice'})-[:KNOWS]->(x) RETURN x"):
-    print('Alice says, "hello, %s"' % friend["name"])
+        friends = ["Bob", "Carol", "Dave", "Eve", "Frank"]
+        with session.begin_transaction() as tx:
+            for friend in friends:
+                tx.run("MATCH (a:Person {name:'Alice'}) "
+                       "MERGE (a)-[:KNOWS]->(x:Person {name:{n}})", {"n": friend})
+            tx.success = True
 
-session.close()
+        for friend, in session.run("MATCH (a:Person {name:'Alice'})-[:KNOWS]->(x) RETURN x"):
+            print('Alice says, "hello, %s"' % friend["name"])
+
+# TODO: driver.close()

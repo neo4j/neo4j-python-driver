@@ -73,7 +73,7 @@ Example
 
     from neo4j.v1 import GraphDatabase
 
-    driver = GraphDatabase.driver("bolt://localhost")
+    driver = GraphDatabase.driver("bolt://localhost:7687")
     session = driver.session()
 
     session.run("MERGE (a:Person {name:'Alice'})")

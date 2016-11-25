@@ -38,7 +38,7 @@ def main():
     parser.add_argument("-p", "--parameter", action="append", metavar="NAME=VALUE")
     parser.add_argument("-q", "--quiet", action="store_true")
     parser.add_argument("-U", "--user", default="neo4j")
-    parser.add_argument("-u", "--url", default="bolt://localhost", metavar="CONNECTION_URL")
+    parser.add_argument("-u", "--url", default="bolt://localhost:7687", metavar="CONNECTION_URL")
     parser.add_argument("-v", "--verbose", action="count")
     parser.add_argument("-x", "--times", type=int, default=1)
     parser.add_argument("-z", "--summary", action="store_true")

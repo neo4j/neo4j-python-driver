@@ -23,7 +23,7 @@ from neo4j.v1 import GraphDatabase, basic_auth
 from test.tck.test_value import TestValue
 from test.tck.resultparser import parse_values_to_comparable
 
-driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"), encrypted=False)
+driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "neo4j"), encrypted=False)
 runners = []
 
 
