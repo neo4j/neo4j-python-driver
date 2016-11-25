@@ -39,7 +39,7 @@ class FreshDatabaseTestCase(ServerTestCase):
 
     def setUp(self):
         ServerTestCase.setUp(self)
-        session = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=auth_token).session()
+        session = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token).session()
         session.run("MATCH (n) DETACH DELETE n")
         session.close()
 
@@ -48,7 +48,7 @@ class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
 
     def test_minimal_working_example(self):
         # tag::minimal-example[]
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "neo4j"))
 
         with driver.session() as session:
 
@@ -72,45 +72,45 @@ class ExamplesTestCase(FreshDatabaseTestCase):
 
     def test_construct_driver(self):
         # tag::construct-driver[]
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=basic_auth("neo4j", "neo4j"))
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "neo4j"))
         # end::construct-driver[]
         return driver
 
     def test_configuration(self):
         # tag::configuration[]
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=basic_auth("neo4j", "neo4j"), max_pool_size=10)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "neo4j"), max_pool_size=10)
         # end::configuration[]
         return driver
 
     @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_tls_require_encryption(self):
         # tag::tls-require-encryption[]
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=basic_auth("neo4j", "neo4j"), encrypted=True)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "neo4j"), encrypted=True)
         # end::tls-require-encryption[]
 
     @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_tls_trust_on_first_use(self):
         # tag::tls-trust-on-first-use[]
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=basic_auth("neo4j", "neo4j"), encrypted=True, trust=TRUST_ON_FIRST_USE)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "neo4j"), encrypted=True, trust=TRUST_ON_FIRST_USE)
         # end::tls-trust-on-first-use[]
         assert driver
 
     @skip("testing verified certificates not yet supported ")
     def test_tls_signed(self):
         # tag::tls-signed[]
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=basic_auth("neo4j", "neo4j"), encrypted=True, trust=TRUST_SIGNED_CERTIFICATES)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "neo4j"), encrypted=True, trust=TRUST_SIGNED_CERTIFICATES)
         # end::tls-signed[]
         assert driver
 
     @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_connect_with_auth_disabled(self):
         # tag::connect-with-auth-disabled[]
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", encrypted=True)
+        driver = GraphDatabase.driver("bolt://localhost:7687", encrypted=True)
         # end::connect-with-auth-disabled[]
         assert driver
 
     def test_statement(self):
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session = driver.session()
         # tag::statement[]
         result = session.run("CREATE (person:Person {name: {name}})", {"name": "Arthur"})
@@ -119,7 +119,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_statement_without_parameters(self):
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session = driver.session()
         # tag::statement-without-parameters[]
         result = session.run("CREATE (person:Person {name: 'Arthur'})")
@@ -128,7 +128,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_result_traversal(self):
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session = driver.session()
         # tag::result-traversal[]
         search_term = "Sword"
@@ -141,7 +141,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_access_record(self):
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session = driver.session()
         # tag::access-record[]
         search_term = "Arthur"
@@ -154,7 +154,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_result_retention(self):
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         # tag::retain-result[]
         session = driver.session()
         result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
@@ -167,7 +167,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         assert isinstance(retained_result, list)
 
     def test_nested_statements(self):
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session = driver.session()
         # tag::nested-statements[]
         result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
@@ -180,7 +180,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_transaction_commit(self):
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session = driver.session()
         # tag::transaction-commit[]
         with session.begin_transaction() as tx:
@@ -193,7 +193,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_transaction_rollback(self):
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session = driver.session()
         # tag::transaction-rollback[]
         with session.begin_transaction() as tx:
@@ -206,7 +206,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_result_summary_query_profile(self):
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session = driver.session()
         # tag::result-summary-query-profile[]
         result = session.run("PROFILE MATCH (p:Person {name: {name}}) "
@@ -218,7 +218,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_result_summary_notifications(self):
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session = driver.session()
         # tag::result-summary-notifications[]
         result = session.run("EXPLAIN MATCH (king), (queen) RETURN king, queen")
@@ -229,7 +229,7 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session.close()
 
     def test_handle_cypher_error(self):
-        driver = GraphDatabase.driver("bolt+routing://mycluster:7687", auth=auth_token)
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session = driver.session()
         with self.assertRaises(RuntimeError):
             # tag::handle-cypher-error[]
