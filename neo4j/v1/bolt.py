@@ -39,7 +39,6 @@ from socket import create_connection, SHUT_RDWR, error as SocketError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
 
 from .constants import DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, TRUST_DEFAULT, TRUST_ON_FIRST_USE
-from .compat import hex2
 from .exceptions import ProtocolError, Unauthorized
 from .packstream import Packer, Unpacker
 from .ssl_compat import SSL_AVAILABLE, HAS_SNI, SSLError
@@ -137,7 +136,7 @@ class ChunkChannel(object):
         """
         data = self.raw.getvalue()
         if __debug__:
-            log_debug("C: %s", ":".join(map(hex2, data)))
+            log_debug("C: b%r", data)
         self.socket.sendall(data)
 
         self.raw.seek(self.raw.truncate(0))
@@ -150,7 +149,7 @@ class ChunkChannel(object):
             # Read up to the required amount remaining
             b = self.socket.recv(8192)
             if b:
-                if __debug__: log_debug("S: %s", ":".join(map(hex2, b)))
+                if __debug__: log_debug("S: b%r", b)
             else:
                 if ready_to_read is not None:
                     raise ProtocolError("Server closed connection")
@@ -454,7 +453,7 @@ def connect(host_port, ssl_context=None, **config):
     handshake = [MAGIC_PREAMBLE] + supported_versions
     if __debug__: log_info("C: [HANDSHAKE] 0x%X %r", MAGIC_PREAMBLE, supported_versions)
     data = b"".join(struct_pack(">I", num) for num in handshake)
-    if __debug__: log_debug("C: %s", ":".join(map(hex2, data)))
+    if __debug__: log_debug("C: b%r", data)
     s.sendall(data)
 
     # Handle the handshake response
@@ -469,7 +468,7 @@ def connect(host_port, ssl_context=None, **config):
         log_error("S: [CLOSE]")
         raise ProtocolError("Server closed connection without responding to handshake")
     if data_size == 4:
-        if __debug__: log_debug("S: %s", ":".join(map(hex2, data)))
+        if __debug__: log_debug("S: b%r", data)
     else:
         # Some other garbled data has been received
         log_error("S: @*#!")
