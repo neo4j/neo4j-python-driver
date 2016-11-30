@@ -230,6 +230,7 @@ class StatementResult(object):
 
         def on_failure(metadata):
             # Called on execution failure.
+            self.connection.acknowledge_failure()
             self._consumed = True
             raise CypherError(metadata)
 

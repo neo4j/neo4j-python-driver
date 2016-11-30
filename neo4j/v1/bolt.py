@@ -350,7 +350,6 @@ class Connection(object):
         elif signature == FAILURE:
             response = self.responses.popleft()
             response.complete = True
-            self.acknowledge_failure()
             response.on_failure(*fields)
         else:
             raise ProtocolError("Unexpected response message with signature %02X" % signature)
