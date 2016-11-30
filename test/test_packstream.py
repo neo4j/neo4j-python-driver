@@ -37,9 +37,9 @@ def assert_packable(value, packed_value):
     except AssertionError:
         raise AssertionError("Packed value %r is %r instead of expected %r" %
                              (value, packed, packed_value))
-    stream_in = BytesIO(packed)
-    unpacker = Unpacker(stream_in)
-    unpacked = next(unpacker.unpack())
+    unpacker = Unpacker()
+    unpacker.load(packed)
+    unpacked = unpacker.unpack()
     try:
         assert unpacked == value
     except AssertionError:
@@ -200,9 +200,9 @@ class PackStreamTestCase(TestCase):
         except AssertionError:
             raise AssertionError("Packed value is %r instead of expected %r" %
                                  (packed, packed_value))
-        stream_in = BytesIO(packed)
-        unpacker = Unpacker(stream_in)
-        unpacked = next(unpacker.unpack())
+        unpacker = Unpacker()
+        unpacker.load(packed)
+        unpacked = unpacker.unpack()
         try:
             assert unpacked == unpacked_value
         except AssertionError:
@@ -248,9 +248,9 @@ class PackStreamTestCase(TestCase):
         except AssertionError:
             raise AssertionError("Packed value is %r instead of expected %r" %
                                  (packed, packed_value))
-        stream_in = BytesIO(packed)
-        unpacker = Unpacker(stream_in)
-        unpacked = next(unpacker.unpack())
+        unpacker = Unpacker()
+        unpacker.load(packed)
+        unpacked = unpacker.unpack()
         try:
             assert unpacked == unpacked_value
         except AssertionError:

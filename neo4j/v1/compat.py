@@ -45,12 +45,6 @@ except NameError:
         else:
             return str(x)
 
-    def hex2(x):
-        if x < 0x10:
-            return "0" + hex(x)[2:].upper()
-        else:
-            return hex(x)[2:].upper()
-
 else:
     # Python 2
 
@@ -64,13 +58,6 @@ else:
             return x
         else:
             return unicode(x)
-
-    def hex2(x):
-        x = ord(x)
-        if x < 0x10:
-            return "0" + hex(x)[2:].upper()
-        else:
-            return hex(x)[2:].upper()
 
 
 try:
