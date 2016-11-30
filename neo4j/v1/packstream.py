@@ -684,7 +684,7 @@ class Unpacker(object):
 
         else:
             marker_high = marker & 0xF0
-            unpack1 = self.unpack
+            unpack = self.unpack
 
             # String
             if marker_high == 0x80:  # TINY_STRING
@@ -702,21 +702,21 @@ class Unpacker(object):
             # List
             elif marker_high == 0x90:
                 size = marker & 0x0F
-                return [unpack1() for _ in range(size)]
+                return [unpack() for _ in range(size)]
             elif marker == 0xD4:  # LIST_8:
                 size = UNPACKED_UINT_8[stream_read(1)]
-                return [unpack1() for _ in range(size)]
+                return [unpack() for _ in range(size)]
             elif marker == 0xD5:  # LIST_16:
                 size = UNPACKED_UINT_16[stream_read(2)]
-                return [unpack1() for _ in range(size)]
+                return [unpack() for _ in range(size)]
             elif marker == 0xD6:  # LIST_32:
                 size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
-                return [unpack1() for _ in range(size)]
+                return [unpack() for _ in range(size)]
             elif marker == 0xD7:  # LIST_STREAM:
                 value = []
                 item = None
                 while item != END_OF_STREAM:
-                    item = unpack1()
+                    item = unpack()
                     if item != END_OF_STREAM:
                         value.append(item)
                 return value
@@ -726,37 +726,37 @@ class Unpacker(object):
                 size = marker & 0x0F
                 value = {}
                 for _ in range(size):
-                    key = unpack1()
-                    value[key] = unpack1()
+                    key = unpack()
+                    value[key] = unpack()
                 return value
             elif marker == 0xD8:  # MAP_8:
                 size = UNPACKED_UINT_8[stream_read(1)]
                 value = {}
                 for _ in range(size):
-                    key = unpack1()
-                    value[key] = unpack1()
+                    key = unpack()
+                    value[key] = unpack()
                 return value
             elif marker == 0xD9:  # MAP_16:
                 size = UNPACKED_UINT_16[stream_read(2)]
                 value = {}
                 for _ in range(size):
-                    key = unpack1()
-                    value[key] = unpack1()
+                    key = unpack()
+                    value[key] = unpack()
                 return value
             elif marker == 0xDA:  # MAP_32:
                 size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
                 value = {}
                 for _ in range(size):
-                    key = unpack1()
-                    value[key] = unpack1()
+                    key = unpack()
+                    value[key] = unpack()
                 return value
             elif marker == 0xDB:  # MAP_STREAM:
                 value = {}
                 key = None
                 while key != END_OF_STREAM:
-                    key = unpack1()
+                    key = unpack()
                     if key != END_OF_STREAM:
-                        value[key] = unpack1()
+                        value[key] = unpack()
                 return value
 
             # Structure
@@ -764,19 +764,19 @@ class Unpacker(object):
                 signature = stream_read(1)
                 value = Structure(marker & 0x0F, signature)
                 for _ in range(value.capacity):
-                    value.append(unpack1())
+                    value.append(unpack())
                 return value
             elif marker == 0xDC: #STRUCT_8:
                 size, signature = stream_read(2)
                 value = Structure(UNPACKED_UINT_8[size], signature)
                 for _ in range(value.capacity):
-                    value.append(unpack1())
+                    value.append(unpack())
                 return value
             elif marker == 0xDD: #STRUCT_16:
                 data = stream_read(3)
                 value = Structure(UNPACKED_UINT_16[data[0:2]], data[2])
                 for _ in range(value.capacity):
-                    value.append(unpack1())
+                    value.append(unpack())
                 return value
 
             elif marker == 0xDF: #END_OF_STREAM:
