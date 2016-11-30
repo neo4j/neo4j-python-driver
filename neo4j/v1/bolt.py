@@ -80,6 +80,42 @@ log_warning = log.warning
 log_error = log.error
 
 
+class BufferingSocket(object):
+
+    def __init__(self, socket):
+        self.socket = socket
+        self.buffer = bytearray()
+
+    def fill(self):
+        ready_to_read, _, _ = select((self.socket,), (), (), 0)
+        received = self.socket.recv(65539)
+        if received:
+            if __debug__:
+                log_debug("S: b%r", received)
+            self.buffer[len(self.buffer):] = received
+        else:
+            if ready_to_read is not None:
+                raise ProtocolError("Server closed connection")
+
+    def read_message(self):
+        message_data = bytearray()
+        p = 0
+        size = -1
+        while size != 0:
+            while len(self.buffer) - p < 2:
+                self.fill()
+            size = 0x100 * self.buffer[p] + self.buffer[p + 1]
+            p += 2
+            if size > 0:
+                while len(self.buffer) - p < size:
+                    self.fill()
+                end = p + size
+                message_data[len(message_data):] = self.buffer[p:end]
+                p = end
+        self.buffer = self.buffer[p:]
+        return message_data
+
+
 class ChunkChannel(object):
     """ Reader/writer for chunked data.
 
@@ -141,40 +177,6 @@ class ChunkChannel(object):
 
         self.raw.seek(self.raw.truncate(0))
 
-    def _recv(self, size):
-        # If data is needed, keep reading until all bytes have been received
-        remaining = size - len(self._recv_buffer)
-        ready_to_read = None
-        while remaining > 0:
-            # Read up to the required amount remaining
-            b = self.socket.recv(8192)
-            if b:
-                if __debug__: log_debug("S: b%r", b)
-            else:
-                if ready_to_read is not None:
-                    raise ProtocolError("Server closed connection")
-            remaining -= len(b)
-            self._recv_buffer += b
-
-            # If more is required, wait for available network data
-            if remaining > 0:
-                ready_to_read, _, _ = select((self.socket,), (), (), 0)
-                while not ready_to_read:
-                    ready_to_read, _, _ = select((self.socket,), (), (), 0)
-
-        # Split off the amount of data required and keep the rest in the buffer
-        data, self._recv_buffer = self._recv_buffer[:size], self._recv_buffer[size:]
-        return data
-
-    def chunk_reader(self):
-        chunk_size = -1
-        while chunk_size != 0:
-            chunk_header = self._recv(2)
-            chunk_size, = struct_unpack_from(">H", chunk_header)
-            if chunk_size > 0:
-                data = self._recv(chunk_size)
-                yield data
-
 
 class Response(object):
     """ Subscriber object for a full response (zero or
@@ -207,9 +209,12 @@ class Connection(object):
     """
 
     def __init__(self, sock, **config):
+        self.socket = sock
+        self.buffering_socket = BufferingSocket(sock)
         self.defunct = False
         self.channel = ChunkChannel(sock)
         self.packer = Packer(self.channel)
+        self.unpacker = Unpacker()
         self.responses = deque()
         self.closed = False
 
@@ -317,33 +322,38 @@ class Connection(object):
             raise ProtocolError("Cannot read from a closed connection")
         if self.defunct:
             raise ProtocolError("Cannot read from a defunct connection")
-        raw = BytesIO()
-        unpack = Unpacker(raw).unpack
         try:
-            raw.writelines(self.channel.chunk_reader())
+            message_data = self.buffering_socket.read_message()
         except ProtocolError:
             self.defunct = True
             self.close()
             raise
         # Unpack from the raw byte stream and call the relevant message handler(s)
-        raw.seek(0)
-        response = self.responses[0]
-        for signature, fields in unpack():
-            if __debug__:
-                log_info("S: %s %s", message_names[signature], " ".join(map(repr, fields)))
-            if signature in SUMMARY:
-                response.complete = True
-                self.responses.popleft()
-            if signature == FAILURE:
-                self.acknowledge_failure()
-            handler_name = "on_%s" % message_names[signature].lower()
-            try:
-                handler = getattr(response, handler_name)
-            except AttributeError:
-                pass
-            else:
-                handler(*fields)
-        raw.close()
+        self.unpacker.load(message_data)
+        size, signature = self.unpacker.unpack_structure_header()
+        fields = [self.unpacker.unpack() for _ in range(size)]
+
+        if __debug__:
+            log_info("S: %s %r", message_names[signature], fields)
+
+        if signature == SUCCESS:
+            response = self.responses.popleft()
+            response.complete = True
+            response.on_success(*fields)
+        elif signature == RECORD:
+            response = self.responses[0]
+            response.on_record(*fields)
+        elif signature == IGNORED:
+            response = self.responses.popleft()
+            response.complete = True
+            response.on_ignored(*fields)
+        elif signature == FAILURE:
+            response = self.responses.popleft()
+            response.complete = True
+            self.acknowledge_failure()
+            response.on_failure(*fields)
+        else:
+            raise ProtocolError("Unexpected response message with signature %02X" % signature)
 
     def fetch_all(self):
         while self.responses:

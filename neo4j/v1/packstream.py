@@ -320,7 +320,7 @@ else:
     INTEGER_TYPE = (int, long)
     STRING_TYPE = (str, unicode)
 
-__all__ = ["Packer", "pack", "packb", "Unpacker", "unpack", "unpackb"]
+__all__ = ["Packer", "pack", "packb", "Unpacker"]
 
 INFINITY = 1e309
 
@@ -395,37 +395,6 @@ UNPACKED_INT_16 = {value: key for key, value in PACKED_INT_16.items()}
 UNPACKED_MARKERS = {NULL: None, TRUE: True, FALSE: False}
 UNPACKED_MARKERS.update({bytes(bytearray([z])): z for z in range(0, PLUS_2_TO_THE_7)})
 UNPACKED_MARKERS.update({bytes(bytearray([z + 256])): z for z in range(MINUS_2_TO_THE_4, 0)})
-
-
-class List(list):
-
-    def __init__(self, capacity):
-        self.capacity = capacity
-
-    def append(self, item):
-        if item is END_OF_STREAM:
-            self.capacity = len(self)
-        else:
-            list.append(self, item)
-
-
-class Map(dict):
-
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.__key = NotImplemented
-
-    def append(self, item):
-        key = self.__key
-        if key is NotImplemented:
-            if item is END_OF_STREAM:
-                self.capacity = len(self)
-            else:
-                self.__key = item
-        else:
-            self[key] = item
-            self.__key = NotImplemented
-        return key
 
 
 class Structure(list):
@@ -640,161 +609,199 @@ def packb(*values):
 
 class Unpacker(object):
 
-    def __init__(self, stream):
-        self.stream = stream
+    def __init__(self):
+        self.buffer = None
+        self.pos = 0
+
+    def load(self, buffer):
+        self.buffer = buffer
+        self.pos = 0
+
+    def read(self, n=1):
+        available = len(self.buffer) - self.pos
+        start = self.pos
+        if n <= available:
+            self.pos += n
+        else:
+            self.pos = len(self.buffer)
+        return bytes(self.buffer[start:self.pos])
+
+    def read_marker(self):
+        if self.pos < len(self.buffer):
+            pos = self.pos
+            self.pos += 1
+            return self.buffer[pos]
+        else:
+            return -1
 
     def unpack(self):
-        current_collection = List(INFINITY)
-        current_capacity = current_collection.capacity
-        current_size = len(current_collection)
-        push_item = current_collection.append
+        stream_read = self.read
+        marker = self.read_marker()
 
-        collection_stack = []
-        push_collection = collection_stack.append
-        pop_collection = collection_stack.pop
+        if marker == -1:
+            raise RuntimeError("Nothing to unpack")
 
-        stream_read = self.stream.read
-        while True:
-            marker_byte = stream_read(1)
+        # Tiny Integer
+        if 0x00 <= marker <= 0x7F:
+            return marker
+        elif 0xF0 <= marker <= 0xFF:
+            return marker - 0x100
 
-            if not marker_byte:
-                break
+        # Null
+        elif marker == 0xC0:
+            return None
 
-            is_collection = False
+        # Float
+        elif marker == 0xC1:
+            return struct_unpack(DOUBLE_STRUCT, stream_read(8))[0]
 
-            try:
-                value = UNPACKED_MARKERS[marker_byte]  # NULL, TRUE, FALSE and TINY_INT
+        # Boolean
+        elif marker == 0xC2:
+            return False
+        elif marker == 0xC3:
+            return True
 
-            except KeyError:
-                marker = UNPACKED_UINT_8[marker_byte]
-                marker_high = marker & 0xF0
+        # Integer
+        elif marker == 0xC8:
+            return UNPACKED_INT_8[stream_read(1)]
+        elif marker == 0xC9:
+            return UNPACKED_INT_16[stream_read(2)]
+        elif marker == 0xCA:
+            return struct_unpack(INT_32_STRUCT, stream_read(4))[0]
+        elif marker == 0xCB:
+            return struct_unpack(INT_64_STRUCT, stream_read(8))[0]
 
-                # Float
-                if marker_byte == FLOAT_64:
-                    value = struct_unpack(DOUBLE_STRUCT, stream_read(8))[0]
+        # Bytes
+        elif marker == 0xCC:
+            byte_size = UNPACKED_UINT_8[stream_read(1)]
+            return stream_read(byte_size)
+        elif marker == 0xCD:
+            byte_size = UNPACKED_UINT_16[stream_read(2)]
+            return stream_read(byte_size)
+        elif marker == 0xCE:
+            byte_size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
+            return stream_read(byte_size)
 
-                # Integer
-                elif marker_byte == INT_8:
-                    value = UNPACKED_INT_8[stream_read(1)]
-                elif marker_byte == INT_16:
-                    value = UNPACKED_INT_16[stream_read(2)]
-                elif marker_byte == INT_32:
-                    value = struct_unpack(INT_32_STRUCT, stream_read(4))[0]
-                elif marker_byte == INT_64:
-                    value = struct_unpack(INT_64_STRUCT, stream_read(8))[0]
-
-                # Bytes
-                elif marker_byte == BYTES_8:
-                    byte_size = UNPACKED_UINT_8[stream_read(1)]
-                    value = stream_read(byte_size)
-                elif marker_byte == BYTES_16:
-                    byte_size = UNPACKED_UINT_16[stream_read(2)]
-                    value = stream_read(byte_size)
-                elif marker_byte == BYTES_32:
-                    byte_size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
-                    value = stream_read(byte_size)
-
-                # String
-                elif marker_high == 0x80:
-                    value = stream_read(marker & 0x0F).decode(ENCODING)
-                elif marker_byte == STRING_8:
-                    byte_size = UNPACKED_UINT_8[stream_read(1)]
-                    value = stream_read(byte_size).decode(ENCODING)
-                elif marker_byte == STRING_16:
-                    byte_size = UNPACKED_UINT_16[stream_read(2)]
-                    value = stream_read(byte_size).decode(ENCODING)
-                elif marker_byte == STRING_32:
-                    byte_size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
-                    value = stream_read(byte_size).decode(ENCODING)
-
-                # List
-                elif marker_high == 0x90:
-                    value = List(marker & 0x0F)
-                    is_collection = True
-                elif marker_byte == LIST_8:
-                    size = UNPACKED_UINT_8[stream_read(1)]
-                    value = List(size)
-                    is_collection = True
-                elif marker_byte == LIST_16:
-                    size = UNPACKED_UINT_16[stream_read(2)]
-                    value = List(size)
-                    is_collection = True
-                elif marker_byte == LIST_32:
-                    size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
-                    value = List(size)
-                    is_collection = True
-                elif marker_byte == LIST_STREAM:
-                    size = INFINITY
-                    value = List(size)
-                    is_collection = True
-
-                # Map
-                elif marker_high == 0xA0:
-                    value = Map(marker & 0x0F)
-                    is_collection = True
-                elif marker_byte == MAP_8:
-                    size = UNPACKED_UINT_8[stream_read(1)]
-                    value = Map(size)
-                    is_collection = True
-                elif marker_byte == MAP_16:
-                    size = UNPACKED_UINT_16[stream_read(2)]
-                    value = Map(size)
-                    is_collection = True
-                elif marker_byte == MAP_32:
-                    size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
-                    value = Map(size)
-                    is_collection = True
-                elif marker_byte == MAP_STREAM:
-                    size = INFINITY
-                    value = Map(size)
-                    is_collection = True
-
-                # Structure
-                elif marker_high == 0xB0:
-                    signature = stream_read(1)
-                    value = Structure(marker & 0x0F, signature)
-                    is_collection = True
-                elif marker_byte == STRUCT_8:
-                    size, signature = stream_read(2)
-                    value = Structure(UNPACKED_UINT_8[size], signature)
-                    is_collection = True
-                elif marker_byte == STRUCT_16:
-                    data = stream_read(3)
-                    value = Structure(UNPACKED_UINT_16[data[0:2]], data[2])
-                    is_collection = True
-
-                elif marker_byte == END_OF_STREAM:
-                    value = END_OF_STREAM
-
-            appended = False
-            while not appended:
-                if current_size >= current_capacity:
-                    current_collection = pop_collection()
-                    current_capacity = current_collection.capacity
-                    current_size = len(current_collection)
-                    push_item = current_collection.append
-                else:
-                    if push_item(value) is not NotImplemented:
-                        current_size += 1
-                    if is_collection:
-                        push_collection(current_collection)
-                        current_collection = value
-                        current_capacity = current_collection.capacity
-                        current_size = len(current_collection)
-                        push_item = current_collection.append
-                    appended = True
-
-        if collection_stack:
-            return iter(collection_stack[0])
         else:
-            return iter(current_collection)
+            marker_high = marker & 0xF0
+            unpack1 = self.unpack
 
+            # String
+            if marker_high == 0x80:  # TINY_STRING
+                return stream_read(marker & 0x0F).decode(ENCODING)
+            elif marker == 0xD0:  # STRING_8:
+                byte_size = UNPACKED_UINT_8[stream_read(1)]
+                return stream_read(byte_size).decode(ENCODING)
+            elif marker == 0xD1:  # STRING_16:
+                byte_size = UNPACKED_UINT_16[stream_read(2)]
+                return stream_read(byte_size).decode(ENCODING)
+            elif marker == 0xD2:  # STRING_32:
+                byte_size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
+                return stream_read(byte_size).decode(ENCODING)
 
-def unpack(stream):
-    unpacker = Unpacker(stream)
-    for value in unpacker.unpack():
-        yield value
+            # List
+            elif marker_high == 0x90:
+                size = marker & 0x0F
+                return [unpack1() for _ in range(size)]
+            elif marker == 0xD4:  # LIST_8:
+                size = UNPACKED_UINT_8[stream_read(1)]
+                return [unpack1() for _ in range(size)]
+            elif marker == 0xD5:  # LIST_16:
+                size = UNPACKED_UINT_16[stream_read(2)]
+                return [unpack1() for _ in range(size)]
+            elif marker == 0xD6:  # LIST_32:
+                size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
+                return [unpack1() for _ in range(size)]
+            elif marker == 0xD7:  # LIST_STREAM:
+                value = []
+                item = None
+                while item != END_OF_STREAM:
+                    item = unpack1()
+                    if item != END_OF_STREAM:
+                        value.append(item)
+                return value
 
+            # Map
+            elif marker_high == 0xA0:
+                size = marker & 0x0F
+                value = {}
+                for _ in range(size):
+                    key = unpack1()
+                    value[key] = unpack1()
+                return value
+            elif marker == 0xD8:  # MAP_8:
+                size = UNPACKED_UINT_8[stream_read(1)]
+                value = {}
+                for _ in range(size):
+                    key = unpack1()
+                    value[key] = unpack1()
+                return value
+            elif marker == 0xD9:  # MAP_16:
+                size = UNPACKED_UINT_16[stream_read(2)]
+                value = {}
+                for _ in range(size):
+                    key = unpack1()
+                    value[key] = unpack1()
+                return value
+            elif marker == 0xDA:  # MAP_32:
+                size = struct_unpack(UINT_32_STRUCT, stream_read(4))[0]
+                value = {}
+                for _ in range(size):
+                    key = unpack1()
+                    value[key] = unpack1()
+                return value
+            elif marker == 0xDB:  # MAP_STREAM:
+                value = {}
+                key = None
+                while key != END_OF_STREAM:
+                    key = unpack1()
+                    if key != END_OF_STREAM:
+                        value[key] = unpack1()
+                return value
 
-def unpackb(b):
-    return unpack(BytesIO(b))
+            # Structure
+            elif marker_high == 0xB0:
+                signature = stream_read(1)
+                value = Structure(marker & 0x0F, signature)
+                for _ in range(value.capacity):
+                    value.append(unpack1())
+                return value
+            elif marker == 0xDC: #STRUCT_8:
+                size, signature = stream_read(2)
+                value = Structure(UNPACKED_UINT_8[size], signature)
+                for _ in range(value.capacity):
+                    value.append(unpack1())
+                return value
+            elif marker == 0xDD: #STRUCT_16:
+                data = stream_read(3)
+                value = Structure(UNPACKED_UINT_16[data[0:2]], data[2])
+                for _ in range(value.capacity):
+                    value.append(unpack1())
+                return value
+
+            elif marker == 0xDF: #END_OF_STREAM:
+                return END_OF_STREAM
+
+            else:
+                raise RuntimeError("Unknown PackStream marker %02X" % marker)
+
+    def unpack_structure_header(self):
+        marker = self.read_marker()
+        if marker == -1:
+            return None
+        else:
+            return self._unpack_structure_header(marker)
+
+    def _unpack_structure_header(self, marker):
+        marker_high = marker & 0xF0
+        if marker_high == 0xB0:  # TINY_STRUCT
+            signature = self.read(1)
+            return marker & 0x0F, signature
+        elif marker == 0xDC:  # STRUCT_8:
+            size, signature = self.read(2)
+            return UNPACKED_UINT_8[size], signature
+        elif marker == 0xDD:  # STRUCT_16:
+            data = self.read(3)
+            return UNPACKED_UINT_16[data[0:2]], data[2]
+        else:
+            raise RuntimeError("Expected structure, found marker %02X" % marker)
