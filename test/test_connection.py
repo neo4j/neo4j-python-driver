@@ -105,6 +105,9 @@ class RouterTestCase(ServerTestCase):
     def setUp(self):
         self.pool = ConnectionPool(lambda a: connect(a, auth=basic_auth("neo4j", "password")))
 
+    def tearDown(self):
+        self.pool.close()
+
     def test_router_is_initially_stale(self):
         router = ConnectionRouter(self.pool, ("127.0.0.1", 7687))
         assert router.stale()

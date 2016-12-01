@@ -71,6 +71,9 @@ class DriverTestCase(ServerTestCase):
 
 class DirectDriverTestCase(ServerTestCase):
 
+    def tearDown(self):
+        self.await_all_servers()
+
     def test_direct_disconnect_on_run(self):
         self.start_stub_server(9001, "disconnect_on_run.script")
         uri = "bolt://127.0.0.1:9001"
@@ -95,6 +98,9 @@ class DirectDriverTestCase(ServerTestCase):
 
 
 class RoutingDriverTestCase(ServerTestCase):
+
+    def tearDown(self):
+        self.await_all_servers()
 
     def test_cannot_discover_servers_on_non_router(self):
         self.start_stub_server(9001, "non_router.script")

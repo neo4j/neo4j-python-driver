@@ -85,6 +85,7 @@ class ServerTestCase(TestCase):
 
     known_hosts = KNOWN_HOSTS
     known_hosts_backup = known_hosts + ".backup"
+    servers = []
 
     def setUp(self):
         if isfile(self.known_hosts):
@@ -99,8 +100,15 @@ class ServerTestCase(TestCase):
             rename(self.known_hosts_backup, self.known_hosts)
 
     def start_stub_server(self, port, script):
-        StubServer(port, script).start()
+        server = StubServer(port, script)
+        server.start()
         sleep(0.5)
+        self.servers.append(server)
+
+    def await_all_servers(self):
+        while self.servers:
+            server = self.servers.pop()
+            server.join()
 
 
 class StubServer(Thread):

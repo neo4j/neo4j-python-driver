@@ -165,9 +165,6 @@ class Driver(object):
     def __init__(self, connector):
         self.pool = ConnectionPool(connector)
 
-    def __del__(self):
-        self.close()
-
     def __enter__(self):
         return self
 
@@ -284,8 +281,12 @@ class RoutingDriver(Driver):
             # scenario right now
             raise ValueError("TRUST_ON_FIRST_USE is not compatible with routing")
         Driver.__init__(self, lambda a: connect(a, security_plan.ssl_context, **config))
-        self.router = ConnectionRouter(self.pool, address)
-        self.router.discover()
+        try:
+            self.router = ConnectionRouter(self.pool, address)
+            self.router.discover()
+        except:
+            self.close()
+            raise
 
     def session(self, access_mode=None):
         if access_mode == READ_ACCESS:
