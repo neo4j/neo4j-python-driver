@@ -24,7 +24,6 @@ point is the `GraphDatabase` class which can be used to obtain `Driver`
 instances that are in turn used for managing sessions.
 """
 
-
 from __future__ import division
 
 from collections import deque
@@ -39,7 +38,6 @@ from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2,
 from .summary import ResultSummary
 from .types import hydrated
 
-
 DEFAULT_MAX_POOL_SIZE = 50
 
 localhost = re.compile(r"^(localhost|127(\.\d+){3})$", re.IGNORECASE)
@@ -49,10 +47,17 @@ class AuthToken(object):
     """ Container for auth information
     """
 
-    def __init__(self, scheme, principal, credentials):
+    #: By default we should not send any realm
+    realm = None
+
+    def __init__(self, scheme, principal, credentials, realm=None, **parameters):
         self.scheme = scheme
         self.principal = principal
         self.credentials = credentials
+        if realm:
+            self.realm = realm
+        if parameters:
+            self.parameters = parameters
 
 
 class GraphDatabase(object):
@@ -135,7 +140,7 @@ class Driver(object):
         self.encrypted = encrypted
         self.trust = trust = config.get("trust", TRUST_DEFAULT)
         if encrypted == ENCRYPTION_ON or \
-           encrypted == ENCRYPTION_NON_LOCAL and not localhost.match(host):
+                                encrypted == ENCRYPTION_NON_LOCAL and not localhost.match(host):
             if not SSL_AVAILABLE:
                 raise RuntimeError("Bolt over TLS is only available in Python 2.7.9+ and Python 3.3+")
             ssl_context = SSLContext(PROTOCOL_SSLv23)
@@ -511,14 +516,28 @@ class Record(object):
         return not self.__eq__(other)
 
 
-def basic_auth(user, password):
+def basic_auth(user, password, realm=None):
     """ Generate a basic auth token for a given user and password.
 
     :param user: user name
     :param password: current password
+    :param realm: specifies the authentication provider
     :return: auth token for use with :meth:`GraphDatabase.driver`
     """
-    return AuthToken("basic", user, password)
+    return AuthToken("basic", user, password, realm)
+
+
+def custom_auth(principal, credentials, realm, scheme, **parameters):
+    """ Generate a basic auth token for a given user and password.
+
+    :param principal: specifies who is being authenticated
+    :param credentials: authenticates the principal
+    :param realm: specifies the authentication provider
+    :param scheme: specifies the type of authentication
+    :param parameters: parameters passed along to the authenticatin provider
+    :return: auth token for use with :meth:`GraphDatabase.driver`
+    """
+    return AuthToken(scheme, principal, credentials, realm, **parameters)
 
 
 def run(connection, statement, parameters=None):
