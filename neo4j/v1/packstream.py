@@ -708,64 +708,12 @@ class Unpacker(object):
                 return self.read(byte_size).decode(ENCODING)
 
             # List
-            elif marker_high == 0x90:
-                size = marker & 0x0F
-                return [unpack() for _ in range(size)]
-            elif marker == 0xD4:  # LIST_8:
-                size = UNPACKED_UINT_8[self.read_bytes(1)]
-                return [unpack() for _ in range(size)]
-            elif marker == 0xD5:  # LIST_16:
-                size = UNPACKED_UINT_16[self.read_bytes(2)]
-                return [unpack() for _ in range(size)]
-            elif marker == 0xD6:  # LIST_32:
-                size = struct_unpack(UINT_32_STRUCT, self.read(4))[0]
-                return [unpack() for _ in range(size)]
-            elif marker == 0xD7:  # LIST_STREAM:
-                value = []
-                item = None
-                while item is not EndOfStream:
-                    item = unpack()
-                    if item is not EndOfStream:
-                        value.append(item)
-                return value
+            elif 0x90 <= marker <= 0x9F or 0xD4 <= marker <= 0xD7:
+                return self._unpack_list(marker)
 
             # Map
-            elif marker_high == 0xA0:
-                size = marker & 0x0F
-                value = {}
-                for _ in range(size):
-                    key = unpack()
-                    value[key] = unpack()
-                return value
-            elif marker == 0xD8:  # MAP_8:
-                size = UNPACKED_UINT_8[self.read_bytes(1)]
-                value = {}
-                for _ in range(size):
-                    key = unpack()
-                    value[key] = unpack()
-                return value
-            elif marker == 0xD9:  # MAP_16:
-                size = UNPACKED_UINT_16[self.read_bytes(2)]
-                value = {}
-                for _ in range(size):
-                    key = unpack()
-                    value[key] = unpack()
-                return value
-            elif marker == 0xDA:  # MAP_32:
-                size = struct_unpack(UINT_32_STRUCT, self.read(4))[0]
-                value = {}
-                for _ in range(size):
-                    key = unpack()
-                    value[key] = unpack()
-                return value
-            elif marker == 0xDB:  # MAP_STREAM:
-                value = {}
-                key = None
-                while key is not EndOfStream:
-                    key = unpack()
-                    if key is not EndOfStream:
-                        value[key] = unpack()
-                return value
+            elif 0xA0 <= marker <= 0xAF or 0xD8 <= marker <= 0xDB:
+                return self._unpack_map(marker)
 
             # Structure
             elif marker_high == 0xB0:
@@ -792,6 +740,87 @@ class Unpacker(object):
 
             else:
                 raise RuntimeError("Unknown PackStream marker %02X" % marker)
+
+    def unpack_list(self):
+        marker = self.read_marker()
+        return self._unpack_list(marker)
+
+    def _unpack_list(self, marker):
+        marker_high = marker & 0xF0
+        unpack = self.unpack
+        if marker_high == 0x90:
+            size = marker & 0x0F
+            if size == 0:
+                return []
+            elif size == 1:
+                return [unpack()]
+            else:
+                return [unpack() for _ in range(size)]
+        elif marker == 0xD4:  # LIST_8:
+            size = UNPACKED_UINT_8[self.read_bytes(1)]
+            return [unpack() for _ in range(size)]
+        elif marker == 0xD5:  # LIST_16:
+            size = UNPACKED_UINT_16[self.read_bytes(2)]
+            return [unpack() for _ in range(size)]
+        elif marker == 0xD6:  # LIST_32:
+            size = struct_unpack(UINT_32_STRUCT, self.read_bytes(4))[0]
+            return [unpack() for _ in range(size)]
+        elif marker == 0xD7:  # LIST_STREAM:
+            value = []
+            item = None
+            while item is not EndOfStream:
+                item = unpack()
+                if item is not EndOfStream:
+                    value.append(item)
+            return value
+        else:
+            return None
+
+    def unpack_map(self):
+        marker = self.read_marker()
+        return self._unpack_map(marker)
+
+    def _unpack_map(self, marker):
+        marker_high = marker & 0xF0
+        unpack = self.unpack
+        if marker_high == 0xA0:
+            size = marker & 0x0F
+            value = {}
+            for _ in range(size):
+                key = unpack()
+                value[key] = unpack()
+            return value
+        elif marker == 0xD8:  # MAP_8:
+            size = UNPACKED_UINT_8[self.read_bytes(1)]
+            value = {}
+            for _ in range(size):
+                key = unpack()
+                value[key] = unpack()
+            return value
+        elif marker == 0xD9:  # MAP_16:
+            size = UNPACKED_UINT_16[self.read_bytes(2)]
+            value = {}
+            for _ in range(size):
+                key = unpack()
+                value[key] = unpack()
+            return value
+        elif marker == 0xDA:  # MAP_32:
+            size = struct_unpack(UINT_32_STRUCT, self.read_bytes(4))[0]
+            value = {}
+            for _ in range(size):
+                key = unpack()
+                value[key] = unpack()
+            return value
+        elif marker == 0xDB:  # MAP_STREAM:
+            value = {}
+            key = None
+            while key is not EndOfStream:
+                key = unpack()
+                if key is not EndOfStream:
+                    value[key] = unpack()
+            return value
+        else:
+            return None
 
     def unpack_structure_header(self):
         marker = self.read_marker()
