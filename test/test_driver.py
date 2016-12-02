@@ -25,7 +25,7 @@ from unittest import skipUnless
 
 from neo4j.v1 import ServiceUnavailable, ProtocolError, READ_ACCESS, WRITE_ACCESS, \
     TRUST_ON_FIRST_USE, TRUST_CUSTOM_CA_SIGNED_CERTIFICATES, GraphDatabase, basic_auth, \
-    SSL_AVAILABLE, SessionExpired, DirectDriver
+    custom_auth, SSL_AVAILABLE, SessionExpired, DirectDriver
 from test.util import ServerTestCase
 
 BOLT_URI = "bolt://localhost:7687"
@@ -67,6 +67,30 @@ class DriverTestCase(ServerTestCase):
         driver = GraphDatabase.driver("bolt://localhost:7474", auth=AUTH_TOKEN, encrypted=False)
         with self.assertRaises(ServiceUnavailable) as context:
             driver.session()
+
+    def test_can_provide_realm_with_basic_auth_token(self):
+        token = basic_auth("neotest", "neotest", "native")
+        driver = GraphDatabase.driver("bolt://localhost", auth=token)
+        session = driver.session()
+        result = session.run("RETURN 1").consume()
+        session.close()
+        assert result is not None
+
+    def test_can_create_custom_auth_token(self):
+        token = custom_auth("neotest", "neotest", "native", "basic")
+        driver = GraphDatabase.driver("bolt://localhost", auth=token)
+        session = driver.session()
+        result = session.run("RETURN 1").consume()
+        session.close()
+        assert result is not None
+
+    def test_can_create_custom_auth_token_with_additional_parameters(self):
+        token = custom_auth("neotest", "neotest", "native", "basic", secret=42)
+        driver = GraphDatabase.driver("bolt://localhost", auth=token)
+        session = driver.session()
+        result = session.run("RETURN 1").consume()
+        session.close()
+        assert result is not None
 
 
 class DirectDriverTestCase(ServerTestCase):
