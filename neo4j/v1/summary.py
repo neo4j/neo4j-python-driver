@@ -59,6 +59,7 @@ class ResultSummary(object):
     def __init__(self, statement, parameters, **metadata):
         self.statement = statement
         self.parameters = parameters
+        self.metadata = metadata
         self.statement_type = metadata.get("type")
         self.counters = SummaryCounters(metadata.get("stats", {}))
         if "plan" in metadata:

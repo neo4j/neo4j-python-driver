@@ -21,21 +21,22 @@
 from behave import *
 
 from neo4j.v1 import GraphDatabase, basic_auth, exceptions
+from tck.tck_util import BOLT_URI, AUTH_TOKEN
 
 
 @given("a driver configured with auth disabled")
 def step_impl(context):
-    context.driver = GraphDatabase.driver("bolt://localhost", encrypted=False)
+    context.driver = GraphDatabase.driver(BOLT_URI, encrypted=False)
 
 
 @given("a driver is configured with auth enabled and correct password is provided")
 def step_impl(context):
-    context.driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"), encrypted=False)
+    context.driver = GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN, encrypted=False)
 
 
 @given("a driver is configured with auth enabled and the wrong password is provided")
 def step_impl(context):
-    context.driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "wrong"), encrypted=False)
+    context.driver = GraphDatabase.driver(BOLT_URI, auth=basic_auth("neo4j", "wrong"), encrypted=False)
 
 
 @step("reading and writing to the database should be possible")

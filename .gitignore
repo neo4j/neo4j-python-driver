@@ -13,3 +13,8 @@ docs/build
 dist
 *.egg-info
 build
+
+*/run/*
+
+neo4j-community-*
+neo4j-enterprise-*

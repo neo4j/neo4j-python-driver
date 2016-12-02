@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from test.tck import tck_util
+from tck import tck_util
 
 failing_features = {}
 

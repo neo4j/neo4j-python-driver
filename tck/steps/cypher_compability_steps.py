@@ -19,9 +19,9 @@
 # limitations under the License.
 
 from behave import *
+from tck.resultparser import parse_values
 
-from test.tck import tck_util
-from test.tck.resultparser import parse_values
+from tck import tck_util
 
 use_step_matcher("re")
 

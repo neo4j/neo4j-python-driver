@@ -1,0 +1,5 @@
+!: AUTO INIT
+!: AUTO RESET
+
+C: RUN "RETURN $x" {"x": 1}
+S: <EXIT>

@@ -20,10 +20,9 @@
 
 from behave import *
 
-from neo4j.v1 import STATEMENT_TYPE_READ_ONLY, STATEMENT_TYPE_READ_WRITE, STATEMENT_TYPE_WRITE_ONLY, \
-    STATEMENT_TYPE_SCHEMA_WRITE
-
-from test.tck.resultparser import parse_values
+from neo4j.v1.summary import STATEMENT_TYPE_READ_ONLY, STATEMENT_TYPE_READ_WRITE, \
+                             STATEMENT_TYPE_WRITE_ONLY, STATEMENT_TYPE_SCHEMA_WRITE
+from tck.resultparser import parse_values
 
 use_step_matcher("re")
 

@@ -20,7 +20,7 @@
 
 from behave import *
 
-from test.tck.tck_util import send_string
+from tck.tck_util import send_string
 
 use_step_matcher("re")
 

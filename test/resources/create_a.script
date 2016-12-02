@@ -1,0 +1,7 @@
+!: AUTO INIT
+!: AUTO RESET
+
+C: RUN "CREATE (a $x)" {"x": {"name": "Alice"}}
+   PULL_ALL
+S: SUCCESS {"fields": []}
+   SUCCESS {}
