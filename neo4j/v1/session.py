@@ -57,10 +57,17 @@ class AuthToken(object):
     """ Container for auth information
     """
 
-    def __init__(self, scheme, principal, credentials):
+    #: By default we should not send any realm
+    realm = None
+
+    def __init__(self, scheme, principal, credentials, realm=None, **parameters):
         self.scheme = scheme
         self.principal = principal
         self.credentials = credentials
+        if realm:
+            self.realm = realm
+        if parameters:
+            self.parameters = parameters
 
 
 class GraphDatabase(object):
@@ -665,14 +672,28 @@ class Record(object):
         return not self.__eq__(other)
 
 
-def basic_auth(user, password):
+def basic_auth(user, password, realm=None):
     """ Generate a basic auth token for a given user and password.
 
     :param user: user name
     :param password: current password
+    :param realm: specifies the authentication provider
     :return: auth token for use with :meth:`GraphDatabase.driver`
     """
-    return AuthToken("basic", user, password)
+    return AuthToken("basic", user, password, realm)
+
+
+def custom_auth(principal, credentials, realm, scheme, **parameters):
+    """ Generate a basic auth token for a given user and password.
+
+    :param principal: specifies who is being authenticated
+    :param credentials: authenticates the principal
+    :param realm: specifies the authentication provider
+    :param scheme: specifies the type of authentication
+    :param parameters: parameters passed along to the authenticatin provider
+    :return: auth token for use with :meth:`GraphDatabase.driver`
+    """
+    return AuthToken(scheme, principal, credentials, realm, **parameters)
 
 
 def parse_address(address):
