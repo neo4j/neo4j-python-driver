@@ -51,9 +51,12 @@ class MinimalWorkingExampleTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "neo4j"))
         session = driver.session()
 
-        session.run("CREATE (a:Person {name:'Arthur', title:'King'})")
+        session.run("CREATE (a:Person {name: {name}, title: {title}})",
+                    {"name": "Arthur", "title": "King"})
 
-        result = session.run("MATCH (a:Person) WHERE a.name = 'Arthur' RETURN a.name AS name, a.title AS title")
+        result = session.run("MATCH (a:Person) WHERE a.name = {name} "
+                             "RETURN a.name AS name, a.title AS title",
+                             {"name": "Arthur"})
         for record in result:
             print("%s %s" % (record["title"], record["name"]))
 
@@ -106,7 +109,8 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session = driver.session()
         # tag::statement[]
-        result = session.run("CREATE (person:Person {name: {name}})", {"name": "Arthur"})
+        result = session.run("CREATE (person:Person {name: {name}})",
+                             {"name": "Arthur"})
         # end::statement[]
         result.consume()
         session.close()
@@ -126,7 +130,8 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # tag::result-traversal[]
         search_term = "Sword"
         result = session.run("MATCH (weapon:Weapon) WHERE weapon.name CONTAINS {term} "
-                             "RETURN weapon.name", {"term": search_term})
+                             "RETURN weapon.name",
+                             {"term": search_term})
         print("List of weapons called %r:" % search_term)
         for record in result:
             print(record["weapon.name"])
@@ -139,7 +144,8 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # tag::access-record[]
         search_term = "Arthur"
         result = session.run("MATCH (weapon:Weapon) WHERE weapon.owner CONTAINS {term} "
-                             "RETURN weapon.name, weapon.material, weapon.size", {"term": search_term})
+                             "RETURN weapon.name, weapon.material, weapon.size",
+                             {"term": search_term})
         print("List of weapons owned by %r:" % search_term)
         for record in result:
             print(", ".join("%s: %s" % (key, record[key]) for key in record.keys()))
@@ -151,7 +157,8 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         # tag::retain-result[]
         session = driver.session()
         result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
-                             "RETURN knight.name AS name", {"castle": "Camelot"})
+                             "RETURN knight.name AS name",
+                             {"castle": "Camelot"})
         retained_result = list(result)
         session.close()
         for record in retained_result:
@@ -164,11 +171,13 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session = driver.session()
         # tag::nested-statements[]
         result = session.run("MATCH (knight:Person:Knight) WHERE knight.castle = {castle} "
-                             "RETURN id(knight) AS knight_id", {"castle": "Camelot"})
+                             "RETURN id(knight) AS knight_id",
+                             {"castle": "Camelot"})
         for record in result:
             session.run("MATCH (knight) WHERE id(knight) = {id} "
                         "MATCH (king:Person) WHERE king.name = {king} "
-                        "CREATE (knight)-[:DEFENDS]->(king)", {"id": record["knight_id"], "king": "Arthur"})
+                        "CREATE (knight)-[:DEFENDS]->(king)",
+                        {"id": record["knight_id"], "king": "Arthur"})
         # end::nested-statements[]
         session.close()
 
@@ -177,10 +186,13 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session = driver.session()
         # tag::transaction-commit[]
         with session.begin_transaction() as tx:
-            tx.run("CREATE (:Person {name: 'Guinevere'})")
+            tx.run("CREATE (:Person {name: {name}})",
+                   {"name": "Guinevere"})
             tx.success = True
         # end::transaction-commit[]
-        result = session.run("MATCH (p:Person {name: 'Guinevere'}) RETURN count(p)")
+        result = session.run("MATCH (p:Person {name: {name}}) "
+                             "RETURN count(p)",
+                             {"name": "Guinevere"})
         record = next(iter(result))
         assert record["count(p)"] == 1
         session.close()
@@ -190,10 +202,13 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session = driver.session()
         # tag::transaction-rollback[]
         with session.begin_transaction() as tx:
-            tx.run("CREATE (:Person {name: 'Merlin'})")
+            tx.run("CREATE (:Person {name: {name}})",
+                   {"name": "Merlin"})
             tx.success = False
         # end::transaction-rollback[]
-        result = session.run("MATCH (p:Person {name: 'Merlin'}) RETURN count(p)")
+        result = session.run("MATCH (p:Person {name: {name}}) "
+                             "RETURN count(p)",
+                             {"name": "Merlin"})
         record = next(iter(result))
         assert record["count(p)"] == 0
         session.close()
@@ -203,7 +218,8 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         session = driver.session()
         # tag::result-summary-query-profile[]
         result = session.run("PROFILE MATCH (p:Person {name: {name}}) "
-                             "RETURN id(p)", {"name": "Arthur"})
+                             "RETURN id(p)",
+                             {"name": "Arthur"})
         summary = result.consume()
         print(summary.statement_type)
         print(summary.profile)
@@ -214,7 +230,8 @@ class ExamplesTestCase(FreshDatabaseTestCase):
         driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
         session = driver.session()
         # tag::result-summary-notifications[]
-        result = session.run("EXPLAIN MATCH (king), (queen) RETURN king, queen")
+        result = session.run("EXPLAIN MATCH (king), (queen) "
+                             "RETURN king, queen")
         summary = result.consume()
         for notification in summary.notifications:
             print(notification)
