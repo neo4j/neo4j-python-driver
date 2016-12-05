@@ -404,7 +404,7 @@ class Transaction(object):
     block where the value of :attr:`.success` will determine whether
     the transaction is committed or rolled back on :meth:`.Transaction.close`::
 
-        with session.new_transaction() as tx:
+        with session.begin_transaction() as tx:
             pass
 
     """

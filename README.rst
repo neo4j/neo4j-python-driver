@@ -25,13 +25,22 @@ Example Usage
 .. code:: python
 
     from neo4j.v1 import GraphDatabase, basic_auth
-    driver = GraphDatabase.driver("bolt://localhost", auth=basic_auth("neo4j", "neo4j"))
-    session = driver.session()
-    session.run("CREATE (a:Person {name:'Bob'})")
-    result = session.run("MATCH (a:Person) RETURN a.name AS name")
-    for record in result:
-        print(record["name"])
-    session.close()
+
+    driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "password"))
+
+    with driver.session() as session:
+
+        with session.begin_transaction() as write_tx:
+            write_tx.run("CREATE (a:Person {name:{name},age:{age}})", name="Alice", age=33)
+            write_tx.run("CREATE (a:Person {name:{name},age:{age}})", name="Bob", age=44)
+            write_tx.success = True
+
+        with session.begin_transaction() as read_tx:
+            result = read_tx.run("MATCH (a:Person) RETURN a.name AS name, a.age AS age")
+            for record in result:
+                print("%s is %d years old" % (record["name"], record["age"]))
+
+    driver.close()
 
 
 Command Line

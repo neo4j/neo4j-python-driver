@@ -79,7 +79,7 @@ Example
     session.run("MERGE (a:Person {name:'Alice'})")
 
     friends = ["Bob", "Carol", "Dave", "Eve", "Frank"]
-    with session.new_transaction() as tx:
+    with session.begin_transaction() as tx:
         for friend in friends:
             tx.run("MATCH (a:Person {name:'Alice'}) "
                    "MERGE (a)-[:KNOWS]->(x:Person {name:{n}})", {"n": friend})
