@@ -216,6 +216,14 @@ class Connection(object):
     .. note:: logs at INFO level
     """
 
+    in_use = False
+
+    closed = False
+
+    defunct = False
+
+    server_version = None
+
     #: The pool of which this connection is a member
     pool = None
 
@@ -227,9 +235,6 @@ class Connection(object):
         self.packer = Packer(self.channel)
         self.unpacker = Unpacker()
         self.responses = deque()
-        self.in_use = False
-        self.closed = False
-        self.defunct = False
 
         # Determine the user agent and ensure it is a Unicode value
         user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
@@ -246,6 +251,9 @@ class Connection(object):
         # Pick up the server certificate, if any
         self.der_encoded_server_certificate = config.get("der_encoded_server_certificate")
 
+        def on_success(metadata):
+            self.server_version = metadata.get("server")
+
         def on_failure(metadata):
             code = metadata.get("code")
             error = (Unauthorized if code == "Neo.ClientError.Security.Unauthorized" else
@@ -253,12 +261,11 @@ class Connection(object):
             raise error(metadata.get("message", "INIT failed"))
 
         response = Response(self)
+        response.on_success = on_success
         response.on_failure = on_failure
 
         self.append(INIT, (self.user_agent, self.auth_dict), response=response)
-        self.send()
-        while not response.complete:
-            self.fetch()
+        self.sync()
 
     def __del__(self):
         self.close()
@@ -367,7 +374,10 @@ class Connection(object):
         else:
             raise ProtocolError("Unexpected response message with signature %02X" % signature)
 
-    def fetch_all(self):
+    def sync(self):
+        """ Send and fetch all outstanding messages.
+        """
+        self.send()
         while self.responses:
             response = self.responses[0]
             while not response.complete:
