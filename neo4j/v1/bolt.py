@@ -37,7 +37,7 @@ from os.path import dirname, isfile
 from select import select
 from socket import create_connection, SHUT_RDWR, error as SocketError
 from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
-from threading import Lock
+from threading import RLock
 
 from .constants import DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, TRUST_DEFAULT, TRUST_ON_FIRST_USE
 from .exceptions import ProtocolError, Unauthorized, ServiceUnavailable
@@ -378,15 +378,26 @@ class ConnectionPool(object):
     """ A collection of connections to one or more server addresses.
     """
 
+    closed = False
+
     def __init__(self, connector):
         self.connector = connector
         self.connections = {}
-        self.lock = Lock()
+        self.lock = RLock()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     def acquire(self, address):
         """ Acquire a connection to a given address from the pool.
         This method is thread safe.
         """
+        if self.closed:
+            raise ServiceUnavailable("This connection pool is closed so no new "
+                                     "connections may be acquired")
         with self.lock:
             try:
                 connections = self.connections[address]
@@ -411,18 +422,25 @@ class ConnectionPool(object):
         with self.lock:
             connection.in_use = False
 
+    def remove(self, address):
+        """ Remove an address from the connection pool, if present, closing
+        all connections to that address.
+        """
+        with self.lock:
+            for connection in self.connections.pop(address, ()):
+                try:
+                    connection.close()
+                except IOError:
+                    pass
+
     def close(self):
         """ Close all connections and empty the pool.
         This method is thread safe.
         """
         with self.lock:
-            for _, connections in self.connections.items():
-                for connection in connections:
-                    try:
-                        connection.close()
-                    except IOError:
-                        pass
-            self.connections.clear()
+            self.closed = True
+            for address in list(self.connections):
+                self.remove(address)
 
 
 class CertificateStore(object):

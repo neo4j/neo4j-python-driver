@@ -23,7 +23,7 @@ import functools
 from os import getenv, remove, rename
 from os.path import isfile, dirname, join as path_join
 from socket import create_connection
-from subprocess import check_call, CalledProcessError
+from subprocess import call, check_call, CalledProcessError
 from threading import Thread
 from time import sleep
 from unittest import TestCase
@@ -99,17 +99,6 @@ class ServerTestCase(TestCase):
                 remove(self.known_hosts)
             rename(self.known_hosts_backup, self.known_hosts)
 
-    def start_stub_server(self, port, script):
-        server = StubServer(port, script)
-        server.start()
-        sleep(0.5)
-        self.servers.append(server)
-
-    def await_all_servers(self):
-        while self.servers:
-            server = self.servers.pop()
-            server.join()
-
 
 class StubServer(Thread):
 
@@ -120,3 +109,24 @@ class StubServer(Thread):
 
     def run(self):
         check_call(["boltstub", str(self.port), self.script])
+
+
+class StubCluster(object):
+
+    def __init__(self, servers):
+        self.servers = {port: StubServer(port, script) for port, script in dict(servers).items()}
+
+    def __enter__(self):
+        self.start()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.wait()
+
+    def start(self):
+        for port, server in self.servers.items():
+            server.start()
+        sleep(0.5)
+
+    def wait(self):
+        for port, server in self.servers.items():
+            server.join()
