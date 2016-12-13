@@ -276,9 +276,9 @@ class RoutingConnectionPool(ConnectionPool):
         """ Remove an address from the connection pool, if present, closing
         all connections to that address. Also remove from the routing table.
         """
-        super(RoutingConnectionPool, self).remove(address)
         # We use `discard` instead of `remove` here since the former
         # will not fail if the address has already been removed.
         self.routing_table.routers.discard(address)
         self.routing_table.readers.discard(address)
         self.routing_table.writers.discard(address)
+        super(RoutingConnectionPool, self).remove(address)
