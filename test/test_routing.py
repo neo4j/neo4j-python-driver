@@ -575,7 +575,18 @@ class RoutingConnectionPoolAcquireForReadTestCase(ServerTestCase):
             with RoutingConnectionPool(connector, address) as pool:
                 assert not pool.routing_table.is_fresh()
                 connection = pool.acquire_for_read()
-                assert connection.address in pool.routing_table.readers
+                assert connection.server.address in pool.routing_table.readers
+
+    def test_should_retry_if_first_reader_fails(self):
+        with StubCluster({9001: "router.script",
+                          9004: "fail_on_init.script",
+                          9005: "empty.script"}):
+            address = ("127.0.0.1", 9001)
+            with RoutingConnectionPool(connector, address) as pool:
+                assert not pool.routing_table.is_fresh()
+                _ = pool.acquire_for_read()
+                assert ("127.0.0.1", 9004) not in pool.routing_table.readers
+                assert ("127.0.0.1", 9005) in pool.routing_table.readers
 
 
 class RoutingConnectionPoolAcquireForWriteTestCase(ServerTestCase):
@@ -594,7 +605,18 @@ class RoutingConnectionPoolAcquireForWriteTestCase(ServerTestCase):
             with RoutingConnectionPool(connector, address) as pool:
                 assert not pool.routing_table.is_fresh()
                 connection = pool.acquire_for_write()
-                assert connection.address in pool.routing_table.writers
+                assert connection.server.address in pool.routing_table.writers
+
+    def test_should_retry_if_first_writer_fails(self):
+        with StubCluster({9001: "router_with_multiple_writers.script",
+                          9006: "fail_on_init.script",
+                          9007: "empty.script"}):
+            address = ("127.0.0.1", 9001)
+            with RoutingConnectionPool(connector, address) as pool:
+                assert not pool.routing_table.is_fresh()
+                _ = pool.acquire_for_write()
+                assert ("127.0.0.1", 9006) not in pool.routing_table.writers
+                assert ("127.0.0.1", 9007) in pool.routing_table.writers
 
 
 class RoutingConnectionPoolRemoveTestCase(ServerTestCase):

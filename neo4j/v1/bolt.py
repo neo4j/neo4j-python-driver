@@ -29,7 +29,7 @@ the `session` module provides the main user-facing abstractions.
 from __future__ import division
 
 from base64 import b64encode
-from collections import deque
+from collections import deque, namedtuple
 from io import BytesIO
 import logging
 from os import makedirs, open as os_open, write as os_write, close as os_close, O_CREAT, O_APPEND, O_WRONLY
@@ -81,11 +81,16 @@ log_warning = log.warning
 log_error = log.error
 
 
+Address = namedtuple("Address", ["host", "port"])
+ServerInfo = namedtuple("ServerInfo", ["address", "version"])
+
+
 class BufferingSocket(object):
 
-    def __init__(self, socket):
-        self.address = socket.getpeername()
-        self.socket = socket
+    def __init__(self, connection):
+        self.connection = connection
+        self.socket = connection.socket
+        self.address = Address(*self.socket.getpeername())
         self.buffer = bytearray()
 
     def fill(self):
@@ -96,6 +101,10 @@ class BufferingSocket(object):
             self.buffer[len(self.buffer):] = received
         else:
             if ready_to_read is not None:
+                # If this connection fails, remove this address from the
+                # connection pool to which this connection belongs.
+                if self.connection.pool:
+                    self.connection.pool.remove(self.address)
                 raise ServiceUnavailable("Failed to read from connection %r" % (self.address,))
 
     def read_message(self):
@@ -127,7 +136,7 @@ class ChunkChannel(object):
 
     def __init__(self, sock):
         self.socket = sock
-        self.address = sock.getpeername()
+        self.address = Address(*sock.getpeername())
         self.raw = BytesIO()
         self.output_buffer = []
         self.output_size = 0
@@ -201,6 +210,22 @@ class Response(object):
         pass
 
 
+class InitResponse(Response):
+
+    def on_success(self, metadata):
+        super(InitResponse, self).on_success(metadata)
+        connection = self.connection
+        address = Address(*connection.socket.getpeername())
+        version = metadata.get("server")
+        connection.server = ServerInfo(address, version)
+
+    def on_failure(self, metadata):
+        code = metadata.get("code")
+        error = (Unauthorized if code == "Neo.ClientError.Security.Unauthorized" else
+                 ServiceUnavailable)
+        raise error(metadata.get("message", "INIT failed"))
+
+
 class Connection(object):
     """ Server connection for Bolt protocol v1.
 
@@ -211,10 +236,15 @@ class Connection(object):
     .. note:: logs at INFO level
     """
 
+    #: The pool of which this connection is a member
+    pool = None
+
+    #: Server version details
+    server = None
+
     def __init__(self, sock, **config):
         self.socket = sock
-        self.buffering_socket = BufferingSocket(sock)
-        self.address = sock.getpeername()
+        self.buffering_socket = BufferingSocket(self)
         self.channel = ChunkChannel(sock)
         self.packer = Packer(self.channel)
         self.unpacker = Unpacker()
@@ -238,15 +268,7 @@ class Connection(object):
         # Pick up the server certificate, if any
         self.der_encoded_server_certificate = config.get("der_encoded_server_certificate")
 
-        def on_failure(metadata):
-            code = metadata.get("code")
-            error = (Unauthorized if code == "Neo.ClientError.Security.Unauthorized" else
-                     ServiceUnavailable)
-            raise error(metadata.get("message", "INIT failed"))
-
-        response = Response(self)
-        response.on_failure = on_failure
-
+        response = InitResponse(self)
         self.append(INIT, (self.user_agent, self.auth_dict), response=response)
         self.send()
         while not response.complete:
@@ -308,18 +330,18 @@ class Connection(object):
         """ Send all queued messages to the server.
         """
         if self.closed:
-            raise ServiceUnavailable("Failed to write to closed connection %r" % (self.address,))
+            raise ServiceUnavailable("Failed to write to closed connection %r" % (self.server.address,))
         if self.defunct:
-            raise ServiceUnavailable("Failed to write to defunct connection %r" % (self.address,))
+            raise ServiceUnavailable("Failed to write to defunct connection %r" % (self.server.address,))
         self.channel.send()
 
     def fetch(self):
         """ Receive exactly one message from the server.
         """
         if self.closed:
-            raise ServiceUnavailable("Failed to read from closed connection %r" % (self.address,))
+            raise ServiceUnavailable("Failed to read from closed connection %r" % (self.server.address,))
         if self.defunct:
-            raise ServiceUnavailable("Failed to read from defunct connection %r" % (self.address,))
+            raise ServiceUnavailable("Failed to read from defunct connection %r" % (self.server.address,))
         try:
             message_data = self.buffering_socket.read_message()
         except ProtocolError:
@@ -411,6 +433,7 @@ class ConnectionPool(object):
                     connection.in_use = True
                     return connection
             connection = self.connector(address)
+            connection.pool = self
             connection.in_use = True
             connections.append(connection)
             return connection
