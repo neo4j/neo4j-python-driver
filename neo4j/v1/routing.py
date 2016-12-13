@@ -22,7 +22,7 @@
 from threading import Lock
 from time import clock
 
-from .bolt import ConnectionPool
+from .bolt import Address, ConnectionPool
 from .compat.collections import MutableSet, OrderedDict
 from .exceptions import CypherError, ProtocolError, ServiceUnavailable
 
@@ -94,7 +94,7 @@ class RoutingTable(object):
         """ Convert an address string to a tuple.
         """
         host, _, port = address.partition(":")
-        return host, int(port)
+        return Address(host, int(port))
 
     @classmethod
     def parse_routing_info(cls, records):
