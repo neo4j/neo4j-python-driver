@@ -25,8 +25,6 @@ and flavours of Python. It is separate for clarity and deliberately
 excluded from test coverage.
 """
 
-__all__ = ["integer", "perf_counter", "secure_socket", "string", "urlparse"]
-
 
 # Workaround for Python 2/3 type differences
 try:

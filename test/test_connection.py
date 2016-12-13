@@ -20,7 +20,7 @@
 
 from socket import create_connection
 
-from neo4j.v1 import basic_auth, ConnectionRouter, ConnectionPool, connect, ServiceUnavailable
+from neo4j.v1 import ConnectionPool, ServiceUnavailable
 
 from test.util import ServerTestCase
 
@@ -99,50 +99,8 @@ class ConnectionPoolTestCase(ServerTestCase):
         self.pool.release(connection)
         self.assert_pool_size(address, 0, 1)
 
-
-class RouterTestCase(ServerTestCase):
-
-    def setUp(self):
-        self.pool = ConnectionPool(lambda a: connect(a, auth=basic_auth("neo4j", "password")))
-
-    def tearDown(self):
-        self.pool.close()
-
-    def test_router_is_initially_stale(self):
-        router = ConnectionRouter(self.pool, ("127.0.0.1", 7687))
-        assert router.stale()
-
-    def test_discovery(self):
-        self.start_stub_server(9001, "router.script")
-        router = ConnectionRouter(self.pool, ("127.0.0.1", 9001))
-        router.timer = lambda: 0
-        router.discover()
-        assert router.expiry_time == 300
-        assert router.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-        assert router.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
-        assert router.writers == {('127.0.0.1', 9006)}
-
-    def test_discovery_after_bad_discovery(self):
-        self.start_stub_server(9001, "bad_router.script")
-        self.start_stub_server(9002, "router.script")
-        router = ConnectionRouter(self.pool, ("127.0.0.1", 9001), ("127.0.0.1", 9002))
-        router.timer = lambda: 0
-        router.discover()
-        assert router.expiry_time == 300
-        assert router.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-        assert router.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
-        assert router.writers == {('127.0.0.1', 9006)}
-
-    def test_discovery_against_non_router(self):
-        self.start_stub_server(9001, "non_router.script")
-        router = ConnectionRouter(self.pool, ("127.0.0.1", 9001))
-        with self.assertRaises(ServiceUnavailable):
-            router.discover()
-
-    def test_running_out_of_good_routers_on_discovery(self):
-        self.start_stub_server(9001, "bad_router.script")
-        self.start_stub_server(9002, "bad_router.script")
-        self.start_stub_server(9003, "bad_router.script")
-        router = ConnectionRouter(self.pool, ("127.0.0.1", 9001), ("127.0.0.1", 9002), ("127.0.0.1", 9003))
-        with self.assertRaises(ServiceUnavailable):
-            router.discover()
+    def test_cannot_acquire_after_close(self):
+        with ConnectionPool(lambda a: QuickConnection(create_connection(a))) as pool:
+            pool.close()
+            with self.assertRaises(ServiceUnavailable):
+                _ = pool.acquire("X")

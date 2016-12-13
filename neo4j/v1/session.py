@@ -29,14 +29,7 @@ from __future__ import division
 
 from collections import deque
 import re
-from threading import Lock
-try:
-    from time import monotonic as clock
-except ImportError:
-    from time import clock
 from warnings import warn
-
-from neo4j.util import RoundRobinSet
 
 from .bolt import connect, Response, RUN, PULL_ALL, ConnectionPool
 from .compat import integer, string, urlparse
@@ -45,6 +38,7 @@ from .constants import DEFAULT_PORT, ENCRYPTION_DEFAULT, TRUST_DEFAULT, TRUST_SI
     TRUST_ALL_CERTIFICATES, TRUST_CUSTOM_CA_SIGNED_CERTIFICATES
 from .exceptions import CypherError, ProtocolError, ResultError, TransactionError, \
     ServiceUnavailable, SessionExpired
+from .routing import RoutingConnectionPool
 from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 from .summary import ResultSummary
 from .types import hydrated
@@ -169,8 +163,8 @@ class Driver(object):
 
     pool = None
 
-    def __init__(self, connector):
-        self.pool = ConnectionPool(connector)
+    def __init__(self, pool):
+        self.pool = pool
 
     def __enter__(self):
         return self
@@ -200,80 +194,11 @@ class DirectDriver(Driver):
         self.address = address
         self.security_plan = security_plan = SecurityPlan.build(address, **config)
         self.encrypted = security_plan.encrypted
-        Driver.__init__(self, lambda a: connect(a, security_plan.ssl_context, **config))
+        pool = ConnectionPool(lambda a: connect(a, security_plan.ssl_context, **config))
+        Driver.__init__(self, pool)
 
     def session(self, access_mode=None):
-        return Session(self, self.pool.acquire(self.address))
-
-
-class ConnectionRouter(object):
-    """ The `Router` class contains logic for discovering servers within a
-    cluster that supports routing.
-    """
-
-    timer = clock
-
-    def __init__(self, pool, *routers):
-        self.pool = pool
-        self.lock = Lock()
-        self.expiry_time = None
-        self.routers = RoundRobinSet(routers)
-        self.readers = RoundRobinSet()
-        self.writers = RoundRobinSet()
-
-    def stale(self):
-        """ Indicator for whether routing information is out of date or
-        incomplete.
-        """
-        expired = self.expiry_time is None or self.expiry_time <= self.timer()
-        return expired or len(self.routers) <= 1 or not self.readers or not self.writers
-
-    def discover(self):
-        """ Perform cluster member discovery.
-        """
-        with self.lock:
-            if not self.routers:
-                raise ServiceUnavailable("No routers available")
-            for router in list(self.routers):
-                connection = self.pool.acquire(router)
-                with Session(self, connection) as session:
-                    try:
-                        record = session.run("CALL dbms.cluster.routing.getServers").single()
-                    except CypherError as error:
-                        if error.code == "Neo.ClientError.Procedure.ProcedureNotFound":
-                            raise ServiceUnavailable("Server %r does not support "
-                                                     "routing" % (router,))
-                        raise
-                    except ResultError:
-                        raise ServiceUnavailable("Server %r returned no record from "
-                                                 "discovery procedure" % (router,))
-                    else:
-                        new_expiry_time = self.timer() + record["ttl"]
-                        servers = record["servers"]
-                        new_routers = [s["addresses"] for s in servers if s["role"] == "ROUTE"][0]
-                        new_readers = [s["addresses"] for s in servers if s["role"] == "READ"][0]
-                        new_writers = [s["addresses"] for s in servers if s["role"] == "WRITE"][0]
-                        if new_routers and new_readers and new_writers:
-                            self.expiry_time = new_expiry_time
-                            self.routers.replace(map(parse_address, new_routers))
-                            self.readers.replace(map(parse_address, new_readers))
-                            self.writers.replace(map(parse_address, new_writers))
-                            return router
-            raise ServiceUnavailable("Unable to establish routing information")
-
-    def acquire_read_connection(self):
-        """ Acquire a connection to a read server.
-        """
-        if self.stale():
-            self.discover()
-        return self.pool.acquire(next(self.readers))
-
-    def acquire_write_connection(self):
-        """ Acquire a connection to a write server.
-        """
-        if self.stale():
-            self.discover()
-        return self.pool.acquire(next(self.writers))
+        return Session(self.pool.acquire(self.address))
 
 
 class RoutingDriver(Driver):
@@ -287,20 +212,25 @@ class RoutingDriver(Driver):
             # this error message is case-specific as there is only one incompatible
             # scenario right now
             raise ValueError("TRUST_ON_FIRST_USE is not compatible with routing")
-        Driver.__init__(self, lambda a: connect(a, security_plan.ssl_context, **config))
+
+        def connector(a):
+            return connect(a, security_plan.ssl_context, **config)
+
+        pool = RoutingConnectionPool(connector, address)
         try:
-            self.router = ConnectionRouter(self.pool, address)
-            self.router.discover()
+            pool.update_routing_table()
         except:
-            self.close()
+            pool.close()
             raise
+        else:
+            Driver.__init__(self, pool)
 
     def session(self, access_mode=None):
         if access_mode == READ_ACCESS:
-            connection = self.router.acquire_read_connection()
+            connection = self.pool.acquire_for_read()
         else:
-            connection = self.router.acquire_write_connection()
-        return Session(self, connection, access_mode)
+            connection = self.pool.acquire_for_write()
+        return Session(connection, access_mode)
 
 
 class Session(object):
@@ -311,8 +241,7 @@ class Session(object):
 
     transaction = None
 
-    def __init__(self, driver, connection, access_mode=None):
-        self.driver = driver
+    def __init__(self, connection, access_mode=None):
         self.connection = connection
         self.access_mode = access_mode
 
@@ -694,13 +623,6 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
     :return: auth token for use with :meth:`GraphDatabase.driver`
     """
     return AuthToken(scheme, principal, credentials, realm, **parameters)
-
-
-def parse_address(address):
-    """ Convert an address string to a tuple.
-    """
-    host, _, port = address.partition(":")
-    return host, int(port)
 
 
 _warned_about_insecure_default = False

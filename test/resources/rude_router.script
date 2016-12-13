@@ -1,0 +1,7 @@
+!: AUTO INIT
+!: AUTO RESET
+
+C: RUN "CALL dbms.cluster.routing.getServers" {}
+   PULL_ALL
+S: <EXIT>
+
