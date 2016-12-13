@@ -83,9 +83,10 @@ log_error = log.error
 
 class BufferingSocket(object):
 
-    def __init__(self, socket):
-        self.address = socket.getpeername()
-        self.socket = socket
+    def __init__(self, connection):
+        self.connection = connection
+        self.socket = connection.socket
+        self.address = self.socket.getpeername()
         self.buffer = bytearray()
 
     def fill(self):
@@ -96,6 +97,10 @@ class BufferingSocket(object):
             self.buffer[len(self.buffer):] = received
         else:
             if ready_to_read is not None:
+                # If this connection fails, remove this address from the
+                # connection pool to which this connection belongs.
+                if self.connection.pool:
+                    self.connection.pool.remove(self.address)
                 raise ServiceUnavailable("Failed to read from connection %r" % (self.address,))
 
     def read_message(self):
@@ -211,9 +216,12 @@ class Connection(object):
     .. note:: logs at INFO level
     """
 
+    #: The pool of which this connection is a member
+    pool = None
+
     def __init__(self, sock, **config):
         self.socket = sock
-        self.buffering_socket = BufferingSocket(sock)
+        self.buffering_socket = BufferingSocket(self)
         self.address = sock.getpeername()
         self.channel = ChunkChannel(sock)
         self.packer = Packer(self.channel)
@@ -411,6 +419,7 @@ class ConnectionPool(object):
                     connection.in_use = True
                     return connection
             connection = self.connector(address)
+            connection.pool = self
             connection.in_use = True
             connections.append(connection)
             return connection
