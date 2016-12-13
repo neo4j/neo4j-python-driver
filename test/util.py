@@ -85,7 +85,6 @@ class ServerTestCase(TestCase):
 
     known_hosts = KNOWN_HOSTS
     known_hosts_backup = known_hosts + ".backup"
-    servers = []
 
     def setUp(self):
         if isfile(self.known_hosts):

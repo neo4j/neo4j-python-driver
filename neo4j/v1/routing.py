@@ -263,14 +263,32 @@ class RoutingConnectionPool(ConnectionPool):
     def acquire_for_read(self):
         """ Acquire a connection to a read server.
         """
-        self.refresh_routing_table()
-        return self.acquire(next(self.routing_table.readers))
+        while True:
+            address = None
+            while address is None:
+                self.refresh_routing_table()
+                address = next(self.routing_table.readers)
+            try:
+                connection = self.acquire(address)
+            except ServiceUnavailable:
+                self.remove(address)
+            else:
+                return connection
 
     def acquire_for_write(self):
         """ Acquire a connection to a write server.
         """
-        self.refresh_routing_table()
-        return self.acquire(next(self.routing_table.writers))
+        while True:
+            address = None
+            while address is None:
+                self.refresh_routing_table()
+                address = next(self.routing_table.writers)
+            try:
+                connection = self.acquire(address)
+            except ServiceUnavailable:
+                self.remove(address)
+            else:
+                return connection
 
     def remove(self, address):
         """ Remove an address from the connection pool, if present, closing
