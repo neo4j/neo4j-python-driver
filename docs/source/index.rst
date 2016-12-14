@@ -86,8 +86,8 @@ Example
                 tx.run("MATCH (a:Person {name:'Alice'}) "
                        "MERGE (a)-[:KNOWS]->(x:Person {name:{n}})", {"n": friend})
 
-        for friend, in session.run("MATCH (a:Person {name:'Alice'})-[:KNOWS]->(x) RETURN x"):
-            print('Alice says, "hello, %s"' % friend["name"])
+        for record in session.run("MATCH (a:Person {name:'Alice'})-[:KNOWS]->(friend) RETURN friend"):
+            print('Alice says, "hello, %s"' % record["friend"]["name"])
 
     driver.close()
 
