@@ -110,7 +110,7 @@ class GraphDatabase(object):
 class SecurityPlan(object):
 
     @classmethod
-    def build(cls, address, **config):
+    def build(cls, **config):
         encrypted = config.get("encrypted", None)
         if encrypted is None:
             encrypted = _encryption_default()
@@ -188,7 +188,7 @@ class DirectDriver(Driver):
 
     def __init__(self, address, **config):
         self.address = address
-        self.security_plan = security_plan = SecurityPlan.build(address, **config)
+        self.security_plan = security_plan = SecurityPlan.build(**config)
         self.encrypted = security_plan.encrypted
         pool = ConnectionPool(lambda a: connect(a, security_plan.ssl_context, **config))
         Driver.__init__(self, pool)
@@ -202,7 +202,7 @@ class RoutingDriver(Driver):
     """
 
     def __init__(self, address, **config):
-        self.security_plan = security_plan = SecurityPlan.build(address, **config)
+        self.security_plan = security_plan = SecurityPlan.build(**config)
         self.encrypted = security_plan.encrypted
         if not security_plan.routing_compatible:
             # this error message is case-specific as there is only one incompatible
