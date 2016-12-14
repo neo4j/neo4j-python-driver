@@ -354,8 +354,12 @@ class RecordTestCase(ServerTestCase):
 
 class ExplicitTransactionTestCase(ServerTestCase):
 
+    def setUp(self):
+        self.driver = GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN)
+
     def test_can_commit_transaction(self):
-        with GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN).session() as session:
+
+        with self.driver.session() as session:
             tx = session.begin_transaction()
 
             # Create a node
@@ -378,7 +382,7 @@ class ExplicitTransactionTestCase(ServerTestCase):
             assert value == "bar"
 
     def test_can_rollback_transaction(self):
-        with GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN).session() as session:
+        with self.driver.session() as session:
             tx = session.begin_transaction()
 
             # Create a node
@@ -399,7 +403,7 @@ class ExplicitTransactionTestCase(ServerTestCase):
             assert len(list(result)) == 0
 
     def test_can_commit_transaction_using_with_block(self):
-        with GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN).session() as session:
+        with self.driver.session() as session:
             with session.begin_transaction() as tx:
                 # Create a node
                 result = tx.run("CREATE (a) RETURN id(a)")
@@ -421,7 +425,7 @@ class ExplicitTransactionTestCase(ServerTestCase):
             assert value == "bar"
 
     def test_can_rollback_transaction_using_with_block(self):
-        with GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN).session() as session:
+        with self.driver.session() as session:
             with session.begin_transaction() as tx:
                 # Create a node
                 result = tx.run("CREATE (a) RETURN id(a)")

@@ -1,6 +1,30 @@
-============================
+****************************
 Neo4j Bolt Driver for Python
-============================
+****************************
+
+The Official Neo4j Driver for Python supports Neo4j 3.0 and above and Python versions 2.7, 3.4 and 3.5.
+
+
+Quick Example
+=============
+
+.. code-block:: python
+
+    from neo4j.v1 import GraphDatabase, basic_auth
+
+    uri = "bolt://localhost:7687"
+    auth_token = basic_auth("neo4j", "password")
+    driver = GraphDatabase.driver(uri, auth=auth_token)
+
+    def print_friends_of(name):
+        with driver.session() as session:
+            with session.begin_transaction() as tx:
+                for record in tx.run("MATCH (a:Person)-[:KNOWS]->(f) "
+                                     "WHERE a.name = {name} "
+                                     "RETURN f.name", name=name):
+                    print(record["f.name"])
+
+    print_friends_of("Alice")
 
 
 Installation
@@ -19,48 +43,15 @@ For the most up-to-date version (possibly unstable), use:
     pip install git+https://github.com/neo4j/neo4j-python-driver.git#egg=neo4j-driver
 
 
-Example Usage
-=============
+Other Information
+=================
 
-.. code:: python
-
-    from neo4j.v1 import GraphDatabase, basic_auth
-
-    driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "password"))
-
-    with driver.session() as session:
-
-        with session.begin_transaction() as write_tx:
-            write_tx.run("CREATE (a:Person {name:{name},age:{age}})", name="Alice", age=33)
-            write_tx.run("CREATE (a:Person {name:{name},age:{age}})", name="Bob", age=44)
-
-        with session.begin_transaction() as read_tx:
-            result = read_tx.run("MATCH (a:Person) RETURN a.name AS name, a.age AS age")
-            for record in result:
-                print("%s is %d years old" % (record["name"], record["age"]))
-
-    driver.close()
-
-
-Command Line
-============
-
-.. code:: bash
-
-    python -m neo4j "CREATE (a:Person {name:'Alice'}) RETURN a, labels(a), a.name"
-
-
-Documentation
-=============
-
-For more information such as manual, driver API documentations, changelogs, please find them in the wiki of this repo.
-
-* `Driver Wiki`_
 * `Neo4j Manual`_
-* `Neo4j Refcard`_
-* `Sample Project Using Driver`_
+* `Neo4j Quick Reference Card`_
+* `Example Project`_
+* `Driver Wiki`_ (includes change logs)
 
-.. _`Sample Project Using Driver`: https://github.com/neo4j-examples/movies-python-bolt
-.. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki
 .. _`Neo4j Manual`: https://neo4j.com/docs/
-.. _`Neo4j Refcard`: https://neo4j.com/docs/cypher-refcard/current/
+.. _`Neo4j Quick Reference Card`: https://neo4j.com/docs/cypher-refcard/current/
+.. _`Example Project`: https://github.com/neo4j-examples/movies-python-bolt
+.. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki

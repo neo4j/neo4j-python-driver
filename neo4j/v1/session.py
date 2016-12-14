@@ -162,6 +162,9 @@ class Driver(object):
     def __init__(self, pool):
         self.pool = pool
 
+    def __del__(self):
+        self.close()
+
     def __enter__(self):
         return self
 
@@ -179,6 +182,7 @@ class Driver(object):
     def close(self):
         if self.pool:
             self.pool.close()
+            self.pool = None
 
 
 class DirectDriver(Driver):
