@@ -19,7 +19,10 @@
 # limitations under the License.
 
 from mock import patch
+from unittest import skipUnless
+from uuid import uuid4
 
+from neo4j.v1 import READ_ACCESS, WRITE_ACCESS
 from neo4j.v1.exceptions import CypherError, ResultError
 from neo4j.v1.session import GraphDatabase, basic_auth, Record
 from neo4j.v1.types import Node, Relationship, Path
@@ -29,6 +32,21 @@ from test.util import ServerTestCase
 
 BOLT_URI = "bolt://localhost:7687"
 AUTH_TOKEN = basic_auth("neotest", "neotest")
+
+
+def get_server_version():
+    driver = GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN, encrypted=False)
+    with driver.session() as session:
+        full_version = session.connection.server_version
+        if full_version is None:
+            return "Neo4j", (3, 0), ()
+        product, _, tagged_version = full_version.partition("/")
+        tags = tagged_version.split("-")
+        version = map(int, tags[0].split("."))
+        return product, tuple(version), tuple(tags[1:])
+
+
+SERVER_PRODUCT, SERVER_VERSION, SERVER_TAGS = get_server_version()
 
 
 class AutoCommitTransactionTestCase(ServerTestCase):
@@ -415,16 +433,59 @@ class ExplicitTransactionTestCase(ServerTestCase):
                 tx.run("MATCH (a) WHERE id(a) = {n} "
                        "SET a.foo = {foo}", {"n": node_id, "foo": "bar"})
 
+                tx.success = False
+
             # Check the property value
             result = session.run("MATCH (a) WHERE id(a) = {n} "
                                  "RETURN a.foo", {"n": node_id})
             assert len(list(result)) == 0
 
 
+class BookmarkingTestCase(ServerTestCase):
+
+    def setUp(self):
+        self.driver = GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN, encrypted=False)
+
+    def tearDown(self):
+        self.driver.close()
+
+    @skipUnless(SERVER_VERSION >= (3, 1), "Bookmarking is not supported by this version of Neo4j")
+    def test_can_obtain_bookmark_after_commit(self):
+        with self.driver.session() as session:
+            with session.begin_transaction() as tx:
+                tx.run("RETURN 1")
+            assert session.last_bookmark is not None
+
+    @skipUnless(SERVER_VERSION >= (3, 1), "Bookmarking is not supported by this version of Neo4j")
+    def test_can_pass_bookmark_into_next_transaction(self):
+        unique_id = uuid4().hex
+
+        with self.driver.session(WRITE_ACCESS) as session:
+            with session.begin_transaction() as tx:
+                tx.run("CREATE (a:Thing {uuid:$uuid})", uuid=unique_id)
+            bookmark = session.last_bookmark
+
+        assert bookmark is not None
+
+        with self.driver.session(READ_ACCESS) as session:
+            with session.begin_transaction(bookmark) as tx:
+                result = tx.run("MATCH (a:Thing {uuid:$uuid}) RETURN a", uuid=unique_id)
+                record_list = list(result)
+                assert len(record_list) == 1
+                record = record_list[0]
+                assert len(record) == 1
+                thing = record[0]
+                assert isinstance(thing, Node)
+                assert thing["uuid"] == unique_id
+
+
 class ResultConsumptionTestCase(ServerTestCase):
 
     def setUp(self):
         self.driver = GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN, encrypted=False)
+
+    def tearDown(self):
+        self.driver.close()
 
     def test_can_consume_result_immediately(self):
         session = self.driver.session()
@@ -564,3 +625,39 @@ class ResultConsumptionTestCase(ServerTestCase):
                 # ...when none should follow
                 with self.assertRaises(ResultError):
                     result.peek()
+
+
+class SessionCommitTestCase(ServerTestCase):
+
+    def setUp(self):
+        self.driver = GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN)
+
+    def tearDown(self):
+        self.driver.close()
+
+    def test_should_sync_after_commit(self):
+        with self.driver.session() as session:
+            tx = session.begin_transaction()
+            result = tx.run("RETURN 1")
+            tx.commit()
+            buffer = result._buffer
+            assert len(buffer) == 1
+            assert buffer[0][0] == 1
+
+
+class SessionRollbackTestCase(ServerTestCase):
+
+    def setUp(self):
+        self.driver = GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN)
+
+    def tearDown(self):
+        self.driver.close()
+
+    def test_should_sync_after_rollback(self):
+        with self.driver.session() as session:
+            tx = session.begin_transaction()
+            result = tx.run("RETURN 1")
+            tx.rollback()
+            buffer = result._buffer
+            assert len(buffer) == 1
+            assert buffer[0][0] == 1

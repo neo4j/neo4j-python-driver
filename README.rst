@@ -33,7 +33,6 @@ Example Usage
         with session.begin_transaction() as write_tx:
             write_tx.run("CREATE (a:Person {name:{name},age:{age}})", name="Alice", age=33)
             write_tx.run("CREATE (a:Person {name:{name},age:{age}})", name="Bob", age=44)
-            write_tx.success = True
 
         with session.begin_transaction() as read_tx:
             result = read_tx.run("MATCH (a:Person) RETURN a.name AS name, a.age AS age")
