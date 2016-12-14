@@ -21,8 +21,8 @@
 
 from os.path import expanduser, join
 
+from .compat.ssl import SSL_AVAILABLE
 from ..meta import version
-from .ssl_compat import SSL_AVAILABLE
 
 
 DEFAULT_PORT = 7687

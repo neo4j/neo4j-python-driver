@@ -32,13 +32,13 @@ from warnings import warn
 
 from .bolt import connect, Response, RUN, PULL_ALL, ConnectionPool
 from .compat import integer, string, urlparse
+from .compat.ssl import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 from .constants import DEFAULT_PORT, ENCRYPTION_DEFAULT, TRUST_DEFAULT, TRUST_SIGNED_CERTIFICATES, \
     TRUST_ON_FIRST_USE, READ_ACCESS, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES, \
     TRUST_ALL_CERTIFICATES, TRUST_CUSTOM_CA_SIGNED_CERTIFICATES
 from .exceptions import CypherError, ProtocolError, ResultError, TransactionError, \
     ServiceUnavailable, SessionExpired
 from .routing import RoutingConnectionPool
-from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 from .summary import ResultSummary
 from .types import hydrated
 
@@ -110,7 +110,7 @@ class GraphDatabase(object):
 class SecurityPlan(object):
 
     @classmethod
-    def build(cls, address, **config):
+    def build(cls, **config):
         encrypted = config.get("encrypted", None)
         if encrypted is None:
             encrypted = _encryption_default()
@@ -162,6 +162,9 @@ class Driver(object):
     def __init__(self, pool):
         self.pool = pool
 
+    def __del__(self):
+        self.close()
+
     def __enter__(self):
         return self
 
@@ -179,6 +182,7 @@ class Driver(object):
     def close(self):
         if self.pool:
             self.pool.close()
+            self.pool = None
 
 
 class DirectDriver(Driver):
@@ -188,7 +192,7 @@ class DirectDriver(Driver):
 
     def __init__(self, address, **config):
         self.address = address
-        self.security_plan = security_plan = SecurityPlan.build(address, **config)
+        self.security_plan = security_plan = SecurityPlan.build(**config)
         self.encrypted = security_plan.encrypted
         pool = ConnectionPool(lambda a: connect(a, security_plan.ssl_context, **config))
         Driver.__init__(self, pool)
@@ -202,7 +206,7 @@ class RoutingDriver(Driver):
     """
 
     def __init__(self, address, **config):
-        self.security_plan = security_plan = SecurityPlan.build(address, **config)
+        self.security_plan = security_plan = SecurityPlan.build(**config)
         self.encrypted = security_plan.encrypted
         if not security_plan.routing_compatible:
             # this error message is case-specific as there is only one incompatible
