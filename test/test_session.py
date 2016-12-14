@@ -484,6 +484,9 @@ class ResultConsumptionTestCase(ServerTestCase):
     def setUp(self):
         self.driver = GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN, encrypted=False)
 
+    def tearDown(self):
+        self.driver.close()
+
     def test_can_consume_result_immediately(self):
         session = self.driver.session()
         tx = session.begin_transaction()
@@ -622,3 +625,39 @@ class ResultConsumptionTestCase(ServerTestCase):
                 # ...when none should follow
                 with self.assertRaises(ResultError):
                     result.peek()
+
+
+class SessionCommitTestCase(ServerTestCase):
+
+    def setUp(self):
+        self.driver = GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN)
+
+    def tearDown(self):
+        self.driver.close()
+
+    def test_should_sync_after_commit(self):
+        with self.driver.session() as session:
+            tx = session.begin_transaction()
+            result = tx.run("RETURN 1")
+            tx.commit()
+            buffer = result._buffer
+            assert len(buffer) == 1
+            assert buffer[0][0] == 1
+
+
+class SessionRollbackTestCase(ServerTestCase):
+
+    def setUp(self):
+        self.driver = GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN)
+
+    def tearDown(self):
+        self.driver.close()
+
+    def test_should_sync_after_rollback(self):
+        with self.driver.session() as session:
+            tx = session.begin_transaction()
+            result = tx.run("RETURN 1")
+            tx.rollback()
+            buffer = result._buffer
+            assert len(buffer) == 1
+            assert buffer[0][0] == 1
