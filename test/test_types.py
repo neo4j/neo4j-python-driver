@@ -127,9 +127,11 @@ class PathTestCase(TestCase):
         carol = Node.hydrate(3, {"Person"}, {"name": "Carol", "age": 55})
         alice_knows_bob = Relationship(alice.id, bob.id, "KNOWS", {"since": 1999})
         carol_dislikes_bob = Relationship(carol.id, bob.id, "DISLIKES")
-        path = Path.hydrate([alice, bob, carol],
-                            [alice_knows_bob.unbind(), carol_dislikes_bob.unbind()],
-                            [1, 1, -2, 2])
+        rels = [UnboundRelationship(alice_knows_bob.type, alice_knows_bob.properties),
+                UnboundRelationship(carol_dislikes_bob.type, carol_dislikes_bob.properties)]
+        rels[0].id = alice_knows_bob.id
+        rels[1].id = carol_dislikes_bob.id
+        path = Path.hydrate([alice, bob, carol], rels, [1, 1, -2, 2])
         assert path.start == alice
         assert path.end == carol
         assert path.nodes == (alice, bob, carol)

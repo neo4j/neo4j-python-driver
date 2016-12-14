@@ -53,25 +53,33 @@ class Entity(object):
     def __len__(self):
         return len(self.properties)
 
-    def __getitem__(self, key):
-        return self.properties.get(key)
+    def __getitem__(self, name):
+        return self.properties.get(name)
 
-    def __contains__(self, key):
-        return key in self.properties
+    def __contains__(self, name):
+        return name in self.properties
 
     def __iter__(self):
         return iter(self.properties)
 
-    def get(self, key, default=None):
-        return self.properties.get(key, default)
+    def get(self, name, default=None):
+        """ Get a property value by name, optionally with a default.
+        """
+        return self.properties.get(name, default)
 
     def keys(self):
+        """ Return an iterable of all property names.
+        """
         return self.properties.keys()
 
     def values(self):
+        """ Return an iterable of all property values.
+        """
         return self.properties.values()
 
     def items(self):
+        """ Return an iterable of all property name-value pairs.
+        """
         return self.properties.items()
 
 
@@ -108,7 +116,11 @@ class BaseRelationship(Entity):
 class Relationship(BaseRelationship):
     """ Self-contained graph relationship.
     """
+
+    #: The start node of this relationship
     start = None
+
+    #: The end node of this relationship
     end = None
 
     @classmethod
@@ -127,11 +139,6 @@ class Relationship(BaseRelationship):
     def __repr__(self):
         return "<Relationship id=%r start=%r end=%r type=%r properties=%r>" % \
                (self.id, self.start, self.end, self.type, self.properties)
-
-    def unbind(self):
-        inst = UnboundRelationship(self.type, self.properties)
-        inst.id = self.id
-        return inst
 
 
 class UnboundRelationship(BaseRelationship):
