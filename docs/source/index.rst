@@ -71,24 +71,25 @@ Example
 
 .. code-block:: python
 
-    from neo4j.v1 import GraphDatabase
+    from neo4j.v1 import GraphDatabase, basic_auth
 
-    driver = GraphDatabase.driver("bolt://localhost:7687")
-    session = driver.session()
+    driver = GraphDatabase.driver("bolt://localhost:7687", auth=basic_auth("neo4j", "password"))
 
-    session.run("MERGE (a:Person {name:'Alice'})")
+    with driver.session() as session:
 
-    friends = ["Bob", "Carol", "Dave", "Eve", "Frank"]
-    with session.begin_transaction() as tx:
-        for friend in friends:
-            tx.run("MATCH (a:Person {name:'Alice'}) "
-                   "MERGE (a)-[:KNOWS]->(x:Person {name:{n}})", {"n": friend})
-        tx.success = True
+        with session.begin_transaction() as tx:
+            session.run("MERGE (a:Person {name:'Alice'})")
 
-    for friend, in session.run("MATCH (a:Person {name:'Alice'})-[:KNOWS]->(x) RETURN x"):
-        print('Alice says, "hello, %s"' % friend["name"])
+        friends = ["Bob", "Carol", "Dave", "Eve", "Frank"]
+        with session.begin_transaction() as tx:
+            for friend in friends:
+                tx.run("MATCH (a:Person {name:'Alice'}) "
+                       "MERGE (a)-[:KNOWS]->(x:Person {name:{n}})", {"n": friend})
 
-    session.close()
+        for friend, in session.run("MATCH (a:Person {name:'Alice'})-[:KNOWS]->(x) RETURN x"):
+            print('Alice says, "hello, %s"' % friend["name"])
+
+    driver.close()
 
 
 Indices and tables
