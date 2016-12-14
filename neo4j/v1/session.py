@@ -28,7 +28,6 @@ instances that are in turn used for managing sessions.
 from __future__ import division
 
 from collections import deque
-import re
 from warnings import warn
 
 from .bolt import connect, Response, RUN, PULL_ALL, ConnectionPool
@@ -42,9 +41,6 @@ from .routing import RoutingConnectionPool
 from .ssl_compat import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 from .summary import ResultSummary
 from .types import hydrated
-
-
-localhost = re.compile(r"^(localhost|127(\.\d+){3})$", re.IGNORECASE)
 
 
 class AuthToken(object):
@@ -76,7 +72,7 @@ class GraphDatabase(object):
         configuration:
 
             >>> from neo4j.v1 import GraphDatabase
-            >>> driver = GraphDatabase.driver("bolt://localhost")
+            >>> driver = GraphDatabase.driver("bolt://localhost:7687")
 
         :param uri: URI for a graph database
         :param config: configuration and authentication details (valid keys are listed below)

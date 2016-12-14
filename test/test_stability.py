@@ -34,7 +34,7 @@ class ServerRestartTestCase(ServerTestCase):
 
     # @skipIf(platform.system() == "Windows", "restart testing not supported on Windows")
     # def test_server_shutdown_detection(self):
-    #     driver = GraphDatabase.driver("bolt://localhost", auth=auth_token)
+    #     driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
     #     session = driver.session()
     #     session.run("RETURN 1").consume()
     #     assert restart_server()
