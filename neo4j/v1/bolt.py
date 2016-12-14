@@ -242,8 +242,6 @@ class Connection(object):
 
     defunct = False
 
-    server_version = None  # TODO: remove this when PR#108 is merged
-
     #: The pool of which this connection is a member
     pool = None
 

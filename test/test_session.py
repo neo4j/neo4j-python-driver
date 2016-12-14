@@ -37,7 +37,7 @@ AUTH_TOKEN = basic_auth("neotest", "neotest")
 def get_server_version():
     driver = GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN, encrypted=False)
     with driver.session() as session:
-        full_version = session.connection.server_version
+        full_version = session.connection.server.version
         if full_version is None:
             return "Neo4j", (3, 0), ()
         product, _, tagged_version = full_version.partition("/")
