@@ -35,7 +35,7 @@ def update_password(user, password, new_password):
 
     token = basic_auth(user, password)
     setattr(token, "new-credentials", new_password)  # TODO: hopefully switch hyphen to underscore on server
-    GraphDatabase.driver("bolt://localhost", auth=token).session().close()
+    GraphDatabase.driver("bolt://localhost:7687", auth=token).session().close()
 
 
 if __name__ == "__main__":
