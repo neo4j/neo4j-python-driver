@@ -25,7 +25,6 @@ Bolt. It is not intended to be used directly by driver users. Instead,
 the `session` module provides the main user-facing abstractions.
 """
 
-
 from __future__ import division
 
 from base64 import b64encode
@@ -36,13 +35,13 @@ from os import makedirs, open as os_open, write as os_write, close as os_close, 
 from os.path import dirname, isfile
 from select import select
 from socket import create_connection, SHUT_RDWR, error as SocketError
-from struct import pack as struct_pack, unpack as struct_unpack, unpack_from as struct_unpack_from
+from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock
 
+from .compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
 from .constants import DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, TRUST_DEFAULT, TRUST_ON_FIRST_USE
 from .exceptions import ProtocolError, Unauthorized, ServiceUnavailable
 from .packstream import Packer, Unpacker
-from .ssl_compat import SSL_AVAILABLE, HAS_SNI, SSLError
 
 
 # Signature bytes for each message type
