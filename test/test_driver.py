@@ -159,7 +159,7 @@ class RoutingDriverTestCase(ServerTestCase):
                     result = session.run("RETURN $x", {"x": 1})
                     for record in result:
                         assert record["x"] == 1
-                    assert session.connection.address == ('127.0.0.1', 9004)
+                    assert session.connection.server.address == ('127.0.0.1', 9004)
 
     def test_should_be_able_to_write(self):
         with StubCluster({9001: "router.script", 9006: "create_a.script"}):
@@ -168,7 +168,7 @@ class RoutingDriverTestCase(ServerTestCase):
                 with driver.session(WRITE_ACCESS) as session:
                     result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
                     assert not list(result)
-                    assert session.connection.address == ('127.0.0.1', 9006)
+                    assert session.connection.server.address == ('127.0.0.1', 9006)
 
     def test_should_be_able_to_write_as_default(self):
         with StubCluster({9001: "router.script", 9006: "create_a.script"}):
@@ -177,7 +177,7 @@ class RoutingDriverTestCase(ServerTestCase):
                 with driver.session() as session:
                     result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
                     assert not list(result)
-                    assert session.connection.address == ('127.0.0.1', 9006)
+                    assert session.connection.server.address == ('127.0.0.1', 9006)
 
     def test_routing_disconnect_on_run(self):
         with StubCluster({9001: "router.script", 9004: "disconnect_on_run.script"}):
