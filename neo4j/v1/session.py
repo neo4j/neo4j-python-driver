@@ -241,6 +241,8 @@ class Session(object):
 
     transaction = None
 
+    last_bookmark = None
+
     def __init__(self, connection, access_mode=None):
         self.connection = connection
         self.access_mode = access_mode
@@ -265,6 +267,8 @@ class Session(object):
         :return: Cypher result
         :rtype: :class:`.StatementResult`
         """
+        self.last_bookmark = None
+
         statement = _norm_statement(statement)
         parameters = _norm_parameters(parameters, **kwparameters)
 
@@ -301,13 +305,15 @@ class Session(object):
             self.transaction.close()
         if self.connection:
             if not self.connection.closed:
-                self.connection.fetch_all()
+                self.connection.sync()
             self.connection.in_use = False
             self.connection = None
 
-    def begin_transaction(self):
+    def begin_transaction(self, bookmark=None):
         """ Create a new :class:`.Transaction` within this session.
 
+        :param bookmark: a bookmark to which the server should
+                         synchronise before beginning the transaction
         :return: new :class:`.Transaction` instance.
         """
         if self.transaction:
@@ -316,15 +322,23 @@ class Session(object):
         def clear_transaction():
             self.transaction = None
 
-        self.run("BEGIN")
+        parameters = {}
+        if bookmark is not None:
+            parameters["bookmark"] = bookmark
+
+        self.run("BEGIN", parameters)
         self.transaction = Transaction(self, on_close=clear_transaction)
         return self.transaction
 
     def commit_transaction(self):
-        self.run("COMMIT")
+        result = self.run("COMMIT")
+        self.connection.sync()
+        summary = result.summary()
+        self.last_bookmark = summary.metadata.get("bookmark")
 
     def rollback_transaction(self):
         self.run("ROLLBACK")
+        self.connection.sync()
 
 
 class Transaction(object):
@@ -342,7 +356,7 @@ class Transaction(object):
     #: and rolled back otherwise. This attribute can be set in user code
     #: multiple times before a transaction completes with only the final
     #: value taking effect.
-    success = False
+    success = None
 
     #: Indicator to show whether the transaction has been closed, either
     #: with commit or rollback.
@@ -356,8 +370,8 @@ class Transaction(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if exc_value:
-            self.success = False
+        if self.success is None:
+            self.success = not bool(exc_type)
         self.close()
 
     def run(self, statement, parameters=None, **kwparameters):

@@ -575,7 +575,7 @@ class RoutingConnectionPoolAcquireForReadTestCase(ServerTestCase):
             with RoutingConnectionPool(connector, address) as pool:
                 assert not pool.routing_table.is_fresh()
                 connection = pool.acquire_for_read()
-                assert connection.address in pool.routing_table.readers
+                assert connection.server.address in pool.routing_table.readers
 
     def test_should_retry_if_first_reader_fails(self):
         with StubCluster({9001: "router.script",
@@ -605,7 +605,7 @@ class RoutingConnectionPoolAcquireForWriteTestCase(ServerTestCase):
             with RoutingConnectionPool(connector, address) as pool:
                 assert not pool.routing_table.is_fresh()
                 connection = pool.acquire_for_write()
-                assert connection.address in pool.routing_table.writers
+                assert connection.server.address in pool.routing_table.writers
 
     def test_should_retry_if_first_writer_fails(self):
         with StubCluster({9001: "router_with_multiple_writers.script",
