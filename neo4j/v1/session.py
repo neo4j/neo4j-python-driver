@@ -312,6 +312,8 @@ class Session(object):
     def begin_transaction(self, bookmark=None):
         """ Create a new :class:`.Transaction` within this session.
 
+        :param bookmark: a bookmark to which the server should
+                         synchronise before beginning the transaction
         :return: new :class:`.Transaction` instance.
         """
         if self.transaction:
