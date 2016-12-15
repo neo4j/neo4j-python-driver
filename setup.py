@@ -51,4 +51,4 @@ setup(name="neo4j-driver",
           "Programming Language :: Python :: 3.3",
           "Programming Language :: Python :: 3.4",
       ],
-      packages=["neo4j", "neo4j.v1"])
+      packages=["neo4j", "neo4j.bolt", "neo4j.compat", "neo4j.v1"])
