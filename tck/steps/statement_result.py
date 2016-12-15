@@ -21,8 +21,7 @@
 from behave import *
 from tck.resultparser import parse_values_to_comparable
 
-from neo4j.v1 import Record, ResultSummary
-from neo4j.v1.exceptions import ResultError
+from neo4j.v1 import Record, ResultSummary, ResultError
 from tck import tck_util
 
 use_step_matcher("re")

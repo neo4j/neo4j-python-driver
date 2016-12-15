@@ -27,21 +27,28 @@ the `session` module provides the main user-facing abstractions.
 
 from __future__ import division
 
+import logging
 from base64 import b64encode
 from collections import deque, namedtuple
 from io import BytesIO
-import logging
 from os import makedirs, open as os_open, write as os_write, close as os_close, O_CREAT, O_APPEND, O_WRONLY
-from os.path import dirname, isfile
+from os.path import dirname, isfile, join as path_join, expanduser
 from select import select
 from socket import create_connection, SHUT_RDWR, error as SocketError
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock
 
-from .compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
-from .constants import DEFAULT_USER_AGENT, KNOWN_HOSTS, MAGIC_PREAMBLE, TRUST_DEFAULT, TRUST_ON_FIRST_USE
-from .exceptions import ProtocolError, Unauthorized, ServiceUnavailable
+from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
+from neo4j.meta import version
 from .packstream import Packer, Unpacker
+
+
+DEFAULT_PORT = 7687
+DEFAULT_USER_AGENT = "neo4j-python/%s" % version
+
+KNOWN_HOSTS = path_join(expanduser("~"), ".neo4j", "known_hosts")
+
+MAGIC_PREAMBLE = 0x6060B017
 
 
 # Signature bytes for each message type
@@ -544,6 +551,7 @@ def connect(address, ssl_context=None, **config):
             error.__cause__ = cause
             raise error
         else:
+            from neo4j.v1 import TRUST_DEFAULT, TRUST_ON_FIRST_USE
             # Check that the server provides a certificate
             der_encoded_server_certificate = s.getpeercert(binary_form=True)
             if der_encoded_server_certificate is None:
@@ -598,3 +606,18 @@ def connect(address, ssl_context=None, **config):
     else:
         log_error("S: [CLOSE]")
         raise ProtocolError("Unknown Bolt protocol version: %d", agreed_version)
+
+
+class ServiceUnavailable(Exception):
+    """ Raised when no database service is available.
+    """
+
+
+class ProtocolError(Exception):
+    """ Raised when an unexpected or unsupported protocol event occurs.
+    """
+
+
+class Unauthorized(Exception):
+    """ Raised when an action is not permitted.
+    """

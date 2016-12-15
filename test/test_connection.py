@@ -20,7 +20,8 @@
 
 from socket import create_connection
 
-from neo4j.v1 import ConnectionPool, ServiceUnavailable
+from neo4j.v1 import ConnectionPool
+from neo4j.bolt.connection import ServiceUnavailable
 
 from test.util import ServerTestCase
 

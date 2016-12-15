@@ -18,17 +18,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mock import patch
 from unittest import skipUnless
 from uuid import uuid4
 
-from neo4j.v1 import READ_ACCESS, WRITE_ACCESS
-from neo4j.v1.exceptions import CypherError, ResultError
-from neo4j.v1.session import GraphDatabase, basic_auth, Record
-from neo4j.v1.types import Node, Relationship, Path
+from mock import patch
+
+from neo4j.v1 import \
+    GraphDatabase, basic_auth, READ_ACCESS, WRITE_ACCESS, \
+    Record, CypherError, ResultError, \
+    Node, Relationship, Path
 
 from test.util import ServerTestCase
-
 
 BOLT_URI = "bolt://localhost:7687"
 AUTH_TOKEN = basic_auth("neotest", "neotest")
@@ -272,7 +272,8 @@ class ResetTestCase(ServerTestCase):
                 assert False, "A Cypher error should have occurred"
 
     def test_defunct(self):
-        from neo4j.v1.bolt import BufferingSocket, ProtocolError
+        from neo4j.bolt.connection import BufferingSocket
+        from neo4j.bolt.connection import ProtocolError
         with self.driver.session() as session:
             assert not session.connection.defunct
             with patch.object(BufferingSocket, "fill", side_effect=ProtocolError()):

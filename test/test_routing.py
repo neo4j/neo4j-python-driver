@@ -18,13 +18,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mock import patch
 from threading import Semaphore, Thread
 from time import sleep
 from unittest import TestCase
 
-from neo4j.v1 import basic_auth, connect
-from neo4j.v1.exceptions import ProtocolError, ServiceUnavailable
+from mock import patch
+
+from neo4j.bolt.connection import connect, ServiceUnavailable, ProtocolError
+from neo4j.v1 import basic_auth
 from neo4j.v1.routing import RoundRobinSet, RoutingTable, RoutingConnectionPool
 
 from test.util import ServerTestCase, StubCluster
@@ -204,15 +205,6 @@ class RoutingTableParseRoutingInfoTestCase(ServerTestCase):
 
 
 class RoutingTableFreshnessTestCase(TestCase):
-
-    VALID_ROUTING_RECORD = {
-        "ttl": 300,
-        "servers": [
-            {"role": "ROUTE", "addresses": ["127.0.0.1:9001", "127.0.0.1:9002", "127.0.0.1:9003"]},
-            {"role": "READ", "addresses": ["127.0.0.1:9004", "127.0.0.1:9005"]},
-            {"role": "WRITE", "addresses": ["127.0.0.1:9006"]},
-        ],
-    }
 
     def test_should_be_fresh_after_update(self):
         table = RoutingTable.parse_routing_info([VALID_ROUTING_RECORD])

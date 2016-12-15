@@ -20,7 +20,8 @@
 
 from behave import *
 
-from neo4j.v1 import GraphDatabase, basic_auth, exceptions
+from neo4j.bolt import ProtocolError
+from neo4j.v1 import GraphDatabase, basic_auth
 from tck.tck_util import BOLT_URI, AUTH_TOKEN
 
 
@@ -54,7 +55,7 @@ def step_impl(context):
         session.run("CREATE (:label1)")
         session.close()
         assert False
-    except exceptions.ProtocolError as e:
+    except ProtocolError as e:
         pass
 
 

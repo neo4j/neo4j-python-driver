@@ -22,9 +22,8 @@
 from threading import Lock
 from time import clock
 
-from .bolt import Address, ConnectionPool
-from .compat.collections import MutableSet, OrderedDict
-from .exceptions import CypherError, ProtocolError, ServiceUnavailable
+from neo4j.bolt.connection import Address, ConnectionPool, ServiceUnavailable, ProtocolError
+from neo4j.compat.collections import MutableSet, OrderedDict
 
 
 class RoundRobinSet(MutableSet):
@@ -168,7 +167,7 @@ class RoutingConnectionPool(ConnectionPool):
         :raise ServiceUnavailable: if the server does not support routing or
                                    if routing support is broken
         """
-        from .session import Session
+        from .session import Session, CypherError
         try:
             connection = self.acquire(address)
             with Session(connection) as session:

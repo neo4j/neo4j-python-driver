@@ -24,7 +24,8 @@ from collections import OrderedDict
 from io import BytesIO
 from math import pi
 from unittest import TestCase
-from neo4j.v1.packstream import Packer, Unpacker, packb
+
+from neo4j.bolt.packstream import Packer, Unpacker, packb
 
 
 def assert_packable(value, packed_value):

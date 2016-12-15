@@ -19,12 +19,6 @@
 # limitations under the License.
 
 
-try:
-    from collections.abc import MutableSet
-except ImportError:
-    from collections import MutableSet, OrderedDict
-else:
-    from collections import OrderedDict
 import logging
 from sys import stdout
 

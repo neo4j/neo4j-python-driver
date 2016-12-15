@@ -23,10 +23,10 @@ import random
 import string
 
 from behave import *
-from tck.resultparser import parse_values
 
-from neo4j.v1 import compat
+from neo4j import compat
 from tck import tck_util
+from tck.resultparser import parse_values
 from tck.tck_util import to_unicode, Type, string_to_type
 
 use_step_matcher("re")

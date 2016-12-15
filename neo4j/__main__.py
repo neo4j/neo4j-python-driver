@@ -27,7 +27,8 @@ from json import loads as json_loads
 from sys import stdout, stderr
 
 from .util import Watcher
-from .v1.session import GraphDatabase, CypherError, basic_auth
+from .v1.session import GraphDatabase, basic_auth
+from neo4j.v1.session import CypherError
 
 
 def main():

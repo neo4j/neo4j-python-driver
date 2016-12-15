@@ -18,27 +18,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import platform
-from unittest import skipIf
-
-from neo4j.v1 import GraphDatabase, basic_auth, ProtocolError
-
-from test.util import ServerTestCase, restart_server
-
-
-auth_token = basic_auth("neo4j", "password")
-
-
-class ServerRestartTestCase(ServerTestCase):
-
-    # @skipIf(platform.system() == "Windows", "restart testing not supported on Windows")
-    # def test_server_shutdown_detection(self):
-    #     driver = GraphDatabase.driver("bolt://localhost:7687", auth=auth_token)
-    #     session = driver.session()
-    #     session.run("RETURN 1").consume()
-    #     assert restart_server()
-    #     with self.assertRaises(ProtocolError):
-    #         session.run("RETURN 1").consume()
-    #     session.close()
-    pass
+from .connection import *
+from .packstream import *

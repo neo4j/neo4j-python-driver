@@ -21,9 +21,8 @@
 
 from unittest import TestCase
 
-from neo4j.v1.packstream import Structure
-
-from neo4j.v1.types import Node, Relationship, UnboundRelationship, Path, hydrated
+from neo4j.bolt.packstream import Structure
+from neo4j.v1 import Node, Relationship, UnboundRelationship, Path, hydrated
 
 
 class NodeTestCase(TestCase):

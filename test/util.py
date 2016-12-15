@@ -23,13 +23,13 @@ import functools
 from os import getenv, remove, rename
 from os.path import isfile, dirname, join as path_join
 from socket import create_connection
-from subprocess import call, check_call, CalledProcessError
+from subprocess import check_call, CalledProcessError
 from threading import Thread
 from time import sleep
 from unittest import TestCase
 
 from neo4j.util import Watcher
-from neo4j.v1.constants import KNOWN_HOSTS
+from neo4j.bolt.connection import KNOWN_HOSTS
 
 KNOWN_HOSTS_BACKUP = KNOWN_HOSTS + ".backup"
 
