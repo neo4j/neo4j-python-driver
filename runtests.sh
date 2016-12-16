@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 RUN=$(dirname "$0")/test/run/
-VERSIONS="3.0.7:3.1.0-M13-beta3"
+VERSIONS="3.0.8:3.1.0"
 
 # Export DIST_HOST=localhost if local web server hosts server packages
 if [ -z $1 ]
