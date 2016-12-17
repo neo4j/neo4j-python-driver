@@ -33,6 +33,10 @@ class Session(object):
     method.
     """
 
+    response_class = Response
+
+    result_class = None
+
     transaction = None
 
     last_bookmark = None
@@ -66,9 +70,9 @@ class Session(object):
         statement = _norm_statement(statement)
         parameters = _norm_parameters(parameters, **kwparameters)
 
-        run_response = Response(self.connection)
-        pull_all_response = Response(self.connection)
-        result = StatementResult(self, run_response, pull_all_response)
+        run_response = self.response_class(self.connection)
+        pull_all_response = self.response_class(self.connection)
+        result = self.result_class(self, run_response, pull_all_response)
         result.statement = statement
         result.parameters = parameters
 
@@ -79,6 +83,9 @@ class Session(object):
         return result
 
     def fetch(self):
+        """ Fetch the next message if available and return
+        the number of messages fetched (one or zero).
+        """
         try:
             return self.connection.fetch()
         except ServiceUnavailable as cause:
@@ -329,6 +336,9 @@ class StatementResult(object):
                 values = self._buffer[0]
                 return Record(self.keys(), tuple(map(hydrated, values)))
         raise ResultError("End of stream")
+
+
+Session.result_class = StatementResult
 
 
 class Record(object):

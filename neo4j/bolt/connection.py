@@ -343,12 +343,18 @@ class Connection(object):
         self.channel.send()
 
     def fetch(self):
-        """ Receive exactly one message from the server.
+        """ Receive exactly one message from the server
+        (if one is available).
+
+        :return: number of messages fetched (zero or one)
         """
         if self.closed:
             raise ServiceUnavailable("Failed to read from closed connection %r" % (self.server.address,))
         if self.defunct:
             raise ServiceUnavailable("Failed to read from defunct connection %r" % (self.server.address,))
+        if not self.responses:
+            return 0
+
         try:
             message_data = self.buffering_socket.read_message()
         except ProtocolError:
@@ -387,6 +393,8 @@ class Connection(object):
             response.on_failure(metadata or {})
         else:
             raise ProtocolError("Unexpected response message with signature %02X" % signature)
+
+        return 1
 
     def sync(self):
         """ Send and fetch all outstanding messages.
