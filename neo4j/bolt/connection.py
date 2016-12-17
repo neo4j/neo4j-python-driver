@@ -269,10 +269,17 @@ class Connection(object):
         self.user_agent = user_agent
 
         # Determine auth details
-        try:
-            self.auth_dict = vars(config["auth"])
-        except (KeyError, TypeError):
+        auth = config.get("auth")
+        if not auth:
             self.auth_dict = {}
+        elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
+            from neo4j.v1 import basic_auth
+            self.auth_dict = vars(basic_auth(*auth))
+        else:
+            try:
+                self.auth_dict = vars(config["auth"])
+            except (KeyError, TypeError):
+                raise TypeError("Cannot determine auth details from %r" % auth)
 
         # Pick up the server certificate, if any
         self.der_encoded_server_certificate = config.get("der_encoded_server_certificate")
@@ -400,10 +407,12 @@ class Connection(object):
         """ Send and fetch all outstanding messages.
         """
         self.send()
+        count = 0
         while self.responses:
             response = self.responses[0]
             while not response.complete:
-                self.fetch()
+                count += self.fetch()
+        return count
 
     def close(self):
         """ Close the connection.
@@ -542,7 +551,7 @@ def connect(address, ssl_context=None, **config):
     try:
         s = create_connection(address)
     except SocketError as error:
-        if error.errno == 111 or error.errno == 61 or error.errno == 10061:
+        if error.errno in (61, 111, 10061):
             raise ServiceUnavailable("Failed to establish connection to %r" % (address,))
         else:
             raise

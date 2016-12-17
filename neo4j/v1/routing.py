@@ -167,10 +167,11 @@ class RoutingConnectionPool(ConnectionPool):
         :raise ServiceUnavailable: if the server does not support routing or
                                    if routing support is broken
         """
-        from .session import Session, CypherError
+        from .api import CypherError
+        from .bolt import BoltSession
         try:
             connection = self.acquire(address)
-            with Session(connection) as session:
+            with BoltSession(connection) as session:
                 return list(session.run("CALL %s" % self.routing_info_procedure))
         except CypherError as error:
             if error.code == "Neo.ClientError.Procedure.ProcedureNotFound":

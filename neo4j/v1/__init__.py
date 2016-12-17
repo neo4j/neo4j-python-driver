@@ -18,6 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .driver import *
-from .session import *
+from .api import *
+from .bolt import *
+from .security import *
 from .types import *
