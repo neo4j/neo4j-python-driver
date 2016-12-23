@@ -21,8 +21,7 @@
 
 from unittest import skip, skipUnless
 
-from neo4j.v1 import TRUST_ON_FIRST_USE, TRUST_SIGNED_CERTIFICATES, SSL_AVAILABLE
-from neo4j.v1.session import CypherError
+from neo4j.v1 import TRUST_ON_FIRST_USE, TRUST_SIGNED_CERTIFICATES, SSL_AVAILABLE, CypherError
 from test.util import ServerTestCase
 
 # Do not change the contents of this tagged section without good reason*

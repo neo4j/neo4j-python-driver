@@ -25,8 +25,9 @@ from mock import patch
 
 from neo4j.v1 import \
     GraphDatabase, basic_auth, READ_ACCESS, WRITE_ACCESS, \
-    Record, CypherError, ResultError, \
+    CypherError, \
     Node, Relationship, Path
+from neo4j.v1.types import Record
 
 from test.util import ServerTestCase
 
@@ -133,7 +134,7 @@ class AutoCommitTransactionTestCase(ServerTestCase):
 
     def test_can_return_relationship(self):
         with self.driver.session() as session:
-            record_list = list(session.run("MERGE ()-[r:KNOWS {since:1999}]->() RETURN r"))
+            record_list = list(session.run("CREATE ()-[r:KNOWS {since:1999}]->() RETURN r"))
             assert len(record_list) == 1
             for record in record_list:
                 rel = record[0]
@@ -569,14 +570,18 @@ class ResultConsumptionTestCase(ServerTestCase):
     def test_single_with_no_records(self):
         session = self.driver.session()
         result = session.run("CREATE ()")
-        with self.assertRaises(ResultError):
-            result.single()
+        record = result.single()
+        assert record is None
 
     def test_single_with_multiple_records(self):
+        import warnings
         session = self.driver.session()
         result = session.run("UNWIND range(1, 3) AS n RETURN n")
-        with self.assertRaises(ResultError):
-            result.single()
+        with warnings.catch_warnings(record=True) as warning_list:
+            warnings.simplefilter("always")
+            record = result.single()
+            assert len(warning_list) == 1
+            assert record[0] == 1
 
     def test_single_consumes_entire_result_if_one_record(self):
         session = self.driver.session()
@@ -585,9 +590,11 @@ class ResultConsumptionTestCase(ServerTestCase):
         assert not result.online()
 
     def test_single_consumes_entire_result_if_multiple_records(self):
+        import warnings
         session = self.driver.session()
         result = session.run("UNWIND range(1, 3) AS n RETURN n")
-        with self.assertRaises(ResultError):
+        with warnings.catch_warnings():
+            warnings.simplefilter("always")
             _ = result.single()
         assert not result.online()
 
@@ -600,8 +607,8 @@ class ResultConsumptionTestCase(ServerTestCase):
     def test_peek_fails_if_nothing_remains(self):
         session = self.driver.session()
         result = session.run("CREATE ()")
-        with self.assertRaises(ResultError):
-            result.peek()
+        upcoming = result.peek()
+        assert upcoming is None
 
     def test_peek_does_not_advance_cursor(self):
         session = self.driver.session()
@@ -628,8 +635,8 @@ class ResultConsumptionTestCase(ServerTestCase):
                 assert upcoming[0] == expected_next
             else:
                 # ...when none should follow
-                with self.assertRaises(ResultError):
-                    result.peek()
+                upcoming = result.peek()
+                assert upcoming is None
 
 
 class SessionCommitTestCase(ServerTestCase):
@@ -645,7 +652,7 @@ class SessionCommitTestCase(ServerTestCase):
             tx = session.begin_transaction()
             result = tx.run("RETURN 1")
             tx.commit()
-            buffer = result._buffer
+            buffer = result._records
             assert len(buffer) == 1
             assert buffer[0][0] == 1
 
@@ -663,6 +670,6 @@ class SessionRollbackTestCase(ServerTestCase):
             tx = session.begin_transaction()
             result = tx.run("RETURN 1")
             tx.rollback()
-            buffer = result._buffer
+            buffer = result._records
             assert len(buffer) == 1
             assert buffer[0][0] == 1

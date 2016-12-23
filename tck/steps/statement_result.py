@@ -21,7 +21,8 @@
 from behave import *
 from tck.resultparser import parse_values_to_comparable
 
-from neo4j.v1 import Record, ResultSummary, ResultError
+from neo4j.v1 import ResultSummary
+from neo4j.v1.types import Record
 from tck import tck_util
 
 use_step_matcher("re")
@@ -39,11 +40,7 @@ def step_impl(context):
 @step("using `Single` on `Statement Result` throws exception")
 def step_impl(context):
     for result in context.results:
-        try:
-            result.single()
-            assert False, "Expected an error"
-        except ResultError as e:
-            assert str(e).startswith(context.table.rows[0][0])
+        assert result.single() is None
 
 
 @step("using `Next` on `Statement Result` gives a `Record`")
@@ -81,11 +78,7 @@ def step_impl(context):
 @step("using `Peek` on `Statement Result` fails")
 def step_impl(context):
     for result in context.results:
-        try:
-            result.peek()
-            assert False, "Expected an error"
-        except ResultError as e:
-            pass
+        assert result.peek() is None
 
 
 @step("using `Next` on `Statement Result` fails")

@@ -26,6 +26,87 @@ of these classes.
 """
 
 from neo4j.bolt.packstream import Structure
+from neo4j.compat import string, integer
+
+from .api import GraphDatabase, ValueSystem
+
+
+class Record(object):
+    """ Record is an ordered collection of fields.
+
+    A Record object is used for storing result values along with field names.
+    Fields can be accessed by numeric or named index (``record[0]`` or
+    ``record["field"]``).
+    """
+
+    def __init__(self, keys, values):
+        self._keys = tuple(keys)
+        self._values = tuple(values)
+
+    def keys(self):
+        """ Return the keys (key names) of the record
+        """
+        return self._keys
+
+    def values(self):
+        """ Return the values of the record
+        """
+        return self._values
+
+    def items(self):
+        """ Return the fields of the record as a list of key and value tuples
+        """
+        return zip(self._keys, self._values)
+
+    def index(self, key):
+        """ Return the index of the given key
+        """
+        try:
+            return self._keys.index(key)
+        except ValueError:
+            raise KeyError(key)
+
+    def __record__(self):
+        return self
+
+    def __contains__(self, key):
+        return self._keys.__contains__(key)
+
+    def __iter__(self):
+        return iter(self._keys)
+
+    def copy(self):
+        return Record(self._keys, self._values)
+
+    def __getitem__(self, item):
+        if isinstance(item, string):
+            return self._values[self.index(item)]
+        elif isinstance(item, integer):
+            return self._values[item]
+        else:
+            raise TypeError(item)
+
+    def __len__(self):
+        return len(self._keys)
+
+    def __repr__(self):
+        values = self._values
+        s = []
+        for i, field in enumerate(self._keys):
+            s.append("%s=%r" % (field, values[i]))
+        return "<Record %s>" % " ".join(s)
+
+    def __hash__(self):
+        return hash(self._keys) ^ hash(self._values)
+
+    def __eq__(self, other):
+        try:
+            return self._keys == tuple(other.keys()) and self._values == tuple(other.values())
+        except AttributeError:
+            return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class Entity(object):
@@ -225,31 +306,31 @@ class Path(object):
         return self.nodes[-1]
 
 
-hydration_functions = {
-    b"N": Node.hydrate,
-    b"R": Relationship.hydrate,
-    b"r": UnboundRelationship.hydrate,
-    b"P": Path.hydrate,
-}
+class PackStreamValueSystem(ValueSystem):
 
-
-def hydrated(obj):
-    """ Hydrate an object or a collection of nested objects by replacing
-    structures with entity instances.
-    """
-    if isinstance(obj, Structure):
-        signature, args = obj
-        try:
-            hydration_function = hydration_functions[signature]
-        except KeyError:
-            # If we don't recognise the structure type, just return it as-is
-            return obj
+    def hydrate(self, obj):
+        """ Hydrate an object or a collection of nested objects by replacing
+        structures with entity instances.
+        """
+        if isinstance(obj, Structure):
+            signature, args = obj
+            if signature == b"N":
+                return Node.hydrate(*map(self.hydrate, args))
+            elif signature == b"R":
+                return Relationship.hydrate(*map(self.hydrate, args))
+            elif signature == b"r":
+                return UnboundRelationship.hydrate(*map(self.hydrate, args))
+            elif signature == b"P":
+                return Path.hydrate(*map(self.hydrate, args))
+            else:
+                # If we don't recognise the structure type, just return it as-is
+                return obj
+        elif isinstance(obj, list):
+            return list(map(self.hydrate, obj))
+        elif isinstance(obj, dict):
+            return {key: self.hydrate(value) for key, value in obj.items()}
         else:
-            # Otherwise pass the structural data to the appropriate hydration function
-            return hydration_function(*map(hydrated, args))
-    elif isinstance(obj, list):
-        return list(map(hydrated, obj))
-    elif isinstance(obj, dict):
-        return {key: hydrated(value) for key, value in obj.items()}
-    else:
-        return obj
+            return obj
+
+
+GraphDatabase.value_systems["packstream"] = PackStreamValueSystem()

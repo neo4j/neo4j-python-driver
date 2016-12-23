@@ -21,7 +21,8 @@
 
 from sys import argv
 
-from neo4j.v1 import GraphDatabase, basic_auth
+from neo4j.v1 import basic_auth
+from neo4j.v1.api import GraphDatabase
 from neo4j.util import Watcher
 
 

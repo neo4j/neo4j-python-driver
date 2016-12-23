@@ -27,8 +27,7 @@ from json import loads as json_loads
 from sys import stdout, stderr
 
 from .util import Watcher
-from .v1.session import GraphDatabase, basic_auth
-from neo4j.v1.session import CypherError
+from .v1 import GraphDatabase, CypherError
 
 
 def main():
@@ -60,7 +59,7 @@ def main():
             except ValueError:
                 parameters[name] = value
 
-    driver = GraphDatabase.driver(args.url, auth=basic_auth(args.user, args.password))
+    driver = GraphDatabase.driver(args.url, auth=(args.user, args.password))
     session = driver.session()
     for _ in range(args.times):
         for statement in args.statement:
