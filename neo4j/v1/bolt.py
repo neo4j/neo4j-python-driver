@@ -193,6 +193,8 @@ class BoltStatementResult(StatementResult):
     """ A handler for the result of Cypher statement execution.
     """
 
+    error_class = CypherError
+
     value_system = GraphDatabase.value_systems["packstream"]
 
     zipper = Record
@@ -217,7 +219,7 @@ class BoltStatementResult(StatementResult):
             # Called on execution failure.
             self._session.connection.acknowledge_failure()
             self._session = None
-            raise CypherError(metadata)
+            raise self.error_class(metadata)
 
         run_response.on_success = on_header
         run_response.on_failure = on_failure
