@@ -308,29 +308,30 @@ class Path(object):
 
 class PackStreamValueSystem(ValueSystem):
 
-    def hydrate(self, obj):
-        """ Hydrate an object or a collection of nested objects by replacing
-        structures with entity instances.
-        """
-        if isinstance(obj, Structure):
-            signature, args = obj
-            if signature == b"N":
-                return Node.hydrate(*map(self.hydrate, args))
-            elif signature == b"R":
-                return Relationship.hydrate(*map(self.hydrate, args))
-            elif signature == b"r":
-                return UnboundRelationship.hydrate(*map(self.hydrate, args))
-            elif signature == b"P":
-                return Path.hydrate(*map(self.hydrate, args))
+    def hydrate(self, values):
+
+        def hydrate_(obj):
+            if isinstance(obj, Structure):
+                signature, args = obj
+                if signature == b"N":
+                    return Node.hydrate(*map(hydrate_, args))
+                elif signature == b"R":
+                    return Relationship.hydrate(*map(hydrate_, args))
+                elif signature == b"r":
+                    return UnboundRelationship.hydrate(*map(hydrate_, args))
+                elif signature == b"P":
+                    return Path.hydrate(*map(hydrate_, args))
+                else:
+                    # If we don't recognise the structure type, just return it as-is
+                    return obj
+            elif isinstance(obj, list):
+                return list(map(hydrate_, obj))
+            elif isinstance(obj, dict):
+                return {key: hydrate_(value) for key, value in obj.items()}
             else:
-                # If we don't recognise the structure type, just return it as-is
                 return obj
-        elif isinstance(obj, list):
-            return list(map(self.hydrate, obj))
-        elif isinstance(obj, dict):
-            return {key: self.hydrate(value) for key, value in obj.items()}
-        else:
-            return obj
+
+        return tuple(map(hydrate_, values))
 
 
 GraphDatabase.value_systems["packstream"] = PackStreamValueSystem()

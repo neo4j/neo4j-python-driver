@@ -33,8 +33,9 @@ DEFAULT_ACCESS = WRITE_ACCESS
 
 class ValueSystem(object):
 
-    def hydrate(self, obj):
-        pass
+    def hydrate(self, values):
+        """ Hydrate values from raw representations into client objects.
+        """
 
 
 class GraphDatabase(object):
@@ -358,12 +359,12 @@ class StatementResult(object):
         records = self._records
         while records:
             values = records.popleft()
-            yield zipper(keys, tuple(map(hydrate, values)))
+            yield zipper(keys, hydrate(values))
         while self.online():
             self.fetch()
             while records:
                 values = records.popleft()
-                yield zipper(keys, tuple(map(hydrate, values)))
+                yield zipper(keys, hydrate(values))
 
     def summary(self):
         """ Return the summary, buffering any remaining records.
@@ -399,12 +400,12 @@ class StatementResult(object):
         records = self._records
         if records:
             values = records[0]
-            return zipper(keys, tuple(map(hydrate, values)))
+            return zipper(keys, hydrate(values))
         while not records and self.online():
             self.fetch()
             if records:
                 values = records[0]
-                return zipper(keys, tuple(map(hydrate, values)))
+                return zipper(keys, hydrate(values))
         return None
 
 
