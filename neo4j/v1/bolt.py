@@ -202,8 +202,11 @@ class BoltStatementResult(StatementResult):
     def __init__(self, session, run_response, pull_all_response):
         super(BoltStatementResult, self).__init__(session)
 
+        all_metadata = {}
+
         def on_header(metadata):
             # Called on receipt of the result header.
+            all_metadata.update(metadata)
             self._keys = tuple(metadata["fields"])
 
         def on_record(values):
@@ -212,7 +215,8 @@ class BoltStatementResult(StatementResult):
 
         def on_footer(metadata):
             # Called on receipt of the result footer.
-            self._summary = ResultSummary(self.statement, self.parameters, **metadata)
+            all_metadata.update(metadata)
+            self._summary = ResultSummary(self.statement, self.parameters, **all_metadata)
             self._session = None
 
         def on_failure(metadata):

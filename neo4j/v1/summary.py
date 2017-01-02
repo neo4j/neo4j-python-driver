@@ -50,6 +50,12 @@ class ResultSummary(object):
     #: A :class:`.ProfiledPlan` instance
     profile = None
 
+    #: The time it took for the server to have the result available.
+    result_available_after = None
+
+    #: The time it took for the server to consume the result.
+    result_consumed_after = None
+
     #: Notifications provide extra information for a user executing a statement.
     #: They can be warnings about problematic queries or other valuable information that can be
     #: presented in a client.
@@ -62,6 +68,8 @@ class ResultSummary(object):
         self.metadata = metadata
         self.statement_type = metadata.get("type")
         self.counters = SummaryCounters(metadata.get("stats", {}))
+        self.result_available_after = metadata.get("result_available_after")
+        self.result_consumed_after = metadata.get("result_consumed_after")
         if "plan" in metadata:
             self.plan = make_plan(metadata["plan"])
         if "profile" in metadata:
