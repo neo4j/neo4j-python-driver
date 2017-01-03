@@ -423,6 +423,11 @@ class CypherError(Exception):
                 setattr(self, key, value)
 
 
+class SessionError(Exception):
+    """ Raised when an error occurs while using a session.
+    """
+
+
 class TransactionError(Exception):
     """ Raised when an error occurs while using a transaction.
     """

@@ -25,7 +25,7 @@ from mock import patch
 
 from neo4j.v1 import \
     GraphDatabase, basic_auth, READ_ACCESS, WRITE_ACCESS, \
-    CypherError, \
+    CypherError, SessionError, \
     Node, Relationship, Path
 from neo4j.v1.types import Record
 
@@ -673,3 +673,22 @@ class SessionRollbackTestCase(ServerTestCase):
             buffer = result._records
             assert len(buffer) == 1
             assert buffer[0][0] == 1
+
+
+class SessionClosedTestCase(ServerTestCase):
+
+    def setUp(self):
+        self.driver = GraphDatabase.driver(BOLT_URI, auth=AUTH_TOKEN)
+        self.session = self.driver.session()
+        self.session.close()
+
+    def tearDown(self):
+        self.driver.close()
+
+    def test_errors_on_run(self):
+        with self.assertRaises(SessionError):
+            self.session.run("RETURN 1")
+
+    def test_errors_on_begin_transaction(self):
+        with self.assertRaises(SessionError):
+            self.session.begin_transaction()
