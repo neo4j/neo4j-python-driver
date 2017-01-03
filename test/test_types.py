@@ -170,7 +170,7 @@ class HydrationTestCase(TestCase):
         struct.append(123)
         struct.append(["Person"])
         struct.append({"name": "Alice"})
-        alice = self.value_system.hydrate(struct)
+        alice, = self.value_system.hydrate([struct])
         assert alice.id == 123
         assert alice.labels == {"Person"}
         assert set(alice.keys()) == {"name"}
@@ -187,7 +187,7 @@ class HydrationTestCase(TestCase):
         struct.append(123)
         struct.append(["Person"])
         struct.append({"name": "Alice"})
-        alice_in_list = self.value_system.hydrate([struct])
+        alice_in_list, = self.value_system.hydrate([[struct]])
         assert isinstance(alice_in_list, list)
         alice, = alice_in_list
         assert alice.id == 123
@@ -200,7 +200,7 @@ class HydrationTestCase(TestCase):
         struct.append(123)
         struct.append(["Person"])
         struct.append({"name": "Alice"})
-        alice_in_dict = self.value_system.hydrate({"foo": struct})
+        alice_in_dict, = self.value_system.hydrate([{"foo": struct}])
         assert isinstance(alice_in_dict, dict)
         alice = alice_in_dict["foo"]
         assert alice.id == 123
