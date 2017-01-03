@@ -255,6 +255,12 @@ class SummaryTestCase(ServerTestCase):
             assert position.line == 1
             assert position.column == 1
 
+    @skipUnless(SERVER_VERSION >= (3, 1), "Execution times are not supported in 3.0.")
+    def test_contains_time_information(self):
+        with self.driver.session() as session:
+            summary = session.run("UNWIND range(1,1000) AS n RETURN n AS number").consume()
+            assert summary.result_consumed_after > 0
+            assert summary.result_available_after > 0
 
 class ResetTestCase(ServerTestCase):
 
