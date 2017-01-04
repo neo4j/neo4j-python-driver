@@ -433,7 +433,7 @@ class TransactionError(Exception):
     """
 
 
-class SessionExpired(Exception):
+class SessionExpired(SessionError):
     """ Raised when no a session is no longer able to fulfil
     its purpose.
     """
