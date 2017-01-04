@@ -24,7 +24,7 @@ from neo4j.compat import urlparse
 from .api import GraphDatabase, Driver, Session, StatementResult, \
     READ_ACCESS, WRITE_ACCESS, \
     fix_statement, fix_parameters, \
-    CypherError, SessionExpired
+    CypherError, SessionExpired, SessionError
 from .routing import RoutingConnectionPool
 from .security import SecurityPlan
 from .summary import ResultSummary
@@ -131,6 +131,9 @@ class BoltSession(Session):
         :return: Cypher result
         :rtype: :class:`.StatementResult`
         """
+        if not self.connection:
+            raise SessionError("This session is closed.")
+
         self.last_bookmark = None
 
         statement = fix_statement(statement)
