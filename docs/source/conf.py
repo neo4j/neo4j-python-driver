@@ -55,7 +55,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Neo4j Bolt Driver for Python'
-copyright = '2002-2016, Neo Technology'
+copyright = '2002-2017, Neo Technology'
 author = 'Neo Technology'
 
 # The version info for the project you're documenting, acts as replacement for
