@@ -178,7 +178,10 @@ class RoutingConnectionPool(ConnectionPool):
                 raise ServiceUnavailable("Server %r does not support routing" % (address,))
             else:
                 raise ServiceUnavailable("Routing support broken on server %r" % (address,))
-        except ServiceUnavailable:
+        except ServiceUnavailable as error:
+            if error.code == "Neo.ClientError.Security.Unauthorized":
+                from neo4j.v1.security import Unauthorized
+                raise Unauthorized(error.args[0])
             self.remove(address)
             return None
 
@@ -264,7 +267,10 @@ class RoutingConnectionPool(ConnectionPool):
                 address = next(self.routing_table.readers)
             try:
                 connection = self.acquire(address)
-            except ServiceUnavailable:
+            except ServiceUnavailable as error:
+                if error.code == "Neo.ClientError.Security.Unauthorized":
+                    from neo4j.v1.security import Unauthorized
+                    raise Unauthorized(error.args[0])
                 self.remove(address)
             else:
                 return connection
@@ -279,7 +285,10 @@ class RoutingConnectionPool(ConnectionPool):
                 address = next(self.routing_table.writers)
             try:
                 connection = self.acquire(address)
-            except ServiceUnavailable:
+            except ServiceUnavailable as error:
+                if error.code == "Neo.ClientError.Security.Unauthorized":
+                    from neo4j.v1.security import Unauthorized
+                    raise Unauthorized(error.args[0])
                 self.remove(address)
             else:
                 return connection
