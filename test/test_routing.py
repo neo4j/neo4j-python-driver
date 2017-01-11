@@ -367,14 +367,7 @@ class RoutingConnectionPoolFetchRoutingTableTestCase(ServerTestCase):
                 with self.assertRaises(ProtocolError):
                     _ = pool.fetch_routing_table(address)
 
-    def test_no_writers_and_one_router_should_raise_signal_service_unavailable(self):
-        with StubCluster({9001: "router_no_writers_one_router.script"}):
-            address = ("127.0.0.1", 9001)
-            with RoutingConnectionPool(connector) as pool:
-                with self.assertRaises(ServiceUnavailable):
-                    _ = pool.fetch_routing_table(address)
-
-    def test_no_writers_and_multiple_routers_should_return_null_table(self):
+    def test_no_writers_should_return_null_table(self):
         with StubCluster({9001: "router_no_writers.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingConnectionPool(connector) as pool:

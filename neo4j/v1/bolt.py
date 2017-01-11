@@ -17,8 +17,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from neo4j.bolt import Response, RUN, PULL_ALL, ServiceUnavailable
-from neo4j.bolt.connection import connect, ConnectionPool, DEFAULT_PORT
+
+from neo4j.bolt.connection import connect, ConnectionPool, DEFAULT_PORT, \
+    PULL_ALL, Response, RUN, ServiceUnavailable
 from neo4j.compat import urlparse
 
 from .api import GraphDatabase, Driver, Session, StatementResult, \

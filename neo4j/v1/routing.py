@@ -211,15 +211,9 @@ class RoutingConnectionPool(ConnectionPool):
 
         # No writers
         if num_writers == 0:
-            if num_routers == 1:
-                # No writers are available and only one router was returned. This
-                # likely indicates a broken cluster so signals an error status.
-                raise ServiceUnavailable("No write servers currently available")
-            else:
-                # No writers are available but multiple routers have been returned.
-                # This likely indicates a temporary state, such as leader switching,
-                # so we should not signal an error.
-                return None
+            # No writers are available. This likely indicates a temporary state,
+            # such as leader switching, so we should not signal an error.
+            return None
 
         # At least one of each is fine, so return this table
         return new_routing_table
