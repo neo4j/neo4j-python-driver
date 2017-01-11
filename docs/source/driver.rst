@@ -38,9 +38,12 @@ Encryption Settings
 
 Trust Settings
 --------------
-.. py:attribute:: neo4j.v1.TRUST_ON_FIRST_USE
-.. py:attribute:: neo4j.v1.TRUST_SIGNED_CERTIFICATES
 .. py:attribute:: neo4j.v1.TRUST_ALL_CERTIFICATES
 .. py:attribute:: neo4j.v1.TRUST_CUSTOM_CA_SIGNED_CERTIFICATES
 .. py:attribute:: neo4j.v1.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
 .. py:attribute:: neo4j.v1.TRUST_DEFAULT
+
+Deprecated
+~~~~~~~~~~
+.. py:attribute:: neo4j.v1.TRUST_ON_FIRST_USE
+.. py:attribute:: neo4j.v1.TRUST_SIGNED_CERTIFICATES
