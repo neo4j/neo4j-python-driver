@@ -226,10 +226,7 @@ class InitResponse(Response):
         connection.server = ServerInfo(address, version)
 
     def on_failure(self, metadata):
-        code = metadata.get("code")
-        error = (Unauthorized if code == "Neo.ClientError.Security.Unauthorized" else
-                 ServiceUnavailable)
-        raise error(metadata.get("message", "INIT failed"))
+        raise ServiceUnavailable(metadata.get("message", "INIT failed"), metadata.get("code"))
 
 
 class Connection(object):
@@ -629,12 +626,11 @@ class ServiceUnavailable(Exception):
     """ Raised when no database service is available.
     """
 
+    def __init__(self, message, code=None):
+        super(ServiceUnavailable, self).__init__(message)
+        self.code = code
+
 
 class ProtocolError(Exception):
     """ Raised when an unexpected or unsupported protocol event occurs.
-    """
-
-
-class Unauthorized(Exception):
-    """ Raised when an action is not permitted.
     """

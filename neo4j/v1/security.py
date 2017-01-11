@@ -126,3 +126,8 @@ def _encryption_default():
              "so communications are not secure")
         _warned_about_insecure_default = True
     return ENCRYPTION_DEFAULT
+
+
+class Unauthorized(Exception):
+    """ Raised when an action is not permitted.
+    """
