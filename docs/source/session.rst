@@ -29,23 +29,23 @@ Summary Details
 Exceptions
 ----------
 
-.. autoclass:: neo4j.v1.ProtocolError
-   :members:
-
-.. autoclass:: neo4j.v1.Unauthorized
-   :members:
-
 .. autoclass:: neo4j.v1.CypherError
    :members:
 
-.. autoclass:: neo4j.v1.TransactionError
-   :members:
-
-.. autoclass:: neo4j.v1.ResultError
+.. autoclass:: neo4j.v1.ProtocolError
    :members:
 
 .. autoclass:: neo4j.v1.ServiceUnavailable
    :members:
 
+.. autoclass:: neo4j.v1.SessionError
+   :members:
+
 .. autoclass:: neo4j.v1.SessionExpired
+   :members:
+
+.. autoclass:: neo4j.v1.TransactionError
+   :members:
+
+.. autoclass:: neo4j.v1.Unauthorized
    :members:
