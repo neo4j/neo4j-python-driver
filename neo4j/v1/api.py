@@ -39,9 +39,9 @@ class ValueSystem(object):
 
 
 class GraphDatabase(object):
-    """ The :class:`.GraphDatabase` class provides access to all graph
-    database functionality. This is primarily used to construct a driver
-    instance, using the :meth:`.driver` method.
+    """ The `GraphDatabase` class provides access to all graph
+    database functionality. This class is primarily used to construct a
+    :class:`.Driver` instance, using the :meth:`.driver` method.
     """
 
     uri_schemes = {}
@@ -50,31 +50,33 @@ class GraphDatabase(object):
 
     @classmethod
     def driver(cls, uri, **config):
-        """ Acquire a :class:`.Driver` instance for the given URL and
-        configuration:
+        """ Acquire a :class:`.Driver` instance for the given URI and
+        configuration. The URI scheme determines the Driver implementation
+        that will be returned. Options are:
 
-            >>> from neo4j.v1 import GraphDatabase
-            >>> driver = GraphDatabase.driver("bolt://localhost:7687")
+            ``bolt``
+              Returns a :class:`.DirectDriver`.
 
-        :param uri: URI for a graph database
+            ``bolt+routing``
+              Returns a :class:`.RoutingDriver`.
+
+        :param uri: URI for a graph database service
         :param config: configuration and authentication details (valid keys are listed below)
 
             `auth`
               An authentication token for the server, for example
-              ``basic_auth("neo4j", "password")``.
+              ``("neo4j", "password")``.
 
             `der_encoded_server_certificate`
               The server certificate in DER format, if required.
 
             `encrypted`
-              Encryption level: one of :attr:`.ENCRYPTION_ON`, :attr:`.ENCRYPTION_OFF`
-              or :attr:`.ENCRYPTION_NON_LOCAL`. The default setting varies
-              depending on whether SSL is available or not. If it is,
-              :attr:`.ENCRYPTION_NON_LOCAL` is the default.
+              A boolean flag to determine whether encryption should be used.
+              Defaults to :const:`True`.
 
             `trust`
-              Trust level: one of :attr:`.TRUST_ON_FIRST_USE` (default) or
-              :attr:`.TRUST_SIGNED_CERTIFICATES`.
+              Trust level: one of :attr:`.TRUST_ALL_CERTIFICATES` (default) or
+              :attr:`.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES`.
 
             `user_agent`
               A custom user agent string, if required.
@@ -90,12 +92,12 @@ class GraphDatabase(object):
 
 
 class Driver(object):
-    """ A :class:`.Driver` is an accessor for a specific graph database
-    resource. It is thread-safe, acts as a template for sessions and hosts
-    a connection pool.
+    """ The base class for all `Driver` implementations. A Driver is an accessor for
+    a specific graph database. It is typically thread-safe, acts as a template for
+    :class:`.Session` creation and hosts a connection pool.
 
     All configuration and authentication settings are held immutably by the
-    `Driver`. Should different settings be required, a new `Driver` instance
+    Driver. Should different settings be required, a new Driver instance
     should be created via the :meth:`.GraphDatabase.driver` method.
     """
 
@@ -118,10 +120,16 @@ class Driver(object):
         pool. Session creation is a lightweight operation and sessions are
         not thread safe, therefore a session should generally be short-lived
         within a single thread.
+
+        :param access_mode:
+        :return: new :class:`.Session` object
         """
         pass
 
     def close(self):
+        """ Shut down, closing any open connections that were spawned by
+        this Driver.
+        """
         if self.pool:
             self.pool.close()
             self.pool = None

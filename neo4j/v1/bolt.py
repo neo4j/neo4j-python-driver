@@ -33,8 +33,9 @@ from .types import Record
 
 
 class DirectDriver(Driver):
-    """ A :class:`.DirectDriver` is created from a `bolt` URI and addresses
-    a single database instance.
+    """ A :class:`.DirectDriver` is created from a ``bolt`` URI and addresses
+    a single database instance. This provides basic connectivity to any
+    database service topology.
     """
 
     def __init__(self, uri, **config):
@@ -58,7 +59,9 @@ GraphDatabase.uri_schemes["bolt"] = DirectDriver
 
 
 class RoutingDriver(Driver):
-    """ A :class:`.RoutingDriver` is created from a `bolt+routing` URI.
+    """ A :class:`.RoutingDriver` is created from a ``bolt+routing`` URI. The
+    routing behaviour works in tandem with Neo4j's causal clustering feature
+    by directing read and write behaviour to appropriate cluster members.
     """
 
     def __init__(self, uri, **config):

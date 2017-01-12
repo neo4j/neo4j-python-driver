@@ -2,7 +2,7 @@
 Neo4j Bolt Driver for Python
 ****************************
 
-The Official Neo4j Driver for Python supports Neo4j 3.0 and above and Python versions 2.7, 3.4 and 3.5.
+The Official Neo4j Driver for Python supports Neo4j 3.0 and above and Python versions 2.7, 3.4, 3.5 and 3.6.
 
 
 Quick Example
@@ -10,11 +10,10 @@ Quick Example
 
 .. code-block:: python
 
-    from neo4j.v1 import GraphDatabase, basic_auth
+    from neo4j.v1 import GraphDatabase
 
     uri = "bolt://localhost:7687"
-    auth_token = basic_auth("neo4j", "password")
-    driver = GraphDatabase.driver(uri, auth=auth_token)
+    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
 
     def print_friends_of(name):
         with driver.session() as session:
