@@ -136,13 +136,27 @@ class Driver(object):
 
 
 class Session(object):
-    """ Logical session carried out over an established TCP connection.
-    Sessions should generally be constructed using the :meth:`.Driver.session`
-    method.
+    """ A `Session` is a logical context for transactional units of work.
+    It typically wraps a TCP connection and should generally be constructed
+    using the :meth:`.Driver.session` method.
+
+    Sessions are not thread safe and can recycle connections via a
+    :class:`.Driver` connection pool. As such, they should be considered
+    lightweight and disposable.
+
+    Typically, Session instances will be created and destroyed within a
+    `with` context. For example::
+
+        with driver.session() as session:
+            result = session.run("MATCH (a:Person) RETURN a.name")
+            # do something with the result...
+
     """
 
+    #: The current :class:`.Transaction` instance, if any.
     transaction = None
 
+    #: The bookmark received from completion of the last :class:`.Transaction`.
     last_bookmark = None
 
     def __del__(self):
@@ -155,7 +169,8 @@ class Session(object):
         self.close()
 
     def close(self):
-        """ Close the session.
+        """ Close the session. This will release any borrowed resources,
+        such as connections, and will roll back any outstanding transactions.
         """
         if self.transaction:
             try:
@@ -164,14 +179,16 @@ class Session(object):
                 pass
 
     def closed(self):
-        """ Return true if the session is closed, false otherwise.
+        """ Indicator for whether or not this session has been closed.
+
+        :return: :const:`True` if closed, :const:`False` otherwise.
         """
 
     def run(self, statement, parameters=None, **kwparameters):
         """ Run a parameterised Cypher statement. If an explicit transaction
         has been created, the statement will be executed within that
         transactional context. Otherwise, this will take place within an
-        auto-commit transaction.
+        *auto-commit transaction*.
 
         :param statement: Cypher statement to execute
         :param parameters: dictionary of parameters
@@ -180,14 +197,16 @@ class Session(object):
         """
 
     def fetch(self):
-        """ Fetch the next message if available and return
-        the number of messages fetched.
+        """ Fetch the next message if available.
+
+        :return: The number of messages fetched (zero or one)
         """
         return 0
 
     def sync(self):
-        """ Full send and receive. Return the total number
-        of records received.
+        """ Carry out a full send and receive.
+
+        :return: Total number of records received
         """
         return 0
 
@@ -197,6 +216,7 @@ class Session(object):
         :param bookmark: a bookmark to which the server should
                          synchronise before beginning the transaction
         :return: new :class:`.Transaction` instance.
+        :raise: :class:`.TransactionError` if a transaction is already open
         """
         if self.transaction:
             raise TransactionError("Explicit transaction already open")
@@ -208,11 +228,20 @@ class Session(object):
         return self.transaction
 
     def commit_transaction(self):
+        """ Commit the current transaction.
+
+        :return: the bookmark returned from the server, if any
+        :raise: :class:`.TransactionError` if no transaction is currently open
+        """
         if not self.transaction:
             raise TransactionError("No transaction to commit")
         self.transaction = None
 
     def rollback_transaction(self):
+        """ Rollback the current transaction.
+
+        :raise: :class:`.TransactionError` if no transaction is currently open
+        """
         if not self.transaction:
             raise TransactionError("No transaction to rollback")
         self.transaction = None

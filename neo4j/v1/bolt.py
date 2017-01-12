@@ -100,10 +100,6 @@ GraphDatabase.uri_schemes["bolt+routing"] = RoutingDriver
 
 
 class BoltSession(Session):
-    """ Logical session carried out over an established TCP connection.
-    Sessions should generally be constructed using the :meth:`.Driver.session`
-    method.
-    """
 
     def __init__(self, connection, access_mode=None):
         self.connection = connection
@@ -130,16 +126,6 @@ class BoltSession(Session):
         return self.connection is None or self.connection.closed
 
     def run(self, statement, parameters=None, **kwparameters):
-        """ Run a parameterised Cypher statement. If an explicit transaction
-        has been created, the statement will be executed within that
-        transactional context. Otherwise, this will take place within an
-        auto-commit transaction.
-
-        :param statement: Cypher statement to execute
-        :param parameters: dictionary of parameters
-        :return: Cypher result
-        :rtype: :class:`.StatementResult`
-        """
         if not self.connection:
             raise SessionError("This session is closed.")
 
@@ -161,9 +147,6 @@ class BoltSession(Session):
         return result
 
     def fetch(self):
-        """ Fetch the next message if available and return
-        the number of messages fetched (one or zero).
-        """
         try:
             return self.connection.fetch()
         except ServiceUnavailable as cause:
@@ -194,6 +177,7 @@ class BoltSession(Session):
         self.sync()
         summary = result.summary()
         self.last_bookmark = summary.metadata.get("bookmark")
+        return self.last_bookmark
 
     def rollback_transaction(self):
         super(BoltSession, self).rollback_transaction()
