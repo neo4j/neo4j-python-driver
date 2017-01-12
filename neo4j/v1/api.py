@@ -185,15 +185,14 @@ class Session(object):
         """
 
     def run(self, statement, parameters=None, **kwparameters):
-        """ Run a parameterised Cypher statement. If an explicit transaction
-        has been created, the statement will be executed within that
-        transactional context. Otherwise, this will take place within an
-        *auto-commit transaction*.
+        """ Run a Cypher statement within an auto-commit transaction.
 
-        :param statement: Cypher statement to execute
+        For usage details, see :meth:`.Transaction.run`.
+
+        :param statement: Cypher statement
         :param parameters: dictionary of parameters
-        :return: Cypher result
-        :rtype: :class:`.StatementResult`
+        :param kwparameters: additional keyword parameters
+        :return: :class:`.StatementResult` object
         """
 
     def fetch(self):
@@ -258,14 +257,12 @@ class Transaction(object):
 
     """
 
-    #: When closed, the transaction will be committed if marked as successful
-    #: and rolled back otherwise. This attribute can be set in user code
+    #: When set, the transaction will be committed on close, otherwise it
+    #: will be rolled back. This attribute can be set in user code
     #: multiple times before a transaction completes with only the final
     #: value taking effect.
     success = None
 
-    #: Indicator to show whether the transaction has been closed, either
-    #: with commit or rollback.
     _closed = False
 
     def __init__(self, session, on_close):
@@ -283,15 +280,37 @@ class Transaction(object):
     def run(self, statement, parameters=None, **kwparameters):
         """ Run a Cypher statement within the context of this transaction.
 
+        Cypher is typically expressed as a statement template plus a
+        set of named parameters. In Python, parameters may be expressed
+        through a dictionary of parameters, through individual parameter
+        arguments, or as a mixture of both. For example, the `run`
+        statements below are all equivalent::
+
+            >>> statement = "CREATE (a:Person {name:{name}, age:{age}})"
+            >>> tx.run(statement, {"name": "Alice", "age": 33})
+            >>> tx.run(statement, {"name": "Alice"}, age=33)
+            >>> tx.run(statement, name="Alice", age=33)
+
+        Parameter values can be of any type supported by the Neo4j type
+        system. In Python, this includes :class:`bool`, :class:`int`,
+        :class:`str`, :class:`list` and :class:`dict`. Note however that
+        :class:`list` properties must be homogenous.
+
         :param statement: Cypher statement
         :param parameters: dictionary of parameters
-        :return: result object
+        :param kwparameters: additional keyword parameters
+        :return: :class:`.StatementResult` object
         """
         if self.closed():
             raise TransactionError("Cannot use closed transaction")
         return self.session.run(statement, parameters, **kwparameters)
 
     def sync(self):
+        """ Send and receive all outstanding messages for this
+        transaction.
+
+        :raise TransactionError: if the transaction is closed
+        """
         if self.closed():
             raise TransactionError("Cannot use closed transaction")
         self.session.sync()
@@ -299,6 +318,8 @@ class Transaction(object):
     def commit(self):
         """ Mark this transaction as successful and close in order to
         trigger a COMMIT.
+
+        :raise TransactionError: if already closed
         """
         if self.closed():
             raise TransactionError("Cannot use closed transaction")
@@ -308,6 +329,8 @@ class Transaction(object):
     def rollback(self):
         """ Mark this transaction as unsuccessful and close in order to
         trigger a ROLLBACK.
+
+        :raise TransactionError: if already closed
         """
         if self.closed():
             raise TransactionError("Cannot use closed transaction")
@@ -326,6 +349,9 @@ class Transaction(object):
             self.on_close()
 
     def closed(self):
+        """ Indicator to show whether the transaction has been closed.
+        :return: :const:`True` if closed, :const:`False` otherwise.
+        """
         return self._closed
 
 
