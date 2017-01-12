@@ -122,7 +122,7 @@ class Driver(object):
         within a single thread.
 
         :param access_mode:
-        :return: new :class:`.Session` object
+        :returns: new :class:`.Session` object
         """
         pass
 
@@ -181,31 +181,34 @@ class Session(object):
     def closed(self):
         """ Indicator for whether or not this session has been closed.
 
-        :return: :const:`True` if closed, :const:`False` otherwise.
+        :returns: :const:`True` if closed, :const:`False` otherwise.
         """
 
     def run(self, statement, parameters=None, **kwparameters):
         """ Run a Cypher statement within an auto-commit transaction.
+        Note that the statement is only passed to the server lazily,
+        when the result is consumed. To force the statement to be sent to
+        the server, use the :meth:`.Session.sync` method.
 
         For usage details, see :meth:`.Transaction.run`.
 
         :param statement: Cypher statement
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
-        :return: :class:`.StatementResult` object
+        :returns: :class:`.StatementResult` object
         """
 
     def fetch(self):
         """ Fetch the next message if available.
 
-        :return: The number of messages fetched (zero or one)
+        :returns: The number of messages fetched (zero or one)
         """
         return 0
 
     def sync(self):
         """ Carry out a full send and receive.
 
-        :return: Total number of records received
+        :returns: Total number of records received
         """
         return 0
 
@@ -214,7 +217,7 @@ class Session(object):
 
         :param bookmark: a bookmark to which the server should
                          synchronise before beginning the transaction
-        :return: new :class:`.Transaction` instance.
+        :returns: new :class:`.Transaction` instance.
         :raise: :class:`.TransactionError` if a transaction is already open
         """
         if self.transaction:
@@ -229,7 +232,7 @@ class Session(object):
     def commit_transaction(self):
         """ Commit the current transaction.
 
-        :return: the bookmark returned from the server, if any
+        :returns: the bookmark returned from the server, if any
         :raise: :class:`.TransactionError` if no transaction is currently open
         """
         if not self.transaction:
@@ -279,6 +282,9 @@ class Transaction(object):
 
     def run(self, statement, parameters=None, **kwparameters):
         """ Run a Cypher statement within the context of this transaction.
+        Note that the statement is only passed to the server lazily,
+        when the result is consumed. To force the statement to be sent to
+        the server, use the :meth:`.Transaction.sync` method.
 
         Cypher is typically expressed as a statement template plus a
         set of named parameters. In Python, parameters may be expressed
@@ -299,7 +305,7 @@ class Transaction(object):
         :param statement: Cypher statement
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
-        :return: :class:`.StatementResult` object
+        :returns: :class:`.StatementResult` object
         """
         if self.closed():
             raise TransactionError("Cannot use closed transaction")
@@ -350,13 +356,15 @@ class Transaction(object):
 
     def closed(self):
         """ Indicator to show whether the transaction has been closed.
-        :return: :const:`True` if closed, :const:`False` otherwise.
+        :returns: :const:`True` if closed, :const:`False` otherwise.
         """
         return self._closed
 
 
 class StatementResult(object):
-    """ A handler for the result of Cypher statement execution.
+    """ A handler for the result of Cypher statement execution. Instances
+    of this class are typically constructed and returned by
+    :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
 
     #: The statement text that was executed to produce this result.
@@ -385,12 +393,17 @@ class StatementResult(object):
         return self.records()
 
     def online(self):
-        """ True if this result is still attached to an active Session.
+        """ Indicator for whether or not this result is still attached to
+        a :class:`.Session`.
+
+        :returns: :const:`True` if still attached, :const:`False` otherwise
         """
         return self._session and not self._session.closed()
 
     def fetch(self):
-        """ Fetch another record, if available. Return the number fetched.
+        """ Fetch another record, if available.
+
+        :returns: number of records fetched (zero or one)
         """
         if self.online():
             return self._session.fetch()
@@ -398,23 +411,26 @@ class StatementResult(object):
             return 0
 
     def buffer(self):
-        """ Fetch the remainder of the result from the network and buffer
-        it for future consumption.
+        """ Fetch the remainder of this result from the network and buffer
+        it. On return from this method, the result will no longer be
+        :meth:`.online`.
         """
         while self.online():
             self.fetch()
 
     def keys(self):
-        """ Return the keys for the records.
+        """ The keys for the records in this result.
+
+        :returns: tuple of key names
         """
         while self._keys is None and self.online():
             self.fetch()
         return self._keys
 
     def records(self):
-        """ Yield records.
+        """ Generator for records obtained from this result.
 
-        :return:
+        :yields: iterable of :class:`.Record` objects
         """
         hydrate = self.value_system.hydrate
         zipper = self.zipper
@@ -430,20 +446,33 @@ class StatementResult(object):
                 yield zipper(keys, hydrate(values))
 
     def summary(self):
-        """ Return the summary, buffering any remaining records.
+        """ Obtain the summary of this result, buffering any remaining records.
+
+        :returns: The :class:`.ResultSummary` for this result
         """
         self.buffer()
         return self._summary
 
     def consume(self):
         """ Consume the remainder of this result and return the summary.
+
+        .. NOTE:: It is generally recommended to use :meth:`.summary`
+                  instead of this method.
+
+        :returns: The :class:`.ResultSummary` for this result
         """
         if self.online():
             list(self)
         return self.summary()
 
     def single(self):
-        """ Return the next record, failing if none or more than one remain.
+        """ Obtain the next and only remaining record from this result.
+
+        A warning is generated if more than one record is available but
+        the first of these is still returned.
+
+        :returns: the next :class:`.Record` or :const:`None` if none remain
+        :warns: if more than one record is available
         """
         records = list(self)
         size = len(records)
@@ -454,8 +483,10 @@ class StatementResult(object):
         return records[0]
 
     def peek(self):
-        """ Return the next record without advancing the cursor. Returns
-        :const:`None` if no records remain.
+        """ Obtain the next record from this result without consuming it.
+        This leaves the record in the buffer for further processing.
+
+        :returns: the next :class:`.Record` or :const:`None` if none remain
         """
         hydrate = self.value_system.hydrate
         zipper = self.zipper

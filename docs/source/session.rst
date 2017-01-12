@@ -10,7 +10,7 @@ Cypher Sessions
    :members:
 
 .. autoclass:: neo4j.v1.StatementResult
-   :members:
+   :members: buffer, consume, fetch, keys, online, peek, records, single, summary
 
 .. autoclass:: neo4j.v1.Record
    :members:
