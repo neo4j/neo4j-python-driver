@@ -175,7 +175,7 @@ class Session(object):
         if self.transaction:
             try:
                 self.rollback_transaction()
-            except (CypherError, TransactionError, ServiceUnavailable):
+            except (CypherError, TransactionError, SessionError, ServiceUnavailable):
                 pass
 
     def closed(self):
