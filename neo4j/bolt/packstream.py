@@ -322,8 +322,6 @@ else:
 
 __all__ = ["Packer", "pack", "packb", "Unpacker"]
 
-INFINITY = 1e309
-
 PLUS_2_TO_THE_63 = 2 ** 63
 PLUS_2_TO_THE_32 = 4294967296
 PLUS_2_TO_THE_31 = 2147483648
