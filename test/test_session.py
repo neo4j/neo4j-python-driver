@@ -490,6 +490,18 @@ class BookmarkingTestCase(ServerTestCase):
                 assert isinstance(thing, Node)
                 assert thing["uuid"] == unique_id
 
+    @skipUnless(SERVER_VERSION >= (3, 1), "Bookmarking is not supported by this version of Neo4j")
+    def test_bookmark_should_be_none_after_rollback(self):
+        with self.driver.session(WRITE_ACCESS) as session:
+            with session.begin_transaction() as tx:
+                tx.run("CREATE (a)")
+        assert session.last_bookmark is not None
+        with self.driver.session(WRITE_ACCESS) as session:
+            with session.begin_transaction() as tx:
+                tx.run("CREATE (a)")
+                tx.success = False
+        assert session.last_bookmark is None
+
 
 class ResultConsumptionTestCase(ServerTestCase):
 
