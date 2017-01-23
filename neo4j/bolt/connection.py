@@ -90,17 +90,21 @@ log_error = log.error
 Address = namedtuple("Address", ["host", "port"])
 ServerInfo = namedtuple("ServerInfo", ["address", "version"])
 
+def get_host_port(socket):
+    if self.socket.family == AddressFamily.AF_INET6:
+        host, port, flowinfo, scopeid = self.socket.getpeername()
+    else if self.socket.family == AddressFamily.AF_INET:
+        host, port = self.socket.getpeername()
+    else:
+        raise ProtocolError("Supported socket address families are only IPv6 and IPv4.")
+    return host, port
 
 class BufferingSocket(object):
 
     def __init__(self, connection):
         self.connection = connection
         self.socket = connection.socket
-        if self.socket.family == AddressFamily.AF_INET6:
-            host, port, flowinfo, scopeid = self.socket.getpeername()
-        else:
-            host, port = self.socket.getpeername()
-        self.address = Address(host,port)
+        self.address = Address(*get_host_port(self.socket))
         self.buffer = bytearray()
 
     def fill(self):
@@ -146,11 +150,7 @@ class ChunkChannel(object):
 
     def __init__(self, sock):
         self.socket = sock
-        if self.socket.family == AddressFamily.AF_INET6:
-            host, port, flowinfo, scopeid = self.socket.getpeername()
-        else:
-            host, port = self.socket.getpeername()
-        self.address = Address(host,port)
+        self.address = Address(*get_host_port(self.socket))
         self.raw = BytesIO()
         self.output_buffer = []
         self.output_size = 0
@@ -229,11 +229,7 @@ class InitResponse(Response):
     def on_success(self, metadata):
         super(InitResponse, self).on_success(metadata)
         connection = self.connection
-        if connection.socket.family == AddressFamily.AF_INET6:
-            host, port, flowinfo, scopeid = connection.socket.getpeername()
-        else:
-            host, port = connection.socket.getpeername()
-        address = Address(host,port)
+        address = Address(*get_host_port(connection.socket))
         version = metadata.get("server")
         connection.server = ServerInfo(address, version)
 
