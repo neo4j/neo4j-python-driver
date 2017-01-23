@@ -91,10 +91,10 @@ Address = namedtuple("Address", ["host", "port"])
 ServerInfo = namedtuple("ServerInfo", ["address", "version"])
 
 def get_host_port(socket):
-    if self.socket.family == AddressFamily.AF_INET6:
-        host, port, flowinfo, scopeid = self.socket.getpeername()
-    elif self.socket.family == AddressFamily.AF_INET:
-        host, port = self.socket.getpeername()
+    if socket.family == AddressFamily.AF_INET6:
+        host, port, flowinfo, scopeid = socket.getpeername()
+    elif socket.family == AddressFamily.AF_INET:
+        host, port = socket.getpeername()
     else:
         raise ProtocolError("Supported socket address families are only IPv6 and IPv4.")
     return host, port
