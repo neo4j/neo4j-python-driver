@@ -35,6 +35,7 @@ from os import makedirs, open as os_open, write as os_write, close as os_close, 
 from os.path import dirname, isfile, join as path_join, expanduser
 from select import select
 from socket import create_connection, SHUT_RDWR, error as SocketError
+from socket import AF_INET6, AF_INET
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock
 
@@ -90,13 +91,21 @@ log_error = log.error
 Address = namedtuple("Address", ["host", "port"])
 ServerInfo = namedtuple("ServerInfo", ["address", "version"])
 
+def get_host_port(socket):
+    if socket.family == AF_INET6:
+        host, port, flowinfo, scopeid = socket.getpeername()
+    elif socket.family == AF_INET:
+        host, port = socket.getpeername()
+    else:
+        raise ProtocolError("Supported socket address families are only IPv6 and IPv4.")
+    return host, port
 
 class BufferingSocket(object):
 
     def __init__(self, connection):
         self.connection = connection
         self.socket = connection.socket
-        self.address = Address(*self.socket.getpeername())
+        self.address = Address(*get_host_port(self.socket))
         self.buffer = bytearray()
 
     def fill(self):
@@ -142,7 +151,7 @@ class ChunkChannel(object):
 
     def __init__(self, sock):
         self.socket = sock
-        self.address = Address(*sock.getpeername())
+        self.address = Address(*get_host_port(self.socket))
         self.raw = BytesIO()
         self.output_buffer = []
         self.output_size = 0
@@ -221,7 +230,7 @@ class InitResponse(Response):
     def on_success(self, metadata):
         super(InitResponse, self).on_success(metadata)
         connection = self.connection
-        address = Address(*connection.socket.getpeername())
+        address = Address(*get_host_port(connection.socket))
         version = metadata.get("server")
         connection.server = ServerInfo(address, version)
 
