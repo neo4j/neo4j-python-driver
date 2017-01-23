@@ -34,7 +34,8 @@ from io import BytesIO
 from os import makedirs, open as os_open, write as os_write, close as os_close, O_CREAT, O_APPEND, O_WRONLY
 from os.path import dirname, isfile, join as path_join, expanduser
 from select import select
-from socket import AddressFamily, create_connection, SHUT_RDWR, error as SocketError
+from socket import create_connection, SHUT_RDWR, error as SocketError
+from socket import AF_INET6, AF_INET
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock
 
@@ -91,9 +92,9 @@ Address = namedtuple("Address", ["host", "port"])
 ServerInfo = namedtuple("ServerInfo", ["address", "version"])
 
 def get_host_port(socket):
-    if socket.family == AddressFamily.AF_INET6:
+    if socket.family == AF_INET6:
         host, port, flowinfo, scopeid = socket.getpeername()
-    elif socket.family == AddressFamily.AF_INET:
+    elif socket.family == AF_INET:
         host, port = socket.getpeername()
     else:
         raise ProtocolError("Supported socket address families are only IPv6 and IPv4.")
