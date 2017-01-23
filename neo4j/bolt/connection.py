@@ -34,7 +34,7 @@ from io import BytesIO
 from os import makedirs, open as os_open, write as os_write, close as os_close, O_CREAT, O_APPEND, O_WRONLY
 from os.path import dirname, isfile, join as path_join, expanduser
 from select import select
-from socket import create_connection, SHUT_RDWR, error as SocketError
+from socket import AddressFamily, create_connection, SHUT_RDWR, error as SocketError
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock
 
@@ -96,7 +96,11 @@ class BufferingSocket(object):
     def __init__(self, connection):
         self.connection = connection
         self.socket = connection.socket
-        self.address = Address(*self.socket.getpeername())
+        if self.socket.family == AddressFamily.AF_INET6:
+            host, port, flowinfo, scopeid = self.socket.getpeername()
+        else:
+            host, port = self.socket.getpeername()
+        self.address = Address(host,port)
         self.buffer = bytearray()
 
     def fill(self):
@@ -142,7 +146,11 @@ class ChunkChannel(object):
 
     def __init__(self, sock):
         self.socket = sock
-        self.address = Address(*sock.getpeername())
+        if self.socket.family == AddressFamily.AF_INET6:
+            host, port, flowinfo, scopeid = self.socket.getpeername()
+        else:
+            host, port = self.socket.getpeername()
+        self.address = Address(host,port)
         self.raw = BytesIO()
         self.output_buffer = []
         self.output_size = 0
@@ -221,7 +229,11 @@ class InitResponse(Response):
     def on_success(self, metadata):
         super(InitResponse, self).on_success(metadata)
         connection = self.connection
-        address = Address(*connection.socket.getpeername())
+        if connection.socket.family == AddressFamily.AF_INET6:
+            host, port, flowinfo, scopeid = connection.socket.getpeername()
+        else:
+            host, port = connection.socket.getpeername()
+        address = Address(host,port)
         version = metadata.get("server")
         connection.server = ServerInfo(address, version)
 
