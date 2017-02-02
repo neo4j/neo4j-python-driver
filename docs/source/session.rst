@@ -47,5 +47,5 @@ Exceptions
 .. autoclass:: neo4j.v1.TransactionError
    :members:
 
-.. autoclass:: neo4j.v1.Unauthorized
+.. autoclass:: neo4j.v1.AuthError
    :members:

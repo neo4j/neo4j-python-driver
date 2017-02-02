@@ -27,7 +27,7 @@ from .api import GraphDatabase, Driver, Session, StatementResult, \
     fix_statement, fix_parameters, \
     CypherError, SessionExpired, SessionError
 from .routing import RoutingConnectionPool
-from .security import SecurityPlan, Unauthorized
+from .security import SecurityPlan, AuthError
 from .summary import ResultSummary
 from .types import Record
 
@@ -51,7 +51,7 @@ class DirectDriver(Driver):
             return BoltSession(self.pool.acquire(self.address))
         except ServiceUnavailable as error:
             if error.code == "Neo.ClientError.Security.Unauthorized":
-                raise Unauthorized(error.args[0])
+                raise AuthError(error.args[0])
             raise
 
 

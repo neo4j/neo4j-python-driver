@@ -560,7 +560,7 @@ def connect(address, ssl_context=None, **config):
         try:
             s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
         except SSLError as cause:
-            error = ServiceUnavailable("Failed to establish secure "
+            error = SecurityError("Failed to establish secure "
                                        "connection to %r" % cause.args[1])
             error.__cause__ = cause
             raise error
@@ -620,6 +620,11 @@ def connect(address, ssl_context=None, **config):
     else:
         log_error("S: [CLOSE]")
         raise ProtocolError("Unknown Bolt protocol version: %d", agreed_version)
+
+
+class SecurityError(Exception):
+    """ Raised when an action is denied due to security settings.
+    """
 
 
 class ServiceUnavailable(Exception):
