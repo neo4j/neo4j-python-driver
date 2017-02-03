@@ -8,13 +8,16 @@ __pycache__
 htmlcov
 .coverage
 .test
+.tox
 
 docs/build
 dist
 *.egg-info
 build
+venv
 
-*/run/*
+run
+*/run
 
 neo4j-community-*
 neo4j-enterprise-*
