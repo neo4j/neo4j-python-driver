@@ -25,7 +25,18 @@ from io import BytesIO
 from math import pi
 from unittest import TestCase
 
-from neo4j.bolt.packstream import Packer, Unpacker, packb
+from neo4j.packstream import Packer, Unpacker
+from neo4j.util import import_best as _import_best
+
+MessageFrame = _import_best("neo4j.bolt._io", "neo4j.bolt.io").MessageFrame
+
+
+def packb(*values):
+    stream = BytesIO()
+    packer = Packer(stream)
+    for value in values:
+        packer.pack(value)
+    return stream.getvalue()
 
 
 def assert_packable(value, packed_value):
@@ -39,7 +50,7 @@ def assert_packable(value, packed_value):
         raise AssertionError("Packed value %r is %r instead of expected %r" %
                              (value, packed, packed_value))
     unpacker = Unpacker()
-    unpacker.load(packed)
+    unpacker.attach(MessageFrame(memoryview(packed), [(0, len(packed))]))
     unpacked = unpacker.unpack()
     try:
         assert unpacked == value
@@ -202,7 +213,7 @@ class PackStreamTestCase(TestCase):
             raise AssertionError("Packed value is %r instead of expected %r" %
                                  (packed, packed_value))
         unpacker = Unpacker()
-        unpacker.load(packed)
+        unpacker.attach(MessageFrame(memoryview(packed), [(0, len(packed))]))
         unpacked = unpacker.unpack()
         try:
             assert unpacked == unpacked_value
@@ -250,7 +261,7 @@ class PackStreamTestCase(TestCase):
             raise AssertionError("Packed value is %r instead of expected %r" %
                                  (packed, packed_value))
         unpacker = Unpacker()
-        unpacker.load(packed)
+        unpacker.attach(MessageFrame(memoryview(packed), [(0, len(packed))]))
         unpacked = unpacker.unpack()
         try:
             assert unpacked == unpacked_value

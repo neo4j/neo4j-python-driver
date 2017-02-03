@@ -20,11 +20,25 @@
 
 import os
 try:
-    from setuptools import setup
+    from setuptools import setup, Extension
 except ImportError:
-    from distutils.core import setup
+    from distutils.core import setup, Extension
 
 from neo4j.meta import version
+
+try:
+    from Cython.Build import cythonize
+    from Cython.Distutils import build_ext
+except ImportError:
+    cmdclass = {}
+    ext_modules = [
+        Extension("neo4j.bolt._io", ["neo4j/bolt/_io.c"]),
+        Extension("neo4j.packstream._packer", ["neo4j/packstream/_packer.c"]),
+        Extension("neo4j.packstream._unpacker", ["neo4j/packstream/_unpacker.c"]),
+    ]
+else:
+    cmdclass = {'build_ext': build_ext}
+    ext_modules = cythonize([Extension("*", ["**/*.pyx"])])
 
 
 # Used for reading the README into long_description below.
@@ -50,5 +64,7 @@ setup(name="neo4j-driver",
           "Programming Language :: Python :: 2.7",
           "Programming Language :: Python :: 3.4",
           "Programming Language :: Python :: 3.5",
+          "Programming Language :: Python :: 3.6",
       ],
-      packages=["neo4j", "neo4j.bolt", "neo4j.compat", "neo4j.v1"])
+      packages=["neo4j", "neo4j.bolt", "neo4j.compat", "neo4j.packstream", "neo4j.v1"],
+      ext_modules=ext_modules)

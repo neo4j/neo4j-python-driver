@@ -24,6 +24,7 @@ from time import clock
 
 from neo4j.bolt.connection import Address, ConnectionPool, ServiceUnavailable, ProtocolError
 from neo4j.compat.collections import MutableSet, OrderedDict
+from neo4j.v1 import SessionError
 
 
 class RoundRobinSet(MutableSet):
@@ -267,6 +268,7 @@ class RoutingConnectionPool(ConnectionPool):
                 address = next(self.routing_table.readers)
             try:
                 connection = self.acquire(address)
+                connection.Error = SessionExpired
             except ServiceUnavailable as error:
                 if error.code == "Neo.ClientError.Security.Unauthorized":
                     from neo4j.v1.security import AuthError
@@ -285,6 +287,7 @@ class RoutingConnectionPool(ConnectionPool):
                 address = next(self.routing_table.writers)
             try:
                 connection = self.acquire(address)
+                connection.Error = SessionExpired
             except ServiceUnavailable as error:
                 if error.code == "Neo.ClientError.Security.Unauthorized":
                     from neo4j.v1.security import AuthError
@@ -303,3 +306,13 @@ class RoutingConnectionPool(ConnectionPool):
         self.routing_table.readers.discard(address)
         self.routing_table.writers.discard(address)
         super(RoutingConnectionPool, self).remove(address)
+
+
+class SessionExpired(SessionError):
+    """ Raised when no a session is no longer able to fulfil
+    its purpose.
+    """
+
+    def __init__(self, session, *args, **kwargs):
+        self.session = session
+        super(SessionExpired, self).__init__(*args, **kwargs)

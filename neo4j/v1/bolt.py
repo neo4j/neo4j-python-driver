@@ -25,7 +25,8 @@ from neo4j.compat import urlparse
 from .api import GraphDatabase, Driver, Session, StatementResult, \
     READ_ACCESS, WRITE_ACCESS, \
     fix_statement, fix_parameters, \
-    CypherError, SessionExpired, SessionError
+    CypherError, SessionError
+from neo4j.v1.routing import SessionExpired
 from .routing import RoutingConnectionPool
 from .security import SecurityPlan, AuthError
 from .summary import ResultSummary
@@ -142,23 +143,15 @@ class BoltSession(Session):
 
         self.connection.append(RUN, (statement, parameters), response=run_response)
         self.connection.append(PULL_ALL, response=pull_all_response)
-        self.connection.send()
+
+        if not self.transaction:
+            self.connection.sync()
 
         return result
 
     def fetch(self):
-        try:
-            return self.connection.fetch()
-        except ServiceUnavailable as cause:
-            self.connection.in_use = False
-            self.connection = None
-            if self.access_mode:
-                exception = SessionExpired(self, "Session %r is no longer valid for "
-                                           "%r work" % (self, self.access_mode))
-                exception.__cause__ = cause
-                raise exception
-            else:
-                raise
+        self.connection.send()
+        return self.connection.fetch()
 
     def sync(self):
         self.connection.sync()

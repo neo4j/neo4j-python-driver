@@ -30,7 +30,6 @@ from __future__ import division
 import logging
 from base64 import b64encode
 from collections import deque, namedtuple
-from io import BytesIO
 from os import makedirs, open as os_open, write as os_write, close as os_close, O_CREAT, O_APPEND, O_WRONLY
 from os.path import dirname, isfile, join as path_join, expanduser
 from select import select
@@ -40,7 +39,11 @@ from threading import RLock
 
 from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
 from neo4j.meta import version
-from .packstream import Packer, Unpacker
+from neo4j.packstream import Packer, Unpacker
+from neo4j.util import import_best as _import_best
+
+ChunkedInputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedInputBuffer
+ChunkedOutputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedOutputBuffer
 
 
 DEFAULT_PORT = 7687
@@ -91,107 +94,18 @@ Address = namedtuple("Address", ["host", "port"])
 ServerInfo = namedtuple("ServerInfo", ["address", "version"])
 
 
-class BufferingSocket(object):
-
-    def __init__(self, connection):
-        self.connection = connection
-        self.socket = connection.socket
-        self.address = Address(*self.socket.getpeername())
-        self.buffer = bytearray()
-
-    def fill(self):
-        ready_to_read, _, _ = select((self.socket,), (), (), 0)
-        received = self.socket.recv(65539)
-        if received:
-            log_debug("S: b%r", received)
-            self.buffer[len(self.buffer):] = received
-        else:
-            if ready_to_read is not None:
-                # If this connection fails, remove this address from the
-                # connection pool to which this connection belongs.
-                if self.connection.pool:
-                    self.connection.pool.remove(self.address)
-                raise ServiceUnavailable("Failed to read from connection %r" % (self.address,))
-
-    def read_message(self):
-        message_data = bytearray()
-        p = 0
-        size = -1
-        while size != 0:
-            while len(self.buffer) - p < 2:
-                self.fill()
-            size = 0x100 * self.buffer[p] + self.buffer[p + 1]
-            p += 2
-            if size > 0:
-                while len(self.buffer) - p < size:
-                    self.fill()
-                end = p + size
-                message_data[len(message_data):] = self.buffer[p:end]
-                p = end
-        self.buffer = self.buffer[p:]
-        return message_data
-
-
-class ChunkChannel(object):
-    """ Reader/writer for chunked data.
-
-    .. note:: logs at DEBUG level
+class ProtocolError(Exception):
+    """ Raised when an unexpected or unsupported protocol event occurs.
     """
 
-    max_chunk_size = 65535
 
-    def __init__(self, sock):
-        self.socket = sock
-        self.address = Address(*sock.getpeername())
-        self.raw = BytesIO()
-        self.output_buffer = []
-        self.output_size = 0
-        self._recv_buffer = b""
+class ServiceUnavailable(Exception):
+    """ Raised when no database service is available.
+    """
 
-    def write(self, b):
-        """ Write some bytes, splitting into chunks if necessary.
-        """
-        max_chunk_size = self.max_chunk_size
-        output_buffer = self.output_buffer
-        while b:
-            size = len(b)
-            future_size = self.output_size + size
-            if future_size >= max_chunk_size:
-                end = max_chunk_size - self.output_size
-                output_buffer.append(b[:end])
-                self.output_size = max_chunk_size
-                b = b[end:]
-                self.flush()
-            else:
-                output_buffer.append(b)
-                self.output_size = future_size
-                b = b""
-
-    def flush(self, end_of_message=False):
-        """ Flush everything written since the last chunk to the
-        stream, followed by a zero-chunk if required.
-        """
-        output_buffer = self.output_buffer
-        if output_buffer:
-            lines = [struct_pack(">H", self.output_size)] + output_buffer
-        else:
-            lines = []
-        if end_of_message:
-            lines.append(b"\x00\x00")
-        if lines:
-            self.raw.writelines(lines)
-            self.raw.flush()
-            del output_buffer[:]
-            self.output_size = 0
-
-    def send(self):
-        """ Send all queued messages to the server.
-        """
-        data = self.raw.getvalue()
-        log_debug("C: b%r", data)
-        self.socket.sendall(data)
-
-        self.raw.seek(self.raw.truncate(0))
+    def __init__(self, message, code=None):
+        super(ServiceUnavailable, self).__init__(message)
+        self.code = code
 
 
 class Response(object):
@@ -248,14 +162,15 @@ class Connection(object):
     #: The pool of which this connection is a member
     pool = None
 
-    #: Server version details
-    server = None
+    #: Error class used for raising connection errors
+    Error = ServiceUnavailable
 
     def __init__(self, sock, **config):
         self.socket = sock
-        self.buffering_socket = BufferingSocket(self)
-        self.channel = ChunkChannel(sock)
-        self.packer = Packer(self.channel)
+        self.address = sock.getpeername()
+        self.input_buffer = ChunkedInputBuffer()
+        self.output_buffer = ChunkedOutputBuffer()
+        self.packer = Packer(self.output_buffer)
         self.unpacker = Unpacker()
         self.responses = deque()
 
@@ -295,12 +210,10 @@ class Connection(object):
         :arg fields: the fields of the message as a tuple
         :arg response: a response object to handle callbacks
         """
-        log_info("C: %s %r", message_names[signature], fields)
-
-        self.packer.pack_struct_header(len(fields), signature)
-        for field in fields:
-            self.packer.pack(field)
-        self.channel.flush(end_of_message=True)
+        #log_info("C: %s %r", message_names[signature], fields)
+        self.packer.pack_struct(signature, fields)
+        self.output_buffer.chunk()
+        self.output_buffer.chunk()
         self.responses.append(response)
 
     def acknowledge_failure(self):
@@ -315,10 +228,7 @@ class Connection(object):
         response.on_failure = on_failure
 
         self.append(ACK_FAILURE, response=response)
-        self.send()
-        fetch = self.fetch
-        while not response.complete:
-            fetch()
+        self.sync()
 
     def reset(self):
         """ Add a RESET message to the outgoing queue, send
@@ -340,11 +250,16 @@ class Connection(object):
     def send(self):
         """ Send all queued messages to the server.
         """
+        data = self.output_buffer.view()
+        if not data:
+            return
+        #log_debug("C: %r" % data.tobytes())
         if self.closed:
-            raise ServiceUnavailable("Failed to write to closed connection %r" % (self.server.address,))
+            raise self.Error("Failed to write to closed connection %r" % (self.address,))
         if self.defunct:
-            raise ServiceUnavailable("Failed to write to defunct connection %r" % (self.server.address,))
-        self.channel.send()
+            raise self.Error("Failed to write to defunct connection %r" % (self.address,))
+        self.socket.sendall(data)
+        self.output_buffer.clear()
 
     def fetch(self):
         """ Receive exactly one message from the server
@@ -353,45 +268,51 @@ class Connection(object):
         :return: number of messages fetched (zero or one)
         """
         if self.closed:
-            raise ServiceUnavailable("Failed to read from closed connection %r" % (self.server.address,))
+            raise self.Error("Failed to read from closed connection %r" % (self.address,))
         if self.defunct:
-            raise ServiceUnavailable("Failed to read from defunct connection %r" % (self.server.address,))
+            raise self.Error("Failed to read from defunct connection %r" % (self.address,))
         if not self.responses:
             return 0
 
-        try:
-            message_data = self.buffering_socket.read_message()
-        except ProtocolError:
-            self.defunct = True
-            self.close()
-            raise
+        input_buffer = self.input_buffer
+        while not input_buffer.frame_message():
+            try:
+                received = input_buffer.receive(self.socket, 8192)
+            except SocketError:
+                failed = True
+            else:
+                failed = (received == 0)
+            if failed:
+                self.defunct = True
+                self.close()
+                raise self.Error("Failed to read from defunct connection %r" % (self.address,))
 
         unpacker = self.unpacker
-        unpacker.load(message_data)
+        unpacker.attach(input_buffer.frame())
         size, signature = unpacker.unpack_structure_header()
         if size > 1:
             raise ProtocolError("Expected one field")
 
         if signature == SUCCESS:
             metadata = unpacker.unpack_map()
-            log_info("S: SUCCESS (%r)", metadata)
+            #log_info("S: SUCCESS (%r)", metadata)
             response = self.responses.popleft()
             response.complete = True
             response.on_success(metadata or {})
         elif signature == RECORD:
             data = unpacker.unpack_list()
-            log_info("S: RECORD (%r)", data)
+            #log_info("S: RECORD (%r)", data)
             response = self.responses[0]
             response.on_record(data or [])
         elif signature == IGNORED:
             metadata = unpacker.unpack_map()
-            log_info("S: IGNORED (%r)", metadata)
+            #log_info("S: IGNORED (%r)", metadata)
             response = self.responses.popleft()
             response.complete = True
             response.on_ignored(metadata or {})
         elif signature == FAILURE:
             metadata = unpacker.unpack_map()
-            log_info("S: FAILURE (%r)", metadata)
+            #log_info("S: FAILURE (%r)", metadata)
             response = self.responses.popleft()
             response.complete = True
             response.on_failure(metadata or {})
@@ -415,8 +336,8 @@ class Connection(object):
         """ Close the connection.
         """
         if not self.closed:
-            log_info("~~ [CLOSE]")
-            self.channel.socket.close()
+            #log_info("~~ [CLOSE]")
+            self.socket.close()
             self.closed = True
 
 
@@ -623,18 +544,4 @@ def connect(address, ssl_context=None, **config):
 
 class SecurityError(Exception):
     """ Raised when an action is denied due to security settings.
-    """
-
-
-class ServiceUnavailable(Exception):
-    """ Raised when no database service is available.
-    """
-
-    def __init__(self, message, code=None):
-        super(ServiceUnavailable, self).__init__(message)
-        self.code = code
-
-
-class ProtocolError(Exception):
-    """ Raised when an unexpected or unsupported protocol event occurs.
     """

@@ -21,7 +21,7 @@
 from unittest import SkipTest
 from uuid import uuid4
 
-from mock import patch
+from neo4j.v1 import READ_ACCESS, WRITE_ACCESS, CypherError, SessionError, TransactionError, Node, Relationship, Path
 
 from neo4j.v1 import \
     GraphDatabase, READ_ACCESS, WRITE_ACCESS, \
@@ -147,8 +147,8 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
 
     def test_keys_with_an_error(self):
         with self.driver.session() as session:
-            result = session.run("X")
             with self.assertRaises(CypherError):
+                result = session.run("X")
                 list(result.keys())
 
 
@@ -251,17 +251,6 @@ class ResetTestCase(DirectIntegrationTestCase):
                 assert record[0] == 1
             else:
                 assert False, "A Cypher error should have occurred"
-
-    def test_defunct(self):
-        from neo4j.bolt.connection import BufferingSocket
-        from neo4j.bolt.connection import ProtocolError
-        with self.driver.session() as session:
-            assert not session.connection.defunct
-            with patch.object(BufferingSocket, "fill", side_effect=ProtocolError()):
-                with self.assertRaises(ProtocolError):
-                    session.run("RETURN 1").consume()
-            assert session.connection.defunct
-            assert session.connection.closed
 
 
 class ExplicitTransactionTestCase(DirectIntegrationTestCase):
@@ -551,7 +540,7 @@ class ResultConsumptionTestCase(DirectIntegrationTestCase):
                 assert upcoming is None
 
 
-class SessionCommitTestCase(DirectIntegrationTestCase):
+class SessionCompletionTestCase(DirectIntegrationTestCase):
 
     def test_should_sync_after_commit(self):
         with self.driver.session() as session:
@@ -562,9 +551,6 @@ class SessionCommitTestCase(DirectIntegrationTestCase):
             assert len(buffer) == 1
             assert buffer[0][0] == 1
 
-
-class SessionRollbackTestCase(DirectIntegrationTestCase):
-
     def test_should_sync_after_rollback(self):
         with self.driver.session() as session:
             tx = session.begin_transaction()
@@ -574,21 +560,17 @@ class SessionRollbackTestCase(DirectIntegrationTestCase):
             assert len(buffer) == 1
             assert buffer[0][0] == 1
 
-
-class SessionClosedTestCase(DirectIntegrationTestCase):
-
-    def setUp(self):
-        super(SessionClosedTestCase, self).setUp()
-        self.session = self.driver.session()
-        self.session.close()
-
     def test_errors_on_run(self):
+        session = self.driver.session()
+        session.close()
         with self.assertRaises(SessionError):
-            self.session.run("RETURN 1")
+            session.run("RETURN 1")
 
     def test_errors_on_begin_transaction(self):
+        session = self.driver.session()
+        session.close()
         with self.assertRaises(SessionError):
-            self.session.begin_transaction()
+            session.begin_transaction()
 
 
 class TransactionCommittedTestCase(DirectIntegrationTestCase):

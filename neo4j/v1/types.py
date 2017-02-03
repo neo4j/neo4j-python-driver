@@ -25,7 +25,7 @@ also included, allows PackStream structures to be turned into instances
 of these classes.
 """
 
-from neo4j.bolt.packstream import Structure
+from neo4j.packstream import Structure
 from neo4j.compat import string, integer
 
 from .api import GraphDatabase, ValueSystem

@@ -19,7 +19,9 @@
 # limitations under the License.
 
 
+from importlib import import_module
 import logging
+from os import getenv as getenv
 from sys import stdout
 
 
@@ -88,3 +90,14 @@ def watch(logger_name, level=logging.INFO, out=stdout):
     watcher = Watcher(logger_name)
     watcher.watch(level, out)
     return watcher
+
+
+def import_best(c_module, py_module):
+    pure_python = getenv("PURE_PYTHON", "")
+    if pure_python:
+        return import_module(py_module)
+    else:
+        try:
+            return import_module(c_module)
+        except ImportError:
+            return import_module(py_module)

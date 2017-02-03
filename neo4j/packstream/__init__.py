@@ -18,4 +18,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .connection import *
+
+from neo4j.util import import_best as _import_best
+
+from .structure import Structure
+
+Packer = _import_best("neo4j.packstream._packer", "neo4j.packstream.packer").Packer
+Unpacker = _import_best("neo4j.packstream._unpacker", "neo4j.packstream.unpacker").Unpacker

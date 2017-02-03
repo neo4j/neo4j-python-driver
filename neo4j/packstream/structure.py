@@ -18,4 +18,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .connection import *
+
+class Structure(list):
+
+    def __init__(self, capacity, signature):
+        self.capacity = capacity
+        self.signature = signature
+
+    def __repr__(self):
+        return repr(tuple(iter(self)))
+
+    def __eq__(self, other):
+        return list(self) == list(other)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __iter__(self):
+        yield self.signature
+        yield tuple(super(Structure, self).__iter__())

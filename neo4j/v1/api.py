@@ -434,15 +434,18 @@ class StatementResult(object):
         """
         hydrate = self.value_system.hydrate
         zipper = self.zipper
+        online = self.online
+        fetch = self.fetch
         keys = self.keys()
         records = self._records
+        pop_first_record = records.popleft
         while records:
-            values = records.popleft()
+            values = pop_first_record()
             yield zipper(keys, hydrate(values))
-        while self.online():
-            self.fetch()
+        while online():
+            fetch()
             while records:
-                values = records.popleft()
+                values = pop_first_record()
                 yield zipper(keys, hydrate(values))
 
     def summary(self):
@@ -525,16 +528,6 @@ class SessionError(Exception):
 class TransactionError(Exception):
     """ Raised when an error occurs while using a transaction.
     """
-
-
-class SessionExpired(SessionError):
-    """ Raised when no a session is no longer able to fulfil
-    its purpose.
-    """
-
-    def __init__(self, session, *args, **kwargs):
-        self.session = session
-        super(SessionExpired, self).__init__(*args, **kwargs)
 
 
 def fix_statement(statement):
