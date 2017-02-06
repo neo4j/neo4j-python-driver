@@ -25,7 +25,7 @@ from unittest import skipUnless
 
 from neo4j.v1 import ServiceUnavailable, ProtocolError, READ_ACCESS, WRITE_ACCESS, \
     TRUST_ON_FIRST_USE, TRUST_CUSTOM_CA_SIGNED_CERTIFICATES, GraphDatabase, basic_auth, \
-    custom_auth, SSL_AVAILABLE, SessionExpired, DirectDriver, RoutingDriver, Unauthorized
+    custom_auth, SSL_AVAILABLE, SessionExpired, DirectDriver, RoutingDriver, AuthError
 from test.util import ServerTestCase, StubCluster
 
 BOLT_URI = "bolt://localhost:7687"
@@ -233,6 +233,6 @@ class SecurityTestCase(ServerTestCase):
                                      trust=TRUST_CUSTOM_CA_SIGNED_CERTIFICATES)
 
     def test_should_fail_on_incorrect_password(self):
-        with self.assertRaises(Unauthorized):
+        with self.assertRaises(AuthError):
             with GraphDatabase.driver(BOLT_URI, auth=("neo4j", "wrong-password")) as driver:
                 _ = driver.session()
