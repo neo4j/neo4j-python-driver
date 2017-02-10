@@ -1,3 +1,1 @@
-coverage
-mock
-teamcity-messages
+tox
