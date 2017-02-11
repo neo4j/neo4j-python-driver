@@ -199,11 +199,14 @@ class Session(object):
         """
 
     def fetch(self):
-        """ Fetch the next message if available.
+        """ Fetch at least one more message from the server if any are
+        available. Zero or more detail messages may be fetched as well
+        as zero or one summary messages.
 
-        :returns: The number of messages fetched (zero or one)
+        :returns: 2-tuple containing number of detail messages and
+                  number of summary messages fetched
         """
-        return 0
+        return 0, 0
 
     def sync(self):
         """ Carry out a full send and receive.
@@ -401,12 +404,13 @@ class StatementResult(object):
         return self._session and not self._session.closed()
 
     def fetch(self):
-        """ Fetch another record, if available.
+        """ Fetch another record, if any are available.
 
-        :returns: number of records fetched (zero or one)
+        :returns: number of records fetched
         """
         if self.online():
-            return self._session.fetch()
+            detail_count, _ = self._session.fetch()
+            return detail_count
         else:
             return 0
 
@@ -434,15 +438,18 @@ class StatementResult(object):
         """
         hydrate = self.value_system.hydrate
         zipper = self.zipper
+        online = self.online
+        fetch = self.fetch
         keys = self.keys()
         records = self._records
+        pop_first_record = records.popleft
         while records:
-            values = records.popleft()
+            values = pop_first_record()
             yield zipper(keys, hydrate(values))
-        while self.online():
-            self.fetch()
+        while online():
+            fetch()
             while records:
-                values = records.popleft()
+                values = pop_first_record()
                 yield zipper(keys, hydrate(values))
 
     def summary(self):
@@ -525,16 +532,6 @@ class SessionError(Exception):
 class TransactionError(Exception):
     """ Raised when an error occurs while using a transaction.
     """
-
-
-class SessionExpired(SessionError):
-    """ Raised when no a session is no longer able to fulfil
-    its purpose.
-    """
-
-    def __init__(self, session, *args, **kwargs):
-        self.session = session
-        super(SessionExpired, self).__init__(*args, **kwargs)
 
 
 def fix_statement(statement):

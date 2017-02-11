@@ -34,7 +34,7 @@ class SecurityTestCase(IntegrationTestCase):
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token, encrypted=False) as driver:
             with driver.session() as session:
                 connection = session.connection
-                assert isinstance(connection.channel.socket, socket)
+                assert isinstance(connection.socket, socket)
                 assert connection.der_encoded_server_certificate is None
 
     @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
@@ -43,7 +43,7 @@ class SecurityTestCase(IntegrationTestCase):
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token, trust=TRUST_ON_FIRST_USE) as driver:
             with driver.session() as session:
                 connection = session.connection
-                assert isinstance(connection.channel.socket, SSLSocket)
+                assert isinstance(connection.socket, SSLSocket)
                 assert connection.der_encoded_server_certificate is not None
 
     @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")

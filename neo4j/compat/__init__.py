@@ -43,6 +43,9 @@ except NameError:
         else:
             return str(x)
 
+    def memoryview_at(view, index):
+        return view[index]
+
 else:
     # Python 2
 
@@ -57,6 +60,8 @@ else:
         else:
             return unicode(x)
 
+    def memoryview_at(view, index):
+        return ord(view[index])
 
 try:
     from multiprocessing import Array, Process

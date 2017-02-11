@@ -25,7 +25,8 @@ from neo4j.compat import urlparse
 from .api import GraphDatabase, Driver, Session, StatementResult, \
     READ_ACCESS, WRITE_ACCESS, \
     fix_statement, fix_parameters, \
-    CypherError, SessionExpired, SessionError
+    CypherError, SessionError
+from neo4j.v1.routing import SessionExpired
 from .routing import RoutingConnectionPool
 from .security import SecurityPlan, AuthError
 from .summary import ResultSummary
@@ -142,23 +143,15 @@ class BoltSession(Session):
 
         self.connection.append(RUN, (statement, parameters), response=run_response)
         self.connection.append(PULL_ALL, response=pull_all_response)
-        self.connection.send()
+
+        if not self.transaction:
+            self.connection.sync()
 
         return result
 
     def fetch(self):
-        try:
-            return self.connection.fetch()
-        except ServiceUnavailable as cause:
-            self.connection.in_use = False
-            self.connection = None
-            if self.access_mode:
-                exception = SessionExpired(self, "Session %r is no longer valid for "
-                                           "%r work" % (self, self.access_mode))
-                exception.__cause__ = cause
-                raise exception
-            else:
-                raise
+        self.connection.send()
+        return self.connection.fetch()
 
     def sync(self):
         self.connection.sync()
@@ -205,9 +198,9 @@ class BoltStatementResult(StatementResult):
             all_metadata.update(metadata)
             self._keys = tuple(metadata["fields"])
 
-        def on_record(values):
-            # Called on receipt of each result record.
-            self._records.append(values)
+        def on_records(records):
+            # Called on receipt of one or more result records.
+            self._records.extend(records)
 
         def on_footer(metadata):
             # Called on receipt of the result footer.
@@ -224,6 +217,6 @@ class BoltStatementResult(StatementResult):
         run_response.on_success = on_header
         run_response.on_failure = on_failure
 
-        pull_all_response.on_record = on_record
+        pull_all_response.on_records = on_records
         pull_all_response.on_success = on_footer
         pull_all_response.on_failure = on_failure

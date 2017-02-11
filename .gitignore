@@ -21,3 +21,5 @@ run
 
 neo4j-community-*
 neo4j-enterprise-*
+
+*.so
