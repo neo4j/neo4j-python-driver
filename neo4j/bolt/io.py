@@ -144,6 +144,19 @@ class ChunkedInputBuffer(object):
         self._extent = new_extent
         return data_size
 
+    def receive_message(self, socket, n):
+        """
+
+        :param socket:
+        :param n:
+        :return:
+        """
+        while not self.frame_message():
+            received = self.receive(socket, n)
+            if received == 0:
+                return False
+        return True
+
     def _recycle(self):
         """ Reclaim buffer space before the origin.
 

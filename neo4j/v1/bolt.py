@@ -198,9 +198,9 @@ class BoltStatementResult(StatementResult):
             all_metadata.update(metadata)
             self._keys = tuple(metadata["fields"])
 
-        def on_record(values):
-            # Called on receipt of each result record.
-            self._records.append(values)
+        def on_records(records):
+            # Called on receipt of one or more result records.
+            self._records.extend(records)
 
         def on_footer(metadata):
             # Called on receipt of the result footer.
@@ -217,6 +217,6 @@ class BoltStatementResult(StatementResult):
         run_response.on_success = on_header
         run_response.on_failure = on_failure
 
-        pull_all_response.on_record = on_record
+        pull_all_response.on_records = on_records
         pull_all_response.on_success = on_footer
         pull_all_response.on_failure = on_failure

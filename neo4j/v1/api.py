@@ -199,11 +199,14 @@ class Session(object):
         """
 
     def fetch(self):
-        """ Fetch the next message if available.
+        """ Fetch at least one more message from the server if any are
+        available. Zero or more detail messages may be fetched as well
+        as zero or one summary messages.
 
-        :returns: The number of messages fetched (zero or one)
+        :returns: 2-tuple containing number of detail messages and
+                  number of summary messages fetched
         """
-        return 0
+        return 0, 0
 
     def sync(self):
         """ Carry out a full send and receive.
@@ -401,12 +404,13 @@ class StatementResult(object):
         return self._session and not self._session.closed()
 
     def fetch(self):
-        """ Fetch another record, if available.
+        """ Fetch another record, if any are available.
 
-        :returns: number of records fetched (zero or one)
+        :returns: number of records fetched
         """
         if self.online():
-            return self._session.fetch()
+            detail_count, _ = self._session.fetch()
+            return detail_count
         else:
             return 0
 

@@ -117,7 +117,7 @@ class Response(object):
         self.connection = connection
         self.complete = False
 
-    def on_record(self, values):
+    def on_records(self, records):
         pass
 
     def on_success(self, metadata):
@@ -262,8 +262,7 @@ class Connection(object):
         self.output_buffer.clear()
 
     def fetch(self):
-        """ Receive exactly one message from the server
-        (if one is available).
+        """ Receive at least one message from the server, if available.
 
         :return: number of messages fetched (zero or one)
         """
@@ -272,65 +271,80 @@ class Connection(object):
         if self.defunct:
             raise self.Error("Failed to read from defunct connection %r" % (self.address,))
         if not self.responses:
-            return 0
+            return 0, 0
 
-        input_buffer = self.input_buffer
-        while not input_buffer.frame_message():
-            try:
-                received = input_buffer.receive(self.socket, 8192)
-            except SocketError:
-                failed = True
-            else:
-                failed = (received == 0)
-            if failed:
-                self.defunct = True
-                self.close()
-                raise self.Error("Failed to read from defunct connection %r" % (self.address,))
+        self._receive()
 
-        unpacker = self.unpacker
-        unpacker.attach(input_buffer.frame())
-        size, signature = unpacker.unpack_structure_header()
-        if size > 1:
-            raise ProtocolError("Expected one field")
+        details, summary_signature, summary_metadata = self._unpack()
 
-        if signature == SUCCESS:
-            metadata = unpacker.unpack_map()
+        if details:
+            #log_info("S: RECORD (%r)", data)  # TODO
+            self.responses[0].on_records(details)
+
+        if summary_signature is None:
+            return len(details), 0
+
+        response = self.responses.popleft()
+        response.complete = True
+        if summary_signature == SUCCESS:
             #log_info("S: SUCCESS (%r)", metadata)
-            response = self.responses.popleft()
-            response.complete = True
-            response.on_success(metadata or {})
-        elif signature == RECORD:
-            data = unpacker.unpack_list()
-            #log_info("S: RECORD (%r)", data)
-            response = self.responses[0]
-            response.on_record(data or [])
-        elif signature == IGNORED:
-            metadata = unpacker.unpack_map()
+            response.on_success(summary_metadata or {})
+        elif summary_signature == IGNORED:
             #log_info("S: IGNORED (%r)", metadata)
-            response = self.responses.popleft()
-            response.complete = True
-            response.on_ignored(metadata or {})
-        elif signature == FAILURE:
-            metadata = unpacker.unpack_map()
+            response.on_ignored(summary_metadata or {})
+        elif summary_signature == FAILURE:
             #log_info("S: FAILURE (%r)", metadata)
-            response = self.responses.popleft()
-            response.complete = True
-            response.on_failure(metadata or {})
+            response.on_failure(summary_metadata or {})
         else:
-            raise ProtocolError("Unexpected response message with signature %02X" % signature)
+            raise ProtocolError("Unexpected response message with signature %02X" % summary_signature)
 
-        return 1
+        return len(details), 1
+
+    def _receive(self):
+        try:
+            received = self.input_buffer.receive_message(self.socket, 8192)
+        except SocketError:
+            received = False
+        if not received:
+            self.defunct = True
+            self.close()
+            raise self.Error("Failed to read from defunct connection %r" % (self.address,))
+
+    def _unpack(self):
+        unpacker = self.unpacker
+        input_buffer = self.input_buffer
+
+        details = []
+        summary_signature = None
+        summary_metadata = None
+        more = True
+        while more:
+            unpacker.attach(input_buffer.frame())
+            size, signature = unpacker.unpack_structure_header()
+            if size > 1:
+                raise ProtocolError("Expected one field")
+            if signature == RECORD:
+                data = unpacker.unpack_list()
+                details.append(data)
+                more = input_buffer.frame_message()
+            else:
+                summary_signature = signature
+                summary_metadata = unpacker.unpack_map()
+                more = False
+        return details, summary_signature, summary_metadata
 
     def sync(self):
         """ Send and fetch all outstanding messages.
         """
         self.send()
-        count = 0
+        detail_count = summary_count = 0
         while self.responses:
             response = self.responses[0]
             while not response.complete:
-                count += self.fetch()
-        return count
+                detail_delta, summary_delta = self.fetch()
+                detail_count += detail_delta
+                summary_count += summary_delta
+        return detail_count, summary_count
 
     def close(self):
         """ Close the connection.

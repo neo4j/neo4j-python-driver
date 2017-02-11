@@ -174,6 +174,23 @@ cdef class ChunkedInputBuffer(object):
         self._extent = new_extent
         return data_size
 
+    cpdef bint receive_message(self, socket, int n):
+        """
+
+        :param socket:
+        :param n:
+        :return:
+        """
+        cdef int received
+
+        frame_message = self.frame_message
+        receive = self.receive
+        while not frame_message():
+            received = receive(socket, n)
+            if received == 0:
+                return False
+        return True
+
     cdef _recycle(self):
         """ Reclaim buffer space before the origin.
 

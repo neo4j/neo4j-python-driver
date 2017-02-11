@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 
+from __future__ import division
+
 from sys import stderr
 from threading import Thread
 from timeit import default_timer as time
@@ -22,7 +24,13 @@ class Runner(Thread):
         self.delete_all()
         self.create_nodes()
         self.create_index()
-        self.match_nodes()
+        match_runs = 20
+        times = []
+        for _ in range(match_runs):
+            times.append(self.match_nodes())
+        stderr.write("=======\n")
+        stderr.write("Average match run time is %fs\n" % (sum(times) / match_runs,))
+        stderr.write("Minimum match run time is %fs\n" % (min(times),))
 
     def drop_index(self):
         with self.driver.session() as session:
@@ -72,7 +80,9 @@ class Runner(Thread):
                     if n % self.batch_size == 0:
                         stderr.write("Matched %d nodes\r" % n)
                 t1 = time()
-                stderr.write("Matched %d nodes in %fs\n" % (n, t1 - t0))
+                time_delta = t1 - t0
+                stderr.write("Matched %d nodes in %fs\n" % (n, time_delta))
+        return time_delta
 
 
 if __name__ == "__main__":
