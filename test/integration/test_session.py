@@ -21,10 +21,8 @@
 from unittest import SkipTest
 from uuid import uuid4
 
-from neo4j.v1 import READ_ACCESS, WRITE_ACCESS, CypherError, SessionError, TransactionError, Node, Relationship, Path
-
 from neo4j.v1 import \
-    GraphDatabase, READ_ACCESS, WRITE_ACCESS, \
+    READ_ACCESS, WRITE_ACCESS, \
     CypherError, SessionError, TransactionError, \
     Node, Relationship, Path
 
@@ -488,7 +486,7 @@ class ResultConsumptionTestCase(DirectIntegrationTestCase):
         session = self.driver.session()
         result = session.run("UNWIND range(1, 1) AS n RETURN n")
         _ = result.single()
-        assert not result.online()
+        assert not result.connected()
 
     def test_single_consumes_entire_result_if_multiple_records(self):
         import warnings
@@ -497,7 +495,7 @@ class ResultConsumptionTestCase(DirectIntegrationTestCase):
         with warnings.catch_warnings():
             warnings.simplefilter("always")
             _ = result.single()
-        assert not result.online()
+        assert not result.connected()
 
     def test_peek_can_look_one_ahead(self):
         session = self.driver.session()

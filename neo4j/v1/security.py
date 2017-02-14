@@ -20,7 +20,6 @@
 
 from warnings import warn
 
-from neo4j.bolt.connection import SecurityError
 from neo4j.compat.ssl import SSL_AVAILABLE, SSLContext, PROTOCOL_SSLv23, OP_NO_SSLv2, CERT_REQUIRED
 
 
@@ -127,8 +126,3 @@ def _encryption_default():
              "so communications are not secure")
         _warned_about_insecure_default = True
     return ENCRYPTION_DEFAULT
-
-
-class AuthError(SecurityError):
-    """ Raised when authentication failure occurs.
-    """

@@ -20,7 +20,8 @@
 
 from unittest import TestCase
 
-from neo4j.bolt.connection import connect, ProtocolError
+from neo4j.bolt.connection import connect
+from neo4j.bolt import ProtocolError
 from neo4j.v1 import basic_auth
 from neo4j.v1.routing import RoundRobinSet, RoutingTable, RoutingConnectionPool
 

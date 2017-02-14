@@ -19,3 +19,4 @@
 # limitations under the License.
 
 from .connection import *
+from .exceptions import *

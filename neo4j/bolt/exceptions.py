@@ -19,15 +19,25 @@
 # limitations under the License.
 
 
-from .api import *
-from .bolt import *
-from .direct import *
-from .exceptions import *
-from .routing import *
-from .security import *
-from .types import *
+class SecurityError(Exception):
+    """ Raised when an action is denied due to security settings.
+    """
 
 
-# Register supported URI schemes
-GraphDatabase.uri_schemes["bolt"] = DirectDriver
-GraphDatabase.uri_schemes["bolt+routing"] = RoutingDriver
+class AuthError(SecurityError):
+    """ Raised when authentication failure occurs.
+    """
+
+
+class ProtocolError(Exception):
+    """ Raised when an unexpected or unsupported protocol event occurs.
+    """
+
+
+class ServiceUnavailable(Exception):
+    """ Raised when no database service is available.
+    """
+
+    def __init__(self, message, code=None):
+        super(ServiceUnavailable, self).__init__(message)
+        self.code = code

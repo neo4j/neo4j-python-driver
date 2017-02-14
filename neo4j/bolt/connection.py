@@ -42,6 +42,8 @@ from neo4j.meta import version
 from neo4j.packstream import Packer, Unpacker
 from neo4j.util import import_best as _import_best
 
+from .exceptions import AuthError, SecurityError, ProtocolError, ServiceUnavailable
+
 ChunkedInputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedInputBuffer
 ChunkedOutputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedOutputBuffer
 
@@ -102,20 +104,6 @@ class Address(object):
             return Address4(host, port)
         else:
             return Address6(host, port, flow_info, scope_id)
-
-
-class ProtocolError(Exception):
-    """ Raised when an unexpected or unsupported protocol event occurs.
-    """
-
-
-class ServiceUnavailable(Exception):
-    """ Raised when no database service is available.
-    """
-
-    def __init__(self, message, code=None):
-        super(ServiceUnavailable, self).__init__(message)
-        self.code = code
 
 
 class Response(object):
@@ -274,7 +262,7 @@ class Connection(object):
     def fetch(self):
         """ Receive at least one message from the server, if available.
 
-        :return: number of messages fetched (zero or one)
+        :return: 2-tuple of number of detail messages and number of summary messages fetched
         """
         if self.closed:
             raise self.Error("Failed to read from closed connection %r" % (self.address,))
@@ -345,6 +333,8 @@ class Connection(object):
 
     def sync(self):
         """ Send and fetch all outstanding messages.
+
+        :return: 2-tuple of number of detail messages and number of summary messages fetched
         """
         self.send()
         detail_count = summary_count = 0
@@ -382,7 +372,7 @@ class ConnectionPool(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def acquire(self, address):
+    def acquire_direct(self, address):
         """ Acquire a connection to a given address from the pool.
         This method is thread safe.
         """
@@ -401,11 +391,18 @@ class ConnectionPool(object):
                 if not connection.in_use:
                     connection.in_use = True
                     return connection
-            connection = self.connector(address)
-            connection.pool = self
-            connection.in_use = True
-            connections.append(connection)
-            return connection
+            try:
+                connection = self.connector(address)
+            except ServiceUnavailable as error:
+                if error.code == "Neo.ClientError.Security.Unauthorized":
+                    raise AuthError(error.args[0])
+                self.remove(address)
+                raise
+            else:
+                connection.pool = self
+                connection.in_use = True
+                connections.append(connection)
+                return connection
 
     def release(self, connection):
         """ Release a connection back into the pool.
@@ -565,8 +562,3 @@ def connect(address, ssl_context=None, **config):
     else:
         log_error("S: [CLOSE]")
         raise ProtocolError("Unknown Bolt protocol version: %d", agreed_version)
-
-
-class SecurityError(Exception):
-    """ Raised when an action is denied due to security settings.
-    """

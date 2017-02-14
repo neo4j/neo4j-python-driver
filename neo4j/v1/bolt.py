@@ -18,86 +18,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from neo4j.bolt.connection import connect, ConnectionPool, DEFAULT_PORT, \
-    PULL_ALL, Response, RUN, ServiceUnavailable
-from neo4j.compat import urlparse
 
-from .api import GraphDatabase, Driver, Session, StatementResult, \
-    READ_ACCESS, WRITE_ACCESS, \
-    fix_statement, fix_parameters, \
-    CypherError, SessionError
-from neo4j.v1.routing import SessionExpired
-from .routing import RoutingConnectionPool
-from .security import SecurityPlan, AuthError
+from neo4j.bolt import PULL_ALL, Response, RUN
+
+from .api import GraphDatabase, Session, StatementResult, \
+    fix_statement, fix_parameters
+from .exceptions import CypherError, SessionError
 from .summary import ResultSummary
 from .types import Record
-
-
-class DirectDriver(Driver):
-    """ A :class:`.DirectDriver` is created from a ``bolt`` URI and addresses
-    a single database instance. This provides basic connectivity to any
-    database service topology.
-    """
-
-    def __init__(self, uri, **config):
-        parsed = urlparse(uri)
-        self.address = (parsed.hostname, parsed.port or DEFAULT_PORT)
-        self.security_plan = security_plan = SecurityPlan.build(**config)
-        self.encrypted = security_plan.encrypted
-        pool = ConnectionPool(lambda a: connect(a, security_plan.ssl_context, **config))
-        Driver.__init__(self, pool)
-
-    def session(self, access_mode=None):
-        try:
-            return BoltSession(self.pool.acquire(self.address))
-        except ServiceUnavailable as error:
-            if error.code == "Neo.ClientError.Security.Unauthorized":
-                raise AuthError(error.args[0])
-            raise
-
-
-GraphDatabase.uri_schemes["bolt"] = DirectDriver
-
-
-class RoutingDriver(Driver):
-    """ A :class:`.RoutingDriver` is created from a ``bolt+routing`` URI. The
-    routing behaviour works in tandem with Neo4j's causal clustering feature
-    by directing read and write behaviour to appropriate cluster members.
-    """
-
-    def __init__(self, uri, **config):
-        parsed = urlparse(uri)
-        initial_address = (parsed.hostname, parsed.port or DEFAULT_PORT)
-        self.security_plan = security_plan = SecurityPlan.build(**config)
-        self.encrypted = security_plan.encrypted
-        if not security_plan.routing_compatible:
-            # this error message is case-specific as there is only one incompatible
-            # scenario right now
-            raise ValueError("TRUST_ON_FIRST_USE is not compatible with routing")
-
-        def connector(a):
-            return connect(a, security_plan.ssl_context, **config)
-
-        pool = RoutingConnectionPool(connector, initial_address)
-        try:
-            pool.update_routing_table()
-        except:
-            pool.close()
-            raise
-        else:
-            Driver.__init__(self, pool)
-
-    def session(self, access_mode=None):
-        if access_mode == READ_ACCESS:
-            connection = self.pool.acquire_for_read()
-        elif access_mode == WRITE_ACCESS:
-            connection = self.pool.acquire_for_write()
-        else:
-            connection = self.pool.acquire_for_write()
-        return BoltSession(connection, access_mode)
-
-
-GraphDatabase.uri_schemes["bolt+routing"] = RoutingDriver
 
 
 class BoltSession(Session):
@@ -149,12 +77,16 @@ class BoltSession(Session):
 
         return result
 
-    def fetch(self):
+    def send(self):
         self.connection.send()
-        return self.connection.fetch()
+
+    def fetch(self):
+        detail_count, _ = self.connection.fetch()
+        return detail_count
 
     def sync(self):
-        self.connection.sync()
+        detail_count, _ = self.connection.sync()
+        return detail_count
 
     def begin_transaction(self, bookmark=None):
         transaction = super(BoltSession, self).begin_transaction(bookmark)

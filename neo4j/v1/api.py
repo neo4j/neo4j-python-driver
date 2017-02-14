@@ -25,6 +25,7 @@ from warnings import warn
 from neo4j.bolt import ProtocolError, ServiceUnavailable
 from neo4j.compat import urlparse
 
+from .exceptions import CypherError, SessionError, TransactionError
 
 READ_ACCESS = "READ"
 WRITE_ACCESS = "WRITE"
@@ -198,20 +199,21 @@ class Session(object):
         :returns: :class:`.StatementResult` object
         """
 
-    def fetch(self):
-        """ Fetch at least one more message from the server if any are
-        available. Zero or more detail messages may be fetched as well
-        as zero or one summary messages.
-
-        :returns: 2-tuple containing number of detail messages and
-                  number of summary messages fetched
+    def send(self):
+        """ Send all outstanding requests.
         """
-        return 0, 0
+
+    def fetch(self):
+        """ Attempt to fetch at least one more record.
+
+        :returns: number of records fetched
+        """
+        return 0
 
     def sync(self):
         """ Carry out a full send and receive.
 
-        :returns: Total number of records received
+        :returns: number of records fetched
         """
         return 0
 
@@ -322,7 +324,7 @@ class Transaction(object):
         """
         if self.closed():
             raise TransactionError("Cannot use closed transaction")
-        self.session.sync()
+        return self.session.sync()
 
     def commit(self):
         """ Mark this transaction as successful and close in order to
@@ -395,7 +397,7 @@ class StatementResult(object):
     def __iter__(self):
         return self.records()
 
-    def online(self):
+    def connected(self):
         """ Indicator for whether or not this result is still attached to
         a :class:`.Session`.
 
@@ -403,32 +405,33 @@ class StatementResult(object):
         """
         return self._session and not self._session.closed()
 
-    def fetch(self):
-        """ Fetch another record, if any are available.
+    def sync(self):
+        """ Fetch the remainder of this result from the network and buffer
+        it. On return from this method, the result will no longer be
+        :meth:`.connected`.
 
         :returns: number of records fetched
         """
-        if self.online():
-            detail_count, _ = self._session.fetch()
-            return detail_count
-        else:
+        if not self.connected():
             return 0
-
-    def buffer(self):
-        """ Fetch the remainder of this result from the network and buffer
-        it. On return from this method, the result will no longer be
-        :meth:`.online`.
-        """
-        while self.online():
-            self.fetch()
+        self._session.send()
+        fetch = self._session.fetch
+        count = 0
+        while self.connected():
+            count += fetch()
+        return count
 
     def keys(self):
         """ The keys for the records in this result.
 
         :returns: tuple of key names
         """
-        while self._keys is None and self.online():
-            self.fetch()
+        if self._keys is not None:
+            return self._keys
+        self._session.send()
+        fetch = self._session.fetch
+        while self._keys is None and self.connected():
+            fetch()
         return self._keys
 
     def records(self):
@@ -438,26 +441,28 @@ class StatementResult(object):
         """
         hydrate = self.value_system.hydrate
         zipper = self.zipper
-        online = self.online
-        fetch = self.fetch
         keys = self.keys()
         records = self._records
         pop_first_record = records.popleft
         while records:
             values = pop_first_record()
             yield zipper(keys, hydrate(values))
-        while online():
-            fetch()
-            while records:
-                values = pop_first_record()
-                yield zipper(keys, hydrate(values))
+        connected = self.connected
+        if connected():
+            self._session.send()
+            fetch = self._session.fetch
+            while connected():
+                fetch()
+                while records:
+                    values = pop_first_record()
+                    yield zipper(keys, hydrate(values))
 
     def summary(self):
         """ Obtain the summary of this result, buffering any remaining records.
 
         :returns: The :class:`.ResultSummary` for this result
         """
-        self.buffer()
+        self.sync()
         return self._summary
 
     def consume(self):
@@ -468,7 +473,7 @@ class StatementResult(object):
 
         :returns: The :class:`.ResultSummary` for this result
         """
-        if self.online():
+        if self.connected():
             list(self)
         return self.summary()
 
@@ -502,36 +507,16 @@ class StatementResult(object):
         if records:
             values = records[0]
             return zipper(keys, hydrate(values))
-        while not records and self.online():
-            self.fetch()
+        if not self.connected():
+            return None
+        self._session.send()
+        fetch = self._session.fetch
+        while not records and self.connected():
+            fetch()
             if records:
                 values = records[0]
                 return zipper(keys, hydrate(values))
         return None
-
-
-class CypherError(Exception):
-    """ Raised when the Cypher engine returns an error to the client.
-    """
-
-    code = None
-    message = None
-
-    def __init__(self, data):
-        super(CypherError, self).__init__(data.get("message"))
-        for key, value in data.items():
-            if not key.startswith("_"):
-                setattr(self, key, value)
-
-
-class SessionError(Exception):
-    """ Raised when an error occurs while using a session.
-    """
-
-
-class TransactionError(Exception):
-    """ Raised when an error occurs while using a transaction.
-    """
 
 
 def fix_statement(statement):

@@ -20,8 +20,7 @@
 
 from socket import create_connection
 
-from neo4j.v1 import ConnectionPool
-from neo4j.bolt.connection import ServiceUnavailable
+from neo4j.v1 import ConnectionPool, ServiceUnavailable
 
 from test.integration.tools import IntegrationTestCase
 
@@ -62,14 +61,14 @@ class ConnectionPoolTestCase(IntegrationTestCase):
 
     def test_can_acquire(self):
         address = ("127.0.0.1", 7687)
-        connection = self.pool.acquire(address)
+        connection = self.pool.acquire_direct(address)
         assert connection.address == address
         self.assert_pool_size(address, 1, 0)
 
     def test_can_acquire_twice(self):
         address = ("127.0.0.1", 7687)
-        connection_1 = self.pool.acquire(address)
-        connection_2 = self.pool.acquire(address)
+        connection_1 = self.pool.acquire_direct(address)
+        connection_2 = self.pool.acquire_direct(address)
         assert connection_1.address == address
         assert connection_2.address == address
         assert connection_1 is not connection_2
@@ -78,8 +77,8 @@ class ConnectionPoolTestCase(IntegrationTestCase):
     def test_can_acquire_two_addresses(self):
         address_1 = ("127.0.0.1", 7687)
         address_2 = ("127.0.0.1", 7474)
-        connection_1 = self.pool.acquire(address_1)
-        connection_2 = self.pool.acquire(address_2)
+        connection_1 = self.pool.acquire_direct(address_1)
+        connection_2 = self.pool.acquire_direct(address_2)
         assert connection_1.address == address_1
         assert connection_2.address == address_2
         self.assert_pool_size(address_1, 1, 0)
@@ -87,14 +86,14 @@ class ConnectionPoolTestCase(IntegrationTestCase):
 
     def test_can_acquire_and_release(self):
         address = ("127.0.0.1", 7687)
-        connection = self.pool.acquire(address)
+        connection = self.pool.acquire_direct(address)
         self.assert_pool_size(address, 1, 0)
         self.pool.release(connection)
         self.assert_pool_size(address, 0, 1)
 
     def test_releasing_twice(self):
         address = ("127.0.0.1", 7687)
-        connection = self.pool.acquire(address)
+        connection = self.pool.acquire_direct(address)
         self.pool.release(connection)
         self.assert_pool_size(address, 0, 1)
         self.pool.release(connection)
@@ -104,4 +103,4 @@ class ConnectionPoolTestCase(IntegrationTestCase):
         with ConnectionPool(lambda a: QuickConnection(create_connection(a))) as pool:
             pool.close()
             with self.assertRaises(ServiceUnavailable):
-                _ = pool.acquire("X")
+                _ = pool.acquire_direct("X")

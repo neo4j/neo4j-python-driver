@@ -19,7 +19,8 @@
 # limitations under the License.
 
 
-from neo4j.bolt.connection import connect, ServiceUnavailable, ProtocolError
+from neo4j.bolt.connection import connect, ServiceUnavailable
+from neo4j.bolt import ProtocolError, ServiceUnavailable
 from neo4j.v1 import basic_auth
 from neo4j.v1.routing import RoutingTable, RoutingConnectionPool
 

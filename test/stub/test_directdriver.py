@@ -19,7 +19,8 @@
 # limitations under the License.
 
 
-from neo4j.v1 import ServiceUnavailable, GraphDatabase, DirectDriver
+from neo4j.v1 import GraphDatabase, DirectDriver
+from neo4j.bolt import ServiceUnavailable
 
 from test.stub.tools import StubTestCase, StubCluster
 

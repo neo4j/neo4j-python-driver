@@ -19,8 +19,8 @@
 # limitations under the License.
 
 
-from neo4j.v1 import ServiceUnavailable, GraphDatabase
-from neo4j.v1 import RoutingDriver, ProtocolError, READ_ACCESS, WRITE_ACCESS, SessionExpired
+from neo4j.v1 import ServiceUnavailable, GraphDatabase, RoutingDriver, READ_ACCESS, WRITE_ACCESS, SessionExpired
+from neo4j.bolt import ProtocolError, ServiceUnavailable
 
 from test.stub.tools import StubTestCase, StubCluster
 
