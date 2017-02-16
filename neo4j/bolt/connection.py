@@ -33,7 +33,7 @@ from collections import deque, namedtuple
 from os import makedirs, open as os_open, write as os_write, close as os_close, O_CREAT, O_APPEND, O_WRONLY
 from os.path import dirname, isfile, join as path_join, expanduser
 from select import select
-from socket import create_connection, SHUT_RDWR, error as SocketError
+from socket import create_connection, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, error as SocketError
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock
 
@@ -482,6 +482,7 @@ def connect(address, ssl_context=None, **config):
     log_info("~~ [CONNECT] %s", address)
     try:
         s = create_connection(address)
+        s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1 if config.get("keep_alive", True) else 0)
     except SocketError as error:
         if error.errno in (61, 111, 10061):
             raise ServiceUnavailable("Failed to establish connection to %r" % (address,))
