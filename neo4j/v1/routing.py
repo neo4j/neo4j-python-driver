@@ -25,11 +25,10 @@ from time import clock
 from neo4j.bolt import Address, ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect
 from neo4j.compat import urlparse
 from neo4j.compat.collections import MutableSet, OrderedDict
-
-from .api import Driver, READ_ACCESS, WRITE_ACCESS
-from .bolt import BoltSession
-from .exceptions import SessionExpired
-from .security import SecurityPlan
+from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS
+from neo4j.v1.exceptions import SessionExpired, CypherError
+from neo4j.v1.security import SecurityPlan
+from neo4j.v1.session import BoltSession
 
 
 class RoundRobinSet(MutableSet):
@@ -173,11 +172,8 @@ class RoutingConnectionPool(ConnectionPool):
         :raise ServiceUnavailable: if the server does not support routing or
                                    if routing support is broken
         """
-        from .api import CypherError
-        from .bolt import BoltSession
         try:
-            connection = self.acquire_direct(address)
-            with BoltSession(connection) as session:
+            with BoltSession(lambda: self.acquire_direct(address)) as session:
                 return list(session.run("CALL %s" % self.routing_info_procedure))
         except CypherError as error:
             if error.code == "Neo.ClientError.Procedure.ProcedureNotFound":
@@ -260,30 +256,19 @@ class RoutingConnectionPool(ConnectionPool):
             self.update_routing_table()
             return True
 
-    def acquire_for_read(self):
-        """ Acquire a connection to a read server.
-        """
+    def acquire(self, **parameters):
+        access_mode = parameters.get("access_mode", WRITE_ACCESS)
+        if access_mode == READ_ACCESS:
+            server_list = self.routing_table.readers
+        elif access_mode == WRITE_ACCESS:
+            server_list = self.routing_table.writers
+        else:
+            raise ValueError("Unsupported access mode {}".format(access_mode))
         while True:
             address = None
             while address is None:
                 self.refresh_routing_table()
-                address = next(self.routing_table.readers)
-            try:
-                connection = self.acquire_direct(address)
-                connection.Error = SessionExpired
-            except ServiceUnavailable:
-                self.remove(address)
-            else:
-                return connection
-
-    def acquire_for_write(self):
-        """ Acquire a connection to a write server.
-        """
-        while True:
-            address = None
-            while address is None:
-                self.refresh_routing_table()
-                address = next(self.routing_table.writers)
+                address = next(server_list)
             try:
                 connection = self.acquire_direct(address)
                 connection.Error = SessionExpired
@@ -332,11 +317,5 @@ class RoutingDriver(Driver):
         else:
             Driver.__init__(self, pool)
 
-    def session(self, access_mode=None):
-        if access_mode == READ_ACCESS:
-            connection = self.pool.acquire_for_read()
-        elif access_mode == WRITE_ACCESS:
-            connection = self.pool.acquire_for_write()
-        else:
-            connection = self.pool.acquire_for_write()
-        return BoltSession(connection, access_mode)
+    def session(self, **parameters):
+        return BoltSession(lambda: self.pool.acquire(**parameters))

@@ -116,13 +116,13 @@ class Driver(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def session(self, access_mode=None):
+    def session(self, **parameters):
         """ Create a new session using a connection from the driver connection
         pool. Session creation is a lightweight operation and sessions are
         not thread safe, therefore a session should generally be short-lived
         within a single thread.
 
-        :param access_mode:
+        :param parameters:
         :returns: new :class:`.Session` object
         """
         pass
@@ -158,10 +158,15 @@ class Session(object):
     transaction = None
 
     #: The bookmark received from completion of the last :class:`.Transaction`.
-    last_bookmark = None
+    bookmark = None
+
+    _closed = False
 
     def __del__(self):
-        self.close()
+        try:
+            self.close()
+        except (SessionError, ServiceUnavailable):
+            pass
 
     def __enter__(self):
         return self
@@ -173,17 +178,21 @@ class Session(object):
         """ Close the session. This will release any borrowed resources,
         such as connections, and will roll back any outstanding transactions.
         """
-        if self.transaction:
-            try:
-                self.rollback_transaction()
-            except (CypherError, TransactionError, SessionError, ServiceUnavailable):
-                pass
+        try:
+            if self.transaction:
+                try:
+                    self.rollback_transaction()
+                except (CypherError, TransactionError, SessionError, ServiceUnavailable):
+                    pass
+        finally:
+            self._closed = True
 
     def closed(self):
         """ Indicator for whether or not this session has been closed.
 
         :returns: :const:`True` if closed, :const:`False` otherwise.
         """
+        return self._closed
 
     def run(self, statement, parameters=None, **kwparameters):
         """ Run a Cypher statement within an auto-commit transaction.
@@ -198,6 +207,8 @@ class Session(object):
         :param kwparameters: additional keyword parameters
         :returns: :class:`.StatementResult` object
         """
+        if self.closed():
+            raise SessionError("Session closed")
 
     def send(self):
         """ Send all outstanding requests.
@@ -210,15 +221,27 @@ class Session(object):
         """
         return 0
 
-    def sync(self):
-        """ Carry out a full send and receive.
+    def detach(self, result):
+        """ Detach a result from this session by fetching and buffering any
+        remaining records.
 
+        :param result:
         :returns: number of records fetched
         """
-        return 0
+        count = 0
+        self.send()
+        fetch = self.fetch
+        while result.attached():
+            count += fetch()
+        return count
+
+    @property
+    def last_bookmark(self):
+        return self.bookmark
 
     def begin_transaction(self, bookmark=None):
         """ Create a new :class:`.Transaction` within this session.
+        Calling this method with a bookmark is equivalent to
 
         :param bookmark: a bookmark to which the server should
                          synchronise before beginning the transaction
@@ -231,6 +254,7 @@ class Session(object):
         def clear_transaction():
             self.transaction = None
 
+        self.bookmark = bookmark
         self.transaction = Transaction(self, on_close=clear_transaction)
         return self.transaction
 
@@ -252,6 +276,7 @@ class Session(object):
         if not self.transaction:
             raise TransactionError("No transaction to rollback")
         self.transaction = None
+        self.bookmark = None
 
 
 class Transaction(object):
@@ -315,16 +340,6 @@ class Transaction(object):
         if self.closed():
             raise TransactionError("Cannot use closed transaction")
         return self.session.run(statement, parameters, **kwparameters)
-
-    def sync(self):
-        """ Send and receive all outstanding messages for this
-        transaction.
-
-        :raise TransactionError: if the transaction is closed
-        """
-        if self.closed():
-            raise TransactionError("Cannot use closed transaction")
-        return self.session.sync()
 
     def commit(self):
         """ Mark this transaction as successful and close in order to
@@ -397,7 +412,7 @@ class StatementResult(object):
     def __iter__(self):
         return self.records()
 
-    def connected(self):
+    def attached(self):
         """ Indicator for whether or not this result is still attached to
         a :class:`.Session`.
 
@@ -405,21 +420,16 @@ class StatementResult(object):
         """
         return self._session and not self._session.closed()
 
-    def sync(self):
-        """ Fetch the remainder of this result from the network and buffer
-        it. On return from this method, the result will no longer be
-        :meth:`.connected`.
+    def detach(self):
+        """ Detach this result from its parent session by fetching the
+        remainder of this result from the network into the buffer.
 
         :returns: number of records fetched
         """
-        if not self.connected():
+        if self.attached():
+            return self._session.detach(self)
+        else:
             return 0
-        self._session.send()
-        fetch = self._session.fetch
-        count = 0
-        while self.connected():
-            count += fetch()
-        return count
 
     def keys(self):
         """ The keys for the records in this result.
@@ -430,7 +440,7 @@ class StatementResult(object):
             return self._keys
         self._session.send()
         fetch = self._session.fetch
-        while self._keys is None and self.connected():
+        while self._keys is None and self.attached():
             fetch()
         return self._keys
 
@@ -447,11 +457,11 @@ class StatementResult(object):
         while records:
             values = pop_first_record()
             yield zipper(keys, hydrate(values))
-        connected = self.connected
-        if connected():
+        attached = self.attached
+        if attached():
             self._session.send()
             fetch = self._session.fetch
-            while connected():
+            while attached():
                 fetch()
                 while records:
                     values = pop_first_record()
@@ -462,7 +472,7 @@ class StatementResult(object):
 
         :returns: The :class:`.ResultSummary` for this result
         """
-        self.sync()
+        self.detach()
         return self._summary
 
     def consume(self):
@@ -473,7 +483,7 @@ class StatementResult(object):
 
         :returns: The :class:`.ResultSummary` for this result
         """
-        if self.connected():
+        if self.attached():
             list(self)
         return self.summary()
 
@@ -507,11 +517,11 @@ class StatementResult(object):
         if records:
             values = records[0]
             return zipper(keys, hydrate(values))
-        if not self.connected():
+        if not self.attached():
             return None
         self._session.send()
         fetch = self._session.fetch
-        while not records and self.connected():
+        while not records and self.attached():
             fetch()
             if records:
                 values = records[0]

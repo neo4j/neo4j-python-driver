@@ -349,7 +349,7 @@ class BookmarkingTestCase(DirectIntegrationTestCase):
         with self.driver.session() as session:
             with session.begin_transaction() as tx:
                 tx.run("RETURN 1")
-            assert session.last_bookmark is not None
+            assert session.bookmark is not None
 
     def test_can_pass_bookmark_into_next_transaction(self):
         if not self.at_least_version(3, 1):
@@ -357,14 +357,14 @@ class BookmarkingTestCase(DirectIntegrationTestCase):
 
         unique_id = uuid4().hex
 
-        with self.driver.session(WRITE_ACCESS) as session:
+        with self.driver.session(access_mode=WRITE_ACCESS) as session:
             with session.begin_transaction() as tx:
                 tx.run("CREATE (a:Thing {uuid:$uuid})", uuid=unique_id)
-            bookmark = session.last_bookmark
+            bookmark = session.bookmark
 
         assert bookmark is not None
 
-        with self.driver.session(READ_ACCESS) as session:
+        with self.driver.session(access_mode=READ_ACCESS) as session:
             with session.begin_transaction(bookmark) as tx:
                 result = tx.run("MATCH (a:Thing {uuid:$uuid}) RETURN a", uuid=unique_id)
                 record_list = list(result)
@@ -379,15 +379,15 @@ class BookmarkingTestCase(DirectIntegrationTestCase):
         if not self.at_least_version(3, 1):
             raise SkipTest("Bookmarking is not supported before server 3.1")
 
-        with self.driver.session(WRITE_ACCESS) as session:
+        with self.driver.session(access_mode=WRITE_ACCESS) as session:
             with session.begin_transaction() as tx:
                 tx.run("CREATE (a)")
-        assert session.last_bookmark is not None
-        with self.driver.session(WRITE_ACCESS) as session:
+        assert session.bookmark is not None
+        with self.driver.session(access_mode=WRITE_ACCESS) as session:
             with session.begin_transaction() as tx:
                 tx.run("CREATE (a)")
                 tx.success = False
-        assert session.last_bookmark is None
+        assert session.bookmark is None
 
 
 class ResultConsumptionTestCase(DirectIntegrationTestCase):
@@ -396,6 +396,15 @@ class ResultConsumptionTestCase(DirectIntegrationTestCase):
         session = self.driver.session()
         tx = session.begin_transaction()
         result = tx.run("UNWIND range(1, 3) AS n RETURN n")
+        assert [record[0] for record in result] == [1, 2, 3]
+        tx.commit()
+        session.close()
+
+    def test_can_consume_result_from_buffer(self):
+        session = self.driver.session()
+        tx = session.begin_transaction()
+        result = tx.run("UNWIND range(1, 3) AS n RETURN n")
+        result.detach()
         assert [record[0] for record in result] == [1, 2, 3]
         tx.commit()
         session.close()
@@ -486,7 +495,7 @@ class ResultConsumptionTestCase(DirectIntegrationTestCase):
         session = self.driver.session()
         result = session.run("UNWIND range(1, 1) AS n RETURN n")
         _ = result.single()
-        assert not result.connected()
+        assert not result.attached()
 
     def test_single_consumes_entire_result_if_multiple_records(self):
         import warnings
@@ -495,7 +504,7 @@ class ResultConsumptionTestCase(DirectIntegrationTestCase):
         with warnings.catch_warnings():
             warnings.simplefilter("always")
             _ = result.single()
-        assert not result.connected()
+        assert not result.attached()
 
     def test_peek_can_look_one_ahead(self):
         session = self.driver.session()
