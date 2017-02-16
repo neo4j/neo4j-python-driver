@@ -90,8 +90,18 @@ log_warning = log.warning
 log_error = log.error
 
 
-Address = namedtuple("Address", ["host", "port"])
+Address4 = namedtuple("Address", ["host", "port"])
+Address6 = namedtuple("Address", ["host", "port", "flow_info", "scope_id"])
 ServerInfo = namedtuple("ServerInfo", ["address", "version"])
+
+
+class Address(object):
+
+    def __new__(cls, host, port, flow_info=None, scope_id=None):
+        if flow_info is None:
+            return Address4(host, port)
+        else:
+            return Address6(host, port, flow_info, scope_id)
 
 
 class ProtocolError(Exception):
