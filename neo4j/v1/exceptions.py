@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from neo4j.bolt.exceptions import *
+from neo4j.exceptions import *
 
 
 class CypherError(Exception):
@@ -40,17 +40,24 @@ class SessionError(Exception):
     """ Raised when an error occurs while using a session.
     """
 
+    def __init__(self, session, *args, **kwargs):
+        super(SessionError, self).__init__(*args, **kwargs)
+        self.session = session
+
+
+class SessionExpired(SessionError):
+    """ Raised when no a session is no longer able to fulfil
+    its purpose, as defined by its original session parameters.
+    """
+
+    def __init__(self, session, *args, **kwargs):
+        super(SessionExpired, self).__init__(session, *args, **kwargs)
+
 
 class TransactionError(Exception):
     """ Raised when an error occurs while using a transaction.
     """
 
-
-class SessionExpired(SessionError):
-    """ Raised when no a session is no longer able to fulfil
-    its purpose.
-    """
-
-    def __init__(self, session, *args, **kwargs):
-        self.session = session
-        super(SessionExpired, self).__init__(*args, **kwargs)
+    def __init__(self, transaction, *args, **kwargs):
+        super(TransactionError, self).__init__(*args, **kwargs)
+        self.session = transaction

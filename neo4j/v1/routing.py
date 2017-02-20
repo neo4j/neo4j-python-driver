@@ -177,9 +177,9 @@ class RoutingConnectionPool(ConnectionPool):
                 return list(session.run("CALL %s" % self.routing_info_procedure))
         except CypherError as error:
             if error.code == "Neo.ClientError.Procedure.ProcedureNotFound":
-                raise ServiceUnavailable("Server %r does not support routing" % (address,))
+                raise ServiceUnavailable("Server {!r} does not support routing".format(address))
             else:
-                raise ServiceUnavailable("Routing support broken on server %r" % (address,))
+                raise ServiceUnavailable("Routing support broken on server {!r}".format(address))
         except ServiceUnavailable:
             self.remove(address)
             return None

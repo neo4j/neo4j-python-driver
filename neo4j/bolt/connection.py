@@ -38,11 +38,10 @@ from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock
 
 from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
+from neo4j.exceptions import AuthError, ProtocolError, SecurityError, ServiceUnavailable
 from neo4j.meta import version
 from neo4j.packstream import Packer, Unpacker
 from neo4j.util import import_best as _import_best
-
-from .exceptions import AuthError, SecurityError, ProtocolError, ServiceUnavailable
 
 ChunkedInputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedInputBuffer
 ChunkedOutputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedOutputBuffer
@@ -138,7 +137,12 @@ class InitResponse(Response):
         connection.server = ServerInfo(address, version)
 
     def on_failure(self, metadata):
-        raise ServiceUnavailable(metadata.get("message", "INIT failed"), metadata.get("code"))
+        code = metadata.get("code")
+        message = metadata.get("message", "Connection initialisation failed")
+        if code == "Neo.ClientError.Security.Unauthorized":
+            raise AuthError(message)
+        else:
+            raise ServiceUnavailable(message)
 
 
 class Connection(object):
@@ -380,8 +384,7 @@ class ConnectionPool(object):
         This method is thread safe.
         """
         if self.closed:
-            raise ServiceUnavailable("This connection pool is closed so no new "
-                                     "connections may be acquired")
+            raise ServiceUnavailable("Connection pool closed")
         with self.lock:
             try:
                 connections = self.connections[address]
@@ -396,9 +399,7 @@ class ConnectionPool(object):
                     return connection
             try:
                 connection = self.connector(address)
-            except ServiceUnavailable as error:
-                if error.code == "Neo.ClientError.Security.Unauthorized":
-                    raise AuthError(error.args[0])
+            except ServiceUnavailable:
                 self.remove(address)
                 raise
             else:
@@ -499,7 +500,7 @@ def connect(address, ssl_context=None, **config):
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1 if config.get("keep_alive", True) else 0)
     except SocketError as error:
         if error.errno in (61, 111, 10061):
-            raise ServiceUnavailable("Failed to establish connection to %r" % (address,))
+            raise ServiceUnavailable("Failed to establish connection to {!r}".format(address))
         else:
             raise
 
@@ -510,7 +511,7 @@ def connect(address, ssl_context=None, **config):
         try:
             s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
         except SSLError as cause:
-            error = SecurityError("Failed to establish secure connection to %r" % cause.args[1])
+            error = SecurityError("Failed to establish secure connection to {!r}".format(cause.args[1]))
             error.__cause__ = cause
             raise error
         else:
@@ -564,8 +565,8 @@ def connect(address, ssl_context=None, **config):
         return Connection(s, der_encoded_server_certificate=der_encoded_server_certificate, **config)
     elif agreed_version == 0x48545450:
         log_error("S: [CLOSE]")
-        raise ServiceUnavailable("Cannot to connect to Bolt service on %r "
-                                 "(looks like HTTP)" % (address,))
+        raise ServiceUnavailable("Cannot to connect to Bolt service on {!r} "
+                                 "(looks like HTTP)".format(address))
     else:
         log_error("S: [CLOSE]")
-        raise ProtocolError("Unknown Bolt protocol version: %d", agreed_version)
+        raise ProtocolError("Unknown Bolt protocol version: {}".format(agreed_version))

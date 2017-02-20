@@ -81,6 +81,13 @@ class BoltSession(Session):
         else:
             return 0
 
+    def sync(self):
+        if self._connection:
+            detail_count, _ = self._connection.sync()
+            return detail_count
+        else:
+            return 0
+
     def detach(self, result):
         count = super(BoltSession, self).detach(result)
         if self._last_result is result:

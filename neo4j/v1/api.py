@@ -196,13 +196,23 @@ class Session(object):
 
     def run(self, statement, parameters=None, **kwparameters):
         """ Run a Cypher statement within an auto-commit transaction.
-        Note that the statement is only passed to the server lazily,
-        when the result is consumed. To force the statement to be sent to
-        the server, use the :meth:`.Session.sync` method.
 
-        For usage details, see :meth:`.Transaction.run`.
+        The statement is sent and the result header received
+        immediately but the :class:`.StatementResult` content is
+        fetched lazily as consumed by the client application.
 
-        :param statement: Cypher statement
+        If a statement is executed before a previous
+        :class:`.StatementResult` in the same :class:`.Session` has
+        been fully consumed, the first result will be fully fetched
+        and buffered. Note therefore that the generally recommended
+        pattern of usage is to fully consume one result before
+        executing a subsequent statement. If two results need to be
+        consumed in parallel, multiple :class:`.Session` objects
+        can be used as an alternative to result buffering.
+
+        For more usage details, see :meth:`.Transaction.run`.
+
+        :param statement: template Cypher statement
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
         :returns: :class:`.StatementResult` object
@@ -216,6 +226,13 @@ class Session(object):
 
     def fetch(self):
         """ Attempt to fetch at least one more record.
+
+        :returns: number of records fetched
+        """
+        return 0
+
+    def sync(self):
+        """ Carry out a full send and receive.
 
         :returns: number of records fetched
         """
@@ -312,9 +329,10 @@ class Transaction(object):
 
     def run(self, statement, parameters=None, **kwparameters):
         """ Run a Cypher statement within the context of this transaction.
-        Note that the statement is only passed to the server lazily,
-        when the result is consumed. To force the statement to be sent to
-        the server, use the :meth:`.Transaction.sync` method.
+
+        The statement is sent to the server lazily, when its result is
+        consumed. To force the statement to be sent to the server, use
+        the :meth:`.Transaction.sync` method.
 
         Cypher is typically expressed as a statement template plus a
         set of named parameters. In Python, parameters may be expressed
@@ -332,14 +350,24 @@ class Transaction(object):
         :class:`str`, :class:`list` and :class:`dict`. Note however that
         :class:`list` properties must be homogenous.
 
-        :param statement: Cypher statement
+        :param statement: template Cypher statement
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
         :returns: :class:`.StatementResult` object
         """
         if self.closed():
-            raise TransactionError("Cannot use closed transaction")
+            raise TransactionError("Transaction closed")
         return self.session.run(statement, parameters, **kwparameters)
+
+    def sync(self):
+        """ Force any queued statements to be sent to the server and
+        all related results to be fetched and buffered.
+
+        :raise TransactionError: if the transaction is closed
+        """
+        if self.closed():
+            raise TransactionError("Transaction closed")
+        self.session.sync()
 
     def commit(self):
         """ Mark this transaction as successful and close in order to
@@ -348,7 +376,7 @@ class Transaction(object):
         :raise TransactionError: if already closed
         """
         if self.closed():
-            raise TransactionError("Cannot use closed transaction")
+            raise TransactionError("Transaction closed")
         self.success = True
         self.close()
 
@@ -359,7 +387,7 @@ class Transaction(object):
         :raise TransactionError: if already closed
         """
         if self.closed():
-            raise TransactionError("Cannot use closed transaction")
+            raise TransactionError("Transaction closed")
         self.success = False
         self.close()
 

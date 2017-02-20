@@ -37,7 +37,3 @@ class ProtocolError(Exception):
 class ServiceUnavailable(Exception):
     """ Raised when no database service is available.
     """
-
-    def __init__(self, message, code=None):
-        super(ServiceUnavailable, self).__init__(message)
-        self.code = code
