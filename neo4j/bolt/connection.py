@@ -133,8 +133,7 @@ class InitResponse(Response):
         super(InitResponse, self).on_success(metadata)
         connection = self.connection
         address = Address(*connection.socket.getpeername())
-        version = metadata.get("server")
-        connection.server = ServerInfo(address, version)
+        connection.server = ServerInfo(address, metadata.get("server"))
 
     def on_failure(self, metadata):
         code = metadata.get("code")
@@ -160,9 +159,9 @@ class Connection(object):
 
     in_use = False
 
-    closed = False
+    _closed = False
 
-    defunct = False
+    _defunct = False
 
     #: The pool of which this connection is a member
     pool = None
@@ -259,9 +258,9 @@ class Connection(object):
         if not data:
             return
         #log_debug("C: %r" % data.tobytes())
-        if self.closed:
+        if self.closed():
             raise self.Error("Failed to write to closed connection %r" % (self.address,))
-        if self.defunct:
+        if self.defunct():
             raise self.Error("Failed to write to defunct connection %r" % (self.address,))
         self.socket.sendall(data)
         self.output_buffer.clear()
@@ -271,9 +270,9 @@ class Connection(object):
 
         :return: 2-tuple of number of detail messages and number of summary messages fetched
         """
-        if self.closed:
+        if self.closed():
             raise self.Error("Failed to read from closed connection %r" % (self.address,))
-        if self.defunct:
+        if self.defunct():
             raise self.Error("Failed to read from defunct connection %r" % (self.address,))
         if not self.responses:
             return 0, 0
@@ -311,7 +310,7 @@ class Connection(object):
         except SocketError:
             received = False
         if not received:
-            self.defunct = True
+            self._defunct = True
             self.close()
             raise self.Error("Failed to read from defunct connection %r" % (self.address,))
 
@@ -356,10 +355,16 @@ class Connection(object):
     def close(self):
         """ Close the connection.
         """
-        if not self.closed:
+        if not self.closed():
             #log_info("~~ [CLOSE]")
             self.socket.close()
-            self.closed = True
+            self._closed = True
+
+    def closed(self):
+        return self._closed
+
+    def defunct(self):
+        return self._defunct
 
 
 class ConnectionPool(object):
@@ -391,7 +396,7 @@ class ConnectionPool(object):
             except KeyError:
                 connections = self.connections[address] = deque()
             for connection in list(connections):
-                if connection.closed or connection.defunct:
+                if connection.closed() or connection.defunct():
                     connections.remove(connection)
                     continue
                 if not connection.in_use:

@@ -18,6 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from socket import create_connection
 
 from neo4j.v1 import ConnectionPool, ServiceUnavailable
@@ -26,9 +27,6 @@ from test.integration.tools import IntegrationTestCase
 
 
 class QuickConnection(object):
-
-    closed = False
-    defunct = False
 
     def __init__(self, socket):
         self.socket = socket
@@ -39,6 +37,12 @@ class QuickConnection(object):
 
     def close(self):
         self.socket.close()
+
+    def closed(self):
+        return False
+
+    def defunct(self):
+        return False
 
 
 class ConnectionPoolTestCase(IntegrationTestCase):
