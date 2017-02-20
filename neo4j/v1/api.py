@@ -219,6 +219,8 @@ class Session(object):
         """
         if self.closed():
             raise SessionError("Session closed")
+        if not statement:
+            raise ValueError("Cannot run an empty statement")
 
     def send(self):
         """ Send all outstanding requests.
