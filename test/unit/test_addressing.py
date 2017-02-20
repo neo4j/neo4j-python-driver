@@ -19,26 +19,25 @@
 # limitations under the License.
 
 
-class AddressError(Exception):
-    """ Raised when a network address is invalid.
-    """
+from unittest import TestCase
+
+from neo4j.addressing import SocketAddress
 
 
-class SecurityError(Exception):
-    """ Raised when an action is denied due to security settings.
-    """
+class RoutingTableParseAddressTestCase(TestCase):
 
+    def test_should_parse_ipv4_address_and_port(self):
+        parsed = SocketAddress.parse("127.0.0.1:7687")
+        assert parsed == ("127.0.0.1", 7687)
 
-class AuthError(SecurityError):
-    """ Raised when authentication failure occurs.
-    """
+    def test_should_parse_ipv6_address_and_port(self):
+        parsed = SocketAddress.parse("[::1]:7687")
+        assert parsed == ("::1", 7687, 0, 0)
 
+    def test_should_parse_host_name_and_port(self):
+        parsed = SocketAddress.parse("localhost:7687")
+        assert parsed == ("localhost", 7687)
 
-class ProtocolError(Exception):
-    """ Raised when an unexpected or unsupported protocol event occurs.
-    """
-
-
-class ServiceUnavailable(Exception):
-    """ Raised when no database service is available.
-    """
+    def test_should_fail_on_non_numeric_port(self):
+        with self.assertRaises(ValueError):
+            _ = SocketAddress.parse("127.0.0.1:X")

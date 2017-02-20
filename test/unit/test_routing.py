@@ -147,29 +147,6 @@ class RoutingTableConstructionTestCase(TestCase):
         assert not table.is_fresh()
 
 
-class RoutingTableParseAddressTestCase(TestCase):
-
-    def test_should_parse_ip_address_and_port(self):
-        parsed = RoutingTable.parse_address("127.0.0.1:7687")
-        assert parsed == ("127.0.0.1", 7687)
-
-    def test_should_parse_host_name_and_port(self):
-        parsed = RoutingTable.parse_address("localhost:7687")
-        assert parsed == ("localhost", 7687)
-
-    def test_should_fail_on_missing_port(self):
-        with self.assertRaises(ValueError):
-            _ = RoutingTable.parse_address("127.0.0.1")
-
-    def test_should_fail_on_empty_port(self):
-        with self.assertRaises(ValueError):
-            _ = RoutingTable.parse_address("127.0.0.1:")
-
-    def test_should_fail_on_non_numeric_port(self):
-        with self.assertRaises(ValueError):
-            _ = RoutingTable.parse_address("127.0.0.1:X")
-
-
 class RoutingTableParseRoutingInfoTestCase(TestCase):
 
     def test_should_return_routing_table_on_valid_record(self):

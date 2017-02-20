@@ -22,8 +22,8 @@
 from threading import Lock
 from time import clock
 
-from neo4j.bolt import Address, ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect
-from neo4j.compat import urlparse
+from neo4j.addressing import SocketAddress, resolve
+from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect
 from neo4j.compat.collections import MutableSet, OrderedDict
 from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS
 from neo4j.v1.exceptions import SessionExpired, CypherError
@@ -94,13 +94,6 @@ class RoutingTable(object):
     timer = clock
 
     @classmethod
-    def parse_address(cls, address):
-        """ Convert an address string to a tuple.
-        """
-        host, _, port = address.partition(":")
-        return Address(host, int(port))
-
-    @classmethod
     def parse_routing_info(cls, records):
         """ Parse the records returned from a getServers call and
         return a new RoutingTable instance.
@@ -115,7 +108,9 @@ class RoutingTable(object):
             servers = record["servers"]
             for server in servers:
                 role = server["role"]
-                addresses = [cls.parse_address(address) for address in server["addresses"]]
+                addresses = []
+                for address in server["addresses"]:
+                    addresses.extend(resolve(SocketAddress.parse(address, DEFAULT_PORT)))
                 if role == "ROUTE":
                     routers.extend(addresses)
                 elif role == "READ":
@@ -270,7 +265,7 @@ class RoutingConnectionPool(ConnectionPool):
                 self.refresh_routing_table()
                 address = next(server_list)
             try:
-                connection = self.acquire_direct(address)
+                connection = self.acquire_direct(address)  # should always be a resolved address
                 connection.Error = SessionExpired
             except ServiceUnavailable:
                 self.remove(address)
@@ -296,8 +291,7 @@ class RoutingDriver(Driver):
     """
 
     def __init__(self, uri, **config):
-        parsed = urlparse(uri)
-        initial_address = (parsed.hostname, parsed.port or DEFAULT_PORT)
+        self.initial_address = initial_address = SocketAddress.from_uri(uri, DEFAULT_PORT)
         self.security_plan = security_plan = SecurityPlan.build(**config)
         self.encrypted = security_plan.encrypted
         if not security_plan.routing_compatible:
@@ -308,7 +302,7 @@ class RoutingDriver(Driver):
         def connector(a):
             return connect(a, security_plan.ssl_context, **config)
 
-        pool = RoutingConnectionPool(connector, initial_address)
+        pool = RoutingConnectionPool(connector, *resolve(initial_address))
         try:
             pool.update_routing_table()
         except:

@@ -19,8 +19,8 @@
 # limitations under the License.
 
 
+from neo4j.addressing import SocketAddress, resolve
 from neo4j.bolt import DEFAULT_PORT, ConnectionPool, connect
-from neo4j.compat import urlparse
 from neo4j.v1.api import Driver
 from neo4j.v1.security import SecurityPlan
 from neo4j.v1.session import BoltSession
@@ -33,7 +33,8 @@ class DirectConnectionPool(ConnectionPool):
         self.address = address
 
     def acquire(self, **parameters):
-        return self.acquire_direct(self.address)
+        resolved_addresses = resolve(self.address)
+        return self.acquire_direct(resolved_addresses[0])
 
 
 class DirectDriver(Driver):
@@ -43,8 +44,12 @@ class DirectDriver(Driver):
     """
 
     def __init__(self, uri, **config):
-        parsed = urlparse(uri)
-        self.address = (parsed.hostname, parsed.port or DEFAULT_PORT)
+        # We keep the address containing the host name or IP address exactly
+        # as-is from the original URI. This means that every new connection
+        # will carry out DNS resolution, leading to the possibility that
+        # the connection pool may contain multiple IP address keys, one for
+        # an old address and one for a new address.
+        self.address = SocketAddress.from_uri(uri, DEFAULT_PORT)
         self.security_plan = security_plan = SecurityPlan.build(**config)
         self.encrypted = security_plan.encrypted
         pool = DirectConnectionPool(lambda a: connect(a, security_plan.ssl_context, **config), self.address)

@@ -33,10 +33,11 @@ from collections import deque, namedtuple
 from os import makedirs, open as os_open, write as os_write, close as os_close, O_CREAT, O_APPEND, O_WRONLY
 from os.path import dirname, isfile, join as path_join, expanduser
 from select import select
-from socket import create_connection, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, error as SocketError
+from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, error as SocketError, AF_INET, AF_INET6
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock
 
+from neo4j.addressing import SocketAddress, is_ip_address
 from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
 from neo4j.exceptions import AuthError, ProtocolError, SecurityError, ServiceUnavailable
 from neo4j.meta import version
@@ -90,19 +91,7 @@ log_info = log.info
 log_warning = log.warning
 log_error = log.error
 
-
-Address4 = namedtuple("Address", ["host", "port"])
-Address6 = namedtuple("Address", ["host", "port", "flow_info", "scope_id"])
 ServerInfo = namedtuple("ServerInfo", ["address", "version"])
-
-
-class Address(object):
-
-    def __new__(cls, host, port, flow_info=None, scope_id=None):
-        if flow_info is None:
-            return Address4(host, port)
-        else:
-            return Address6(host, port, flow_info, scope_id)
 
 
 class Response(object):
@@ -131,9 +120,8 @@ class InitResponse(Response):
 
     def on_success(self, metadata):
         super(InitResponse, self).on_success(metadata)
-        connection = self.connection
-        address = Address(*connection.socket.getpeername())
-        connection.server = ServerInfo(address, metadata.get("server"))
+        address = SocketAddress.from_socket(self.connection.socket)
+        self.connection.server = ServerInfo(address, metadata.get("server"))
 
     def on_failure(self, metadata):
         code = metadata.get("code")
@@ -386,10 +374,15 @@ class ConnectionPool(object):
 
     def acquire_direct(self, address):
         """ Acquire a connection to a given address from the pool.
+        The address supplied should always be an IP address, not
+        a host name.
+
         This method is thread safe.
         """
         if self.closed():
             raise ServiceUnavailable("Connection pool closed")
+        if not is_ip_address(address[0]):
+            raise ValueError("Invalid IP address {!r}".format(address[0]))
         with self.lock:
             try:
                 connections = self.connections[address]
@@ -508,7 +501,13 @@ def connect(address, ssl_context=None, **config):
     # https://docs.python.org/2/library/errno.html
     log_info("~~ [CONNECT] %s", address)
     try:
-        s = create_connection(address)
+        if len(address) == 2:
+            s = socket(AF_INET)
+        elif len(address) == 4:
+            s = socket(AF_INET6)
+        else:
+            raise ValueError("Unsupported address {!r}".format(address))
+        s.connect(address)
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1 if config.get("keep_alive", True) else 0)
     except SocketError as error:
         if error.errno in (61, 111, 10061):
@@ -518,7 +517,7 @@ def connect(address, ssl_context=None, **config):
 
     # Secure the connection if an SSL context has been provided
     if ssl_context and SSL_AVAILABLE:
-        host, port = address
+        host = address[0]
         log_info("~~ [SECURE] %s", host)
         try:
             s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
