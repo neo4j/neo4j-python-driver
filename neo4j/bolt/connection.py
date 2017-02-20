@@ -91,7 +91,40 @@ log_info = log.info
 log_warning = log.warning
 log_error = log.error
 
-ServerInfo = namedtuple("ServerInfo", ["address", "version"])
+
+class ServerInfo(object):
+
+    address = None
+
+    version = None
+
+    def __init__(self, address):
+        self.address = address
+
+    def product(self):
+        if not self.version:
+            return None
+        value, _, _ = self.version.partition("/")
+        return value
+
+    def version_info(self):
+        if not self.version:
+            return None
+        _, _, value = self.version.partition("/")
+        value = value.replace("-", ".").split(".")
+        for i, v in enumerate(value):
+            try:
+                value[i] = int(v)
+            except ValueError:
+                pass
+        return tuple(value)
+
+    def supports_statement_reuse(self):
+        if not self.version:
+            return False
+        if self.product() != "Neo4j":
+            return False
+        return self.version_info() >= (3, 2)
 
 
 class Response(object):
@@ -120,8 +153,7 @@ class InitResponse(Response):
 
     def on_success(self, metadata):
         super(InitResponse, self).on_success(metadata)
-        address = SocketAddress.from_socket(self.connection.socket)
-        self.connection.server = ServerInfo(address, metadata.get("server"))
+        self.connection.server.version = metadata.get("server")
 
     def on_failure(self, metadata):
         code = metadata.get("code")
@@ -157,9 +189,13 @@ class Connection(object):
     #: Error class used for raising connection errors
     Error = ServiceUnavailable
 
+    _supports_statement_reuse = False
+
+    _last_run_statement = None
+
     def __init__(self, sock, **config):
         self.socket = sock
-        self.address = sock.getpeername()
+        self.server = ServerInfo(SocketAddress.from_socket(sock))
         self.input_buffer = ChunkedInputBuffer()
         self.output_buffer = ChunkedOutputBuffer()
         self.packer = Packer(self.output_buffer)
@@ -192,6 +228,8 @@ class Connection(object):
         self.append(INIT, (self.user_agent, self.auth_dict), response=response)
         self.sync()
 
+        self._supports_statement_reuse = self.server.supports_statement_reuse()
+
     def __del__(self):
         self.close()
 
@@ -203,6 +241,13 @@ class Connection(object):
         :arg response: a response object to handle callbacks
         """
         #log_info("C: %s %r", message_names[signature], fields)
+        if self._supports_statement_reuse and signature == RUN:
+            statement = fields[0]
+            if statement.upper() not in ("BEGIN", "COMMIT", "ROLLBACK"):
+                if statement == self._last_run_statement:
+                    fields = ("",) + fields[1:]
+                else:
+                    self._last_run_statement = statement
         self.packer.pack_struct(signature, fields)
         self.output_buffer.chunk()
         self.output_buffer.chunk()
@@ -247,9 +292,9 @@ class Connection(object):
             return
         #log_debug("C: %r" % data.tobytes())
         if self.closed():
-            raise self.Error("Failed to write to closed connection %r" % (self.address,))
+            raise self.Error("Failed to write to closed connection {!r}".format(self.server.address))
         if self.defunct():
-            raise self.Error("Failed to write to defunct connection %r" % (self.address,))
+            raise self.Error("Failed to write to defunct connection {!r}".format(self.server.address))
         self.socket.sendall(data)
         self.output_buffer.clear()
 
@@ -259,9 +304,9 @@ class Connection(object):
         :return: 2-tuple of number of detail messages and number of summary messages fetched
         """
         if self.closed():
-            raise self.Error("Failed to read from closed connection %r" % (self.address,))
+            raise self.Error("Failed to read from closed connection {!r}".format(self.server.address))
         if self.defunct():
-            raise self.Error("Failed to read from defunct connection %r" % (self.address,))
+            raise self.Error("Failed to read from defunct connection {!r}".format(self.server.address))
         if not self.responses:
             return 0, 0
 
@@ -300,7 +345,7 @@ class Connection(object):
         if not received:
             self._defunct = True
             self.close()
-            raise self.Error("Failed to read from defunct connection %r" % (self.address,))
+            raise self.Error("Failed to read from defunct connection {!r}".format(self.server.address))
 
     def _unpack(self):
         unpacker = self.unpacker
