@@ -71,19 +71,6 @@ FAILURE = b"\x7F"          # 0111 1111 // FAILURE <metadata>
 DETAIL = {RECORD}
 SUMMARY = {SUCCESS, IGNORED, FAILURE}
 
-message_names = {
-    INIT: "INIT",
-    ACK_FAILURE: "ACK_FAILURE",
-    RESET: "RESET",
-    RUN: "RUN",
-    DISCARD_ALL: "DISCARD_ALL",
-    PULL_ALL: "PULL_ALL",
-    SUCCESS: "SUCCESS",
-    RECORD: "RECORD",
-    IGNORED: "IGNORED",
-    FAILURE: "FAILURE",
-}
-
 # Set up logger
 log = logging.getLogger("neo4j.bolt")
 log_debug = log.debug
@@ -240,14 +227,27 @@ class Connection(object):
         :arg fields: the fields of the message as a tuple
         :arg response: a response object to handle callbacks
         """
-        #log_info("C: %s %r", message_names[signature], fields)
-        if self._supports_statement_reuse and signature == RUN:
-            statement = fields[0]
-            if statement.upper() not in ("BEGIN", "COMMIT", "ROLLBACK"):
-                if statement == self._last_run_statement:
-                    fields = ("",) + fields[1:]
-                else:
-                    self._last_run_statement = statement
+        if signature == RUN:
+            if self._supports_statement_reuse:
+                statement = fields[0]
+                if statement.upper() not in ("BEGIN", "COMMIT", "ROLLBACK"):
+                    if statement == self._last_run_statement:
+                        fields = ("",) + fields[1:]
+                    else:
+                        self._last_run_statement = statement
+            log_info("C: RUN %r", fields)
+        elif signature == PULL_ALL:
+            log_info("C: PULL_ALL %r", fields)
+        elif signature == DISCARD_ALL:
+            log_info("C: DISCARD_ALL %r", fields)
+        elif signature == RESET:
+            log_info("C: RESET %r", fields)
+        elif signature == ACK_FAILURE:
+            log_info("C: ACK_FAILURE %r", fields)
+        elif signature == INIT:
+            log_info("C: INIT %r", fields)
+        else:
+            raise ValueError("Unknown message signature")
         self.packer.pack_struct(signature, fields)
         self.output_buffer.chunk()
         self.output_buffer.chunk()
@@ -290,7 +290,6 @@ class Connection(object):
         data = self.output_buffer.view()
         if not data:
             return
-        #log_debug("C: %r" % data.tobytes())
         if self.closed():
             raise self.Error("Failed to write to closed connection {!r}".format(self.server.address))
         if self.defunct():
@@ -315,7 +314,7 @@ class Connection(object):
         details, summary_signature, summary_metadata = self._unpack()
 
         if details:
-            #log_info("S: RECORD (%r)", data)  # TODO
+            log_info("S: RECORD * %d", len(details))  # TODO
             self.responses[0].on_records(details)
 
         if summary_signature is None:
@@ -324,13 +323,13 @@ class Connection(object):
         response = self.responses.popleft()
         response.complete = True
         if summary_signature == SUCCESS:
-            #log_info("S: SUCCESS (%r)", metadata)
+            log_info("S: SUCCESS (%r)", summary_metadata)
             response.on_success(summary_metadata or {})
         elif summary_signature == IGNORED:
-            #log_info("S: IGNORED (%r)", metadata)
+            log_info("S: IGNORED (%r)", summary_metadata)
             response.on_ignored(summary_metadata or {})
         elif summary_signature == FAILURE:
-            #log_info("S: FAILURE (%r)", metadata)
+            log_info("S: FAILURE (%r)", summary_metadata)
             response.on_failure(summary_metadata or {})
         else:
             raise ProtocolError("Unexpected response message with signature %02X" % summary_signature)
@@ -389,7 +388,7 @@ class Connection(object):
         """ Close the connection.
         """
         if not self.closed():
-            #log_info("~~ [CLOSE]")
+            log_info("~~ [CLOSE]")
             self.socket.close()
             self._closed = True
 
@@ -591,7 +590,6 @@ def connect(address, ssl_context=None, **config):
     handshake = [MAGIC_PREAMBLE] + supported_versions
     log_info("C: [HANDSHAKE] 0x%X %r", MAGIC_PREAMBLE, supported_versions)
     data = b"".join(struct_pack(">I", num) for num in handshake)
-    log_debug("C: b%r", data)
     s.sendall(data)
 
     # Handle the handshake response
@@ -605,10 +603,8 @@ def connect(address, ssl_context=None, **config):
         # response, the server has closed the connection
         log_error("S: [CLOSE]")
         raise ProtocolError("Connection to %r closed without handshake response" % (address,))
-    if data_size == 4:
-        log_debug("S: b%r", data)
-    else:
-        # Some other garbled data has been received
+    if data_size != 4:
+        # Some garbled data has been received
         log_error("S: @*#!")
         raise ProtocolError("Expected four byte handshake response, received %r instead" % data)
     agreed_version, = struct_unpack(">I", data)
