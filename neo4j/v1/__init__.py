@@ -20,13 +20,13 @@
 
 
 from .api import *
-from .bolt import *
 from .direct import *
 from .exceptions import *
+from .result import *
 from .routing import *
+from .session import *
 from .security import *
 from .types import *
-
 
 # Register supported URI schemes
 GraphDatabase.uri_schemes["bolt"] = DirectDriver

@@ -20,10 +20,10 @@
 
 from unittest import TestCase
 
-from neo4j.bolt.connection import connect
 from neo4j.bolt import ProtocolError
-from neo4j.v1 import basic_auth
+from neo4j.bolt.connection import connect
 from neo4j.v1.routing import RoundRobinSet, RoutingTable, RoutingConnectionPool
+from neo4j.v1.security import basic_auth
 
 
 VALID_ROUTING_RECORD = {

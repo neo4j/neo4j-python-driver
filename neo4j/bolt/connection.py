@@ -151,6 +151,9 @@ class Connection(object):
     .. note:: logs at INFO level
     """
 
+    #: Server details for this connection
+    server = None
+
     in_use = False
 
     closed = False
@@ -403,6 +406,10 @@ class ConnectionPool(object):
                 connection.in_use = True
                 connections.append(connection)
                 return connection
+
+    def acquire(self, **parameters):
+        """ Acquire a connection to a server that can satisfy a set of parameters.
+        """
 
     def release(self, connection):
         """ Release a connection back into the pool.

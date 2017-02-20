@@ -23,7 +23,7 @@ from socket import socket
 from ssl import SSLSocket
 from unittest import skipUnless
 
-from neo4j.v1 import GraphDatabase, SSL_AVAILABLE, TRUST_ON_FIRST_USE,TRUST_CUSTOM_CA_SIGNED_CERTIFICATES, AuthError
+from neo4j.v1 import GraphDatabase, SSL_AVAILABLE, TRUST_ON_FIRST_USE, TRUST_CUSTOM_CA_SIGNED_CERTIFICATES, AuthError
 
 from test.integration.tools import IntegrationTestCase
 
@@ -33,29 +33,37 @@ class SecurityTestCase(IntegrationTestCase):
     def test_insecure_session_uses_normal_socket(self):
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token, encrypted=False) as driver:
             with driver.session() as session:
-                connection = session.connection
+                result = session.run("RETURN 1")
+                connection = session._connection
                 assert isinstance(connection.socket, socket)
                 assert connection.der_encoded_server_certificate is None
+                result.consume()
 
     @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_tofu_session_uses_secure_socket(self):
         self.delete_known_hosts_file()
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token, trust=TRUST_ON_FIRST_USE) as driver:
             with driver.session() as session:
-                connection = session.connection
+                result = session.run("RETURN 1")
+                connection = session._connection
                 assert isinstance(connection.socket, SSLSocket)
                 assert connection.der_encoded_server_certificate is not None
+                result.consume()
 
     @skipUnless(SSL_AVAILABLE, "Bolt over TLS is not supported by this version of Python")
     def test_tofu_session_trusts_certificate_after_first_use(self):
         self.delete_known_hosts_file()
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token, trust=TRUST_ON_FIRST_USE) as driver:
             with driver.session() as session:
-                connection = session.connection
+                result = session.run("RETURN 1")
+                connection = session._connection
                 certificate = connection.der_encoded_server_certificate
+                result.consume()
             with driver.session() as session:
-                connection = session.connection
+                result = session.run("RETURN 1")
+                connection = session._connection
                 assert connection.der_encoded_server_certificate == certificate
+                result.consume()
 
     def test_routing_driver_not_compatible_with_tofu(self):
         with self.assertRaises(ValueError):
@@ -69,4 +77,5 @@ class SecurityTestCase(IntegrationTestCase):
     def test_should_fail_on_incorrect_password(self):
         with self.assertRaises(AuthError):
             with GraphDatabase.driver(self.bolt_uri, auth=("neo4j", "wrong-password")) as driver:
-                _ = driver.session()
+                with driver.session() as session:
+                    _ = session.run("RETURN 1")

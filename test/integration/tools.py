@@ -88,7 +88,7 @@ class IntegrationTestCase(TestCase):
     def server_version_info(cls):
         with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth_token) as driver:
             with driver.session() as session:
-                full_version = session.connection.server.version
+                full_version = session.run("RETURN 1").summary().server.version
                 if full_version is None:
                     return "Neo4j", (3, 0), ()
                 product, _, tagged_version = full_version.partition("/")

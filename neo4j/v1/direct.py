@@ -21,10 +21,19 @@
 
 from neo4j.bolt import DEFAULT_PORT, ConnectionPool, connect
 from neo4j.compat import urlparse
+from neo4j.v1.api import Driver
+from neo4j.v1.security import SecurityPlan
+from neo4j.v1.session import BoltSession
 
-from .api import Driver
-from .bolt import BoltSession
-from .security import SecurityPlan
+
+class DirectConnectionPool(ConnectionPool):
+
+    def __init__(self, connector, address):
+        super(DirectConnectionPool, self).__init__(connector)
+        self.address = address
+
+    def acquire(self, **parameters):
+        return self.acquire_direct(self.address)
 
 
 class DirectDriver(Driver):
@@ -38,8 +47,8 @@ class DirectDriver(Driver):
         self.address = (parsed.hostname, parsed.port or DEFAULT_PORT)
         self.security_plan = security_plan = SecurityPlan.build(**config)
         self.encrypted = security_plan.encrypted
-        pool = ConnectionPool(lambda a: connect(a, security_plan.ssl_context, **config))
+        pool = DirectConnectionPool(lambda a: connect(a, security_plan.ssl_context, **config), self.address)
         Driver.__init__(self, pool)
 
-    def session(self, access_mode=None):
-        return BoltSession(self.pool.acquire_direct(self.address))
+    def session(self, **parameters):
+        return BoltSession(lambda: self.pool.acquire(**parameters))
