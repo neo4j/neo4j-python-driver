@@ -371,7 +371,7 @@ class ConnectionPool(object):
     """ A collection of connections to one or more server addresses.
     """
 
-    closed = False
+    _closed = False
 
     def __init__(self, connector):
         self.connector = connector
@@ -388,7 +388,7 @@ class ConnectionPool(object):
         """ Acquire a connection to a given address from the pool.
         This method is thread safe.
         """
-        if self.closed:
+        if self.closed():
             raise ServiceUnavailable("Connection pool closed")
         with self.lock:
             try:
@@ -440,9 +440,16 @@ class ConnectionPool(object):
         This method is thread safe.
         """
         with self.lock:
-            self.closed = True
+            self._closed = True
             for address in list(self.connections):
                 self.remove(address)
+
+    def closed(self):
+        """ Return :const:`True` if this pool is closed, :const:`False`
+        otherwise.
+        """
+        with self.lock:
+            return self._closed
 
 
 class CertificateStore(object):
