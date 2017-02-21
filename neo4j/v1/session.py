@@ -99,8 +99,8 @@ class BoltSession(Session):
     def begin_transaction(self, bookmark=None):
         transaction = super(BoltSession, self).begin_transaction(bookmark)
         parameters = {}
-        if bookmark is not None:
-            parameters["bookmark"] = bookmark
+        if self.bookmark is not None:
+            parameters["bookmark"] = self.bookmark
         self.run("BEGIN", parameters)
         return transaction
 

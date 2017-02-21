@@ -50,7 +50,7 @@ class BoltStatementResult(StatementResult):
         def on_header(metadata):
             # Called on receipt of the result header.
             all_metadata.update(metadata)
-            self._keys = tuple(metadata["fields"])
+            self._keys = tuple(metadata.get("fields", ()))
 
         def on_records(records):
             # Called on receipt of one or more result records.

@@ -273,7 +273,8 @@ class Session(object):
         def clear_transaction():
             self.transaction = None
 
-        self.bookmark = bookmark
+        if bookmark is not None:
+            self.bookmark = bookmark
         self.transaction = Transaction(self, on_close=clear_transaction)
         return self.transaction
 
