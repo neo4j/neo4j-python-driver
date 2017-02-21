@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from neo4j.v1 import ServiceUnavailable, ProtocolError, GraphDatabase
+from neo4j.v1 import GraphDatabase, ProtocolError, ServiceUnavailable
 
 from test.integration.tools import IntegrationTestCase
 
@@ -33,25 +33,16 @@ class DriverTestCase(IntegrationTestCase):
     def test_connections_are_reused(self):
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
             session_1 = driver.session()
-            connection_1 = session_1.connection
+            connection_1 = session_1._connection
             session_1.close()
             session_2 = driver.session()
-            connection_2 = session_2.connection
+            connection_2 = session_2._connection
             session_2.close()
             assert connection_1 is connection_2
 
-    def test_connections_are_not_shared_between_sessions(self):
-        with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
-            session_1 = driver.session()
-            session_2 = driver.session()
-            try:
-                assert session_1.connection is not session_2.connection
-            finally:
-                session_1.close()
-                session_2.close()
-
-    def test_fail_nicely_when_connecting_to_http_port(self):
+    def test_fail_nicely_when_using_http_port(self):
         uri = "bolt://localhost:7474"
         with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
             with self.assertRaises(ServiceUnavailable):
-                driver.session()
+                with driver.session() as session:
+                    _ = session.run("RETURN 1")

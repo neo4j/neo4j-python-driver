@@ -21,6 +21,10 @@
 
 from collections import namedtuple
 
+from neo4j.v1.api import GraphDatabase, StatementResult
+from neo4j.v1.exceptions import CypherError
+from neo4j.v1.types import Record
+
 
 STATEMENT_TYPE_READ_ONLY = "r"
 STATEMENT_TYPE_READ_WRITE = "rw"
@@ -28,9 +32,58 @@ STATEMENT_TYPE_WRITE_ONLY = "w"
 STATEMENT_TYPE_SCHEMA_WRITE = "s"
 
 
-class ResultSummary(object):
+class BoltStatementResult(StatementResult):
+    """ A handler for the result of Cypher statement execution.
+    """
+
+    error_class = CypherError
+
+    value_system = GraphDatabase.value_systems["packstream"]
+
+    zipper = Record
+
+    def __init__(self, session, run_response, pull_all_response):
+        super(BoltStatementResult, self).__init__(session)
+
+        all_metadata = {}
+
+        def on_header(metadata):
+            # Called on receipt of the result header.
+            all_metadata.update(metadata)
+            self._keys = tuple(metadata["fields"])
+
+        def on_records(records):
+            # Called on receipt of one or more result records.
+            self._records.extend(records)
+
+        def on_footer(metadata):
+            # Called on receipt of the result footer.
+            all_metadata.update(metadata, statement=self.statement, parameters=self.parameters,
+                                server=self._session._connection.server)
+            self._summary = BoltStatementResultSummary(**all_metadata)
+            self._session, session_ = None, self._session
+            session_.detach(self)
+
+        def on_failure(metadata):
+            # Called on execution failure.
+            self._session._connection.acknowledge_failure()
+            on_footer(metadata)
+            raise self.error_class(metadata)
+
+        run_response.on_success = on_header
+        run_response.on_failure = on_failure
+
+        pull_all_response.on_records = on_records
+        pull_all_response.on_success = on_footer
+        pull_all_response.on_failure = on_failure
+
+
+class BoltStatementResultSummary(object):
     """ A summary of execution returned with a :class:`.StatementResult` object.
     """
+
+    #: The server on which this result was generated.
+    server = None
 
     #: The statement that was executed to produce this result.
     statement = None
@@ -62,10 +115,11 @@ class ResultSummary(object):
     #: Unlike failures or errors, notifications do not affect the execution of a statement.
     notifications = None
 
-    def __init__(self, statement, parameters, **metadata):
-        self.statement = statement
-        self.parameters = parameters
+    def __init__(self, **metadata):
         self.metadata = metadata
+        self.server = metadata.get("server")
+        self.statement = metadata.get("statement")
+        self.parameters = metadata.get("parameters")
         self.statement_type = metadata.get("type")
         self.counters = SummaryCounters(metadata.get("stats", {}))
         self.result_available_after = metadata.get("result_available_after")

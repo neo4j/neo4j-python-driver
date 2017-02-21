@@ -29,8 +29,8 @@ class Runner(Thread):
         for _ in range(match_runs):
             times.append(self.match_nodes())
         stderr.write("=======\n")
-        stderr.write("Average match run time is %fs\n" % (sum(times) / match_runs,))
-        stderr.write("Minimum match run time is %fs\n" % (min(times),))
+        stderr.write("Average match run time was %fs\n" % (sum(times) / match_runs,))
+        stderr.write("Minimum match run time was %fs\n" % (min(times),))
 
     def drop_index(self):
         with self.driver.session() as session:

@@ -33,11 +33,13 @@ from collections import deque, namedtuple
 from os import makedirs, open as os_open, write as os_write, close as os_close, O_CREAT, O_APPEND, O_WRONLY
 from os.path import dirname, isfile, join as path_join, expanduser
 from select import select
-from socket import create_connection, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, error as SocketError
+from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, error as SocketError, AF_INET, AF_INET6
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock
 
+from neo4j.addressing import SocketAddress, is_ip_address
 from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
+from neo4j.exceptions import AuthError, ProtocolError, SecurityError, ServiceUnavailable
 from neo4j.meta import version
 from neo4j.packstream import Packer, Unpacker
 from neo4j.util import import_best as _import_best
@@ -69,19 +71,6 @@ FAILURE = b"\x7F"          # 0111 1111 // FAILURE <metadata>
 DETAIL = {RECORD}
 SUMMARY = {SUCCESS, IGNORED, FAILURE}
 
-message_names = {
-    INIT: "INIT",
-    ACK_FAILURE: "ACK_FAILURE",
-    RESET: "RESET",
-    RUN: "RUN",
-    DISCARD_ALL: "DISCARD_ALL",
-    PULL_ALL: "PULL_ALL",
-    SUCCESS: "SUCCESS",
-    RECORD: "RECORD",
-    IGNORED: "IGNORED",
-    FAILURE: "FAILURE",
-}
-
 # Set up logger
 log = logging.getLogger("neo4j.bolt")
 log_debug = log.debug
@@ -90,32 +79,39 @@ log_warning = log.warning
 log_error = log.error
 
 
-Address4 = namedtuple("Address", ["host", "port"])
-Address6 = namedtuple("Address", ["host", "port", "flow_info", "scope_id"])
-ServerInfo = namedtuple("ServerInfo", ["address", "version"])
+class ServerInfo(object):
 
+    address = None
 
-class Address(object):
+    version = None
 
-    def __new__(cls, host, port, flow_info=None, scope_id=None):
-        if flow_info is None:
-            return Address4(host, port)
-        else:
-            return Address6(host, port, flow_info, scope_id)
+    def __init__(self, address):
+        self.address = address
 
+    def product(self):
+        if not self.version:
+            return None
+        value, _, _ = self.version.partition("/")
+        return value
 
-class ProtocolError(Exception):
-    """ Raised when an unexpected or unsupported protocol event occurs.
-    """
+    def version_info(self):
+        if not self.version:
+            return None
+        _, _, value = self.version.partition("/")
+        value = value.replace("-", ".").split(".")
+        for i, v in enumerate(value):
+            try:
+                value[i] = int(v)
+            except ValueError:
+                pass
+        return tuple(value)
 
-
-class ServiceUnavailable(Exception):
-    """ Raised when no database service is available.
-    """
-
-    def __init__(self, message, code=None):
-        super(ServiceUnavailable, self).__init__(message)
-        self.code = code
+    def supports_statement_reuse(self):
+        if not self.version:
+            return False
+        if self.product() != "Neo4j":
+            return False
+        return self.version_info() >= (3, 2)
 
 
 class Response(object):
@@ -144,13 +140,15 @@ class InitResponse(Response):
 
     def on_success(self, metadata):
         super(InitResponse, self).on_success(metadata)
-        connection = self.connection
-        address = Address(*connection.socket.getpeername())
-        version = metadata.get("server")
-        connection.server = ServerInfo(address, version)
+        self.connection.server.version = metadata.get("server")
 
     def on_failure(self, metadata):
-        raise ServiceUnavailable(metadata.get("message", "INIT failed"), metadata.get("code"))
+        code = metadata.get("code")
+        message = metadata.get("message", "Connection initialisation failed")
+        if code == "Neo.ClientError.Security.Unauthorized":
+            raise AuthError(message)
+        else:
+            raise ServiceUnavailable(message)
 
 
 class Connection(object):
@@ -163,11 +161,14 @@ class Connection(object):
     .. note:: logs at INFO level
     """
 
+    #: Server details for this connection
+    server = None
+
     in_use = False
 
-    closed = False
+    _closed = False
 
-    defunct = False
+    _defunct = False
 
     #: The pool of which this connection is a member
     pool = None
@@ -175,9 +176,13 @@ class Connection(object):
     #: Error class used for raising connection errors
     Error = ServiceUnavailable
 
+    _supports_statement_reuse = False
+
+    _last_run_statement = None
+
     def __init__(self, sock, **config):
         self.socket = sock
-        self.address = sock.getpeername()
+        self.server = ServerInfo(SocketAddress.from_socket(sock))
         self.input_buffer = ChunkedInputBuffer()
         self.output_buffer = ChunkedOutputBuffer()
         self.packer = Packer(self.output_buffer)
@@ -210,6 +215,8 @@ class Connection(object):
         self.append(INIT, (self.user_agent, self.auth_dict), response=response)
         self.sync()
 
+        self._supports_statement_reuse = self.server.supports_statement_reuse()
+
     def __del__(self):
         self.close()
 
@@ -220,7 +227,27 @@ class Connection(object):
         :arg fields: the fields of the message as a tuple
         :arg response: a response object to handle callbacks
         """
-        #log_info("C: %s %r", message_names[signature], fields)
+        if signature == RUN:
+            if self._supports_statement_reuse:
+                statement = fields[0]
+                if statement.upper() not in ("BEGIN", "COMMIT", "ROLLBACK"):
+                    if statement == self._last_run_statement:
+                        fields = ("",) + fields[1:]
+                    else:
+                        self._last_run_statement = statement
+            log_info("C: RUN %r", fields)
+        elif signature == PULL_ALL:
+            log_info("C: PULL_ALL %r", fields)
+        elif signature == DISCARD_ALL:
+            log_info("C: DISCARD_ALL %r", fields)
+        elif signature == RESET:
+            log_info("C: RESET %r", fields)
+        elif signature == ACK_FAILURE:
+            log_info("C: ACK_FAILURE %r", fields)
+        elif signature == INIT:
+            log_info("C: INIT %r", fields)
+        else:
+            raise ValueError("Unknown message signature")
         self.packer.pack_struct(signature, fields)
         self.output_buffer.chunk()
         self.output_buffer.chunk()
@@ -263,23 +290,22 @@ class Connection(object):
         data = self.output_buffer.view()
         if not data:
             return
-        #log_debug("C: %r" % data.tobytes())
-        if self.closed:
-            raise self.Error("Failed to write to closed connection %r" % (self.address,))
-        if self.defunct:
-            raise self.Error("Failed to write to defunct connection %r" % (self.address,))
+        if self.closed():
+            raise self.Error("Failed to write to closed connection {!r}".format(self.server.address))
+        if self.defunct():
+            raise self.Error("Failed to write to defunct connection {!r}".format(self.server.address))
         self.socket.sendall(data)
         self.output_buffer.clear()
 
     def fetch(self):
         """ Receive at least one message from the server, if available.
 
-        :return: number of messages fetched (zero or one)
+        :return: 2-tuple of number of detail messages and number of summary messages fetched
         """
-        if self.closed:
-            raise self.Error("Failed to read from closed connection %r" % (self.address,))
-        if self.defunct:
-            raise self.Error("Failed to read from defunct connection %r" % (self.address,))
+        if self.closed():
+            raise self.Error("Failed to read from closed connection {!r}".format(self.server.address))
+        if self.defunct():
+            raise self.Error("Failed to read from defunct connection {!r}".format(self.server.address))
         if not self.responses:
             return 0, 0
 
@@ -288,7 +314,7 @@ class Connection(object):
         details, summary_signature, summary_metadata = self._unpack()
 
         if details:
-            #log_info("S: RECORD (%r)", data)  # TODO
+            log_info("S: RECORD * %d", len(details))  # TODO
             self.responses[0].on_records(details)
 
         if summary_signature is None:
@@ -297,13 +323,13 @@ class Connection(object):
         response = self.responses.popleft()
         response.complete = True
         if summary_signature == SUCCESS:
-            #log_info("S: SUCCESS (%r)", metadata)
+            log_info("S: SUCCESS (%r)", summary_metadata)
             response.on_success(summary_metadata or {})
         elif summary_signature == IGNORED:
-            #log_info("S: IGNORED (%r)", metadata)
+            log_info("S: IGNORED (%r)", summary_metadata)
             response.on_ignored(summary_metadata or {})
         elif summary_signature == FAILURE:
-            #log_info("S: FAILURE (%r)", metadata)
+            log_info("S: FAILURE (%r)", summary_metadata)
             response.on_failure(summary_metadata or {})
         else:
             raise ProtocolError("Unexpected response message with signature %02X" % summary_signature)
@@ -316,9 +342,9 @@ class Connection(object):
         except SocketError:
             received = False
         if not received:
-            self.defunct = True
+            self._defunct = True
             self.close()
-            raise self.Error("Failed to read from defunct connection %r" % (self.address,))
+            raise self.Error("Failed to read from defunct connection {!r}".format(self.server.address))
 
     def _unpack(self):
         unpacker = self.unpacker
@@ -345,6 +371,8 @@ class Connection(object):
 
     def sync(self):
         """ Send and fetch all outstanding messages.
+
+        :return: 2-tuple of number of detail messages and number of summary messages fetched
         """
         self.send()
         detail_count = summary_count = 0
@@ -359,17 +387,23 @@ class Connection(object):
     def close(self):
         """ Close the connection.
         """
-        if not self.closed:
-            #log_info("~~ [CLOSE]")
+        if not self.closed():
+            log_info("~~ [CLOSE]")
             self.socket.close()
-            self.closed = True
+            self._closed = True
+
+    def closed(self):
+        return self._closed
+
+    def defunct(self):
+        return self._defunct
 
 
 class ConnectionPool(object):
     """ A collection of connections to one or more server addresses.
     """
 
-    closed = False
+    _closed = False
 
     def __init__(self, connector):
         self.connector = connector
@@ -382,30 +416,43 @@ class ConnectionPool(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def acquire(self, address):
+    def acquire_direct(self, address):
         """ Acquire a connection to a given address from the pool.
+        The address supplied should always be an IP address, not
+        a host name.
+
         This method is thread safe.
         """
-        if self.closed:
-            raise ServiceUnavailable("This connection pool is closed so no new "
-                                     "connections may be acquired")
+        if self.closed():
+            raise ServiceUnavailable("Connection pool closed")
+        if not is_ip_address(address[0]):
+            raise ValueError("Invalid IP address {!r}".format(address[0]))
         with self.lock:
             try:
                 connections = self.connections[address]
             except KeyError:
                 connections = self.connections[address] = deque()
             for connection in list(connections):
-                if connection.closed or connection.defunct:
+                if connection.closed() or connection.defunct():
                     connections.remove(connection)
                     continue
                 if not connection.in_use:
                     connection.in_use = True
                     return connection
-            connection = self.connector(address)
-            connection.pool = self
-            connection.in_use = True
-            connections.append(connection)
-            return connection
+            try:
+                connection = self.connector(address)
+            except ServiceUnavailable:
+                self.remove(address)
+                raise
+            else:
+                connection.pool = self
+                connection.in_use = True
+                connections.append(connection)
+                return connection
+
+    def acquire(self, **parameters):
+        """ Acquire a connection to a server that can satisfy a set of parameters.
+        """
 
     def release(self, connection):
         """ Release a connection back into the pool.
@@ -430,9 +477,16 @@ class ConnectionPool(object):
         This method is thread safe.
         """
         with self.lock:
-            self.closed = True
+            self._closed = True
             for address in list(self.connections):
                 self.remove(address)
+
+    def closed(self):
+        """ Return :const:`True` if this pool is closed, :const:`False`
+        otherwise.
+        """
+        with self.lock:
+            return self._closed
 
 
 class CertificateStore(object):
@@ -491,22 +545,28 @@ def connect(address, ssl_context=None, **config):
     # https://docs.python.org/2/library/errno.html
     log_info("~~ [CONNECT] %s", address)
     try:
-        s = create_connection(address)
+        if len(address) == 2:
+            s = socket(AF_INET)
+        elif len(address) == 4:
+            s = socket(AF_INET6)
+        else:
+            raise ValueError("Unsupported address {!r}".format(address))
+        s.connect(address)
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1 if config.get("keep_alive", True) else 0)
     except SocketError as error:
         if error.errno in (61, 111, 10061):
-            raise ServiceUnavailable("Failed to establish connection to %r" % (address,))
+            raise ServiceUnavailable("Failed to establish connection to {!r}".format(address))
         else:
             raise
 
     # Secure the connection if an SSL context has been provided
     if ssl_context and SSL_AVAILABLE:
-        host, port = address
+        host = address[0]
         log_info("~~ [SECURE] %s", host)
         try:
             s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
         except SSLError as cause:
-            error = SecurityError("Failed to establish secure connection to %r" % cause.args[1])
+            error = SecurityError("Failed to establish secure connection to {!r}".format(cause.args[1]))
             error.__cause__ = cause
             raise error
         else:
@@ -530,7 +590,6 @@ def connect(address, ssl_context=None, **config):
     handshake = [MAGIC_PREAMBLE] + supported_versions
     log_info("C: [HANDSHAKE] 0x%X %r", MAGIC_PREAMBLE, supported_versions)
     data = b"".join(struct_pack(">I", num) for num in handshake)
-    log_debug("C: b%r", data)
     s.sendall(data)
 
     # Handle the handshake response
@@ -544,10 +603,8 @@ def connect(address, ssl_context=None, **config):
         # response, the server has closed the connection
         log_error("S: [CLOSE]")
         raise ProtocolError("Connection to %r closed without handshake response" % (address,))
-    if data_size == 4:
-        log_debug("S: b%r", data)
-    else:
-        # Some other garbled data has been received
+    if data_size != 4:
+        # Some garbled data has been received
         log_error("S: @*#!")
         raise ProtocolError("Expected four byte handshake response, received %r instead" % data)
     agreed_version, = struct_unpack(">I", data)
@@ -560,13 +617,8 @@ def connect(address, ssl_context=None, **config):
         return Connection(s, der_encoded_server_certificate=der_encoded_server_certificate, **config)
     elif agreed_version == 0x48545450:
         log_error("S: [CLOSE]")
-        raise ServiceUnavailable("Cannot to connect to Bolt service on %r "
-                                 "(looks like HTTP)" % (address,))
+        raise ServiceUnavailable("Cannot to connect to Bolt service on {!r} "
+                                 "(looks like HTTP)".format(address))
     else:
         log_error("S: [CLOSE]")
-        raise ProtocolError("Unknown Bolt protocol version: %d", agreed_version)
-
-
-class SecurityError(Exception):
-    """ Raised when an action is denied due to security settings.
-    """
+        raise ProtocolError("Unknown Bolt protocol version: {}".format(agreed_version))

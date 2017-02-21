@@ -19,15 +19,25 @@
 # limitations under the License.
 
 
-from .api import *
-from .direct import *
-from .exceptions import *
-from .result import *
-from .routing import *
-from .session import *
-from .security import *
-from .types import *
+from unittest import TestCase
 
-# Register supported URI schemes
-GraphDatabase.uri_schemes["bolt"] = DirectDriver
-GraphDatabase.uri_schemes["bolt+routing"] = RoutingDriver
+from neo4j.addressing import SocketAddress
+
+
+class RoutingTableParseAddressTestCase(TestCase):
+
+    def test_should_parse_ipv4_address_and_port(self):
+        parsed = SocketAddress.parse("127.0.0.1:7687")
+        assert parsed == ("127.0.0.1", 7687)
+
+    def test_should_parse_ipv6_address_and_port(self):
+        parsed = SocketAddress.parse("[::1]:7687")
+        assert parsed == ("::1", 7687, 0, 0)
+
+    def test_should_parse_host_name_and_port(self):
+        parsed = SocketAddress.parse("localhost:7687")
+        assert parsed == ("localhost", 7687)
+
+    def test_should_fail_on_non_numeric_port(self):
+        with self.assertRaises(ValueError):
+            _ = SocketAddress.parse("127.0.0.1:X")

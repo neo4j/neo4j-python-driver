@@ -19,7 +19,8 @@
 # limitations under the License.
 
 
-from neo4j.v1 import ServiceUnavailable, GraphDatabase, DirectDriver
+from neo4j.v1 import GraphDatabase, DirectDriver
+from neo4j.bolt import ServiceUnavailable
 
 from test.stub.tools import StubTestCase, StubCluster
 
@@ -34,14 +35,14 @@ class DirectDriverTestCase(StubTestCase):
         with StubCluster({9001: "disconnect_on_run.script"}):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                with driver.session() as session:
-                    with self.assertRaises(ServiceUnavailable):
+                with self.assertRaises(ServiceUnavailable):
+                    with driver.session() as session:
                         session.run("RETURN $x", {"x": 1}).consume()
 
     def test_direct_disconnect_on_pull_all(self):
         with StubCluster({9001: "disconnect_on_pull_all.script"}):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                with driver.session() as session:
-                    with self.assertRaises(ServiceUnavailable):
+                with self.assertRaises(ServiceUnavailable):
+                    with driver.session() as session:
                         session.run("RETURN $x", {"x": 1}).consume()

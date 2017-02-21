@@ -22,9 +22,13 @@
 from threading import Lock
 from time import clock
 
-from neo4j.bolt.connection import Address, ConnectionPool, ServiceUnavailable, ProtocolError
+from neo4j.addressing import SocketAddress, resolve
+from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect
 from neo4j.compat.collections import MutableSet, OrderedDict
-from neo4j.v1 import SessionError
+from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS
+from neo4j.v1.exceptions import SessionExpired, CypherError
+from neo4j.v1.security import SecurityPlan
+from neo4j.v1.session import BoltSession
 
 
 class RoundRobinSet(MutableSet):
@@ -90,13 +94,6 @@ class RoutingTable(object):
     timer = clock
 
     @classmethod
-    def parse_address(cls, address):
-        """ Convert an address string to a tuple.
-        """
-        host, _, port = address.partition(":")
-        return Address(host, int(port))
-
-    @classmethod
     def parse_routing_info(cls, records):
         """ Parse the records returned from a getServers call and
         return a new RoutingTable instance.
@@ -111,7 +108,9 @@ class RoutingTable(object):
             servers = record["servers"]
             for server in servers:
                 role = server["role"]
-                addresses = [cls.parse_address(address) for address in server["addresses"]]
+                addresses = []
+                for address in server["addresses"]:
+                    addresses.extend(resolve(SocketAddress.parse(address, DEFAULT_PORT)))
                 if role == "ROUTE":
                     routers.extend(addresses)
                 elif role == "READ":
@@ -168,21 +167,15 @@ class RoutingConnectionPool(ConnectionPool):
         :raise ServiceUnavailable: if the server does not support routing or
                                    if routing support is broken
         """
-        from .api import CypherError
-        from .bolt import BoltSession
         try:
-            connection = self.acquire(address)
-            with BoltSession(connection) as session:
+            with BoltSession(lambda: self.acquire_direct(address)) as session:
                 return list(session.run("CALL %s" % self.routing_info_procedure))
         except CypherError as error:
             if error.code == "Neo.ClientError.Procedure.ProcedureNotFound":
-                raise ServiceUnavailable("Server %r does not support routing" % (address,))
+                raise ServiceUnavailable("Server {!r} does not support routing".format(address))
             else:
-                raise ServiceUnavailable("Routing support broken on server %r" % (address,))
-        except ServiceUnavailable as error:
-            if error.code == "Neo.ClientError.Security.Unauthorized":
-                from neo4j.v1.security import AuthError
-                raise AuthError(error.args[0])
+                raise ServiceUnavailable("Routing support broken on server {!r}".format(address))
+        except ServiceUnavailable:
             self.remove(address)
             return None
 
@@ -258,40 +251,23 @@ class RoutingConnectionPool(ConnectionPool):
             self.update_routing_table()
             return True
 
-    def acquire_for_read(self):
-        """ Acquire a connection to a read server.
-        """
+    def acquire(self, **parameters):
+        access_mode = parameters.get("access_mode", WRITE_ACCESS)
+        if access_mode == READ_ACCESS:
+            server_list = self.routing_table.readers
+        elif access_mode == WRITE_ACCESS:
+            server_list = self.routing_table.writers
+        else:
+            raise ValueError("Unsupported access mode {}".format(access_mode))
         while True:
             address = None
             while address is None:
                 self.refresh_routing_table()
-                address = next(self.routing_table.readers)
+                address = next(server_list)
             try:
-                connection = self.acquire(address)
+                connection = self.acquire_direct(address)  # should always be a resolved address
                 connection.Error = SessionExpired
-            except ServiceUnavailable as error:
-                if error.code == "Neo.ClientError.Security.Unauthorized":
-                    from neo4j.v1.security import AuthError
-                    raise AuthError(error.args[0])
-                self.remove(address)
-            else:
-                return connection
-
-    def acquire_for_write(self):
-        """ Acquire a connection to a write server.
-        """
-        while True:
-            address = None
-            while address is None:
-                self.refresh_routing_table()
-                address = next(self.routing_table.writers)
-            try:
-                connection = self.acquire(address)
-                connection.Error = SessionExpired
-            except ServiceUnavailable as error:
-                if error.code == "Neo.ClientError.Security.Unauthorized":
-                    from neo4j.v1.security import AuthError
-                    raise AuthError(error.args[0])
+            except ServiceUnavailable:
                 self.remove(address)
             else:
                 return connection
@@ -308,11 +284,32 @@ class RoutingConnectionPool(ConnectionPool):
         super(RoutingConnectionPool, self).remove(address)
 
 
-class SessionExpired(SessionError):
-    """ Raised when no a session is no longer able to fulfil
-    its purpose.
+class RoutingDriver(Driver):
+    """ A :class:`.RoutingDriver` is created from a ``bolt+routing`` URI. The
+    routing behaviour works in tandem with Neo4j's causal clustering feature
+    by directing read and write behaviour to appropriate cluster members.
     """
 
-    def __init__(self, session, *args, **kwargs):
-        self.session = session
-        super(SessionExpired, self).__init__(*args, **kwargs)
+    def __init__(self, uri, **config):
+        self.initial_address = initial_address = SocketAddress.from_uri(uri, DEFAULT_PORT)
+        self.security_plan = security_plan = SecurityPlan.build(**config)
+        self.encrypted = security_plan.encrypted
+        if not security_plan.routing_compatible:
+            # this error message is case-specific as there is only one incompatible
+            # scenario right now
+            raise ValueError("TRUST_ON_FIRST_USE is not compatible with routing")
+
+        def connector(a):
+            return connect(a, security_plan.ssl_context, **config)
+
+        pool = RoutingConnectionPool(connector, *resolve(initial_address))
+        try:
+            pool.update_routing_table()
+        except:
+            pool.close()
+            raise
+        else:
+            Driver.__init__(self, pool)
+
+    def session(self, **parameters):
+        return BoltSession(lambda: self.pool.acquire(**parameters))

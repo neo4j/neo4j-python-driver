@@ -19,9 +19,8 @@
 # limitations under the License.
 
 
-from neo4j.bolt.connection import connect, ServiceUnavailable, ProtocolError
-from neo4j.v1 import basic_auth
-from neo4j.v1.routing import RoutingTable, RoutingConnectionPool
+from neo4j.bolt import connect, ProtocolError, ServiceUnavailable
+from neo4j.v1 import basic_auth, READ_ACCESS, WRITE_ACCESS, RoutingTable, RoutingConnectionPool
 
 from test.stub.tools import StubCluster, StubTestCase
 
@@ -348,7 +347,7 @@ class RoutingConnectionPoolAcquireForReadTestCase(StubTestCase):
             address = ("127.0.0.1", 9001)
             with RoutingConnectionPool(connector, address) as pool:
                 assert not pool.routing_table.is_fresh()
-                _ = pool.acquire_for_read()
+                _ = pool.acquire(access_mode=READ_ACCESS)
                 assert pool.routing_table.is_fresh()
 
     def test_connected_to_reader(self):
@@ -356,7 +355,7 @@ class RoutingConnectionPoolAcquireForReadTestCase(StubTestCase):
             address = ("127.0.0.1", 9001)
             with RoutingConnectionPool(connector, address) as pool:
                 assert not pool.routing_table.is_fresh()
-                connection = pool.acquire_for_read()
+                connection = pool.acquire(access_mode=READ_ACCESS)
                 assert connection.server.address in pool.routing_table.readers
 
     def test_should_retry_if_first_reader_fails(self):
@@ -366,7 +365,7 @@ class RoutingConnectionPoolAcquireForReadTestCase(StubTestCase):
             address = ("127.0.0.1", 9001)
             with RoutingConnectionPool(connector, address) as pool:
                 assert not pool.routing_table.is_fresh()
-                _ = pool.acquire_for_read()
+                _ = pool.acquire(access_mode=READ_ACCESS)
                 assert ("127.0.0.1", 9004) not in pool.routing_table.readers
                 assert ("127.0.0.1", 9005) in pool.routing_table.readers
 
@@ -378,7 +377,7 @@ class RoutingConnectionPoolAcquireForWriteTestCase(StubTestCase):
             address = ("127.0.0.1", 9001)
             with RoutingConnectionPool(connector, address) as pool:
                 assert not pool.routing_table.is_fresh()
-                _ = pool.acquire_for_write()
+                _ = pool.acquire(access_mode=WRITE_ACCESS)
                 assert pool.routing_table.is_fresh()
 
     def test_connected_to_writer(self):
@@ -386,7 +385,7 @@ class RoutingConnectionPoolAcquireForWriteTestCase(StubTestCase):
             address = ("127.0.0.1", 9001)
             with RoutingConnectionPool(connector, address) as pool:
                 assert not pool.routing_table.is_fresh()
-                connection = pool.acquire_for_write()
+                connection = pool.acquire(access_mode=WRITE_ACCESS)
                 assert connection.server.address in pool.routing_table.writers
 
     def test_should_retry_if_first_writer_fails(self):
@@ -396,7 +395,7 @@ class RoutingConnectionPoolAcquireForWriteTestCase(StubTestCase):
             address = ("127.0.0.1", 9001)
             with RoutingConnectionPool(connector, address) as pool:
                 assert not pool.routing_table.is_fresh()
-                _ = pool.acquire_for_write()
+                _ = pool.acquire(access_mode=WRITE_ACCESS)
                 assert ("127.0.0.1", 9006) not in pool.routing_table.writers
                 assert ("127.0.0.1", 9007) in pool.routing_table.writers
 

@@ -19,15 +19,15 @@
 # limitations under the License.
 
 
-from .api import *
-from .direct import *
-from .exceptions import *
-from .result import *
-from .routing import *
-from .session import *
-from .security import *
-from .types import *
+from unittest import TestCase
 
-# Register supported URI schemes
-GraphDatabase.uri_schemes["bolt"] = DirectDriver
-GraphDatabase.uri_schemes["bolt+routing"] = RoutingDriver
+from neo4j.v1 import GraphDatabase
+
+
+class SessionTestCase(TestCase):
+
+    def test_should_not_allow_empty_statements(self):
+        with GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "password")) as driver:
+            with driver.session() as session:
+                with self.assertRaises(ValueError):
+                    _ = session.run("")

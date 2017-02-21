@@ -19,15 +19,26 @@
 # limitations under the License.
 
 
-from .api import *
-from .direct import *
-from .exceptions import *
-from .result import *
-from .routing import *
-from .session import *
-from .security import *
-from .types import *
+class AddressError(Exception):
+    """ Raised when a network address is invalid.
+    """
 
-# Register supported URI schemes
-GraphDatabase.uri_schemes["bolt"] = DirectDriver
-GraphDatabase.uri_schemes["bolt+routing"] = RoutingDriver
+
+class SecurityError(Exception):
+    """ Raised when an action is denied due to security settings.
+    """
+
+
+class AuthError(SecurityError):
+    """ Raised when authentication failure occurs.
+    """
+
+
+class ProtocolError(Exception):
+    """ Raised when an unexpected or unsupported protocol event occurs.
+    """
+
+
+class ServiceUnavailable(Exception):
+    """ Raised when no database service is available.
+    """

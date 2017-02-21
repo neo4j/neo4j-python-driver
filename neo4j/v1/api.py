@@ -25,6 +25,7 @@ from warnings import warn
 from neo4j.bolt import ProtocolError, ServiceUnavailable
 from neo4j.compat import urlparse
 
+from .exceptions import CypherError, SessionError, TransactionError
 
 READ_ACCESS = "READ"
 WRITE_ACCESS = "WRITE"
@@ -115,13 +116,13 @@ class Driver(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def session(self, access_mode=None):
+    def session(self, **parameters):
         """ Create a new session using a connection from the driver connection
         pool. Session creation is a lightweight operation and sessions are
         not thread safe, therefore a session should generally be short-lived
         within a single thread.
 
-        :param access_mode:
+        :param parameters:
         :returns: new :class:`.Session` object
         """
         pass
@@ -157,10 +158,15 @@ class Session(object):
     transaction = None
 
     #: The bookmark received from completion of the last :class:`.Transaction`.
-    last_bookmark = None
+    bookmark = None
+
+    _closed = False
 
     def __del__(self):
-        self.close()
+        try:
+            self.close()
+        except (SessionError, ServiceUnavailable):
+            pass
 
     def __enter__(self):
         return self
@@ -172,51 +178,89 @@ class Session(object):
         """ Close the session. This will release any borrowed resources,
         such as connections, and will roll back any outstanding transactions.
         """
-        if self.transaction:
-            try:
-                self.rollback_transaction()
-            except (CypherError, TransactionError, SessionError, ServiceUnavailable):
-                pass
+        try:
+            if self.transaction:
+                try:
+                    self.rollback_transaction()
+                except (CypherError, TransactionError, SessionError, ServiceUnavailable):
+                    pass
+        finally:
+            self._closed = True
 
     def closed(self):
         """ Indicator for whether or not this session has been closed.
 
         :returns: :const:`True` if closed, :const:`False` otherwise.
         """
+        return self._closed
 
     def run(self, statement, parameters=None, **kwparameters):
         """ Run a Cypher statement within an auto-commit transaction.
-        Note that the statement is only passed to the server lazily,
-        when the result is consumed. To force the statement to be sent to
-        the server, use the :meth:`.Session.sync` method.
 
-        For usage details, see :meth:`.Transaction.run`.
+        The statement is sent and the result header received
+        immediately but the :class:`.StatementResult` content is
+        fetched lazily as consumed by the client application.
 
-        :param statement: Cypher statement
+        If a statement is executed before a previous
+        :class:`.StatementResult` in the same :class:`.Session` has
+        been fully consumed, the first result will be fully fetched
+        and buffered. Note therefore that the generally recommended
+        pattern of usage is to fully consume one result before
+        executing a subsequent statement. If two results need to be
+        consumed in parallel, multiple :class:`.Session` objects
+        can be used as an alternative to result buffering.
+
+        For more usage details, see :meth:`.Transaction.run`.
+
+        :param statement: template Cypher statement
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
         :returns: :class:`.StatementResult` object
         """
+        if self.closed():
+            raise SessionError("Session closed")
+        if not statement:
+            raise ValueError("Cannot run an empty statement")
+
+    def send(self):
+        """ Send all outstanding requests.
+        """
 
     def fetch(self):
-        """ Fetch at least one more message from the server if any are
-        available. Zero or more detail messages may be fetched as well
-        as zero or one summary messages.
+        """ Attempt to fetch at least one more record.
 
-        :returns: 2-tuple containing number of detail messages and
-                  number of summary messages fetched
+        :returns: number of records fetched
         """
-        return 0, 0
+        return 0
 
     def sync(self):
         """ Carry out a full send and receive.
 
-        :returns: Total number of records received
+        :returns: number of records fetched
         """
         return 0
 
+    def detach(self, result):
+        """ Detach a result from this session by fetching and buffering any
+        remaining records.
+
+        :param result:
+        :returns: number of records fetched
+        """
+        count = 0
+        self.send()
+        fetch = self.fetch
+        while result.attached():
+            count += fetch()
+        return count
+
+    @property
+    def last_bookmark(self):
+        return self.bookmark
+
     def begin_transaction(self, bookmark=None):
         """ Create a new :class:`.Transaction` within this session.
+        Calling this method with a bookmark is equivalent to
 
         :param bookmark: a bookmark to which the server should
                          synchronise before beginning the transaction
@@ -229,6 +273,7 @@ class Session(object):
         def clear_transaction():
             self.transaction = None
 
+        self.bookmark = bookmark
         self.transaction = Transaction(self, on_close=clear_transaction)
         return self.transaction
 
@@ -250,6 +295,7 @@ class Session(object):
         if not self.transaction:
             raise TransactionError("No transaction to rollback")
         self.transaction = None
+        self.bookmark = None
 
 
 class Transaction(object):
@@ -285,9 +331,10 @@ class Transaction(object):
 
     def run(self, statement, parameters=None, **kwparameters):
         """ Run a Cypher statement within the context of this transaction.
-        Note that the statement is only passed to the server lazily,
-        when the result is consumed. To force the statement to be sent to
-        the server, use the :meth:`.Transaction.sync` method.
+
+        The statement is sent to the server lazily, when its result is
+        consumed. To force the statement to be sent to the server, use
+        the :meth:`.Transaction.sync` method.
 
         Cypher is typically expressed as a statement template plus a
         set of named parameters. In Python, parameters may be expressed
@@ -305,23 +352,23 @@ class Transaction(object):
         :class:`str`, :class:`list` and :class:`dict`. Note however that
         :class:`list` properties must be homogenous.
 
-        :param statement: Cypher statement
+        :param statement: template Cypher statement
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
         :returns: :class:`.StatementResult` object
         """
         if self.closed():
-            raise TransactionError("Cannot use closed transaction")
+            raise TransactionError("Transaction closed")
         return self.session.run(statement, parameters, **kwparameters)
 
     def sync(self):
-        """ Send and receive all outstanding messages for this
-        transaction.
+        """ Force any queued statements to be sent to the server and
+        all related results to be fetched and buffered.
 
         :raise TransactionError: if the transaction is closed
         """
         if self.closed():
-            raise TransactionError("Cannot use closed transaction")
+            raise TransactionError("Transaction closed")
         self.session.sync()
 
     def commit(self):
@@ -331,7 +378,7 @@ class Transaction(object):
         :raise TransactionError: if already closed
         """
         if self.closed():
-            raise TransactionError("Cannot use closed transaction")
+            raise TransactionError("Transaction closed")
         self.success = True
         self.close()
 
@@ -342,7 +389,7 @@ class Transaction(object):
         :raise TransactionError: if already closed
         """
         if self.closed():
-            raise TransactionError("Cannot use closed transaction")
+            raise TransactionError("Transaction closed")
         self.success = False
         self.close()
 
@@ -395,7 +442,7 @@ class StatementResult(object):
     def __iter__(self):
         return self.records()
 
-    def online(self):
+    def attached(self):
         """ Indicator for whether or not this result is still attached to
         a :class:`.Session`.
 
@@ -403,32 +450,28 @@ class StatementResult(object):
         """
         return self._session and not self._session.closed()
 
-    def fetch(self):
-        """ Fetch another record, if any are available.
+    def detach(self):
+        """ Detach this result from its parent session by fetching the
+        remainder of this result from the network into the buffer.
 
         :returns: number of records fetched
         """
-        if self.online():
-            detail_count, _ = self._session.fetch()
-            return detail_count
+        if self.attached():
+            return self._session.detach(self)
         else:
             return 0
-
-    def buffer(self):
-        """ Fetch the remainder of this result from the network and buffer
-        it. On return from this method, the result will no longer be
-        :meth:`.online`.
-        """
-        while self.online():
-            self.fetch()
 
     def keys(self):
         """ The keys for the records in this result.
 
         :returns: tuple of key names
         """
-        while self._keys is None and self.online():
-            self.fetch()
+        if self._keys is not None:
+            return self._keys
+        self._session.send()
+        fetch = self._session.fetch
+        while self._keys is None and self.attached():
+            fetch()
         return self._keys
 
     def records(self):
@@ -438,26 +481,28 @@ class StatementResult(object):
         """
         hydrate = self.value_system.hydrate
         zipper = self.zipper
-        online = self.online
-        fetch = self.fetch
         keys = self.keys()
         records = self._records
         pop_first_record = records.popleft
         while records:
             values = pop_first_record()
             yield zipper(keys, hydrate(values))
-        while online():
-            fetch()
-            while records:
-                values = pop_first_record()
-                yield zipper(keys, hydrate(values))
+        attached = self.attached
+        if attached():
+            self._session.send()
+            fetch = self._session.fetch
+            while attached():
+                fetch()
+                while records:
+                    values = pop_first_record()
+                    yield zipper(keys, hydrate(values))
 
     def summary(self):
         """ Obtain the summary of this result, buffering any remaining records.
 
         :returns: The :class:`.ResultSummary` for this result
         """
-        self.buffer()
+        self.detach()
         return self._summary
 
     def consume(self):
@@ -468,7 +513,7 @@ class StatementResult(object):
 
         :returns: The :class:`.ResultSummary` for this result
         """
-        if self.online():
+        if self.attached():
             list(self)
         return self.summary()
 
@@ -502,36 +547,16 @@ class StatementResult(object):
         if records:
             values = records[0]
             return zipper(keys, hydrate(values))
-        while not records and self.online():
-            self.fetch()
+        if not self.attached():
+            return None
+        self._session.send()
+        fetch = self._session.fetch
+        while not records and self.attached():
+            fetch()
             if records:
                 values = records[0]
                 return zipper(keys, hydrate(values))
         return None
-
-
-class CypherError(Exception):
-    """ Raised when the Cypher engine returns an error to the client.
-    """
-
-    code = None
-    message = None
-
-    def __init__(self, data):
-        super(CypherError, self).__init__(data.get("message"))
-        for key, value in data.items():
-            if not key.startswith("_"):
-                setattr(self, key, value)
-
-
-class SessionError(Exception):
-    """ Raised when an error occurs while using a session.
-    """
-
-
-class TransactionError(Exception):
-    """ Raised when an error occurs while using a transaction.
-    """
 
 
 def fix_statement(statement):
