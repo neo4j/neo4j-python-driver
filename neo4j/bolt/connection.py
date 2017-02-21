@@ -28,18 +28,17 @@ the `session` module provides the main user-facing abstractions.
 from __future__ import division
 
 import logging
-from base64 import b64encode
-from collections import deque, namedtuple
-from os import makedirs, open as os_open, write as os_write, close as os_close, O_CREAT, O_APPEND, O_WRONLY
-from os.path import dirname, isfile, join as path_join, expanduser
+from collections import deque
 from select import select
 from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, error as SocketError, AF_INET, AF_INET6
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock
 
 from neo4j.addressing import SocketAddress, is_ip_address
+from neo4j.bolt.cert import KNOWN_HOSTS
+from neo4j.bolt.response import InitResponse, AckFailureResponse, ResetResponse
 from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
-from neo4j.exceptions import AuthError, ProtocolError, SecurityError, ServiceUnavailable
+from neo4j.exceptions import ProtocolError, SecurityError, ServiceUnavailable
 from neo4j.meta import version
 from neo4j.packstream import Packer, Unpacker
 from neo4j.util import import_best as _import_best
@@ -50,8 +49,6 @@ ChunkedOutputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedOut
 
 DEFAULT_PORT = 7687
 DEFAULT_USER_AGENT = "neo4j-python/%s" % version
-
-KNOWN_HOSTS = path_join(expanduser("~"), ".neo4j", "known_hosts")
 
 MAGIC_PREAMBLE = 0x6060B017
 
@@ -112,43 +109,6 @@ class ServerInfo(object):
         if self.product() != "Neo4j":
             return False
         return self.version_info() >= (3, 2)
-
-
-class Response(object):
-    """ Subscriber object for a full response (zero or
-    more detail messages followed by one summary message).
-    """
-
-    def __init__(self, connection):
-        self.connection = connection
-        self.complete = False
-
-    def on_records(self, records):
-        pass
-
-    def on_success(self, metadata):
-        pass
-
-    def on_failure(self, metadata):
-        pass
-
-    def on_ignored(self, metadata=None):
-        pass
-
-
-class InitResponse(Response):
-
-    def on_success(self, metadata):
-        super(InitResponse, self).on_success(metadata)
-        self.connection.server.version = metadata.get("server")
-
-    def on_failure(self, metadata):
-        code = metadata.get("code")
-        message = metadata.get("message", "Connection initialisation failed")
-        if code == "Neo.ClientError.Security.Unauthorized":
-            raise AuthError(message)
-        else:
-            raise ServiceUnavailable(message)
 
 
 class Connection(object):
@@ -257,32 +217,15 @@ class Connection(object):
         """ Add an ACK_FAILURE message to the outgoing queue, send
         it and consume all remaining messages.
         """
-        response = Response(self)
-
-        def on_failure(metadata):
-            raise ProtocolError("ACK_FAILURE failed")
-
-        response.on_failure = on_failure
-
-        self.append(ACK_FAILURE, response=response)
+        self.append(ACK_FAILURE, response=AckFailureResponse(self))
         self.sync()
 
     def reset(self):
         """ Add a RESET message to the outgoing queue, send
         it and consume all remaining messages.
         """
-        response = Response(self)
-
-        def on_failure(metadata):
-            raise ProtocolError("Reset failed")
-
-        response.on_failure = on_failure
-
-        self.append(RESET, response=response)
-        self.send()
-        fetch = self.fetch
-        while not response.complete:
-            fetch()
+        self.append(RESET, response=ResetResponse(self))
+        self.sync()
 
     def send(self):
         """ Send all queued messages to the server.
@@ -489,52 +432,6 @@ class ConnectionPool(object):
             return self._closed
 
 
-class CertificateStore(object):
-
-    def match_or_trust(self, host, der_encoded_certificate):
-        """ Check whether the supplied certificate matches that stored for the
-        specified host. If it does, return ``True``, if it doesn't, return
-        ``False``. If no entry for that host is found, add it to the store
-        and return ``True``.
-
-        :arg host:
-        :arg der_encoded_certificate:
-        :return:
-        """
-        raise NotImplementedError()
-
-
-class PersonalCertificateStore(CertificateStore):
-
-    def __init__(self, path=None):
-        self.path = path or KNOWN_HOSTS
-
-    def match_or_trust(self, host, der_encoded_certificate):
-        base64_encoded_certificate = b64encode(der_encoded_certificate)
-        if isfile(self.path):
-            with open(self.path) as f_in:
-                for line in f_in:
-                    known_host, _, known_cert = line.strip().partition(":")
-                    known_cert = known_cert.encode("utf-8")
-                    if host == known_host:
-                        return base64_encoded_certificate == known_cert
-        # First use (no hosts match)
-        try:
-            makedirs(dirname(self.path))
-        except OSError:
-            pass
-        f_out = os_open(self.path, O_CREAT | O_APPEND | O_WRONLY, 0o600)  # TODO: Windows
-        if isinstance(host, bytes):
-            os_write(f_out, host)
-        else:
-            os_write(f_out, host.encode("utf-8"))
-        os_write(f_out, b":")
-        os_write(f_out, base64_encoded_certificate)
-        os_write(f_out, b"\n")
-        os_close(f_out)
-        return True
-
-
 def connect(address, ssl_context=None, **config):
     """ Connect and perform a handshake and return a valid Connection object, assuming
     a protocol version can be agreed.
@@ -578,6 +475,7 @@ def connect(address, ssl_context=None, **config):
                                     "provide a certificate")
             trust = config.get("trust", TRUST_DEFAULT)
             if trust == TRUST_ON_FIRST_USE:
+                from neo4j.bolt.cert import PersonalCertificateStore
                 store = PersonalCertificateStore()
                 if not store.match_or_trust(host, der_encoded_server_certificate):
                     raise ProtocolError("Server certificate does not match known certificate "
