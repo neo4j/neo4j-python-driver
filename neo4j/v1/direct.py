@@ -32,7 +32,7 @@ class DirectConnectionPool(ConnectionPool):
         super(DirectConnectionPool, self).__init__(connector)
         self.address = address
 
-    def acquire(self, **parameters):
+    def acquire(self, access_mode=None):
         resolved_addresses = resolve(self.address)
         return self.acquire_direct(resolved_addresses[0])
 
@@ -55,5 +55,5 @@ class DirectDriver(Driver):
         pool = DirectConnectionPool(lambda a: connect(a, security_plan.ssl_context, **config), self.address)
         Driver.__init__(self, pool)
 
-    def session(self, **parameters):
-        return BoltSession(lambda: self.pool.acquire(**parameters))
+    def session(self, access_mode=None, bookmark=None):
+        return BoltSession(self.pool.acquire, access_mode=access_mode, bookmark=bookmark)

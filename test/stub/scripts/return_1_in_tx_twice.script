@@ -1,0 +1,34 @@
+!: AUTO INIT
+!: AUTO RESET
+
+C: RUN "BEGIN" {}
+   PULL_ALL
+S: SUCCESS {"fields": []}
+   SUCCESS {}
+
+C: RUN "RETURN 1" {}
+   PULL_ALL
+S: SUCCESS {"fields": ["1"]}
+   RECORD [1]
+   SUCCESS {}
+
+C: RUN "COMMIT" {}
+   PULL_ALL
+S: SUCCESS {"bookmark": "bookmark:1"}
+   SUCCESS {}
+
+C: RUN "BEGIN" {"bookmark": "bookmark:1"}
+   PULL_ALL
+S: SUCCESS {"fields": []}
+   SUCCESS {}
+
+C: RUN "RETURN 1" {}
+   PULL_ALL
+S: SUCCESS {"fields": ["1"]}
+   RECORD [1]
+   SUCCESS {}
+
+C: RUN "COMMIT" {}
+   PULL_ALL
+S: SUCCESS {"bookmark": "bookmark:2"}
+   SUCCESS {}

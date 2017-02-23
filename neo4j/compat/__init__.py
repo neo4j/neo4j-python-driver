@@ -34,6 +34,7 @@ except NameError:
 
     integer = int
     string = str
+    unicode = str
 
     def ustr(x):
         if isinstance(x, bytes):
@@ -51,6 +52,7 @@ else:
 
     integer = (int, long)
     string = (str, unicode)
+    unicode = unicode
 
     def ustr(x):
         if isinstance(x, str):

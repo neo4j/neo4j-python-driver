@@ -393,8 +393,10 @@ class ConnectionPool(object):
                 connections.append(connection)
                 return connection
 
-    def acquire(self, **parameters):
+    def acquire(self, access_mode=None):
         """ Acquire a connection to a server that can satisfy a set of parameters.
+
+        :param access_mode:
         """
 
     def release(self, connection):
