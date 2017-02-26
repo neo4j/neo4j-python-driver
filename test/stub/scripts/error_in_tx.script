@@ -1,0 +1,20 @@
+!: AUTO INIT
+!: AUTO RESET
+
+C: RUN "BEGIN" {}
+   PULL_ALL
+S: SUCCESS {"fields": []}
+   SUCCESS {}
+
+C: RUN "X" {}
+   PULL_ALL
+S: FAILURE {"code": "Neo.ClientError.Statement.SyntaxError", "message": "X"}
+   IGNORED {}
+
+C: ACK_FAILURE
+S: SUCCESS {}
+
+C: RUN "ROLLBACK" {}
+   PULL_ALL
+S: SUCCESS {}
+   SUCCESS {}

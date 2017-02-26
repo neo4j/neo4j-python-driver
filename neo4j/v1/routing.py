@@ -168,7 +168,7 @@ class RoutingConnectionPool(ConnectionPool):
                                    if routing support is broken
         """
         try:
-            with BoltSession(lambda: self.acquire_direct(address)) as session:
+            with BoltSession(lambda _: self.acquire_direct(address)) as session:
                 return list(session.run("CALL %s" % self.routing_info_procedure))
         except CypherError as error:
             if error.code == "Neo.ClientError.Procedure.ProcedureNotFound":
@@ -251,8 +251,9 @@ class RoutingConnectionPool(ConnectionPool):
             self.update_routing_table()
             return True
 
-    def acquire(self, **parameters):
-        access_mode = parameters.get("access_mode", WRITE_ACCESS)
+    def acquire(self, access_mode=None):
+        if access_mode is None:
+            access_mode = WRITE_ACCESS
         if access_mode == READ_ACCESS:
             server_list = self.routing_table.readers
         elif access_mode == WRITE_ACCESS:
@@ -311,5 +312,5 @@ class RoutingDriver(Driver):
         else:
             Driver.__init__(self, pool)
 
-    def session(self, **parameters):
-        return BoltSession(lambda: self.pool.acquire(**parameters))
+    def session(self, access_mode=None, bookmark=None):
+        return BoltSession(self.pool.acquire, access_mode=access_mode, bookmark=bookmark)

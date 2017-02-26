@@ -32,6 +32,9 @@ WRITE_ACCESS = "WRITE"
 DEFAULT_ACCESS = WRITE_ACCESS
 
 
+_warned_about_transaction_bookmarks = False
+
+
 class ValueSystem(object):
 
     def hydrate(self, values):
@@ -116,13 +119,14 @@ class Driver(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def session(self, **parameters):
+    def session(self, access_mode=None, bookmark=None):
         """ Create a new session using a connection from the driver connection
         pool. Session creation is a lightweight operation and sessions are
         not thread safe, therefore a session should generally be short-lived
         within a single thread.
 
-        :param parameters:
+        :param access_mode:
+        :param bookmark:
         :returns: new :class:`.Session` object
         """
         pass
@@ -154,13 +158,27 @@ class Session(object):
 
     """
 
+    #: The current connection.
+    _connection = None
+
+    #: The access mode for the current connection.
+    _connection_access_mode = None
+
     #: The current :class:`.Transaction` instance, if any.
-    transaction = None
+    _transaction = None
+
+    #: The last result received.
+    _last_result = None
 
     #: The bookmark received from completion of the last :class:`.Transaction`.
-    bookmark = None
+    _bookmark = None
 
     _closed = False
+
+    def __init__(self, acquirer, access_mode=None, bookmark=None):
+        self._acquirer = acquirer
+        self._default_access_mode = access_mode or WRITE_ACCESS
+        self._bookmark = bookmark
 
     def __del__(self):
         try:
@@ -174,18 +192,37 @@ class Session(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
+    def _connect(self, access_mode=None):
+        if access_mode is None:
+            access_mode = self._default_access_mode
+        if self._connection:
+            if access_mode == self._connection_access_mode:
+                return
+            self._disconnect(sync=True)
+        self._connection = self._acquirer(access_mode)
+        self._connection_access_mode = access_mode
+
+    def _disconnect(self, sync):
+        if self._connection:
+            if sync:
+                self._connection.sync()
+            self._connection.in_use = False
+            self._connection = None
+            self._connection_access_mode = None
+
     def close(self):
         """ Close the session. This will release any borrowed resources,
         such as connections, and will roll back any outstanding transactions.
         """
         try:
-            if self.transaction:
+            if self.has_transaction():
                 try:
                     self.rollback_transaction()
                 except (CypherError, TransactionError, SessionError, ServiceUnavailable):
                     pass
         finally:
             self._closed = True
+        self._disconnect(sync=True)
 
     def closed(self):
         """ Indicator for whether or not this session has been closed.
@@ -222,15 +259,31 @@ class Session(object):
         if not statement:
             raise ValueError("Cannot run an empty statement")
 
+        if not self.has_transaction():
+            self._connect()
+
+        result = self.__run__(fix_statement(statement), fix_parameters(parameters, **kwparameters))
+
+        if not self.has_transaction():
+            self._connection.send()
+            self._connection.fetch()
+
+        return result
+
     def send(self):
         """ Send all outstanding requests.
         """
+        if self._connection:
+            self._connection.send()
 
     def fetch(self):
         """ Attempt to fetch at least one more record.
 
         :returns: number of records fetched
         """
+        if self._connection:
+            detail_count, _ = self._connection.fetch()
+            return detail_count
         return 0
 
     def sync(self):
@@ -238,6 +291,9 @@ class Session(object):
 
         :returns: number of records fetched
         """
+        if self._connection:
+            detail_count, _ = self._connection.sync()
+            return detail_count
         return 0
 
     def detach(self, result):
@@ -248,15 +304,32 @@ class Session(object):
         :returns: number of records fetched
         """
         count = 0
+
         self.send()
         fetch = self.fetch
         while result.attached():
             count += fetch()
+
+        if self._last_result is result:
+            self._last_result = None
+            if not self.has_transaction():
+                self._disconnect(sync=False)
+
         return count
 
-    @property
     def last_bookmark(self):
-        return self.bookmark
+        """ The bookmark returned by the last :class:`.Transaction`.
+        """
+        return self._bookmark
+
+    def has_transaction(self):
+        return bool(self._transaction)
+
+    def _create_transaction(self):
+        self._transaction = Transaction(self, on_close=self._destroy_transaction)
+
+    def _destroy_transaction(self):
+        self._transaction = None
 
     def begin_transaction(self, bookmark=None):
         """ Create a new :class:`.Transaction` within this session.
@@ -267,16 +340,21 @@ class Session(object):
         :returns: new :class:`.Transaction` instance.
         :raise: :class:`.TransactionError` if a transaction is already open
         """
-        if self.transaction:
+        if self.has_transaction():
             raise TransactionError("Explicit transaction already open")
 
-        def clear_transaction():
-            self.transaction = None
-
         if bookmark is not None:
-            self.bookmark = bookmark
-        self.transaction = Transaction(self, on_close=clear_transaction)
-        return self.transaction
+            global _warned_about_transaction_bookmarks
+            if not _warned_about_transaction_bookmarks:
+                from warnings import warn
+                warn("Passing bookmarks at transaction level is deprecated", category=DeprecationWarning, stacklevel=2)
+                _warned_about_transaction_bookmarks = True
+            self._bookmark = bookmark
+
+        self._create_transaction()
+        self._connect()
+        self.__begin__()
+        return self._transaction
 
     def commit_transaction(self):
         """ Commit the current transaction.
@@ -284,19 +362,57 @@ class Session(object):
         :returns: the bookmark returned from the server, if any
         :raise: :class:`.TransactionError` if no transaction is currently open
         """
-        if not self.transaction:
+        if not self.has_transaction():
             raise TransactionError("No transaction to commit")
-        self.transaction = None
+        self._transaction = None
+        result = self.__commit__()
+        result.consume()
+        self._bookmark = self.__bookmark__(result)
+        return self._bookmark
 
     def rollback_transaction(self):
         """ Rollback the current transaction.
 
         :raise: :class:`.TransactionError` if no transaction is currently open
         """
-        if not self.transaction:
+        if not self.has_transaction():
             raise TransactionError("No transaction to rollback")
-        self.transaction = None
-        self.bookmark = None
+        self._transaction = None
+        self._bookmark = None
+        self.__rollback__().consume()
+
+    def read_transaction(self, unit_of_work):
+        if not callable(unit_of_work):
+            raise TypeError("Unit of work is not callable")
+        self._create_transaction()
+        self._connect(READ_ACCESS)
+        self.__begin__()
+        with self._transaction as tx:
+            return unit_of_work(tx)
+
+    def write_transaction(self, unit_of_work):
+        if not callable(unit_of_work):
+            raise TypeError("Unit of work is not callable")
+        self._create_transaction()
+        self._connect(WRITE_ACCESS)
+        self.__begin__()
+        with self._transaction as tx:
+            return unit_of_work(tx)
+
+    def __run__(self, statement, parameters):
+        pass
+
+    def __begin__(self):
+        pass
+
+    def __commit__(self):
+        pass
+
+    def __rollback__(self):
+        pass
+
+    def __bookmark__(self, result):
+        pass
 
 
 class Transaction(object):
@@ -398,12 +514,18 @@ class Transaction(object):
         """ Close this transaction, triggering either a COMMIT or a ROLLBACK.
         """
         if not self.closed():
-            if self.success:
-                self.session.commit_transaction()
-            else:
-                self.session.rollback_transaction()
-            self._closed = True
-            self.on_close()
+            try:
+                self.sync()
+            except CypherError:
+                self.success = False
+                raise
+            finally:
+                if self.success:
+                    self.session.commit_transaction()
+                else:
+                    self.session.rollback_transaction()
+                self._closed = True
+                self.on_close()
 
     def closed(self):
         """ Indicator to show whether the transaction has been closed.
