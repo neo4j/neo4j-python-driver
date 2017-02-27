@@ -20,7 +20,8 @@
 
 
 from collections import namedtuple
-from socket import getaddrinfo, gaierror, SOCK_STREAM, IPPROTO_TCP, AF_INET6, inet_aton, inet_pton
+from socket import getaddrinfo, gaierror, error as SocketError, \
+    SOCK_STREAM, IPPROTO_TCP, AF_INET6, inet_aton, inet_pton
 
 from neo4j.compat import urlparse
 from neo4j.exceptions import AddressError
@@ -69,7 +70,7 @@ def resolve(socket_address):
 def is_ipv4_address(string):
     try:
         inet_aton(string)
-    except OSError:
+    except (OSError, SocketError):
         return False
     else:
         return True
@@ -78,7 +79,7 @@ def is_ipv4_address(string):
 def is_ipv6_address(string):
     try:
         inet_pton(AF_INET6, string)
-    except OSError:
+    except (OSError, SocketError):
         return False
     else:
         return True
