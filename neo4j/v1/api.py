@@ -20,16 +20,21 @@
 
 
 from collections import deque
+from random import random
+from threading import RLock
+from time import clock, sleep
 from warnings import warn
 
 from neo4j.bolt import ProtocolError, ServiceUnavailable
 from neo4j.compat import urlparse
 
-from .exceptions import CypherError, SessionError, TransactionError
+from .exceptions import DriverError, SessionError, SessionExpired, TransactionError, CypherError
+
 
 READ_ACCESS = "READ"
 WRITE_ACCESS = "WRITE"
-DEFAULT_ACCESS = WRITE_ACCESS
+
+DEFAULT_RETRY_LOGIC = (30, 1.0, 0.2)
 
 
 _warned_about_transaction_bookmarks = False
@@ -105,10 +110,16 @@ class Driver(object):
     should be created via the :meth:`.GraphDatabase.driver` method.
     """
 
-    pool = None
+    #: Connection pool
+    _pool = None
 
-    def __init__(self, pool):
-        self.pool = pool
+    #: Indicator of driver closure.
+    _closed = False
+
+    def __init__(self, pool, **config):
+        self._lock = RLock()
+        self._pool = pool
+        self._retry_logic = config.get("retry_logic", DEFAULT_RETRY_LOGIC)
 
     def __del__(self):
         self.close()
@@ -129,15 +140,22 @@ class Driver(object):
         :param bookmark:
         :returns: new :class:`.Session` object
         """
-        pass
+        if self.closed():
+            raise DriverError("Driver closed")
 
     def close(self):
         """ Shut down, closing any open connections that were spawned by
         this Driver.
         """
-        if self.pool:
-            self.pool.close()
-            self.pool = None
+        with self._lock:
+            if not self._closed:
+                self._closed = True
+                self._pool.close()
+                self._pool = None
+
+    def closed(self):
+        with self._lock:
+            return self._closed
 
 
 class Session(object):
@@ -175,8 +193,9 @@ class Session(object):
 
     _closed = False
 
-    def __init__(self, acquirer, access_mode=None, bookmark=None):
+    def __init__(self, acquirer, retry_logic=None, access_mode=None, bookmark=None):
         self._acquirer = acquirer
+        self._retry_logic = retry_logic or DEFAULT_RETRY_LOGIC
         self._default_access_mode = access_mode or WRITE_ACCESS
         self._bookmark = bookmark
 
@@ -381,23 +400,31 @@ class Session(object):
         self._bookmark = None
         self.__rollback__().consume()
 
-    def read_transaction(self, unit_of_work):
+    def _run_transaction(self, access_mode, unit_of_work):
         if not callable(unit_of_work):
             raise TypeError("Unit of work is not callable")
-        self._create_transaction()
-        self._connect(READ_ACCESS)
-        self.__begin__()
-        with self._transaction as tx:
-            return unit_of_work(tx)
+        last_error = None
+        max_time, delay, jitter = self._retry_logic
+        t0 = t1 = clock()
+        while t1 - t0 <= max_time:
+            try:
+                self._create_transaction()
+                self._connect(access_mode)
+                self.__begin__()
+                with self._transaction as tx:
+                    return unit_of_work(tx)
+            except (ServiceUnavailable, SessionExpired) as error:
+                last_error = error
+            sleep(delay - (jitter / 2) + (jitter * random()))
+            delay *= 2
+            t1 = clock()
+        raise last_error
+
+    def read_transaction(self, unit_of_work):
+        return self._run_transaction(READ_ACCESS, unit_of_work)
 
     def write_transaction(self, unit_of_work):
-        if not callable(unit_of_work):
-            raise TypeError("Unit of work is not callable")
-        self._create_transaction()
-        self._connect(WRITE_ACCESS)
-        self.__begin__()
-        with self._transaction as tx:
-            return unit_of_work(tx)
+        return self._run_transaction(WRITE_ACCESS, unit_of_work)
 
     def __run__(self, statement, parameters):
         pass

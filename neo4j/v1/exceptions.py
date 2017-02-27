@@ -22,18 +22,13 @@
 from neo4j.exceptions import *
 
 
-class CypherError(Exception):
-    """ Raised when the Cypher engine returns an error to the client.
+class DriverError(Exception):
+    """ Raised when an error occurs while using a driver.
     """
 
-    code = None
-    message = None
-
-    def __init__(self, data):
-        super(CypherError, self).__init__(data.get("message"))
-        for key, value in data.items():
-            if not key.startswith("_"):
-                setattr(self, key, value)
+    def __init__(self, driver, *args, **kwargs):
+        super(DriverError, self).__init__(*args, **kwargs)
+        self.driver = driver
 
 
 class SessionError(Exception):
@@ -60,4 +55,18 @@ class TransactionError(Exception):
 
     def __init__(self, transaction, *args, **kwargs):
         super(TransactionError, self).__init__(*args, **kwargs)
-        self.session = transaction
+        self.transaction = transaction
+
+
+class CypherError(Exception):
+    """ Raised when the Cypher engine returns an error to the client.
+    """
+
+    code = None
+    message = None
+
+    def __init__(self, data):
+        super(CypherError, self).__init__(data.get("message"))
+        for key, value in data.items():
+            if not key.startswith("_"):
+                setattr(self, key, value)
