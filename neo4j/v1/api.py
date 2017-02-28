@@ -31,13 +31,24 @@ from neo4j.compat import urlparse
 from .exceptions import DriverError, SessionError, SessionExpired, TransactionError, CypherError
 
 
+_warned_about_transaction_bookmarks = False
+
+
 READ_ACCESS = "READ"
 WRITE_ACCESS = "WRITE"
 
-DEFAULT_RETRY_LOGIC = (30, 1.0, 0.2)
+DEFAULT_MAX_RETRY_TIME = 30.0
+INITIAL_RETRY_DELAY = 1.0
+RETRY_DELAY_MULTIPLIER = 2.0
+RETRY_DELAY_JITTER_FACTOR = 0.2
 
 
-_warned_about_transaction_bookmarks = False
+def retry_delay_generator(initial_delay, multiplier, jitter_factor):
+    delay = initial_delay
+    while True:
+        jitter = jitter_factor * delay
+        yield delay - jitter + (2 * jitter * random())
+        delay *= multiplier
 
 
 class ValueSystem(object):
@@ -119,7 +130,7 @@ class Driver(object):
     def __init__(self, pool, **config):
         self._lock = RLock()
         self._pool = pool
-        self._retry_logic = config.get("retry_logic", DEFAULT_RETRY_LOGIC)
+        self._max_retry_time = config.get("max_retry_time", DEFAULT_MAX_RETRY_TIME)
 
     def __del__(self):
         self.close()
@@ -193,9 +204,9 @@ class Session(object):
 
     _closed = False
 
-    def __init__(self, acquirer, retry_logic=None, access_mode=None, bookmark=None):
+    def __init__(self, acquirer, max_retry_time=None, access_mode=None, bookmark=None):
         self._acquirer = acquirer
-        self._retry_logic = retry_logic or DEFAULT_RETRY_LOGIC
+        self._max_retry_time = max_retry_time or DEFAULT_MAX_RETRY_TIME
         self._default_access_mode = access_mode or WRITE_ACCESS
         self._bookmark = bookmark
 
@@ -403,10 +414,12 @@ class Session(object):
     def _run_transaction(self, access_mode, unit_of_work):
         if not callable(unit_of_work):
             raise TypeError("Unit of work is not callable")
+        retry_delay = retry_delay_generator(INITIAL_RETRY_DELAY,
+                                            RETRY_DELAY_MULTIPLIER,
+                                            RETRY_DELAY_JITTER_FACTOR)
         last_error = None
-        max_time, delay, jitter = self._retry_logic
         t0 = t1 = clock()
-        while t1 - t0 <= max_time:
+        while t1 - t0 <= self._max_retry_time:
             try:
                 self._create_transaction()
                 self._connect(access_mode)
@@ -415,8 +428,7 @@ class Session(object):
                     return unit_of_work(tx)
             except (ServiceUnavailable, SessionExpired) as error:
                 last_error = error
-            sleep(delay - (jitter / 2) + (jitter * random()))
-            delay *= 2
+            sleep(next(retry_delay))
             t1 = clock()
         raise last_error
 

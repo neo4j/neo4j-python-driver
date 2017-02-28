@@ -56,4 +56,4 @@ class DirectDriver(Driver):
         Driver.__init__(self, pool, **config)
 
     def session(self, access_mode=None, bookmark=None):
-        return BoltSession(self._pool.acquire, self._retry_logic, access_mode=access_mode, bookmark=bookmark)
+        return BoltSession(self._pool.acquire, self._max_retry_time, access_mode=access_mode, bookmark=bookmark)
