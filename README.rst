@@ -10,21 +10,18 @@ Quick Example
 
 .. code-block:: python
 
-    from neo4j.v1 import GraphDatabase, basic_auth
+    from neo4j.v1 import GraphDatabase
 
-    uri = "bolt://localhost:7687"
-    auth_token = basic_auth("neo4j", "password")
-    driver = GraphDatabase.driver(uri, auth=auth_token)
+    driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "password"))
 
-    def print_friends_of(name):
-        with driver.session() as session:
-            with session.begin_transaction() as tx:
-                for record in tx.run("MATCH (a:Person)-[:KNOWS]->(f) "
-                                     "WHERE a.name = {name} "
-                                     "RETURN f.name", name=name):
-                    print(record["f.name"])
+    def print_friends(tx, name):
+        for record in tx.run("MATCH (a:Person)-[:KNOWS]->(friend) "
+                             "WHERE a.name = {name} "
+                             "RETURN friend.name", name=name):
+            print(record["friend.name"])
 
-    print_friends_of("Alice")
+    with driver.session() as session:
+        session.read_transaction(print_friends, "Alice")
 
 
 Installation

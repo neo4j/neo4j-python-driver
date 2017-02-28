@@ -127,6 +127,8 @@ class Driver(object):
     #: Indicator of driver closure.
     _closed = False
 
+    _lock = None
+
     def __init__(self, pool, **config):
         self._lock = RLock()
         self._pool = pool
@@ -158,6 +160,8 @@ class Driver(object):
         """ Shut down, closing any open connections that were spawned by
         this Driver.
         """
+        if self._lock is None:
+            return
         with self._lock:
             if not self._closed:
                 self._closed = True
@@ -411,7 +415,7 @@ class Session(object):
         self._bookmark = None
         self.__rollback__().consume()
 
-    def _run_transaction(self, access_mode, unit_of_work):
+    def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):
         if not callable(unit_of_work):
             raise TypeError("Unit of work is not callable")
         retry_delay = retry_delay_generator(INITIAL_RETRY_DELAY,
@@ -425,18 +429,18 @@ class Session(object):
                 self._connect(access_mode)
                 self.__begin__()
                 with self._transaction as tx:
-                    return unit_of_work(tx)
+                    return unit_of_work(tx, *args, **kwargs)
             except (ServiceUnavailable, SessionExpired) as error:
                 last_error = error
             sleep(next(retry_delay))
             t1 = clock()
         raise last_error
 
-    def read_transaction(self, unit_of_work):
-        return self._run_transaction(READ_ACCESS, unit_of_work)
+    def read_transaction(self, unit_of_work, *args, **kwargs):
+        return self._run_transaction(READ_ACCESS, unit_of_work, *args, **kwargs)
 
-    def write_transaction(self, unit_of_work):
-        return self._run_transaction(WRITE_ACCESS, unit_of_work)
+    def write_transaction(self, unit_of_work, *args, **kwargs):
+        return self._run_transaction(WRITE_ACCESS, unit_of_work, *args, **kwargs)
 
     def __run__(self, statement, parameters):
         pass
