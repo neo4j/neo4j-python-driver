@@ -20,19 +20,35 @@
 
 
 from collections import deque
+from random import random
+from threading import RLock
+from time import clock, sleep
 from warnings import warn
 
 from neo4j.bolt import ProtocolError, ServiceUnavailable
 from neo4j.compat import urlparse
 
-from .exceptions import CypherError, SessionError, TransactionError
-
-READ_ACCESS = "READ"
-WRITE_ACCESS = "WRITE"
-DEFAULT_ACCESS = WRITE_ACCESS
+from .exceptions import DriverError, SessionError, SessionExpired, TransactionError, CypherError
 
 
 _warned_about_transaction_bookmarks = False
+
+
+READ_ACCESS = "READ"
+WRITE_ACCESS = "WRITE"
+
+DEFAULT_MAX_RETRY_TIME = 30.0
+INITIAL_RETRY_DELAY = 1.0
+RETRY_DELAY_MULTIPLIER = 2.0
+RETRY_DELAY_JITTER_FACTOR = 0.2
+
+
+def retry_delay_generator(initial_delay, multiplier, jitter_factor):
+    delay = initial_delay
+    while True:
+        jitter = jitter_factor * delay
+        yield delay - jitter + (2 * jitter * random())
+        delay *= multiplier
 
 
 class ValueSystem(object):
@@ -105,10 +121,16 @@ class Driver(object):
     should be created via the :meth:`.GraphDatabase.driver` method.
     """
 
-    pool = None
+    #: Connection pool
+    _pool = None
 
-    def __init__(self, pool):
-        self.pool = pool
+    #: Indicator of driver closure.
+    _closed = False
+
+    def __init__(self, pool, **config):
+        self._lock = RLock()
+        self._pool = pool
+        self._max_retry_time = config.get("max_retry_time", DEFAULT_MAX_RETRY_TIME)
 
     def __del__(self):
         self.close()
@@ -129,15 +151,22 @@ class Driver(object):
         :param bookmark:
         :returns: new :class:`.Session` object
         """
-        pass
+        if self.closed():
+            raise DriverError("Driver closed")
 
     def close(self):
         """ Shut down, closing any open connections that were spawned by
         this Driver.
         """
-        if self.pool:
-            self.pool.close()
-            self.pool = None
+        with self._lock:
+            if not self._closed:
+                self._closed = True
+                self._pool.close()
+                self._pool = None
+
+    def closed(self):
+        with self._lock:
+            return self._closed
 
 
 class Session(object):
@@ -175,8 +204,9 @@ class Session(object):
 
     _closed = False
 
-    def __init__(self, acquirer, access_mode=None, bookmark=None):
+    def __init__(self, acquirer, max_retry_time=None, access_mode=None, bookmark=None):
         self._acquirer = acquirer
+        self._max_retry_time = max_retry_time or DEFAULT_MAX_RETRY_TIME
         self._default_access_mode = access_mode or WRITE_ACCESS
         self._bookmark = bookmark
 
@@ -381,23 +411,32 @@ class Session(object):
         self._bookmark = None
         self.__rollback__().consume()
 
-    def read_transaction(self, unit_of_work):
+    def _run_transaction(self, access_mode, unit_of_work):
         if not callable(unit_of_work):
             raise TypeError("Unit of work is not callable")
-        self._create_transaction()
-        self._connect(READ_ACCESS)
-        self.__begin__()
-        with self._transaction as tx:
-            return unit_of_work(tx)
+        retry_delay = retry_delay_generator(INITIAL_RETRY_DELAY,
+                                            RETRY_DELAY_MULTIPLIER,
+                                            RETRY_DELAY_JITTER_FACTOR)
+        last_error = None
+        t0 = t1 = clock()
+        while t1 - t0 <= self._max_retry_time:
+            try:
+                self._create_transaction()
+                self._connect(access_mode)
+                self.__begin__()
+                with self._transaction as tx:
+                    return unit_of_work(tx)
+            except (ServiceUnavailable, SessionExpired) as error:
+                last_error = error
+            sleep(next(retry_delay))
+            t1 = clock()
+        raise last_error
+
+    def read_transaction(self, unit_of_work):
+        return self._run_transaction(READ_ACCESS, unit_of_work)
 
     def write_transaction(self, unit_of_work):
-        if not callable(unit_of_work):
-            raise TypeError("Unit of work is not callable")
-        self._create_transaction()
-        self._connect(WRITE_ACCESS)
-        self.__begin__()
-        with self._transaction as tx:
-            return unit_of_work(tx)
+        return self._run_transaction(WRITE_ACCESS, unit_of_work)
 
     def __run__(self, statement, parameters):
         pass

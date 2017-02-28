@@ -51,7 +51,7 @@ class RoutingDriverTestCase(StubTestCase):
         with StubCluster({9001: "router.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                table = driver.pool.routing_table
+                table = driver._pool.routing_table
                 assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002),
                                          ('127.0.0.1', 9003)}
                 assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}

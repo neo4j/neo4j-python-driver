@@ -53,7 +53,7 @@ class DirectDriver(Driver):
         self.security_plan = security_plan = SecurityPlan.build(**config)
         self.encrypted = security_plan.encrypted
         pool = DirectConnectionPool(lambda a: connect(a, security_plan.ssl_context, **config), self.address)
-        Driver.__init__(self, pool)
+        Driver.__init__(self, pool, **config)
 
     def session(self, access_mode=None, bookmark=None):
-        return BoltSession(self.pool.acquire, access_mode=access_mode, bookmark=bookmark)
+        return BoltSession(self._pool.acquire, self._max_retry_time, access_mode=access_mode, bookmark=bookmark)
