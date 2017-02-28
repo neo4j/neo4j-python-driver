@@ -28,8 +28,10 @@ from test.stub.tools import StubTestCase, StubCluster
 class DirectDriverTestCase(StubTestCase):
 
     def test_bolt_uri_constructs_direct_driver(self):
-        with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token, encrypted=False) as driver:
-            assert isinstance(driver, DirectDriver)
+        with StubCluster({9001: "empty.script"}):
+            uri = "bolt://127.0.0.1:9001"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                assert isinstance(driver, DirectDriver)
 
     def test_direct_disconnect_on_run(self):
         with StubCluster({9001: "disconnect_on_run.script"}):

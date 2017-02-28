@@ -42,7 +42,6 @@ class DriverTestCase(IntegrationTestCase):
 
     def test_fail_nicely_when_using_http_port(self):
         uri = "bolt://localhost:7474"
-        with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-            with self.assertRaises(ServiceUnavailable):
-                with driver.session() as session:
-                    _ = session.run("RETURN 1")
+        with self.assertRaises(ServiceUnavailable):
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False):
+                pass

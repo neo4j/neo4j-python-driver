@@ -149,6 +149,11 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
                 result = session.run("X")
                 list(result.keys())
 
+    def test_should_not_allow_empty_statements(self):
+        with self.driver.session() as session:
+            with self.assertRaises(ValueError):
+                _ = session.run("")
+
 
 class SummaryTestCase(DirectIntegrationTestCase):
 
