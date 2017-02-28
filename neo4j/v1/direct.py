@@ -53,6 +53,7 @@ class DirectDriver(Driver):
         self.security_plan = security_plan = SecurityPlan.build(**config)
         self.encrypted = security_plan.encrypted
         pool = DirectConnectionPool(lambda a: connect(a, security_plan.ssl_context, **config), self.address)
+        pool.acquire()
         Driver.__init__(self, pool, **config)
 
     def session(self, access_mode=None, bookmark=None):
