@@ -165,8 +165,9 @@ class Driver(object):
         with self._lock:
             if not self._closed:
                 self._closed = True
-                self._pool.close()
-                self._pool = None
+                if self._pool is not None:
+                    self._pool.close()
+                    self._pool = None
 
     def closed(self):
         with self._lock:
@@ -634,10 +635,10 @@ class StatementResult(object):
         """
         if self._keys is not None:
             return self._keys
-        self._session.send()
-        fetch = self._session.fetch
-        while self._keys is None and self.attached():
-            fetch()
+        if self.attached():
+            self._session.send()
+        while self.attached() and self._keys is None:
+            self._session.fetch()
         return self._keys
 
     def records(self):
@@ -656,12 +657,11 @@ class StatementResult(object):
         attached = self.attached
         if attached():
             self._session.send()
-            fetch = self._session.fetch
-            while attached():
-                fetch()
-                while records:
-                    values = pop_first_record()
-                    yield zipper(keys, hydrate(values))
+        while attached():
+            self._session.fetch()
+            while records:
+                values = pop_first_record()
+                yield zipper(keys, hydrate(values))
 
     def summary(self):
         """ Obtain the summary of this result, buffering any remaining records.
@@ -715,10 +715,10 @@ class StatementResult(object):
             return zipper(keys, hydrate(values))
         if not self.attached():
             return None
-        self._session.send()
-        fetch = self._session.fetch
-        while not records and self.attached():
-            fetch()
+        if self.attached():
+            self._session.send()
+        while self.attached() and not records:
+            self._session.fetch()
             if records:
                 values = records[0]
                 return zipper(keys, hydrate(values))
