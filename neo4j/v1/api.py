@@ -27,8 +27,9 @@ from warnings import warn
 
 from neo4j.bolt import ProtocolError, ServiceUnavailable
 from neo4j.compat import urlparse
+from neo4j.exceptions import CypherError
 
-from .exceptions import DriverError, SessionError, SessionExpired, TransactionError, CypherError
+from .exceptions import DriverError, SessionError, SessionExpired, TransactionError
 
 
 _warned_about_transaction_bookmarks = False
@@ -558,6 +559,7 @@ class Transaction(object):
         """ Close this transaction, triggering either a COMMIT or a ROLLBACK.
         """
         if not self.closed():
+            self.sync()
             try:
                 self.sync()
             except CypherError:

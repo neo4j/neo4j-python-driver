@@ -19,9 +19,6 @@
 # limitations under the License.
 
 
-from neo4j.exceptions import *
-
-
 class DriverError(Exception):
     """ Raised when an error occurs while using a driver.
     """
@@ -42,7 +39,7 @@ class SessionError(Exception):
 
 class SessionExpired(SessionError):
     """ Raised when no a session is no longer able to fulfil
-    its purpose, as defined by its original session parameters.
+    the purpose described by its original parameters.
     """
 
     def __init__(self, session, *args, **kwargs):
@@ -56,17 +53,3 @@ class TransactionError(Exception):
     def __init__(self, transaction, *args, **kwargs):
         super(TransactionError, self).__init__(*args, **kwargs)
         self.transaction = transaction
-
-
-class CypherError(Exception):
-    """ Raised when the Cypher engine returns an error to the client.
-    """
-
-    code = None
-    message = None
-
-    def __init__(self, data):
-        super(CypherError, self).__init__(data.get("message"))
-        for key, value in data.items():
-            if not key.startswith("_"):
-                setattr(self, key, value)

@@ -19,6 +19,8 @@
 # limitations under the License.
 
 
+from neo4j.exceptions import *
+
 from .api import *
 from .direct import *
 from .exceptions import *

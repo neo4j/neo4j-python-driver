@@ -21,8 +21,8 @@
 
 from collections import namedtuple
 
+from neo4j.exceptions import CypherError
 from neo4j.v1.api import GraphDatabase, StatementResult
-from neo4j.v1.exceptions import CypherError
 from neo4j.v1.types import Record
 
 
@@ -35,8 +35,6 @@ STATEMENT_TYPE_SCHEMA_WRITE = "s"
 class BoltStatementResult(StatementResult):
     """ A handler for the result of Cypher statement execution.
     """
-
-    error_class = CypherError
 
     value_system = GraphDatabase.value_systems["packstream"]
 
@@ -68,7 +66,7 @@ class BoltStatementResult(StatementResult):
             # Called on execution failure.
             self._session._connection.acknowledge_failure()
             on_footer(metadata)
-            raise self.error_class(metadata)
+            raise CypherError.hydrate(**metadata)
 
         run_response.on_success = on_header
         run_response.on_failure = on_failure

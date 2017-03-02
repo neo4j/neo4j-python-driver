@@ -25,8 +25,9 @@ from time import clock
 from neo4j.addressing import SocketAddress, resolve
 from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect
 from neo4j.compat.collections import MutableSet, OrderedDict
+from neo4j.exceptions import CypherError
 from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS
-from neo4j.v1.exceptions import SessionExpired, CypherError
+from neo4j.v1.exceptions import SessionExpired
 from neo4j.v1.security import SecurityPlan
 from neo4j.v1.session import BoltSession
 

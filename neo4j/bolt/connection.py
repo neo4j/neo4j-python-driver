@@ -274,7 +274,6 @@ class Connection(object):
         elif summary_signature == FAILURE:
             log_info("S: FAILURE (%r)", summary_metadata)
             response.on_failure(summary_metadata or {})
-            self.reset()
         else:
             raise ProtocolError("Unexpected response message with signature %02X" % summary_signature)
 
