@@ -18,7 +18,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+
+from __future__ import print_function
+
+from os.path import dirname, join as path_join
 try:
     from setuptools import setup, Extension
 except ImportError:
@@ -30,41 +33,54 @@ try:
     from Cython.Build import cythonize
     from Cython.Distutils import build_ext
 except ImportError:
-    cmdclass = {}
     ext_modules = [
         Extension("neo4j.bolt._io", ["neo4j/bolt/_io.c"]),
         Extension("neo4j.packstream._packer", ["neo4j/packstream/_packer.c"]),
         Extension("neo4j.packstream._unpacker", ["neo4j/packstream/_unpacker.c"]),
     ]
 else:
-    cmdclass = {'build_ext': build_ext}
     ext_modules = cythonize([Extension("*", ["**/*.pyx"])])
 
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Database",
+    "Topic :: Software Development",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3.4",
+    "Programming Language :: Python :: 3.5",
+    "Programming Language :: Python :: 3.6",
+]
+packages = [
+    "neo4j",
+    "neo4j.bolt",
+    "neo4j.compat",
+    "neo4j.packstream",
+    "neo4j.v1",
+]
+package_data = {
+    "neo4j.bolt": ["*.pyx"],
+    "neo4j.packstream": ["*.pyx"],
+}
+setup_args = {
+    "name": "neo4j-driver",
+    "version": version,
+    "description": "Neo4j Bolt driver for Python",
+    "license": "Apache License, Version 2.0",
+    "long_description": open(path_join(dirname(__file__), "README.rst")).read(),
+    "author": "Neo Technology",
+    "author_email": "drivers@neo4j.com",
+    "keywords": "neo4j graph database",
+    "url": "https://github.com/neo4j/neo4j-python-driver",
+    "classifiers": classifiers,
+    "packages": packages,
+    "ext_modules": ext_modules,
+}
 
-# Used for reading the README into long_description below.
-def read(fname):
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
-
-
-setup(name="neo4j-driver",
-      version=version,
-      description="Neo4j Bolt driver for Python",
-      license="Apache License, Version 2.0",
-      long_description=read("README.rst"),
-      author="Neo Technology",
-      author_email="drivers@neo4j.com",
-      keywords="neo4j graph database",
-      url="https://github.com/neo4j/neo4j-python-driver",
-      classifiers=[
-          "Intended Audience :: Developers",
-          "License :: OSI Approved :: Apache Software License",
-          "Operating System :: OS Independent",
-          "Topic :: Database",
-          "Topic :: Software Development",
-          "Programming Language :: Python :: 2.7",
-          "Programming Language :: Python :: 3.4",
-          "Programming Language :: Python :: 3.5",
-          "Programming Language :: Python :: 3.6",
-      ],
-      packages=["neo4j", "neo4j.bolt", "neo4j.compat", "neo4j.packstream", "neo4j.v1"],
-      ext_modules=ext_modules)
+try:
+    setup(**setup_args)
+except SystemExit:
+    print("Compilation failed, falling back to pure Python.")
+    del setup_args["ext_modules"]
+    setup(**setup_args)
