@@ -20,11 +20,32 @@
 
 
 from collections import namedtuple
-from socket import getaddrinfo, gaierror, error as SocketError, \
-    SOCK_STREAM, IPPROTO_TCP, AF_INET6, inet_aton, inet_pton
+from socket import getaddrinfo, gaierror, SOCK_STREAM, IPPROTO_TCP
 
 from neo4j.compat import urlparse
 from neo4j.exceptions import AddressError
+
+
+VALID_IPv4_SEGMENTS = [str(i).encode("latin1") for i in range(0x100)]
+VALID_IPv6_SEGMENT_CHARS = b"0123456789abcdef"
+
+
+def is_ipv4_address(string):
+    if not isinstance(string, bytes):
+        string = str(string).encode("latin1")
+    segments = string.split(b".")
+    return len(segments) == 4 and all(segment in VALID_IPv4_SEGMENTS for segment in segments)
+
+
+def is_ipv6_address(string):
+    if not isinstance(string, bytes):
+        string = str(string).encode("latin1")
+    segments = string.lower().split(b":")
+    return 3 <= len(segments) <= 8 and all(all(c in VALID_IPv6_SEGMENT_CHARS for c in segment) for segment in segments)
+
+
+def is_ip_address(string):
+    return is_ipv4_address(string) or is_ipv6_address(string)
 
 
 IPv4SocketAddress = namedtuple("Address", ["host", "port"])
@@ -65,25 +86,3 @@ def resolve(socket_address):
                 getaddrinfo(socket_address[0], socket_address[1], 0, SOCK_STREAM, IPPROTO_TCP)]
     except gaierror:
         raise AddressError("Cannot resolve address {!r}".format(socket_address[0]))
-
-
-def is_ipv4_address(string):
-    try:
-        inet_aton(string)
-    except (OSError, SocketError):
-        return False
-    else:
-        return True
-
-
-def is_ipv6_address(string):
-    try:
-        inet_pton(AF_INET6, string)
-    except (OSError, SocketError):
-        return False
-    else:
-        return True
-
-
-def is_ip_address(string):
-    return is_ipv4_address(string) or is_ipv6_address(string)
