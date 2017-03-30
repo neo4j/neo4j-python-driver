@@ -359,7 +359,7 @@ class ConnectionPool(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def acquire_direct(self, address, *other_addresses):
+    def acquire_direct(self, address):
         """ Acquire a connection to a given address from the pool.
         The address supplied should always be an IP address, not
         a host name.
