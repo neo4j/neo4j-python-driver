@@ -21,6 +21,7 @@
 
 from neo4j.addressing import SocketAddress, resolve
 from neo4j.bolt import DEFAULT_PORT, ConnectionPool, connect
+from neo4j.exceptions import ServiceUnavailable
 from neo4j.v1.api import Driver
 from neo4j.v1.security import SecurityPlan
 from neo4j.v1.session import BoltSession
@@ -33,8 +34,14 @@ class DirectConnectionPool(ConnectionPool):
         self.address = address
 
     def acquire(self, access_mode=None):
-        resolved_addresses = resolve(self.address)
-        return self.acquire_direct(resolved_addresses[0])
+        for address in resolve(self.address):
+            try:
+                connection = self.acquire_direct(address)  # should always be a resolved address
+            except ServiceUnavailable:
+                pass
+            else:
+                return connection
+        raise ServiceUnavailable("Cannot acquire connection to {!r}".format(self.address))
 
 
 class DirectDriver(Driver):
