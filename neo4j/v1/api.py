@@ -242,8 +242,9 @@ class Session(object):
         if self._connection:
             if sync:
                 self._connection.sync()
-            self._connection.in_use = False
-            self._connection = None
+            if self._connection:
+                self._connection.in_use = False
+                self._connection = None
             self._connection_access_mode = None
 
     def close(self):

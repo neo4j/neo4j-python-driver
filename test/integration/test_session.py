@@ -551,6 +551,11 @@ class ResultConsumptionTestCase(DirectIntegrationTestCase):
                 upcoming = result.peek()
                 assert upcoming is None
 
+    def test_can_safely_exit_session_without_consuming_result(self):
+        with self.driver.session() as session:
+            session.run("RETURN 1")
+        assert True
+
 
 class SessionCompletionTestCase(DirectIntegrationTestCase):
 
