@@ -453,6 +453,7 @@ def connect(address, ssl_context=None, **config):
         s.connect(address)
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1 if config.get("keep_alive", True) else 0)
     except SocketError as error:
+        s.close()
         if error.errno in (61, 111, 10061):
             raise ServiceUnavailable("Failed to establish connection to {!r}".format(address))
         else:
@@ -465,6 +466,7 @@ def connect(address, ssl_context=None, **config):
         try:
             s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
         except SSLError as cause:
+            s.close()
             error = SecurityError("Failed to establish secure connection to {!r}".format(cause.args[1]))
             error.__cause__ = cause
             raise error
@@ -473,6 +475,7 @@ def connect(address, ssl_context=None, **config):
             # Check that the server provides a certificate
             der_encoded_server_certificate = s.getpeercert(binary_form=True)
             if der_encoded_server_certificate is None:
+                s.close()
                 raise ProtocolError("When using a secure socket, the server should always "
                                     "provide a certificate")
             trust = config.get("trust", TRUST_DEFAULT)
@@ -480,6 +483,7 @@ def connect(address, ssl_context=None, **config):
                 from neo4j.bolt.cert import PersonalCertificateStore
                 store = PersonalCertificateStore()
                 if not store.match_or_trust(host, der_encoded_server_certificate):
+                    s.close()
                     raise ProtocolError("Server certificate does not match known certificate "
                                         "for %r; check details in file %r" % (host, KNOWN_HOSTS))
     else:
@@ -502,10 +506,12 @@ def connect(address, ssl_context=None, **config):
         # If no data is returned after a successful select
         # response, the server has closed the connection
         log_error("S: [CLOSE]")
+        s.close()
         raise ProtocolError("Connection to %r closed without handshake response" % (address,))
     if data_size != 4:
         # Some garbled data has been received
         log_error("S: @*#!")
+        s.close()
         raise ProtocolError("Expected four byte handshake response, received %r instead" % data)
     agreed_version, = struct_unpack(">I", data)
     log_info("S: [HANDSHAKE] %d", agreed_version)
@@ -517,8 +523,10 @@ def connect(address, ssl_context=None, **config):
         return Connection(s, der_encoded_server_certificate=der_encoded_server_certificate, **config)
     elif agreed_version == 0x48545450:
         log_error("S: [CLOSE]")
+        s.close()
         raise ServiceUnavailable("Cannot to connect to Bolt service on {!r} "
                                  "(looks like HTTP)".format(address))
     else:
         log_error("S: [CLOSE]")
+        s.close()
         raise ProtocolError("Unknown Bolt protocol version: {}".format(agreed_version))
