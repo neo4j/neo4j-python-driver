@@ -106,9 +106,15 @@ class ExamplesTest(IntegrationTestCase):
 
         self.assertEqual(employee_count, 2)
 
-    # def test_service_unavailable_example(self):
-    #     from service_unavailable_example import ServiceUnavailableExample
-    #     pass
+    def test_service_unavailable_example(self):
+        from service_unavailable_example import ServiceUnavailableExample
+
+        example = ServiceUnavailableExample(self.bolt_uri, self.user, self.password)
+        ExamplesTest._stop_server()
+
+        self.assertFalse(example.addItem())
+
+        ExamplesTest._start_server()
 
     def test_session_example(self):
         from session_example import SessionExample

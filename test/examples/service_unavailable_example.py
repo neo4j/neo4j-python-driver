@@ -19,33 +19,20 @@
 # limitations under the License.
 
 # tag::service-unavailable-import[]
-from neo4j.v1 import GraphDatabase
+from neo4j.v1 import GraphDatabase, ServiceUnavailable
+from base_application import BaseApplication
 # end::service-unavailable-import[]
 
-class ServiceUnavailableExample:
+class ServiceUnavailableExample(BaseApplication):
     def __init__(self, uri, user, password):
-        self._driver = GraphDatabase.driver( uri, auth=(user, password), Config.build().withMaxTransactionRetryTime( 3, SECONDS ).withLogging( DEV_NULL_LOGGING ).toConfig() )
-
-    def close(self):
-        self._driver.close();
+        super().__init__(uri, user, password)
 
     # tag::service-unavailable[]
     def addItem(self):
-        try ( Session session = driver.session() )
-        {
-            return session.writeTransaction( new TransactionWork<Boolean>()
-            {
-                @Override
-                public Boolean execute( Transaction tx )
-                {
-                    tx.run( "CREATE (a:Item)" );
-                    return true;
-                }
-            } );
-        }
-        catch ( ServiceUnavailableException ex )
-        {
-            return false;
-        }
-    }
+        try:
+            with self._driver.session() as session:
+                session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
+                return True
+        except ServiceUnavailable as e:
+            return False
     # end::service-unavailable[]
