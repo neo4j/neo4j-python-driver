@@ -106,16 +106,6 @@ class ExamplesTest(IntegrationTestCase):
 
         self.assertEqual(employee_count, 2)
 
-    def test_service_unavailable_example(self):
-        from service_unavailable_example import ServiceUnavailableExample
-
-        example = ServiceUnavailableExample(self.bolt_uri, self.user, self.password)
-        ExamplesTest.controller.stop()
-
-        self.assertFalse(example.addItem())
-
-        ExamplesTest.controller.start()
-
     def test_session_example(self):
         from session_example import SessionExample
 
@@ -154,3 +144,14 @@ class ExamplesTest(IntegrationTestCase):
             with driver.session() as session:
                 record_list = list(session.run("MATCH (a:Person {name: $name}) RETURN count(a)", {"name": name}))
                 return len(record_list)
+
+
+class ServiceUnavailableTest(IntegrationTestCase):
+
+    def test_service_unavailable_example(self):
+        from service_unavailable_example import ServiceUnavailableExample
+
+        example = ServiceUnavailableExample(self.bolt_uri, self.user, self.password)
+        self.__class__._stop_server()
+
+        self.assertFalse(example.addItem())
