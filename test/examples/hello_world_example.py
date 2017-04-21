@@ -20,15 +20,13 @@
 
 # tag::hello-world-import[]
 from neo4j.v1 import GraphDatabase
+from base_application import BaseApplication
 # end::hello-world-import[]
 
 # tag::hello-world[]
-class HelloWorldExample:
+class HelloWorldExample(BaseApplication):
     def __init__(self, uri, user, password):
-        self._driver = GraphDatabase.driver(uri, auth=(user, password))
-
-    def close(self):
-        self._driver.close()
+        super().__init__(uri, user, password)
 
     def _create_and_return_greeting(self, tx, message):
         record_list = list(tx.run("CREATE (a:Greeting) " +
