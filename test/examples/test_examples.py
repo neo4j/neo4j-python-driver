@@ -40,28 +40,12 @@ class ExamplesTest(IntegrationTestCase):
 
         self.assertTrue(example.can_connect())
 
-    # def test_config_connection_timeout_example(self):
-    #     from config_connection_timeout_example import ConfigConnectionTimeoutExample
-    #     pass
-        
-    # def test_config_max_retry_time_example(self):
-    #     from config_max_retry_time_example import ConfigMaxRetryTimeExample
-    #     pass
-
-    # def test_config_trust_example(self):
-    #     from config_trust_example import ConfigTrustExample
-    #     pass
-
     def test_config_unencrypted_example(self):
         from config_unencrypted_example import ConfigUnencryptedExample
 
         example = ConfigUnencryptedExample(self.bolt_uri, self.user, self.password)
 
         self.assertIsInstance(example, ConfigUnencryptedExample)
-
-    # def test_custom_auth_example(self):
-    #     from custom_auth_example import CustomAuthExample
-    #     pass
 
     def Xtest_cypher_error_example(self):
         from cypher_error_example import CypherErrorExample
