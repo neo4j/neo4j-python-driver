@@ -29,10 +29,10 @@ class ServiceUnavailableExample(BaseApplication):
 
     # tag::service-unavailable[]
     def addItem(self):
+        session = self._driver.session()
         try:
-            with self._driver.session() as session:
-                session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
-                return True
+            session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
+            return True
         except ServiceUnavailable as e:
             return False
     # end::service-unavailable[]

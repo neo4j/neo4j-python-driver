@@ -110,11 +110,11 @@ class ExamplesTest(IntegrationTestCase):
         from service_unavailable_example import ServiceUnavailableExample
 
         example = ServiceUnavailableExample(self.bolt_uri, self.user, self.password)
-        ExamplesTest._stop_server()
+        ExamplesTest.controller.stop()
 
         self.assertFalse(example.addItem())
 
-        ExamplesTest._start_server()
+        ExamplesTest.controller.start()
 
     def test_session_example(self):
         from session_example import SessionExample
