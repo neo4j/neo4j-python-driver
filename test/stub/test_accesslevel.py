@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from neo4j.v1 import GraphDatabase, CypherError
+from neo4j.v1 import GraphDatabase, CypherError, TransientError
 
 from test.stub.tools import StubTestCase, StubCluster
 
@@ -159,3 +159,25 @@ class AccessLevelTestCase(StubTestCase):
                     assert value == 1
                     value = session.read_transaction(unit_of_work_2)
                     assert value == 2
+
+    def test_no_retry_read_on_user_canceled_tx(self):
+        with StubCluster({9001: "router.script", 9004: "user_canceled_tx.script.script"}):
+            uri = "bolt+routing://127.0.0.1:9001"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                with driver.session() as session:
+                    def unit_of_work(tx):
+                        tx.run("RETURN 1")
+
+                    with self.assertRaises(TransientError):
+                        _ = session.read_transaction(unit_of_work)
+
+    def test_no_retry_write_on_user_canceled_tx(self):
+        with StubCluster({9001: "router.script", 9006: "user_canceled_tx.script.script"}):
+            uri = "bolt+routing://127.0.0.1:9001"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                with driver.session() as session:
+                    def unit_of_work(tx):
+                        tx.run("RETURN 1")
+
+                    with self.assertRaises(TransientError):
+                        _ = session.write_transaction(unit_of_work)
