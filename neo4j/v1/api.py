@@ -27,13 +27,11 @@ from warnings import warn
 
 from neo4j.bolt import ProtocolError, ServiceUnavailable
 from neo4j.compat import urlparse
-from neo4j.exceptions import CypherError
+from neo4j.exceptions import CypherError, TransientError
 
 from .exceptions import DriverError, SessionError, SessionExpired, TransactionError
 
-
 _warned_about_transaction_bookmarks = False
-
 
 READ_ACCESS = "READ"
 WRITE_ACCESS = "WRITE"
@@ -53,7 +51,6 @@ def retry_delay_generator(initial_delay, multiplier, jitter_factor):
 
 
 class ValueSystem(object):
-
     def hydrate(self, values):
         """ Hydrate values from raw representations into client objects.
         """
@@ -435,6 +432,11 @@ class Session(object):
                     return unit_of_work(tx, *args, **kwargs)
             except (ServiceUnavailable, SessionExpired) as error:
                 last_error = error
+            except TransientError as error:
+                if is_retriable_transientError(error):
+                    last_error = error
+                else:
+                    raise error
             sleep(next(retry_delay))
             t1 = clock()
         raise last_error
@@ -459,6 +461,17 @@ class Session(object):
 
     def __bookmark__(self, result):
         pass
+
+
+def is_retriable_transientError(error):
+    """
+    :type error: TransientError
+    """
+    if (error.code != "Neo.TransientError.Transaction.Terminated"
+        and error.code != "Neo.TransientError.Transaction.LockClientStopped"):
+        return True
+    else:
+        return False
 
 
 class Transaction(object):
