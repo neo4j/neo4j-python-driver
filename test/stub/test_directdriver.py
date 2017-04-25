@@ -49,6 +49,11 @@ class DirectDriverTestCase(StubTestCase):
                     with driver.session() as session:
                         session.run("RETURN $x", {"x": 1}).consume()
 
+    def test_direct_should_reject_routing_context(self):
+            uri = "bolt://127.0.0.1:9001/?name=molly&age=1"
+            with self.assertRaises(ValueError):
+                GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False)
+
     def test_direct_session_close_after_server_close(self):
         with StubCluster({9001: "disconnect_after_init.script"}):
             uri = "bolt://127.0.0.1:9001"
