@@ -333,7 +333,7 @@ class RoutingDriver(Driver):
         def connector(a):
             return connect(a, security_plan.ssl_context, **config)
 
-        pool = RoutingConnectionPool(connector, initial_address, routing_context *resolve(initial_address))
+        pool = RoutingConnectionPool(connector, initial_address, routing_context, *resolve(initial_address))
         try:
             pool.update_routing_table()
         except:
