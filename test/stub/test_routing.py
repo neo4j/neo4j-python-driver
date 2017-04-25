@@ -131,6 +131,19 @@ class RoutingConnectionPoolFetchRoutingInfoTestCase(StubTestCase):
                 with self.assertRaises(ServiceUnavailable):
                     _ = pool.fetch_routing_info(address)
 
+    def test_should_call_get_routing_tables_with_context(self):
+        with StubCluster({9001: "get_routing_table_with_context.script"}):
+            address = ("127.0.0.1", 9001)
+            routing_context = {"name": "molly", "age": "1"}
+            with RoutingConnectionPool(connector, UNREACHABLE_ADDRESS, routing_context) as pool:
+                pool.fetch_routing_info(address)
+
+    def test_should_call_get_routing_tables(self):
+        with StubCluster({9001: "get_routing_table.script"}):
+            address = ("127.0.0.1", 9001)
+            with RoutingConnectionPool(connector, UNREACHABLE_ADDRESS, {}) as pool:
+                pool.fetch_routing_info(address)
+
 
 class RoutingConnectionPoolFetchRoutingTableTestCase(StubTestCase):
     def test_should_get_table_from_router(self):
