@@ -33,6 +33,7 @@ except ImportError:
 from boltkit.controller import WindowsController, UnixController
 
 from neo4j.v1 import GraphDatabase, AuthError
+from neo4j.util import ServerVersion
 
 from test.env import NEO4J_SERVER_PACKAGE, NEO4J_USER, NEO4J_PASSWORD
 
@@ -89,17 +90,11 @@ class IntegrationTestCase(TestCase):
         with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth_token) as driver:
             with driver.session() as session:
                 full_version = session.run("RETURN 1").summary().server.version
-                if full_version is None:
-                    return "Neo4j", (3, 0), ()
-                product, _, tagged_version = full_version.partition("/")
-                tags = tagged_version.split("-")
-                version = map(int, tags[0].split("."))
-                return product, tuple(version), tuple(tags[1:])
+                return ServerVersion.from_str(full_version)
 
     @classmethod
     def at_least_version(cls, major, minor):
-        _, server_version, _ = cls.server_version_info()
-        return server_version >= (major, minor)
+        return cls.server_version_info().at_least_version(major, minor);
 
     @classmethod
     def delete_known_hosts_file(cls):

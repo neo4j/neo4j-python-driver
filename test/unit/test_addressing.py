@@ -41,3 +41,29 @@ class RoutingTableParseAddressTestCase(TestCase):
     def test_should_fail_on_non_numeric_port(self):
         with self.assertRaises(ValueError):
             _ = SocketAddress.parse("127.0.0.1:X")
+
+    def test_parse_empty_routing_context(self):
+        verify_routing_context({}, "bolt+routing://127.0.0.1/cat?")
+        verify_routing_context({}, "bolt+routing://127.0.0.1/cat")
+        verify_routing_context({}, "bolt+routing://127.0.0.1/?")
+        verify_routing_context({}, "bolt+routing://127.0.0.1/")
+        verify_routing_context({}, "bolt+routing://127.0.0.1?")
+        verify_routing_context({}, "bolt+routing://127.0.0.1")
+
+    def test_parse_routing_context(self):
+        verify_routing_context({"name": "molly", "color": "white"}, "bolt+routing://127.0.0.1/cat?name=molly&color=white")
+        verify_routing_context({"name": "molly", "color": "white"}, "bolt+routing://127.0.0.1/?name=molly&color=white")
+        verify_routing_context({"name": "molly", "color": "white"}, "bolt+routing://127.0.0.1?name=molly&color=white")
+
+    def test_should_error_when_value_missing(self):
+        with self.assertRaises(ValueError):
+            SocketAddress.parse_routing_context("bolt+routing://127.0.0.1/?name=&color=white")
+
+    def test_should_error_when_key_duplicate(self):
+        with self.assertRaises(ValueError):
+            SocketAddress.parse_routing_context("bolt+routing://127.0.0.1/?name=molly&name=white")
+
+
+def verify_routing_context(expected, uri):
+    context = SocketAddress.parse_routing_context(uri)
+    assert context == expected

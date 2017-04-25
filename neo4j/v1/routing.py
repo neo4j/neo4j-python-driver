@@ -30,6 +30,7 @@ from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS
 from neo4j.v1.exceptions import SessionExpired
 from neo4j.v1.security import SecurityPlan
 from neo4j.v1.session import BoltSession
+from neo4j.util import ServerVersion
 
 
 class RoundRobinSet(MutableSet):
@@ -152,13 +153,22 @@ class RoutingConnectionPool(ConnectionPool):
     """ Connection pool with routing table.
     """
 
-    routing_info_procedure = "dbms.cluster.routing.getServers"
+    call_get_servers = "CALL dbms.cluster.routing.getServers"
+    get_routing_table_param = "context"
+    call_get_routing_table = "CALL dbms.cluster.routing.getRoutingTable({" + get_routing_table_param + "})"
 
-    def __init__(self, connector, initial_address, *routers):
+    def __init__(self, connector, initial_address, routing_context, *routers):
         super(RoutingConnectionPool, self).__init__(connector)
         self.initial_address = initial_address
+        self.routing_context = routing_context
         self.routing_table = RoutingTable(routers)
         self.refresh_lock = Lock()
+
+    def routing_info_procedure(self, connection):
+        if ServerVersion.from_str(connection.server.version).at_least_version(3, 2):
+            return self.call_get_routing_table, {self.get_routing_table_param: self.routing_context}
+        else:
+            return self.call_get_servers, None
 
     def fetch_routing_info(self, address):
         """ Fetch raw routing info from a given router address.
@@ -170,8 +180,9 @@ class RoutingConnectionPool(ConnectionPool):
                                    if routing support is broken
         """
         try:
-            with BoltSession(lambda _: self.acquire_direct(address)) as session:
-                return list(session.run("CALL %s" % self.routing_info_procedure))
+            connection = self.acquire_direct(address)
+            with BoltSession(lambda _: connection) as session:
+                return list(session.run(*self.routing_info_procedure(connection)))
         except CypherError as error:
             if error.code == "Neo.ClientError.Procedure.ProcedureNotFound":
                 raise ServiceUnavailable("Server {!r} does not support routing".format(address))
@@ -313,6 +324,7 @@ class RoutingDriver(Driver):
         self.initial_address = initial_address = SocketAddress.from_uri(uri, DEFAULT_PORT)
         self.security_plan = security_plan = SecurityPlan.build(**config)
         self.encrypted = security_plan.encrypted
+        routing_context = SocketAddress.parse_routing_context(uri)
         if not security_plan.routing_compatible:
             # this error message is case-specific as there is only one incompatible
             # scenario right now
@@ -321,7 +333,7 @@ class RoutingDriver(Driver):
         def connector(a):
             return connect(a, security_plan.ssl_context, **config)
 
-        pool = RoutingConnectionPool(connector, initial_address, *resolve(initial_address))
+        pool = RoutingConnectionPool(connector, initial_address, routing_context *resolve(initial_address))
         try:
             pool.update_routing_table()
         except:
