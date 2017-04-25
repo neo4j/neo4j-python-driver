@@ -79,6 +79,25 @@ class SocketAddress(object):
         """
         return cls.from_uri("//{}".format(string), default_port)
 
+    @classmethod
+    def parse_routing_context(cls, uri):
+        query = urlparse(uri).query
+        if not query:
+            return {}
+
+        context = {}
+        parameters = [x for x in query.split('&') if x]
+        for keyValue in parameters:
+            pair = keyValue.split('=')
+            if len(pair) != 2 or not pair[0] or not pair[1]:
+                raise ValueError("Invalid parameters: '" + keyValue + "' in URI '" + uri + "'.")
+            key = pair[0]
+            value = pair[1]
+            if key in context:
+                raise ValueError("Duplicated query parameters with key '" + key + "' found in URL '" + uri + "'")
+            context[key] = value
+        return context
+
 
 def resolve(socket_address):
     try:
