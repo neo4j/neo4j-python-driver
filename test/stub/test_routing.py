@@ -156,6 +156,7 @@ class RoutingConnectionPoolFetchRoutingTableTestCase(StubTestCase):
                 assert table.readers == {("127.0.0.1", 9004), ("127.0.0.1", 9005)}
                 assert table.writers == {("127.0.0.1", 9006)}
                 assert table.ttl == 300
+                assert not pool.missing_writer
 
     def test_null_info_should_return_null_table(self):
         address = ("127.0.0.1", 9001)
@@ -177,12 +178,17 @@ class RoutingConnectionPoolFetchRoutingTableTestCase(StubTestCase):
                 with self.assertRaises(ProtocolError):
                     _ = pool.fetch_routing_table(address)
 
-    def test_no_writers_should_return_null_table(self):
+    def test_no_writers_should_return_table_with_no_writer(self):
         with StubCluster({9001: "router_no_writers.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool() as pool:
                 table = pool.fetch_routing_table(address)
-                assert table is None
+                assert table.routers == {("127.0.0.1", 9001), ("127.0.0.1", 9002),
+                                         ("127.0.0.1", 9003)}
+                assert table.readers == {("127.0.0.1", 9004), ("127.0.0.1", 9005)}
+                assert not table.writers
+                assert table.ttl == 300
+                assert pool.missing_writer
 
 
 class RoutingConnectionPoolUpdateRoutingTableTestCase(StubTestCase):
@@ -211,6 +217,20 @@ class RoutingConnectionPoolUpdateRoutingTableTestCase(StubTestCase):
                 assert table.writers == {("127.0.0.1", 9006)}
                 assert table.ttl == 300
 
+    def test_try_initial_server_first_if_missing_writer(self):
+        with StubCluster({9001: "router.script"}):
+            initial_address = ("127.0.0.1", 9001)
+            with RoutingConnectionPool(connector, initial_address, {}) as pool:
+                pool.missing_writer = True
+                pool.update_routing_table()
+                table = pool.routing_table
+                assert table.routers == {("127.0.0.1", 9001), ("127.0.0.1", 9002),
+                                         ("127.0.0.1", 9003)}
+                assert table.readers == {("127.0.0.1", 9004), ("127.0.0.1", 9005)}
+                assert table.writers == {("127.0.0.1", 9006)}
+                assert table.ttl == 300
+                assert not pool.missing_writer
+
     def test_update_with_no_routers_should_signal_service_unavailable(self):
         with RoutingPool() as pool:
             with self.assertRaises(ServiceUnavailable):
@@ -226,7 +246,7 @@ class RoutingConnectionPoolUpdateRoutingTableTestCase(StubTestCase):
         routers = []
         for port, outcome in enumerate(server_outcomes, 9001):
             if outcome is None:
-                servers[port] = "router_no_writers.script"
+                servers[port] = "rude_router.script"
             elif outcome is RoutingTable:
                 servers[port] = "router.script"
             elif outcome is ServiceUnavailable:
@@ -251,26 +271,37 @@ class RoutingConnectionPoolUpdateRoutingTableTestCase(StubTestCase):
                     assert False, "Unexpected overall outcome %r" % overall_outcome
 
 
-class RoutingConnectionPoolRefreshRoutingTableTestCase(StubTestCase):
+class RoutingConnectionPoolEnsureRoutingTableTestCase(StubTestCase):
     def test_should_update_if_stale(self):
         with StubCluster({9001: "router.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
                 first_updated_time = pool.routing_table.last_updated_time
                 pool.routing_table.ttl = 0
-                pool.refresh_routing_table()
+                pool.ensure_routing_table(WRITE_ACCESS)
                 second_updated_time = pool.routing_table.last_updated_time
                 assert second_updated_time != first_updated_time
+                assert not pool.missing_writer
 
     def test_should_not_update_if_fresh(self):
         with StubCluster({9001: "router.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                pool.refresh_routing_table()
+                pool.ensure_routing_table(WRITE_ACCESS)
                 first_updated_time = pool.routing_table.last_updated_time
-                pool.refresh_routing_table()
+                pool.ensure_routing_table(WRITE_ACCESS)
                 second_updated_time = pool.routing_table.last_updated_time
                 assert second_updated_time == first_updated_time
+                assert not pool.missing_writer
+
+    def test_should_flag_reading_without_writer(self):
+        with StubCluster({9001: "router_no_writers.script"}):
+            address = ("127.0.0.1", 9001)
+            with RoutingPool(address) as pool:
+                assert not pool.routing_table.is_fresh(READ_ACCESS)
+                assert not pool.routing_table.is_fresh(WRITE_ACCESS)
+                pool.ensure_routing_table(READ_ACCESS)
+                assert pool.missing_writer
 
     # TODO: fix flaky test
     # def test_concurrent_refreshes_should_not_block_if_fresh(self):
@@ -372,17 +403,19 @@ class RoutingConnectionPoolAcquireForReadTestCase(StubTestCase):
         with StubCluster({9001: "router.script", 9004: "empty.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                assert not pool.routing_table.is_fresh()
+                assert not pool.routing_table.is_fresh(READ_ACCESS)
                 _ = pool.acquire(access_mode=READ_ACCESS)
-                assert pool.routing_table.is_fresh()
+                assert pool.routing_table.is_fresh(READ_ACCESS)
+                assert not pool.missing_writer
 
     def test_connected_to_reader(self):
         with StubCluster({9001: "router.script", 9004: "empty.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                assert not pool.routing_table.is_fresh()
+                assert not pool.routing_table.is_fresh(READ_ACCESS)
                 connection = pool.acquire(access_mode=READ_ACCESS)
                 assert connection.server.address in pool.routing_table.readers
+                assert not pool.missing_writer
 
     def test_should_retry_if_first_reader_fails(self):
         with StubCluster({9001: "router.script",
@@ -390,10 +423,20 @@ class RoutingConnectionPoolAcquireForReadTestCase(StubTestCase):
                           9005: "empty.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                assert not pool.routing_table.is_fresh()
+                assert not pool.routing_table.is_fresh(READ_ACCESS)
                 _ = pool.acquire(access_mode=READ_ACCESS)
                 assert ("127.0.0.1", 9004) not in pool.routing_table.readers
                 assert ("127.0.0.1", 9005) in pool.routing_table.readers
+
+    def test_should_connect_to_read_in_absent_of_writer(self):
+        with StubCluster({9001: "router_no_writers.script", 9004: "empty.script"}):
+            address = ("127.0.0.1", 9001)
+            with RoutingPool(address) as pool:
+                assert not pool.routing_table.is_fresh(READ_ACCESS)
+                connection = pool.acquire(access_mode=READ_ACCESS)
+                assert connection.server.address in pool.routing_table.readers
+                assert not pool.routing_table.is_fresh(WRITE_ACCESS)
+                assert pool.missing_writer
 
 
 class RoutingConnectionPoolAcquireForWriteTestCase(StubTestCase):
@@ -401,17 +444,19 @@ class RoutingConnectionPoolAcquireForWriteTestCase(StubTestCase):
         with StubCluster({9001: "router.script", 9006: "empty.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                assert not pool.routing_table.is_fresh()
+                assert not pool.routing_table.is_fresh(WRITE_ACCESS)
                 _ = pool.acquire(access_mode=WRITE_ACCESS)
-                assert pool.routing_table.is_fresh()
+                assert pool.routing_table.is_fresh(WRITE_ACCESS)
+                assert not pool.missing_writer
 
     def test_connected_to_writer(self):
         with StubCluster({9001: "router.script", 9006: "empty.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                assert not pool.routing_table.is_fresh()
+                assert not pool.routing_table.is_fresh(WRITE_ACCESS)
                 connection = pool.acquire(access_mode=WRITE_ACCESS)
                 assert connection.server.address in pool.routing_table.writers
+                assert not pool.missing_writer
 
     def test_should_retry_if_first_writer_fails(self):
         with StubCluster({9001: "router_with_multiple_writers.script",
@@ -419,10 +464,21 @@ class RoutingConnectionPoolAcquireForWriteTestCase(StubTestCase):
                           9007: "empty.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                assert not pool.routing_table.is_fresh()
+                assert not pool.routing_table.is_fresh(WRITE_ACCESS)
                 _ = pool.acquire(access_mode=WRITE_ACCESS)
                 assert ("127.0.0.1", 9006) not in pool.routing_table.writers
                 assert ("127.0.0.1", 9007) in pool.routing_table.writers
+
+    def test_should_error_to_writer_in_absent_of_reader(self):
+        with StubCluster({9001: "router_no_readers.script"}):
+            address = ("127.0.0.1", 9001)
+            with RoutingPool(address) as pool:
+                assert not pool.routing_table.is_fresh(WRITE_ACCESS)
+                with self.assertRaises(ProtocolError):
+                    _ = pool.acquire(access_mode=WRITE_ACCESS)
+                assert not pool.routing_table.is_fresh(READ_ACCESS)
+                assert not pool.routing_table.is_fresh(WRITE_ACCESS)
+                assert not pool.missing_writer
 
 
 class RoutingConnectionPoolRemoveTestCase(StubTestCase):
@@ -430,7 +486,7 @@ class RoutingConnectionPoolRemoveTestCase(StubTestCase):
         with StubCluster({9001: "router.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                pool.refresh_routing_table()
+                pool.ensure_routing_table(WRITE_ACCESS)
                 target = ("127.0.0.1", 9001)
                 assert target in pool.routing_table.routers
                 pool.remove(target)
@@ -440,7 +496,7 @@ class RoutingConnectionPoolRemoveTestCase(StubTestCase):
         with StubCluster({9001: "router.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                pool.refresh_routing_table()
+                pool.ensure_routing_table(WRITE_ACCESS)
                 target = ("127.0.0.1", 9004)
                 assert target in pool.routing_table.readers
                 pool.remove(target)
@@ -450,7 +506,7 @@ class RoutingConnectionPoolRemoveTestCase(StubTestCase):
         with StubCluster({9001: "router.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                pool.refresh_routing_table()
+                pool.ensure_routing_table(WRITE_ACCESS)
                 target = ("127.0.0.1", 9006)
                 assert target in pool.routing_table.writers
                 pool.remove(target)
@@ -460,6 +516,6 @@ class RoutingConnectionPoolRemoveTestCase(StubTestCase):
         with StubCluster({9001: "router.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                pool.refresh_routing_table()
+                pool.ensure_routing_table(WRITE_ACCESS)
                 target = ("127.0.0.1", 9007)
                 pool.remove(target)

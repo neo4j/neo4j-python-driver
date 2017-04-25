@@ -132,11 +132,12 @@ class RoutingTable(object):
         self.last_updated_time = self.timer()
         self.ttl = ttl
 
-    def is_fresh(self):
+    def is_fresh(self, access_mode):
         """ Indicator for whether routing information is still usable.
         """
         expired = self.last_updated_time + self.ttl <= self.timer()
-        return not expired and len(self.routers) > 1 and self.readers and self.writers
+        has_server_for_mode = (access_mode == READ_ACCESS and self.readers) or (access_mode == WRITE_ACCESS and self.writers)
+        return not expired and len(self.routers) >= 1 and has_server_for_mode
 
     def update(self, new_routing_table):
         """ Update the current routing table with new routing information
@@ -162,6 +163,7 @@ class RoutingConnectionPool(ConnectionPool):
         self.initial_address = initial_address
         self.routing_context = routing_context
         self.routing_table = RoutingTable(routers)
+        self.missing_writer = False
         self.refresh_lock = Lock()
 
     def routing_info_procedure(self, connection):
@@ -211,6 +213,11 @@ class RoutingConnectionPool(ConnectionPool):
         num_readers = len(new_routing_table.readers)
         num_writers = len(new_routing_table.writers)
 
+        # No writers are available. This likely indicates a temporary state,
+        # such as leader switching, so we should not signal an error.
+        # When no writers available, then we flag we are reading in absence of writer
+        self.missing_writer = (num_writers == 0)
+
         # No routers
         if num_routers == 0:
             raise ProtocolError("No routing servers returned from server %r" % (address,))
@@ -218,12 +225,6 @@ class RoutingConnectionPool(ConnectionPool):
         # No readers
         if num_readers == 0:
             raise ProtocolError("No read servers returned from server %r" % (address,))
-
-        # No writers
-        if num_writers == 0:
-            # No writers are available. This likely indicates a temporary state,
-            # such as leader switching, so we should not signal an error.
-            return None
 
         # At least one of each is fine, so return this table
         return new_routing_table
@@ -245,21 +246,30 @@ class RoutingConnectionPool(ConnectionPool):
         """
         # copied because it can be modified
         copy_of_routers = list(self.routing_table.routers)
+
+        has_tried_initial_routers = False
+        if self.missing_writer:
+            has_tried_initial_routers = True
+            if self.update_routing_table_with_routers(resolve(self.initial_address)):
+                return
+
         if self.update_routing_table_with_routers(copy_of_routers):
             return
 
-        initial_routers = resolve(self.initial_address)
-        for router in copy_of_routers:
-            if router in initial_routers:
-                initial_routers.remove(router)
-        if initial_routers:
-            if self.update_routing_table_with_routers(initial_routers):
-                return
+        if not has_tried_initial_routers:
+            initial_routers = resolve(self.initial_address)
+            for router in copy_of_routers:
+                if router in initial_routers:
+                    initial_routers.remove(router)
+            if initial_routers:
+                if self.update_routing_table_with_routers(initial_routers):
+                    return
+
 
         # None of the routers have been successful, so just fail
         raise ServiceUnavailable("Unable to retrieve routing information")
 
-    def refresh_routing_table(self):
+    def ensure_routing_table(self, access_mode):
         """ Update the routing table if stale.
 
         This method performs two freshness checks, before and after acquiring
@@ -272,10 +282,13 @@ class RoutingConnectionPool(ConnectionPool):
 
         :return: `True` if an update was required, `False` otherwise.
         """
-        if self.routing_table.is_fresh():
+        if self.routing_table.is_fresh(access_mode):
             return False
         with self.refresh_lock:
-            if self.routing_table.is_fresh():
+            if self.routing_table.is_fresh(access_mode):
+                if access_mode == READ_ACCESS:
+                    # if reader is fresh but writers is not fresh, then we are reading in absence of writer
+                    self.missing_writer = not self.routing_table.is_fresh(WRITE_ACCESS)
                 return False
             self.update_routing_table()
             return True
@@ -289,11 +302,12 @@ class RoutingConnectionPool(ConnectionPool):
             server_list = self.routing_table.writers
         else:
             raise ValueError("Unsupported access mode {}".format(access_mode))
+
+        self.ensure_routing_table(access_mode)
         while True:
-            address = None
-            while address is None:
-                self.refresh_routing_table()
-                address = next(server_list)
+            address = next(server_list)
+            if address is None:
+                break
             try:
                 connection = self.acquire_direct(address)  # should always be a resolved address
                 connection.Error = SessionExpired
@@ -301,6 +315,8 @@ class RoutingConnectionPool(ConnectionPool):
                 self.remove(address)
             else:
                 return connection
+        raise SessionExpired("Failed to obtain connection towards '" + access_mode +
+                             "' server. Known routing table is: '" + self.routing_table + "'.")
 
     def remove(self, address):
         """ Remove an address from the connection pool, if present, closing

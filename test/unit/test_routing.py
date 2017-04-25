@@ -24,6 +24,7 @@ from neo4j.bolt import ProtocolError
 from neo4j.bolt.connection import connect
 from neo4j.v1.routing import RoundRobinSet, RoutingTable, RoutingConnectionPool
 from neo4j.v1.security import basic_auth
+from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS
 
 
 VALID_ROUTING_RECORD = {
@@ -144,7 +145,8 @@ class RoutingTableConstructionTestCase(TestCase):
 
     def test_should_be_initially_stale(self):
         table = RoutingTable()
-        assert not table.is_fresh()
+        assert not table.is_fresh(READ_ACCESS)
+        assert not table.is_fresh(WRITE_ACCESS)
 
 
 class RoutingTableParseRoutingInfoTestCase(TestCase):
@@ -180,22 +182,26 @@ class RoutingTableFreshnessTestCase(TestCase):
 
     def test_should_be_fresh_after_update(self):
         table = RoutingTable.parse_routing_info([VALID_ROUTING_RECORD])
-        assert table.is_fresh()
+        assert table.is_fresh(READ_ACCESS)
+        assert table.is_fresh(WRITE_ACCESS)
 
     def test_should_become_stale_on_expiry(self):
         table = RoutingTable.parse_routing_info([VALID_ROUTING_RECORD])
         table.ttl = 0
-        assert not table.is_fresh()
+        assert not table.is_fresh(READ_ACCESS)
+        assert not table.is_fresh(WRITE_ACCESS)
 
     def test_should_become_stale_if_no_readers(self):
         table = RoutingTable.parse_routing_info([VALID_ROUTING_RECORD])
         table.readers.clear()
-        assert not table.is_fresh()
+        assert not table.is_fresh(READ_ACCESS)
+        assert table.is_fresh(WRITE_ACCESS)
 
     def test_should_become_stale_if_no_writers(self):
         table = RoutingTable.parse_routing_info([VALID_ROUTING_RECORD])
         table.writers.clear()
-        assert not table.is_fresh()
+        assert table.is_fresh(READ_ACCESS)
+        assert not table.is_fresh(WRITE_ACCESS)
 
 
 class RoutingTableUpdateTestCase(TestCase):
