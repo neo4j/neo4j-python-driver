@@ -103,6 +103,15 @@ def basic_auth(user, password, realm=None):
     return AuthToken("basic", user, password, realm)
 
 
+def kerberos_auth(base64_encoded_ticket):
+    """ Generate a kerberos auth token with the base64 encoded ticket
+
+    :param base64_encoded_ticket: a base64 encoded service ticket
+    :return: an authentication token that can be used to connect to Neo4j
+    """
+    return AuthToken("kerberos", "", base64_encoded_ticket)
+
+
 def custom_auth(principal, credentials, realm, scheme, **parameters):
     """ Generate a basic auth token for a given user and password.
 
