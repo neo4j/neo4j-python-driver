@@ -467,11 +467,8 @@ def is_retriable_transientError(error):
     """
     :type error: TransientError
     """
-    if (error.code != "Neo.TransientError.Transaction.Terminated"
-        and error.code != "Neo.TransientError.Transaction.LockClientStopped"):
-        return True
-    else:
-        return False
+    return not (error.code in ("Neo.TransientError.Transaction.Terminated",
+                               "Neo.TransientError.Transaction.LockClientStopped"))
 
 
 class Transaction(object):
