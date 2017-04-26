@@ -25,7 +25,7 @@ from base_application import BaseApplication
 
 class ReadWriteTransactionExample(BaseApplication):
     def __init__(self, uri, user, password):
-        super().__init__(uri, user, password)
+        super(ReadWriteTransactionExample, self).__init__(uri, user, password)
 
     # tag::read-write-transaction[]
     def add_person(self, name):

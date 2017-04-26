@@ -25,7 +25,7 @@ from base_application import BaseApplication
 
 class AutocommitTransactionExample(BaseApplication):
     def __init__(self, uri, user, password):
-        super().__init__(uri, user, password)
+        super(AutocommitTransactionExample, self).__init__(uri, user, password)
 
     # tag::autocommit-transaction[]
     def add_person(self, name):

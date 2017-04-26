@@ -25,7 +25,7 @@ from base_application import BaseApplication
 
 class ServiceUnavailableExample(BaseApplication):
     def __init__(self, uri, user, password):
-        super().__init__(uri, user, password)
+        super(ServiceUnavailableExample, self).__init__(uri, user, password)
 
     # tag::service-unavailable[]
     def addItem(self):

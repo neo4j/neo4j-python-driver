@@ -20,6 +20,27 @@
 
 from test.integration.tools import IntegrationTestCase
 
+
+## Python2 doesn't have contextlib.redirect_stdout()
+#  http://eli.thegreenplace.net/2015/redirecting-all-kinds-of-stdout-in-python/
+import sys
+from contextlib import contextmanager
+@contextmanager
+def stdout_redirector(stream):
+    old_stdout = sys.stdout
+    sys.stdout = stream
+    try:
+        yield
+    finally:
+        sys.stdout = old_stdout
+
+def get_string_io():
+    if sys.version_info[0] < 3:
+        from StringIO import StringIO
+    else:
+        from io import StringIO
+    return StringIO()
+
 class ExamplesTest(IntegrationTestCase):
 
     def setUp(self):
@@ -65,12 +86,10 @@ class ExamplesTest(IntegrationTestCase):
         self.assertIsInstance(example, DriverLifecycleExample)
 
     def test_hello_world_example(self):
-        import io
-        from contextlib import redirect_stdout
         from hello_world_example import HelloWorldExample
 
-        f = io.StringIO()
-        with redirect_stdout(f):
+        f = get_string_io()
+        with stdout_redirector(f):
             example = HelloWorldExample(self.bolt_uri, self.user, self.password)
             example.print_greeting("hello, world")
             example.close()

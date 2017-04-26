@@ -25,7 +25,7 @@ from base_application import BaseApplication
 
 class TransactionFunctionExample(BaseApplication):
     def __init__(self, uri, user, password):
-        super().__init__(uri, user, password)
+        super(TransactionFunctionExample, self).__init__(uri, user, password)
 
     # tag::transaction-function[]
     def add_person(self, name):

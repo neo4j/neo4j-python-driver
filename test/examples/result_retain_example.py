@@ -25,7 +25,7 @@ from base_application import BaseApplication
 
 class ResultRetainExample(BaseApplication):
     def __init__(self, uri, user, password):
-        super().__init__(uri, user, password)
+        super(ResultRetainExample, self).__init__(uri, user, password)
 
     # tag::result-retain[]
     def add_employees(self, company_name):

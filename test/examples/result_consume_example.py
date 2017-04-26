@@ -25,7 +25,7 @@ from base_application import BaseApplication
 
 class ResultConsumeExample(BaseApplication):
     def __init__(self, uri, user, password):
-        super().__init__(uri, user, password)
+        super(ResultConsumeExample, self).__init__(uri, user, password)
 
     # tag::result-consume[]
     def get_people(self):

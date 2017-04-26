@@ -20,7 +20,7 @@
 
 from neo4j.v1 import GraphDatabase
 
-class BaseApplication:
+class BaseApplication(object):
     def __init__(self, uri, user, password):
         self._driver = GraphDatabase.driver( uri, auth=( user, password ) )
 

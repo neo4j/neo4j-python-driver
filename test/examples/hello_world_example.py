@@ -26,7 +26,7 @@ from base_application import BaseApplication
 # tag::hello-world[]
 class HelloWorldExample(BaseApplication):
     def __init__(self, uri, user, password):
-        super().__init__(uri, user, password)
+        super(HelloWorldExample, self).__init__(uri, user, password)
 
     def _create_and_return_greeting(self, tx, message):
         record_list = list(tx.run("CREATE (a:Greeting) " +

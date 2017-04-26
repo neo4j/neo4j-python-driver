@@ -25,7 +25,7 @@ from base_application import BaseApplication
 
 class CypherErrorExample(BaseApplication):
     def __init__(self, uri, user, password):
-        super().__init__(uri, user, password)
+        super(CypherErrorExample, self).__init__(uri, user, password)
 
     # FIXME: this doesn't work because read_transaction behaves
     # differently than in Java, so this throws a ClientError

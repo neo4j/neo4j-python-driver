@@ -24,7 +24,7 @@ from base_application import BaseApplication
 
 class SessionExample(BaseApplication):
     def __init__(self, uri, user, password):
-        super().__init__(uri, user, password)
+        super(SessionExample, self).__init__(uri, user, password)
 
     # tag::session[]
     def do_work(self):
