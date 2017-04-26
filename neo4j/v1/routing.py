@@ -241,7 +241,7 @@ class RoutingConnectionPool(ConnectionPool):
         for router in copy_of_routers:
             if router in initial_routers:
                 initial_routers.remove(router)
-        if len(initial_routers) != 0:
+        if initial_routers:
             if self.update_routing_table_with_routers(initial_routers):
                 return
 
