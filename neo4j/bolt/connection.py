@@ -164,7 +164,7 @@ class Connection(object):
             self.auth_dict = vars(basic_auth(*auth))
         else:
             try:
-                self.auth_dict = vars(config["auth"])
+                self.auth_dict = vars(auth)
             except (KeyError, TypeError):
                 raise TypeError("Cannot determine auth details from %r" % auth)
 
