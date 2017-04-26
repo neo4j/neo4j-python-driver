@@ -90,11 +90,11 @@ class SocketAddress(object):
         for keyValue in parameters:
             pair = keyValue.split('=')
             if len(pair) != 2 or not pair[0] or not pair[1]:
-                raise ValueError("Invalid parameters: '" + keyValue + "' in URI '" + uri + "'.")
+                raise ValueError("Invalid parameters: '%s' in URI '%s'." % (keyValue, uri))
             key = pair[0]
             value = pair[1]
             if key in context:
-                raise ValueError("Duplicated query parameters with key '" + key + "' found in URL '" + uri + "'")
+                raise ValueError("Duplicated query parameters with key '%s' found in URL '%s'" % (key, uri))
             context[key] = value
         return context
 

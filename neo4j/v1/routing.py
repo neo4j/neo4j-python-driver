@@ -156,7 +156,7 @@ class RoutingConnectionPool(ConnectionPool):
 
     call_get_servers = "CALL dbms.cluster.routing.getServers"
     get_routing_table_param = "context"
-    call_get_routing_table = "CALL dbms.cluster.routing.getRoutingTable({" + get_routing_table_param + "})"
+    call_get_routing_table = "CALL dbms.cluster.routing.getRoutingTable({%s})" % get_routing_table_param
 
     def __init__(self, connector, initial_address, routing_context, *routers):
         super(RoutingConnectionPool, self).__init__(connector)
@@ -170,7 +170,7 @@ class RoutingConnectionPool(ConnectionPool):
         if ServerVersion.from_str(connection.server.version).at_least_version(3, 2):
             return self.call_get_routing_table, {self.get_routing_table_param: self.routing_context}
         else:
-            return self.call_get_servers, None
+            return self.call_get_servers
 
     def fetch_routing_info(self, address):
         """ Fetch raw routing info from a given router address.
@@ -315,8 +315,7 @@ class RoutingConnectionPool(ConnectionPool):
                 self.remove(address)
             else:
                 return connection
-        raise SessionExpired("Failed to obtain connection towards '" + access_mode +
-                             "' server. Known routing table is: '" + self.routing_table + "'.")
+        raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode)
 
     def remove(self, address):
         """ Remove an address from the connection pool, if present, closing
