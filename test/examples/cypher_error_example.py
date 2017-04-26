@@ -27,13 +27,10 @@ class CypherErrorExample(BaseApplication):
     def __init__(self, uri, user, password):
         super(CypherErrorExample, self).__init__(uri, user, password)
 
-    # FIXME: this doesn't work because read_transaction behaves
-    # differently than in Java, so this throws a ClientError
-
     # tag::cypher-error[]
     def get_employee_number(self, name):
-        with self._driver.session() as session:
-            return session.read_transaction(lambda tx: self.select_employee(tx, name))
+        session =  self._driver.session()
+        session.read_transaction(lambda tx: self.select_employee(tx, name))
 
     def select_employee(self, tx, name):
         try:

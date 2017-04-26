@@ -68,14 +68,21 @@ class ExamplesTest(IntegrationTestCase):
 
         self.assertIsInstance(example, ConfigUnencryptedExample)
 
-    def Xtest_cypher_error_example(self):
+    def test_cypher_error_example(self):
         from cypher_error_example import CypherErrorExample
 
-        example = CypherErrorExample(self.bolt_uri, self.user, self.password)
-        employee_number = example.get_employee_number('Alice')
+        f = get_string_io()
+        with stdout_redirector(f):
+            example = CypherErrorExample(self.bolt_uri, self.user, self.password)
+            try:
+                example.get_employee_number('Alice')
+            except:
+                pass
 
-        # FIXME: also check the error output like in the Java example
-        self.assertEqual(employee_number, -1)
+        self.assertTrue(f.getvalue().startswith(
+            """Invalid input 'L': expected 't/T' (line 1, column 3 (offset: 2))
+"SELECT * FROM Employees WHERE name = $name"
+   ^"""))
 
     def test_driver_lifecycle_example(self):
         from driver_lifecycle_example import DriverLifecycleExample
