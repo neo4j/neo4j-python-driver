@@ -154,8 +154,9 @@ class RoutingConnectionPool(ConnectionPool):
 
     routing_info_procedure = "dbms.cluster.routing.getServers"
 
-    def __init__(self, connector, *routers):
+    def __init__(self, connector, initial_address, *routers):
         super(RoutingConnectionPool, self).__init__(connector)
+        self.initial_address = initial_address
         self.routing_table = RoutingTable(routers)
         self.refresh_lock = Lock()
 
@@ -216,16 +217,32 @@ class RoutingConnectionPool(ConnectionPool):
         # At least one of each is fine, so return this table
         return new_routing_table
 
+    def update_routing_table_with_routers(self, routers):
+        """Try to update routing tables with the given routers
+        :return: True if the routing table is successfully updated, otherwise False
+        """
+        for router in routers:
+            new_routing_table = self.fetch_routing_table(router)
+            if new_routing_table is not None:
+                self.routing_table.update(new_routing_table)
+                return True
+        return False
+
     def update_routing_table(self):
         """ Update the routing table from the first router able to provide
         valid routing information.
         """
         # copied because it can be modified
         copy_of_routers = list(self.routing_table.routers)
+        if self.update_routing_table_with_routers(copy_of_routers):
+            return
+
+        initial_routers = resolve(self.initial_address)
         for router in copy_of_routers:
-            new_routing_table = self.fetch_routing_table(router)
-            if new_routing_table is not None:
-                self.routing_table.update(new_routing_table)
+            if router in initial_routers:
+                initial_routers.remove(router)
+        if initial_routers:
+            if self.update_routing_table_with_routers(initial_routers):
                 return
 
         # None of the routers have been successful, so just fail
@@ -304,7 +321,7 @@ class RoutingDriver(Driver):
         def connector(a):
             return connect(a, security_plan.ssl_context, **config)
 
-        pool = RoutingConnectionPool(connector, *resolve(initial_address))
+        pool = RoutingConnectionPool(connector, initial_address, *resolve(initial_address))
         try:
             pool.update_routing_table()
         except:

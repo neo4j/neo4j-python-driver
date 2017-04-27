@@ -227,5 +227,7 @@ class RoutingTableUpdateTestCase(TestCase):
 class RoutingConnectionPoolConstructionTestCase(TestCase):
 
     def test_should_populate_initial_router(self):
-        with RoutingConnectionPool(connector, ("127.0.0.1", 9001)) as pool:
-            assert pool.routing_table.routers == {("127.0.0.1", 9001)}
+        initial_router = ("127.0.0.1", 9001)
+        router = ("127.0.0.1", 9002)
+        with RoutingConnectionPool(connector, initial_router, router) as pool:
+            assert pool.routing_table.routers == {("127.0.0.1", 9002)}
