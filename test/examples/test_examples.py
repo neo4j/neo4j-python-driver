@@ -136,9 +136,10 @@ class ExamplesTest(IntegrationTestCase):
         from test.examples.session_example import SessionExample
 
         example = SessionExample(self.bolt_uri, self.user, self.password)
-        example.do_work()
+        example.add_person("Alice")
 
         self.assertIsInstance(example, SessionExample)
+        self.assertEqual(self.person_count("Alice"), 1)
 
     def test_transaction_function_example(self):
         from test.examples.transaction_function_example import TransactionFunctionExample

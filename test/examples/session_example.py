@@ -27,7 +27,7 @@ class SessionExample(BaseApplication):
         super(SessionExample, self).__init__(uri, user, password)
 
     # tag::session[]
-    def do_work(self):
+    def add_person(self, name):
         session = self._driver.session()
-        # TODO: something with the Session
+        session.run("CREATE (a:Person {name: $name})", {"name": name})
     # end::session[]
