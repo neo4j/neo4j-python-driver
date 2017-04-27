@@ -25,6 +25,11 @@ from socket import getaddrinfo, gaierror, SOCK_STREAM, IPPROTO_TCP
 from neo4j.compat import urlparse
 from neo4j.exceptions import AddressError
 
+try:
+    from urllib.parse import parse_qs
+except ImportError:
+    from urlparse import parse_qs
+
 
 VALID_IPv4_SEGMENTS = [str(i).encode("latin1") for i in range(0x100)]
 VALID_IPv6_SEGMENT_CHARS = b"0123456789abcdef"
@@ -86,15 +91,14 @@ class SocketAddress(object):
             return {}
 
         context = {}
-        parameters = [x for x in query.split('&') if x]
-        for keyValue in parameters:
-            pair = keyValue.split('=')
-            if len(pair) != 2 or not pair[0] or not pair[1]:
-                raise ValueError("Invalid parameters: '%s' in URI '%s'." % (keyValue, uri))
-            key = pair[0]
-            value = pair[1]
-            if key in context:
-                raise ValueError("Duplicated query parameters with key '%s' found in URL '%s'" % (key, uri))
+        parameters = parse_qs(query, True)
+        for key in parameters:
+            value_list = parameters[key]
+            if len(value_list) != 1:
+                raise ValueError("Duplicated query parameters with key '%s', value '%s' found in URL '%s'" % (key, value_list, uri))
+            value = value_list[0]
+            if not value:
+                raise ValueError("Invalid parameters:'%s=%s' in URI '%s'." % (key, value, uri))
             context[key] = value
         return context
 
