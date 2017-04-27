@@ -20,7 +20,7 @@
 
 # tag::autocommit-transaction-import[]
 from neo4j.v1 import Session;
-from base_application import BaseApplication
+from test.examples.base_application import BaseApplication
 # end::autocommit-transaction-import[]
 
 class AutocommitTransactionExample(BaseApplication):

@@ -47,7 +47,7 @@ class ExamplesTest(IntegrationTestCase):
         self.clean()
 
     def test_autocommit_transaction_example(self):
-        from autocommit_transaction_example import AutocommitTransactionExample
+        from test.examples.autocommit_transaction_example import AutocommitTransactionExample
 
         example = AutocommitTransactionExample(self.bolt_uri, self.user, self.password)
         example.add_person('Alice')
@@ -55,21 +55,21 @@ class ExamplesTest(IntegrationTestCase):
         self.assertTrue(self.person_count('Alice') > 0)
 
     def test_basic_auth_example(self):
-        from basic_auth_example import BasicAuthExample
+        from test.examples.basic_auth_example import BasicAuthExample
 
         example = BasicAuthExample(self.bolt_uri, self.user, self.password)
 
         self.assertTrue(example.can_connect())
 
     def test_config_unencrypted_example(self):
-        from config_unencrypted_example import ConfigUnencryptedExample
+        from test.examples.config_unencrypted_example import ConfigUnencryptedExample
 
         example = ConfigUnencryptedExample(self.bolt_uri, self.user, self.password)
 
         self.assertIsInstance(example, ConfigUnencryptedExample)
 
     def test_cypher_error_example(self):
-        from cypher_error_example import CypherErrorExample
+        from test.examples.cypher_error_example import CypherErrorExample
 
         f = get_string_io()
         with stdout_redirector(f):
@@ -85,7 +85,7 @@ class ExamplesTest(IntegrationTestCase):
    ^"""))
 
     def test_driver_lifecycle_example(self):
-        from driver_lifecycle_example import DriverLifecycleExample
+        from test.examples.driver_lifecycle_example import DriverLifecycleExample
 
         example = DriverLifecycleExample(self.bolt_uri, self.user, self.password)
         example.close()
@@ -93,7 +93,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertIsInstance(example, DriverLifecycleExample)
 
     def test_hello_world_example(self):
-        from hello_world_example import HelloWorldExample
+        from test.examples.hello_world_example import HelloWorldExample
 
         f = get_string_io()
         with stdout_redirector(f):
@@ -104,7 +104,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertTrue(f.getvalue().startswith("hello, world, from node"))
         
     def test_read_write_transaction_example(self):
-        from read_write_transaction_example import ReadWriteTransactionExample
+        from test.examples.read_write_transaction_example import ReadWriteTransactionExample
 
         example = ReadWriteTransactionExample(self.bolt_uri, self.user, self.password)
         node_count = example.add_person('Alice')
@@ -112,7 +112,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertTrue(node_count > 0)
 
     def test_result_consume_example(self):
-        from result_consume_example import ResultConsumeExample
+        from test.examples.result_consume_example import ResultConsumeExample
 
         self.write("CREATE (a:Person {name: 'Alice'})")
         self.write("CREATE (a:Person {name: 'Bob'})")
@@ -122,7 +122,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertEqual(['Alice', 'Bob'], people)
 
     def test_result_retain_example(self):
-        from result_retain_example import ResultRetainExample
+        from test.examples.result_retain_example import ResultRetainExample
 
         self.write("CREATE (a:Person {name: 'Alice'})")
         self.write("CREATE (a:Person {name: 'Bob'})")
@@ -133,7 +133,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertEqual(employee_count, 2)
 
     def test_session_example(self):
-        from session_example import SessionExample
+        from test.examples.session_example import SessionExample
 
         example = SessionExample(self.bolt_uri, self.user, self.password)
         example.do_work()
@@ -141,7 +141,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertIsInstance(example, SessionExample)
 
     def test_transaction_function_example(self):
-        from transaction_function_example import TransactionFunctionExample
+        from test.examples.transaction_function_example import TransactionFunctionExample
 
         example = TransactionFunctionExample(self.bolt_uri, self.user, self.password)
         example.add_person("Alice")
@@ -175,7 +175,7 @@ class ExamplesTest(IntegrationTestCase):
 class ServiceUnavailableTest(IntegrationTestCase):
 
     def test_service_unavailable_example(self):
-        from service_unavailable_example import ServiceUnavailableExample
+        from test.examples.service_unavailable_example import ServiceUnavailableExample
 
         example = ServiceUnavailableExample(self.bolt_uri, self.user, self.password)
         self.__class__._stop_server()

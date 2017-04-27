@@ -20,7 +20,7 @@
 
 # tag::transaction-function-import[]
 from neo4j.v1 import GraphDatabase
-from base_application import BaseApplication
+from test.examples.base_application import BaseApplication
 # end::transaction-function-import[]
 
 class TransactionFunctionExample(BaseApplication):

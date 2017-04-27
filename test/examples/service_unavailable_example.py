@@ -20,7 +20,7 @@
 
 # tag::service-unavailable-import[]
 from neo4j.v1 import GraphDatabase, ServiceUnavailable
-from base_application import BaseApplication
+from test.examples.base_application import BaseApplication
 # end::service-unavailable-import[]
 
 class ServiceUnavailableExample(BaseApplication):

@@ -20,7 +20,7 @@
 
 # tag::read-write-transaction-import[]
 from neo4j.v1 import GraphDatabase
-from base_application import BaseApplication
+from test.examples.base_application import BaseApplication
 # end::read-write-transaction-import[]
 
 class ReadWriteTransactionExample(BaseApplication):

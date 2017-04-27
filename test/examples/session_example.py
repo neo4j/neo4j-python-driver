@@ -19,7 +19,7 @@
 # limitations under the License.
 
 # tag::session-import[]
-from base_application import BaseApplication
+from test.examples.base_application import BaseApplication
 # end::session-import[]
 
 class SessionExample(BaseApplication):

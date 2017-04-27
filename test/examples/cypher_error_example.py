@@ -20,7 +20,7 @@
 
 # tag::cypher-error-import[]
 from neo4j.v1 import GraphDatabase, ClientError
-from base_application import BaseApplication
+from test.examples.base_application import BaseApplication
 # end::cypher-error-import[]
 
 class CypherErrorExample(BaseApplication):

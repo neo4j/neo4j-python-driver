@@ -20,7 +20,7 @@
 
 # tag::result-retain-import[]
 from neo4j.v1 import GraphDatabase
-from base_application import BaseApplication
+from test.examples.base_application import BaseApplication
 # end::result-retain-import[]
 
 class ResultRetainExample(BaseApplication):
