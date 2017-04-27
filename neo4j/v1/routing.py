@@ -137,7 +137,7 @@ class RoutingTable(object):
         """
         expired = self.last_updated_time + self.ttl <= self.timer()
         has_server_for_mode = (access_mode == READ_ACCESS and self.readers) or (access_mode == WRITE_ACCESS and self.writers)
-        return not expired and len(self.routers) >= 1 and has_server_for_mode
+        return not expired and self.routers and has_server_for_mode
 
     def update(self, new_routing_table):
         """ Update the current routing table with new routing information
@@ -170,7 +170,7 @@ class RoutingConnectionPool(ConnectionPool):
         if ServerVersion.from_str(connection.server.version).at_least_version(3, 2):
             return self.call_get_routing_table, {self.get_routing_table_param: self.routing_context}
         else:
-            return self.call_get_servers
+            return self.call_get_servers, {}
 
     def fetch_routing_info(self, address):
         """ Fetch raw routing info from a given router address.
@@ -182,9 +182,15 @@ class RoutingConnectionPool(ConnectionPool):
                                    if routing support is broken
         """
         try:
-            connection = self.acquire_direct(address)
-            with BoltSession(lambda _: connection) as session:
-                return list(session.run(*self.routing_info_procedure(connection)))
+            connections = [None]
+
+            def connector(_):
+                connection = self.acquire_direct(address)
+                connections[0] = connection
+                return connection
+
+            with BoltSession(lambda _: connector) as session:
+                return list(session.run(*self.routing_info_procedure(connections[0])))
         except CypherError as error:
             if error.code == "Neo.ClientError.Procedure.ProcedureNotFound":
                 raise ServiceUnavailable("Server {!r} does not support routing".format(address))
@@ -269,7 +275,7 @@ class RoutingConnectionPool(ConnectionPool):
         # None of the routers have been successful, so just fail
         raise ServiceUnavailable("Unable to retrieve routing information")
 
-    def ensure_routing_table(self, access_mode):
+    def ensure_routing_table_is_fresh(self, access_mode):
         """ Update the routing table if stale.
 
         This method performs two freshness checks, before and after acquiring
@@ -303,7 +309,7 @@ class RoutingConnectionPool(ConnectionPool):
         else:
             raise ValueError("Unsupported access mode {}".format(access_mode))
 
-        self.ensure_routing_table(access_mode)
+        self.ensure_routing_table_is_fresh(access_mode)
         while True:
             address = next(server_list)
             if address is None:

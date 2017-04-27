@@ -278,7 +278,7 @@ class RoutingConnectionPoolEnsureRoutingTableTestCase(StubTestCase):
             with RoutingPool(address) as pool:
                 first_updated_time = pool.routing_table.last_updated_time
                 pool.routing_table.ttl = 0
-                pool.ensure_routing_table(WRITE_ACCESS)
+                pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
                 second_updated_time = pool.routing_table.last_updated_time
                 assert second_updated_time != first_updated_time
                 assert not pool.missing_writer
@@ -287,9 +287,9 @@ class RoutingConnectionPoolEnsureRoutingTableTestCase(StubTestCase):
         with StubCluster({9001: "router.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                pool.ensure_routing_table(WRITE_ACCESS)
+                pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
                 first_updated_time = pool.routing_table.last_updated_time
-                pool.ensure_routing_table(WRITE_ACCESS)
+                pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
                 second_updated_time = pool.routing_table.last_updated_time
                 assert second_updated_time == first_updated_time
                 assert not pool.missing_writer
@@ -300,7 +300,7 @@ class RoutingConnectionPoolEnsureRoutingTableTestCase(StubTestCase):
             with RoutingPool(address) as pool:
                 assert not pool.routing_table.is_fresh(READ_ACCESS)
                 assert not pool.routing_table.is_fresh(WRITE_ACCESS)
-                pool.ensure_routing_table(READ_ACCESS)
+                pool.ensure_routing_table_is_fresh(READ_ACCESS)
                 assert pool.missing_writer
 
     # TODO: fix flaky test
@@ -486,7 +486,7 @@ class RoutingConnectionPoolRemoveTestCase(StubTestCase):
         with StubCluster({9001: "router.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                pool.ensure_routing_table(WRITE_ACCESS)
+                pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
                 target = ("127.0.0.1", 9001)
                 assert target in pool.routing_table.routers
                 pool.remove(target)
@@ -496,7 +496,7 @@ class RoutingConnectionPoolRemoveTestCase(StubTestCase):
         with StubCluster({9001: "router.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                pool.ensure_routing_table(WRITE_ACCESS)
+                pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
                 target = ("127.0.0.1", 9004)
                 assert target in pool.routing_table.readers
                 pool.remove(target)
@@ -506,7 +506,7 @@ class RoutingConnectionPoolRemoveTestCase(StubTestCase):
         with StubCluster({9001: "router.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                pool.ensure_routing_table(WRITE_ACCESS)
+                pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
                 target = ("127.0.0.1", 9006)
                 assert target in pool.routing_table.writers
                 pool.remove(target)
@@ -516,6 +516,6 @@ class RoutingConnectionPoolRemoveTestCase(StubTestCase):
         with StubCluster({9001: "router.script"}):
             address = ("127.0.0.1", 9001)
             with RoutingPool(address) as pool:
-                pool.ensure_routing_table(WRITE_ACCESS)
+                pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
                 target = ("127.0.0.1", 9007)
                 pool.remove(target)
