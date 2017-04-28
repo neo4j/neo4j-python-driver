@@ -26,7 +26,7 @@ from neo4j.addressing import SocketAddress, resolve
 from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect
 from neo4j.compat.collections import MutableSet, OrderedDict
 from neo4j.exceptions import CypherError
-from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS
+from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS, fix_statement, fix_parameters
 from neo4j.v1.exceptions import SessionExpired
 from neo4j.v1.security import SecurityPlan
 from neo4j.v1.session import BoltSession
@@ -150,13 +150,27 @@ class RoutingTable(object):
         self.ttl = new_routing_table.ttl
 
 
-class RoutingConnectionPool(ConnectionPool):
-    """ Connection pool with routing table.
-    """
+class RoutingSession(BoltSession):
 
     call_get_servers = "CALL dbms.cluster.routing.getServers"
     get_routing_table_param = "context"
     call_get_routing_table = "CALL dbms.cluster.routing.getRoutingTable({%s})" % get_routing_table_param
+
+    def routing_info_procedure(self, routing_context):
+        if ServerVersion.from_str(self._connection.server.version).at_least_version(3, 2):
+            return self.call_get_routing_table, {self.get_routing_table_param: routing_context}
+        else:
+            return self.call_get_servers, {}
+
+    def __run__(self, ignored, routing_context):
+        # the statement is ignored as it will be get routing table procedure call.
+        statement, parameters = self.routing_info_procedure(routing_context)
+        return self._run(fix_statement(statement), fix_parameters(parameters))
+
+
+class RoutingConnectionPool(ConnectionPool):
+    """ Connection pool with routing table.
+    """
 
     def __init__(self, connector, initial_address, routing_context, *routers):
         super(RoutingConnectionPool, self).__init__(connector)
@@ -165,12 +179,6 @@ class RoutingConnectionPool(ConnectionPool):
         self.routing_table = RoutingTable(routers)
         self.missing_writer = False
         self.refresh_lock = Lock()
-
-    def routing_info_procedure(self, connection):
-        if ServerVersion.from_str(connection.server.version).at_least_version(3, 2):
-            return self.call_get_routing_table, {self.get_routing_table_param: self.routing_context}
-        else:
-            return self.call_get_servers, {}
 
     def fetch_routing_info(self, address):
         """ Fetch raw routing info from a given router address.
@@ -182,15 +190,8 @@ class RoutingConnectionPool(ConnectionPool):
                                    if routing support is broken
         """
         try:
-            connections = [None]
-
-            def connector(_):
-                connection = self.acquire_direct(address)
-                connections[0] = connection
-                return connection
-
-            with BoltSession(lambda _: connector) as session:
-                return list(session.run(*self.routing_info_procedure(connections[0])))
+            with RoutingSession(lambda _: self.acquire_direct(address)) as session:
+                return list(session.run("ignored", self.routing_context))
         except CypherError as error:
             if error.code == "Neo.ClientError.Procedure.ProcedureNotFound":
                 raise ServiceUnavailable("Server {!r} does not support routing".format(address))

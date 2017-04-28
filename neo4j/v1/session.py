@@ -34,7 +34,7 @@ class BoltSession(Session):
     :param bookmark:
     """
 
-    def __run__(self, statement, parameters):
+    def _run(self, statement, parameters):
         assert isinstance(statement, unicode)
         assert isinstance(parameters, dict)
 
@@ -54,6 +54,9 @@ class BoltSession(Session):
             pass
 
         return result
+
+    def __run__(self, statement, parameters):
+        return self._run(statement, parameters)
 
     def __begin__(self):
         return self.__run__(u"BEGIN", {"bookmark": self._bookmark} if self._bookmark else {})
