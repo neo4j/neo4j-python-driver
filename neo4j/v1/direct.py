@@ -56,6 +56,8 @@ class DirectDriver(Driver):
         # will carry out DNS resolution, leading to the possibility that
         # the connection pool may contain multiple IP address keys, one for
         # an old address and one for a new address.
+        if SocketAddress.parse_routing_context(uri):
+            raise ValueError("Parameters are not supported with scheme 'bolt'. Given URI: '%s'." % uri)
         self.address = SocketAddress.from_uri(uri, DEFAULT_PORT)
         self.security_plan = security_plan = SecurityPlan.build(**config)
         self.encrypted = security_plan.encrypted

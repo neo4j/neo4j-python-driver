@@ -25,6 +25,11 @@ from socket import getaddrinfo, gaierror, SOCK_STREAM, IPPROTO_TCP
 from neo4j.compat import urlparse
 from neo4j.exceptions import AddressError
 
+try:
+    from urllib.parse import parse_qs
+except ImportError:
+    from urlparse import parse_qs
+
 
 VALID_IPv4_SEGMENTS = [str(i).encode("latin1") for i in range(0x100)]
 VALID_IPv6_SEGMENT_CHARS = b"0123456789abcdef"
@@ -78,6 +83,24 @@ class SocketAddress(object):
         '[::1]:7687'.
         """
         return cls.from_uri("//{}".format(string), default_port)
+
+    @classmethod
+    def parse_routing_context(cls, uri):
+        query = urlparse(uri).query
+        if not query:
+            return {}
+
+        context = {}
+        parameters = parse_qs(query, True)
+        for key in parameters:
+            value_list = parameters[key]
+            if len(value_list) != 1:
+                raise ValueError("Duplicated query parameters with key '%s', value '%s' found in URL '%s'" % (key, value_list, uri))
+            value = value_list[0]
+            if not value:
+                raise ValueError("Invalid parameters:'%s=%s' in URI '%s'." % (key, value, uri))
+            context[key] = value
+        return context
 
 
 def resolve(socket_address):

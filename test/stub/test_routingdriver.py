@@ -179,3 +179,39 @@ class RoutingDriverTestCase(StubTestCase):
 
                 session_2.close()
                 session_1.close()
+
+    def test_should_call_get_routing_table_procedure(self):
+        with StubCluster({9001: "get_routing_table.script", 9002: "return_1.script"}):
+            uri = "bolt+routing://127.0.0.1:9001"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                with driver.session(READ_ACCESS) as session:
+                    result = session.run("RETURN $x", {"x": 1})
+                    for record in result:
+                        assert record["x"] == 1
+                    assert result.summary().server.address == ('127.0.0.1', 9002)
+
+    def test_should_call_get_routing_table_with_context(self):
+        with StubCluster({9001: "get_routing_table_with_context.script", 9002: "return_1.script"}):
+            uri = "bolt+routing://127.0.0.1:9001/?name=molly&age=1"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                with driver.session(READ_ACCESS) as session:
+                    result = session.run("RETURN $x", {"x": 1})
+                    for record in result:
+                        assert record["x"] == 1
+                    assert result.summary().server.address == ('127.0.0.1', 9002)
+
+    def test_should_serve_read_when_missing_writer(self):
+        with StubCluster({9001: "router_no_writers.script", 9005: "return_1.script"}):
+            uri = "bolt+routing://127.0.0.1:9001"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                with driver.session(READ_ACCESS) as session:
+                    result = session.run("RETURN $x", {"x": 1})
+                    for record in result:
+                        assert record["x"] == 1
+                    assert result.summary().server.address == ('127.0.0.1', 9005)
+
+    def test_should_error_when_missing_reader(self):
+        with StubCluster({9001: "router_no_readers.script"}):
+            uri = "bolt+routing://127.0.0.1:9001"
+            with self.assertRaises(ProtocolError):
+                GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False)
