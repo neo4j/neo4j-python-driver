@@ -22,6 +22,7 @@
 from neo4j.v1 import GraphDatabase
 # end::basic-auth-import[]
 
+
 class BasicAuthExample:
     # tag::basic-auth[]
     def __init__(self, uri, user, password):

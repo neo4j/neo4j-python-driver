@@ -19,14 +19,19 @@
 # limitations under the License.
 
 # tag::custom-auth-import[]
-from neo4j.v1 import GraphDatabase;
+from neo4j.v1 import GraphDatabase, custom_auth
 # end::custom-auth-import[]
+
 
 class CustomAuthExample:
     # tag::custom-auth[]
-    def __init__(self, uri, principal, credentials, realm, scheme, parameters):
-        self._driver = GraphDatabase.driver( uri, auth=(principal, credentials, realm, scheme, parameters))
+    def __init__(self, uri, principal, credentials, realm, scheme, **parameters):
+        self._driver = GraphDatabase.driver(uri, auth=custom_auth(principal, credentials, realm, scheme, **parameters))
     # end::custom-auth[]
 
     def close(self):
         self._driver.close()
+
+    def can_connect(self):
+        record_list = list(self._driver.session().run("RETURN 1"))
+        return int(record_list[0][0]) == 1
