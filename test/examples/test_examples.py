@@ -61,6 +61,13 @@ class ExamplesTest(IntegrationTestCase):
 
         self.assertTrue(example.can_connect())
 
+    def test_custom_auth_example(self):
+        from test.examples.auth_example import CustomAuthExample
+
+        example = CustomAuthExample(self.bolt_uri, self.user, self.password, None, "basic", **{"key":"value"})
+
+        self.assertTrue(example.can_connect())
+
     def test_config_unencrypted_example(self):
         from test.examples.config_unencrypted_example import ConfigUnencryptedExample
 
