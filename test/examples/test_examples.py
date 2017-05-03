@@ -149,7 +149,6 @@ class ExamplesTest(IntegrationTestCase):
 
         self.assertEqual(self.person_count("Alice"), 1)
 
-        
     def read(self, statement):
         from neo4j.v1 import GraphDatabase
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:

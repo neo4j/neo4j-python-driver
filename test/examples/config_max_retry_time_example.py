@@ -22,11 +22,11 @@
 from neo4j.v1 import GraphDatabase
 # end::config-max-retry-time-import[]
 
+
 class ConfigMaxRetryTimeExample:
     # tag::config-max-retry-time[]
     def __init__(self, uri, user, password):
-        self._driver = GraphDatabase.driver(uri, auth=(user, password),
-                Config.build().withMaxTransactionRetryTime( 15, SECONDS ).toConfig() )
+        self._driver = GraphDatabase.driver(uri, auth=(user, password), max_retry_time=15)
     # end::config-max-retry-time[]
 
     def close(self):
