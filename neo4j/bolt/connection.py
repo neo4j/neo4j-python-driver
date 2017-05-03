@@ -458,6 +458,8 @@ def connect(address, ssl_context=None, **config):
             raise ServiceUnavailable("Failed to establish connection to {!r}".format(address))
         else:
             raise
+    except ConnectionResetError:
+        raise ServiceUnavailable("Failed to establish connection to {!r}".format(address))
 
     # Secure the connection if an SSL context has been provided
     if ssl_context and SSL_AVAILABLE:
@@ -500,7 +502,10 @@ def connect(address, ssl_context=None, **config):
     ready_to_read, _, _ = select((s,), (), (), 0)
     while not ready_to_read:
         ready_to_read, _, _ = select((s,), (), (), 0)
-    data = s.recv(4)
+    try:
+        data = s.recv(4)
+    except ConnectionResetError:
+        raise ServiceUnavailable("Failed to read any data from server {!r} after connected".format(address))
     data_size = len(data)
     if data_size == 0:
         # If no data is returned after a successful select

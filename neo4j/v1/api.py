@@ -22,7 +22,7 @@
 from collections import deque
 from random import random
 from threading import RLock
-from time import clock, sleep
+from time import time, sleep
 from warnings import warn
 
 from neo4j.bolt import ProtocolError, ServiceUnavailable
@@ -422,11 +422,11 @@ class Session(object):
                                             RETRY_DELAY_MULTIPLIER,
                                             RETRY_DELAY_JITTER_FACTOR)
         last_error = None
-        t0 = t1 = clock()
+        t0 = t1 = time()
         while t1 - t0 <= self._max_retry_time:
             try:
-                self._create_transaction()
                 self._connect(access_mode)
+                self._create_transaction()
                 self.__begin__()
                 with self._transaction as tx:
                     return unit_of_work(tx, *args, **kwargs)
@@ -438,7 +438,7 @@ class Session(object):
                 else:
                     raise error
             sleep(next(retry_delay))
-            t1 = clock()
+            t1 = time()
         raise last_error
 
     def read_transaction(self, unit_of_work, *args, **kwargs):

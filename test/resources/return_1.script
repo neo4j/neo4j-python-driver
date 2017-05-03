@@ -1,8 +1,0 @@
-!: AUTO INIT
-!: AUTO RESET
-
-C: RUN "RETURN $x" {"x": 1}
-   PULL_ALL
-S: SUCCESS {"fields": ["x"]}
-   RECORD [1]
-   SUCCESS {}

@@ -54,3 +54,10 @@ class DirectDriverTestCase(StubTestCase):
             with self.assertRaises(ValueError):
                 GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False)
 
+    def test_direct_session_close_after_server_close(self):
+        with StubCluster({9001: "disconnect_after_init.script"}):
+            uri = "bolt://127.0.0.1:9001"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                with driver.session() as session:
+                    with self.assertRaises(ServiceUnavailable):
+                        session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))

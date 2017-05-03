@@ -47,8 +47,11 @@ class BoltSession(Session):
         result.statement = statement
         result.parameters = parameters
 
-        self._connection.append(RUN, (statement, parameters), response=run_response)
-        self._connection.append(PULL_ALL, response=pull_all_response)
+        try:
+            self._connection.append(RUN, (statement, parameters), response=run_response)
+            self._connection.append(PULL_ALL, response=pull_all_response)
+        except AttributeError:
+            pass
 
         return result
 

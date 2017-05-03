@@ -180,9 +180,6 @@ class SummaryTestCase(DirectIntegrationTestCase):
             plan = summary.plan
             assert plan.operator_type == "ProduceResults"
             assert plan.identifiers == ["n"]
-            known_keys = ["planner", "EstimatedRows", "version", "KeyNames", "runtime-impl",
-                          "planner-impl", "runtime"]
-            assert all(key in plan.arguments for key in known_keys)
             assert len(plan.children) == 1
 
     def test_can_obtain_profile_info(self):
@@ -194,9 +191,6 @@ class SummaryTestCase(DirectIntegrationTestCase):
             assert profile.rows == 1
             assert profile.operator_type == "ProduceResults"
             assert profile.identifiers == ["n"]
-            known_keys = ["planner", "EstimatedRows", "version", "KeyNames", "runtime-impl",
-                          "planner-impl", "runtime", "Rows", "DbHits"]
-            assert all(key in profile.arguments for key in known_keys)
             assert len(profile.children) == 1
 
     def test_no_notification_info(self):
