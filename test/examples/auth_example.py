@@ -22,6 +22,10 @@
 from neo4j.v1 import GraphDatabase
 # end::basic-auth-import[]
 
+# tag::kerberos-auth-import[]
+from neo4j.v1 import kerberos_auth
+# end::kerberos-auth-import[]
+
 
 class BasicAuthExample:
     # tag::basic-auth[]
@@ -35,3 +39,23 @@ class BasicAuthExample:
     def can_connect(self):
         result = self._driver.session().run("RETURN 1")
         return result.single()[0] == 1
+
+
+class KerberosAuthExample:
+    # tag::kerberos-auth[]
+    def __init__(self, uri, ticket):
+        self._driver = GraphDatabase.driver(uri, auth=kerberos_auth(ticket))
+    # end::kerberos-auth[]
+
+    def close(self):
+        self._driver.close()
+
+
+class CustomAuthExample:
+    # tag::custom-auth[]
+    def __init__(self, uri, principal, credentials, realm, scheme, parameters):
+        self._driver = GraphDatabase.driver(uri, auth=(principal, credentials, realm, scheme, parameters))
+    # end::custom-auth[]
+
+    def close(self):
+        self._driver.close()
