@@ -1,9 +1,0 @@
-!: AUTO INIT
-!: AUTO RESET
-
-C: RUN "CALL dbms.cluster.routing.getServers" {}
-   PULL_ALL
-S: FAILURE {"code": "Neo.X", "message": "X"}
-   IGNORED
-C: ACK_FAILURE
-S: SUCCESS {}

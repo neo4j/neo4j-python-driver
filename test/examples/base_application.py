@@ -25,4 +25,4 @@ class BaseApplication(object):
         self._driver = GraphDatabase.driver( uri, auth=( user, password ) )
 
     def close(self):
-        self._driver.close();
+        self._driver.close()

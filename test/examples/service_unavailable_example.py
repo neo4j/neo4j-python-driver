@@ -33,6 +33,6 @@ class ServiceUnavailableExample(BaseApplication):
         try:
             session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
             return True
-        except ServiceUnavailable as e:
+        except ServiceUnavailable:
             return False
     # end::service-unavailable[]
