@@ -55,7 +55,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertTrue(self.person_count('Alice') > 0)
 
     def test_basic_auth_example(self):
-        from test.examples.basic_auth_example import BasicAuthExample
+        from test.examples.auth_example import BasicAuthExample
 
         example = BasicAuthExample(self.bolt_uri, self.user, self.password)
 
