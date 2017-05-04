@@ -19,14 +19,14 @@
 # limitations under the License.
 
 # tag::config-trust-import[]
-from neo4j.v1 import GraphDatabase
+from neo4j.v1 import GraphDatabase, TRUST_ALL_CERTIFICATES
 # end::config-trust-import[]
+
 
 class ConfigTrustExample:
     # tag::config-trust[]
     def __init__(self, uri, user, password):
-        self._driver = GraphDatabase.driver(uri, auth=(user, password),
-                Config.build().withTrustStrategy( Config.TrustStrategy.trustSystemCertificates() ).toConfig() )
+        self._driver = GraphDatabase.driver(uri, auth=(user, password), trust=TRUST_ALL_CERTIFICATES)
     # end::config-trust[]
 
     def close(self):
