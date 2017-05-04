@@ -22,6 +22,7 @@
 from neo4j.v1 import GraphDatabase
 # end::config-unencrypted-import[]
 
+
 class ConfigUnencryptedExample:
     # tag::config-unencrypted[]
     def __init__(self, uri, user, password):
@@ -29,4 +30,4 @@ class ConfigUnencryptedExample:
     # end::config-unencrypted[]
 
     def close(self):
-        self._driver.close();
+        self._driver.close()

@@ -20,9 +20,10 @@
 
 from neo4j.v1 import GraphDatabase
 
+
 class BaseApplication(object):
     def __init__(self, uri, user, password):
-        self._driver = GraphDatabase.driver( uri, auth=( user, password ) )
+        self._driver = GraphDatabase.driver(uri, auth=( user, password ), max_retry_time=0)
 
     def close(self):
         self._driver.close()

@@ -209,7 +209,7 @@ class Session(object):
 
     def __init__(self, acquirer, max_retry_time=None, access_mode=None, bookmark=None):
         self._acquirer = acquirer
-        self._max_retry_time = max_retry_time or DEFAULT_MAX_RETRY_TIME
+        self._max_retry_time = DEFAULT_MAX_RETRY_TIME if max_retry_time is None else max_retry_time
         self._default_access_mode = access_mode or WRITE_ACCESS
         self._bookmark = bookmark
 
@@ -422,8 +422,8 @@ class Session(object):
                                             RETRY_DELAY_MULTIPLIER,
                                             RETRY_DELAY_JITTER_FACTOR)
         last_error = None
-        t0 = t1 = time()
-        while t1 - t0 <= self._max_retry_time:
+        t0 = time()
+        while True:
             try:
                 self._connect(access_mode)
                 self._create_transaction()
@@ -437,8 +437,10 @@ class Session(object):
                     last_error = error
                 else:
                     raise error
-            sleep(next(retry_delay))
             t1 = time()
+            if t1 - t0 > self._max_retry_time:
+                break
+            sleep(next(retry_delay))
         raise last_error
 
     def read_transaction(self, unit_of_work, *args, **kwargs):
