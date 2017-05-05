@@ -19,4 +19,4 @@
 # limitations under the License.
 
 
-version = "1.3.0-beta01"
+version = "1.3.0"
