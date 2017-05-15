@@ -18,10 +18,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# tag::autocommit-transaction-import[]
-from neo4j.v1 import Session;
 from test.examples.base_application import BaseApplication
+
+# tag::autocommit-transaction-import[]
 # end::autocommit-transaction-import[]
+
 
 class AutocommitTransactionExample(BaseApplication):
     def __init__(self, uri, user, password):
@@ -29,6 +30,6 @@ class AutocommitTransactionExample(BaseApplication):
 
     # tag::autocommit-transaction[]
     def add_person(self, name):
-        session = self._driver.session()
-        session.run( "CREATE (a:Person {name: $name})", {"name": name} )
+        with self._driver.session() as session:
+            session.run("CREATE (a:Person {name: $name})", name=name)
     # end::autocommit-transaction[]

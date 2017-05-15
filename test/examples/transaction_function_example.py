@@ -18,10 +18,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# tag::transaction-function-import[]
-from neo4j.v1 import GraphDatabase
 from test.examples.base_application import BaseApplication
+
+# tag::transaction-function-import[]
 # end::transaction-function-import[]
+
 
 class TransactionFunctionExample(BaseApplication):
     def __init__(self, uri, user, password):
@@ -30,10 +31,9 @@ class TransactionFunctionExample(BaseApplication):
     # tag::transaction-function[]
     def add_person(self, name):
         with self._driver.session() as session:
-            session.write_transaction(lambda tx: self.create_person_node(tx, name))
+            session.write_transaction(self.create_person_node, name)
             
-    def create_person_node(self, tx, name):
-        tx.run("CREATE (a:Person {name: $name})", {"name": name})
-        return 1
+    @staticmethod
+    def create_person_node(tx, name):
+        tx.run("CREATE (a:Person {name: $name})", name=name)
     # end::transaction-function[]
-

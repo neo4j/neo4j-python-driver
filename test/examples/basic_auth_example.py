@@ -33,5 +33,5 @@ class BasicAuthExample:
         self._driver.close()
 
     def can_connect(self):
-        record_list = list(self._driver.session().run("RETURN 1"))
-        return int(record_list[0][0]) == 1
+        result = self._driver.session().run("RETURN 1")
+        return result.single()[0] == 1

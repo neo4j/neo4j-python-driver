@@ -30,4 +30,4 @@ class ConfigTrustExample:
     # end::config-trust[]
 
     def close(self):
-        self._driver.close();
+        self._driver.close()

@@ -18,10 +18,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# tag::result-consume-import[]
-from neo4j.v1 import GraphDatabase
 from test.examples.base_application import BaseApplication
+
+# tag::result-consume-import[]
 # end::result-consume-import[]
+
 
 class ResultConsumeExample(BaseApplication):
     def __init__(self, uri, user, password):
@@ -32,12 +33,8 @@ class ResultConsumeExample(BaseApplication):
         with self._driver.session() as session:
             return session.read_transaction(self.match_person_nodes)
 
-    def match_person_nodes(self, tx):
-        names = []
-        results = tx.run("MATCH (a:Person) RETURN a.name ORDER BY a.name")
-
-        for result in results:
-            names.append(result["a.name"])
-
-        return names
+    @staticmethod
+    def match_person_nodes(tx):
+        result = tx.run("MATCH (a:Person) RETURN a.name ORDER BY a.name")
+        return [record["a.name"] for record in result]
     # end::result-consume[]
