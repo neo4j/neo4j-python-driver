@@ -30,7 +30,7 @@ from __future__ import division
 import logging
 from collections import deque
 from select import select
-from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, error as SocketError, AF_INET, AF_INET6
+from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, error as SocketError, timeout as SocketTimeout, AF_INET, AF_INET6
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock
 
@@ -47,6 +47,7 @@ ChunkedInputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedInpu
 ChunkedOutputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedOutputBuffer
 
 
+DEFAULT_CONNECTION_TIMEOUT = 5.0
 DEFAULT_PORT = 7687
 DEFAULT_USER_AGENT = "neo4j-python/%s" % version
 
@@ -443,6 +444,7 @@ def connect(address, ssl_context=None, **config):
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
     log_info("~~ [CONNECT] %s", address)
+    s = None
     try:
         if len(address) == 2:
             s = socket(AF_INET)
@@ -450,10 +452,24 @@ def connect(address, ssl_context=None, **config):
             s = socket(AF_INET6)
         else:
             raise ValueError("Unsupported address {!r}".format(address))
+        t = s.gettimeout()
+        s.settimeout(config.get("connection_timeout", DEFAULT_CONNECTION_TIMEOUT))
         s.connect(address)
+        s.settimeout(t)
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1 if config.get("keep_alive", True) else 0)
+    except SocketTimeout:
+        if s:
+            try:
+                s.close()
+            except:
+                pass
+        raise ServiceUnavailable("Timed out trying to establish connection to {!r}".format(address))
     except SocketError as error:
-        s.close()
+        if s:
+            try:
+                s.close()
+            except:
+                pass
         if error.errno in (61, 111, 10061):
             raise ServiceUnavailable("Failed to establish connection to {!r}".format(address))
         else:
