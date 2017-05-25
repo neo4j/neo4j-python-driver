@@ -18,20 +18,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# tag::basic-auth-import[]
-from neo4j.v1 import GraphDatabase
-# end::basic-auth-import[]
+# tag::kerberos-auth-import[]
+from neo4j.v1 import GraphDatabase, kerberos_auth
+# end::kerberos-auth-import[]
 
 
-class BasicAuthExample:
-    # tag::basic-auth[]
-    def __init__(self, uri, user, password):
-        self._driver = GraphDatabase.driver(uri, auth=(user, password))
-    # end::basic-auth[]
+class KerberosAuthExample:
+    # tag::kerberos-auth[]
+    def __init__(self, uri, ticket):
+        self._driver = GraphDatabase.driver(uri, auth=kerberos_auth(ticket))
+    # end::kerberos-auth[]
 
     def close(self):
         self._driver.close()
-
-    def can_connect(self):
-        result = self._driver.session().run("RETURN 1")
-        return result.single()[0] == 1
