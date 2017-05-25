@@ -30,4 +30,4 @@ class ConfigMaxRetryTimeExample:
     # end::config-max-retry-time[]
 
     def close(self):
-        self._driver.close();
+        self._driver.close()

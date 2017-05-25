@@ -18,21 +18,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# tag::service-unavailable-import[]
-from neo4j.v1 import GraphDatabase, ServiceUnavailable
 from test.examples.base_application import BaseApplication
+
+# tag::service-unavailable-import[]
+from neo4j.v1 import ServiceUnavailable
 # end::service-unavailable-import[]
+
 
 class ServiceUnavailableExample(BaseApplication):
     def __init__(self, uri, user, password):
         super(ServiceUnavailableExample, self).__init__(uri, user, password)
 
     # tag::service-unavailable[]
-    def addItem(self):
-        session = self._driver.session()
-        try:
-            session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
-            return True
-        except ServiceUnavailable:
-            return False
+    def add_item(self):
+        with self._driver.session() as session:
+            try:
+                session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
+                return True
+            except ServiceUnavailable:
+                return False
     # end::service-unavailable[]

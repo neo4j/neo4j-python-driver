@@ -18,10 +18,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# tag::cypher-error-import[]
-from neo4j.v1 import GraphDatabase, ClientError
 from test.examples.base_application import BaseApplication
+
+# tag::cypher-error-import[]
+from neo4j.v1 import ClientError
 # end::cypher-error-import[]
+
 
 class CypherErrorExample(BaseApplication):
     def __init__(self, uri, user, password):
@@ -29,14 +31,15 @@ class CypherErrorExample(BaseApplication):
 
     # tag::cypher-error[]
     def get_employee_number(self, name):
-        session =  self._driver.session()
-        session.read_transaction(lambda tx: self.select_employee(tx, name))
+        with self._driver.session() as session:
+            return session.read_transaction(self.select_employee, name)
 
-    def select_employee(self, tx, name):
+    @staticmethod
+    def select_employee(tx, name):
         try:
-            record_list = list(tx.run("SELECT * FROM Employees WHERE name = $name", {"name": name}))
-            return int(record_list[0]["employee_number"])
-        except ClientError as e:
-            print(e.message)
+            result = tx.run("SELECT * FROM Employees WHERE name = $name", name=name)
+            return result.single()["employee_number"]
+        except ClientError as error:
+            print(error.message)
             return -1
     # end::cypher-error[]

@@ -18,10 +18,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# tag::read-write-transaction-import[]
-from neo4j.v1 import GraphDatabase
 from test.examples.base_application import BaseApplication
+
+# tag::read-write-transaction-import[]
 # end::read-write-transaction-import[]
+
 
 class ReadWriteTransactionExample(BaseApplication):
     def __init__(self, uri, user, password):
@@ -30,14 +31,16 @@ class ReadWriteTransactionExample(BaseApplication):
     # tag::read-write-transaction[]
     def add_person(self, name):
         with self._driver.session() as session:
-            session.write_transaction(lambda tx: self.create_person_node(tx, name))
-            return session.read_transaction(lambda tx: self.match_person_node(tx, name))
+            session.write_transaction(self.create_person_node, name)
+            return session.read_transaction(self.match_person_node, name)
 
-    def create_person_node(self, tx, name):
-        tx.run("CREATE (a:Person {name: $name})", {"name": name })
+    @staticmethod
+    def create_person_node(tx, name):
+        tx.run("CREATE (a:Person {name: $name})", name=name)
         return None
 
-    def match_person_node(self, tx, name):
-        record_list = list(tx.run("MATCH (a:Person {name: $name}) RETURN count(a)", {"name": name }))
-        return int(record_list[0][0])
+    @staticmethod
+    def match_person_node(tx, name):
+        result = tx.run("MATCH (a:Person {name: $name}) RETURN count(a)", name=name)
+        return result.single()[0]
     # end::read-write-transaction[]

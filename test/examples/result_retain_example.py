@@ -18,10 +18,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# tag::result-retain-import[]
-from neo4j.v1 import GraphDatabase
 from test.examples.base_application import BaseApplication
+
+# tag::result-retain-import[]
 # end::result-retain-import[]
+
 
 class ResultRetainExample(BaseApplication):
     def __init__(self, uri, user, password):
@@ -34,21 +35,18 @@ class ResultRetainExample(BaseApplication):
             persons = session.read_transaction(self.match_person_nodes)
 
             for person in persons:
-                num = session.write_transaction(self.add_employee_to_company(person, company_name))
-                employees = employees + num
+                employees += session.write_transaction(self.add_employee_to_company, person, company_name)
 
             return employees
 
-    def add_employee_to_company(self, person, company_name):
-        def do_transaction(tx):
-            tx.run("MATCH (emp:Person {name: $person_name}) " +
-                          "MERGE (com:Company {name: $company_name}) " +
-                          "MERGE (emp)-[:WORKS_FOR]->(com)",
-                          {"person_name": person["name"],
-                           "company_name": company_name})
-            return 1
-        return do_transaction
+    @staticmethod
+    def add_employee_to_company(tx, person, company_name):
+        tx.run("MATCH (emp:Person {name: $person_name}) "
+               "MERGE (com:Company {name: $company_name}) "
+               "MERGE (emp)-[:WORKS_FOR]->(com)",
+               person_name=person["name"], company_name=company_name)
 
-    def match_person_nodes(self, tx):
+    @staticmethod
+    def match_person_nodes(tx):
         return list(tx.run("MATCH (a:Person) RETURN a.name AS name"))
     # end::result-retain[]

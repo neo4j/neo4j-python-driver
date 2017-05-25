@@ -22,12 +22,12 @@
 from neo4j.v1 import GraphDatabase
 # end::config-connection-timeout-import[]
 
+
 class ConfigConnectionTimeoutExample:
     # tag::config-connection-timeout[]
     def __init__(self, uri, user, password):
-        self._driver = GraphDatabase.driver( uri, auth=( user, password ),
-                Config.build().withConnectionTimeout( 15, SECONDS ).toConfig() )
+        self._driver = GraphDatabase.driver(uri, auth=(user, password), connection_timeout=15)
     # end::config-connection-timeout[]
 
     def close(self):
-        self._driver.close();
+        self._driver.close()

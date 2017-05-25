@@ -18,9 +18,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# tag::session-import[]
 from test.examples.base_application import BaseApplication
+
+# tag::session-import[]
 # end::session-import[]
+
 
 class SessionExample(BaseApplication):
     def __init__(self, uri, user, password):
@@ -28,6 +30,6 @@ class SessionExample(BaseApplication):
 
     # tag::session[]
     def add_person(self, name):
-        session = self._driver.session()
-        session.run("CREATE (a:Person {name: $name})", {"name": name})
+        with self._driver.session() as session:
+            session.run("CREATE (a:Person {name: $name})", name=name)
     # end::session[]
