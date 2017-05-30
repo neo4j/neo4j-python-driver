@@ -272,7 +272,6 @@ class RoutingConnectionPool(ConnectionPool):
                 if self.update_routing_table_with_routers(initial_routers):
                     return
 
-
         # None of the routers have been successful, so just fail
         raise ServiceUnavailable("Unable to retrieve routing information")
 

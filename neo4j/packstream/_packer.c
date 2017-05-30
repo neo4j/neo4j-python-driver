@@ -642,11 +642,12 @@ struct __pyx_obj_5neo4j_10packstream_7_packer_Packer;
  * 
  * cdef class Packer(object):             # <<<<<<<<<<<<<<
  * 
- *     cdef stream
+ *     cdef public bint supports_bytes
  */
 struct __pyx_obj_5neo4j_10packstream_7_packer_Packer {
   PyObject_HEAD
   struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *__pyx_vtab;
+  int supports_bytes;
   PyObject *stream;
   PyObject *_write;
 };
@@ -977,6 +978,7 @@ int __pyx_module_is_main_neo4j__packstream___packer = 0;
 /* Implementation of 'neo4j.packstream._packer' */
 static PyObject *__pyx_builtin_OverflowError;
 static PyObject *__pyx_builtin_ValueError;
+static PyObject *__pyx_builtin_TypeError;
 static const char __pyx_k_[] = "\300";
 static const char __pyx_k_I[] = ">I";
 static const char __pyx_k_d[] = ">d";
@@ -989,88 +991,88 @@ static const char __pyx_k__9[] = "\310";
 static const char __pyx_k__11[] = "\311";
 static const char __pyx_k__13[] = "\312";
 static const char __pyx_k__15[] = "\313";
-static const char __pyx_k__19[] = "\314";
-static const char __pyx_k__21[] = "\315";
-static const char __pyx_k__23[] = "\316";
-static const char __pyx_k__26[] = "\200";
-static const char __pyx_k__28[] = "\201";
-static const char __pyx_k__30[] = "\202";
-static const char __pyx_k__32[] = "\203";
-static const char __pyx_k__34[] = "\204";
-static const char __pyx_k__36[] = "\205";
-static const char __pyx_k__38[] = "\206";
-static const char __pyx_k__40[] = "\207";
-static const char __pyx_k__42[] = "\210";
-static const char __pyx_k__44[] = "\211";
-static const char __pyx_k__46[] = "\212";
-static const char __pyx_k__48[] = "\213";
-static const char __pyx_k__50[] = "\214";
-static const char __pyx_k__52[] = "\215";
-static const char __pyx_k__54[] = "\216";
-static const char __pyx_k__56[] = "\217";
-static const char __pyx_k__58[] = "\320";
-static const char __pyx_k__60[] = "\321";
-static const char __pyx_k__62[] = "\322";
-static const char __pyx_k__65[] = "\220";
-static const char __pyx_k__67[] = "\221";
-static const char __pyx_k__69[] = "\222";
-static const char __pyx_k__71[] = "\223";
-static const char __pyx_k__73[] = "\224";
-static const char __pyx_k__75[] = "\225";
-static const char __pyx_k__77[] = "\226";
-static const char __pyx_k__79[] = "\227";
-static const char __pyx_k__81[] = "\230";
-static const char __pyx_k__83[] = "\231";
-static const char __pyx_k__85[] = "\232";
-static const char __pyx_k__87[] = "\233";
-static const char __pyx_k__89[] = "\234";
-static const char __pyx_k__91[] = "\235";
-static const char __pyx_k__93[] = "\236";
-static const char __pyx_k__95[] = "\237";
-static const char __pyx_k__97[] = "\324";
-static const char __pyx_k__99[] = "\325";
-static const char __pyx_k__101[] = "\326";
-static const char __pyx_k__104[] = "\327";
-static const char __pyx_k__106[] = "\240";
-static const char __pyx_k__108[] = "\241";
-static const char __pyx_k__110[] = "\242";
-static const char __pyx_k__112[] = "\243";
-static const char __pyx_k__114[] = "\244";
-static const char __pyx_k__116[] = "\245";
-static const char __pyx_k__118[] = "\246";
-static const char __pyx_k__120[] = "\247";
-static const char __pyx_k__122[] = "\250";
-static const char __pyx_k__124[] = "\251";
-static const char __pyx_k__126[] = "\252";
-static const char __pyx_k__128[] = "\253";
-static const char __pyx_k__130[] = "\254";
-static const char __pyx_k__132[] = "\255";
-static const char __pyx_k__134[] = "\256";
-static const char __pyx_k__136[] = "\257";
-static const char __pyx_k__138[] = "\330";
-static const char __pyx_k__140[] = "\331";
-static const char __pyx_k__142[] = "\332";
-static const char __pyx_k__145[] = "\333";
-static const char __pyx_k__148[] = "\260";
-static const char __pyx_k__150[] = "\261";
-static const char __pyx_k__152[] = "\262";
-static const char __pyx_k__154[] = "\263";
-static const char __pyx_k__156[] = "\264";
-static const char __pyx_k__158[] = "\265";
-static const char __pyx_k__160[] = "\266";
-static const char __pyx_k__162[] = "\267";
-static const char __pyx_k__164[] = "\270";
-static const char __pyx_k__166[] = "\271";
-static const char __pyx_k__168[] = "\272";
-static const char __pyx_k__170[] = "\273";
-static const char __pyx_k__172[] = "\274";
-static const char __pyx_k__174[] = "\275";
-static const char __pyx_k__176[] = "\276";
-static const char __pyx_k__178[] = "\277";
-static const char __pyx_k__180[] = "\334";
-static const char __pyx_k__182[] = "\335";
-static const char __pyx_k__185[] = "\337";
-static const char __pyx_k__187[] = "*";
+static const char __pyx_k__20[] = "\314";
+static const char __pyx_k__22[] = "\315";
+static const char __pyx_k__24[] = "\316";
+static const char __pyx_k__27[] = "\200";
+static const char __pyx_k__29[] = "\201";
+static const char __pyx_k__31[] = "\202";
+static const char __pyx_k__33[] = "\203";
+static const char __pyx_k__35[] = "\204";
+static const char __pyx_k__37[] = "\205";
+static const char __pyx_k__39[] = "\206";
+static const char __pyx_k__41[] = "\207";
+static const char __pyx_k__43[] = "\210";
+static const char __pyx_k__45[] = "\211";
+static const char __pyx_k__47[] = "\212";
+static const char __pyx_k__49[] = "\213";
+static const char __pyx_k__51[] = "\214";
+static const char __pyx_k__53[] = "\215";
+static const char __pyx_k__55[] = "\216";
+static const char __pyx_k__57[] = "\217";
+static const char __pyx_k__59[] = "\320";
+static const char __pyx_k__61[] = "\321";
+static const char __pyx_k__63[] = "\322";
+static const char __pyx_k__66[] = "\220";
+static const char __pyx_k__68[] = "\221";
+static const char __pyx_k__70[] = "\222";
+static const char __pyx_k__72[] = "\223";
+static const char __pyx_k__74[] = "\224";
+static const char __pyx_k__76[] = "\225";
+static const char __pyx_k__78[] = "\226";
+static const char __pyx_k__80[] = "\227";
+static const char __pyx_k__82[] = "\230";
+static const char __pyx_k__84[] = "\231";
+static const char __pyx_k__86[] = "\232";
+static const char __pyx_k__88[] = "\233";
+static const char __pyx_k__90[] = "\234";
+static const char __pyx_k__92[] = "\235";
+static const char __pyx_k__94[] = "\236";
+static const char __pyx_k__96[] = "\237";
+static const char __pyx_k__98[] = "\324";
+static const char __pyx_k__100[] = "\325";
+static const char __pyx_k__102[] = "\326";
+static const char __pyx_k__105[] = "\327";
+static const char __pyx_k__107[] = "\240";
+static const char __pyx_k__109[] = "\241";
+static const char __pyx_k__111[] = "\242";
+static const char __pyx_k__113[] = "\243";
+static const char __pyx_k__115[] = "\244";
+static const char __pyx_k__117[] = "\245";
+static const char __pyx_k__119[] = "\246";
+static const char __pyx_k__121[] = "\247";
+static const char __pyx_k__123[] = "\250";
+static const char __pyx_k__125[] = "\251";
+static const char __pyx_k__127[] = "\252";
+static const char __pyx_k__129[] = "\253";
+static const char __pyx_k__131[] = "\254";
+static const char __pyx_k__133[] = "\255";
+static const char __pyx_k__135[] = "\256";
+static const char __pyx_k__137[] = "\257";
+static const char __pyx_k__139[] = "\330";
+static const char __pyx_k__141[] = "\331";
+static const char __pyx_k__143[] = "\332";
+static const char __pyx_k__146[] = "\333";
+static const char __pyx_k__149[] = "\260";
+static const char __pyx_k__151[] = "\261";
+static const char __pyx_k__153[] = "\262";
+static const char __pyx_k__155[] = "\263";
+static const char __pyx_k__157[] = "\264";
+static const char __pyx_k__159[] = "\265";
+static const char __pyx_k__161[] = "\266";
+static const char __pyx_k__163[] = "\267";
+static const char __pyx_k__165[] = "\270";
+static const char __pyx_k__167[] = "\271";
+static const char __pyx_k__169[] = "\272";
+static const char __pyx_k__171[] = "\273";
+static const char __pyx_k__173[] = "\274";
+static const char __pyx_k__175[] = "\275";
+static const char __pyx_k__177[] = "\276";
+static const char __pyx_k__179[] = "\277";
+static const char __pyx_k__181[] = "\334";
+static const char __pyx_k__183[] = "\335";
+static const char __pyx_k__186[] = "\337";
+static const char __pyx_k__188[] = "*";
 static const char __pyx_k_main[] = "__main__";
 static const char __pyx_k_pack[] = "pack";
 static const char __pyx_k_test[] = "__test__";
@@ -1085,6 +1087,7 @@ static const char __pyx_k_string[] = "string";
 static const char __pyx_k_struct[] = "struct";
 static const char __pyx_k_integer[] = "integer";
 static const char __pyx_k_Structure[] = "Structure";
+static const char __pyx_k_TypeError[] = "TypeError";
 static const char __pyx_k_constants[] = "constants";
 static const char __pyx_k_signature[] = "signature";
 static const char __pyx_k_structure[] = "structure";
@@ -1106,6 +1109,7 @@ static const char __pyx_k_List_header_size_out_of_range[] = "List header size ou
 static const char __pyx_k_Bytes_header_size_out_of_range[] = "Bytes header size out of range";
 static const char __pyx_k_String_header_size_out_of_range[] = "String header size out of range";
 static const char __pyx_k_Structures_require_a_2_tuple_of[] = "Structures require a 2-tuple of (signature, fields)";
+static const char __pyx_k_This_PackSteam_channel_does_not[] = "This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)";
 static const char __pyx_k_Structure_signature_must_be_a_si[] = "Structure signature must be a single byte value";
 static const char __pyx_k_Values_of_type_s_are_not_support[] = "Values of type %s are not supported";
 static PyObject *__pyx_kp_b_;
@@ -1122,97 +1126,99 @@ static PyObject *__pyx_n_s_Structure;
 static PyObject *__pyx_kp_s_Structure_signature_must_be_a_si;
 static PyObject *__pyx_kp_s_Structure_size_out_of_range;
 static PyObject *__pyx_kp_s_Structures_require_a_2_tuple_of;
+static PyObject *__pyx_kp_s_This_PackSteam_channel_does_not;
+static PyObject *__pyx_n_s_TypeError;
 static PyObject *__pyx_n_s_ValueError;
 static PyObject *__pyx_kp_s_Values_of_type_s_are_not_support;
-static PyObject *__pyx_kp_b__101;
-static PyObject *__pyx_kp_b__104;
-static PyObject *__pyx_kp_b__106;
-static PyObject *__pyx_kp_b__108;
+static PyObject *__pyx_kp_b__100;
+static PyObject *__pyx_kp_b__102;
+static PyObject *__pyx_kp_b__105;
+static PyObject *__pyx_kp_b__107;
+static PyObject *__pyx_kp_b__109;
 static PyObject *__pyx_kp_b__11;
-static PyObject *__pyx_kp_b__110;
-static PyObject *__pyx_kp_b__112;
-static PyObject *__pyx_kp_b__114;
-static PyObject *__pyx_kp_b__116;
-static PyObject *__pyx_kp_b__118;
-static PyObject *__pyx_kp_b__120;
-static PyObject *__pyx_kp_b__122;
-static PyObject *__pyx_kp_b__124;
-static PyObject *__pyx_kp_b__126;
-static PyObject *__pyx_kp_b__128;
+static PyObject *__pyx_kp_b__111;
+static PyObject *__pyx_kp_b__113;
+static PyObject *__pyx_kp_b__115;
+static PyObject *__pyx_kp_b__117;
+static PyObject *__pyx_kp_b__119;
+static PyObject *__pyx_kp_b__121;
+static PyObject *__pyx_kp_b__123;
+static PyObject *__pyx_kp_b__125;
+static PyObject *__pyx_kp_b__127;
+static PyObject *__pyx_kp_b__129;
 static PyObject *__pyx_kp_b__13;
-static PyObject *__pyx_kp_b__130;
-static PyObject *__pyx_kp_b__132;
-static PyObject *__pyx_kp_b__134;
-static PyObject *__pyx_kp_b__136;
-static PyObject *__pyx_kp_b__138;
-static PyObject *__pyx_kp_b__140;
-static PyObject *__pyx_kp_b__142;
-static PyObject *__pyx_kp_b__145;
-static PyObject *__pyx_kp_b__148;
+static PyObject *__pyx_kp_b__131;
+static PyObject *__pyx_kp_b__133;
+static PyObject *__pyx_kp_b__135;
+static PyObject *__pyx_kp_b__137;
+static PyObject *__pyx_kp_b__139;
+static PyObject *__pyx_kp_b__141;
+static PyObject *__pyx_kp_b__143;
+static PyObject *__pyx_kp_b__146;
+static PyObject *__pyx_kp_b__149;
 static PyObject *__pyx_kp_b__15;
-static PyObject *__pyx_kp_b__150;
-static PyObject *__pyx_kp_b__152;
-static PyObject *__pyx_kp_b__154;
-static PyObject *__pyx_kp_b__156;
-static PyObject *__pyx_kp_b__158;
-static PyObject *__pyx_kp_b__160;
-static PyObject *__pyx_kp_b__162;
-static PyObject *__pyx_kp_b__164;
-static PyObject *__pyx_kp_b__166;
-static PyObject *__pyx_kp_b__168;
-static PyObject *__pyx_kp_b__170;
-static PyObject *__pyx_kp_b__172;
-static PyObject *__pyx_kp_b__174;
-static PyObject *__pyx_kp_b__176;
-static PyObject *__pyx_kp_b__178;
-static PyObject *__pyx_kp_b__180;
-static PyObject *__pyx_kp_b__182;
-static PyObject *__pyx_kp_b__185;
-static PyObject *__pyx_n_s__187;
-static PyObject *__pyx_kp_b__19;
-static PyObject *__pyx_kp_b__21;
-static PyObject *__pyx_kp_b__23;
-static PyObject *__pyx_kp_b__26;
-static PyObject *__pyx_kp_b__28;
+static PyObject *__pyx_kp_b__151;
+static PyObject *__pyx_kp_b__153;
+static PyObject *__pyx_kp_b__155;
+static PyObject *__pyx_kp_b__157;
+static PyObject *__pyx_kp_b__159;
+static PyObject *__pyx_kp_b__161;
+static PyObject *__pyx_kp_b__163;
+static PyObject *__pyx_kp_b__165;
+static PyObject *__pyx_kp_b__167;
+static PyObject *__pyx_kp_b__169;
+static PyObject *__pyx_kp_b__171;
+static PyObject *__pyx_kp_b__173;
+static PyObject *__pyx_kp_b__175;
+static PyObject *__pyx_kp_b__177;
+static PyObject *__pyx_kp_b__179;
+static PyObject *__pyx_kp_b__181;
+static PyObject *__pyx_kp_b__183;
+static PyObject *__pyx_kp_b__186;
+static PyObject *__pyx_n_s__188;
+static PyObject *__pyx_kp_b__20;
+static PyObject *__pyx_kp_b__22;
+static PyObject *__pyx_kp_b__24;
+static PyObject *__pyx_kp_b__27;
+static PyObject *__pyx_kp_b__29;
 static PyObject *__pyx_kp_b__3;
-static PyObject *__pyx_kp_b__30;
-static PyObject *__pyx_kp_b__32;
-static PyObject *__pyx_kp_b__34;
-static PyObject *__pyx_kp_b__36;
-static PyObject *__pyx_kp_b__38;
-static PyObject *__pyx_kp_b__40;
-static PyObject *__pyx_kp_b__42;
-static PyObject *__pyx_kp_b__44;
-static PyObject *__pyx_kp_b__46;
-static PyObject *__pyx_kp_b__48;
+static PyObject *__pyx_kp_b__31;
+static PyObject *__pyx_kp_b__33;
+static PyObject *__pyx_kp_b__35;
+static PyObject *__pyx_kp_b__37;
+static PyObject *__pyx_kp_b__39;
+static PyObject *__pyx_kp_b__41;
+static PyObject *__pyx_kp_b__43;
+static PyObject *__pyx_kp_b__45;
+static PyObject *__pyx_kp_b__47;
+static PyObject *__pyx_kp_b__49;
 static PyObject *__pyx_kp_b__5;
-static PyObject *__pyx_kp_b__50;
-static PyObject *__pyx_kp_b__52;
-static PyObject *__pyx_kp_b__54;
-static PyObject *__pyx_kp_b__56;
-static PyObject *__pyx_kp_b__58;
-static PyObject *__pyx_kp_b__60;
-static PyObject *__pyx_kp_b__62;
-static PyObject *__pyx_kp_b__65;
-static PyObject *__pyx_kp_b__67;
-static PyObject *__pyx_kp_b__69;
+static PyObject *__pyx_kp_b__51;
+static PyObject *__pyx_kp_b__53;
+static PyObject *__pyx_kp_b__55;
+static PyObject *__pyx_kp_b__57;
+static PyObject *__pyx_kp_b__59;
+static PyObject *__pyx_kp_b__61;
+static PyObject *__pyx_kp_b__63;
+static PyObject *__pyx_kp_b__66;
+static PyObject *__pyx_kp_b__68;
 static PyObject *__pyx_kp_b__7;
-static PyObject *__pyx_kp_b__71;
-static PyObject *__pyx_kp_b__73;
-static PyObject *__pyx_kp_b__75;
-static PyObject *__pyx_kp_b__77;
-static PyObject *__pyx_kp_b__79;
-static PyObject *__pyx_kp_b__81;
-static PyObject *__pyx_kp_b__83;
-static PyObject *__pyx_kp_b__85;
-static PyObject *__pyx_kp_b__87;
-static PyObject *__pyx_kp_b__89;
+static PyObject *__pyx_kp_b__70;
+static PyObject *__pyx_kp_b__72;
+static PyObject *__pyx_kp_b__74;
+static PyObject *__pyx_kp_b__76;
+static PyObject *__pyx_kp_b__78;
+static PyObject *__pyx_kp_b__80;
+static PyObject *__pyx_kp_b__82;
+static PyObject *__pyx_kp_b__84;
+static PyObject *__pyx_kp_b__86;
+static PyObject *__pyx_kp_b__88;
 static PyObject *__pyx_kp_b__9;
-static PyObject *__pyx_kp_b__91;
-static PyObject *__pyx_kp_b__93;
-static PyObject *__pyx_kp_b__95;
-static PyObject *__pyx_kp_b__97;
-static PyObject *__pyx_kp_b__99;
+static PyObject *__pyx_kp_b__90;
+static PyObject *__pyx_kp_b__92;
+static PyObject *__pyx_kp_b__94;
+static PyObject *__pyx_kp_b__96;
+static PyObject *__pyx_kp_b__98;
 static PyObject *__pyx_n_s_constants;
 static PyObject *__pyx_kp_s_d;
 static PyObject *__pyx_n_s_encode;
@@ -1245,6 +1251,8 @@ static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_4pack_list_stream
 static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_6pack_map_stream_header(struct __pyx_obj_5neo4j_10packstream_7_packer_Packer *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_8pack_struct(struct __pyx_obj_5neo4j_10packstream_7_packer_Packer *__pyx_v_self, PyObject *__pyx_v_signature, PyObject *__pyx_v_fields); /* proto */
 static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_10pack_end_of_stream(struct __pyx_obj_5neo4j_10packstream_7_packer_Packer *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_14supports_bytes___get__(struct __pyx_obj_5neo4j_10packstream_7_packer_Packer *__pyx_v_self); /* proto */
+static int __pyx_pf_5neo4j_10packstream_7_packer_6Packer_14supports_bytes_2__set__(struct __pyx_obj_5neo4j_10packstream_7_packer_Packer *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
 static PyObject *__pyx_tp_new_5neo4j_10packstream_7_packer_Packer(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_int_128;
 static PyObject *__pyx_int_256;
@@ -1268,100 +1276,101 @@ static PyObject *__pyx_tuple__14;
 static PyObject *__pyx_tuple__16;
 static PyObject *__pyx_tuple__17;
 static PyObject *__pyx_tuple__18;
-static PyObject *__pyx_tuple__20;
-static PyObject *__pyx_tuple__22;
-static PyObject *__pyx_tuple__24;
+static PyObject *__pyx_tuple__19;
+static PyObject *__pyx_tuple__21;
+static PyObject *__pyx_tuple__23;
 static PyObject *__pyx_tuple__25;
-static PyObject *__pyx_tuple__27;
-static PyObject *__pyx_tuple__29;
-static PyObject *__pyx_tuple__31;
-static PyObject *__pyx_tuple__33;
-static PyObject *__pyx_tuple__35;
-static PyObject *__pyx_tuple__37;
-static PyObject *__pyx_tuple__39;
-static PyObject *__pyx_tuple__41;
-static PyObject *__pyx_tuple__43;
-static PyObject *__pyx_tuple__45;
-static PyObject *__pyx_tuple__47;
-static PyObject *__pyx_tuple__49;
-static PyObject *__pyx_tuple__51;
-static PyObject *__pyx_tuple__53;
-static PyObject *__pyx_tuple__55;
-static PyObject *__pyx_tuple__57;
-static PyObject *__pyx_tuple__59;
-static PyObject *__pyx_tuple__61;
-static PyObject *__pyx_tuple__63;
+static PyObject *__pyx_tuple__26;
+static PyObject *__pyx_tuple__28;
+static PyObject *__pyx_tuple__30;
+static PyObject *__pyx_tuple__32;
+static PyObject *__pyx_tuple__34;
+static PyObject *__pyx_tuple__36;
+static PyObject *__pyx_tuple__38;
+static PyObject *__pyx_tuple__40;
+static PyObject *__pyx_tuple__42;
+static PyObject *__pyx_tuple__44;
+static PyObject *__pyx_tuple__46;
+static PyObject *__pyx_tuple__48;
+static PyObject *__pyx_tuple__50;
+static PyObject *__pyx_tuple__52;
+static PyObject *__pyx_tuple__54;
+static PyObject *__pyx_tuple__56;
+static PyObject *__pyx_tuple__58;
+static PyObject *__pyx_tuple__60;
+static PyObject *__pyx_tuple__62;
 static PyObject *__pyx_tuple__64;
-static PyObject *__pyx_tuple__66;
-static PyObject *__pyx_tuple__68;
-static PyObject *__pyx_tuple__70;
-static PyObject *__pyx_tuple__72;
-static PyObject *__pyx_tuple__74;
-static PyObject *__pyx_tuple__76;
-static PyObject *__pyx_tuple__78;
-static PyObject *__pyx_tuple__80;
-static PyObject *__pyx_tuple__82;
-static PyObject *__pyx_tuple__84;
-static PyObject *__pyx_tuple__86;
-static PyObject *__pyx_tuple__88;
-static PyObject *__pyx_tuple__90;
-static PyObject *__pyx_tuple__92;
-static PyObject *__pyx_tuple__94;
-static PyObject *__pyx_tuple__96;
-static PyObject *__pyx_tuple__98;
-static PyObject *__pyx_tuple__100;
-static PyObject *__pyx_tuple__102;
+static PyObject *__pyx_tuple__65;
+static PyObject *__pyx_tuple__67;
+static PyObject *__pyx_tuple__69;
+static PyObject *__pyx_tuple__71;
+static PyObject *__pyx_tuple__73;
+static PyObject *__pyx_tuple__75;
+static PyObject *__pyx_tuple__77;
+static PyObject *__pyx_tuple__79;
+static PyObject *__pyx_tuple__81;
+static PyObject *__pyx_tuple__83;
+static PyObject *__pyx_tuple__85;
+static PyObject *__pyx_tuple__87;
+static PyObject *__pyx_tuple__89;
+static PyObject *__pyx_tuple__91;
+static PyObject *__pyx_tuple__93;
+static PyObject *__pyx_tuple__95;
+static PyObject *__pyx_tuple__97;
+static PyObject *__pyx_tuple__99;
+static PyObject *__pyx_tuple__101;
 static PyObject *__pyx_tuple__103;
-static PyObject *__pyx_tuple__105;
-static PyObject *__pyx_tuple__107;
-static PyObject *__pyx_tuple__109;
-static PyObject *__pyx_tuple__111;
-static PyObject *__pyx_tuple__113;
-static PyObject *__pyx_tuple__115;
-static PyObject *__pyx_tuple__117;
-static PyObject *__pyx_tuple__119;
-static PyObject *__pyx_tuple__121;
-static PyObject *__pyx_tuple__123;
-static PyObject *__pyx_tuple__125;
-static PyObject *__pyx_tuple__127;
-static PyObject *__pyx_tuple__129;
-static PyObject *__pyx_tuple__131;
-static PyObject *__pyx_tuple__133;
-static PyObject *__pyx_tuple__135;
-static PyObject *__pyx_tuple__137;
-static PyObject *__pyx_tuple__139;
-static PyObject *__pyx_tuple__141;
-static PyObject *__pyx_tuple__143;
+static PyObject *__pyx_tuple__104;
+static PyObject *__pyx_tuple__106;
+static PyObject *__pyx_tuple__108;
+static PyObject *__pyx_tuple__110;
+static PyObject *__pyx_tuple__112;
+static PyObject *__pyx_tuple__114;
+static PyObject *__pyx_tuple__116;
+static PyObject *__pyx_tuple__118;
+static PyObject *__pyx_tuple__120;
+static PyObject *__pyx_tuple__122;
+static PyObject *__pyx_tuple__124;
+static PyObject *__pyx_tuple__126;
+static PyObject *__pyx_tuple__128;
+static PyObject *__pyx_tuple__130;
+static PyObject *__pyx_tuple__132;
+static PyObject *__pyx_tuple__134;
+static PyObject *__pyx_tuple__136;
+static PyObject *__pyx_tuple__138;
+static PyObject *__pyx_tuple__140;
+static PyObject *__pyx_tuple__142;
 static PyObject *__pyx_tuple__144;
-static PyObject *__pyx_tuple__146;
+static PyObject *__pyx_tuple__145;
 static PyObject *__pyx_tuple__147;
-static PyObject *__pyx_tuple__149;
-static PyObject *__pyx_tuple__151;
-static PyObject *__pyx_tuple__153;
-static PyObject *__pyx_tuple__155;
-static PyObject *__pyx_tuple__157;
-static PyObject *__pyx_tuple__159;
-static PyObject *__pyx_tuple__161;
-static PyObject *__pyx_tuple__163;
-static PyObject *__pyx_tuple__165;
-static PyObject *__pyx_tuple__167;
-static PyObject *__pyx_tuple__169;
-static PyObject *__pyx_tuple__171;
-static PyObject *__pyx_tuple__173;
-static PyObject *__pyx_tuple__175;
-static PyObject *__pyx_tuple__177;
-static PyObject *__pyx_tuple__179;
-static PyObject *__pyx_tuple__181;
-static PyObject *__pyx_tuple__183;
+static PyObject *__pyx_tuple__148;
+static PyObject *__pyx_tuple__150;
+static PyObject *__pyx_tuple__152;
+static PyObject *__pyx_tuple__154;
+static PyObject *__pyx_tuple__156;
+static PyObject *__pyx_tuple__158;
+static PyObject *__pyx_tuple__160;
+static PyObject *__pyx_tuple__162;
+static PyObject *__pyx_tuple__164;
+static PyObject *__pyx_tuple__166;
+static PyObject *__pyx_tuple__168;
+static PyObject *__pyx_tuple__170;
+static PyObject *__pyx_tuple__172;
+static PyObject *__pyx_tuple__174;
+static PyObject *__pyx_tuple__176;
+static PyObject *__pyx_tuple__178;
+static PyObject *__pyx_tuple__180;
+static PyObject *__pyx_tuple__182;
 static PyObject *__pyx_tuple__184;
-static PyObject *__pyx_tuple__186;
+static PyObject *__pyx_tuple__185;
+static PyObject *__pyx_tuple__187;
 
-/* "neo4j/packstream/_packer.pyx":39
+/* "neo4j/packstream/_packer.pyx":41
  *     cdef _write
  * 
  *     def __cinit__(self, stream):             # <<<<<<<<<<<<<<
+ *         self.supports_bytes = False
  *         self.stream = stream
- *         self._write = self.stream.write
  */
 
 /* Python wrapper */
@@ -1389,7 +1398,7 @@ static int __pyx_pw_5neo4j_10packstream_7_packer_6Packer_1__cinit__(PyObject *__
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 39, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 41, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 1) {
       goto __pyx_L5_argtuple_error;
@@ -1400,7 +1409,7 @@ static int __pyx_pw_5neo4j_10packstream_7_packer_6Packer_1__cinit__(PyObject *__
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 39, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 41, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("neo4j.packstream._packer.Packer.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -1419,9 +1428,18 @@ static int __pyx_pf_5neo4j_10packstream_7_packer_6Packer___cinit__(struct __pyx_
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "neo4j/packstream/_packer.pyx":40
+  /* "neo4j/packstream/_packer.pyx":42
  * 
  *     def __cinit__(self, stream):
+ *         self.supports_bytes = False             # <<<<<<<<<<<<<<
+ *         self.stream = stream
+ *         self._write = self.stream.write
+ */
+  __pyx_v_self->supports_bytes = 0;
+
+  /* "neo4j/packstream/_packer.pyx":43
+ *     def __cinit__(self, stream):
+ *         self.supports_bytes = False
  *         self.stream = stream             # <<<<<<<<<<<<<<
  *         self._write = self.stream.write
  * 
@@ -1432,14 +1450,14 @@ static int __pyx_pf_5neo4j_10packstream_7_packer_6Packer___cinit__(struct __pyx_
   __Pyx_DECREF(__pyx_v_self->stream);
   __pyx_v_self->stream = __pyx_v_stream;
 
-  /* "neo4j/packstream/_packer.pyx":41
- *     def __cinit__(self, stream):
+  /* "neo4j/packstream/_packer.pyx":44
+ *         self.supports_bytes = False
  *         self.stream = stream
  *         self._write = self.stream.write             # <<<<<<<<<<<<<<
  * 
  *     cdef pack_raw(self, data):
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->stream, __pyx_n_s_write); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 41, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->stream, __pyx_n_s_write); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 44, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
   __Pyx_GOTREF(__pyx_v_self->_write);
@@ -1447,12 +1465,12 @@ static int __pyx_pf_5neo4j_10packstream_7_packer_6Packer___cinit__(struct __pyx_
   __pyx_v_self->_write = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":39
+  /* "neo4j/packstream/_packer.pyx":41
  *     cdef _write
  * 
  *     def __cinit__(self, stream):             # <<<<<<<<<<<<<<
+ *         self.supports_bytes = False
  *         self.stream = stream
- *         self._write = self.stream.write
  */
 
   /* function exit code */
@@ -1467,7 +1485,7 @@ static int __pyx_pf_5neo4j_10packstream_7_packer_6Packer___cinit__(struct __pyx_
   return __pyx_r;
 }
 
-/* "neo4j/packstream/_packer.pyx":43
+/* "neo4j/packstream/_packer.pyx":46
  *         self._write = self.stream.write
  * 
  *     cdef pack_raw(self, data):             # <<<<<<<<<<<<<<
@@ -1484,7 +1502,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_raw(struct __
   PyObject *__pyx_t_4 = NULL;
   __Pyx_RefNannySetupContext("pack_raw", 0);
 
-  /* "neo4j/packstream/_packer.pyx":44
+  /* "neo4j/packstream/_packer.pyx":47
  * 
  *     cdef pack_raw(self, data):
  *         self._write(data)             # <<<<<<<<<<<<<<
@@ -1503,13 +1521,13 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_raw(struct __
     }
   }
   if (!__pyx_t_3) {
-    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_v_data); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 44, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_v_data); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 47, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   } else {
     #if CYTHON_FAST_PYCALL
     if (PyFunction_Check(__pyx_t_2)) {
       PyObject *__pyx_temp[2] = {__pyx_t_3, __pyx_v_data};
-      __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 44, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 47, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else
@@ -1517,19 +1535,19 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_raw(struct __
     #if CYTHON_FAST_PYCCALL
     if (__Pyx_PyFastCFunction_Check(__pyx_t_2)) {
       PyObject *__pyx_temp[2] = {__pyx_t_3, __pyx_v_data};
-      __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 44, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 47, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else
     #endif
     {
-      __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 44, __pyx_L1_error)
+      __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 47, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_GIVEREF(__pyx_t_3); PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_3); __pyx_t_3 = NULL;
       __Pyx_INCREF(__pyx_v_data);
       __Pyx_GIVEREF(__pyx_v_data);
       PyTuple_SET_ITEM(__pyx_t_4, 0+1, __pyx_v_data);
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 44, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 47, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     }
@@ -1537,7 +1555,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_raw(struct __
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":43
+  /* "neo4j/packstream/_packer.pyx":46
  *         self._write = self.stream.write
  * 
  *     cdef pack_raw(self, data):             # <<<<<<<<<<<<<<
@@ -1561,7 +1579,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_raw(struct __
   return __pyx_r;
 }
 
-/* "neo4j/packstream/_packer.pyx":46
+/* "neo4j/packstream/_packer.pyx":49
  *         self._write(data)
  * 
  *     cpdef pack(self, value):             # <<<<<<<<<<<<<<
@@ -1583,7 +1601,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack(struct __pyx_
   if (unlikely(__pyx_skip_dispatch)) ;
   /* Check if overridden in Python */
   else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_pack); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 46, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_pack); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 49, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_5neo4j_10packstream_7_packer_6Packer_3pack)) {
       __Pyx_XDECREF(__pyx_r);
@@ -1599,13 +1617,13 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack(struct __pyx_
         }
       }
       if (!__pyx_t_4) {
-        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_v_value); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 46, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_v_value); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 49, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
       } else {
         #if CYTHON_FAST_PYCALL
         if (PyFunction_Check(__pyx_t_3)) {
           PyObject *__pyx_temp[2] = {__pyx_t_4, __pyx_v_value};
-          __pyx_t_2 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 46, __pyx_L1_error)
+          __pyx_t_2 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 49, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
           __Pyx_GOTREF(__pyx_t_2);
         } else
@@ -1613,19 +1631,19 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack(struct __pyx_
         #if CYTHON_FAST_PYCCALL
         if (__Pyx_PyFastCFunction_Check(__pyx_t_3)) {
           PyObject *__pyx_temp[2] = {__pyx_t_4, __pyx_v_value};
-          __pyx_t_2 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 46, __pyx_L1_error)
+          __pyx_t_2 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 49, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
           __Pyx_GOTREF(__pyx_t_2);
         } else
         #endif
         {
-          __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 46, __pyx_L1_error)
+          __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 49, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_5);
           __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_4); __pyx_t_4 = NULL;
           __Pyx_INCREF(__pyx_v_value);
           __Pyx_GIVEREF(__pyx_v_value);
           PyTuple_SET_ITEM(__pyx_t_5, 0+1, __pyx_v_value);
-          __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 46, __pyx_L1_error)
+          __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 49, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_2);
           __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
         }
@@ -1639,7 +1657,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack(struct __pyx_
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   }
 
-  /* "neo4j/packstream/_packer.pyx":47
+  /* "neo4j/packstream/_packer.pyx":50
  * 
  *     cpdef pack(self, value):
  *         return self._pack(value)             # <<<<<<<<<<<<<<
@@ -1647,13 +1665,13 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack(struct __pyx_
  *     cdef _pack(self, value):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->_pack(__pyx_v_self, __pyx_v_value); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 47, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->_pack(__pyx_v_self, __pyx_v_value); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 50, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "neo4j/packstream/_packer.pyx":46
+  /* "neo4j/packstream/_packer.pyx":49
  *         self._write(data)
  * 
  *     cpdef pack(self, value):             # <<<<<<<<<<<<<<
@@ -1695,7 +1713,7 @@ static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_2pack(struct __py
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("pack", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_5neo4j_10packstream_7_packer_6Packer_pack(__pyx_v_self, __pyx_v_value, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 46, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_5neo4j_10packstream_7_packer_6Packer_pack(__pyx_v_self, __pyx_v_value, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 49, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -1712,7 +1730,7 @@ static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_2pack(struct __py
   return __pyx_r;
 }
 
-/* "neo4j/packstream/_packer.pyx":49
+/* "neo4j/packstream/_packer.pyx":52
  *         return self._pack(value)
  * 
  *     cdef _pack(self, value):             # <<<<<<<<<<<<<<
@@ -1738,15 +1756,15 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
   int __pyx_t_7;
   PyObject *__pyx_t_8 = NULL;
   Py_ssize_t __pyx_t_9;
-  int __pyx_t_10;
+  PyObject *(*__pyx_t_10)(PyObject *);
   PyObject *(*__pyx_t_11)(PyObject *);
-  PyObject *(*__pyx_t_12)(PyObject *);
+  int __pyx_t_12;
   PyObject *__pyx_t_13 = NULL;
   PyObject *__pyx_t_14 = NULL;
   PyObject *__pyx_t_15 = NULL;
   __Pyx_RefNannySetupContext("_pack", 0);
 
-  /* "neo4j/packstream/_packer.pyx":50
+  /* "neo4j/packstream/_packer.pyx":53
  * 
  *     cdef _pack(self, value):
  *         write = self._write             # <<<<<<<<<<<<<<
@@ -1758,7 +1776,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
   __pyx_v_write = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":53
+  /* "neo4j/packstream/_packer.pyx":56
  * 
  *         # None
  *         if value is None:             # <<<<<<<<<<<<<<
@@ -1769,18 +1787,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
   __pyx_t_3 = (__pyx_t_2 != 0);
   if (__pyx_t_3) {
 
-    /* "neo4j/packstream/_packer.pyx":54
+    /* "neo4j/packstream/_packer.pyx":57
  *         # None
  *         if value is None:
  *             write(b"\xC0")  # NULL             # <<<<<<<<<<<<<<
  * 
  *         # Boolean
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 54, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 57, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":53
+    /* "neo4j/packstream/_packer.pyx":56
  * 
  *         # None
  *         if value is None:             # <<<<<<<<<<<<<<
@@ -1790,7 +1808,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":57
+  /* "neo4j/packstream/_packer.pyx":60
  * 
  *         # Boolean
  *         elif value is True:             # <<<<<<<<<<<<<<
@@ -1801,18 +1819,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
   __pyx_t_2 = (__pyx_t_3 != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":58
+    /* "neo4j/packstream/_packer.pyx":61
  *         # Boolean
  *         elif value is True:
  *             write(b"\xC3")             # <<<<<<<<<<<<<<
  *         elif value is False:
  *             write(b"\xC2")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 58, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 61, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":57
+    /* "neo4j/packstream/_packer.pyx":60
  * 
  *         # Boolean
  *         elif value is True:             # <<<<<<<<<<<<<<
@@ -1822,7 +1840,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":59
+  /* "neo4j/packstream/_packer.pyx":62
  *         elif value is True:
  *             write(b"\xC3")
  *         elif value is False:             # <<<<<<<<<<<<<<
@@ -1833,18 +1851,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
   __pyx_t_3 = (__pyx_t_2 != 0);
   if (__pyx_t_3) {
 
-    /* "neo4j/packstream/_packer.pyx":60
+    /* "neo4j/packstream/_packer.pyx":63
  *             write(b"\xC3")
  *         elif value is False:
  *             write(b"\xC2")             # <<<<<<<<<<<<<<
  * 
  *         # Float (only double precision is supported)
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 60, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 63, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":59
+    /* "neo4j/packstream/_packer.pyx":62
  *         elif value is True:
  *             write(b"\xC3")
  *         elif value is False:             # <<<<<<<<<<<<<<
@@ -1854,7 +1872,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":63
+  /* "neo4j/packstream/_packer.pyx":66
  * 
  *         # Float (only double precision is supported)
  *         elif isinstance(value, float):             # <<<<<<<<<<<<<<
@@ -1865,25 +1883,25 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
   __pyx_t_2 = (__pyx_t_3 != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":64
+    /* "neo4j/packstream/_packer.pyx":67
  *         # Float (only double precision is supported)
  *         elif isinstance(value, float):
  *             write(b"\xC1")             # <<<<<<<<<<<<<<
  *             write(struct_pack(">d", value))
  * 
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 64, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 67, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":65
+    /* "neo4j/packstream/_packer.pyx":68
  *         elif isinstance(value, float):
  *             write(b"\xC1")
  *             write(struct_pack(">d", value))             # <<<<<<<<<<<<<<
  * 
  *         # Integer
  */
-    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 65, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 68, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
     __pyx_t_6 = NULL;
     __pyx_t_7 = 0;
@@ -1900,7 +1918,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     #if CYTHON_FAST_PYCALL
     if (PyFunction_Check(__pyx_t_5)) {
       PyObject *__pyx_temp[3] = {__pyx_t_6, __pyx_kp_s_d, __pyx_v_value};
-      __pyx_t_4 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 65, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 68, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_GOTREF(__pyx_t_4);
     } else
@@ -1908,13 +1926,13 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     #if CYTHON_FAST_PYCCALL
     if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
       PyObject *__pyx_temp[3] = {__pyx_t_6, __pyx_kp_s_d, __pyx_v_value};
-      __pyx_t_4 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 65, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 68, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_GOTREF(__pyx_t_4);
     } else
     #endif
     {
-      __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 65, __pyx_L1_error)
+      __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 68, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
       if (__pyx_t_6) {
         __Pyx_GIVEREF(__pyx_t_6); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_6); __pyx_t_6 = NULL;
@@ -1925,7 +1943,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       __Pyx_INCREF(__pyx_v_value);
       __Pyx_GIVEREF(__pyx_v_value);
       PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_7, __pyx_v_value);
-      __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 65, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 68, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
     }
@@ -1942,14 +1960,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       }
     }
     if (!__pyx_t_8) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 65, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 68, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_5)) {
         PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_4};
-        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 65, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 68, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -1958,20 +1976,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
         PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_4};
-        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 65, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 68, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else
       #endif
       {
-        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 65, __pyx_L1_error)
+        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 68, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         __Pyx_GIVEREF(__pyx_t_8); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_8); __pyx_t_8 = NULL;
         __Pyx_GIVEREF(__pyx_t_4);
         PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_4);
         __pyx_t_4 = 0;
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 65, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 68, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
@@ -1979,7 +1997,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":63
+    /* "neo4j/packstream/_packer.pyx":66
  * 
  *         # Float (only double precision is supported)
  *         elif isinstance(value, float):             # <<<<<<<<<<<<<<
@@ -1989,48 +2007,48 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":68
+  /* "neo4j/packstream/_packer.pyx":71
  * 
  *         # Integer
  *         elif isinstance(value, integer):             # <<<<<<<<<<<<<<
  *             if -0x10 <= value < 0x80:
  *                 write(PACKED_UINT_8[value % 0x100])
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_integer); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 68, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_integer); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 71, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyObject_IsInstance(__pyx_v_value, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 68, __pyx_L1_error)
+  __pyx_t_2 = PyObject_IsInstance(__pyx_v_value, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 71, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_3 = (__pyx_t_2 != 0);
   if (__pyx_t_3) {
 
-    /* "neo4j/packstream/_packer.pyx":69
+    /* "neo4j/packstream/_packer.pyx":72
  *         # Integer
  *         elif isinstance(value, integer):
  *             if -0x10 <= value < 0x80:             # <<<<<<<<<<<<<<
  *                 write(PACKED_UINT_8[value % 0x100])
  *             elif -0x80 <= value < -0x10:
  */
-    __pyx_t_1 = PyObject_RichCompare(__pyx_int_neg_16, __pyx_v_value, Py_LE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 69, __pyx_L1_error)
+    __pyx_t_1 = PyObject_RichCompare(__pyx_int_neg_16, __pyx_v_value, Py_LE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 72, __pyx_L1_error)
     if (__Pyx_PyObject_IsTrue(__pyx_t_1)) {
       __Pyx_DECREF(__pyx_t_1);
-      __pyx_t_1 = PyObject_RichCompare(__pyx_v_value, __pyx_int_128, Py_LT); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 69, __pyx_L1_error)
+      __pyx_t_1 = PyObject_RichCompare(__pyx_v_value, __pyx_int_128, Py_LT); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 72, __pyx_L1_error)
     }
-    __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 69, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 72, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     if (__pyx_t_3) {
 
-      /* "neo4j/packstream/_packer.pyx":70
+      /* "neo4j/packstream/_packer.pyx":73
  *         elif isinstance(value, integer):
  *             if -0x10 <= value < 0x80:
  *                 write(PACKED_UINT_8[value % 0x100])             # <<<<<<<<<<<<<<
  *             elif -0x80 <= value < -0x10:
  *                 write(b"\xC8")
  */
-      __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 70, __pyx_L1_error)
+      __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 73, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
-      __pyx_t_6 = __Pyx_PyInt_RemainderObjC(__pyx_v_value, __pyx_int_256, 0x100, 0); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 70, __pyx_L1_error)
+      __pyx_t_6 = __Pyx_PyInt_RemainderObjC(__pyx_v_value, __pyx_int_256, 0x100, 0); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 73, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
-      __pyx_t_4 = PyObject_GetItem(__pyx_t_5, __pyx_t_6); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 70, __pyx_L1_error)
+      __pyx_t_4 = PyObject_GetItem(__pyx_t_5, __pyx_t_6); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 73, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -2046,14 +2064,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         }
       }
       if (!__pyx_t_5) {
-        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_6, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 70, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_6, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 73, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_1);
       } else {
         #if CYTHON_FAST_PYCALL
         if (PyFunction_Check(__pyx_t_6)) {
           PyObject *__pyx_temp[2] = {__pyx_t_5, __pyx_t_4};
-          __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_6, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 70, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_6, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 73, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -2062,20 +2080,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         #if CYTHON_FAST_PYCCALL
         if (__Pyx_PyFastCFunction_Check(__pyx_t_6)) {
           PyObject *__pyx_temp[2] = {__pyx_t_5, __pyx_t_4};
-          __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_6, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 70, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_6, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 73, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         } else
         #endif
         {
-          __pyx_t_8 = PyTuple_New(1+1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 70, __pyx_L1_error)
+          __pyx_t_8 = PyTuple_New(1+1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 73, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_8);
           __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_5); __pyx_t_5 = NULL;
           __Pyx_GIVEREF(__pyx_t_4);
           PyTuple_SET_ITEM(__pyx_t_8, 0+1, __pyx_t_4);
           __pyx_t_4 = 0;
-          __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 70, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 73, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
         }
@@ -2083,7 +2101,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":69
+      /* "neo4j/packstream/_packer.pyx":72
  *         # Integer
  *         elif isinstance(value, integer):
  *             if -0x10 <= value < 0x80:             # <<<<<<<<<<<<<<
@@ -2093,45 +2111,45 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       goto __pyx_L4;
     }
 
-    /* "neo4j/packstream/_packer.pyx":71
+    /* "neo4j/packstream/_packer.pyx":74
  *             if -0x10 <= value < 0x80:
  *                 write(PACKED_UINT_8[value % 0x100])
  *             elif -0x80 <= value < -0x10:             # <<<<<<<<<<<<<<
  *                 write(b"\xC8")
  *                 write(PACKED_UINT_8[value % 0x100])
  */
-    __pyx_t_1 = PyObject_RichCompare(__pyx_int_neg_128, __pyx_v_value, Py_LE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 71, __pyx_L1_error)
+    __pyx_t_1 = PyObject_RichCompare(__pyx_int_neg_128, __pyx_v_value, Py_LE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
     if (__Pyx_PyObject_IsTrue(__pyx_t_1)) {
       __Pyx_DECREF(__pyx_t_1);
-      __pyx_t_1 = PyObject_RichCompare(__pyx_v_value, __pyx_int_neg_16, Py_LT); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 71, __pyx_L1_error)
+      __pyx_t_1 = PyObject_RichCompare(__pyx_v_value, __pyx_int_neg_16, Py_LT); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
     }
-    __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 71, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 74, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     if (__pyx_t_3) {
 
-      /* "neo4j/packstream/_packer.pyx":72
+      /* "neo4j/packstream/_packer.pyx":75
  *                 write(PACKED_UINT_8[value % 0x100])
  *             elif -0x80 <= value < -0x10:
  *                 write(b"\xC8")             # <<<<<<<<<<<<<<
  *                 write(PACKED_UINT_8[value % 0x100])
  *             elif -0x8000 <= value < 0x8000:
  */
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__10, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 72, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__10, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 75, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":73
+      /* "neo4j/packstream/_packer.pyx":76
  *             elif -0x80 <= value < -0x10:
  *                 write(b"\xC8")
  *                 write(PACKED_UINT_8[value % 0x100])             # <<<<<<<<<<<<<<
  *             elif -0x8000 <= value < 0x8000:
  *                 write(b"\xC9")
  */
-      __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 73, __pyx_L1_error)
+      __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 76, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
-      __pyx_t_8 = __Pyx_PyInt_RemainderObjC(__pyx_v_value, __pyx_int_256, 0x100, 0); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 73, __pyx_L1_error)
+      __pyx_t_8 = __Pyx_PyInt_RemainderObjC(__pyx_v_value, __pyx_int_256, 0x100, 0); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 76, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
-      __pyx_t_4 = PyObject_GetItem(__pyx_t_6, __pyx_t_8); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 73, __pyx_L1_error)
+      __pyx_t_4 = PyObject_GetItem(__pyx_t_6, __pyx_t_8); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 76, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
@@ -2147,14 +2165,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         }
       }
       if (!__pyx_t_6) {
-        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_8, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 73, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_8, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_1);
       } else {
         #if CYTHON_FAST_PYCALL
         if (PyFunction_Check(__pyx_t_8)) {
           PyObject *__pyx_temp[2] = {__pyx_t_6, __pyx_t_4};
-          __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_8, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 73, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_8, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -2163,20 +2181,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         #if CYTHON_FAST_PYCCALL
         if (__Pyx_PyFastCFunction_Check(__pyx_t_8)) {
           PyObject *__pyx_temp[2] = {__pyx_t_6, __pyx_t_4};
-          __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_8, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 73, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_8, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         } else
         #endif
         {
-          __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 73, __pyx_L1_error)
+          __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 76, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_5);
           __Pyx_GIVEREF(__pyx_t_6); PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_6); __pyx_t_6 = NULL;
           __Pyx_GIVEREF(__pyx_t_4);
           PyTuple_SET_ITEM(__pyx_t_5, 0+1, __pyx_t_4);
           __pyx_t_4 = 0;
-          __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_8, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 73, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_8, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
         }
@@ -2184,7 +2202,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":71
+      /* "neo4j/packstream/_packer.pyx":74
  *             if -0x10 <= value < 0x80:
  *                 write(PACKED_UINT_8[value % 0x100])
  *             elif -0x80 <= value < -0x10:             # <<<<<<<<<<<<<<
@@ -2194,45 +2212,45 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       goto __pyx_L4;
     }
 
-    /* "neo4j/packstream/_packer.pyx":74
+    /* "neo4j/packstream/_packer.pyx":77
  *                 write(b"\xC8")
  *                 write(PACKED_UINT_8[value % 0x100])
  *             elif -0x8000 <= value < 0x8000:             # <<<<<<<<<<<<<<
  *                 write(b"\xC9")
  *                 write(PACKED_UINT_16[value % 0x10000])
  */
-    __pyx_t_1 = PyObject_RichCompare(__pyx_int_neg_32768, __pyx_v_value, Py_LE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
+    __pyx_t_1 = PyObject_RichCompare(__pyx_int_neg_32768, __pyx_v_value, Py_LE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 77, __pyx_L1_error)
     if (__Pyx_PyObject_IsTrue(__pyx_t_1)) {
       __Pyx_DECREF(__pyx_t_1);
-      __pyx_t_1 = PyObject_RichCompare(__pyx_v_value, __pyx_int_32768, Py_LT); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
+      __pyx_t_1 = PyObject_RichCompare(__pyx_v_value, __pyx_int_32768, Py_LT); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 77, __pyx_L1_error)
     }
-    __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 74, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 77, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     if (__pyx_t_3) {
 
-      /* "neo4j/packstream/_packer.pyx":75
+      /* "neo4j/packstream/_packer.pyx":78
  *                 write(PACKED_UINT_8[value % 0x100])
  *             elif -0x8000 <= value < 0x8000:
  *                 write(b"\xC9")             # <<<<<<<<<<<<<<
  *                 write(PACKED_UINT_16[value % 0x10000])
  *             elif -0x80000000 <= value < 0x80000000:
  */
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__12, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 75, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__12, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 78, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":76
+      /* "neo4j/packstream/_packer.pyx":79
  *             elif -0x8000 <= value < 0x8000:
  *                 write(b"\xC9")
  *                 write(PACKED_UINT_16[value % 0x10000])             # <<<<<<<<<<<<<<
  *             elif -0x80000000 <= value < 0x80000000:
  *                 write(b"\xCA")
  */
-      __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_16); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 76, __pyx_L1_error)
+      __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_16); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 79, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
-      __pyx_t_5 = __Pyx_PyInt_RemainderObjC(__pyx_v_value, __pyx_int_65536, 0x10000, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 76, __pyx_L1_error)
+      __pyx_t_5 = __Pyx_PyInt_RemainderObjC(__pyx_v_value, __pyx_int_65536, 0x10000, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 79, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
-      __pyx_t_4 = PyObject_GetItem(__pyx_t_8, __pyx_t_5); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 76, __pyx_L1_error)
+      __pyx_t_4 = PyObject_GetItem(__pyx_t_8, __pyx_t_5); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 79, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
@@ -2248,14 +2266,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         }
       }
       if (!__pyx_t_8) {
-        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 79, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_1);
       } else {
         #if CYTHON_FAST_PYCALL
         if (PyFunction_Check(__pyx_t_5)) {
           PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_4};
-          __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 79, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -2264,20 +2282,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         #if CYTHON_FAST_PYCCALL
         if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
           PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_4};
-          __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 79, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         } else
         #endif
         {
-          __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 76, __pyx_L1_error)
+          __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 79, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_6);
           __Pyx_GIVEREF(__pyx_t_8); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_8); __pyx_t_8 = NULL;
           __Pyx_GIVEREF(__pyx_t_4);
           PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_4);
           __pyx_t_4 = 0;
-          __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 79, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
         }
@@ -2285,7 +2303,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":74
+      /* "neo4j/packstream/_packer.pyx":77
  *                 write(b"\xC8")
  *                 write(PACKED_UINT_8[value % 0x100])
  *             elif -0x8000 <= value < 0x8000:             # <<<<<<<<<<<<<<
@@ -2295,41 +2313,41 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       goto __pyx_L4;
     }
 
-    /* "neo4j/packstream/_packer.pyx":77
+    /* "neo4j/packstream/_packer.pyx":80
  *                 write(b"\xC9")
  *                 write(PACKED_UINT_16[value % 0x10000])
  *             elif -0x80000000 <= value < 0x80000000:             # <<<<<<<<<<<<<<
  *                 write(b"\xCA")
  *                 write(struct_pack(">i", value))
  */
-    __pyx_t_1 = PyObject_RichCompare(__pyx_int_neg_2147483648, __pyx_v_value, Py_LE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 77, __pyx_L1_error)
+    __pyx_t_1 = PyObject_RichCompare(__pyx_int_neg_2147483648, __pyx_v_value, Py_LE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 80, __pyx_L1_error)
     if (__Pyx_PyObject_IsTrue(__pyx_t_1)) {
       __Pyx_DECREF(__pyx_t_1);
-      __pyx_t_1 = PyObject_RichCompare(__pyx_v_value, __pyx_int_2147483648, Py_LT); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 77, __pyx_L1_error)
+      __pyx_t_1 = PyObject_RichCompare(__pyx_v_value, __pyx_int_2147483648, Py_LT); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 80, __pyx_L1_error)
     }
-    __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 77, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 80, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     if (__pyx_t_3) {
 
-      /* "neo4j/packstream/_packer.pyx":78
+      /* "neo4j/packstream/_packer.pyx":81
  *                 write(PACKED_UINT_16[value % 0x10000])
  *             elif -0x80000000 <= value < 0x80000000:
  *                 write(b"\xCA")             # <<<<<<<<<<<<<<
  *                 write(struct_pack(">i", value))
  *             elif INT64_LO <= value < INT64_HI:
  */
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__14, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 78, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__14, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 81, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":79
+      /* "neo4j/packstream/_packer.pyx":82
  *             elif -0x80000000 <= value < 0x80000000:
  *                 write(b"\xCA")
  *                 write(struct_pack(">i", value))             # <<<<<<<<<<<<<<
  *             elif INT64_LO <= value < INT64_HI:
  *                 write(b"\xCB")
  */
-      __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 79, __pyx_L1_error)
+      __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 82, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       __pyx_t_4 = NULL;
       __pyx_t_7 = 0;
@@ -2346,7 +2364,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_6)) {
         PyObject *__pyx_temp[3] = {__pyx_t_4, __pyx_kp_s_i, __pyx_v_value};
-        __pyx_t_5 = __Pyx_PyFunction_FastCall(__pyx_t_6, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 79, __pyx_L1_error)
+        __pyx_t_5 = __Pyx_PyFunction_FastCall(__pyx_t_6, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 82, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_5);
       } else
@@ -2354,13 +2372,13 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_6)) {
         PyObject *__pyx_temp[3] = {__pyx_t_4, __pyx_kp_s_i, __pyx_v_value};
-        __pyx_t_5 = __Pyx_PyCFunction_FastCall(__pyx_t_6, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 79, __pyx_L1_error)
+        __pyx_t_5 = __Pyx_PyCFunction_FastCall(__pyx_t_6, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 82, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_5);
       } else
       #endif
       {
-        __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 79, __pyx_L1_error)
+        __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 82, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_8);
         if (__pyx_t_4) {
           __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_4); __pyx_t_4 = NULL;
@@ -2371,7 +2389,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         __Pyx_INCREF(__pyx_v_value);
         __Pyx_GIVEREF(__pyx_v_value);
         PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_7, __pyx_v_value);
-        __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_8, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 79, __pyx_L1_error)
+        __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_8, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 82, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
       }
@@ -2388,14 +2406,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         }
       }
       if (!__pyx_t_8) {
-        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_6, __pyx_t_5); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 79, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_6, __pyx_t_5); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 82, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
         __Pyx_GOTREF(__pyx_t_1);
       } else {
         #if CYTHON_FAST_PYCALL
         if (PyFunction_Check(__pyx_t_6)) {
           PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_5};
-          __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_6, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 79, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_6, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 82, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
@@ -2404,20 +2422,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         #if CYTHON_FAST_PYCCALL
         if (__Pyx_PyFastCFunction_Check(__pyx_t_6)) {
           PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_5};
-          __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_6, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 79, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_6, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 82, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
         } else
         #endif
         {
-          __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 79, __pyx_L1_error)
+          __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 82, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_4);
           __Pyx_GIVEREF(__pyx_t_8); PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_8); __pyx_t_8 = NULL;
           __Pyx_GIVEREF(__pyx_t_5);
           PyTuple_SET_ITEM(__pyx_t_4, 0+1, __pyx_t_5);
           __pyx_t_5 = 0;
-          __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 79, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 82, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         }
@@ -2425,7 +2443,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":77
+      /* "neo4j/packstream/_packer.pyx":80
  *                 write(b"\xC9")
  *                 write(PACKED_UINT_16[value % 0x10000])
  *             elif -0x80000000 <= value < 0x80000000:             # <<<<<<<<<<<<<<
@@ -2435,41 +2453,41 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       goto __pyx_L4;
     }
 
-    /* "neo4j/packstream/_packer.pyx":80
+    /* "neo4j/packstream/_packer.pyx":83
  *                 write(b"\xCA")
  *                 write(struct_pack(">i", value))
  *             elif INT64_LO <= value < INT64_HI:             # <<<<<<<<<<<<<<
  *                 write(b"\xCB")
  *                 write(struct_pack(">q", value))
  */
-    __pyx_t_1 = PyObject_RichCompare(__pyx_v_5neo4j_10packstream_7_packer_INT64_LO, __pyx_v_value, Py_LE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 80, __pyx_L1_error)
+    __pyx_t_1 = PyObject_RichCompare(__pyx_v_5neo4j_10packstream_7_packer_INT64_LO, __pyx_v_value, Py_LE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 83, __pyx_L1_error)
     if (__Pyx_PyObject_IsTrue(__pyx_t_1)) {
       __Pyx_DECREF(__pyx_t_1);
-      __pyx_t_1 = PyObject_RichCompare(__pyx_v_value, __pyx_v_5neo4j_10packstream_7_packer_INT64_HI, Py_LT); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 80, __pyx_L1_error)
+      __pyx_t_1 = PyObject_RichCompare(__pyx_v_value, __pyx_v_5neo4j_10packstream_7_packer_INT64_HI, Py_LT); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 83, __pyx_L1_error)
     }
-    __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 80, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 83, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     if (__pyx_t_3) {
 
-      /* "neo4j/packstream/_packer.pyx":81
+      /* "neo4j/packstream/_packer.pyx":84
  *                 write(struct_pack(">i", value))
  *             elif INT64_LO <= value < INT64_HI:
  *                 write(b"\xCB")             # <<<<<<<<<<<<<<
  *                 write(struct_pack(">q", value))
  *             else:
  */
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__16, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 81, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__16, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 84, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":82
+      /* "neo4j/packstream/_packer.pyx":85
  *             elif INT64_LO <= value < INT64_HI:
  *                 write(b"\xCB")
  *                 write(struct_pack(">q", value))             # <<<<<<<<<<<<<<
  *             else:
  *                 raise OverflowError("Integer %s out of range" % value)
  */
-      __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 82, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 85, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __pyx_t_5 = NULL;
       __pyx_t_7 = 0;
@@ -2486,7 +2504,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_4)) {
         PyObject *__pyx_temp[3] = {__pyx_t_5, __pyx_kp_s_q, __pyx_v_value};
-        __pyx_t_6 = __Pyx_PyFunction_FastCall(__pyx_t_4, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 82, __pyx_L1_error)
+        __pyx_t_6 = __Pyx_PyFunction_FastCall(__pyx_t_4, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 85, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
         __Pyx_GOTREF(__pyx_t_6);
       } else
@@ -2494,13 +2512,13 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_4)) {
         PyObject *__pyx_temp[3] = {__pyx_t_5, __pyx_kp_s_q, __pyx_v_value};
-        __pyx_t_6 = __Pyx_PyCFunction_FastCall(__pyx_t_4, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 82, __pyx_L1_error)
+        __pyx_t_6 = __Pyx_PyCFunction_FastCall(__pyx_t_4, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 85, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
         __Pyx_GOTREF(__pyx_t_6);
       } else
       #endif
       {
-        __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 82, __pyx_L1_error)
+        __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 85, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_8);
         if (__pyx_t_5) {
           __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_5); __pyx_t_5 = NULL;
@@ -2511,7 +2529,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         __Pyx_INCREF(__pyx_v_value);
         __Pyx_GIVEREF(__pyx_v_value);
         PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_7, __pyx_v_value);
-        __pyx_t_6 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_8, NULL); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 82, __pyx_L1_error)
+        __pyx_t_6 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_8, NULL); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 85, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
       }
@@ -2528,14 +2546,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         }
       }
       if (!__pyx_t_8) {
-        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_6); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 82, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_6); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 85, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
         __Pyx_GOTREF(__pyx_t_1);
       } else {
         #if CYTHON_FAST_PYCALL
         if (PyFunction_Check(__pyx_t_4)) {
           PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_6};
-          __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_4, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 82, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_4, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 85, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -2544,20 +2562,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         #if CYTHON_FAST_PYCCALL
         if (__Pyx_PyFastCFunction_Check(__pyx_t_4)) {
           PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_6};
-          __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_4, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 82, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_4, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 85, __pyx_L1_error)
           __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
         } else
         #endif
         {
-          __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 82, __pyx_L1_error)
+          __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 85, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_5);
           __Pyx_GIVEREF(__pyx_t_8); PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_8); __pyx_t_8 = NULL;
           __Pyx_GIVEREF(__pyx_t_6);
           PyTuple_SET_ITEM(__pyx_t_5, 0+1, __pyx_t_6);
           __pyx_t_6 = 0;
-          __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 82, __pyx_L1_error)
+          __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 85, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_1);
           __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
         }
@@ -2565,7 +2583,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":80
+      /* "neo4j/packstream/_packer.pyx":83
  *                 write(b"\xCA")
  *                 write(struct_pack(">i", value))
  *             elif INT64_LO <= value < INT64_HI:             # <<<<<<<<<<<<<<
@@ -2575,7 +2593,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       goto __pyx_L4;
     }
 
-    /* "neo4j/packstream/_packer.pyx":84
+    /* "neo4j/packstream/_packer.pyx":87
  *                 write(struct_pack(">q", value))
  *             else:
  *                 raise OverflowError("Integer %s out of range" % value)             # <<<<<<<<<<<<<<
@@ -2583,23 +2601,23 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
  *         # String
  */
     /*else*/ {
-      __pyx_t_1 = __Pyx_PyString_Format(__pyx_kp_s_Integer_s_out_of_range, __pyx_v_value); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 84, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyString_Format(__pyx_kp_s_Integer_s_out_of_range, __pyx_v_value); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 87, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 84, __pyx_L1_error)
+      __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 87, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_GIVEREF(__pyx_t_1);
       PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_1);
       __pyx_t_1 = 0;
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_OverflowError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 84, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_OverflowError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 87, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_Raise(__pyx_t_1, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __PYX_ERR(0, 84, __pyx_L1_error)
+      __PYX_ERR(0, 87, __pyx_L1_error)
     }
     __pyx_L4:;
 
-    /* "neo4j/packstream/_packer.pyx":68
+    /* "neo4j/packstream/_packer.pyx":71
  * 
  *         # Integer
  *         elif isinstance(value, integer):             # <<<<<<<<<<<<<<
@@ -2609,21 +2627,21 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":87
+  /* "neo4j/packstream/_packer.pyx":90
  * 
  *         # String
  *         elif isinstance(value, string):             # <<<<<<<<<<<<<<
  *             if isinstance(value, bytes):
  *                 value_bytes = value
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_string); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 87, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_string); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 90, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyObject_IsInstance(__pyx_v_value, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 87, __pyx_L1_error)
+  __pyx_t_3 = PyObject_IsInstance(__pyx_v_value, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 90, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_2 = (__pyx_t_3 != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":88
+    /* "neo4j/packstream/_packer.pyx":91
  *         # String
  *         elif isinstance(value, string):
  *             if isinstance(value, bytes):             # <<<<<<<<<<<<<<
@@ -2634,7 +2652,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     __pyx_t_3 = (__pyx_t_2 != 0);
     if (__pyx_t_3) {
 
-      /* "neo4j/packstream/_packer.pyx":89
+      /* "neo4j/packstream/_packer.pyx":92
  *         elif isinstance(value, string):
  *             if isinstance(value, bytes):
  *                 value_bytes = value             # <<<<<<<<<<<<<<
@@ -2644,7 +2662,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       __Pyx_INCREF(__pyx_v_value);
       __pyx_v_value_bytes = __pyx_v_value;
 
-      /* "neo4j/packstream/_packer.pyx":88
+      /* "neo4j/packstream/_packer.pyx":91
  *         # String
  *         elif isinstance(value, string):
  *             if isinstance(value, bytes):             # <<<<<<<<<<<<<<
@@ -2654,7 +2672,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       goto __pyx_L5;
     }
 
-    /* "neo4j/packstream/_packer.pyx":91
+    /* "neo4j/packstream/_packer.pyx":94
  *                 value_bytes = value
  *             else:
  *                 value_bytes = value.encode("utf-8")             # <<<<<<<<<<<<<<
@@ -2662,9 +2680,9 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
  *             self.pack_raw(value_bytes)
  */
     /*else*/ {
-      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_value, __pyx_n_s_encode); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 91, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_value, __pyx_n_s_encode); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 94, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__17, NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 91, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__17, NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 94, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       __pyx_v_value_bytes = __pyx_t_4;
@@ -2672,30 +2690,30 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     }
     __pyx_L5:;
 
-    /* "neo4j/packstream/_packer.pyx":92
+    /* "neo4j/packstream/_packer.pyx":95
  *             else:
  *                 value_bytes = value.encode("utf-8")
  *             self.pack_string_header(len(value_bytes))             # <<<<<<<<<<<<<<
  *             self.pack_raw(value_bytes)
  * 
  */
-    __pyx_t_9 = PyObject_Length(__pyx_v_value_bytes); if (unlikely(__pyx_t_9 == -1)) __PYX_ERR(0, 92, __pyx_L1_error)
-    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_string_header(__pyx_v_self, __pyx_t_9); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 92, __pyx_L1_error)
+    __pyx_t_9 = PyObject_Length(__pyx_v_value_bytes); if (unlikely(__pyx_t_9 == -1)) __PYX_ERR(0, 95, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_string_header(__pyx_v_self, __pyx_t_9); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 95, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":93
+    /* "neo4j/packstream/_packer.pyx":96
  *                 value_bytes = value.encode("utf-8")
  *             self.pack_string_header(len(value_bytes))
  *             self.pack_raw(value_bytes)             # <<<<<<<<<<<<<<
  * 
  *         # Bytes (deliberately listed after String since in
  */
-    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_raw(__pyx_v_self, __pyx_v_value_bytes); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 93, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_raw(__pyx_v_self, __pyx_v_value_bytes); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 96, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":87
+    /* "neo4j/packstream/_packer.pyx":90
  * 
  *         # String
  *         elif isinstance(value, string):             # <<<<<<<<<<<<<<
@@ -2705,84 +2723,127 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":97
+  /* "neo4j/packstream/_packer.pyx":100
  *         # Bytes (deliberately listed after String since in
  *         # Python 2, bytes should be treated as a String)
- *         elif isinstance(value, (bytes, bytearray)):             # <<<<<<<<<<<<<<
+ *         elif isinstance(value, bytes):             # <<<<<<<<<<<<<<
  *             self.pack_bytes_header(len(value))
  *             self.pack_raw(value)
  */
-  __pyx_t_2 = PyBytes_Check(__pyx_v_value); 
-  __pyx_t_10 = (__pyx_t_2 != 0);
-  if (!__pyx_t_10) {
-  } else {
-    __pyx_t_3 = __pyx_t_10;
-    goto __pyx_L6_bool_binop_done;
-  }
-  __pyx_t_10 = PyByteArray_Check(__pyx_v_value); 
-  __pyx_t_2 = (__pyx_t_10 != 0);
-  __pyx_t_3 = __pyx_t_2;
-  __pyx_L6_bool_binop_done:;
+  __pyx_t_3 = PyBytes_Check(__pyx_v_value); 
   __pyx_t_2 = (__pyx_t_3 != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":98
+    /* "neo4j/packstream/_packer.pyx":101
  *         # Python 2, bytes should be treated as a String)
- *         elif isinstance(value, (bytes, bytearray)):
+ *         elif isinstance(value, bytes):
  *             self.pack_bytes_header(len(value))             # <<<<<<<<<<<<<<
  *             self.pack_raw(value)
- * 
+ *         elif isinstance(value, bytearray):
  */
-    __pyx_t_9 = PyObject_Length(__pyx_v_value); if (unlikely(__pyx_t_9 == -1)) __PYX_ERR(0, 98, __pyx_L1_error)
-    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_bytes_header(__pyx_v_self, __pyx_t_9); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 98, __pyx_L1_error)
+    __pyx_t_9 = PyObject_Length(__pyx_v_value); if (unlikely(__pyx_t_9 == -1)) __PYX_ERR(0, 101, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_bytes_header(__pyx_v_self, __pyx_t_9); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 101, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":99
- *         elif isinstance(value, (bytes, bytearray)):
+    /* "neo4j/packstream/_packer.pyx":102
+ *         elif isinstance(value, bytes):
  *             self.pack_bytes_header(len(value))
  *             self.pack_raw(value)             # <<<<<<<<<<<<<<
- * 
- *         # List
+ *         elif isinstance(value, bytearray):
+ *             self.pack_bytes_header(len(value))
  */
-    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_raw(__pyx_v_self, __pyx_v_value); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 99, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_raw(__pyx_v_self, __pyx_v_value); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 102, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":97
+    /* "neo4j/packstream/_packer.pyx":100
  *         # Bytes (deliberately listed after String since in
  *         # Python 2, bytes should be treated as a String)
- *         elif isinstance(value, (bytes, bytearray)):             # <<<<<<<<<<<<<<
+ *         elif isinstance(value, bytes):             # <<<<<<<<<<<<<<
  *             self.pack_bytes_header(len(value))
  *             self.pack_raw(value)
  */
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":102
+  /* "neo4j/packstream/_packer.pyx":103
+ *             self.pack_bytes_header(len(value))
+ *             self.pack_raw(value)
+ *         elif isinstance(value, bytearray):             # <<<<<<<<<<<<<<
+ *             self.pack_bytes_header(len(value))
+ *             self.pack_raw(bytes(value))
+ */
+  __pyx_t_2 = PyByteArray_Check(__pyx_v_value); 
+  __pyx_t_3 = (__pyx_t_2 != 0);
+  if (__pyx_t_3) {
+
+    /* "neo4j/packstream/_packer.pyx":104
+ *             self.pack_raw(value)
+ *         elif isinstance(value, bytearray):
+ *             self.pack_bytes_header(len(value))             # <<<<<<<<<<<<<<
+ *             self.pack_raw(bytes(value))
+ * 
+ */
+    __pyx_t_9 = PyObject_Length(__pyx_v_value); if (unlikely(__pyx_t_9 == -1)) __PYX_ERR(0, 104, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_bytes_header(__pyx_v_self, __pyx_t_9); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 104, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+    /* "neo4j/packstream/_packer.pyx":105
+ *         elif isinstance(value, bytearray):
+ *             self.pack_bytes_header(len(value))
+ *             self.pack_raw(bytes(value))             # <<<<<<<<<<<<<<
+ * 
+ *         # List
+ */
+    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 105, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_INCREF(__pyx_v_value);
+    __Pyx_GIVEREF(__pyx_v_value);
+    PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_v_value);
+    __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)(&PyBytes_Type)), __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 105, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_raw(__pyx_v_self, __pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 105, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+    /* "neo4j/packstream/_packer.pyx":103
+ *             self.pack_bytes_header(len(value))
+ *             self.pack_raw(value)
+ *         elif isinstance(value, bytearray):             # <<<<<<<<<<<<<<
+ *             self.pack_bytes_header(len(value))
+ *             self.pack_raw(bytes(value))
+ */
+    goto __pyx_L3;
+  }
+
+  /* "neo4j/packstream/_packer.pyx":108
  * 
  *         # List
  *         elif isinstance(value, list):             # <<<<<<<<<<<<<<
  *             self.pack_list_header(len(value))
  *             for item in value:
  */
-  __pyx_t_2 = PyList_Check(__pyx_v_value); 
-  __pyx_t_3 = (__pyx_t_2 != 0);
-  if (__pyx_t_3) {
+  __pyx_t_3 = PyList_Check(__pyx_v_value); 
+  __pyx_t_2 = (__pyx_t_3 != 0);
+  if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":103
+    /* "neo4j/packstream/_packer.pyx":109
  *         # List
  *         elif isinstance(value, list):
  *             self.pack_list_header(len(value))             # <<<<<<<<<<<<<<
  *             for item in value:
  *                 self._pack(item)
  */
-    __pyx_t_9 = PyObject_Length(__pyx_v_value); if (unlikely(__pyx_t_9 == -1)) __PYX_ERR(0, 103, __pyx_L1_error)
-    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_list_header(__pyx_v_self, __pyx_t_9); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 103, __pyx_L1_error)
+    __pyx_t_9 = PyObject_Length(__pyx_v_value); if (unlikely(__pyx_t_9 == -1)) __PYX_ERR(0, 109, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_list_header(__pyx_v_self, __pyx_t_9); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 109, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":104
+    /* "neo4j/packstream/_packer.pyx":110
  *         elif isinstance(value, list):
  *             self.pack_list_header(len(value))
  *             for item in value:             # <<<<<<<<<<<<<<
@@ -2791,38 +2852,38 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
  */
     if (likely(PyList_CheckExact(__pyx_v_value)) || PyTuple_CheckExact(__pyx_v_value)) {
       __pyx_t_4 = __pyx_v_value; __Pyx_INCREF(__pyx_t_4); __pyx_t_9 = 0;
-      __pyx_t_11 = NULL;
+      __pyx_t_10 = NULL;
     } else {
-      __pyx_t_9 = -1; __pyx_t_4 = PyObject_GetIter(__pyx_v_value); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 104, __pyx_L1_error)
+      __pyx_t_9 = -1; __pyx_t_4 = PyObject_GetIter(__pyx_v_value); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 110, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
-      __pyx_t_11 = Py_TYPE(__pyx_t_4)->tp_iternext; if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 104, __pyx_L1_error)
+      __pyx_t_10 = Py_TYPE(__pyx_t_4)->tp_iternext; if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 110, __pyx_L1_error)
     }
     for (;;) {
-      if (likely(!__pyx_t_11)) {
+      if (likely(!__pyx_t_10)) {
         if (likely(PyList_CheckExact(__pyx_t_4))) {
           if (__pyx_t_9 >= PyList_GET_SIZE(__pyx_t_4)) break;
           #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-          __pyx_t_1 = PyList_GET_ITEM(__pyx_t_4, __pyx_t_9); __Pyx_INCREF(__pyx_t_1); __pyx_t_9++; if (unlikely(0 < 0)) __PYX_ERR(0, 104, __pyx_L1_error)
+          __pyx_t_1 = PyList_GET_ITEM(__pyx_t_4, __pyx_t_9); __Pyx_INCREF(__pyx_t_1); __pyx_t_9++; if (unlikely(0 < 0)) __PYX_ERR(0, 110, __pyx_L1_error)
           #else
-          __pyx_t_1 = PySequence_ITEM(__pyx_t_4, __pyx_t_9); __pyx_t_9++; if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 104, __pyx_L1_error)
+          __pyx_t_1 = PySequence_ITEM(__pyx_t_4, __pyx_t_9); __pyx_t_9++; if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 110, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_1);
           #endif
         } else {
           if (__pyx_t_9 >= PyTuple_GET_SIZE(__pyx_t_4)) break;
           #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-          __pyx_t_1 = PyTuple_GET_ITEM(__pyx_t_4, __pyx_t_9); __Pyx_INCREF(__pyx_t_1); __pyx_t_9++; if (unlikely(0 < 0)) __PYX_ERR(0, 104, __pyx_L1_error)
+          __pyx_t_1 = PyTuple_GET_ITEM(__pyx_t_4, __pyx_t_9); __Pyx_INCREF(__pyx_t_1); __pyx_t_9++; if (unlikely(0 < 0)) __PYX_ERR(0, 110, __pyx_L1_error)
           #else
-          __pyx_t_1 = PySequence_ITEM(__pyx_t_4, __pyx_t_9); __pyx_t_9++; if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 104, __pyx_L1_error)
+          __pyx_t_1 = PySequence_ITEM(__pyx_t_4, __pyx_t_9); __pyx_t_9++; if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 110, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_1);
           #endif
         }
       } else {
-        __pyx_t_1 = __pyx_t_11(__pyx_t_4);
+        __pyx_t_1 = __pyx_t_10(__pyx_t_4);
         if (unlikely(!__pyx_t_1)) {
           PyObject* exc_type = PyErr_Occurred();
           if (exc_type) {
             if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-            else __PYX_ERR(0, 104, __pyx_L1_error)
+            else __PYX_ERR(0, 110, __pyx_L1_error)
           }
           break;
         }
@@ -2831,18 +2892,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       __Pyx_XDECREF_SET(__pyx_v_item, __pyx_t_1);
       __pyx_t_1 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":105
+      /* "neo4j/packstream/_packer.pyx":111
  *             self.pack_list_header(len(value))
  *             for item in value:
  *                 self._pack(item)             # <<<<<<<<<<<<<<
  * 
  *         # Map
  */
-      __pyx_t_1 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->_pack(__pyx_v_self, __pyx_v_item); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 105, __pyx_L1_error)
+      __pyx_t_1 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->_pack(__pyx_v_self, __pyx_v_item); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 111, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":104
+      /* "neo4j/packstream/_packer.pyx":110
  *         elif isinstance(value, list):
  *             self.pack_list_header(len(value))
  *             for item in value:             # <<<<<<<<<<<<<<
@@ -2852,7 +2913,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     }
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":102
+    /* "neo4j/packstream/_packer.pyx":108
  * 
  *         # List
  *         elif isinstance(value, list):             # <<<<<<<<<<<<<<
@@ -2862,37 +2923,37 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":108
+  /* "neo4j/packstream/_packer.pyx":114
  * 
  *         # Map
  *         elif isinstance(value, dict):             # <<<<<<<<<<<<<<
  *             self.pack_map_header(len(value))
  *             for key, item in value.items():
  */
-  __pyx_t_3 = PyDict_Check(__pyx_v_value); 
-  __pyx_t_2 = (__pyx_t_3 != 0);
-  if (__pyx_t_2) {
+  __pyx_t_2 = PyDict_Check(__pyx_v_value); 
+  __pyx_t_3 = (__pyx_t_2 != 0);
+  if (__pyx_t_3) {
 
-    /* "neo4j/packstream/_packer.pyx":109
+    /* "neo4j/packstream/_packer.pyx":115
  *         # Map
  *         elif isinstance(value, dict):
  *             self.pack_map_header(len(value))             # <<<<<<<<<<<<<<
  *             for key, item in value.items():
  *                 self._pack(key)
  */
-    __pyx_t_9 = PyObject_Length(__pyx_v_value); if (unlikely(__pyx_t_9 == -1)) __PYX_ERR(0, 109, __pyx_L1_error)
-    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_map_header(__pyx_v_self, __pyx_t_9); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 109, __pyx_L1_error)
+    __pyx_t_9 = PyObject_Length(__pyx_v_value); if (unlikely(__pyx_t_9 == -1)) __PYX_ERR(0, 115, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_map_header(__pyx_v_self, __pyx_t_9); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 115, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":110
+    /* "neo4j/packstream/_packer.pyx":116
  *         elif isinstance(value, dict):
  *             self.pack_map_header(len(value))
  *             for key, item in value.items():             # <<<<<<<<<<<<<<
  *                 self._pack(key)
  *                 self._pack(item)
  */
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_value, __pyx_n_s_items); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 110, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_value, __pyx_n_s_items); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 116, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_t_5 = NULL;
     if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_1))) {
@@ -2905,48 +2966,48 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       }
     }
     if (__pyx_t_5) {
-      __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_5); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 110, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_5); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 116, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     } else {
-      __pyx_t_4 = __Pyx_PyObject_CallNoArg(__pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 110, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_PyObject_CallNoArg(__pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 116, __pyx_L1_error)
     }
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     if (likely(PyList_CheckExact(__pyx_t_4)) || PyTuple_CheckExact(__pyx_t_4)) {
       __pyx_t_1 = __pyx_t_4; __Pyx_INCREF(__pyx_t_1); __pyx_t_9 = 0;
-      __pyx_t_11 = NULL;
+      __pyx_t_10 = NULL;
     } else {
-      __pyx_t_9 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 110, __pyx_L1_error)
+      __pyx_t_9 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 116, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_11 = Py_TYPE(__pyx_t_1)->tp_iternext; if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 110, __pyx_L1_error)
+      __pyx_t_10 = Py_TYPE(__pyx_t_1)->tp_iternext; if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 116, __pyx_L1_error)
     }
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     for (;;) {
-      if (likely(!__pyx_t_11)) {
+      if (likely(!__pyx_t_10)) {
         if (likely(PyList_CheckExact(__pyx_t_1))) {
           if (__pyx_t_9 >= PyList_GET_SIZE(__pyx_t_1)) break;
           #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-          __pyx_t_4 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_9); __Pyx_INCREF(__pyx_t_4); __pyx_t_9++; if (unlikely(0 < 0)) __PYX_ERR(0, 110, __pyx_L1_error)
+          __pyx_t_4 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_9); __Pyx_INCREF(__pyx_t_4); __pyx_t_9++; if (unlikely(0 < 0)) __PYX_ERR(0, 116, __pyx_L1_error)
           #else
-          __pyx_t_4 = PySequence_ITEM(__pyx_t_1, __pyx_t_9); __pyx_t_9++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 110, __pyx_L1_error)
+          __pyx_t_4 = PySequence_ITEM(__pyx_t_1, __pyx_t_9); __pyx_t_9++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 116, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_4);
           #endif
         } else {
           if (__pyx_t_9 >= PyTuple_GET_SIZE(__pyx_t_1)) break;
           #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-          __pyx_t_4 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_9); __Pyx_INCREF(__pyx_t_4); __pyx_t_9++; if (unlikely(0 < 0)) __PYX_ERR(0, 110, __pyx_L1_error)
+          __pyx_t_4 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_9); __Pyx_INCREF(__pyx_t_4); __pyx_t_9++; if (unlikely(0 < 0)) __PYX_ERR(0, 116, __pyx_L1_error)
           #else
-          __pyx_t_4 = PySequence_ITEM(__pyx_t_1, __pyx_t_9); __pyx_t_9++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 110, __pyx_L1_error)
+          __pyx_t_4 = PySequence_ITEM(__pyx_t_1, __pyx_t_9); __pyx_t_9++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 116, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_4);
           #endif
         }
       } else {
-        __pyx_t_4 = __pyx_t_11(__pyx_t_1);
+        __pyx_t_4 = __pyx_t_10(__pyx_t_1);
         if (unlikely(!__pyx_t_4)) {
           PyObject* exc_type = PyErr_Occurred();
           if (exc_type) {
             if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-            else __PYX_ERR(0, 110, __pyx_L1_error)
+            else __PYX_ERR(0, 116, __pyx_L1_error)
           }
           break;
         }
@@ -2962,7 +3023,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         if (unlikely(size != 2)) {
           if (size > 2) __Pyx_RaiseTooManyValuesError(2);
           else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-          __PYX_ERR(0, 110, __pyx_L1_error)
+          __PYX_ERR(0, 116, __pyx_L1_error)
         }
         #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
         if (likely(PyTuple_CheckExact(sequence))) {
@@ -2975,61 +3036,61 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
         __Pyx_INCREF(__pyx_t_5);
         __Pyx_INCREF(__pyx_t_6);
         #else
-        __pyx_t_5 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 110, __pyx_L1_error)
+        __pyx_t_5 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 116, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
-        __pyx_t_6 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 110, __pyx_L1_error)
+        __pyx_t_6 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 116, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         #endif
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else {
         Py_ssize_t index = -1;
-        __pyx_t_8 = PyObject_GetIter(__pyx_t_4); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 110, __pyx_L1_error)
+        __pyx_t_8 = PyObject_GetIter(__pyx_t_4); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 116, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_8);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-        __pyx_t_12 = Py_TYPE(__pyx_t_8)->tp_iternext;
-        index = 0; __pyx_t_5 = __pyx_t_12(__pyx_t_8); if (unlikely(!__pyx_t_5)) goto __pyx_L12_unpacking_failed;
+        __pyx_t_11 = Py_TYPE(__pyx_t_8)->tp_iternext;
+        index = 0; __pyx_t_5 = __pyx_t_11(__pyx_t_8); if (unlikely(!__pyx_t_5)) goto __pyx_L10_unpacking_failed;
         __Pyx_GOTREF(__pyx_t_5);
-        index = 1; __pyx_t_6 = __pyx_t_12(__pyx_t_8); if (unlikely(!__pyx_t_6)) goto __pyx_L12_unpacking_failed;
+        index = 1; __pyx_t_6 = __pyx_t_11(__pyx_t_8); if (unlikely(!__pyx_t_6)) goto __pyx_L10_unpacking_failed;
         __Pyx_GOTREF(__pyx_t_6);
-        if (__Pyx_IternextUnpackEndCheck(__pyx_t_12(__pyx_t_8), 2) < 0) __PYX_ERR(0, 110, __pyx_L1_error)
-        __pyx_t_12 = NULL;
+        if (__Pyx_IternextUnpackEndCheck(__pyx_t_11(__pyx_t_8), 2) < 0) __PYX_ERR(0, 116, __pyx_L1_error)
+        __pyx_t_11 = NULL;
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        goto __pyx_L13_unpacking_done;
-        __pyx_L12_unpacking_failed:;
+        goto __pyx_L11_unpacking_done;
+        __pyx_L10_unpacking_failed:;
         __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-        __pyx_t_12 = NULL;
+        __pyx_t_11 = NULL;
         if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-        __PYX_ERR(0, 110, __pyx_L1_error)
-        __pyx_L13_unpacking_done:;
+        __PYX_ERR(0, 116, __pyx_L1_error)
+        __pyx_L11_unpacking_done:;
       }
       __Pyx_XDECREF_SET(__pyx_v_key, __pyx_t_5);
       __pyx_t_5 = 0;
       __Pyx_XDECREF_SET(__pyx_v_item, __pyx_t_6);
       __pyx_t_6 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":111
+      /* "neo4j/packstream/_packer.pyx":117
  *             self.pack_map_header(len(value))
  *             for key, item in value.items():
  *                 self._pack(key)             # <<<<<<<<<<<<<<
  *                 self._pack(item)
  * 
  */
-      __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->_pack(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 111, __pyx_L1_error)
+      __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->_pack(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 117, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":112
+      /* "neo4j/packstream/_packer.pyx":118
  *             for key, item in value.items():
  *                 self._pack(key)
  *                 self._pack(item)             # <<<<<<<<<<<<<<
  * 
  *         # Structure
  */
-      __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->_pack(__pyx_v_self, __pyx_v_item); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 112, __pyx_L1_error)
+      __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->_pack(__pyx_v_self, __pyx_v_item); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 118, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":110
+      /* "neo4j/packstream/_packer.pyx":116
  *         elif isinstance(value, dict):
  *             self.pack_map_header(len(value))
  *             for key, item in value.items():             # <<<<<<<<<<<<<<
@@ -3039,7 +3100,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     }
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":108
+    /* "neo4j/packstream/_packer.pyx":114
  * 
  *         # Map
  *         elif isinstance(value, dict):             # <<<<<<<<<<<<<<
@@ -3049,31 +3110,31 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":115
+  /* "neo4j/packstream/_packer.pyx":121
  * 
  *         # Structure
  *         elif isinstance(value, (Structure, tuple)):             # <<<<<<<<<<<<<<
  *             try:
  *                 signature, fields = value
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Structure); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 115, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Structure); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 121, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyObject_IsInstance(__pyx_v_value, __pyx_t_1); 
-  __pyx_t_10 = (__pyx_t_3 != 0);
-  if (!__pyx_t_10) {
+  __pyx_t_2 = PyObject_IsInstance(__pyx_v_value, __pyx_t_1); 
+  __pyx_t_12 = (__pyx_t_2 != 0);
+  if (!__pyx_t_12) {
   } else {
-    __pyx_t_2 = __pyx_t_10;
-    goto __pyx_L14_bool_binop_done;
+    __pyx_t_3 = __pyx_t_12;
+    goto __pyx_L12_bool_binop_done;
   }
-  __pyx_t_10 = PyTuple_Check(__pyx_v_value); 
-  __pyx_t_3 = (__pyx_t_10 != 0);
-  __pyx_t_2 = __pyx_t_3;
-  __pyx_L14_bool_binop_done:;
+  __pyx_t_12 = PyTuple_Check(__pyx_v_value); 
+  __pyx_t_2 = (__pyx_t_12 != 0);
+  __pyx_t_3 = __pyx_t_2;
+  __pyx_L12_bool_binop_done:;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_3 = (__pyx_t_2 != 0);
-  if (__pyx_t_3) {
+  __pyx_t_2 = (__pyx_t_3 != 0);
+  if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":116
+    /* "neo4j/packstream/_packer.pyx":122
  *         # Structure
  *         elif isinstance(value, (Structure, tuple)):
  *             try:             # <<<<<<<<<<<<<<
@@ -3089,7 +3150,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       __Pyx_XGOTREF(__pyx_t_15);
       /*try:*/ {
 
-        /* "neo4j/packstream/_packer.pyx":117
+        /* "neo4j/packstream/_packer.pyx":123
  *         elif isinstance(value, (Structure, tuple)):
  *             try:
  *                 signature, fields = value             # <<<<<<<<<<<<<<
@@ -3106,7 +3167,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
           if (unlikely(size != 2)) {
             if (size > 2) __Pyx_RaiseTooManyValuesError(2);
             else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-            __PYX_ERR(0, 117, __pyx_L16_error)
+            __PYX_ERR(0, 123, __pyx_L14_error)
           }
           #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
           if (likely(PyTuple_CheckExact(sequence))) {
@@ -3119,37 +3180,37 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
           __Pyx_INCREF(__pyx_t_1);
           __Pyx_INCREF(__pyx_t_4);
           #else
-          __pyx_t_1 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 117, __pyx_L16_error)
+          __pyx_t_1 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 123, __pyx_L14_error)
           __Pyx_GOTREF(__pyx_t_1);
-          __pyx_t_4 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 117, __pyx_L16_error)
+          __pyx_t_4 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 123, __pyx_L14_error)
           __Pyx_GOTREF(__pyx_t_4);
           #endif
         } else {
           Py_ssize_t index = -1;
-          __pyx_t_6 = PyObject_GetIter(__pyx_v_value); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 117, __pyx_L16_error)
+          __pyx_t_6 = PyObject_GetIter(__pyx_v_value); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 123, __pyx_L14_error)
           __Pyx_GOTREF(__pyx_t_6);
-          __pyx_t_12 = Py_TYPE(__pyx_t_6)->tp_iternext;
-          index = 0; __pyx_t_1 = __pyx_t_12(__pyx_t_6); if (unlikely(!__pyx_t_1)) goto __pyx_L24_unpacking_failed;
+          __pyx_t_11 = Py_TYPE(__pyx_t_6)->tp_iternext;
+          index = 0; __pyx_t_1 = __pyx_t_11(__pyx_t_6); if (unlikely(!__pyx_t_1)) goto __pyx_L22_unpacking_failed;
           __Pyx_GOTREF(__pyx_t_1);
-          index = 1; __pyx_t_4 = __pyx_t_12(__pyx_t_6); if (unlikely(!__pyx_t_4)) goto __pyx_L24_unpacking_failed;
+          index = 1; __pyx_t_4 = __pyx_t_11(__pyx_t_6); if (unlikely(!__pyx_t_4)) goto __pyx_L22_unpacking_failed;
           __Pyx_GOTREF(__pyx_t_4);
-          if (__Pyx_IternextUnpackEndCheck(__pyx_t_12(__pyx_t_6), 2) < 0) __PYX_ERR(0, 117, __pyx_L16_error)
-          __pyx_t_12 = NULL;
+          if (__Pyx_IternextUnpackEndCheck(__pyx_t_11(__pyx_t_6), 2) < 0) __PYX_ERR(0, 123, __pyx_L14_error)
+          __pyx_t_11 = NULL;
           __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-          goto __pyx_L25_unpacking_done;
-          __pyx_L24_unpacking_failed:;
+          goto __pyx_L23_unpacking_done;
+          __pyx_L22_unpacking_failed:;
           __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-          __pyx_t_12 = NULL;
+          __pyx_t_11 = NULL;
           if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-          __PYX_ERR(0, 117, __pyx_L16_error)
-          __pyx_L25_unpacking_done:;
+          __PYX_ERR(0, 123, __pyx_L14_error)
+          __pyx_L23_unpacking_done:;
         }
         __pyx_v_signature = __pyx_t_1;
         __pyx_t_1 = 0;
         __pyx_v_fields = __pyx_t_4;
         __pyx_t_4 = 0;
 
-        /* "neo4j/packstream/_packer.pyx":116
+        /* "neo4j/packstream/_packer.pyx":122
  *         # Structure
  *         elif isinstance(value, (Structure, tuple)):
  *             try:             # <<<<<<<<<<<<<<
@@ -3158,7 +3219,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
  */
       }
 
-      /* "neo4j/packstream/_packer.pyx":121
+      /* "neo4j/packstream/_packer.pyx":127
  *                 raise ValueError("Structures require a 2-tuple of (signature, fields)")
  *             else:
  *                 self.pack_struct(signature, fields)             # <<<<<<<<<<<<<<
@@ -3166,17 +3227,17 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
  *         # Other
  */
       /*else:*/ {
-        if (!(likely(PyBytes_CheckExact(__pyx_v_signature))||((__pyx_v_signature) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "bytes", Py_TYPE(__pyx_v_signature)->tp_name), 0))) __PYX_ERR(0, 121, __pyx_L18_except_error)
-        if (!(likely(PyTuple_CheckExact(__pyx_v_fields))||((__pyx_v_fields) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "tuple", Py_TYPE(__pyx_v_fields)->tp_name), 0))) __PYX_ERR(0, 121, __pyx_L18_except_error)
-        __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_struct(__pyx_v_self, ((PyObject*)__pyx_v_signature), ((PyObject*)__pyx_v_fields), 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 121, __pyx_L18_except_error)
+        if (!(likely(PyBytes_CheckExact(__pyx_v_signature))||((__pyx_v_signature) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "bytes", Py_TYPE(__pyx_v_signature)->tp_name), 0))) __PYX_ERR(0, 127, __pyx_L16_except_error)
+        if (!(likely(PyTuple_CheckExact(__pyx_v_fields))||((__pyx_v_fields) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "tuple", Py_TYPE(__pyx_v_fields)->tp_name), 0))) __PYX_ERR(0, 127, __pyx_L16_except_error)
+        __pyx_t_4 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->pack_struct(__pyx_v_self, ((PyObject*)__pyx_v_signature), ((PyObject*)__pyx_v_fields), 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 127, __pyx_L16_except_error)
         __Pyx_GOTREF(__pyx_t_4);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       }
       __Pyx_XDECREF(__pyx_t_13); __pyx_t_13 = 0;
       __Pyx_XDECREF(__pyx_t_14); __pyx_t_14 = 0;
       __Pyx_XDECREF(__pyx_t_15); __pyx_t_15 = 0;
-      goto __pyx_L23_try_end;
-      __pyx_L16_error:;
+      goto __pyx_L21_try_end;
+      __pyx_L14_error:;
       __Pyx_PyThreadState_assign
       __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
       __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
@@ -3184,7 +3245,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
       __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-      /* "neo4j/packstream/_packer.pyx":118
+      /* "neo4j/packstream/_packer.pyx":124
  *             try:
  *                 signature, fields = value
  *             except ValueError:             # <<<<<<<<<<<<<<
@@ -3194,28 +3255,28 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       __pyx_t_7 = __Pyx_PyErr_ExceptionMatches(__pyx_builtin_ValueError);
       if (__pyx_t_7) {
         __Pyx_AddTraceback("neo4j.packstream._packer.Packer._pack", __pyx_clineno, __pyx_lineno, __pyx_filename);
-        if (__Pyx_GetException(&__pyx_t_4, &__pyx_t_1, &__pyx_t_6) < 0) __PYX_ERR(0, 118, __pyx_L18_except_error)
+        if (__Pyx_GetException(&__pyx_t_4, &__pyx_t_1, &__pyx_t_6) < 0) __PYX_ERR(0, 124, __pyx_L16_except_error)
         __Pyx_GOTREF(__pyx_t_4);
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_GOTREF(__pyx_t_6);
 
-        /* "neo4j/packstream/_packer.pyx":119
+        /* "neo4j/packstream/_packer.pyx":125
  *                 signature, fields = value
  *             except ValueError:
  *                 raise ValueError("Structures require a 2-tuple of (signature, fields)")             # <<<<<<<<<<<<<<
  *             else:
  *                 self.pack_struct(signature, fields)
  */
-        __pyx_t_5 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__18, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 119, __pyx_L18_except_error)
+        __pyx_t_5 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__18, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 125, __pyx_L16_except_error)
         __Pyx_GOTREF(__pyx_t_5);
         __Pyx_Raise(__pyx_t_5, 0, 0, 0);
         __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-        __PYX_ERR(0, 119, __pyx_L18_except_error)
+        __PYX_ERR(0, 125, __pyx_L16_except_error)
       }
-      goto __pyx_L18_except_error;
-      __pyx_L18_except_error:;
+      goto __pyx_L16_except_error;
+      __pyx_L16_except_error:;
 
-      /* "neo4j/packstream/_packer.pyx":116
+      /* "neo4j/packstream/_packer.pyx":122
  *         # Structure
  *         elif isinstance(value, (Structure, tuple)):
  *             try:             # <<<<<<<<<<<<<<
@@ -3228,10 +3289,10 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
       __Pyx_XGIVEREF(__pyx_t_15);
       __Pyx_ExceptionReset(__pyx_t_13, __pyx_t_14, __pyx_t_15);
       goto __pyx_L1_error;
-      __pyx_L23_try_end:;
+      __pyx_L21_try_end:;
     }
 
-    /* "neo4j/packstream/_packer.pyx":115
+    /* "neo4j/packstream/_packer.pyx":121
  * 
  *         # Structure
  *         elif isinstance(value, (Structure, tuple)):             # <<<<<<<<<<<<<<
@@ -3241,7 +3302,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":125
+  /* "neo4j/packstream/_packer.pyx":131
  *         # Other
  *         else:
  *             raise ValueError("Values of type %s are not supported" % type(value))             # <<<<<<<<<<<<<<
@@ -3249,23 +3310,23 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
  *     cdef pack_bytes_header(self, int size):
  */
   /*else*/ {
-    __pyx_t_6 = __Pyx_PyString_Format(__pyx_kp_s_Values_of_type_s_are_not_support, ((PyObject *)Py_TYPE(__pyx_v_value))); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 125, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyString_Format(__pyx_kp_s_Values_of_type_s_are_not_support, ((PyObject *)Py_TYPE(__pyx_v_value))); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 131, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 125, __pyx_L1_error)
+    __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 131, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_GIVEREF(__pyx_t_6);
     PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_t_6);
     __pyx_t_6 = 0;
-    __pyx_t_6 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_t_1, NULL); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 125, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_t_1, NULL); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 131, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __Pyx_Raise(__pyx_t_6, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-    __PYX_ERR(0, 125, __pyx_L1_error)
+    __PYX_ERR(0, 131, __pyx_L1_error)
   }
   __pyx_L3:;
 
-  /* "neo4j/packstream/_packer.pyx":49
+  /* "neo4j/packstream/_packer.pyx":52
  *         return self._pack(value)
  * 
  *     cdef _pack(self, value):             # <<<<<<<<<<<<<<
@@ -3296,20 +3357,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer__pack(struct __pyx
   return __pyx_r;
 }
 
-/* "neo4j/packstream/_packer.pyx":127
+/* "neo4j/packstream/_packer.pyx":133
  *             raise ValueError("Values of type %s are not supported" % type(value))
  * 
  *     cdef pack_bytes_header(self, int size):             # <<<<<<<<<<<<<<
- *         write = self._write
- *         if size < 0x100:
+ *         if not self.supports_bytes:
+ *             raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")
  */
 
 static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_bytes_header(struct __pyx_obj_5neo4j_10packstream_7_packer_Packer *__pyx_v_self, int __pyx_v_size) {
   PyObject *__pyx_v_write = NULL;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
-  int __pyx_t_2;
+  int __pyx_t_1;
+  PyObject *__pyx_t_2 = NULL;
   PyObject *__pyx_t_3 = NULL;
   PyObject *__pyx_t_4 = NULL;
   PyObject *__pyx_t_5 = NULL;
@@ -3318,49 +3379,81 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_bytes_header(
   PyObject *__pyx_t_8 = NULL;
   __Pyx_RefNannySetupContext("pack_bytes_header", 0);
 
-  /* "neo4j/packstream/_packer.pyx":128
+  /* "neo4j/packstream/_packer.pyx":134
  * 
  *     cdef pack_bytes_header(self, int size):
+ *         if not self.supports_bytes:             # <<<<<<<<<<<<<<
+ *             raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")
+ *         write = self._write
+ */
+  __pyx_t_1 = ((!(__pyx_v_self->supports_bytes != 0)) != 0);
+  if (__pyx_t_1) {
+
+    /* "neo4j/packstream/_packer.pyx":135
+ *     cdef pack_bytes_header(self, int size):
+ *         if not self.supports_bytes:
+ *             raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")             # <<<<<<<<<<<<<<
+ *         write = self._write
+ *         if size < 0x100:
+ */
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_builtin_TypeError, __pyx_tuple__19, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 135, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_Raise(__pyx_t_2, 0, 0, 0);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __PYX_ERR(0, 135, __pyx_L1_error)
+
+    /* "neo4j/packstream/_packer.pyx":134
+ * 
+ *     cdef pack_bytes_header(self, int size):
+ *         if not self.supports_bytes:             # <<<<<<<<<<<<<<
+ *             raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")
+ *         write = self._write
+ */
+  }
+
+  /* "neo4j/packstream/_packer.pyx":136
+ *         if not self.supports_bytes:
+ *             raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")
  *         write = self._write             # <<<<<<<<<<<<<<
  *         if size < 0x100:
  *             write(b"\xCC")
  */
-  __pyx_t_1 = __pyx_v_self->_write;
-  __Pyx_INCREF(__pyx_t_1);
-  __pyx_v_write = __pyx_t_1;
-  __pyx_t_1 = 0;
+  __pyx_t_2 = __pyx_v_self->_write;
+  __Pyx_INCREF(__pyx_t_2);
+  __pyx_v_write = __pyx_t_2;
+  __pyx_t_2 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":129
- *     cdef pack_bytes_header(self, int size):
+  /* "neo4j/packstream/_packer.pyx":137
+ *             raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")
  *         write = self._write
  *         if size < 0x100:             # <<<<<<<<<<<<<<
  *             write(b"\xCC")
  *             write(PACKED_UINT_8[size])
  */
-  __pyx_t_2 = ((__pyx_v_size < 0x100) != 0);
-  if (__pyx_t_2) {
+  __pyx_t_1 = ((__pyx_v_size < 0x100) != 0);
+  if (__pyx_t_1) {
 
-    /* "neo4j/packstream/_packer.pyx":130
+    /* "neo4j/packstream/_packer.pyx":138
  *         write = self._write
  *         if size < 0x100:
  *             write(b"\xCC")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__20, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 130, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__21, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 138, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":131
+    /* "neo4j/packstream/_packer.pyx":139
  *         if size < 0x100:
  *             write(b"\xCC")
  *             write(PACKED_UINT_8[size])             # <<<<<<<<<<<<<<
  *         elif size < 0x10000:
  *             write(b"\xCD")
  */
-    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 131, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 139, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 131, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 139, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_INCREF(__pyx_v_write);
@@ -3375,84 +3468,84 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_bytes_header(
       }
     }
     if (!__pyx_t_5) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 131, __pyx_L1_error)
+      __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 139, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-      __Pyx_GOTREF(__pyx_t_1);
+      __Pyx_GOTREF(__pyx_t_2);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_5, __pyx_t_4};
-        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 131, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 139, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
-        __Pyx_GOTREF(__pyx_t_1);
+        __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else
       #endif
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_5, __pyx_t_4};
-        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 131, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 139, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
-        __Pyx_GOTREF(__pyx_t_1);
+        __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else
       #endif
       {
-        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 131, __pyx_L1_error)
+        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 139, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5); __pyx_t_5 = NULL;
         __Pyx_GIVEREF(__pyx_t_4);
         PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_4);
         __pyx_t_4 = 0;
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 131, __pyx_L1_error)
-        __Pyx_GOTREF(__pyx_t_1);
+        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 139, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
     }
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":129
- *     cdef pack_bytes_header(self, int size):
+    /* "neo4j/packstream/_packer.pyx":137
+ *             raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")
  *         write = self._write
  *         if size < 0x100:             # <<<<<<<<<<<<<<
  *             write(b"\xCC")
  *             write(PACKED_UINT_8[size])
  */
-    goto __pyx_L3;
+    goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":132
+  /* "neo4j/packstream/_packer.pyx":140
  *             write(b"\xCC")
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:             # <<<<<<<<<<<<<<
  *             write(b"\xCD")
  *             write(PACKED_UINT_16[size])
  */
-  __pyx_t_2 = ((__pyx_v_size < 0x10000) != 0);
-  if (__pyx_t_2) {
+  __pyx_t_1 = ((__pyx_v_size < 0x10000) != 0);
+  if (__pyx_t_1) {
 
-    /* "neo4j/packstream/_packer.pyx":133
+    /* "neo4j/packstream/_packer.pyx":141
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  *             write(b"\xCD")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__22, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 133, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__23, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 141, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":134
+    /* "neo4j/packstream/_packer.pyx":142
  *         elif size < 0x10000:
  *             write(b"\xCD")
  *             write(PACKED_UINT_16[size])             # <<<<<<<<<<<<<<
  *         elif size < 0x100000000:
  *             write(b"\xCE")
  */
-    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_16); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 134, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_16); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 142, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_6 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 134, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 142, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_INCREF(__pyx_v_write);
@@ -3467,89 +3560,89 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_bytes_header(
       }
     }
     if (!__pyx_t_4) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_6); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 134, __pyx_L1_error)
+      __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_6); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 142, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-      __Pyx_GOTREF(__pyx_t_1);
+      __Pyx_GOTREF(__pyx_t_2);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_4, __pyx_t_6};
-        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 134, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 142, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-        __Pyx_GOTREF(__pyx_t_1);
+        __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       } else
       #endif
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_4, __pyx_t_6};
-        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 134, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 142, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-        __Pyx_GOTREF(__pyx_t_1);
+        __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       } else
       #endif
       {
-        __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 134, __pyx_L1_error)
+        __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 142, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
         __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_4); __pyx_t_4 = NULL;
         __Pyx_GIVEREF(__pyx_t_6);
         PyTuple_SET_ITEM(__pyx_t_5, 0+1, __pyx_t_6);
         __pyx_t_6 = 0;
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 134, __pyx_L1_error)
-        __Pyx_GOTREF(__pyx_t_1);
+        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 142, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       }
     }
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":132
+    /* "neo4j/packstream/_packer.pyx":140
  *             write(b"\xCC")
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:             # <<<<<<<<<<<<<<
  *             write(b"\xCD")
  *             write(PACKED_UINT_16[size])
  */
-    goto __pyx_L3;
+    goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":135
+  /* "neo4j/packstream/_packer.pyx":143
  *             write(b"\xCD")
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:             # <<<<<<<<<<<<<<
  *             write(b"\xCE")
  *             write(struct_pack(">I", size))
  */
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 135, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_int_4294967296, Py_LT); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 135, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 135, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 143, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_3 = PyObject_RichCompare(__pyx_t_2, __pyx_int_4294967296, Py_LT); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 143, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 143, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (__pyx_t_2) {
+  if (__pyx_t_1) {
 
-    /* "neo4j/packstream/_packer.pyx":136
+    /* "neo4j/packstream/_packer.pyx":144
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  *             write(b"\xCE")             # <<<<<<<<<<<<<<
  *             write(struct_pack(">I", size))
  *         else:
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__24, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 136, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__25, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 144, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":137
+    /* "neo4j/packstream/_packer.pyx":145
  *         elif size < 0x100000000:
  *             write(b"\xCE")
  *             write(struct_pack(">I", size))             # <<<<<<<<<<<<<<
  *         else:
  *             raise OverflowError("Bytes header size out of range")
  */
-    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 137, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 145, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_6 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 137, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 145, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __pyx_t_4 = NULL;
     __pyx_t_7 = 0;
@@ -3566,23 +3659,23 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_bytes_header(
     #if CYTHON_FAST_PYCALL
     if (PyFunction_Check(__pyx_t_5)) {
       PyObject *__pyx_temp[3] = {__pyx_t_4, __pyx_kp_s_I, __pyx_t_6};
-      __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 137, __pyx_L1_error)
+      __pyx_t_2 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 145, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-      __Pyx_GOTREF(__pyx_t_1);
+      __Pyx_GOTREF(__pyx_t_2);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     } else
     #endif
     #if CYTHON_FAST_PYCCALL
     if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
       PyObject *__pyx_temp[3] = {__pyx_t_4, __pyx_kp_s_I, __pyx_t_6};
-      __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 137, __pyx_L1_error)
+      __pyx_t_2 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 145, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-      __Pyx_GOTREF(__pyx_t_1);
+      __Pyx_GOTREF(__pyx_t_2);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     } else
     #endif
     {
-      __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 137, __pyx_L1_error)
+      __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 145, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
       if (__pyx_t_4) {
         __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_4); __pyx_t_4 = NULL;
@@ -3593,8 +3686,8 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_bytes_header(
       __Pyx_GIVEREF(__pyx_t_6);
       PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_7, __pyx_t_6);
       __pyx_t_6 = 0;
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 137, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_1);
+      __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 145, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_2);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
     }
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
@@ -3610,36 +3703,36 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_bytes_header(
       }
     }
     if (!__pyx_t_8) {
-      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 137, __pyx_L1_error)
-      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 145, __pyx_L1_error)
+      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
       __Pyx_GOTREF(__pyx_t_3);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_5)) {
-        PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_1};
-        __pyx_t_3 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 137, __pyx_L1_error)
+        PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_2};
+        __pyx_t_3 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 145, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_GOTREF(__pyx_t_3);
-        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+        __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
       } else
       #endif
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
-        PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_1};
-        __pyx_t_3 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 137, __pyx_L1_error)
+        PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_2};
+        __pyx_t_3 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 145, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_GOTREF(__pyx_t_3);
-        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+        __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
       } else
       #endif
       {
-        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 137, __pyx_L1_error)
+        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 145, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         __Pyx_GIVEREF(__pyx_t_8); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_8); __pyx_t_8 = NULL;
-        __Pyx_GIVEREF(__pyx_t_1);
-        PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_1);
-        __pyx_t_1 = 0;
-        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 137, __pyx_L1_error)
+        __Pyx_GIVEREF(__pyx_t_2);
+        PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_2);
+        __pyx_t_2 = 0;
+        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 145, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
@@ -3647,17 +3740,17 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_bytes_header(
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":135
+    /* "neo4j/packstream/_packer.pyx":143
  *             write(b"\xCD")
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:             # <<<<<<<<<<<<<<
  *             write(b"\xCE")
  *             write(struct_pack(">I", size))
  */
-    goto __pyx_L3;
+    goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":139
+  /* "neo4j/packstream/_packer.pyx":147
  *             write(struct_pack(">I", size))
  *         else:
  *             raise OverflowError("Bytes header size out of range")             # <<<<<<<<<<<<<<
@@ -3665,27 +3758,27 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_bytes_header(
  *     cdef pack_string_header(self, int size):
  */
   /*else*/ {
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_OverflowError, __pyx_tuple__25, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 139, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_OverflowError, __pyx_tuple__26, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 147, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 139, __pyx_L1_error)
+    __PYX_ERR(0, 147, __pyx_L1_error)
   }
-  __pyx_L3:;
+  __pyx_L4:;
 
-  /* "neo4j/packstream/_packer.pyx":127
+  /* "neo4j/packstream/_packer.pyx":133
  *             raise ValueError("Values of type %s are not supported" % type(value))
  * 
  *     cdef pack_bytes_header(self, int size):             # <<<<<<<<<<<<<<
- *         write = self._write
- *         if size < 0x100:
+ *         if not self.supports_bytes:
+ *             raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")
  */
 
   /* function exit code */
   __pyx_r = Py_None; __Pyx_INCREF(Py_None);
   goto __pyx_L0;
   __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_5);
@@ -3700,7 +3793,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_bytes_header(
   return __pyx_r;
 }
 
-/* "neo4j/packstream/_packer.pyx":141
+/* "neo4j/packstream/_packer.pyx":149
  *             raise OverflowError("Bytes header size out of range")
  * 
  *     cdef pack_string_header(self, int size):             # <<<<<<<<<<<<<<
@@ -3722,7 +3815,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   PyObject *__pyx_t_8 = NULL;
   __Pyx_RefNannySetupContext("pack_string_header", 0);
 
-  /* "neo4j/packstream/_packer.pyx":142
+  /* "neo4j/packstream/_packer.pyx":150
  * 
  *     cdef pack_string_header(self, int size):
  *         write = self._write             # <<<<<<<<<<<<<<
@@ -3734,7 +3827,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_v_write = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":143
+  /* "neo4j/packstream/_packer.pyx":151
  *     cdef pack_string_header(self, int size):
  *         write = self._write
  *         if size == 0x00:             # <<<<<<<<<<<<<<
@@ -3744,18 +3837,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x00) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":144
+    /* "neo4j/packstream/_packer.pyx":152
  *         write = self._write
  *         if size == 0x00:
  *             write(b"\x80")             # <<<<<<<<<<<<<<
  *         elif size == 0x01:
  *             write(b"\x81")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__27, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 144, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__28, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 152, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":143
+    /* "neo4j/packstream/_packer.pyx":151
  *     cdef pack_string_header(self, int size):
  *         write = self._write
  *         if size == 0x00:             # <<<<<<<<<<<<<<
@@ -3765,7 +3858,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":145
+  /* "neo4j/packstream/_packer.pyx":153
  *         if size == 0x00:
  *             write(b"\x80")
  *         elif size == 0x01:             # <<<<<<<<<<<<<<
@@ -3775,18 +3868,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x01) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":146
+    /* "neo4j/packstream/_packer.pyx":154
  *             write(b"\x80")
  *         elif size == 0x01:
  *             write(b"\x81")             # <<<<<<<<<<<<<<
  *         elif size == 0x02:
  *             write(b"\x82")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__29, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 146, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__30, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 154, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":145
+    /* "neo4j/packstream/_packer.pyx":153
  *         if size == 0x00:
  *             write(b"\x80")
  *         elif size == 0x01:             # <<<<<<<<<<<<<<
@@ -3796,7 +3889,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":147
+  /* "neo4j/packstream/_packer.pyx":155
  *         elif size == 0x01:
  *             write(b"\x81")
  *         elif size == 0x02:             # <<<<<<<<<<<<<<
@@ -3806,18 +3899,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x02) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":148
+    /* "neo4j/packstream/_packer.pyx":156
  *             write(b"\x81")
  *         elif size == 0x02:
  *             write(b"\x82")             # <<<<<<<<<<<<<<
  *         elif size == 0x03:
  *             write(b"\x83")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__31, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 148, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__32, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 156, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":147
+    /* "neo4j/packstream/_packer.pyx":155
  *         elif size == 0x01:
  *             write(b"\x81")
  *         elif size == 0x02:             # <<<<<<<<<<<<<<
@@ -3827,7 +3920,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":149
+  /* "neo4j/packstream/_packer.pyx":157
  *         elif size == 0x02:
  *             write(b"\x82")
  *         elif size == 0x03:             # <<<<<<<<<<<<<<
@@ -3837,18 +3930,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x03) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":150
+    /* "neo4j/packstream/_packer.pyx":158
  *             write(b"\x82")
  *         elif size == 0x03:
  *             write(b"\x83")             # <<<<<<<<<<<<<<
  *         elif size == 0x04:
  *             write(b"\x84")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__33, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 150, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__34, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 158, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":149
+    /* "neo4j/packstream/_packer.pyx":157
  *         elif size == 0x02:
  *             write(b"\x82")
  *         elif size == 0x03:             # <<<<<<<<<<<<<<
@@ -3858,7 +3951,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":151
+  /* "neo4j/packstream/_packer.pyx":159
  *         elif size == 0x03:
  *             write(b"\x83")
  *         elif size == 0x04:             # <<<<<<<<<<<<<<
@@ -3868,18 +3961,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x04) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":152
+    /* "neo4j/packstream/_packer.pyx":160
  *             write(b"\x83")
  *         elif size == 0x04:
  *             write(b"\x84")             # <<<<<<<<<<<<<<
  *         elif size == 0x05:
  *             write(b"\x85")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__35, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 152, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__36, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 160, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":151
+    /* "neo4j/packstream/_packer.pyx":159
  *         elif size == 0x03:
  *             write(b"\x83")
  *         elif size == 0x04:             # <<<<<<<<<<<<<<
@@ -3889,7 +3982,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":153
+  /* "neo4j/packstream/_packer.pyx":161
  *         elif size == 0x04:
  *             write(b"\x84")
  *         elif size == 0x05:             # <<<<<<<<<<<<<<
@@ -3899,18 +3992,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x05) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":154
+    /* "neo4j/packstream/_packer.pyx":162
  *             write(b"\x84")
  *         elif size == 0x05:
  *             write(b"\x85")             # <<<<<<<<<<<<<<
  *         elif size == 0x06:
  *             write(b"\x86")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__37, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 154, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__38, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 162, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":153
+    /* "neo4j/packstream/_packer.pyx":161
  *         elif size == 0x04:
  *             write(b"\x84")
  *         elif size == 0x05:             # <<<<<<<<<<<<<<
@@ -3920,7 +4013,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":155
+  /* "neo4j/packstream/_packer.pyx":163
  *         elif size == 0x05:
  *             write(b"\x85")
  *         elif size == 0x06:             # <<<<<<<<<<<<<<
@@ -3930,18 +4023,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x06) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":156
+    /* "neo4j/packstream/_packer.pyx":164
  *             write(b"\x85")
  *         elif size == 0x06:
  *             write(b"\x86")             # <<<<<<<<<<<<<<
  *         elif size == 0x07:
  *             write(b"\x87")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__39, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 156, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__40, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 164, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":155
+    /* "neo4j/packstream/_packer.pyx":163
  *         elif size == 0x05:
  *             write(b"\x85")
  *         elif size == 0x06:             # <<<<<<<<<<<<<<
@@ -3951,7 +4044,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":157
+  /* "neo4j/packstream/_packer.pyx":165
  *         elif size == 0x06:
  *             write(b"\x86")
  *         elif size == 0x07:             # <<<<<<<<<<<<<<
@@ -3961,18 +4054,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x07) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":158
+    /* "neo4j/packstream/_packer.pyx":166
  *             write(b"\x86")
  *         elif size == 0x07:
  *             write(b"\x87")             # <<<<<<<<<<<<<<
  *         elif size == 0x08:
  *             write(b"\x88")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__41, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 158, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__42, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 166, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":157
+    /* "neo4j/packstream/_packer.pyx":165
  *         elif size == 0x06:
  *             write(b"\x86")
  *         elif size == 0x07:             # <<<<<<<<<<<<<<
@@ -3982,7 +4075,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":159
+  /* "neo4j/packstream/_packer.pyx":167
  *         elif size == 0x07:
  *             write(b"\x87")
  *         elif size == 0x08:             # <<<<<<<<<<<<<<
@@ -3992,18 +4085,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x08) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":160
+    /* "neo4j/packstream/_packer.pyx":168
  *             write(b"\x87")
  *         elif size == 0x08:
  *             write(b"\x88")             # <<<<<<<<<<<<<<
  *         elif size == 0x09:
  *             write(b"\x89")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__43, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 160, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__44, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 168, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":159
+    /* "neo4j/packstream/_packer.pyx":167
  *         elif size == 0x07:
  *             write(b"\x87")
  *         elif size == 0x08:             # <<<<<<<<<<<<<<
@@ -4013,7 +4106,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":161
+  /* "neo4j/packstream/_packer.pyx":169
  *         elif size == 0x08:
  *             write(b"\x88")
  *         elif size == 0x09:             # <<<<<<<<<<<<<<
@@ -4023,18 +4116,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x09) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":162
+    /* "neo4j/packstream/_packer.pyx":170
  *             write(b"\x88")
  *         elif size == 0x09:
  *             write(b"\x89")             # <<<<<<<<<<<<<<
  *         elif size == 0x0A:
  *             write(b"\x8A")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__45, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 162, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__46, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 170, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":161
+    /* "neo4j/packstream/_packer.pyx":169
  *         elif size == 0x08:
  *             write(b"\x88")
  *         elif size == 0x09:             # <<<<<<<<<<<<<<
@@ -4044,7 +4137,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":163
+  /* "neo4j/packstream/_packer.pyx":171
  *         elif size == 0x09:
  *             write(b"\x89")
  *         elif size == 0x0A:             # <<<<<<<<<<<<<<
@@ -4054,18 +4147,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x0A) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":164
+    /* "neo4j/packstream/_packer.pyx":172
  *             write(b"\x89")
  *         elif size == 0x0A:
  *             write(b"\x8A")             # <<<<<<<<<<<<<<
  *         elif size == 0x0B:
  *             write(b"\x8B")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__47, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 164, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__48, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 172, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":163
+    /* "neo4j/packstream/_packer.pyx":171
  *         elif size == 0x09:
  *             write(b"\x89")
  *         elif size == 0x0A:             # <<<<<<<<<<<<<<
@@ -4075,7 +4168,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":165
+  /* "neo4j/packstream/_packer.pyx":173
  *         elif size == 0x0A:
  *             write(b"\x8A")
  *         elif size == 0x0B:             # <<<<<<<<<<<<<<
@@ -4085,18 +4178,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x0B) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":166
+    /* "neo4j/packstream/_packer.pyx":174
  *             write(b"\x8A")
  *         elif size == 0x0B:
  *             write(b"\x8B")             # <<<<<<<<<<<<<<
  *         elif size == 0x0C:
  *             write(b"\x8C")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__49, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 166, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__50, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 174, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":165
+    /* "neo4j/packstream/_packer.pyx":173
  *         elif size == 0x0A:
  *             write(b"\x8A")
  *         elif size == 0x0B:             # <<<<<<<<<<<<<<
@@ -4106,7 +4199,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":167
+  /* "neo4j/packstream/_packer.pyx":175
  *         elif size == 0x0B:
  *             write(b"\x8B")
  *         elif size == 0x0C:             # <<<<<<<<<<<<<<
@@ -4116,18 +4209,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x0C) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":168
+    /* "neo4j/packstream/_packer.pyx":176
  *             write(b"\x8B")
  *         elif size == 0x0C:
  *             write(b"\x8C")             # <<<<<<<<<<<<<<
  *         elif size == 0x0D:
  *             write(b"\x8D")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__51, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 168, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__52, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 176, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":167
+    /* "neo4j/packstream/_packer.pyx":175
  *         elif size == 0x0B:
  *             write(b"\x8B")
  *         elif size == 0x0C:             # <<<<<<<<<<<<<<
@@ -4137,7 +4230,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":169
+  /* "neo4j/packstream/_packer.pyx":177
  *         elif size == 0x0C:
  *             write(b"\x8C")
  *         elif size == 0x0D:             # <<<<<<<<<<<<<<
@@ -4147,18 +4240,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x0D) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":170
+    /* "neo4j/packstream/_packer.pyx":178
  *             write(b"\x8C")
  *         elif size == 0x0D:
  *             write(b"\x8D")             # <<<<<<<<<<<<<<
  *         elif size == 0x0E:
  *             write(b"\x8E")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__53, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 170, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__54, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 178, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":169
+    /* "neo4j/packstream/_packer.pyx":177
  *         elif size == 0x0C:
  *             write(b"\x8C")
  *         elif size == 0x0D:             # <<<<<<<<<<<<<<
@@ -4168,7 +4261,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":171
+  /* "neo4j/packstream/_packer.pyx":179
  *         elif size == 0x0D:
  *             write(b"\x8D")
  *         elif size == 0x0E:             # <<<<<<<<<<<<<<
@@ -4178,18 +4271,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x0E) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":172
+    /* "neo4j/packstream/_packer.pyx":180
  *             write(b"\x8D")
  *         elif size == 0x0E:
  *             write(b"\x8E")             # <<<<<<<<<<<<<<
  *         elif size == 0x0F:
  *             write(b"\x8F")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__55, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 172, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__56, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 180, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":171
+    /* "neo4j/packstream/_packer.pyx":179
  *         elif size == 0x0D:
  *             write(b"\x8D")
  *         elif size == 0x0E:             # <<<<<<<<<<<<<<
@@ -4199,7 +4292,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":173
+  /* "neo4j/packstream/_packer.pyx":181
  *         elif size == 0x0E:
  *             write(b"\x8E")
  *         elif size == 0x0F:             # <<<<<<<<<<<<<<
@@ -4209,18 +4302,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size == 0x0F) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":174
+    /* "neo4j/packstream/_packer.pyx":182
  *             write(b"\x8E")
  *         elif size == 0x0F:
  *             write(b"\x8F")             # <<<<<<<<<<<<<<
  *         elif size < 0x100:
  *             write(b"\xD0")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__57, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 174, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__58, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 182, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":173
+    /* "neo4j/packstream/_packer.pyx":181
  *         elif size == 0x0E:
  *             write(b"\x8E")
  *         elif size == 0x0F:             # <<<<<<<<<<<<<<
@@ -4230,7 +4323,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":175
+  /* "neo4j/packstream/_packer.pyx":183
  *         elif size == 0x0F:
  *             write(b"\x8F")
  *         elif size < 0x100:             # <<<<<<<<<<<<<<
@@ -4240,27 +4333,27 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size < 0x100) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":176
+    /* "neo4j/packstream/_packer.pyx":184
  *             write(b"\x8F")
  *         elif size < 0x100:
  *             write(b"\xD0")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__59, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 176, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__60, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 184, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":177
+    /* "neo4j/packstream/_packer.pyx":185
  *         elif size < 0x100:
  *             write(b"\xD0")
  *             write(PACKED_UINT_8[size])             # <<<<<<<<<<<<<<
  *         elif size < 0x10000:
  *             write(b"\xD1")
  */
-    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 177, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 185, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 177, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 185, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_INCREF(__pyx_v_write);
@@ -4275,14 +4368,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
       }
     }
     if (!__pyx_t_5) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 177, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 185, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_5, __pyx_t_4};
-        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 177, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 185, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -4291,20 +4384,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_5, __pyx_t_4};
-        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 177, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 185, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else
       #endif
       {
-        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 177, __pyx_L1_error)
+        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 185, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5); __pyx_t_5 = NULL;
         __Pyx_GIVEREF(__pyx_t_4);
         PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_4);
         __pyx_t_4 = 0;
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 177, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 185, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
@@ -4312,7 +4405,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":175
+    /* "neo4j/packstream/_packer.pyx":183
  *         elif size == 0x0F:
  *             write(b"\x8F")
  *         elif size < 0x100:             # <<<<<<<<<<<<<<
@@ -4322,7 +4415,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":178
+  /* "neo4j/packstream/_packer.pyx":186
  *             write(b"\xD0")
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:             # <<<<<<<<<<<<<<
@@ -4332,27 +4425,27 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   __pyx_t_2 = ((__pyx_v_size < 0x10000) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":179
+    /* "neo4j/packstream/_packer.pyx":187
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  *             write(b"\xD1")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__61, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 179, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__62, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 187, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":180
+    /* "neo4j/packstream/_packer.pyx":188
  *         elif size < 0x10000:
  *             write(b"\xD1")
  *             write(PACKED_UINT_16[size])             # <<<<<<<<<<<<<<
  *         elif size < 0x100000000:
  *             write(b"\xD2")
  */
-    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_16); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 180, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_16); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 188, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_6 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 180, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 188, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_INCREF(__pyx_v_write);
@@ -4367,14 +4460,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
       }
     }
     if (!__pyx_t_4) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_6); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 180, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_6); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 188, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_4, __pyx_t_6};
-        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 180, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 188, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -4383,20 +4476,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_4, __pyx_t_6};
-        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 180, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 188, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       } else
       #endif
       {
-        __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 180, __pyx_L1_error)
+        __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 188, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
         __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_4); __pyx_t_4 = NULL;
         __Pyx_GIVEREF(__pyx_t_6);
         PyTuple_SET_ITEM(__pyx_t_5, 0+1, __pyx_t_6);
         __pyx_t_6 = 0;
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 180, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 188, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       }
@@ -4404,7 +4497,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":178
+    /* "neo4j/packstream/_packer.pyx":186
  *             write(b"\xD0")
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:             # <<<<<<<<<<<<<<
@@ -4414,42 +4507,42 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":181
+  /* "neo4j/packstream/_packer.pyx":189
  *             write(b"\xD1")
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:             # <<<<<<<<<<<<<<
  *             write(b"\xD2")
  *             write(struct_pack(">I", size))
  */
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 181, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 189, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_int_4294967296, Py_LT); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 181, __pyx_L1_error)
+  __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_int_4294967296, Py_LT); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 189, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 181, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 189, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":182
+    /* "neo4j/packstream/_packer.pyx":190
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  *             write(b"\xD2")             # <<<<<<<<<<<<<<
  *             write(struct_pack(">I", size))
  *         else:
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__63, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 182, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__64, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 190, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":183
+    /* "neo4j/packstream/_packer.pyx":191
  *         elif size < 0x100000000:
  *             write(b"\xD2")
  *             write(struct_pack(">I", size))             # <<<<<<<<<<<<<<
  *         else:
  *             raise OverflowError("String header size out of range")
  */
-    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 183, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 191, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_6 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 183, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 191, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __pyx_t_4 = NULL;
     __pyx_t_7 = 0;
@@ -4466,7 +4559,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     #if CYTHON_FAST_PYCALL
     if (PyFunction_Check(__pyx_t_5)) {
       PyObject *__pyx_temp[3] = {__pyx_t_4, __pyx_kp_s_I, __pyx_t_6};
-      __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 183, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 191, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -4475,14 +4568,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     #if CYTHON_FAST_PYCCALL
     if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
       PyObject *__pyx_temp[3] = {__pyx_t_4, __pyx_kp_s_I, __pyx_t_6};
-      __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 183, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 191, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     } else
     #endif
     {
-      __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 183, __pyx_L1_error)
+      __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 191, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
       if (__pyx_t_4) {
         __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_4); __pyx_t_4 = NULL;
@@ -4493,7 +4586,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
       __Pyx_GIVEREF(__pyx_t_6);
       PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_7, __pyx_t_6);
       __pyx_t_6 = 0;
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 183, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 191, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
     }
@@ -4510,14 +4603,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
       }
     }
     if (!__pyx_t_8) {
-      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 183, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 191, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       __Pyx_GOTREF(__pyx_t_3);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_5)) {
         PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_1};
-        __pyx_t_3 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 183, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 191, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -4526,20 +4619,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
         PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_1};
-        __pyx_t_3 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 183, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 191, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       } else
       #endif
       {
-        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 183, __pyx_L1_error)
+        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 191, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         __Pyx_GIVEREF(__pyx_t_8); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_8); __pyx_t_8 = NULL;
         __Pyx_GIVEREF(__pyx_t_1);
         PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_1);
         __pyx_t_1 = 0;
-        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 183, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 191, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
@@ -4547,7 +4640,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":181
+    /* "neo4j/packstream/_packer.pyx":189
  *             write(b"\xD1")
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:             # <<<<<<<<<<<<<<
@@ -4557,7 +4650,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":185
+  /* "neo4j/packstream/_packer.pyx":193
  *             write(struct_pack(">I", size))
  *         else:
  *             raise OverflowError("String header size out of range")             # <<<<<<<<<<<<<<
@@ -4565,15 +4658,15 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
  *     cdef pack_list_header(self, int size):
  */
   /*else*/ {
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_OverflowError, __pyx_tuple__64, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 185, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_OverflowError, __pyx_tuple__65, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 193, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 185, __pyx_L1_error)
+    __PYX_ERR(0, 193, __pyx_L1_error)
   }
   __pyx_L3:;
 
-  /* "neo4j/packstream/_packer.pyx":141
+  /* "neo4j/packstream/_packer.pyx":149
  *             raise OverflowError("Bytes header size out of range")
  * 
  *     cdef pack_string_header(self, int size):             # <<<<<<<<<<<<<<
@@ -4600,7 +4693,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_string_header
   return __pyx_r;
 }
 
-/* "neo4j/packstream/_packer.pyx":187
+/* "neo4j/packstream/_packer.pyx":195
  *             raise OverflowError("String header size out of range")
  * 
  *     cdef pack_list_header(self, int size):             # <<<<<<<<<<<<<<
@@ -4622,7 +4715,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   PyObject *__pyx_t_8 = NULL;
   __Pyx_RefNannySetupContext("pack_list_header", 0);
 
-  /* "neo4j/packstream/_packer.pyx":188
+  /* "neo4j/packstream/_packer.pyx":196
  * 
  *     cdef pack_list_header(self, int size):
  *         write = self._write             # <<<<<<<<<<<<<<
@@ -4634,7 +4727,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_v_write = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":189
+  /* "neo4j/packstream/_packer.pyx":197
  *     cdef pack_list_header(self, int size):
  *         write = self._write
  *         if size == 0x00:             # <<<<<<<<<<<<<<
@@ -4644,18 +4737,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x00) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":190
+    /* "neo4j/packstream/_packer.pyx":198
  *         write = self._write
  *         if size == 0x00:
  *             write(b"\x90")             # <<<<<<<<<<<<<<
  *         elif size == 0x01:
  *             write(b"\x91")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__66, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 190, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__67, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 198, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":189
+    /* "neo4j/packstream/_packer.pyx":197
  *     cdef pack_list_header(self, int size):
  *         write = self._write
  *         if size == 0x00:             # <<<<<<<<<<<<<<
@@ -4665,7 +4758,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":191
+  /* "neo4j/packstream/_packer.pyx":199
  *         if size == 0x00:
  *             write(b"\x90")
  *         elif size == 0x01:             # <<<<<<<<<<<<<<
@@ -4675,18 +4768,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x01) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":192
+    /* "neo4j/packstream/_packer.pyx":200
  *             write(b"\x90")
  *         elif size == 0x01:
  *             write(b"\x91")             # <<<<<<<<<<<<<<
  *         elif size == 0x02:
  *             write(b"\x92")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__68, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 192, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__69, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 200, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":191
+    /* "neo4j/packstream/_packer.pyx":199
  *         if size == 0x00:
  *             write(b"\x90")
  *         elif size == 0x01:             # <<<<<<<<<<<<<<
@@ -4696,7 +4789,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":193
+  /* "neo4j/packstream/_packer.pyx":201
  *         elif size == 0x01:
  *             write(b"\x91")
  *         elif size == 0x02:             # <<<<<<<<<<<<<<
@@ -4706,18 +4799,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x02) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":194
+    /* "neo4j/packstream/_packer.pyx":202
  *             write(b"\x91")
  *         elif size == 0x02:
  *             write(b"\x92")             # <<<<<<<<<<<<<<
  *         elif size == 0x03:
  *             write(b"\x93")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__70, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 194, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__71, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 202, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":193
+    /* "neo4j/packstream/_packer.pyx":201
  *         elif size == 0x01:
  *             write(b"\x91")
  *         elif size == 0x02:             # <<<<<<<<<<<<<<
@@ -4727,7 +4820,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":195
+  /* "neo4j/packstream/_packer.pyx":203
  *         elif size == 0x02:
  *             write(b"\x92")
  *         elif size == 0x03:             # <<<<<<<<<<<<<<
@@ -4737,18 +4830,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x03) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":196
+    /* "neo4j/packstream/_packer.pyx":204
  *             write(b"\x92")
  *         elif size == 0x03:
  *             write(b"\x93")             # <<<<<<<<<<<<<<
  *         elif size == 0x04:
  *             write(b"\x94")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__72, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 196, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__73, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 204, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":195
+    /* "neo4j/packstream/_packer.pyx":203
  *         elif size == 0x02:
  *             write(b"\x92")
  *         elif size == 0x03:             # <<<<<<<<<<<<<<
@@ -4758,7 +4851,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":197
+  /* "neo4j/packstream/_packer.pyx":205
  *         elif size == 0x03:
  *             write(b"\x93")
  *         elif size == 0x04:             # <<<<<<<<<<<<<<
@@ -4768,18 +4861,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x04) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":198
+    /* "neo4j/packstream/_packer.pyx":206
  *             write(b"\x93")
  *         elif size == 0x04:
  *             write(b"\x94")             # <<<<<<<<<<<<<<
  *         elif size == 0x05:
  *             write(b"\x95")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__74, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 198, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__75, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 206, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":197
+    /* "neo4j/packstream/_packer.pyx":205
  *         elif size == 0x03:
  *             write(b"\x93")
  *         elif size == 0x04:             # <<<<<<<<<<<<<<
@@ -4789,7 +4882,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":199
+  /* "neo4j/packstream/_packer.pyx":207
  *         elif size == 0x04:
  *             write(b"\x94")
  *         elif size == 0x05:             # <<<<<<<<<<<<<<
@@ -4799,18 +4892,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x05) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":200
+    /* "neo4j/packstream/_packer.pyx":208
  *             write(b"\x94")
  *         elif size == 0x05:
  *             write(b"\x95")             # <<<<<<<<<<<<<<
  *         elif size == 0x06:
  *             write(b"\x96")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__76, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 200, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__77, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 208, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":199
+    /* "neo4j/packstream/_packer.pyx":207
  *         elif size == 0x04:
  *             write(b"\x94")
  *         elif size == 0x05:             # <<<<<<<<<<<<<<
@@ -4820,7 +4913,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":201
+  /* "neo4j/packstream/_packer.pyx":209
  *         elif size == 0x05:
  *             write(b"\x95")
  *         elif size == 0x06:             # <<<<<<<<<<<<<<
@@ -4830,18 +4923,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x06) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":202
+    /* "neo4j/packstream/_packer.pyx":210
  *             write(b"\x95")
  *         elif size == 0x06:
  *             write(b"\x96")             # <<<<<<<<<<<<<<
  *         elif size == 0x07:
  *             write(b"\x97")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__78, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 202, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__79, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 210, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":201
+    /* "neo4j/packstream/_packer.pyx":209
  *         elif size == 0x05:
  *             write(b"\x95")
  *         elif size == 0x06:             # <<<<<<<<<<<<<<
@@ -4851,7 +4944,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":203
+  /* "neo4j/packstream/_packer.pyx":211
  *         elif size == 0x06:
  *             write(b"\x96")
  *         elif size == 0x07:             # <<<<<<<<<<<<<<
@@ -4861,18 +4954,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x07) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":204
+    /* "neo4j/packstream/_packer.pyx":212
  *             write(b"\x96")
  *         elif size == 0x07:
  *             write(b"\x97")             # <<<<<<<<<<<<<<
  *         elif size == 0x08:
  *             write(b"\x98")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__80, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 204, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__81, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 212, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":203
+    /* "neo4j/packstream/_packer.pyx":211
  *         elif size == 0x06:
  *             write(b"\x96")
  *         elif size == 0x07:             # <<<<<<<<<<<<<<
@@ -4882,7 +4975,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":205
+  /* "neo4j/packstream/_packer.pyx":213
  *         elif size == 0x07:
  *             write(b"\x97")
  *         elif size == 0x08:             # <<<<<<<<<<<<<<
@@ -4892,18 +4985,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x08) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":206
+    /* "neo4j/packstream/_packer.pyx":214
  *             write(b"\x97")
  *         elif size == 0x08:
  *             write(b"\x98")             # <<<<<<<<<<<<<<
  *         elif size == 0x09:
  *             write(b"\x99")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__82, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 206, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__83, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 214, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":205
+    /* "neo4j/packstream/_packer.pyx":213
  *         elif size == 0x07:
  *             write(b"\x97")
  *         elif size == 0x08:             # <<<<<<<<<<<<<<
@@ -4913,7 +5006,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":207
+  /* "neo4j/packstream/_packer.pyx":215
  *         elif size == 0x08:
  *             write(b"\x98")
  *         elif size == 0x09:             # <<<<<<<<<<<<<<
@@ -4923,18 +5016,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x09) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":208
+    /* "neo4j/packstream/_packer.pyx":216
  *             write(b"\x98")
  *         elif size == 0x09:
  *             write(b"\x99")             # <<<<<<<<<<<<<<
  *         elif size == 0x0A:
  *             write(b"\x9A")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__84, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 208, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__85, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 216, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":207
+    /* "neo4j/packstream/_packer.pyx":215
  *         elif size == 0x08:
  *             write(b"\x98")
  *         elif size == 0x09:             # <<<<<<<<<<<<<<
@@ -4944,7 +5037,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":209
+  /* "neo4j/packstream/_packer.pyx":217
  *         elif size == 0x09:
  *             write(b"\x99")
  *         elif size == 0x0A:             # <<<<<<<<<<<<<<
@@ -4954,18 +5047,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x0A) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":210
+    /* "neo4j/packstream/_packer.pyx":218
  *             write(b"\x99")
  *         elif size == 0x0A:
  *             write(b"\x9A")             # <<<<<<<<<<<<<<
  *         elif size == 0x0B:
  *             write(b"\x9B")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__86, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 210, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__87, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 218, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":209
+    /* "neo4j/packstream/_packer.pyx":217
  *         elif size == 0x09:
  *             write(b"\x99")
  *         elif size == 0x0A:             # <<<<<<<<<<<<<<
@@ -4975,7 +5068,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":211
+  /* "neo4j/packstream/_packer.pyx":219
  *         elif size == 0x0A:
  *             write(b"\x9A")
  *         elif size == 0x0B:             # <<<<<<<<<<<<<<
@@ -4985,18 +5078,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x0B) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":212
+    /* "neo4j/packstream/_packer.pyx":220
  *             write(b"\x9A")
  *         elif size == 0x0B:
  *             write(b"\x9B")             # <<<<<<<<<<<<<<
  *         elif size == 0x0C:
  *             write(b"\x9C")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__88, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 212, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__89, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 220, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":211
+    /* "neo4j/packstream/_packer.pyx":219
  *         elif size == 0x0A:
  *             write(b"\x9A")
  *         elif size == 0x0B:             # <<<<<<<<<<<<<<
@@ -5006,7 +5099,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":213
+  /* "neo4j/packstream/_packer.pyx":221
  *         elif size == 0x0B:
  *             write(b"\x9B")
  *         elif size == 0x0C:             # <<<<<<<<<<<<<<
@@ -5016,18 +5109,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x0C) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":214
+    /* "neo4j/packstream/_packer.pyx":222
  *             write(b"\x9B")
  *         elif size == 0x0C:
  *             write(b"\x9C")             # <<<<<<<<<<<<<<
  *         elif size == 0x0D:
  *             write(b"\x9D")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__90, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 214, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__91, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 222, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":213
+    /* "neo4j/packstream/_packer.pyx":221
  *         elif size == 0x0B:
  *             write(b"\x9B")
  *         elif size == 0x0C:             # <<<<<<<<<<<<<<
@@ -5037,7 +5130,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":215
+  /* "neo4j/packstream/_packer.pyx":223
  *         elif size == 0x0C:
  *             write(b"\x9C")
  *         elif size == 0x0D:             # <<<<<<<<<<<<<<
@@ -5047,18 +5140,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x0D) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":216
+    /* "neo4j/packstream/_packer.pyx":224
  *             write(b"\x9C")
  *         elif size == 0x0D:
  *             write(b"\x9D")             # <<<<<<<<<<<<<<
  *         elif size == 0x0E:
  *             write(b"\x9E")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__92, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 216, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__93, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 224, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":215
+    /* "neo4j/packstream/_packer.pyx":223
  *         elif size == 0x0C:
  *             write(b"\x9C")
  *         elif size == 0x0D:             # <<<<<<<<<<<<<<
@@ -5068,7 +5161,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":217
+  /* "neo4j/packstream/_packer.pyx":225
  *         elif size == 0x0D:
  *             write(b"\x9D")
  *         elif size == 0x0E:             # <<<<<<<<<<<<<<
@@ -5078,18 +5171,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x0E) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":218
+    /* "neo4j/packstream/_packer.pyx":226
  *             write(b"\x9D")
  *         elif size == 0x0E:
  *             write(b"\x9E")             # <<<<<<<<<<<<<<
  *         elif size == 0x0F:
  *             write(b"\x9F")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__94, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 218, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__95, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 226, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":217
+    /* "neo4j/packstream/_packer.pyx":225
  *         elif size == 0x0D:
  *             write(b"\x9D")
  *         elif size == 0x0E:             # <<<<<<<<<<<<<<
@@ -5099,7 +5192,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":219
+  /* "neo4j/packstream/_packer.pyx":227
  *         elif size == 0x0E:
  *             write(b"\x9E")
  *         elif size == 0x0F:             # <<<<<<<<<<<<<<
@@ -5109,18 +5202,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size == 0x0F) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":220
+    /* "neo4j/packstream/_packer.pyx":228
  *             write(b"\x9E")
  *         elif size == 0x0F:
  *             write(b"\x9F")             # <<<<<<<<<<<<<<
  *         elif size < 0x100:
  *             write(b"\xD4")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__96, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 220, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__97, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 228, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":219
+    /* "neo4j/packstream/_packer.pyx":227
  *         elif size == 0x0E:
  *             write(b"\x9E")
  *         elif size == 0x0F:             # <<<<<<<<<<<<<<
@@ -5130,7 +5223,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":221
+  /* "neo4j/packstream/_packer.pyx":229
  *         elif size == 0x0F:
  *             write(b"\x9F")
  *         elif size < 0x100:             # <<<<<<<<<<<<<<
@@ -5140,27 +5233,27 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size < 0x100) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":222
+    /* "neo4j/packstream/_packer.pyx":230
  *             write(b"\x9F")
  *         elif size < 0x100:
  *             write(b"\xD4")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__98, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 222, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__99, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 230, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":223
+    /* "neo4j/packstream/_packer.pyx":231
  *         elif size < 0x100:
  *             write(b"\xD4")
  *             write(PACKED_UINT_8[size])             # <<<<<<<<<<<<<<
  *         elif size < 0x10000:
  *             write(b"\xD5")
  */
-    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 223, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 231, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 223, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 231, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_INCREF(__pyx_v_write);
@@ -5175,14 +5268,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
       }
     }
     if (!__pyx_t_5) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 223, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 231, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_5, __pyx_t_4};
-        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 223, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 231, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -5191,20 +5284,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_5, __pyx_t_4};
-        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 223, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 231, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else
       #endif
       {
-        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 223, __pyx_L1_error)
+        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 231, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5); __pyx_t_5 = NULL;
         __Pyx_GIVEREF(__pyx_t_4);
         PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_4);
         __pyx_t_4 = 0;
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 223, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 231, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
@@ -5212,7 +5305,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":221
+    /* "neo4j/packstream/_packer.pyx":229
  *         elif size == 0x0F:
  *             write(b"\x9F")
  *         elif size < 0x100:             # <<<<<<<<<<<<<<
@@ -5222,7 +5315,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":224
+  /* "neo4j/packstream/_packer.pyx":232
  *             write(b"\xD4")
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:             # <<<<<<<<<<<<<<
@@ -5232,27 +5325,27 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   __pyx_t_2 = ((__pyx_v_size < 0x10000) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":225
+    /* "neo4j/packstream/_packer.pyx":233
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  *             write(b"\xD5")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__100, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 225, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__101, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 233, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":226
+    /* "neo4j/packstream/_packer.pyx":234
  *         elif size < 0x10000:
  *             write(b"\xD5")
  *             write(PACKED_UINT_16[size])             # <<<<<<<<<<<<<<
  *         elif size < 0x100000000:
  *             write(b"\xD6")
  */
-    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_16); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 226, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_16); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 234, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_6 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 226, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 234, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_INCREF(__pyx_v_write);
@@ -5267,14 +5360,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
       }
     }
     if (!__pyx_t_4) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_6); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 226, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_6); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 234, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_4, __pyx_t_6};
-        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 226, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 234, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -5283,20 +5376,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_4, __pyx_t_6};
-        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 226, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 234, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       } else
       #endif
       {
-        __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 226, __pyx_L1_error)
+        __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 234, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
         __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_4); __pyx_t_4 = NULL;
         __Pyx_GIVEREF(__pyx_t_6);
         PyTuple_SET_ITEM(__pyx_t_5, 0+1, __pyx_t_6);
         __pyx_t_6 = 0;
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 226, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 234, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       }
@@ -5304,7 +5397,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":224
+    /* "neo4j/packstream/_packer.pyx":232
  *             write(b"\xD4")
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:             # <<<<<<<<<<<<<<
@@ -5314,42 +5407,42 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":227
+  /* "neo4j/packstream/_packer.pyx":235
  *             write(b"\xD5")
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:             # <<<<<<<<<<<<<<
  *             write(b"\xD6")
  *             write(struct_pack(">I", size))
  */
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 227, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 235, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_int_4294967296, Py_LT); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 227, __pyx_L1_error)
+  __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_int_4294967296, Py_LT); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 235, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 227, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 235, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":228
+    /* "neo4j/packstream/_packer.pyx":236
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  *             write(b"\xD6")             # <<<<<<<<<<<<<<
  *             write(struct_pack(">I", size))
  *         else:
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__102, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 228, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__103, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 236, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":229
+    /* "neo4j/packstream/_packer.pyx":237
  *         elif size < 0x100000000:
  *             write(b"\xD6")
  *             write(struct_pack(">I", size))             # <<<<<<<<<<<<<<
  *         else:
  *             raise OverflowError("List header size out of range")
  */
-    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 229, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 237, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_6 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 229, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 237, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __pyx_t_4 = NULL;
     __pyx_t_7 = 0;
@@ -5366,7 +5459,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     #if CYTHON_FAST_PYCALL
     if (PyFunction_Check(__pyx_t_5)) {
       PyObject *__pyx_temp[3] = {__pyx_t_4, __pyx_kp_s_I, __pyx_t_6};
-      __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 229, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 237, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -5375,14 +5468,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     #if CYTHON_FAST_PYCCALL
     if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
       PyObject *__pyx_temp[3] = {__pyx_t_4, __pyx_kp_s_I, __pyx_t_6};
-      __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 229, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 237, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     } else
     #endif
     {
-      __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 229, __pyx_L1_error)
+      __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 237, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
       if (__pyx_t_4) {
         __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_4); __pyx_t_4 = NULL;
@@ -5393,7 +5486,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
       __Pyx_GIVEREF(__pyx_t_6);
       PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_7, __pyx_t_6);
       __pyx_t_6 = 0;
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 229, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 237, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
     }
@@ -5410,14 +5503,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
       }
     }
     if (!__pyx_t_8) {
-      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 229, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 237, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       __Pyx_GOTREF(__pyx_t_3);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_5)) {
         PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_1};
-        __pyx_t_3 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 229, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 237, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -5426,20 +5519,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
         PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_1};
-        __pyx_t_3 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 229, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 237, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       } else
       #endif
       {
-        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 229, __pyx_L1_error)
+        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 237, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         __Pyx_GIVEREF(__pyx_t_8); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_8); __pyx_t_8 = NULL;
         __Pyx_GIVEREF(__pyx_t_1);
         PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_1);
         __pyx_t_1 = 0;
-        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 229, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 237, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
@@ -5447,7 +5540,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":227
+    /* "neo4j/packstream/_packer.pyx":235
  *             write(b"\xD5")
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:             # <<<<<<<<<<<<<<
@@ -5457,7 +5550,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":231
+  /* "neo4j/packstream/_packer.pyx":239
  *             write(struct_pack(">I", size))
  *         else:
  *             raise OverflowError("List header size out of range")             # <<<<<<<<<<<<<<
@@ -5465,15 +5558,15 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
  *     cpdef pack_list_stream_header(self):
  */
   /*else*/ {
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_OverflowError, __pyx_tuple__103, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 231, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_OverflowError, __pyx_tuple__104, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 239, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 231, __pyx_L1_error)
+    __PYX_ERR(0, 239, __pyx_L1_error)
   }
   __pyx_L3:;
 
-  /* "neo4j/packstream/_packer.pyx":187
+  /* "neo4j/packstream/_packer.pyx":195
  *             raise OverflowError("String header size out of range")
  * 
  *     cdef pack_list_header(self, int size):             # <<<<<<<<<<<<<<
@@ -5500,7 +5593,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_header(s
   return __pyx_r;
 }
 
-/* "neo4j/packstream/_packer.pyx":233
+/* "neo4j/packstream/_packer.pyx":241
  *             raise OverflowError("List header size out of range")
  * 
  *     cpdef pack_list_stream_header(self):             # <<<<<<<<<<<<<<
@@ -5521,7 +5614,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_stream_h
   if (unlikely(__pyx_skip_dispatch)) ;
   /* Check if overridden in Python */
   else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_pack_list_stream_header); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 233, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_pack_list_stream_header); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 241, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_5neo4j_10packstream_7_packer_6Packer_5pack_list_stream_header)) {
       __Pyx_XDECREF(__pyx_r);
@@ -5537,10 +5630,10 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_stream_h
         }
       }
       if (__pyx_t_4) {
-        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 233, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 241, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else {
-        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 233, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 241, __pyx_L1_error)
       }
       __Pyx_GOTREF(__pyx_t_2);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -5552,18 +5645,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_stream_h
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   }
 
-  /* "neo4j/packstream/_packer.pyx":234
+  /* "neo4j/packstream/_packer.pyx":242
  * 
  *     cpdef pack_list_stream_header(self):
  *         self._write(b"\xD7")             # <<<<<<<<<<<<<<
  * 
  *     cdef pack_map_header(self, int size):
  */
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_self->_write, __pyx_tuple__105, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 234, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_self->_write, __pyx_tuple__106, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 242, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":233
+  /* "neo4j/packstream/_packer.pyx":241
  *             raise OverflowError("List header size out of range")
  * 
  *     cpdef pack_list_stream_header(self):             # <<<<<<<<<<<<<<
@@ -5606,7 +5699,7 @@ static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_4pack_list_stream
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("pack_list_stream_header", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_stream_header(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 233, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_list_stream_header(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 241, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -5623,7 +5716,7 @@ static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_4pack_list_stream
   return __pyx_r;
 }
 
-/* "neo4j/packstream/_packer.pyx":236
+/* "neo4j/packstream/_packer.pyx":244
  *         self._write(b"\xD7")
  * 
  *     cdef pack_map_header(self, int size):             # <<<<<<<<<<<<<<
@@ -5645,7 +5738,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   PyObject *__pyx_t_8 = NULL;
   __Pyx_RefNannySetupContext("pack_map_header", 0);
 
-  /* "neo4j/packstream/_packer.pyx":237
+  /* "neo4j/packstream/_packer.pyx":245
  * 
  *     cdef pack_map_header(self, int size):
  *         write = self._write             # <<<<<<<<<<<<<<
@@ -5657,7 +5750,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_v_write = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":238
+  /* "neo4j/packstream/_packer.pyx":246
  *     cdef pack_map_header(self, int size):
  *         write = self._write
  *         if size == 0x00:             # <<<<<<<<<<<<<<
@@ -5667,18 +5760,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x00) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":239
+    /* "neo4j/packstream/_packer.pyx":247
  *         write = self._write
  *         if size == 0x00:
  *             write(b"\xA0")             # <<<<<<<<<<<<<<
  *         elif size == 0x01:
  *             write(b"\xA1")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__107, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 239, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__108, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 247, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":238
+    /* "neo4j/packstream/_packer.pyx":246
  *     cdef pack_map_header(self, int size):
  *         write = self._write
  *         if size == 0x00:             # <<<<<<<<<<<<<<
@@ -5688,7 +5781,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":240
+  /* "neo4j/packstream/_packer.pyx":248
  *         if size == 0x00:
  *             write(b"\xA0")
  *         elif size == 0x01:             # <<<<<<<<<<<<<<
@@ -5698,18 +5791,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x01) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":241
+    /* "neo4j/packstream/_packer.pyx":249
  *             write(b"\xA0")
  *         elif size == 0x01:
  *             write(b"\xA1")             # <<<<<<<<<<<<<<
  *         elif size == 0x02:
  *             write(b"\xA2")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__109, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 241, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__110, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 249, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":240
+    /* "neo4j/packstream/_packer.pyx":248
  *         if size == 0x00:
  *             write(b"\xA0")
  *         elif size == 0x01:             # <<<<<<<<<<<<<<
@@ -5719,7 +5812,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":242
+  /* "neo4j/packstream/_packer.pyx":250
  *         elif size == 0x01:
  *             write(b"\xA1")
  *         elif size == 0x02:             # <<<<<<<<<<<<<<
@@ -5729,18 +5822,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x02) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":243
+    /* "neo4j/packstream/_packer.pyx":251
  *             write(b"\xA1")
  *         elif size == 0x02:
  *             write(b"\xA2")             # <<<<<<<<<<<<<<
  *         elif size == 0x03:
  *             write(b"\xA3")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__111, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 243, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__112, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 251, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":242
+    /* "neo4j/packstream/_packer.pyx":250
  *         elif size == 0x01:
  *             write(b"\xA1")
  *         elif size == 0x02:             # <<<<<<<<<<<<<<
@@ -5750,7 +5843,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":244
+  /* "neo4j/packstream/_packer.pyx":252
  *         elif size == 0x02:
  *             write(b"\xA2")
  *         elif size == 0x03:             # <<<<<<<<<<<<<<
@@ -5760,18 +5853,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x03) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":245
+    /* "neo4j/packstream/_packer.pyx":253
  *             write(b"\xA2")
  *         elif size == 0x03:
  *             write(b"\xA3")             # <<<<<<<<<<<<<<
  *         elif size == 0x04:
  *             write(b"\xA4")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__113, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 245, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__114, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 253, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":244
+    /* "neo4j/packstream/_packer.pyx":252
  *         elif size == 0x02:
  *             write(b"\xA2")
  *         elif size == 0x03:             # <<<<<<<<<<<<<<
@@ -5781,7 +5874,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":246
+  /* "neo4j/packstream/_packer.pyx":254
  *         elif size == 0x03:
  *             write(b"\xA3")
  *         elif size == 0x04:             # <<<<<<<<<<<<<<
@@ -5791,18 +5884,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x04) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":247
+    /* "neo4j/packstream/_packer.pyx":255
  *             write(b"\xA3")
  *         elif size == 0x04:
  *             write(b"\xA4")             # <<<<<<<<<<<<<<
  *         elif size == 0x05:
  *             write(b"\xA5")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__115, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 247, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__116, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 255, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":246
+    /* "neo4j/packstream/_packer.pyx":254
  *         elif size == 0x03:
  *             write(b"\xA3")
  *         elif size == 0x04:             # <<<<<<<<<<<<<<
@@ -5812,7 +5905,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":248
+  /* "neo4j/packstream/_packer.pyx":256
  *         elif size == 0x04:
  *             write(b"\xA4")
  *         elif size == 0x05:             # <<<<<<<<<<<<<<
@@ -5822,18 +5915,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x05) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":249
+    /* "neo4j/packstream/_packer.pyx":257
  *             write(b"\xA4")
  *         elif size == 0x05:
  *             write(b"\xA5")             # <<<<<<<<<<<<<<
  *         elif size == 0x06:
  *             write(b"\xA6")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__117, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 249, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__118, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 257, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":248
+    /* "neo4j/packstream/_packer.pyx":256
  *         elif size == 0x04:
  *             write(b"\xA4")
  *         elif size == 0x05:             # <<<<<<<<<<<<<<
@@ -5843,7 +5936,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":250
+  /* "neo4j/packstream/_packer.pyx":258
  *         elif size == 0x05:
  *             write(b"\xA5")
  *         elif size == 0x06:             # <<<<<<<<<<<<<<
@@ -5853,18 +5946,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x06) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":251
+    /* "neo4j/packstream/_packer.pyx":259
  *             write(b"\xA5")
  *         elif size == 0x06:
  *             write(b"\xA6")             # <<<<<<<<<<<<<<
  *         elif size == 0x07:
  *             write(b"\xA7")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__119, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 251, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__120, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 259, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":250
+    /* "neo4j/packstream/_packer.pyx":258
  *         elif size == 0x05:
  *             write(b"\xA5")
  *         elif size == 0x06:             # <<<<<<<<<<<<<<
@@ -5874,7 +5967,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":252
+  /* "neo4j/packstream/_packer.pyx":260
  *         elif size == 0x06:
  *             write(b"\xA6")
  *         elif size == 0x07:             # <<<<<<<<<<<<<<
@@ -5884,18 +5977,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x07) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":253
+    /* "neo4j/packstream/_packer.pyx":261
  *             write(b"\xA6")
  *         elif size == 0x07:
  *             write(b"\xA7")             # <<<<<<<<<<<<<<
  *         elif size == 0x08:
  *             write(b"\xA8")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__121, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 253, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__122, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 261, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":252
+    /* "neo4j/packstream/_packer.pyx":260
  *         elif size == 0x06:
  *             write(b"\xA6")
  *         elif size == 0x07:             # <<<<<<<<<<<<<<
@@ -5905,7 +5998,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":254
+  /* "neo4j/packstream/_packer.pyx":262
  *         elif size == 0x07:
  *             write(b"\xA7")
  *         elif size == 0x08:             # <<<<<<<<<<<<<<
@@ -5915,18 +6008,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x08) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":255
+    /* "neo4j/packstream/_packer.pyx":263
  *             write(b"\xA7")
  *         elif size == 0x08:
  *             write(b"\xA8")             # <<<<<<<<<<<<<<
  *         elif size == 0x09:
  *             write(b"\xA9")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__123, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 255, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__124, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 263, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":254
+    /* "neo4j/packstream/_packer.pyx":262
  *         elif size == 0x07:
  *             write(b"\xA7")
  *         elif size == 0x08:             # <<<<<<<<<<<<<<
@@ -5936,7 +6029,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":256
+  /* "neo4j/packstream/_packer.pyx":264
  *         elif size == 0x08:
  *             write(b"\xA8")
  *         elif size == 0x09:             # <<<<<<<<<<<<<<
@@ -5946,18 +6039,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x09) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":257
+    /* "neo4j/packstream/_packer.pyx":265
  *             write(b"\xA8")
  *         elif size == 0x09:
  *             write(b"\xA9")             # <<<<<<<<<<<<<<
  *         elif size == 0x0A:
  *             write(b"\xAA")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__125, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 257, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__126, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 265, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":256
+    /* "neo4j/packstream/_packer.pyx":264
  *         elif size == 0x08:
  *             write(b"\xA8")
  *         elif size == 0x09:             # <<<<<<<<<<<<<<
@@ -5967,7 +6060,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":258
+  /* "neo4j/packstream/_packer.pyx":266
  *         elif size == 0x09:
  *             write(b"\xA9")
  *         elif size == 0x0A:             # <<<<<<<<<<<<<<
@@ -5977,18 +6070,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x0A) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":259
+    /* "neo4j/packstream/_packer.pyx":267
  *             write(b"\xA9")
  *         elif size == 0x0A:
  *             write(b"\xAA")             # <<<<<<<<<<<<<<
  *         elif size == 0x0B:
  *             write(b"\xAB")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__127, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 259, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__128, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 267, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":258
+    /* "neo4j/packstream/_packer.pyx":266
  *         elif size == 0x09:
  *             write(b"\xA9")
  *         elif size == 0x0A:             # <<<<<<<<<<<<<<
@@ -5998,7 +6091,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":260
+  /* "neo4j/packstream/_packer.pyx":268
  *         elif size == 0x0A:
  *             write(b"\xAA")
  *         elif size == 0x0B:             # <<<<<<<<<<<<<<
@@ -6008,18 +6101,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x0B) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":261
+    /* "neo4j/packstream/_packer.pyx":269
  *             write(b"\xAA")
  *         elif size == 0x0B:
  *             write(b"\xAB")             # <<<<<<<<<<<<<<
  *         elif size == 0x0C:
  *             write(b"\xAC")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__129, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 261, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__130, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 269, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":260
+    /* "neo4j/packstream/_packer.pyx":268
  *         elif size == 0x0A:
  *             write(b"\xAA")
  *         elif size == 0x0B:             # <<<<<<<<<<<<<<
@@ -6029,7 +6122,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":262
+  /* "neo4j/packstream/_packer.pyx":270
  *         elif size == 0x0B:
  *             write(b"\xAB")
  *         elif size == 0x0C:             # <<<<<<<<<<<<<<
@@ -6039,18 +6132,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x0C) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":263
+    /* "neo4j/packstream/_packer.pyx":271
  *             write(b"\xAB")
  *         elif size == 0x0C:
  *             write(b"\xAC")             # <<<<<<<<<<<<<<
  *         elif size == 0x0D:
  *             write(b"\xAD")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__131, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 263, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__132, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 271, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":262
+    /* "neo4j/packstream/_packer.pyx":270
  *         elif size == 0x0B:
  *             write(b"\xAB")
  *         elif size == 0x0C:             # <<<<<<<<<<<<<<
@@ -6060,7 +6153,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":264
+  /* "neo4j/packstream/_packer.pyx":272
  *         elif size == 0x0C:
  *             write(b"\xAC")
  *         elif size == 0x0D:             # <<<<<<<<<<<<<<
@@ -6070,18 +6163,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x0D) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":265
+    /* "neo4j/packstream/_packer.pyx":273
  *             write(b"\xAC")
  *         elif size == 0x0D:
  *             write(b"\xAD")             # <<<<<<<<<<<<<<
  *         elif size == 0x0E:
  *             write(b"\xAE")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__133, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 265, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__134, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 273, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":264
+    /* "neo4j/packstream/_packer.pyx":272
  *         elif size == 0x0C:
  *             write(b"\xAC")
  *         elif size == 0x0D:             # <<<<<<<<<<<<<<
@@ -6091,7 +6184,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":266
+  /* "neo4j/packstream/_packer.pyx":274
  *         elif size == 0x0D:
  *             write(b"\xAD")
  *         elif size == 0x0E:             # <<<<<<<<<<<<<<
@@ -6101,18 +6194,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x0E) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":267
+    /* "neo4j/packstream/_packer.pyx":275
  *             write(b"\xAD")
  *         elif size == 0x0E:
  *             write(b"\xAE")             # <<<<<<<<<<<<<<
  *         elif size == 0x0F:
  *             write(b"\xAF")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__135, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 267, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__136, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 275, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":266
+    /* "neo4j/packstream/_packer.pyx":274
  *         elif size == 0x0D:
  *             write(b"\xAD")
  *         elif size == 0x0E:             # <<<<<<<<<<<<<<
@@ -6122,7 +6215,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":268
+  /* "neo4j/packstream/_packer.pyx":276
  *         elif size == 0x0E:
  *             write(b"\xAE")
  *         elif size == 0x0F:             # <<<<<<<<<<<<<<
@@ -6132,18 +6225,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size == 0x0F) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":269
+    /* "neo4j/packstream/_packer.pyx":277
  *             write(b"\xAE")
  *         elif size == 0x0F:
  *             write(b"\xAF")             # <<<<<<<<<<<<<<
  *         elif size < 0x100:
  *             write(b"\xD8")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__137, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 269, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__138, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 277, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":268
+    /* "neo4j/packstream/_packer.pyx":276
  *         elif size == 0x0E:
  *             write(b"\xAE")
  *         elif size == 0x0F:             # <<<<<<<<<<<<<<
@@ -6153,7 +6246,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":270
+  /* "neo4j/packstream/_packer.pyx":278
  *         elif size == 0x0F:
  *             write(b"\xAF")
  *         elif size < 0x100:             # <<<<<<<<<<<<<<
@@ -6163,27 +6256,27 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size < 0x100) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":271
+    /* "neo4j/packstream/_packer.pyx":279
  *             write(b"\xAF")
  *         elif size < 0x100:
  *             write(b"\xD8")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__139, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 271, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__140, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 279, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":272
+    /* "neo4j/packstream/_packer.pyx":280
  *         elif size < 0x100:
  *             write(b"\xD8")
  *             write(PACKED_UINT_8[size])             # <<<<<<<<<<<<<<
  *         elif size < 0x10000:
  *             write(b"\xD9")
  */
-    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 272, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 280, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 272, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 280, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_INCREF(__pyx_v_write);
@@ -6198,14 +6291,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
       }
     }
     if (!__pyx_t_5) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 272, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 280, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_5, __pyx_t_4};
-        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 272, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 280, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -6214,20 +6307,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_5, __pyx_t_4};
-        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 272, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 280, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else
       #endif
       {
-        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 272, __pyx_L1_error)
+        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 280, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5); __pyx_t_5 = NULL;
         __Pyx_GIVEREF(__pyx_t_4);
         PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_4);
         __pyx_t_4 = 0;
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 272, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 280, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
@@ -6235,7 +6328,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":270
+    /* "neo4j/packstream/_packer.pyx":278
  *         elif size == 0x0F:
  *             write(b"\xAF")
  *         elif size < 0x100:             # <<<<<<<<<<<<<<
@@ -6245,7 +6338,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":273
+  /* "neo4j/packstream/_packer.pyx":281
  *             write(b"\xD8")
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:             # <<<<<<<<<<<<<<
@@ -6255,27 +6348,27 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   __pyx_t_2 = ((__pyx_v_size < 0x10000) != 0);
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":274
+    /* "neo4j/packstream/_packer.pyx":282
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  *             write(b"\xD9")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__141, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 274, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__142, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 282, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":275
+    /* "neo4j/packstream/_packer.pyx":283
  *         elif size < 0x10000:
  *             write(b"\xD9")
  *             write(PACKED_UINT_16[size])             # <<<<<<<<<<<<<<
  *         elif size < 0x100000000:
  *             write(b"\xDA")
  */
-    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_16); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 275, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_16); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 283, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_6 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 275, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_GetItemInt(__pyx_t_3, __pyx_v_size, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 283, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_INCREF(__pyx_v_write);
@@ -6290,14 +6383,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
       }
     }
     if (!__pyx_t_4) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_6); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 275, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_6); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 283, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_4, __pyx_t_6};
-        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 275, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 283, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -6306,20 +6399,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[2] = {__pyx_t_4, __pyx_t_6};
-        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 275, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 283, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       } else
       #endif
       {
-        __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 275, __pyx_L1_error)
+        __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 283, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
         __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_4); __pyx_t_4 = NULL;
         __Pyx_GIVEREF(__pyx_t_6);
         PyTuple_SET_ITEM(__pyx_t_5, 0+1, __pyx_t_6);
         __pyx_t_6 = 0;
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 275, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 283, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       }
@@ -6327,7 +6420,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":273
+    /* "neo4j/packstream/_packer.pyx":281
  *             write(b"\xD8")
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:             # <<<<<<<<<<<<<<
@@ -6337,42 +6430,42 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":276
+  /* "neo4j/packstream/_packer.pyx":284
  *             write(b"\xD9")
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:             # <<<<<<<<<<<<<<
  *             write(b"\xDA")
  *             write(struct_pack(">I", size))
  */
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 276, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 284, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_int_4294967296, Py_LT); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 276, __pyx_L1_error)
+  __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_int_4294967296, Py_LT); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 284, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 276, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 284, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   if (__pyx_t_2) {
 
-    /* "neo4j/packstream/_packer.pyx":277
+    /* "neo4j/packstream/_packer.pyx":285
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  *             write(b"\xDA")             # <<<<<<<<<<<<<<
  *             write(struct_pack(">I", size))
  *         else:
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__143, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 277, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__144, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 285, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":278
+    /* "neo4j/packstream/_packer.pyx":286
  *         elif size < 0x100000000:
  *             write(b"\xDA")
  *             write(struct_pack(">I", size))             # <<<<<<<<<<<<<<
  *         else:
  *             raise OverflowError("Map header size out of range")
  */
-    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 278, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_struct_pack); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 286, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_6 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 278, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyInt_From_int(__pyx_v_size); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 286, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __pyx_t_4 = NULL;
     __pyx_t_7 = 0;
@@ -6389,7 +6482,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     #if CYTHON_FAST_PYCALL
     if (PyFunction_Check(__pyx_t_5)) {
       PyObject *__pyx_temp[3] = {__pyx_t_4, __pyx_kp_s_I, __pyx_t_6};
-      __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 278, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 286, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -6398,14 +6491,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     #if CYTHON_FAST_PYCCALL
     if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
       PyObject *__pyx_temp[3] = {__pyx_t_4, __pyx_kp_s_I, __pyx_t_6};
-      __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 278, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-__pyx_t_7, 2+__pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 286, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     } else
     #endif
     {
-      __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 278, __pyx_L1_error)
+      __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 286, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
       if (__pyx_t_4) {
         __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_4); __pyx_t_4 = NULL;
@@ -6416,7 +6509,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
       __Pyx_GIVEREF(__pyx_t_6);
       PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_7, __pyx_t_6);
       __pyx_t_6 = 0;
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 278, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 286, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
     }
@@ -6433,14 +6526,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
       }
     }
     if (!__pyx_t_8) {
-      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 278, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 286, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       __Pyx_GOTREF(__pyx_t_3);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_5)) {
         PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_1};
-        __pyx_t_3 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 278, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 286, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -6449,20 +6542,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_5)) {
         PyObject *__pyx_temp[2] = {__pyx_t_8, __pyx_t_1};
-        __pyx_t_3 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 278, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyCFunction_FastCall(__pyx_t_5, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 286, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       } else
       #endif
       {
-        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 278, __pyx_L1_error)
+        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 286, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         __Pyx_GIVEREF(__pyx_t_8); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_8); __pyx_t_8 = NULL;
         __Pyx_GIVEREF(__pyx_t_1);
         PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_1);
         __pyx_t_1 = 0;
-        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 278, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 286, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
@@ -6470,7 +6563,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":276
+    /* "neo4j/packstream/_packer.pyx":284
  *             write(b"\xD9")
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:             # <<<<<<<<<<<<<<
@@ -6480,7 +6573,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
     goto __pyx_L3;
   }
 
-  /* "neo4j/packstream/_packer.pyx":280
+  /* "neo4j/packstream/_packer.pyx":288
  *             write(struct_pack(">I", size))
  *         else:
  *             raise OverflowError("Map header size out of range")             # <<<<<<<<<<<<<<
@@ -6488,15 +6581,15 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
  *     cpdef pack_map_stream_header(self):
  */
   /*else*/ {
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_OverflowError, __pyx_tuple__144, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 280, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_OverflowError, __pyx_tuple__145, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 288, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 280, __pyx_L1_error)
+    __PYX_ERR(0, 288, __pyx_L1_error)
   }
   __pyx_L3:;
 
-  /* "neo4j/packstream/_packer.pyx":236
+  /* "neo4j/packstream/_packer.pyx":244
  *         self._write(b"\xD7")
  * 
  *     cdef pack_map_header(self, int size):             # <<<<<<<<<<<<<<
@@ -6523,7 +6616,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_header(st
   return __pyx_r;
 }
 
-/* "neo4j/packstream/_packer.pyx":282
+/* "neo4j/packstream/_packer.pyx":290
  *             raise OverflowError("Map header size out of range")
  * 
  *     cpdef pack_map_stream_header(self):             # <<<<<<<<<<<<<<
@@ -6544,7 +6637,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_stream_he
   if (unlikely(__pyx_skip_dispatch)) ;
   /* Check if overridden in Python */
   else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_pack_map_stream_header); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 282, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_pack_map_stream_header); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 290, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_5neo4j_10packstream_7_packer_6Packer_7pack_map_stream_header)) {
       __Pyx_XDECREF(__pyx_r);
@@ -6560,10 +6653,10 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_stream_he
         }
       }
       if (__pyx_t_4) {
-        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 282, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 290, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else {
-        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 282, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 290, __pyx_L1_error)
       }
       __Pyx_GOTREF(__pyx_t_2);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -6575,18 +6668,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_stream_he
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   }
 
-  /* "neo4j/packstream/_packer.pyx":283
+  /* "neo4j/packstream/_packer.pyx":291
  * 
  *     cpdef pack_map_stream_header(self):
  *         self._write(b"\xDB")             # <<<<<<<<<<<<<<
  * 
  *     cpdef pack_struct(self, bytes signature, tuple fields):
  */
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_self->_write, __pyx_tuple__146, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 283, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_self->_write, __pyx_tuple__147, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 291, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":282
+  /* "neo4j/packstream/_packer.pyx":290
  *             raise OverflowError("Map header size out of range")
  * 
  *     cpdef pack_map_stream_header(self):             # <<<<<<<<<<<<<<
@@ -6629,7 +6722,7 @@ static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_6pack_map_stream_
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("pack_map_stream_header", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_stream_header(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 282, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_map_stream_header(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 290, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -6646,7 +6739,7 @@ static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_6pack_map_stream_
   return __pyx_r;
 }
 
-/* "neo4j/packstream/_packer.pyx":285
+/* "neo4j/packstream/_packer.pyx":293
  *         self._write(b"\xDB")
  * 
  *     cpdef pack_struct(self, bytes signature, tuple fields):             # <<<<<<<<<<<<<<
@@ -6674,7 +6767,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   if (unlikely(__pyx_skip_dispatch)) ;
   /* Check if overridden in Python */
   else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_pack_struct); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 285, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_pack_struct); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 293, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_5neo4j_10packstream_7_packer_6Packer_9pack_struct)) {
       __Pyx_XDECREF(__pyx_r);
@@ -6694,7 +6787,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[3] = {__pyx_t_4, __pyx_v_signature, __pyx_v_fields};
-        __pyx_t_2 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-__pyx_t_5, 2+__pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 285, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyFunction_FastCall(__pyx_t_3, __pyx_temp+1-__pyx_t_5, 2+__pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 293, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_2);
       } else
@@ -6702,13 +6795,13 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_3)) {
         PyObject *__pyx_temp[3] = {__pyx_t_4, __pyx_v_signature, __pyx_v_fields};
-        __pyx_t_2 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-__pyx_t_5, 2+__pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 285, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyCFunction_FastCall(__pyx_t_3, __pyx_temp+1-__pyx_t_5, 2+__pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 293, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_GOTREF(__pyx_t_2);
       } else
       #endif
       {
-        __pyx_t_6 = PyTuple_New(2+__pyx_t_5); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 285, __pyx_L1_error)
+        __pyx_t_6 = PyTuple_New(2+__pyx_t_5); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 293, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         if (__pyx_t_4) {
           __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_4); __pyx_t_4 = NULL;
@@ -6719,7 +6812,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
         __Pyx_INCREF(__pyx_v_fields);
         __Pyx_GIVEREF(__pyx_v_fields);
         PyTuple_SET_ITEM(__pyx_t_6, 1+__pyx_t_5, __pyx_v_fields);
-        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 285, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 293, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
@@ -6732,7 +6825,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   }
 
-  /* "neo4j/packstream/_packer.pyx":286
+  /* "neo4j/packstream/_packer.pyx":294
  * 
  *     cpdef pack_struct(self, bytes signature, tuple fields):
  *         if len(signature) != 1:             # <<<<<<<<<<<<<<
@@ -6741,26 +6834,26 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
  */
   if (unlikely(__pyx_v_signature == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 286, __pyx_L1_error)
+    __PYX_ERR(0, 294, __pyx_L1_error)
   }
-  __pyx_t_7 = PyBytes_GET_SIZE(__pyx_v_signature); if (unlikely(__pyx_t_7 == -1)) __PYX_ERR(0, 286, __pyx_L1_error)
+  __pyx_t_7 = PyBytes_GET_SIZE(__pyx_v_signature); if (unlikely(__pyx_t_7 == -1)) __PYX_ERR(0, 294, __pyx_L1_error)
   __pyx_t_8 = ((__pyx_t_7 != 1) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":287
+    /* "neo4j/packstream/_packer.pyx":295
  *     cpdef pack_struct(self, bytes signature, tuple fields):
  *         if len(signature) != 1:
  *             raise ValueError("Structure signature must be a single byte value")             # <<<<<<<<<<<<<<
  *         write = self._write
  *         size = len(fields)
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__147, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 287, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__148, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 295, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_Raise(__pyx_t_1, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __PYX_ERR(0, 287, __pyx_L1_error)
+    __PYX_ERR(0, 295, __pyx_L1_error)
 
-    /* "neo4j/packstream/_packer.pyx":286
+    /* "neo4j/packstream/_packer.pyx":294
  * 
  *     cpdef pack_struct(self, bytes signature, tuple fields):
  *         if len(signature) != 1:             # <<<<<<<<<<<<<<
@@ -6769,7 +6862,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
  */
   }
 
-  /* "neo4j/packstream/_packer.pyx":288
+  /* "neo4j/packstream/_packer.pyx":296
  *         if len(signature) != 1:
  *             raise ValueError("Structure signature must be a single byte value")
  *         write = self._write             # <<<<<<<<<<<<<<
@@ -6781,7 +6874,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_v_write = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":289
+  /* "neo4j/packstream/_packer.pyx":297
  *             raise ValueError("Structure signature must be a single byte value")
  *         write = self._write
  *         size = len(fields)             # <<<<<<<<<<<<<<
@@ -6790,12 +6883,12 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
  */
   if (unlikely(__pyx_v_fields == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 289, __pyx_L1_error)
+    __PYX_ERR(0, 297, __pyx_L1_error)
   }
-  __pyx_t_7 = PyTuple_GET_SIZE(__pyx_v_fields); if (unlikely(__pyx_t_7 == -1)) __PYX_ERR(0, 289, __pyx_L1_error)
+  __pyx_t_7 = PyTuple_GET_SIZE(__pyx_v_fields); if (unlikely(__pyx_t_7 == -1)) __PYX_ERR(0, 297, __pyx_L1_error)
   __pyx_v_size = __pyx_t_7;
 
-  /* "neo4j/packstream/_packer.pyx":290
+  /* "neo4j/packstream/_packer.pyx":298
  *         write = self._write
  *         size = len(fields)
  *         if size == 0x00:             # <<<<<<<<<<<<<<
@@ -6805,18 +6898,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x00) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":291
+    /* "neo4j/packstream/_packer.pyx":299
  *         size = len(fields)
  *         if size == 0x00:
  *             write(b"\xB0")             # <<<<<<<<<<<<<<
  *         elif size == 0x01:
  *             write(b"\xB1")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__149, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 291, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__150, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 299, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":290
+    /* "neo4j/packstream/_packer.pyx":298
  *         write = self._write
  *         size = len(fields)
  *         if size == 0x00:             # <<<<<<<<<<<<<<
@@ -6826,7 +6919,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":292
+  /* "neo4j/packstream/_packer.pyx":300
  *         if size == 0x00:
  *             write(b"\xB0")
  *         elif size == 0x01:             # <<<<<<<<<<<<<<
@@ -6836,18 +6929,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x01) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":293
+    /* "neo4j/packstream/_packer.pyx":301
  *             write(b"\xB0")
  *         elif size == 0x01:
  *             write(b"\xB1")             # <<<<<<<<<<<<<<
  *         elif size == 0x02:
  *             write(b"\xB2")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__151, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 293, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__152, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 301, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":292
+    /* "neo4j/packstream/_packer.pyx":300
  *         if size == 0x00:
  *             write(b"\xB0")
  *         elif size == 0x01:             # <<<<<<<<<<<<<<
@@ -6857,7 +6950,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":294
+  /* "neo4j/packstream/_packer.pyx":302
  *         elif size == 0x01:
  *             write(b"\xB1")
  *         elif size == 0x02:             # <<<<<<<<<<<<<<
@@ -6867,18 +6960,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x02) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":295
+    /* "neo4j/packstream/_packer.pyx":303
  *             write(b"\xB1")
  *         elif size == 0x02:
  *             write(b"\xB2")             # <<<<<<<<<<<<<<
  *         elif size == 0x03:
  *             write(b"\xB3")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__153, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 295, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__154, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 303, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":294
+    /* "neo4j/packstream/_packer.pyx":302
  *         elif size == 0x01:
  *             write(b"\xB1")
  *         elif size == 0x02:             # <<<<<<<<<<<<<<
@@ -6888,7 +6981,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":296
+  /* "neo4j/packstream/_packer.pyx":304
  *         elif size == 0x02:
  *             write(b"\xB2")
  *         elif size == 0x03:             # <<<<<<<<<<<<<<
@@ -6898,18 +6991,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x03) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":297
+    /* "neo4j/packstream/_packer.pyx":305
  *             write(b"\xB2")
  *         elif size == 0x03:
  *             write(b"\xB3")             # <<<<<<<<<<<<<<
  *         elif size == 0x04:
  *             write(b"\xB4")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__155, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 297, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__156, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 305, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":296
+    /* "neo4j/packstream/_packer.pyx":304
  *         elif size == 0x02:
  *             write(b"\xB2")
  *         elif size == 0x03:             # <<<<<<<<<<<<<<
@@ -6919,7 +7012,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":298
+  /* "neo4j/packstream/_packer.pyx":306
  *         elif size == 0x03:
  *             write(b"\xB3")
  *         elif size == 0x04:             # <<<<<<<<<<<<<<
@@ -6929,18 +7022,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x04) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":299
+    /* "neo4j/packstream/_packer.pyx":307
  *             write(b"\xB3")
  *         elif size == 0x04:
  *             write(b"\xB4")             # <<<<<<<<<<<<<<
  *         elif size == 0x05:
  *             write(b"\xB5")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__157, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 299, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__158, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 307, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":298
+    /* "neo4j/packstream/_packer.pyx":306
  *         elif size == 0x03:
  *             write(b"\xB3")
  *         elif size == 0x04:             # <<<<<<<<<<<<<<
@@ -6950,7 +7043,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":300
+  /* "neo4j/packstream/_packer.pyx":308
  *         elif size == 0x04:
  *             write(b"\xB4")
  *         elif size == 0x05:             # <<<<<<<<<<<<<<
@@ -6960,18 +7053,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x05) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":301
+    /* "neo4j/packstream/_packer.pyx":309
  *             write(b"\xB4")
  *         elif size == 0x05:
  *             write(b"\xB5")             # <<<<<<<<<<<<<<
  *         elif size == 0x06:
  *             write(b"\xB6")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__159, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 301, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__160, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 309, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":300
+    /* "neo4j/packstream/_packer.pyx":308
  *         elif size == 0x04:
  *             write(b"\xB4")
  *         elif size == 0x05:             # <<<<<<<<<<<<<<
@@ -6981,7 +7074,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":302
+  /* "neo4j/packstream/_packer.pyx":310
  *         elif size == 0x05:
  *             write(b"\xB5")
  *         elif size == 0x06:             # <<<<<<<<<<<<<<
@@ -6991,18 +7084,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x06) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":303
+    /* "neo4j/packstream/_packer.pyx":311
  *             write(b"\xB5")
  *         elif size == 0x06:
  *             write(b"\xB6")             # <<<<<<<<<<<<<<
  *         elif size == 0x07:
  *             write(b"\xB7")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__161, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 303, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__162, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 311, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":302
+    /* "neo4j/packstream/_packer.pyx":310
  *         elif size == 0x05:
  *             write(b"\xB5")
  *         elif size == 0x06:             # <<<<<<<<<<<<<<
@@ -7012,7 +7105,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":304
+  /* "neo4j/packstream/_packer.pyx":312
  *         elif size == 0x06:
  *             write(b"\xB6")
  *         elif size == 0x07:             # <<<<<<<<<<<<<<
@@ -7022,18 +7115,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x07) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":305
+    /* "neo4j/packstream/_packer.pyx":313
  *             write(b"\xB6")
  *         elif size == 0x07:
  *             write(b"\xB7")             # <<<<<<<<<<<<<<
  *         elif size == 0x08:
  *             write(b"\xB8")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__163, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 305, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__164, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 313, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":304
+    /* "neo4j/packstream/_packer.pyx":312
  *         elif size == 0x06:
  *             write(b"\xB6")
  *         elif size == 0x07:             # <<<<<<<<<<<<<<
@@ -7043,7 +7136,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":306
+  /* "neo4j/packstream/_packer.pyx":314
  *         elif size == 0x07:
  *             write(b"\xB7")
  *         elif size == 0x08:             # <<<<<<<<<<<<<<
@@ -7053,18 +7146,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x08) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":307
+    /* "neo4j/packstream/_packer.pyx":315
  *             write(b"\xB7")
  *         elif size == 0x08:
  *             write(b"\xB8")             # <<<<<<<<<<<<<<
  *         elif size == 0x09:
  *             write(b"\xB9")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__165, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 307, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__166, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 315, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":306
+    /* "neo4j/packstream/_packer.pyx":314
  *         elif size == 0x07:
  *             write(b"\xB7")
  *         elif size == 0x08:             # <<<<<<<<<<<<<<
@@ -7074,7 +7167,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":308
+  /* "neo4j/packstream/_packer.pyx":316
  *         elif size == 0x08:
  *             write(b"\xB8")
  *         elif size == 0x09:             # <<<<<<<<<<<<<<
@@ -7084,18 +7177,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x09) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":309
+    /* "neo4j/packstream/_packer.pyx":317
  *             write(b"\xB8")
  *         elif size == 0x09:
  *             write(b"\xB9")             # <<<<<<<<<<<<<<
  *         elif size == 0x0A:
  *             write(b"\xBA")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__167, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 309, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__168, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 317, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":308
+    /* "neo4j/packstream/_packer.pyx":316
  *         elif size == 0x08:
  *             write(b"\xB8")
  *         elif size == 0x09:             # <<<<<<<<<<<<<<
@@ -7105,7 +7198,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":310
+  /* "neo4j/packstream/_packer.pyx":318
  *         elif size == 0x09:
  *             write(b"\xB9")
  *         elif size == 0x0A:             # <<<<<<<<<<<<<<
@@ -7115,18 +7208,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x0A) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":311
+    /* "neo4j/packstream/_packer.pyx":319
  *             write(b"\xB9")
  *         elif size == 0x0A:
  *             write(b"\xBA")             # <<<<<<<<<<<<<<
  *         elif size == 0x0B:
  *             write(b"\xBB")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__169, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 311, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__170, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 319, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":310
+    /* "neo4j/packstream/_packer.pyx":318
  *         elif size == 0x09:
  *             write(b"\xB9")
  *         elif size == 0x0A:             # <<<<<<<<<<<<<<
@@ -7136,7 +7229,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":312
+  /* "neo4j/packstream/_packer.pyx":320
  *         elif size == 0x0A:
  *             write(b"\xBA")
  *         elif size == 0x0B:             # <<<<<<<<<<<<<<
@@ -7146,18 +7239,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x0B) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":313
+    /* "neo4j/packstream/_packer.pyx":321
  *             write(b"\xBA")
  *         elif size == 0x0B:
  *             write(b"\xBB")             # <<<<<<<<<<<<<<
  *         elif size == 0x0C:
  *             write(b"\xBC")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__171, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 313, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__172, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 321, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":312
+    /* "neo4j/packstream/_packer.pyx":320
  *         elif size == 0x0A:
  *             write(b"\xBA")
  *         elif size == 0x0B:             # <<<<<<<<<<<<<<
@@ -7167,7 +7260,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":314
+  /* "neo4j/packstream/_packer.pyx":322
  *         elif size == 0x0B:
  *             write(b"\xBB")
  *         elif size == 0x0C:             # <<<<<<<<<<<<<<
@@ -7177,18 +7270,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x0C) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":315
+    /* "neo4j/packstream/_packer.pyx":323
  *             write(b"\xBB")
  *         elif size == 0x0C:
  *             write(b"\xBC")             # <<<<<<<<<<<<<<
  *         elif size == 0x0D:
  *             write(b"\xBD")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__173, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 315, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__174, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 323, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":314
+    /* "neo4j/packstream/_packer.pyx":322
  *         elif size == 0x0B:
  *             write(b"\xBB")
  *         elif size == 0x0C:             # <<<<<<<<<<<<<<
@@ -7198,7 +7291,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":316
+  /* "neo4j/packstream/_packer.pyx":324
  *         elif size == 0x0C:
  *             write(b"\xBC")
  *         elif size == 0x0D:             # <<<<<<<<<<<<<<
@@ -7208,18 +7301,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x0D) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":317
+    /* "neo4j/packstream/_packer.pyx":325
  *             write(b"\xBC")
  *         elif size == 0x0D:
  *             write(b"\xBD")             # <<<<<<<<<<<<<<
  *         elif size == 0x0E:
  *             write(b"\xBE")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__175, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 317, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__176, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 325, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":316
+    /* "neo4j/packstream/_packer.pyx":324
  *         elif size == 0x0C:
  *             write(b"\xBC")
  *         elif size == 0x0D:             # <<<<<<<<<<<<<<
@@ -7229,7 +7322,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":318
+  /* "neo4j/packstream/_packer.pyx":326
  *         elif size == 0x0D:
  *             write(b"\xBD")
  *         elif size == 0x0E:             # <<<<<<<<<<<<<<
@@ -7239,18 +7332,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x0E) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":319
+    /* "neo4j/packstream/_packer.pyx":327
  *             write(b"\xBD")
  *         elif size == 0x0E:
  *             write(b"\xBE")             # <<<<<<<<<<<<<<
  *         elif size == 0x0F:
  *             write(b"\xBF")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__177, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 319, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__178, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 327, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":318
+    /* "neo4j/packstream/_packer.pyx":326
  *         elif size == 0x0D:
  *             write(b"\xBD")
  *         elif size == 0x0E:             # <<<<<<<<<<<<<<
@@ -7260,7 +7353,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":320
+  /* "neo4j/packstream/_packer.pyx":328
  *         elif size == 0x0E:
  *             write(b"\xBE")
  *         elif size == 0x0F:             # <<<<<<<<<<<<<<
@@ -7270,18 +7363,18 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size == 0x0F) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":321
+    /* "neo4j/packstream/_packer.pyx":329
  *             write(b"\xBE")
  *         elif size == 0x0F:
  *             write(b"\xBF")             # <<<<<<<<<<<<<<
  *         elif size < 0x100:
  *             write(b"\xDC")
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__179, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 321, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__180, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 329, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":320
+    /* "neo4j/packstream/_packer.pyx":328
  *         elif size == 0x0E:
  *             write(b"\xBE")
  *         elif size == 0x0F:             # <<<<<<<<<<<<<<
@@ -7291,7 +7384,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":322
+  /* "neo4j/packstream/_packer.pyx":330
  *         elif size == 0x0F:
  *             write(b"\xBF")
  *         elif size < 0x100:             # <<<<<<<<<<<<<<
@@ -7301,27 +7394,27 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size < 0x100) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":323
+    /* "neo4j/packstream/_packer.pyx":331
  *             write(b"\xBF")
  *         elif size < 0x100:
  *             write(b"\xDC")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__181, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 323, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__182, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 331, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":324
+    /* "neo4j/packstream/_packer.pyx":332
  *         elif size < 0x100:
  *             write(b"\xDC")
  *             write(PACKED_UINT_8[size])             # <<<<<<<<<<<<<<
  *         elif size < 0x10000:
  *             write(b"\xDD")
  */
-    __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 324, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_8); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 332, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_GetItemInt(__pyx_t_2, __pyx_v_size, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 324, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_GetItemInt(__pyx_t_2, __pyx_v_size, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 332, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_INCREF(__pyx_v_write);
@@ -7336,14 +7429,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
       }
     }
     if (!__pyx_t_6) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 324, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 332, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_2)) {
         PyObject *__pyx_temp[2] = {__pyx_t_6, __pyx_t_3};
-        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 324, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 332, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -7352,20 +7445,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_2)) {
         PyObject *__pyx_temp[2] = {__pyx_t_6, __pyx_t_3};
-        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 324, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 332, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       } else
       #endif
       {
-        __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 324, __pyx_L1_error)
+        __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 332, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_4);
         __Pyx_GIVEREF(__pyx_t_6); PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_6); __pyx_t_6 = NULL;
         __Pyx_GIVEREF(__pyx_t_3);
         PyTuple_SET_ITEM(__pyx_t_4, 0+1, __pyx_t_3);
         __pyx_t_3 = 0;
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 324, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 332, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       }
@@ -7373,7 +7466,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":322
+    /* "neo4j/packstream/_packer.pyx":330
  *         elif size == 0x0F:
  *             write(b"\xBF")
  *         elif size < 0x100:             # <<<<<<<<<<<<<<
@@ -7383,7 +7476,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":325
+  /* "neo4j/packstream/_packer.pyx":333
  *             write(b"\xDC")
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:             # <<<<<<<<<<<<<<
@@ -7393,27 +7486,27 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __pyx_t_8 = ((__pyx_v_size < 0x10000) != 0);
   if (__pyx_t_8) {
 
-    /* "neo4j/packstream/_packer.pyx":326
+    /* "neo4j/packstream/_packer.pyx":334
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  *             write(b"\xDD")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_16[size])
  *         else:
  */
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__183, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 326, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_write, __pyx_tuple__184, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 334, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":327
+    /* "neo4j/packstream/_packer.pyx":335
  *         elif size < 0x10000:
  *             write(b"\xDD")
  *             write(PACKED_UINT_16[size])             # <<<<<<<<<<<<<<
  *         else:
  *             raise OverflowError("Structure size out of range")
  */
-    __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_16); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 327, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_PACKED_UINT_16); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 335, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_2, __pyx_v_size, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 327, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_2, __pyx_v_size, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 1, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 335, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_INCREF(__pyx_v_write);
@@ -7428,14 +7521,14 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
       }
     }
     if (!__pyx_t_3) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 327, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_4); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 335, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else {
       #if CYTHON_FAST_PYCALL
       if (PyFunction_Check(__pyx_t_2)) {
         PyObject *__pyx_temp[2] = {__pyx_t_3, __pyx_t_4};
-        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 327, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 335, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -7444,20 +7537,20 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
       #if CYTHON_FAST_PYCCALL
       if (__Pyx_PyFastCFunction_Check(__pyx_t_2)) {
         PyObject *__pyx_temp[2] = {__pyx_t_3, __pyx_t_4};
-        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 327, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 335, __pyx_L1_error)
         __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else
       #endif
       {
-        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 327, __pyx_L1_error)
+        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 335, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_6);
         __Pyx_GIVEREF(__pyx_t_3); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_3); __pyx_t_3 = NULL;
         __Pyx_GIVEREF(__pyx_t_4);
         PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_4);
         __pyx_t_4 = 0;
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 327, __pyx_L1_error)
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 335, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
@@ -7465,7 +7558,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":325
+    /* "neo4j/packstream/_packer.pyx":333
  *             write(b"\xDC")
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:             # <<<<<<<<<<<<<<
@@ -7475,7 +7568,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     goto __pyx_L4;
   }
 
-  /* "neo4j/packstream/_packer.pyx":329
+  /* "neo4j/packstream/_packer.pyx":337
  *             write(PACKED_UINT_16[size])
  *         else:
  *             raise OverflowError("Structure size out of range")             # <<<<<<<<<<<<<<
@@ -7483,15 +7576,15 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
  *         for field in fields:
  */
   /*else*/ {
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_OverflowError, __pyx_tuple__184, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 329, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_OverflowError, __pyx_tuple__185, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 337, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_Raise(__pyx_t_1, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __PYX_ERR(0, 329, __pyx_L1_error)
+    __PYX_ERR(0, 337, __pyx_L1_error)
   }
   __pyx_L4:;
 
-  /* "neo4j/packstream/_packer.pyx":330
+  /* "neo4j/packstream/_packer.pyx":338
  *         else:
  *             raise OverflowError("Structure size out of range")
  *         write(signature)             # <<<<<<<<<<<<<<
@@ -7510,13 +7603,13 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     }
   }
   if (!__pyx_t_6) {
-    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_v_signature); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 330, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_v_signature); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 338, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   } else {
     #if CYTHON_FAST_PYCALL
     if (PyFunction_Check(__pyx_t_2)) {
       PyObject *__pyx_temp[2] = {__pyx_t_6, __pyx_v_signature};
-      __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 330, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 338, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else
@@ -7524,19 +7617,19 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
     #if CYTHON_FAST_PYCCALL
     if (__Pyx_PyFastCFunction_Check(__pyx_t_2)) {
       PyObject *__pyx_temp[2] = {__pyx_t_6, __pyx_v_signature};
-      __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 330, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 338, __pyx_L1_error)
       __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else
     #endif
     {
-      __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 330, __pyx_L1_error)
+      __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 338, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_GIVEREF(__pyx_t_6); PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_6); __pyx_t_6 = NULL;
       __Pyx_INCREF(__pyx_v_signature);
       __Pyx_GIVEREF(__pyx_v_signature);
       PyTuple_SET_ITEM(__pyx_t_4, 0+1, __pyx_v_signature);
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 330, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 338, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     }
@@ -7544,7 +7637,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":331
+  /* "neo4j/packstream/_packer.pyx":339
  *             raise OverflowError("Structure size out of range")
  *         write(signature)
  *         for field in fields:             # <<<<<<<<<<<<<<
@@ -7553,32 +7646,32 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
  */
   if (unlikely(__pyx_v_fields == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 331, __pyx_L1_error)
+    __PYX_ERR(0, 339, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_fields; __Pyx_INCREF(__pyx_t_1); __pyx_t_7 = 0;
   for (;;) {
     if (__pyx_t_7 >= PyTuple_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-    __pyx_t_2 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_7); __Pyx_INCREF(__pyx_t_2); __pyx_t_7++; if (unlikely(0 < 0)) __PYX_ERR(0, 331, __pyx_L1_error)
+    __pyx_t_2 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_7); __Pyx_INCREF(__pyx_t_2); __pyx_t_7++; if (unlikely(0 < 0)) __PYX_ERR(0, 339, __pyx_L1_error)
     #else
-    __pyx_t_2 = PySequence_ITEM(__pyx_t_1, __pyx_t_7); __pyx_t_7++; if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 331, __pyx_L1_error)
+    __pyx_t_2 = PySequence_ITEM(__pyx_t_1, __pyx_t_7); __pyx_t_7++; if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 339, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_field, __pyx_t_2);
     __pyx_t_2 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":332
+    /* "neo4j/packstream/_packer.pyx":340
  *         write(signature)
  *         for field in fields:
  *             self._pack(field)             # <<<<<<<<<<<<<<
  * 
  *     cpdef pack_end_of_stream(self):
  */
-    __pyx_t_2 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->_pack(__pyx_v_self, __pyx_v_field); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 332, __pyx_L1_error)
+    __pyx_t_2 = ((struct __pyx_vtabstruct_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self->__pyx_vtab)->_pack(__pyx_v_self, __pyx_v_field); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 340, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-    /* "neo4j/packstream/_packer.pyx":331
+    /* "neo4j/packstream/_packer.pyx":339
  *             raise OverflowError("Structure size out of range")
  *         write(signature)
  *         for field in fields:             # <<<<<<<<<<<<<<
@@ -7588,7 +7681,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(struct
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":285
+  /* "neo4j/packstream/_packer.pyx":293
  *         self._write(b"\xDB")
  * 
  *     cpdef pack_struct(self, bytes signature, tuple fields):             # <<<<<<<<<<<<<<
@@ -7643,11 +7736,11 @@ static PyObject *__pyx_pw_5neo4j_10packstream_7_packer_6Packer_9pack_struct(PyOb
         case  1:
         if (likely((values[1] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_fields)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("pack_struct", 1, 2, 2, 1); __PYX_ERR(0, 285, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("pack_struct", 1, 2, 2, 1); __PYX_ERR(0, 293, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "pack_struct") < 0)) __PYX_ERR(0, 285, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "pack_struct") < 0)) __PYX_ERR(0, 293, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
       goto __pyx_L5_argtuple_error;
@@ -7660,14 +7753,14 @@ static PyObject *__pyx_pw_5neo4j_10packstream_7_packer_6Packer_9pack_struct(PyOb
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("pack_struct", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 285, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("pack_struct", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 293, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("neo4j.packstream._packer.Packer.pack_struct", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_signature), (&PyBytes_Type), 1, "signature", 1))) __PYX_ERR(0, 285, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_fields), (&PyTuple_Type), 1, "fields", 1))) __PYX_ERR(0, 285, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_signature), (&PyBytes_Type), 1, "signature", 1))) __PYX_ERR(0, 293, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_fields), (&PyTuple_Type), 1, "fields", 1))) __PYX_ERR(0, 293, __pyx_L1_error)
   __pyx_r = __pyx_pf_5neo4j_10packstream_7_packer_6Packer_8pack_struct(((struct __pyx_obj_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self), __pyx_v_signature, __pyx_v_fields);
 
   /* function exit code */
@@ -7685,7 +7778,7 @@ static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_8pack_struct(stru
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("pack_struct", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(__pyx_v_self, __pyx_v_signature, __pyx_v_fields, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 285, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_struct(__pyx_v_self, __pyx_v_signature, __pyx_v_fields, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 293, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7702,7 +7795,7 @@ static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_8pack_struct(stru
   return __pyx_r;
 }
 
-/* "neo4j/packstream/_packer.pyx":334
+/* "neo4j/packstream/_packer.pyx":342
  *             self._pack(field)
  * 
  *     cpdef pack_end_of_stream(self):             # <<<<<<<<<<<<<<
@@ -7722,7 +7815,7 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_end_of_stream
   if (unlikely(__pyx_skip_dispatch)) ;
   /* Check if overridden in Python */
   else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_pack_end_of_stream); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 334, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_pack_end_of_stream); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 342, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_5neo4j_10packstream_7_packer_6Packer_11pack_end_of_stream)) {
       __Pyx_XDECREF(__pyx_r);
@@ -7738,10 +7831,10 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_end_of_stream
         }
       }
       if (__pyx_t_4) {
-        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 334, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 342, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else {
-        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 334, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 342, __pyx_L1_error)
       }
       __Pyx_GOTREF(__pyx_t_2);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -7753,16 +7846,16 @@ static PyObject *__pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_end_of_stream
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   }
 
-  /* "neo4j/packstream/_packer.pyx":335
+  /* "neo4j/packstream/_packer.pyx":343
  * 
  *     cpdef pack_end_of_stream(self):
  *         self._write(b"\xDF")             # <<<<<<<<<<<<<<
  */
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_self->_write, __pyx_tuple__186, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 335, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_v_self->_write, __pyx_tuple__187, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 343, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "neo4j/packstream/_packer.pyx":334
+  /* "neo4j/packstream/_packer.pyx":342
  *             self._pack(field)
  * 
  *     cpdef pack_end_of_stream(self):             # <<<<<<<<<<<<<<
@@ -7804,7 +7897,7 @@ static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_10pack_end_of_str
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("pack_end_of_stream", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_end_of_stream(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 334, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_5neo4j_10packstream_7_packer_6Packer_pack_end_of_stream(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 342, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7817,6 +7910,82 @@ static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_10pack_end_of_str
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "neo4j/packstream/_packer.pyx":36
+ * cdef class Packer(object):
+ * 
+ *     cdef public bint supports_bytes             # <<<<<<<<<<<<<<
+ * 
+ *     cdef stream
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_5neo4j_10packstream_7_packer_6Packer_14supports_bytes_1__get__(PyObject *__pyx_v_self); /*proto*/
+static PyObject *__pyx_pw_5neo4j_10packstream_7_packer_6Packer_14supports_bytes_1__get__(PyObject *__pyx_v_self) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__get__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_5neo4j_10packstream_7_packer_6Packer_14supports_bytes___get__(((struct __pyx_obj_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_5neo4j_10packstream_7_packer_6Packer_14supports_bytes___get__(struct __pyx_obj_5neo4j_10packstream_7_packer_Packer *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  __Pyx_RefNannySetupContext("__get__", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyBool_FromLong(__pyx_v_self->supports_bytes); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 36, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("neo4j.packstream._packer.Packer.supports_bytes.__get__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static int __pyx_pw_5neo4j_10packstream_7_packer_6Packer_14supports_bytes_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value); /*proto*/
+static int __pyx_pw_5neo4j_10packstream_7_packer_6Packer_14supports_bytes_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__set__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_5neo4j_10packstream_7_packer_6Packer_14supports_bytes_2__set__(((struct __pyx_obj_5neo4j_10packstream_7_packer_Packer *)__pyx_v_self), ((PyObject *)__pyx_v_value));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static int __pyx_pf_5neo4j_10packstream_7_packer_6Packer_14supports_bytes_2__set__(struct __pyx_obj_5neo4j_10packstream_7_packer_Packer *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  int __pyx_t_1;
+  __Pyx_RefNannySetupContext("__set__", 0);
+  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 36, __pyx_L1_error)
+  __pyx_v_self->supports_bytes = __pyx_t_1;
+
+  /* function exit code */
+  __pyx_r = 0;
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_AddTraceback("neo4j.packstream._packer.Packer.supports_bytes.__set__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = -1;
+  __pyx_L0:;
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
@@ -7879,6 +8048,20 @@ static int __pyx_tp_clear_5neo4j_10packstream_7_packer_Packer(PyObject *o) {
   return 0;
 }
 
+static PyObject *__pyx_getprop_5neo4j_10packstream_7_packer_6Packer_supports_bytes(PyObject *o, CYTHON_UNUSED void *x) {
+  return __pyx_pw_5neo4j_10packstream_7_packer_6Packer_14supports_bytes_1__get__(o);
+}
+
+static int __pyx_setprop_5neo4j_10packstream_7_packer_6Packer_supports_bytes(PyObject *o, PyObject *v, CYTHON_UNUSED void *x) {
+  if (v) {
+    return __pyx_pw_5neo4j_10packstream_7_packer_6Packer_14supports_bytes_3__set__(o, v);
+  }
+  else {
+    PyErr_SetString(PyExc_NotImplementedError, "__del__");
+    return -1;
+  }
+}
+
 static PyMethodDef __pyx_methods_5neo4j_10packstream_7_packer_Packer[] = {
   {"pack", (PyCFunction)__pyx_pw_5neo4j_10packstream_7_packer_6Packer_3pack, METH_O, 0},
   {"pack_list_stream_header", (PyCFunction)__pyx_pw_5neo4j_10packstream_7_packer_6Packer_5pack_list_stream_header, METH_NOARGS, 0},
@@ -7886,6 +8069,11 @@ static PyMethodDef __pyx_methods_5neo4j_10packstream_7_packer_Packer[] = {
   {"pack_struct", (PyCFunction)__pyx_pw_5neo4j_10packstream_7_packer_6Packer_9pack_struct, METH_VARARGS|METH_KEYWORDS, 0},
   {"pack_end_of_stream", (PyCFunction)__pyx_pw_5neo4j_10packstream_7_packer_6Packer_11pack_end_of_stream, METH_NOARGS, 0},
   {0, 0, 0, 0}
+};
+
+static struct PyGetSetDef __pyx_getsets_5neo4j_10packstream_7_packer_Packer[] = {
+  {(char *)"supports_bytes", __pyx_getprop_5neo4j_10packstream_7_packer_6Packer_supports_bytes, __pyx_setprop_5neo4j_10packstream_7_packer_6Packer_supports_bytes, (char *)0, 0},
+  {0, 0, 0, 0, 0}
 };
 
 static PyTypeObject __pyx_type_5neo4j_10packstream_7_packer_Packer = {
@@ -7923,7 +8111,7 @@ static PyTypeObject __pyx_type_5neo4j_10packstream_7_packer_Packer = {
   0, /*tp_iternext*/
   __pyx_methods_5neo4j_10packstream_7_packer_Packer, /*tp_methods*/
   0, /*tp_members*/
-  0, /*tp_getset*/
+  __pyx_getsets_5neo4j_10packstream_7_packer_Packer, /*tp_getset*/
   0, /*tp_base*/
   0, /*tp_dict*/
   0, /*tp_descr_get*/
@@ -8249,97 +8437,99 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_kp_s_Structure_signature_must_be_a_si, __pyx_k_Structure_signature_must_be_a_si, sizeof(__pyx_k_Structure_signature_must_be_a_si), 0, 0, 1, 0},
   {&__pyx_kp_s_Structure_size_out_of_range, __pyx_k_Structure_size_out_of_range, sizeof(__pyx_k_Structure_size_out_of_range), 0, 0, 1, 0},
   {&__pyx_kp_s_Structures_require_a_2_tuple_of, __pyx_k_Structures_require_a_2_tuple_of, sizeof(__pyx_k_Structures_require_a_2_tuple_of), 0, 0, 1, 0},
+  {&__pyx_kp_s_This_PackSteam_channel_does_not, __pyx_k_This_PackSteam_channel_does_not, sizeof(__pyx_k_This_PackSteam_channel_does_not), 0, 0, 1, 0},
+  {&__pyx_n_s_TypeError, __pyx_k_TypeError, sizeof(__pyx_k_TypeError), 0, 0, 1, 1},
   {&__pyx_n_s_ValueError, __pyx_k_ValueError, sizeof(__pyx_k_ValueError), 0, 0, 1, 1},
   {&__pyx_kp_s_Values_of_type_s_are_not_support, __pyx_k_Values_of_type_s_are_not_support, sizeof(__pyx_k_Values_of_type_s_are_not_support), 0, 0, 1, 0},
-  {&__pyx_kp_b__101, __pyx_k__101, sizeof(__pyx_k__101), 0, 0, 0, 0},
-  {&__pyx_kp_b__104, __pyx_k__104, sizeof(__pyx_k__104), 0, 0, 0, 0},
-  {&__pyx_kp_b__106, __pyx_k__106, sizeof(__pyx_k__106), 0, 0, 0, 0},
-  {&__pyx_kp_b__108, __pyx_k__108, sizeof(__pyx_k__108), 0, 0, 0, 0},
+  {&__pyx_kp_b__100, __pyx_k__100, sizeof(__pyx_k__100), 0, 0, 0, 0},
+  {&__pyx_kp_b__102, __pyx_k__102, sizeof(__pyx_k__102), 0, 0, 0, 0},
+  {&__pyx_kp_b__105, __pyx_k__105, sizeof(__pyx_k__105), 0, 0, 0, 0},
+  {&__pyx_kp_b__107, __pyx_k__107, sizeof(__pyx_k__107), 0, 0, 0, 0},
+  {&__pyx_kp_b__109, __pyx_k__109, sizeof(__pyx_k__109), 0, 0, 0, 0},
   {&__pyx_kp_b__11, __pyx_k__11, sizeof(__pyx_k__11), 0, 0, 0, 0},
-  {&__pyx_kp_b__110, __pyx_k__110, sizeof(__pyx_k__110), 0, 0, 0, 0},
-  {&__pyx_kp_b__112, __pyx_k__112, sizeof(__pyx_k__112), 0, 0, 0, 0},
-  {&__pyx_kp_b__114, __pyx_k__114, sizeof(__pyx_k__114), 0, 0, 0, 0},
-  {&__pyx_kp_b__116, __pyx_k__116, sizeof(__pyx_k__116), 0, 0, 0, 0},
-  {&__pyx_kp_b__118, __pyx_k__118, sizeof(__pyx_k__118), 0, 0, 0, 0},
-  {&__pyx_kp_b__120, __pyx_k__120, sizeof(__pyx_k__120), 0, 0, 0, 0},
-  {&__pyx_kp_b__122, __pyx_k__122, sizeof(__pyx_k__122), 0, 0, 0, 0},
-  {&__pyx_kp_b__124, __pyx_k__124, sizeof(__pyx_k__124), 0, 0, 0, 0},
-  {&__pyx_kp_b__126, __pyx_k__126, sizeof(__pyx_k__126), 0, 0, 0, 0},
-  {&__pyx_kp_b__128, __pyx_k__128, sizeof(__pyx_k__128), 0, 0, 0, 0},
+  {&__pyx_kp_b__111, __pyx_k__111, sizeof(__pyx_k__111), 0, 0, 0, 0},
+  {&__pyx_kp_b__113, __pyx_k__113, sizeof(__pyx_k__113), 0, 0, 0, 0},
+  {&__pyx_kp_b__115, __pyx_k__115, sizeof(__pyx_k__115), 0, 0, 0, 0},
+  {&__pyx_kp_b__117, __pyx_k__117, sizeof(__pyx_k__117), 0, 0, 0, 0},
+  {&__pyx_kp_b__119, __pyx_k__119, sizeof(__pyx_k__119), 0, 0, 0, 0},
+  {&__pyx_kp_b__121, __pyx_k__121, sizeof(__pyx_k__121), 0, 0, 0, 0},
+  {&__pyx_kp_b__123, __pyx_k__123, sizeof(__pyx_k__123), 0, 0, 0, 0},
+  {&__pyx_kp_b__125, __pyx_k__125, sizeof(__pyx_k__125), 0, 0, 0, 0},
+  {&__pyx_kp_b__127, __pyx_k__127, sizeof(__pyx_k__127), 0, 0, 0, 0},
+  {&__pyx_kp_b__129, __pyx_k__129, sizeof(__pyx_k__129), 0, 0, 0, 0},
   {&__pyx_kp_b__13, __pyx_k__13, sizeof(__pyx_k__13), 0, 0, 0, 0},
-  {&__pyx_kp_b__130, __pyx_k__130, sizeof(__pyx_k__130), 0, 0, 0, 0},
-  {&__pyx_kp_b__132, __pyx_k__132, sizeof(__pyx_k__132), 0, 0, 0, 0},
-  {&__pyx_kp_b__134, __pyx_k__134, sizeof(__pyx_k__134), 0, 0, 0, 0},
-  {&__pyx_kp_b__136, __pyx_k__136, sizeof(__pyx_k__136), 0, 0, 0, 0},
-  {&__pyx_kp_b__138, __pyx_k__138, sizeof(__pyx_k__138), 0, 0, 0, 0},
-  {&__pyx_kp_b__140, __pyx_k__140, sizeof(__pyx_k__140), 0, 0, 0, 0},
-  {&__pyx_kp_b__142, __pyx_k__142, sizeof(__pyx_k__142), 0, 0, 0, 0},
-  {&__pyx_kp_b__145, __pyx_k__145, sizeof(__pyx_k__145), 0, 0, 0, 0},
-  {&__pyx_kp_b__148, __pyx_k__148, sizeof(__pyx_k__148), 0, 0, 0, 0},
+  {&__pyx_kp_b__131, __pyx_k__131, sizeof(__pyx_k__131), 0, 0, 0, 0},
+  {&__pyx_kp_b__133, __pyx_k__133, sizeof(__pyx_k__133), 0, 0, 0, 0},
+  {&__pyx_kp_b__135, __pyx_k__135, sizeof(__pyx_k__135), 0, 0, 0, 0},
+  {&__pyx_kp_b__137, __pyx_k__137, sizeof(__pyx_k__137), 0, 0, 0, 0},
+  {&__pyx_kp_b__139, __pyx_k__139, sizeof(__pyx_k__139), 0, 0, 0, 0},
+  {&__pyx_kp_b__141, __pyx_k__141, sizeof(__pyx_k__141), 0, 0, 0, 0},
+  {&__pyx_kp_b__143, __pyx_k__143, sizeof(__pyx_k__143), 0, 0, 0, 0},
+  {&__pyx_kp_b__146, __pyx_k__146, sizeof(__pyx_k__146), 0, 0, 0, 0},
+  {&__pyx_kp_b__149, __pyx_k__149, sizeof(__pyx_k__149), 0, 0, 0, 0},
   {&__pyx_kp_b__15, __pyx_k__15, sizeof(__pyx_k__15), 0, 0, 0, 0},
-  {&__pyx_kp_b__150, __pyx_k__150, sizeof(__pyx_k__150), 0, 0, 0, 0},
-  {&__pyx_kp_b__152, __pyx_k__152, sizeof(__pyx_k__152), 0, 0, 0, 0},
-  {&__pyx_kp_b__154, __pyx_k__154, sizeof(__pyx_k__154), 0, 0, 0, 0},
-  {&__pyx_kp_b__156, __pyx_k__156, sizeof(__pyx_k__156), 0, 0, 0, 0},
-  {&__pyx_kp_b__158, __pyx_k__158, sizeof(__pyx_k__158), 0, 0, 0, 0},
-  {&__pyx_kp_b__160, __pyx_k__160, sizeof(__pyx_k__160), 0, 0, 0, 0},
-  {&__pyx_kp_b__162, __pyx_k__162, sizeof(__pyx_k__162), 0, 0, 0, 0},
-  {&__pyx_kp_b__164, __pyx_k__164, sizeof(__pyx_k__164), 0, 0, 0, 0},
-  {&__pyx_kp_b__166, __pyx_k__166, sizeof(__pyx_k__166), 0, 0, 0, 0},
-  {&__pyx_kp_b__168, __pyx_k__168, sizeof(__pyx_k__168), 0, 0, 0, 0},
-  {&__pyx_kp_b__170, __pyx_k__170, sizeof(__pyx_k__170), 0, 0, 0, 0},
-  {&__pyx_kp_b__172, __pyx_k__172, sizeof(__pyx_k__172), 0, 0, 0, 0},
-  {&__pyx_kp_b__174, __pyx_k__174, sizeof(__pyx_k__174), 0, 0, 0, 0},
-  {&__pyx_kp_b__176, __pyx_k__176, sizeof(__pyx_k__176), 0, 0, 0, 0},
-  {&__pyx_kp_b__178, __pyx_k__178, sizeof(__pyx_k__178), 0, 0, 0, 0},
-  {&__pyx_kp_b__180, __pyx_k__180, sizeof(__pyx_k__180), 0, 0, 0, 0},
-  {&__pyx_kp_b__182, __pyx_k__182, sizeof(__pyx_k__182), 0, 0, 0, 0},
-  {&__pyx_kp_b__185, __pyx_k__185, sizeof(__pyx_k__185), 0, 0, 0, 0},
-  {&__pyx_n_s__187, __pyx_k__187, sizeof(__pyx_k__187), 0, 0, 1, 1},
-  {&__pyx_kp_b__19, __pyx_k__19, sizeof(__pyx_k__19), 0, 0, 0, 0},
-  {&__pyx_kp_b__21, __pyx_k__21, sizeof(__pyx_k__21), 0, 0, 0, 0},
-  {&__pyx_kp_b__23, __pyx_k__23, sizeof(__pyx_k__23), 0, 0, 0, 0},
-  {&__pyx_kp_b__26, __pyx_k__26, sizeof(__pyx_k__26), 0, 0, 0, 0},
-  {&__pyx_kp_b__28, __pyx_k__28, sizeof(__pyx_k__28), 0, 0, 0, 0},
+  {&__pyx_kp_b__151, __pyx_k__151, sizeof(__pyx_k__151), 0, 0, 0, 0},
+  {&__pyx_kp_b__153, __pyx_k__153, sizeof(__pyx_k__153), 0, 0, 0, 0},
+  {&__pyx_kp_b__155, __pyx_k__155, sizeof(__pyx_k__155), 0, 0, 0, 0},
+  {&__pyx_kp_b__157, __pyx_k__157, sizeof(__pyx_k__157), 0, 0, 0, 0},
+  {&__pyx_kp_b__159, __pyx_k__159, sizeof(__pyx_k__159), 0, 0, 0, 0},
+  {&__pyx_kp_b__161, __pyx_k__161, sizeof(__pyx_k__161), 0, 0, 0, 0},
+  {&__pyx_kp_b__163, __pyx_k__163, sizeof(__pyx_k__163), 0, 0, 0, 0},
+  {&__pyx_kp_b__165, __pyx_k__165, sizeof(__pyx_k__165), 0, 0, 0, 0},
+  {&__pyx_kp_b__167, __pyx_k__167, sizeof(__pyx_k__167), 0, 0, 0, 0},
+  {&__pyx_kp_b__169, __pyx_k__169, sizeof(__pyx_k__169), 0, 0, 0, 0},
+  {&__pyx_kp_b__171, __pyx_k__171, sizeof(__pyx_k__171), 0, 0, 0, 0},
+  {&__pyx_kp_b__173, __pyx_k__173, sizeof(__pyx_k__173), 0, 0, 0, 0},
+  {&__pyx_kp_b__175, __pyx_k__175, sizeof(__pyx_k__175), 0, 0, 0, 0},
+  {&__pyx_kp_b__177, __pyx_k__177, sizeof(__pyx_k__177), 0, 0, 0, 0},
+  {&__pyx_kp_b__179, __pyx_k__179, sizeof(__pyx_k__179), 0, 0, 0, 0},
+  {&__pyx_kp_b__181, __pyx_k__181, sizeof(__pyx_k__181), 0, 0, 0, 0},
+  {&__pyx_kp_b__183, __pyx_k__183, sizeof(__pyx_k__183), 0, 0, 0, 0},
+  {&__pyx_kp_b__186, __pyx_k__186, sizeof(__pyx_k__186), 0, 0, 0, 0},
+  {&__pyx_n_s__188, __pyx_k__188, sizeof(__pyx_k__188), 0, 0, 1, 1},
+  {&__pyx_kp_b__20, __pyx_k__20, sizeof(__pyx_k__20), 0, 0, 0, 0},
+  {&__pyx_kp_b__22, __pyx_k__22, sizeof(__pyx_k__22), 0, 0, 0, 0},
+  {&__pyx_kp_b__24, __pyx_k__24, sizeof(__pyx_k__24), 0, 0, 0, 0},
+  {&__pyx_kp_b__27, __pyx_k__27, sizeof(__pyx_k__27), 0, 0, 0, 0},
+  {&__pyx_kp_b__29, __pyx_k__29, sizeof(__pyx_k__29), 0, 0, 0, 0},
   {&__pyx_kp_b__3, __pyx_k__3, sizeof(__pyx_k__3), 0, 0, 0, 0},
-  {&__pyx_kp_b__30, __pyx_k__30, sizeof(__pyx_k__30), 0, 0, 0, 0},
-  {&__pyx_kp_b__32, __pyx_k__32, sizeof(__pyx_k__32), 0, 0, 0, 0},
-  {&__pyx_kp_b__34, __pyx_k__34, sizeof(__pyx_k__34), 0, 0, 0, 0},
-  {&__pyx_kp_b__36, __pyx_k__36, sizeof(__pyx_k__36), 0, 0, 0, 0},
-  {&__pyx_kp_b__38, __pyx_k__38, sizeof(__pyx_k__38), 0, 0, 0, 0},
-  {&__pyx_kp_b__40, __pyx_k__40, sizeof(__pyx_k__40), 0, 0, 0, 0},
-  {&__pyx_kp_b__42, __pyx_k__42, sizeof(__pyx_k__42), 0, 0, 0, 0},
-  {&__pyx_kp_b__44, __pyx_k__44, sizeof(__pyx_k__44), 0, 0, 0, 0},
-  {&__pyx_kp_b__46, __pyx_k__46, sizeof(__pyx_k__46), 0, 0, 0, 0},
-  {&__pyx_kp_b__48, __pyx_k__48, sizeof(__pyx_k__48), 0, 0, 0, 0},
+  {&__pyx_kp_b__31, __pyx_k__31, sizeof(__pyx_k__31), 0, 0, 0, 0},
+  {&__pyx_kp_b__33, __pyx_k__33, sizeof(__pyx_k__33), 0, 0, 0, 0},
+  {&__pyx_kp_b__35, __pyx_k__35, sizeof(__pyx_k__35), 0, 0, 0, 0},
+  {&__pyx_kp_b__37, __pyx_k__37, sizeof(__pyx_k__37), 0, 0, 0, 0},
+  {&__pyx_kp_b__39, __pyx_k__39, sizeof(__pyx_k__39), 0, 0, 0, 0},
+  {&__pyx_kp_b__41, __pyx_k__41, sizeof(__pyx_k__41), 0, 0, 0, 0},
+  {&__pyx_kp_b__43, __pyx_k__43, sizeof(__pyx_k__43), 0, 0, 0, 0},
+  {&__pyx_kp_b__45, __pyx_k__45, sizeof(__pyx_k__45), 0, 0, 0, 0},
+  {&__pyx_kp_b__47, __pyx_k__47, sizeof(__pyx_k__47), 0, 0, 0, 0},
+  {&__pyx_kp_b__49, __pyx_k__49, sizeof(__pyx_k__49), 0, 0, 0, 0},
   {&__pyx_kp_b__5, __pyx_k__5, sizeof(__pyx_k__5), 0, 0, 0, 0},
-  {&__pyx_kp_b__50, __pyx_k__50, sizeof(__pyx_k__50), 0, 0, 0, 0},
-  {&__pyx_kp_b__52, __pyx_k__52, sizeof(__pyx_k__52), 0, 0, 0, 0},
-  {&__pyx_kp_b__54, __pyx_k__54, sizeof(__pyx_k__54), 0, 0, 0, 0},
-  {&__pyx_kp_b__56, __pyx_k__56, sizeof(__pyx_k__56), 0, 0, 0, 0},
-  {&__pyx_kp_b__58, __pyx_k__58, sizeof(__pyx_k__58), 0, 0, 0, 0},
-  {&__pyx_kp_b__60, __pyx_k__60, sizeof(__pyx_k__60), 0, 0, 0, 0},
-  {&__pyx_kp_b__62, __pyx_k__62, sizeof(__pyx_k__62), 0, 0, 0, 0},
-  {&__pyx_kp_b__65, __pyx_k__65, sizeof(__pyx_k__65), 0, 0, 0, 0},
-  {&__pyx_kp_b__67, __pyx_k__67, sizeof(__pyx_k__67), 0, 0, 0, 0},
-  {&__pyx_kp_b__69, __pyx_k__69, sizeof(__pyx_k__69), 0, 0, 0, 0},
+  {&__pyx_kp_b__51, __pyx_k__51, sizeof(__pyx_k__51), 0, 0, 0, 0},
+  {&__pyx_kp_b__53, __pyx_k__53, sizeof(__pyx_k__53), 0, 0, 0, 0},
+  {&__pyx_kp_b__55, __pyx_k__55, sizeof(__pyx_k__55), 0, 0, 0, 0},
+  {&__pyx_kp_b__57, __pyx_k__57, sizeof(__pyx_k__57), 0, 0, 0, 0},
+  {&__pyx_kp_b__59, __pyx_k__59, sizeof(__pyx_k__59), 0, 0, 0, 0},
+  {&__pyx_kp_b__61, __pyx_k__61, sizeof(__pyx_k__61), 0, 0, 0, 0},
+  {&__pyx_kp_b__63, __pyx_k__63, sizeof(__pyx_k__63), 0, 0, 0, 0},
+  {&__pyx_kp_b__66, __pyx_k__66, sizeof(__pyx_k__66), 0, 0, 0, 0},
+  {&__pyx_kp_b__68, __pyx_k__68, sizeof(__pyx_k__68), 0, 0, 0, 0},
   {&__pyx_kp_b__7, __pyx_k__7, sizeof(__pyx_k__7), 0, 0, 0, 0},
-  {&__pyx_kp_b__71, __pyx_k__71, sizeof(__pyx_k__71), 0, 0, 0, 0},
-  {&__pyx_kp_b__73, __pyx_k__73, sizeof(__pyx_k__73), 0, 0, 0, 0},
-  {&__pyx_kp_b__75, __pyx_k__75, sizeof(__pyx_k__75), 0, 0, 0, 0},
-  {&__pyx_kp_b__77, __pyx_k__77, sizeof(__pyx_k__77), 0, 0, 0, 0},
-  {&__pyx_kp_b__79, __pyx_k__79, sizeof(__pyx_k__79), 0, 0, 0, 0},
-  {&__pyx_kp_b__81, __pyx_k__81, sizeof(__pyx_k__81), 0, 0, 0, 0},
-  {&__pyx_kp_b__83, __pyx_k__83, sizeof(__pyx_k__83), 0, 0, 0, 0},
-  {&__pyx_kp_b__85, __pyx_k__85, sizeof(__pyx_k__85), 0, 0, 0, 0},
-  {&__pyx_kp_b__87, __pyx_k__87, sizeof(__pyx_k__87), 0, 0, 0, 0},
-  {&__pyx_kp_b__89, __pyx_k__89, sizeof(__pyx_k__89), 0, 0, 0, 0},
+  {&__pyx_kp_b__70, __pyx_k__70, sizeof(__pyx_k__70), 0, 0, 0, 0},
+  {&__pyx_kp_b__72, __pyx_k__72, sizeof(__pyx_k__72), 0, 0, 0, 0},
+  {&__pyx_kp_b__74, __pyx_k__74, sizeof(__pyx_k__74), 0, 0, 0, 0},
+  {&__pyx_kp_b__76, __pyx_k__76, sizeof(__pyx_k__76), 0, 0, 0, 0},
+  {&__pyx_kp_b__78, __pyx_k__78, sizeof(__pyx_k__78), 0, 0, 0, 0},
+  {&__pyx_kp_b__80, __pyx_k__80, sizeof(__pyx_k__80), 0, 0, 0, 0},
+  {&__pyx_kp_b__82, __pyx_k__82, sizeof(__pyx_k__82), 0, 0, 0, 0},
+  {&__pyx_kp_b__84, __pyx_k__84, sizeof(__pyx_k__84), 0, 0, 0, 0},
+  {&__pyx_kp_b__86, __pyx_k__86, sizeof(__pyx_k__86), 0, 0, 0, 0},
+  {&__pyx_kp_b__88, __pyx_k__88, sizeof(__pyx_k__88), 0, 0, 0, 0},
   {&__pyx_kp_b__9, __pyx_k__9, sizeof(__pyx_k__9), 0, 0, 0, 0},
-  {&__pyx_kp_b__91, __pyx_k__91, sizeof(__pyx_k__91), 0, 0, 0, 0},
-  {&__pyx_kp_b__93, __pyx_k__93, sizeof(__pyx_k__93), 0, 0, 0, 0},
-  {&__pyx_kp_b__95, __pyx_k__95, sizeof(__pyx_k__95), 0, 0, 0, 0},
-  {&__pyx_kp_b__97, __pyx_k__97, sizeof(__pyx_k__97), 0, 0, 0, 0},
-  {&__pyx_kp_b__99, __pyx_k__99, sizeof(__pyx_k__99), 0, 0, 0, 0},
+  {&__pyx_kp_b__90, __pyx_k__90, sizeof(__pyx_k__90), 0, 0, 0, 0},
+  {&__pyx_kp_b__92, __pyx_k__92, sizeof(__pyx_k__92), 0, 0, 0, 0},
+  {&__pyx_kp_b__94, __pyx_k__94, sizeof(__pyx_k__94), 0, 0, 0, 0},
+  {&__pyx_kp_b__96, __pyx_k__96, sizeof(__pyx_k__96), 0, 0, 0, 0},
+  {&__pyx_kp_b__98, __pyx_k__98, sizeof(__pyx_k__98), 0, 0, 0, 0},
   {&__pyx_n_s_constants, __pyx_k_constants, sizeof(__pyx_k_constants), 0, 0, 1, 1},
   {&__pyx_kp_s_d, __pyx_k_d, sizeof(__pyx_k_d), 0, 0, 1, 0},
   {&__pyx_n_s_encode, __pyx_k_encode, sizeof(__pyx_k_encode), 0, 0, 1, 1},
@@ -8369,8 +8559,9 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {0, 0, 0, 0, 0, 0, 0}
 };
 static int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_OverflowError = __Pyx_GetBuiltinName(__pyx_n_s_OverflowError); if (!__pyx_builtin_OverflowError) __PYX_ERR(0, 84, __pyx_L1_error)
-  __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) __PYX_ERR(0, 118, __pyx_L1_error)
+  __pyx_builtin_OverflowError = __Pyx_GetBuiltinName(__pyx_n_s_OverflowError); if (!__pyx_builtin_OverflowError) __PYX_ERR(0, 87, __pyx_L1_error)
+  __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) __PYX_ERR(0, 124, __pyx_L1_error)
+  __pyx_builtin_TypeError = __Pyx_GetBuiltinName(__pyx_n_s_TypeError); if (!__pyx_builtin_TypeError) __PYX_ERR(0, 135, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
   return -1;
@@ -8380,1070 +8571,1081 @@ static int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "neo4j/packstream/_packer.pyx":54
+  /* "neo4j/packstream/_packer.pyx":57
  *         # None
  *         if value is None:
  *             write(b"\xC0")  # NULL             # <<<<<<<<<<<<<<
  * 
  *         # Boolean
  */
-  __pyx_tuple__2 = PyTuple_Pack(1, __pyx_kp_b_); if (unlikely(!__pyx_tuple__2)) __PYX_ERR(0, 54, __pyx_L1_error)
+  __pyx_tuple__2 = PyTuple_Pack(1, __pyx_kp_b_); if (unlikely(!__pyx_tuple__2)) __PYX_ERR(0, 57, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__2);
   __Pyx_GIVEREF(__pyx_tuple__2);
 
-  /* "neo4j/packstream/_packer.pyx":58
+  /* "neo4j/packstream/_packer.pyx":61
  *         # Boolean
  *         elif value is True:
  *             write(b"\xC3")             # <<<<<<<<<<<<<<
  *         elif value is False:
  *             write(b"\xC2")
  */
-  __pyx_tuple__4 = PyTuple_Pack(1, __pyx_kp_b__3); if (unlikely(!__pyx_tuple__4)) __PYX_ERR(0, 58, __pyx_L1_error)
+  __pyx_tuple__4 = PyTuple_Pack(1, __pyx_kp_b__3); if (unlikely(!__pyx_tuple__4)) __PYX_ERR(0, 61, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__4);
   __Pyx_GIVEREF(__pyx_tuple__4);
 
-  /* "neo4j/packstream/_packer.pyx":60
+  /* "neo4j/packstream/_packer.pyx":63
  *             write(b"\xC3")
  *         elif value is False:
  *             write(b"\xC2")             # <<<<<<<<<<<<<<
  * 
  *         # Float (only double precision is supported)
  */
-  __pyx_tuple__6 = PyTuple_Pack(1, __pyx_kp_b__5); if (unlikely(!__pyx_tuple__6)) __PYX_ERR(0, 60, __pyx_L1_error)
+  __pyx_tuple__6 = PyTuple_Pack(1, __pyx_kp_b__5); if (unlikely(!__pyx_tuple__6)) __PYX_ERR(0, 63, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__6);
   __Pyx_GIVEREF(__pyx_tuple__6);
 
-  /* "neo4j/packstream/_packer.pyx":64
+  /* "neo4j/packstream/_packer.pyx":67
  *         # Float (only double precision is supported)
  *         elif isinstance(value, float):
  *             write(b"\xC1")             # <<<<<<<<<<<<<<
  *             write(struct_pack(">d", value))
  * 
  */
-  __pyx_tuple__8 = PyTuple_Pack(1, __pyx_kp_b__7); if (unlikely(!__pyx_tuple__8)) __PYX_ERR(0, 64, __pyx_L1_error)
+  __pyx_tuple__8 = PyTuple_Pack(1, __pyx_kp_b__7); if (unlikely(!__pyx_tuple__8)) __PYX_ERR(0, 67, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__8);
   __Pyx_GIVEREF(__pyx_tuple__8);
 
-  /* "neo4j/packstream/_packer.pyx":72
+  /* "neo4j/packstream/_packer.pyx":75
  *                 write(PACKED_UINT_8[value % 0x100])
  *             elif -0x80 <= value < -0x10:
  *                 write(b"\xC8")             # <<<<<<<<<<<<<<
  *                 write(PACKED_UINT_8[value % 0x100])
  *             elif -0x8000 <= value < 0x8000:
  */
-  __pyx_tuple__10 = PyTuple_Pack(1, __pyx_kp_b__9); if (unlikely(!__pyx_tuple__10)) __PYX_ERR(0, 72, __pyx_L1_error)
+  __pyx_tuple__10 = PyTuple_Pack(1, __pyx_kp_b__9); if (unlikely(!__pyx_tuple__10)) __PYX_ERR(0, 75, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__10);
   __Pyx_GIVEREF(__pyx_tuple__10);
 
-  /* "neo4j/packstream/_packer.pyx":75
+  /* "neo4j/packstream/_packer.pyx":78
  *                 write(PACKED_UINT_8[value % 0x100])
  *             elif -0x8000 <= value < 0x8000:
  *                 write(b"\xC9")             # <<<<<<<<<<<<<<
  *                 write(PACKED_UINT_16[value % 0x10000])
  *             elif -0x80000000 <= value < 0x80000000:
  */
-  __pyx_tuple__12 = PyTuple_Pack(1, __pyx_kp_b__11); if (unlikely(!__pyx_tuple__12)) __PYX_ERR(0, 75, __pyx_L1_error)
+  __pyx_tuple__12 = PyTuple_Pack(1, __pyx_kp_b__11); if (unlikely(!__pyx_tuple__12)) __PYX_ERR(0, 78, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__12);
   __Pyx_GIVEREF(__pyx_tuple__12);
 
-  /* "neo4j/packstream/_packer.pyx":78
+  /* "neo4j/packstream/_packer.pyx":81
  *                 write(PACKED_UINT_16[value % 0x10000])
  *             elif -0x80000000 <= value < 0x80000000:
  *                 write(b"\xCA")             # <<<<<<<<<<<<<<
  *                 write(struct_pack(">i", value))
  *             elif INT64_LO <= value < INT64_HI:
  */
-  __pyx_tuple__14 = PyTuple_Pack(1, __pyx_kp_b__13); if (unlikely(!__pyx_tuple__14)) __PYX_ERR(0, 78, __pyx_L1_error)
+  __pyx_tuple__14 = PyTuple_Pack(1, __pyx_kp_b__13); if (unlikely(!__pyx_tuple__14)) __PYX_ERR(0, 81, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__14);
   __Pyx_GIVEREF(__pyx_tuple__14);
 
-  /* "neo4j/packstream/_packer.pyx":81
+  /* "neo4j/packstream/_packer.pyx":84
  *                 write(struct_pack(">i", value))
  *             elif INT64_LO <= value < INT64_HI:
  *                 write(b"\xCB")             # <<<<<<<<<<<<<<
  *                 write(struct_pack(">q", value))
  *             else:
  */
-  __pyx_tuple__16 = PyTuple_Pack(1, __pyx_kp_b__15); if (unlikely(!__pyx_tuple__16)) __PYX_ERR(0, 81, __pyx_L1_error)
+  __pyx_tuple__16 = PyTuple_Pack(1, __pyx_kp_b__15); if (unlikely(!__pyx_tuple__16)) __PYX_ERR(0, 84, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__16);
   __Pyx_GIVEREF(__pyx_tuple__16);
 
-  /* "neo4j/packstream/_packer.pyx":91
+  /* "neo4j/packstream/_packer.pyx":94
  *                 value_bytes = value
  *             else:
  *                 value_bytes = value.encode("utf-8")             # <<<<<<<<<<<<<<
  *             self.pack_string_header(len(value_bytes))
  *             self.pack_raw(value_bytes)
  */
-  __pyx_tuple__17 = PyTuple_Pack(1, __pyx_kp_s_utf_8); if (unlikely(!__pyx_tuple__17)) __PYX_ERR(0, 91, __pyx_L1_error)
+  __pyx_tuple__17 = PyTuple_Pack(1, __pyx_kp_s_utf_8); if (unlikely(!__pyx_tuple__17)) __PYX_ERR(0, 94, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__17);
   __Pyx_GIVEREF(__pyx_tuple__17);
 
-  /* "neo4j/packstream/_packer.pyx":119
+  /* "neo4j/packstream/_packer.pyx":125
  *                 signature, fields = value
  *             except ValueError:
  *                 raise ValueError("Structures require a 2-tuple of (signature, fields)")             # <<<<<<<<<<<<<<
  *             else:
  *                 self.pack_struct(signature, fields)
  */
-  __pyx_tuple__18 = PyTuple_Pack(1, __pyx_kp_s_Structures_require_a_2_tuple_of); if (unlikely(!__pyx_tuple__18)) __PYX_ERR(0, 119, __pyx_L1_error)
+  __pyx_tuple__18 = PyTuple_Pack(1, __pyx_kp_s_Structures_require_a_2_tuple_of); if (unlikely(!__pyx_tuple__18)) __PYX_ERR(0, 125, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__18);
   __Pyx_GIVEREF(__pyx_tuple__18);
 
-  /* "neo4j/packstream/_packer.pyx":130
+  /* "neo4j/packstream/_packer.pyx":135
+ *     cdef pack_bytes_header(self, int size):
+ *         if not self.supports_bytes:
+ *             raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")             # <<<<<<<<<<<<<<
+ *         write = self._write
+ *         if size < 0x100:
+ */
+  __pyx_tuple__19 = PyTuple_Pack(1, __pyx_kp_s_This_PackSteam_channel_does_not); if (unlikely(!__pyx_tuple__19)) __PYX_ERR(0, 135, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__19);
+  __Pyx_GIVEREF(__pyx_tuple__19);
+
+  /* "neo4j/packstream/_packer.pyx":138
  *         write = self._write
  *         if size < 0x100:
  *             write(b"\xCC")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  */
-  __pyx_tuple__20 = PyTuple_Pack(1, __pyx_kp_b__19); if (unlikely(!__pyx_tuple__20)) __PYX_ERR(0, 130, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__20);
-  __Pyx_GIVEREF(__pyx_tuple__20);
+  __pyx_tuple__21 = PyTuple_Pack(1, __pyx_kp_b__20); if (unlikely(!__pyx_tuple__21)) __PYX_ERR(0, 138, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__21);
+  __Pyx_GIVEREF(__pyx_tuple__21);
 
-  /* "neo4j/packstream/_packer.pyx":133
+  /* "neo4j/packstream/_packer.pyx":141
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  *             write(b"\xCD")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  */
-  __pyx_tuple__22 = PyTuple_Pack(1, __pyx_kp_b__21); if (unlikely(!__pyx_tuple__22)) __PYX_ERR(0, 133, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__22);
-  __Pyx_GIVEREF(__pyx_tuple__22);
+  __pyx_tuple__23 = PyTuple_Pack(1, __pyx_kp_b__22); if (unlikely(!__pyx_tuple__23)) __PYX_ERR(0, 141, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__23);
+  __Pyx_GIVEREF(__pyx_tuple__23);
 
-  /* "neo4j/packstream/_packer.pyx":136
+  /* "neo4j/packstream/_packer.pyx":144
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  *             write(b"\xCE")             # <<<<<<<<<<<<<<
  *             write(struct_pack(">I", size))
  *         else:
  */
-  __pyx_tuple__24 = PyTuple_Pack(1, __pyx_kp_b__23); if (unlikely(!__pyx_tuple__24)) __PYX_ERR(0, 136, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__24);
-  __Pyx_GIVEREF(__pyx_tuple__24);
+  __pyx_tuple__25 = PyTuple_Pack(1, __pyx_kp_b__24); if (unlikely(!__pyx_tuple__25)) __PYX_ERR(0, 144, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__25);
+  __Pyx_GIVEREF(__pyx_tuple__25);
 
-  /* "neo4j/packstream/_packer.pyx":139
+  /* "neo4j/packstream/_packer.pyx":147
  *             write(struct_pack(">I", size))
  *         else:
  *             raise OverflowError("Bytes header size out of range")             # <<<<<<<<<<<<<<
  * 
  *     cdef pack_string_header(self, int size):
  */
-  __pyx_tuple__25 = PyTuple_Pack(1, __pyx_kp_s_Bytes_header_size_out_of_range); if (unlikely(!__pyx_tuple__25)) __PYX_ERR(0, 139, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__25);
-  __Pyx_GIVEREF(__pyx_tuple__25);
+  __pyx_tuple__26 = PyTuple_Pack(1, __pyx_kp_s_Bytes_header_size_out_of_range); if (unlikely(!__pyx_tuple__26)) __PYX_ERR(0, 147, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__26);
+  __Pyx_GIVEREF(__pyx_tuple__26);
 
-  /* "neo4j/packstream/_packer.pyx":144
+  /* "neo4j/packstream/_packer.pyx":152
  *         write = self._write
  *         if size == 0x00:
  *             write(b"\x80")             # <<<<<<<<<<<<<<
  *         elif size == 0x01:
  *             write(b"\x81")
  */
-  __pyx_tuple__27 = PyTuple_Pack(1, __pyx_kp_b__26); if (unlikely(!__pyx_tuple__27)) __PYX_ERR(0, 144, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__27);
-  __Pyx_GIVEREF(__pyx_tuple__27);
+  __pyx_tuple__28 = PyTuple_Pack(1, __pyx_kp_b__27); if (unlikely(!__pyx_tuple__28)) __PYX_ERR(0, 152, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__28);
+  __Pyx_GIVEREF(__pyx_tuple__28);
 
-  /* "neo4j/packstream/_packer.pyx":146
+  /* "neo4j/packstream/_packer.pyx":154
  *             write(b"\x80")
  *         elif size == 0x01:
  *             write(b"\x81")             # <<<<<<<<<<<<<<
  *         elif size == 0x02:
  *             write(b"\x82")
  */
-  __pyx_tuple__29 = PyTuple_Pack(1, __pyx_kp_b__28); if (unlikely(!__pyx_tuple__29)) __PYX_ERR(0, 146, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__29);
-  __Pyx_GIVEREF(__pyx_tuple__29);
+  __pyx_tuple__30 = PyTuple_Pack(1, __pyx_kp_b__29); if (unlikely(!__pyx_tuple__30)) __PYX_ERR(0, 154, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__30);
+  __Pyx_GIVEREF(__pyx_tuple__30);
 
-  /* "neo4j/packstream/_packer.pyx":148
+  /* "neo4j/packstream/_packer.pyx":156
  *             write(b"\x81")
  *         elif size == 0x02:
  *             write(b"\x82")             # <<<<<<<<<<<<<<
  *         elif size == 0x03:
  *             write(b"\x83")
  */
-  __pyx_tuple__31 = PyTuple_Pack(1, __pyx_kp_b__30); if (unlikely(!__pyx_tuple__31)) __PYX_ERR(0, 148, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__31);
-  __Pyx_GIVEREF(__pyx_tuple__31);
+  __pyx_tuple__32 = PyTuple_Pack(1, __pyx_kp_b__31); if (unlikely(!__pyx_tuple__32)) __PYX_ERR(0, 156, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__32);
+  __Pyx_GIVEREF(__pyx_tuple__32);
 
-  /* "neo4j/packstream/_packer.pyx":150
+  /* "neo4j/packstream/_packer.pyx":158
  *             write(b"\x82")
  *         elif size == 0x03:
  *             write(b"\x83")             # <<<<<<<<<<<<<<
  *         elif size == 0x04:
  *             write(b"\x84")
  */
-  __pyx_tuple__33 = PyTuple_Pack(1, __pyx_kp_b__32); if (unlikely(!__pyx_tuple__33)) __PYX_ERR(0, 150, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__33);
-  __Pyx_GIVEREF(__pyx_tuple__33);
+  __pyx_tuple__34 = PyTuple_Pack(1, __pyx_kp_b__33); if (unlikely(!__pyx_tuple__34)) __PYX_ERR(0, 158, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__34);
+  __Pyx_GIVEREF(__pyx_tuple__34);
 
-  /* "neo4j/packstream/_packer.pyx":152
+  /* "neo4j/packstream/_packer.pyx":160
  *             write(b"\x83")
  *         elif size == 0x04:
  *             write(b"\x84")             # <<<<<<<<<<<<<<
  *         elif size == 0x05:
  *             write(b"\x85")
  */
-  __pyx_tuple__35 = PyTuple_Pack(1, __pyx_kp_b__34); if (unlikely(!__pyx_tuple__35)) __PYX_ERR(0, 152, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__35);
-  __Pyx_GIVEREF(__pyx_tuple__35);
+  __pyx_tuple__36 = PyTuple_Pack(1, __pyx_kp_b__35); if (unlikely(!__pyx_tuple__36)) __PYX_ERR(0, 160, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__36);
+  __Pyx_GIVEREF(__pyx_tuple__36);
 
-  /* "neo4j/packstream/_packer.pyx":154
+  /* "neo4j/packstream/_packer.pyx":162
  *             write(b"\x84")
  *         elif size == 0x05:
  *             write(b"\x85")             # <<<<<<<<<<<<<<
  *         elif size == 0x06:
  *             write(b"\x86")
  */
-  __pyx_tuple__37 = PyTuple_Pack(1, __pyx_kp_b__36); if (unlikely(!__pyx_tuple__37)) __PYX_ERR(0, 154, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__37);
-  __Pyx_GIVEREF(__pyx_tuple__37);
+  __pyx_tuple__38 = PyTuple_Pack(1, __pyx_kp_b__37); if (unlikely(!__pyx_tuple__38)) __PYX_ERR(0, 162, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__38);
+  __Pyx_GIVEREF(__pyx_tuple__38);
 
-  /* "neo4j/packstream/_packer.pyx":156
+  /* "neo4j/packstream/_packer.pyx":164
  *             write(b"\x85")
  *         elif size == 0x06:
  *             write(b"\x86")             # <<<<<<<<<<<<<<
  *         elif size == 0x07:
  *             write(b"\x87")
  */
-  __pyx_tuple__39 = PyTuple_Pack(1, __pyx_kp_b__38); if (unlikely(!__pyx_tuple__39)) __PYX_ERR(0, 156, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__39);
-  __Pyx_GIVEREF(__pyx_tuple__39);
+  __pyx_tuple__40 = PyTuple_Pack(1, __pyx_kp_b__39); if (unlikely(!__pyx_tuple__40)) __PYX_ERR(0, 164, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__40);
+  __Pyx_GIVEREF(__pyx_tuple__40);
 
-  /* "neo4j/packstream/_packer.pyx":158
+  /* "neo4j/packstream/_packer.pyx":166
  *             write(b"\x86")
  *         elif size == 0x07:
  *             write(b"\x87")             # <<<<<<<<<<<<<<
  *         elif size == 0x08:
  *             write(b"\x88")
  */
-  __pyx_tuple__41 = PyTuple_Pack(1, __pyx_kp_b__40); if (unlikely(!__pyx_tuple__41)) __PYX_ERR(0, 158, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__41);
-  __Pyx_GIVEREF(__pyx_tuple__41);
+  __pyx_tuple__42 = PyTuple_Pack(1, __pyx_kp_b__41); if (unlikely(!__pyx_tuple__42)) __PYX_ERR(0, 166, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__42);
+  __Pyx_GIVEREF(__pyx_tuple__42);
 
-  /* "neo4j/packstream/_packer.pyx":160
+  /* "neo4j/packstream/_packer.pyx":168
  *             write(b"\x87")
  *         elif size == 0x08:
  *             write(b"\x88")             # <<<<<<<<<<<<<<
  *         elif size == 0x09:
  *             write(b"\x89")
  */
-  __pyx_tuple__43 = PyTuple_Pack(1, __pyx_kp_b__42); if (unlikely(!__pyx_tuple__43)) __PYX_ERR(0, 160, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__43);
-  __Pyx_GIVEREF(__pyx_tuple__43);
+  __pyx_tuple__44 = PyTuple_Pack(1, __pyx_kp_b__43); if (unlikely(!__pyx_tuple__44)) __PYX_ERR(0, 168, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__44);
+  __Pyx_GIVEREF(__pyx_tuple__44);
 
-  /* "neo4j/packstream/_packer.pyx":162
+  /* "neo4j/packstream/_packer.pyx":170
  *             write(b"\x88")
  *         elif size == 0x09:
  *             write(b"\x89")             # <<<<<<<<<<<<<<
  *         elif size == 0x0A:
  *             write(b"\x8A")
  */
-  __pyx_tuple__45 = PyTuple_Pack(1, __pyx_kp_b__44); if (unlikely(!__pyx_tuple__45)) __PYX_ERR(0, 162, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__45);
-  __Pyx_GIVEREF(__pyx_tuple__45);
+  __pyx_tuple__46 = PyTuple_Pack(1, __pyx_kp_b__45); if (unlikely(!__pyx_tuple__46)) __PYX_ERR(0, 170, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__46);
+  __Pyx_GIVEREF(__pyx_tuple__46);
 
-  /* "neo4j/packstream/_packer.pyx":164
+  /* "neo4j/packstream/_packer.pyx":172
  *             write(b"\x89")
  *         elif size == 0x0A:
  *             write(b"\x8A")             # <<<<<<<<<<<<<<
  *         elif size == 0x0B:
  *             write(b"\x8B")
  */
-  __pyx_tuple__47 = PyTuple_Pack(1, __pyx_kp_b__46); if (unlikely(!__pyx_tuple__47)) __PYX_ERR(0, 164, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__47);
-  __Pyx_GIVEREF(__pyx_tuple__47);
+  __pyx_tuple__48 = PyTuple_Pack(1, __pyx_kp_b__47); if (unlikely(!__pyx_tuple__48)) __PYX_ERR(0, 172, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__48);
+  __Pyx_GIVEREF(__pyx_tuple__48);
 
-  /* "neo4j/packstream/_packer.pyx":166
+  /* "neo4j/packstream/_packer.pyx":174
  *             write(b"\x8A")
  *         elif size == 0x0B:
  *             write(b"\x8B")             # <<<<<<<<<<<<<<
  *         elif size == 0x0C:
  *             write(b"\x8C")
  */
-  __pyx_tuple__49 = PyTuple_Pack(1, __pyx_kp_b__48); if (unlikely(!__pyx_tuple__49)) __PYX_ERR(0, 166, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__49);
-  __Pyx_GIVEREF(__pyx_tuple__49);
+  __pyx_tuple__50 = PyTuple_Pack(1, __pyx_kp_b__49); if (unlikely(!__pyx_tuple__50)) __PYX_ERR(0, 174, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__50);
+  __Pyx_GIVEREF(__pyx_tuple__50);
 
-  /* "neo4j/packstream/_packer.pyx":168
+  /* "neo4j/packstream/_packer.pyx":176
  *             write(b"\x8B")
  *         elif size == 0x0C:
  *             write(b"\x8C")             # <<<<<<<<<<<<<<
  *         elif size == 0x0D:
  *             write(b"\x8D")
  */
-  __pyx_tuple__51 = PyTuple_Pack(1, __pyx_kp_b__50); if (unlikely(!__pyx_tuple__51)) __PYX_ERR(0, 168, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__51);
-  __Pyx_GIVEREF(__pyx_tuple__51);
+  __pyx_tuple__52 = PyTuple_Pack(1, __pyx_kp_b__51); if (unlikely(!__pyx_tuple__52)) __PYX_ERR(0, 176, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__52);
+  __Pyx_GIVEREF(__pyx_tuple__52);
 
-  /* "neo4j/packstream/_packer.pyx":170
+  /* "neo4j/packstream/_packer.pyx":178
  *             write(b"\x8C")
  *         elif size == 0x0D:
  *             write(b"\x8D")             # <<<<<<<<<<<<<<
  *         elif size == 0x0E:
  *             write(b"\x8E")
  */
-  __pyx_tuple__53 = PyTuple_Pack(1, __pyx_kp_b__52); if (unlikely(!__pyx_tuple__53)) __PYX_ERR(0, 170, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__53);
-  __Pyx_GIVEREF(__pyx_tuple__53);
+  __pyx_tuple__54 = PyTuple_Pack(1, __pyx_kp_b__53); if (unlikely(!__pyx_tuple__54)) __PYX_ERR(0, 178, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__54);
+  __Pyx_GIVEREF(__pyx_tuple__54);
 
-  /* "neo4j/packstream/_packer.pyx":172
+  /* "neo4j/packstream/_packer.pyx":180
  *             write(b"\x8D")
  *         elif size == 0x0E:
  *             write(b"\x8E")             # <<<<<<<<<<<<<<
  *         elif size == 0x0F:
  *             write(b"\x8F")
  */
-  __pyx_tuple__55 = PyTuple_Pack(1, __pyx_kp_b__54); if (unlikely(!__pyx_tuple__55)) __PYX_ERR(0, 172, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__55);
-  __Pyx_GIVEREF(__pyx_tuple__55);
+  __pyx_tuple__56 = PyTuple_Pack(1, __pyx_kp_b__55); if (unlikely(!__pyx_tuple__56)) __PYX_ERR(0, 180, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__56);
+  __Pyx_GIVEREF(__pyx_tuple__56);
 
-  /* "neo4j/packstream/_packer.pyx":174
+  /* "neo4j/packstream/_packer.pyx":182
  *             write(b"\x8E")
  *         elif size == 0x0F:
  *             write(b"\x8F")             # <<<<<<<<<<<<<<
  *         elif size < 0x100:
  *             write(b"\xD0")
  */
-  __pyx_tuple__57 = PyTuple_Pack(1, __pyx_kp_b__56); if (unlikely(!__pyx_tuple__57)) __PYX_ERR(0, 174, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__57);
-  __Pyx_GIVEREF(__pyx_tuple__57);
+  __pyx_tuple__58 = PyTuple_Pack(1, __pyx_kp_b__57); if (unlikely(!__pyx_tuple__58)) __PYX_ERR(0, 182, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__58);
+  __Pyx_GIVEREF(__pyx_tuple__58);
 
-  /* "neo4j/packstream/_packer.pyx":176
+  /* "neo4j/packstream/_packer.pyx":184
  *             write(b"\x8F")
  *         elif size < 0x100:
  *             write(b"\xD0")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  */
-  __pyx_tuple__59 = PyTuple_Pack(1, __pyx_kp_b__58); if (unlikely(!__pyx_tuple__59)) __PYX_ERR(0, 176, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__59);
-  __Pyx_GIVEREF(__pyx_tuple__59);
+  __pyx_tuple__60 = PyTuple_Pack(1, __pyx_kp_b__59); if (unlikely(!__pyx_tuple__60)) __PYX_ERR(0, 184, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__60);
+  __Pyx_GIVEREF(__pyx_tuple__60);
 
-  /* "neo4j/packstream/_packer.pyx":179
+  /* "neo4j/packstream/_packer.pyx":187
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  *             write(b"\xD1")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  */
-  __pyx_tuple__61 = PyTuple_Pack(1, __pyx_kp_b__60); if (unlikely(!__pyx_tuple__61)) __PYX_ERR(0, 179, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__61);
-  __Pyx_GIVEREF(__pyx_tuple__61);
+  __pyx_tuple__62 = PyTuple_Pack(1, __pyx_kp_b__61); if (unlikely(!__pyx_tuple__62)) __PYX_ERR(0, 187, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__62);
+  __Pyx_GIVEREF(__pyx_tuple__62);
 
-  /* "neo4j/packstream/_packer.pyx":182
+  /* "neo4j/packstream/_packer.pyx":190
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  *             write(b"\xD2")             # <<<<<<<<<<<<<<
  *             write(struct_pack(">I", size))
  *         else:
  */
-  __pyx_tuple__63 = PyTuple_Pack(1, __pyx_kp_b__62); if (unlikely(!__pyx_tuple__63)) __PYX_ERR(0, 182, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__63);
-  __Pyx_GIVEREF(__pyx_tuple__63);
+  __pyx_tuple__64 = PyTuple_Pack(1, __pyx_kp_b__63); if (unlikely(!__pyx_tuple__64)) __PYX_ERR(0, 190, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__64);
+  __Pyx_GIVEREF(__pyx_tuple__64);
 
-  /* "neo4j/packstream/_packer.pyx":185
+  /* "neo4j/packstream/_packer.pyx":193
  *             write(struct_pack(">I", size))
  *         else:
  *             raise OverflowError("String header size out of range")             # <<<<<<<<<<<<<<
  * 
  *     cdef pack_list_header(self, int size):
  */
-  __pyx_tuple__64 = PyTuple_Pack(1, __pyx_kp_s_String_header_size_out_of_range); if (unlikely(!__pyx_tuple__64)) __PYX_ERR(0, 185, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__64);
-  __Pyx_GIVEREF(__pyx_tuple__64);
+  __pyx_tuple__65 = PyTuple_Pack(1, __pyx_kp_s_String_header_size_out_of_range); if (unlikely(!__pyx_tuple__65)) __PYX_ERR(0, 193, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__65);
+  __Pyx_GIVEREF(__pyx_tuple__65);
 
-  /* "neo4j/packstream/_packer.pyx":190
+  /* "neo4j/packstream/_packer.pyx":198
  *         write = self._write
  *         if size == 0x00:
  *             write(b"\x90")             # <<<<<<<<<<<<<<
  *         elif size == 0x01:
  *             write(b"\x91")
  */
-  __pyx_tuple__66 = PyTuple_Pack(1, __pyx_kp_b__65); if (unlikely(!__pyx_tuple__66)) __PYX_ERR(0, 190, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__66);
-  __Pyx_GIVEREF(__pyx_tuple__66);
+  __pyx_tuple__67 = PyTuple_Pack(1, __pyx_kp_b__66); if (unlikely(!__pyx_tuple__67)) __PYX_ERR(0, 198, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__67);
+  __Pyx_GIVEREF(__pyx_tuple__67);
 
-  /* "neo4j/packstream/_packer.pyx":192
+  /* "neo4j/packstream/_packer.pyx":200
  *             write(b"\x90")
  *         elif size == 0x01:
  *             write(b"\x91")             # <<<<<<<<<<<<<<
  *         elif size == 0x02:
  *             write(b"\x92")
  */
-  __pyx_tuple__68 = PyTuple_Pack(1, __pyx_kp_b__67); if (unlikely(!__pyx_tuple__68)) __PYX_ERR(0, 192, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__68);
-  __Pyx_GIVEREF(__pyx_tuple__68);
+  __pyx_tuple__69 = PyTuple_Pack(1, __pyx_kp_b__68); if (unlikely(!__pyx_tuple__69)) __PYX_ERR(0, 200, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__69);
+  __Pyx_GIVEREF(__pyx_tuple__69);
 
-  /* "neo4j/packstream/_packer.pyx":194
+  /* "neo4j/packstream/_packer.pyx":202
  *             write(b"\x91")
  *         elif size == 0x02:
  *             write(b"\x92")             # <<<<<<<<<<<<<<
  *         elif size == 0x03:
  *             write(b"\x93")
  */
-  __pyx_tuple__70 = PyTuple_Pack(1, __pyx_kp_b__69); if (unlikely(!__pyx_tuple__70)) __PYX_ERR(0, 194, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__70);
-  __Pyx_GIVEREF(__pyx_tuple__70);
+  __pyx_tuple__71 = PyTuple_Pack(1, __pyx_kp_b__70); if (unlikely(!__pyx_tuple__71)) __PYX_ERR(0, 202, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__71);
+  __Pyx_GIVEREF(__pyx_tuple__71);
 
-  /* "neo4j/packstream/_packer.pyx":196
+  /* "neo4j/packstream/_packer.pyx":204
  *             write(b"\x92")
  *         elif size == 0x03:
  *             write(b"\x93")             # <<<<<<<<<<<<<<
  *         elif size == 0x04:
  *             write(b"\x94")
  */
-  __pyx_tuple__72 = PyTuple_Pack(1, __pyx_kp_b__71); if (unlikely(!__pyx_tuple__72)) __PYX_ERR(0, 196, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__72);
-  __Pyx_GIVEREF(__pyx_tuple__72);
+  __pyx_tuple__73 = PyTuple_Pack(1, __pyx_kp_b__72); if (unlikely(!__pyx_tuple__73)) __PYX_ERR(0, 204, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__73);
+  __Pyx_GIVEREF(__pyx_tuple__73);
 
-  /* "neo4j/packstream/_packer.pyx":198
+  /* "neo4j/packstream/_packer.pyx":206
  *             write(b"\x93")
  *         elif size == 0x04:
  *             write(b"\x94")             # <<<<<<<<<<<<<<
  *         elif size == 0x05:
  *             write(b"\x95")
  */
-  __pyx_tuple__74 = PyTuple_Pack(1, __pyx_kp_b__73); if (unlikely(!__pyx_tuple__74)) __PYX_ERR(0, 198, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__74);
-  __Pyx_GIVEREF(__pyx_tuple__74);
+  __pyx_tuple__75 = PyTuple_Pack(1, __pyx_kp_b__74); if (unlikely(!__pyx_tuple__75)) __PYX_ERR(0, 206, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__75);
+  __Pyx_GIVEREF(__pyx_tuple__75);
 
-  /* "neo4j/packstream/_packer.pyx":200
+  /* "neo4j/packstream/_packer.pyx":208
  *             write(b"\x94")
  *         elif size == 0x05:
  *             write(b"\x95")             # <<<<<<<<<<<<<<
  *         elif size == 0x06:
  *             write(b"\x96")
  */
-  __pyx_tuple__76 = PyTuple_Pack(1, __pyx_kp_b__75); if (unlikely(!__pyx_tuple__76)) __PYX_ERR(0, 200, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__76);
-  __Pyx_GIVEREF(__pyx_tuple__76);
+  __pyx_tuple__77 = PyTuple_Pack(1, __pyx_kp_b__76); if (unlikely(!__pyx_tuple__77)) __PYX_ERR(0, 208, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__77);
+  __Pyx_GIVEREF(__pyx_tuple__77);
 
-  /* "neo4j/packstream/_packer.pyx":202
+  /* "neo4j/packstream/_packer.pyx":210
  *             write(b"\x95")
  *         elif size == 0x06:
  *             write(b"\x96")             # <<<<<<<<<<<<<<
  *         elif size == 0x07:
  *             write(b"\x97")
  */
-  __pyx_tuple__78 = PyTuple_Pack(1, __pyx_kp_b__77); if (unlikely(!__pyx_tuple__78)) __PYX_ERR(0, 202, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__78);
-  __Pyx_GIVEREF(__pyx_tuple__78);
+  __pyx_tuple__79 = PyTuple_Pack(1, __pyx_kp_b__78); if (unlikely(!__pyx_tuple__79)) __PYX_ERR(0, 210, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__79);
+  __Pyx_GIVEREF(__pyx_tuple__79);
 
-  /* "neo4j/packstream/_packer.pyx":204
+  /* "neo4j/packstream/_packer.pyx":212
  *             write(b"\x96")
  *         elif size == 0x07:
  *             write(b"\x97")             # <<<<<<<<<<<<<<
  *         elif size == 0x08:
  *             write(b"\x98")
  */
-  __pyx_tuple__80 = PyTuple_Pack(1, __pyx_kp_b__79); if (unlikely(!__pyx_tuple__80)) __PYX_ERR(0, 204, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__80);
-  __Pyx_GIVEREF(__pyx_tuple__80);
+  __pyx_tuple__81 = PyTuple_Pack(1, __pyx_kp_b__80); if (unlikely(!__pyx_tuple__81)) __PYX_ERR(0, 212, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__81);
+  __Pyx_GIVEREF(__pyx_tuple__81);
 
-  /* "neo4j/packstream/_packer.pyx":206
+  /* "neo4j/packstream/_packer.pyx":214
  *             write(b"\x97")
  *         elif size == 0x08:
  *             write(b"\x98")             # <<<<<<<<<<<<<<
  *         elif size == 0x09:
  *             write(b"\x99")
  */
-  __pyx_tuple__82 = PyTuple_Pack(1, __pyx_kp_b__81); if (unlikely(!__pyx_tuple__82)) __PYX_ERR(0, 206, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__82);
-  __Pyx_GIVEREF(__pyx_tuple__82);
+  __pyx_tuple__83 = PyTuple_Pack(1, __pyx_kp_b__82); if (unlikely(!__pyx_tuple__83)) __PYX_ERR(0, 214, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__83);
+  __Pyx_GIVEREF(__pyx_tuple__83);
 
-  /* "neo4j/packstream/_packer.pyx":208
+  /* "neo4j/packstream/_packer.pyx":216
  *             write(b"\x98")
  *         elif size == 0x09:
  *             write(b"\x99")             # <<<<<<<<<<<<<<
  *         elif size == 0x0A:
  *             write(b"\x9A")
  */
-  __pyx_tuple__84 = PyTuple_Pack(1, __pyx_kp_b__83); if (unlikely(!__pyx_tuple__84)) __PYX_ERR(0, 208, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__84);
-  __Pyx_GIVEREF(__pyx_tuple__84);
+  __pyx_tuple__85 = PyTuple_Pack(1, __pyx_kp_b__84); if (unlikely(!__pyx_tuple__85)) __PYX_ERR(0, 216, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__85);
+  __Pyx_GIVEREF(__pyx_tuple__85);
 
-  /* "neo4j/packstream/_packer.pyx":210
+  /* "neo4j/packstream/_packer.pyx":218
  *             write(b"\x99")
  *         elif size == 0x0A:
  *             write(b"\x9A")             # <<<<<<<<<<<<<<
  *         elif size == 0x0B:
  *             write(b"\x9B")
  */
-  __pyx_tuple__86 = PyTuple_Pack(1, __pyx_kp_b__85); if (unlikely(!__pyx_tuple__86)) __PYX_ERR(0, 210, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__86);
-  __Pyx_GIVEREF(__pyx_tuple__86);
+  __pyx_tuple__87 = PyTuple_Pack(1, __pyx_kp_b__86); if (unlikely(!__pyx_tuple__87)) __PYX_ERR(0, 218, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__87);
+  __Pyx_GIVEREF(__pyx_tuple__87);
 
-  /* "neo4j/packstream/_packer.pyx":212
+  /* "neo4j/packstream/_packer.pyx":220
  *             write(b"\x9A")
  *         elif size == 0x0B:
  *             write(b"\x9B")             # <<<<<<<<<<<<<<
  *         elif size == 0x0C:
  *             write(b"\x9C")
  */
-  __pyx_tuple__88 = PyTuple_Pack(1, __pyx_kp_b__87); if (unlikely(!__pyx_tuple__88)) __PYX_ERR(0, 212, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__88);
-  __Pyx_GIVEREF(__pyx_tuple__88);
+  __pyx_tuple__89 = PyTuple_Pack(1, __pyx_kp_b__88); if (unlikely(!__pyx_tuple__89)) __PYX_ERR(0, 220, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__89);
+  __Pyx_GIVEREF(__pyx_tuple__89);
 
-  /* "neo4j/packstream/_packer.pyx":214
+  /* "neo4j/packstream/_packer.pyx":222
  *             write(b"\x9B")
  *         elif size == 0x0C:
  *             write(b"\x9C")             # <<<<<<<<<<<<<<
  *         elif size == 0x0D:
  *             write(b"\x9D")
  */
-  __pyx_tuple__90 = PyTuple_Pack(1, __pyx_kp_b__89); if (unlikely(!__pyx_tuple__90)) __PYX_ERR(0, 214, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__90);
-  __Pyx_GIVEREF(__pyx_tuple__90);
+  __pyx_tuple__91 = PyTuple_Pack(1, __pyx_kp_b__90); if (unlikely(!__pyx_tuple__91)) __PYX_ERR(0, 222, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__91);
+  __Pyx_GIVEREF(__pyx_tuple__91);
 
-  /* "neo4j/packstream/_packer.pyx":216
+  /* "neo4j/packstream/_packer.pyx":224
  *             write(b"\x9C")
  *         elif size == 0x0D:
  *             write(b"\x9D")             # <<<<<<<<<<<<<<
  *         elif size == 0x0E:
  *             write(b"\x9E")
  */
-  __pyx_tuple__92 = PyTuple_Pack(1, __pyx_kp_b__91); if (unlikely(!__pyx_tuple__92)) __PYX_ERR(0, 216, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__92);
-  __Pyx_GIVEREF(__pyx_tuple__92);
+  __pyx_tuple__93 = PyTuple_Pack(1, __pyx_kp_b__92); if (unlikely(!__pyx_tuple__93)) __PYX_ERR(0, 224, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__93);
+  __Pyx_GIVEREF(__pyx_tuple__93);
 
-  /* "neo4j/packstream/_packer.pyx":218
+  /* "neo4j/packstream/_packer.pyx":226
  *             write(b"\x9D")
  *         elif size == 0x0E:
  *             write(b"\x9E")             # <<<<<<<<<<<<<<
  *         elif size == 0x0F:
  *             write(b"\x9F")
  */
-  __pyx_tuple__94 = PyTuple_Pack(1, __pyx_kp_b__93); if (unlikely(!__pyx_tuple__94)) __PYX_ERR(0, 218, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__94);
-  __Pyx_GIVEREF(__pyx_tuple__94);
+  __pyx_tuple__95 = PyTuple_Pack(1, __pyx_kp_b__94); if (unlikely(!__pyx_tuple__95)) __PYX_ERR(0, 226, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__95);
+  __Pyx_GIVEREF(__pyx_tuple__95);
 
-  /* "neo4j/packstream/_packer.pyx":220
+  /* "neo4j/packstream/_packer.pyx":228
  *             write(b"\x9E")
  *         elif size == 0x0F:
  *             write(b"\x9F")             # <<<<<<<<<<<<<<
  *         elif size < 0x100:
  *             write(b"\xD4")
  */
-  __pyx_tuple__96 = PyTuple_Pack(1, __pyx_kp_b__95); if (unlikely(!__pyx_tuple__96)) __PYX_ERR(0, 220, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__96);
-  __Pyx_GIVEREF(__pyx_tuple__96);
+  __pyx_tuple__97 = PyTuple_Pack(1, __pyx_kp_b__96); if (unlikely(!__pyx_tuple__97)) __PYX_ERR(0, 228, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__97);
+  __Pyx_GIVEREF(__pyx_tuple__97);
 
-  /* "neo4j/packstream/_packer.pyx":222
+  /* "neo4j/packstream/_packer.pyx":230
  *             write(b"\x9F")
  *         elif size < 0x100:
  *             write(b"\xD4")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  */
-  __pyx_tuple__98 = PyTuple_Pack(1, __pyx_kp_b__97); if (unlikely(!__pyx_tuple__98)) __PYX_ERR(0, 222, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__98);
-  __Pyx_GIVEREF(__pyx_tuple__98);
+  __pyx_tuple__99 = PyTuple_Pack(1, __pyx_kp_b__98); if (unlikely(!__pyx_tuple__99)) __PYX_ERR(0, 230, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__99);
+  __Pyx_GIVEREF(__pyx_tuple__99);
 
-  /* "neo4j/packstream/_packer.pyx":225
+  /* "neo4j/packstream/_packer.pyx":233
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  *             write(b"\xD5")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  */
-  __pyx_tuple__100 = PyTuple_Pack(1, __pyx_kp_b__99); if (unlikely(!__pyx_tuple__100)) __PYX_ERR(0, 225, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__100);
-  __Pyx_GIVEREF(__pyx_tuple__100);
+  __pyx_tuple__101 = PyTuple_Pack(1, __pyx_kp_b__100); if (unlikely(!__pyx_tuple__101)) __PYX_ERR(0, 233, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__101);
+  __Pyx_GIVEREF(__pyx_tuple__101);
 
-  /* "neo4j/packstream/_packer.pyx":228
+  /* "neo4j/packstream/_packer.pyx":236
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  *             write(b"\xD6")             # <<<<<<<<<<<<<<
  *             write(struct_pack(">I", size))
  *         else:
  */
-  __pyx_tuple__102 = PyTuple_Pack(1, __pyx_kp_b__101); if (unlikely(!__pyx_tuple__102)) __PYX_ERR(0, 228, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__102);
-  __Pyx_GIVEREF(__pyx_tuple__102);
+  __pyx_tuple__103 = PyTuple_Pack(1, __pyx_kp_b__102); if (unlikely(!__pyx_tuple__103)) __PYX_ERR(0, 236, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__103);
+  __Pyx_GIVEREF(__pyx_tuple__103);
 
-  /* "neo4j/packstream/_packer.pyx":231
+  /* "neo4j/packstream/_packer.pyx":239
  *             write(struct_pack(">I", size))
  *         else:
  *             raise OverflowError("List header size out of range")             # <<<<<<<<<<<<<<
  * 
  *     cpdef pack_list_stream_header(self):
  */
-  __pyx_tuple__103 = PyTuple_Pack(1, __pyx_kp_s_List_header_size_out_of_range); if (unlikely(!__pyx_tuple__103)) __PYX_ERR(0, 231, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__103);
-  __Pyx_GIVEREF(__pyx_tuple__103);
+  __pyx_tuple__104 = PyTuple_Pack(1, __pyx_kp_s_List_header_size_out_of_range); if (unlikely(!__pyx_tuple__104)) __PYX_ERR(0, 239, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__104);
+  __Pyx_GIVEREF(__pyx_tuple__104);
 
-  /* "neo4j/packstream/_packer.pyx":234
+  /* "neo4j/packstream/_packer.pyx":242
  * 
  *     cpdef pack_list_stream_header(self):
  *         self._write(b"\xD7")             # <<<<<<<<<<<<<<
  * 
  *     cdef pack_map_header(self, int size):
  */
-  __pyx_tuple__105 = PyTuple_Pack(1, __pyx_kp_b__104); if (unlikely(!__pyx_tuple__105)) __PYX_ERR(0, 234, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__105);
-  __Pyx_GIVEREF(__pyx_tuple__105);
+  __pyx_tuple__106 = PyTuple_Pack(1, __pyx_kp_b__105); if (unlikely(!__pyx_tuple__106)) __PYX_ERR(0, 242, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__106);
+  __Pyx_GIVEREF(__pyx_tuple__106);
 
-  /* "neo4j/packstream/_packer.pyx":239
+  /* "neo4j/packstream/_packer.pyx":247
  *         write = self._write
  *         if size == 0x00:
  *             write(b"\xA0")             # <<<<<<<<<<<<<<
  *         elif size == 0x01:
  *             write(b"\xA1")
  */
-  __pyx_tuple__107 = PyTuple_Pack(1, __pyx_kp_b__106); if (unlikely(!__pyx_tuple__107)) __PYX_ERR(0, 239, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__107);
-  __Pyx_GIVEREF(__pyx_tuple__107);
+  __pyx_tuple__108 = PyTuple_Pack(1, __pyx_kp_b__107); if (unlikely(!__pyx_tuple__108)) __PYX_ERR(0, 247, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__108);
+  __Pyx_GIVEREF(__pyx_tuple__108);
 
-  /* "neo4j/packstream/_packer.pyx":241
+  /* "neo4j/packstream/_packer.pyx":249
  *             write(b"\xA0")
  *         elif size == 0x01:
  *             write(b"\xA1")             # <<<<<<<<<<<<<<
  *         elif size == 0x02:
  *             write(b"\xA2")
  */
-  __pyx_tuple__109 = PyTuple_Pack(1, __pyx_kp_b__108); if (unlikely(!__pyx_tuple__109)) __PYX_ERR(0, 241, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__109);
-  __Pyx_GIVEREF(__pyx_tuple__109);
+  __pyx_tuple__110 = PyTuple_Pack(1, __pyx_kp_b__109); if (unlikely(!__pyx_tuple__110)) __PYX_ERR(0, 249, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__110);
+  __Pyx_GIVEREF(__pyx_tuple__110);
 
-  /* "neo4j/packstream/_packer.pyx":243
+  /* "neo4j/packstream/_packer.pyx":251
  *             write(b"\xA1")
  *         elif size == 0x02:
  *             write(b"\xA2")             # <<<<<<<<<<<<<<
  *         elif size == 0x03:
  *             write(b"\xA3")
  */
-  __pyx_tuple__111 = PyTuple_Pack(1, __pyx_kp_b__110); if (unlikely(!__pyx_tuple__111)) __PYX_ERR(0, 243, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__111);
-  __Pyx_GIVEREF(__pyx_tuple__111);
+  __pyx_tuple__112 = PyTuple_Pack(1, __pyx_kp_b__111); if (unlikely(!__pyx_tuple__112)) __PYX_ERR(0, 251, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__112);
+  __Pyx_GIVEREF(__pyx_tuple__112);
 
-  /* "neo4j/packstream/_packer.pyx":245
+  /* "neo4j/packstream/_packer.pyx":253
  *             write(b"\xA2")
  *         elif size == 0x03:
  *             write(b"\xA3")             # <<<<<<<<<<<<<<
  *         elif size == 0x04:
  *             write(b"\xA4")
  */
-  __pyx_tuple__113 = PyTuple_Pack(1, __pyx_kp_b__112); if (unlikely(!__pyx_tuple__113)) __PYX_ERR(0, 245, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__113);
-  __Pyx_GIVEREF(__pyx_tuple__113);
+  __pyx_tuple__114 = PyTuple_Pack(1, __pyx_kp_b__113); if (unlikely(!__pyx_tuple__114)) __PYX_ERR(0, 253, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__114);
+  __Pyx_GIVEREF(__pyx_tuple__114);
 
-  /* "neo4j/packstream/_packer.pyx":247
+  /* "neo4j/packstream/_packer.pyx":255
  *             write(b"\xA3")
  *         elif size == 0x04:
  *             write(b"\xA4")             # <<<<<<<<<<<<<<
  *         elif size == 0x05:
  *             write(b"\xA5")
  */
-  __pyx_tuple__115 = PyTuple_Pack(1, __pyx_kp_b__114); if (unlikely(!__pyx_tuple__115)) __PYX_ERR(0, 247, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__115);
-  __Pyx_GIVEREF(__pyx_tuple__115);
+  __pyx_tuple__116 = PyTuple_Pack(1, __pyx_kp_b__115); if (unlikely(!__pyx_tuple__116)) __PYX_ERR(0, 255, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__116);
+  __Pyx_GIVEREF(__pyx_tuple__116);
 
-  /* "neo4j/packstream/_packer.pyx":249
+  /* "neo4j/packstream/_packer.pyx":257
  *             write(b"\xA4")
  *         elif size == 0x05:
  *             write(b"\xA5")             # <<<<<<<<<<<<<<
  *         elif size == 0x06:
  *             write(b"\xA6")
  */
-  __pyx_tuple__117 = PyTuple_Pack(1, __pyx_kp_b__116); if (unlikely(!__pyx_tuple__117)) __PYX_ERR(0, 249, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__117);
-  __Pyx_GIVEREF(__pyx_tuple__117);
+  __pyx_tuple__118 = PyTuple_Pack(1, __pyx_kp_b__117); if (unlikely(!__pyx_tuple__118)) __PYX_ERR(0, 257, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__118);
+  __Pyx_GIVEREF(__pyx_tuple__118);
 
-  /* "neo4j/packstream/_packer.pyx":251
+  /* "neo4j/packstream/_packer.pyx":259
  *             write(b"\xA5")
  *         elif size == 0x06:
  *             write(b"\xA6")             # <<<<<<<<<<<<<<
  *         elif size == 0x07:
  *             write(b"\xA7")
  */
-  __pyx_tuple__119 = PyTuple_Pack(1, __pyx_kp_b__118); if (unlikely(!__pyx_tuple__119)) __PYX_ERR(0, 251, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__119);
-  __Pyx_GIVEREF(__pyx_tuple__119);
+  __pyx_tuple__120 = PyTuple_Pack(1, __pyx_kp_b__119); if (unlikely(!__pyx_tuple__120)) __PYX_ERR(0, 259, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__120);
+  __Pyx_GIVEREF(__pyx_tuple__120);
 
-  /* "neo4j/packstream/_packer.pyx":253
+  /* "neo4j/packstream/_packer.pyx":261
  *             write(b"\xA6")
  *         elif size == 0x07:
  *             write(b"\xA7")             # <<<<<<<<<<<<<<
  *         elif size == 0x08:
  *             write(b"\xA8")
  */
-  __pyx_tuple__121 = PyTuple_Pack(1, __pyx_kp_b__120); if (unlikely(!__pyx_tuple__121)) __PYX_ERR(0, 253, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__121);
-  __Pyx_GIVEREF(__pyx_tuple__121);
+  __pyx_tuple__122 = PyTuple_Pack(1, __pyx_kp_b__121); if (unlikely(!__pyx_tuple__122)) __PYX_ERR(0, 261, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__122);
+  __Pyx_GIVEREF(__pyx_tuple__122);
 
-  /* "neo4j/packstream/_packer.pyx":255
+  /* "neo4j/packstream/_packer.pyx":263
  *             write(b"\xA7")
  *         elif size == 0x08:
  *             write(b"\xA8")             # <<<<<<<<<<<<<<
  *         elif size == 0x09:
  *             write(b"\xA9")
  */
-  __pyx_tuple__123 = PyTuple_Pack(1, __pyx_kp_b__122); if (unlikely(!__pyx_tuple__123)) __PYX_ERR(0, 255, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__123);
-  __Pyx_GIVEREF(__pyx_tuple__123);
+  __pyx_tuple__124 = PyTuple_Pack(1, __pyx_kp_b__123); if (unlikely(!__pyx_tuple__124)) __PYX_ERR(0, 263, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__124);
+  __Pyx_GIVEREF(__pyx_tuple__124);
 
-  /* "neo4j/packstream/_packer.pyx":257
+  /* "neo4j/packstream/_packer.pyx":265
  *             write(b"\xA8")
  *         elif size == 0x09:
  *             write(b"\xA9")             # <<<<<<<<<<<<<<
  *         elif size == 0x0A:
  *             write(b"\xAA")
  */
-  __pyx_tuple__125 = PyTuple_Pack(1, __pyx_kp_b__124); if (unlikely(!__pyx_tuple__125)) __PYX_ERR(0, 257, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__125);
-  __Pyx_GIVEREF(__pyx_tuple__125);
+  __pyx_tuple__126 = PyTuple_Pack(1, __pyx_kp_b__125); if (unlikely(!__pyx_tuple__126)) __PYX_ERR(0, 265, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__126);
+  __Pyx_GIVEREF(__pyx_tuple__126);
 
-  /* "neo4j/packstream/_packer.pyx":259
+  /* "neo4j/packstream/_packer.pyx":267
  *             write(b"\xA9")
  *         elif size == 0x0A:
  *             write(b"\xAA")             # <<<<<<<<<<<<<<
  *         elif size == 0x0B:
  *             write(b"\xAB")
  */
-  __pyx_tuple__127 = PyTuple_Pack(1, __pyx_kp_b__126); if (unlikely(!__pyx_tuple__127)) __PYX_ERR(0, 259, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__127);
-  __Pyx_GIVEREF(__pyx_tuple__127);
+  __pyx_tuple__128 = PyTuple_Pack(1, __pyx_kp_b__127); if (unlikely(!__pyx_tuple__128)) __PYX_ERR(0, 267, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__128);
+  __Pyx_GIVEREF(__pyx_tuple__128);
 
-  /* "neo4j/packstream/_packer.pyx":261
+  /* "neo4j/packstream/_packer.pyx":269
  *             write(b"\xAA")
  *         elif size == 0x0B:
  *             write(b"\xAB")             # <<<<<<<<<<<<<<
  *         elif size == 0x0C:
  *             write(b"\xAC")
  */
-  __pyx_tuple__129 = PyTuple_Pack(1, __pyx_kp_b__128); if (unlikely(!__pyx_tuple__129)) __PYX_ERR(0, 261, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__129);
-  __Pyx_GIVEREF(__pyx_tuple__129);
+  __pyx_tuple__130 = PyTuple_Pack(1, __pyx_kp_b__129); if (unlikely(!__pyx_tuple__130)) __PYX_ERR(0, 269, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__130);
+  __Pyx_GIVEREF(__pyx_tuple__130);
 
-  /* "neo4j/packstream/_packer.pyx":263
+  /* "neo4j/packstream/_packer.pyx":271
  *             write(b"\xAB")
  *         elif size == 0x0C:
  *             write(b"\xAC")             # <<<<<<<<<<<<<<
  *         elif size == 0x0D:
  *             write(b"\xAD")
  */
-  __pyx_tuple__131 = PyTuple_Pack(1, __pyx_kp_b__130); if (unlikely(!__pyx_tuple__131)) __PYX_ERR(0, 263, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__131);
-  __Pyx_GIVEREF(__pyx_tuple__131);
+  __pyx_tuple__132 = PyTuple_Pack(1, __pyx_kp_b__131); if (unlikely(!__pyx_tuple__132)) __PYX_ERR(0, 271, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__132);
+  __Pyx_GIVEREF(__pyx_tuple__132);
 
-  /* "neo4j/packstream/_packer.pyx":265
+  /* "neo4j/packstream/_packer.pyx":273
  *             write(b"\xAC")
  *         elif size == 0x0D:
  *             write(b"\xAD")             # <<<<<<<<<<<<<<
  *         elif size == 0x0E:
  *             write(b"\xAE")
  */
-  __pyx_tuple__133 = PyTuple_Pack(1, __pyx_kp_b__132); if (unlikely(!__pyx_tuple__133)) __PYX_ERR(0, 265, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__133);
-  __Pyx_GIVEREF(__pyx_tuple__133);
+  __pyx_tuple__134 = PyTuple_Pack(1, __pyx_kp_b__133); if (unlikely(!__pyx_tuple__134)) __PYX_ERR(0, 273, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__134);
+  __Pyx_GIVEREF(__pyx_tuple__134);
 
-  /* "neo4j/packstream/_packer.pyx":267
+  /* "neo4j/packstream/_packer.pyx":275
  *             write(b"\xAD")
  *         elif size == 0x0E:
  *             write(b"\xAE")             # <<<<<<<<<<<<<<
  *         elif size == 0x0F:
  *             write(b"\xAF")
  */
-  __pyx_tuple__135 = PyTuple_Pack(1, __pyx_kp_b__134); if (unlikely(!__pyx_tuple__135)) __PYX_ERR(0, 267, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__135);
-  __Pyx_GIVEREF(__pyx_tuple__135);
+  __pyx_tuple__136 = PyTuple_Pack(1, __pyx_kp_b__135); if (unlikely(!__pyx_tuple__136)) __PYX_ERR(0, 275, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__136);
+  __Pyx_GIVEREF(__pyx_tuple__136);
 
-  /* "neo4j/packstream/_packer.pyx":269
+  /* "neo4j/packstream/_packer.pyx":277
  *             write(b"\xAE")
  *         elif size == 0x0F:
  *             write(b"\xAF")             # <<<<<<<<<<<<<<
  *         elif size < 0x100:
  *             write(b"\xD8")
  */
-  __pyx_tuple__137 = PyTuple_Pack(1, __pyx_kp_b__136); if (unlikely(!__pyx_tuple__137)) __PYX_ERR(0, 269, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__137);
-  __Pyx_GIVEREF(__pyx_tuple__137);
+  __pyx_tuple__138 = PyTuple_Pack(1, __pyx_kp_b__137); if (unlikely(!__pyx_tuple__138)) __PYX_ERR(0, 277, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__138);
+  __Pyx_GIVEREF(__pyx_tuple__138);
 
-  /* "neo4j/packstream/_packer.pyx":271
+  /* "neo4j/packstream/_packer.pyx":279
  *             write(b"\xAF")
  *         elif size < 0x100:
  *             write(b"\xD8")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  */
-  __pyx_tuple__139 = PyTuple_Pack(1, __pyx_kp_b__138); if (unlikely(!__pyx_tuple__139)) __PYX_ERR(0, 271, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__139);
-  __Pyx_GIVEREF(__pyx_tuple__139);
+  __pyx_tuple__140 = PyTuple_Pack(1, __pyx_kp_b__139); if (unlikely(!__pyx_tuple__140)) __PYX_ERR(0, 279, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__140);
+  __Pyx_GIVEREF(__pyx_tuple__140);
 
-  /* "neo4j/packstream/_packer.pyx":274
+  /* "neo4j/packstream/_packer.pyx":282
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  *             write(b"\xD9")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  */
-  __pyx_tuple__141 = PyTuple_Pack(1, __pyx_kp_b__140); if (unlikely(!__pyx_tuple__141)) __PYX_ERR(0, 274, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__141);
-  __Pyx_GIVEREF(__pyx_tuple__141);
+  __pyx_tuple__142 = PyTuple_Pack(1, __pyx_kp_b__141); if (unlikely(!__pyx_tuple__142)) __PYX_ERR(0, 282, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__142);
+  __Pyx_GIVEREF(__pyx_tuple__142);
 
-  /* "neo4j/packstream/_packer.pyx":277
+  /* "neo4j/packstream/_packer.pyx":285
  *             write(PACKED_UINT_16[size])
  *         elif size < 0x100000000:
  *             write(b"\xDA")             # <<<<<<<<<<<<<<
  *             write(struct_pack(">I", size))
  *         else:
  */
-  __pyx_tuple__143 = PyTuple_Pack(1, __pyx_kp_b__142); if (unlikely(!__pyx_tuple__143)) __PYX_ERR(0, 277, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__143);
-  __Pyx_GIVEREF(__pyx_tuple__143);
+  __pyx_tuple__144 = PyTuple_Pack(1, __pyx_kp_b__143); if (unlikely(!__pyx_tuple__144)) __PYX_ERR(0, 285, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__144);
+  __Pyx_GIVEREF(__pyx_tuple__144);
 
-  /* "neo4j/packstream/_packer.pyx":280
+  /* "neo4j/packstream/_packer.pyx":288
  *             write(struct_pack(">I", size))
  *         else:
  *             raise OverflowError("Map header size out of range")             # <<<<<<<<<<<<<<
  * 
  *     cpdef pack_map_stream_header(self):
  */
-  __pyx_tuple__144 = PyTuple_Pack(1, __pyx_kp_s_Map_header_size_out_of_range); if (unlikely(!__pyx_tuple__144)) __PYX_ERR(0, 280, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__144);
-  __Pyx_GIVEREF(__pyx_tuple__144);
+  __pyx_tuple__145 = PyTuple_Pack(1, __pyx_kp_s_Map_header_size_out_of_range); if (unlikely(!__pyx_tuple__145)) __PYX_ERR(0, 288, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__145);
+  __Pyx_GIVEREF(__pyx_tuple__145);
 
-  /* "neo4j/packstream/_packer.pyx":283
+  /* "neo4j/packstream/_packer.pyx":291
  * 
  *     cpdef pack_map_stream_header(self):
  *         self._write(b"\xDB")             # <<<<<<<<<<<<<<
  * 
  *     cpdef pack_struct(self, bytes signature, tuple fields):
  */
-  __pyx_tuple__146 = PyTuple_Pack(1, __pyx_kp_b__145); if (unlikely(!__pyx_tuple__146)) __PYX_ERR(0, 283, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__146);
-  __Pyx_GIVEREF(__pyx_tuple__146);
+  __pyx_tuple__147 = PyTuple_Pack(1, __pyx_kp_b__146); if (unlikely(!__pyx_tuple__147)) __PYX_ERR(0, 291, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__147);
+  __Pyx_GIVEREF(__pyx_tuple__147);
 
-  /* "neo4j/packstream/_packer.pyx":287
+  /* "neo4j/packstream/_packer.pyx":295
  *     cpdef pack_struct(self, bytes signature, tuple fields):
  *         if len(signature) != 1:
  *             raise ValueError("Structure signature must be a single byte value")             # <<<<<<<<<<<<<<
  *         write = self._write
  *         size = len(fields)
  */
-  __pyx_tuple__147 = PyTuple_Pack(1, __pyx_kp_s_Structure_signature_must_be_a_si); if (unlikely(!__pyx_tuple__147)) __PYX_ERR(0, 287, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__147);
-  __Pyx_GIVEREF(__pyx_tuple__147);
+  __pyx_tuple__148 = PyTuple_Pack(1, __pyx_kp_s_Structure_signature_must_be_a_si); if (unlikely(!__pyx_tuple__148)) __PYX_ERR(0, 295, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__148);
+  __Pyx_GIVEREF(__pyx_tuple__148);
 
-  /* "neo4j/packstream/_packer.pyx":291
+  /* "neo4j/packstream/_packer.pyx":299
  *         size = len(fields)
  *         if size == 0x00:
  *             write(b"\xB0")             # <<<<<<<<<<<<<<
  *         elif size == 0x01:
  *             write(b"\xB1")
  */
-  __pyx_tuple__149 = PyTuple_Pack(1, __pyx_kp_b__148); if (unlikely(!__pyx_tuple__149)) __PYX_ERR(0, 291, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__149);
-  __Pyx_GIVEREF(__pyx_tuple__149);
+  __pyx_tuple__150 = PyTuple_Pack(1, __pyx_kp_b__149); if (unlikely(!__pyx_tuple__150)) __PYX_ERR(0, 299, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__150);
+  __Pyx_GIVEREF(__pyx_tuple__150);
 
-  /* "neo4j/packstream/_packer.pyx":293
+  /* "neo4j/packstream/_packer.pyx":301
  *             write(b"\xB0")
  *         elif size == 0x01:
  *             write(b"\xB1")             # <<<<<<<<<<<<<<
  *         elif size == 0x02:
  *             write(b"\xB2")
  */
-  __pyx_tuple__151 = PyTuple_Pack(1, __pyx_kp_b__150); if (unlikely(!__pyx_tuple__151)) __PYX_ERR(0, 293, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__151);
-  __Pyx_GIVEREF(__pyx_tuple__151);
+  __pyx_tuple__152 = PyTuple_Pack(1, __pyx_kp_b__151); if (unlikely(!__pyx_tuple__152)) __PYX_ERR(0, 301, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__152);
+  __Pyx_GIVEREF(__pyx_tuple__152);
 
-  /* "neo4j/packstream/_packer.pyx":295
+  /* "neo4j/packstream/_packer.pyx":303
  *             write(b"\xB1")
  *         elif size == 0x02:
  *             write(b"\xB2")             # <<<<<<<<<<<<<<
  *         elif size == 0x03:
  *             write(b"\xB3")
  */
-  __pyx_tuple__153 = PyTuple_Pack(1, __pyx_kp_b__152); if (unlikely(!__pyx_tuple__153)) __PYX_ERR(0, 295, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__153);
-  __Pyx_GIVEREF(__pyx_tuple__153);
+  __pyx_tuple__154 = PyTuple_Pack(1, __pyx_kp_b__153); if (unlikely(!__pyx_tuple__154)) __PYX_ERR(0, 303, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__154);
+  __Pyx_GIVEREF(__pyx_tuple__154);
 
-  /* "neo4j/packstream/_packer.pyx":297
+  /* "neo4j/packstream/_packer.pyx":305
  *             write(b"\xB2")
  *         elif size == 0x03:
  *             write(b"\xB3")             # <<<<<<<<<<<<<<
  *         elif size == 0x04:
  *             write(b"\xB4")
  */
-  __pyx_tuple__155 = PyTuple_Pack(1, __pyx_kp_b__154); if (unlikely(!__pyx_tuple__155)) __PYX_ERR(0, 297, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__155);
-  __Pyx_GIVEREF(__pyx_tuple__155);
+  __pyx_tuple__156 = PyTuple_Pack(1, __pyx_kp_b__155); if (unlikely(!__pyx_tuple__156)) __PYX_ERR(0, 305, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__156);
+  __Pyx_GIVEREF(__pyx_tuple__156);
 
-  /* "neo4j/packstream/_packer.pyx":299
+  /* "neo4j/packstream/_packer.pyx":307
  *             write(b"\xB3")
  *         elif size == 0x04:
  *             write(b"\xB4")             # <<<<<<<<<<<<<<
  *         elif size == 0x05:
  *             write(b"\xB5")
  */
-  __pyx_tuple__157 = PyTuple_Pack(1, __pyx_kp_b__156); if (unlikely(!__pyx_tuple__157)) __PYX_ERR(0, 299, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__157);
-  __Pyx_GIVEREF(__pyx_tuple__157);
+  __pyx_tuple__158 = PyTuple_Pack(1, __pyx_kp_b__157); if (unlikely(!__pyx_tuple__158)) __PYX_ERR(0, 307, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__158);
+  __Pyx_GIVEREF(__pyx_tuple__158);
 
-  /* "neo4j/packstream/_packer.pyx":301
+  /* "neo4j/packstream/_packer.pyx":309
  *             write(b"\xB4")
  *         elif size == 0x05:
  *             write(b"\xB5")             # <<<<<<<<<<<<<<
  *         elif size == 0x06:
  *             write(b"\xB6")
  */
-  __pyx_tuple__159 = PyTuple_Pack(1, __pyx_kp_b__158); if (unlikely(!__pyx_tuple__159)) __PYX_ERR(0, 301, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__159);
-  __Pyx_GIVEREF(__pyx_tuple__159);
+  __pyx_tuple__160 = PyTuple_Pack(1, __pyx_kp_b__159); if (unlikely(!__pyx_tuple__160)) __PYX_ERR(0, 309, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__160);
+  __Pyx_GIVEREF(__pyx_tuple__160);
 
-  /* "neo4j/packstream/_packer.pyx":303
+  /* "neo4j/packstream/_packer.pyx":311
  *             write(b"\xB5")
  *         elif size == 0x06:
  *             write(b"\xB6")             # <<<<<<<<<<<<<<
  *         elif size == 0x07:
  *             write(b"\xB7")
  */
-  __pyx_tuple__161 = PyTuple_Pack(1, __pyx_kp_b__160); if (unlikely(!__pyx_tuple__161)) __PYX_ERR(0, 303, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__161);
-  __Pyx_GIVEREF(__pyx_tuple__161);
+  __pyx_tuple__162 = PyTuple_Pack(1, __pyx_kp_b__161); if (unlikely(!__pyx_tuple__162)) __PYX_ERR(0, 311, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__162);
+  __Pyx_GIVEREF(__pyx_tuple__162);
 
-  /* "neo4j/packstream/_packer.pyx":305
+  /* "neo4j/packstream/_packer.pyx":313
  *             write(b"\xB6")
  *         elif size == 0x07:
  *             write(b"\xB7")             # <<<<<<<<<<<<<<
  *         elif size == 0x08:
  *             write(b"\xB8")
  */
-  __pyx_tuple__163 = PyTuple_Pack(1, __pyx_kp_b__162); if (unlikely(!__pyx_tuple__163)) __PYX_ERR(0, 305, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__163);
-  __Pyx_GIVEREF(__pyx_tuple__163);
+  __pyx_tuple__164 = PyTuple_Pack(1, __pyx_kp_b__163); if (unlikely(!__pyx_tuple__164)) __PYX_ERR(0, 313, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__164);
+  __Pyx_GIVEREF(__pyx_tuple__164);
 
-  /* "neo4j/packstream/_packer.pyx":307
+  /* "neo4j/packstream/_packer.pyx":315
  *             write(b"\xB7")
  *         elif size == 0x08:
  *             write(b"\xB8")             # <<<<<<<<<<<<<<
  *         elif size == 0x09:
  *             write(b"\xB9")
  */
-  __pyx_tuple__165 = PyTuple_Pack(1, __pyx_kp_b__164); if (unlikely(!__pyx_tuple__165)) __PYX_ERR(0, 307, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__165);
-  __Pyx_GIVEREF(__pyx_tuple__165);
+  __pyx_tuple__166 = PyTuple_Pack(1, __pyx_kp_b__165); if (unlikely(!__pyx_tuple__166)) __PYX_ERR(0, 315, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__166);
+  __Pyx_GIVEREF(__pyx_tuple__166);
 
-  /* "neo4j/packstream/_packer.pyx":309
+  /* "neo4j/packstream/_packer.pyx":317
  *             write(b"\xB8")
  *         elif size == 0x09:
  *             write(b"\xB9")             # <<<<<<<<<<<<<<
  *         elif size == 0x0A:
  *             write(b"\xBA")
  */
-  __pyx_tuple__167 = PyTuple_Pack(1, __pyx_kp_b__166); if (unlikely(!__pyx_tuple__167)) __PYX_ERR(0, 309, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__167);
-  __Pyx_GIVEREF(__pyx_tuple__167);
+  __pyx_tuple__168 = PyTuple_Pack(1, __pyx_kp_b__167); if (unlikely(!__pyx_tuple__168)) __PYX_ERR(0, 317, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__168);
+  __Pyx_GIVEREF(__pyx_tuple__168);
 
-  /* "neo4j/packstream/_packer.pyx":311
+  /* "neo4j/packstream/_packer.pyx":319
  *             write(b"\xB9")
  *         elif size == 0x0A:
  *             write(b"\xBA")             # <<<<<<<<<<<<<<
  *         elif size == 0x0B:
  *             write(b"\xBB")
  */
-  __pyx_tuple__169 = PyTuple_Pack(1, __pyx_kp_b__168); if (unlikely(!__pyx_tuple__169)) __PYX_ERR(0, 311, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__169);
-  __Pyx_GIVEREF(__pyx_tuple__169);
+  __pyx_tuple__170 = PyTuple_Pack(1, __pyx_kp_b__169); if (unlikely(!__pyx_tuple__170)) __PYX_ERR(0, 319, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__170);
+  __Pyx_GIVEREF(__pyx_tuple__170);
 
-  /* "neo4j/packstream/_packer.pyx":313
+  /* "neo4j/packstream/_packer.pyx":321
  *             write(b"\xBA")
  *         elif size == 0x0B:
  *             write(b"\xBB")             # <<<<<<<<<<<<<<
  *         elif size == 0x0C:
  *             write(b"\xBC")
  */
-  __pyx_tuple__171 = PyTuple_Pack(1, __pyx_kp_b__170); if (unlikely(!__pyx_tuple__171)) __PYX_ERR(0, 313, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__171);
-  __Pyx_GIVEREF(__pyx_tuple__171);
+  __pyx_tuple__172 = PyTuple_Pack(1, __pyx_kp_b__171); if (unlikely(!__pyx_tuple__172)) __PYX_ERR(0, 321, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__172);
+  __Pyx_GIVEREF(__pyx_tuple__172);
 
-  /* "neo4j/packstream/_packer.pyx":315
+  /* "neo4j/packstream/_packer.pyx":323
  *             write(b"\xBB")
  *         elif size == 0x0C:
  *             write(b"\xBC")             # <<<<<<<<<<<<<<
  *         elif size == 0x0D:
  *             write(b"\xBD")
  */
-  __pyx_tuple__173 = PyTuple_Pack(1, __pyx_kp_b__172); if (unlikely(!__pyx_tuple__173)) __PYX_ERR(0, 315, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__173);
-  __Pyx_GIVEREF(__pyx_tuple__173);
+  __pyx_tuple__174 = PyTuple_Pack(1, __pyx_kp_b__173); if (unlikely(!__pyx_tuple__174)) __PYX_ERR(0, 323, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__174);
+  __Pyx_GIVEREF(__pyx_tuple__174);
 
-  /* "neo4j/packstream/_packer.pyx":317
+  /* "neo4j/packstream/_packer.pyx":325
  *             write(b"\xBC")
  *         elif size == 0x0D:
  *             write(b"\xBD")             # <<<<<<<<<<<<<<
  *         elif size == 0x0E:
  *             write(b"\xBE")
  */
-  __pyx_tuple__175 = PyTuple_Pack(1, __pyx_kp_b__174); if (unlikely(!__pyx_tuple__175)) __PYX_ERR(0, 317, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__175);
-  __Pyx_GIVEREF(__pyx_tuple__175);
+  __pyx_tuple__176 = PyTuple_Pack(1, __pyx_kp_b__175); if (unlikely(!__pyx_tuple__176)) __PYX_ERR(0, 325, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__176);
+  __Pyx_GIVEREF(__pyx_tuple__176);
 
-  /* "neo4j/packstream/_packer.pyx":319
+  /* "neo4j/packstream/_packer.pyx":327
  *             write(b"\xBD")
  *         elif size == 0x0E:
  *             write(b"\xBE")             # <<<<<<<<<<<<<<
  *         elif size == 0x0F:
  *             write(b"\xBF")
  */
-  __pyx_tuple__177 = PyTuple_Pack(1, __pyx_kp_b__176); if (unlikely(!__pyx_tuple__177)) __PYX_ERR(0, 319, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__177);
-  __Pyx_GIVEREF(__pyx_tuple__177);
+  __pyx_tuple__178 = PyTuple_Pack(1, __pyx_kp_b__177); if (unlikely(!__pyx_tuple__178)) __PYX_ERR(0, 327, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__178);
+  __Pyx_GIVEREF(__pyx_tuple__178);
 
-  /* "neo4j/packstream/_packer.pyx":321
+  /* "neo4j/packstream/_packer.pyx":329
  *             write(b"\xBE")
  *         elif size == 0x0F:
  *             write(b"\xBF")             # <<<<<<<<<<<<<<
  *         elif size < 0x100:
  *             write(b"\xDC")
  */
-  __pyx_tuple__179 = PyTuple_Pack(1, __pyx_kp_b__178); if (unlikely(!__pyx_tuple__179)) __PYX_ERR(0, 321, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__179);
-  __Pyx_GIVEREF(__pyx_tuple__179);
+  __pyx_tuple__180 = PyTuple_Pack(1, __pyx_kp_b__179); if (unlikely(!__pyx_tuple__180)) __PYX_ERR(0, 329, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__180);
+  __Pyx_GIVEREF(__pyx_tuple__180);
 
-  /* "neo4j/packstream/_packer.pyx":323
+  /* "neo4j/packstream/_packer.pyx":331
  *             write(b"\xBF")
  *         elif size < 0x100:
  *             write(b"\xDC")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  */
-  __pyx_tuple__181 = PyTuple_Pack(1, __pyx_kp_b__180); if (unlikely(!__pyx_tuple__181)) __PYX_ERR(0, 323, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__181);
-  __Pyx_GIVEREF(__pyx_tuple__181);
+  __pyx_tuple__182 = PyTuple_Pack(1, __pyx_kp_b__181); if (unlikely(!__pyx_tuple__182)) __PYX_ERR(0, 331, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__182);
+  __Pyx_GIVEREF(__pyx_tuple__182);
 
-  /* "neo4j/packstream/_packer.pyx":326
+  /* "neo4j/packstream/_packer.pyx":334
  *             write(PACKED_UINT_8[size])
  *         elif size < 0x10000:
  *             write(b"\xDD")             # <<<<<<<<<<<<<<
  *             write(PACKED_UINT_16[size])
  *         else:
  */
-  __pyx_tuple__183 = PyTuple_Pack(1, __pyx_kp_b__182); if (unlikely(!__pyx_tuple__183)) __PYX_ERR(0, 326, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__183);
-  __Pyx_GIVEREF(__pyx_tuple__183);
+  __pyx_tuple__184 = PyTuple_Pack(1, __pyx_kp_b__183); if (unlikely(!__pyx_tuple__184)) __PYX_ERR(0, 334, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__184);
+  __Pyx_GIVEREF(__pyx_tuple__184);
 
-  /* "neo4j/packstream/_packer.pyx":329
+  /* "neo4j/packstream/_packer.pyx":337
  *             write(PACKED_UINT_16[size])
  *         else:
  *             raise OverflowError("Structure size out of range")             # <<<<<<<<<<<<<<
  *         write(signature)
  *         for field in fields:
  */
-  __pyx_tuple__184 = PyTuple_Pack(1, __pyx_kp_s_Structure_size_out_of_range); if (unlikely(!__pyx_tuple__184)) __PYX_ERR(0, 329, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__184);
-  __Pyx_GIVEREF(__pyx_tuple__184);
+  __pyx_tuple__185 = PyTuple_Pack(1, __pyx_kp_s_Structure_size_out_of_range); if (unlikely(!__pyx_tuple__185)) __PYX_ERR(0, 337, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__185);
+  __Pyx_GIVEREF(__pyx_tuple__185);
 
-  /* "neo4j/packstream/_packer.pyx":335
+  /* "neo4j/packstream/_packer.pyx":343
  * 
  *     cpdef pack_end_of_stream(self):
  *         self._write(b"\xDF")             # <<<<<<<<<<<<<<
  */
-  __pyx_tuple__186 = PyTuple_Pack(1, __pyx_kp_b__185); if (unlikely(!__pyx_tuple__186)) __PYX_ERR(0, 335, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__186);
-  __Pyx_GIVEREF(__pyx_tuple__186);
+  __pyx_tuple__187 = PyTuple_Pack(1, __pyx_kp_b__186); if (unlikely(!__pyx_tuple__187)) __PYX_ERR(0, 343, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__187);
+  __Pyx_GIVEREF(__pyx_tuple__187);
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -9640,9 +9842,9 @@ PyMODINIT_FUNC PyInit__packer(void)
  */
   __pyx_t_1 = PyList_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 26, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __Pyx_INCREF(__pyx_n_s__187);
-  __Pyx_GIVEREF(__pyx_n_s__187);
-  PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s__187);
+  __Pyx_INCREF(__pyx_n_s__188);
+  __Pyx_GIVEREF(__pyx_n_s__188);
+  PyList_SET_ITEM(__pyx_t_1, 0, __pyx_n_s__188);
   __pyx_t_2 = __Pyx_Import(__pyx_n_s_constants, __pyx_t_1, 1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 26, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
