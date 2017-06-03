@@ -270,12 +270,15 @@ class Connection(object):
             log_info("S: SUCCESS (%r)", summary_metadata)
             response.on_success(summary_metadata or {})
         elif summary_signature == IGNORED:
+            self._last_run_statement = None
             log_info("S: IGNORED (%r)", summary_metadata)
             response.on_ignored(summary_metadata or {})
         elif summary_signature == FAILURE:
+            self._last_run_statement = None
             log_info("S: FAILURE (%r)", summary_metadata)
             response.on_failure(summary_metadata or {})
         else:
+            self._last_run_statement = None
             raise ProtocolError("Unexpected response message with signature %02X" % summary_signature)
 
         return len(details), 1
