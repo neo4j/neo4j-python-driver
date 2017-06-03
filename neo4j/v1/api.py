@@ -433,7 +433,7 @@ class Session(object):
             except (ServiceUnavailable, SessionExpired) as error:
                 last_error = error
             except TransientError as error:
-                if is_retriable_transientError(error):
+                if is_retriable_transient_error(error):
                     last_error = error
                 else:
                     raise error
@@ -465,7 +465,7 @@ class Session(object):
         pass
 
 
-def is_retriable_transientError(error):
+def is_retriable_transient_error(error):
     """
     :type error: TransientError
     """
@@ -572,7 +572,6 @@ class Transaction(object):
         """ Close this transaction, triggering either a COMMIT or a ROLLBACK.
         """
         if not self.closed():
-            self.sync()
             try:
                 self.sync()
             except CypherError:

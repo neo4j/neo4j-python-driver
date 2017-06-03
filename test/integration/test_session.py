@@ -24,7 +24,7 @@ from uuid import uuid4
 from neo4j.v1 import \
     READ_ACCESS, WRITE_ACCESS, \
     CypherError, SessionError, TransactionError, \
-    Node, Relationship, Path
+    Node, Relationship, Path, CypherSyntaxError
 
 from test.integration.tools import DirectIntegrationTestCase
 
@@ -338,6 +338,14 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
             result = session.run("MATCH (a) WHERE id(a) = {n} "
                                  "RETURN a.foo", {"n": node_id})
             assert len(list(result)) == 0
+
+    def test_broken_transaction_should_not_break_session(self):
+        with self.driver.session() as session:
+            with self.assertRaises(CypherSyntaxError):
+                with session.begin_transaction() as tx:
+                    tx.run("X")
+            with session.begin_transaction() as tx:
+                tx.run("RETURN 1")
 
 
 class BookmarkingTestCase(DirectIntegrationTestCase):
