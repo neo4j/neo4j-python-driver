@@ -347,6 +347,19 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
             with session.begin_transaction() as tx:
                 tx.run("RETURN 1")
 
+    def test_last_run_statement_should_be_cleared_on_failure(self):
+        with self.driver.session() as session:
+            tx = session.begin_transaction()
+            tx.run("RETURN 1").consume()
+            connection_1 = session._connection
+            assert connection_1._last_run_statement == "RETURN 1"
+            with self.assertRaises(CypherSyntaxError):
+                tx.run("X").consume()
+            connection_2 = session._connection
+            assert connection_2 is connection_1
+            assert connection_2._last_run_statement is None
+            tx.close()
+
 
 class BookmarkingTestCase(DirectIntegrationTestCase):
 
