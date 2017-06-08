@@ -1,25 +1,25 @@
 !: AUTO INIT
 !: AUTO RESET
 
-C: RUN "BEGIN" {"bookmark": "bookmark:1"}
+C: RUN "BEGIN" {"bookmark": "bookmark:1", "bookmarks": ["bookmark:1"]}
    PULL_ALL
 S: SUCCESS {}
    SUCCESS {}
 C: RUN "COMMIT" {}
    PULL_ALL
-S: SUCCESS {"bookmark": "bookmark:2"}
+S: SUCCESS {"bookmark": "bookmark:2", "bookmarks": ["bookmark:2"]}
    SUCCESS {}
 
 C: RUN "RETURN 1" {}
    PULL_ALL
-S: SUCCESS {"bookmark": "bookmark:x"}
+S: SUCCESS {"bookmark": "bookmark:x", "bookmarks": ["bookmark:x"]}
    SUCCESS {}
 
-C: RUN "BEGIN" {"bookmark": "bookmark:2"}
+C: RUN "BEGIN" {"bookmark": "bookmark:2", "bookmarks": ["bookmark:2"]}
    PULL_ALL
 S: SUCCESS {}
    SUCCESS {}
 C: RUN "COMMIT" {}
    PULL_ALL
-S: SUCCESS {"bookmark": "bookmark:3"}
+S: SUCCESS {"bookmark": "bookmark:3", "bookmarks": ["bookmark:3"]}
    SUCCESS {}

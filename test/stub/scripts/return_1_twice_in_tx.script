@@ -20,5 +20,5 @@ S: SUCCESS {"fields": ["x"]}
 
 C: RUN "COMMIT" {}
    PULL_ALL
-S: SUCCESS {"bookmark": "bookmark:1"}
+S: SUCCESS {"bookmark": "bookmark:1", "bookmarks": ["bookmark:1"]}
    SUCCESS {}
