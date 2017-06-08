@@ -26,7 +26,7 @@ from time import time, sleep
 from warnings import warn
 
 from neo4j.bolt import ProtocolError, ServiceUnavailable
-from neo4j.compat import urlparse
+from neo4j.compat import unicode, urlparse
 from neo4j.exceptions import CypherError, TransientError
 
 from .exceptions import DriverError, SessionError, SessionExpired, TransactionError
@@ -40,6 +40,21 @@ DEFAULT_MAX_RETRY_TIME = 30.0
 INITIAL_RETRY_DELAY = 1.0
 RETRY_DELAY_MULTIPLIER = 2.0
 RETRY_DELAY_JITTER_FACTOR = 0.2
+
+
+def last_bookmark(b0, b1):
+    """ Return the latest of two bookmarks by looking for the maximum
+    integer value following the last colon in the bookmark string.
+    """
+    n = [None, None]
+    _, _, n[0] = b0.rpartition(":")
+    _, _, n[1] = b1.rpartition(":")
+    for i in range(2):
+        try:
+            n[i] = int(n[i])
+        except ValueError:
+            raise ValueError("Invalid bookmark: {}".format(b0))
+    return b0 if n[0] > n[1] else b1
 
 
 def retry_delay_generator(initial_delay, multiplier, jitter_factor):
@@ -141,14 +156,25 @@ class Driver(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def session(self, access_mode=None, bookmark=None):
+    def session(self, access_mode=None, **parameters):
         """ Create a new session using a connection from the driver connection
         pool. Session creation is a lightweight operation and sessions are
         not thread safe, therefore a session should generally be short-lived
         within a single thread.
 
-        :param access_mode:
-        :param bookmark:
+        :param access_mode: access mode for this session (read or write)
+        :param parameters: set of parameters for this session:
+
+        `bookmark`
+            A bookmark after which this session should begin.
+
+        `bookmarks`
+            A collection of bookmarks after which this session should begin.
+
+        `max_retry_time`
+            The maximum time after which to stop attempting retries of failed
+            transactions.
+
         :returns: new :class:`.Session` object
         """
         if self.closed():
@@ -190,28 +216,39 @@ class Session(object):
 
     """
 
-    #: The current connection.
+    # The current connection.
     _connection = None
 
-    #: The access mode for the current connection.
+    # The access mode for the current connection.
     _connection_access_mode = None
 
-    #: The current :class:`.Transaction` instance, if any.
+    # The current :class:`.Transaction` instance, if any.
     _transaction = None
 
-    #: The last result received.
+    # The last result received.
     _last_result = None
 
-    #: The bookmark received from completion of the last :class:`.Transaction`.
-    _bookmark = None
+    # The collection of bookmarks after which the next
+    # :class:`.Transaction` should be carried out.
+    _bookmarks = ()
+
+    # Default maximum time to keep retrying failed transactions.
+    _max_retry_time = DEFAULT_MAX_RETRY_TIME
 
     _closed = False
 
-    def __init__(self, acquirer, max_retry_time=None, access_mode=None, bookmark=None):
+    def __init__(self, acquirer, access_mode, **parameters):
         self._acquirer = acquirer
-        self._max_retry_time = DEFAULT_MAX_RETRY_TIME if max_retry_time is None else max_retry_time
-        self._default_access_mode = access_mode or WRITE_ACCESS
-        self._bookmark = bookmark
+        self._default_access_mode = access_mode
+        for key, value in parameters.items():
+            if key == "bookmark":
+                self._bookmarks = [value] if value else []
+            elif key == "bookmarks":
+                self._bookmarks = value or []
+            elif key == "max_retry_time":
+                self._max_retry_time = value
+            else:
+                pass  # for compatibility
 
     def __del__(self):
         try:
@@ -354,7 +391,13 @@ class Session(object):
     def last_bookmark(self):
         """ The bookmark returned by the last :class:`.Transaction`.
         """
-        return self._bookmark
+        last = None
+        for bookmark in self._bookmarks:
+            if last is None:
+                last = bookmark
+            else:
+                last = last_bookmark(last, bookmark)
+        return last
 
     def has_transaction(self):
         return bool(self._transaction)
@@ -383,7 +426,7 @@ class Session(object):
                 from warnings import warn
                 warn("Passing bookmarks at transaction level is deprecated", category=DeprecationWarning, stacklevel=2)
                 _warned_about_transaction_bookmarks = True
-            self._bookmark = bookmark
+            self._bookmarks = [bookmark]
 
         self._create_transaction()
         self._connect()
@@ -401,8 +444,9 @@ class Session(object):
         self._transaction = None
         result = self.__commit__()
         result.consume()
-        self._bookmark = self.__bookmark__(result)
-        return self._bookmark
+        bookmark = self.__bookmark__(result)
+        self._bookmarks = [bookmark]
+        return bookmark
 
     def rollback_transaction(self):
         """ Rollback the current transaction.
@@ -412,7 +456,6 @@ class Session(object):
         if not self.has_transaction():
             raise TransactionError("No transaction to rollback")
         self._transaction = None
-        self._bookmark = None
         self.__rollback__().consume()
 
     def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):

@@ -27,12 +27,6 @@ from neo4j.v1.result import BoltStatementResult
 
 
 class BoltSession(Session):
-    """
-
-    :param acquirer: function that can accept an access mode and return a connection
-    :param access_mode:
-    :param bookmark:
-    """
 
     def _run(self, statement, parameters):
         assert isinstance(statement, unicode)
@@ -59,7 +53,11 @@ class BoltSession(Session):
         return self._run(statement, parameters)
 
     def __begin__(self):
-        return self.__run__(u"BEGIN", {"bookmark": self._bookmark} if self._bookmark else {})
+        if self._bookmarks:
+            parameters = {"bookmark": self.last_bookmark(), "bookmarks": self._bookmarks}
+        else:
+            parameters = {}
+        return self.__run__(u"BEGIN", parameters)
 
     def __commit__(self):
         return self.__run__(u"COMMIT", {})

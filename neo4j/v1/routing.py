@@ -190,7 +190,7 @@ class RoutingConnectionPool(ConnectionPool):
                                    if routing support is broken
         """
         try:
-            with RoutingSession(lambda _: self.acquire_direct(address)) as session:
+            with RoutingSession(lambda _: self.acquire_direct(address), access_mode=None) as session:
                 return list(session.run("ignored", self.routing_context))
         except CypherError as error:
             if error.code == "Neo.ClientError.Procedure.ProcedureNotFound":
@@ -271,7 +271,6 @@ class RoutingConnectionPool(ConnectionPool):
             if initial_routers:
                 if self.update_routing_table_with_routers(initial_routers):
                     return
-
 
         # None of the routers have been successful, so just fail
         raise ServiceUnavailable("Unable to retrieve routing information")
@@ -364,5 +363,7 @@ class RoutingDriver(Driver):
         else:
             Driver.__init__(self, pool, **config)
 
-    def session(self, access_mode=None, bookmark=None):
-        return BoltSession(self._pool.acquire, self._max_retry_time, access_mode=access_mode, bookmark=bookmark)
+    def session(self, access_mode=None, **parameters):
+        if "max_retry_time" not in parameters:
+            parameters["max_retry_time"] = self._max_retry_time
+        return BoltSession(self._pool.acquire, access_mode, **parameters)
