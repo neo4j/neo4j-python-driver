@@ -33,10 +33,13 @@ cdef INT64_LO = -(2 ** 63)
 
 cdef class Packer(object):
 
+    cdef public bint supports_bytes
+
     cdef stream
     cdef _write
 
     def __cinit__(self, stream):
+        self.supports_bytes = False
         self.stream = stream
         self._write = self.stream.write
 
@@ -94,9 +97,12 @@ cdef class Packer(object):
 
         # Bytes (deliberately listed after String since in
         # Python 2, bytes should be treated as a String)
-        elif isinstance(value, (bytes, bytearray)):
+        elif isinstance(value, bytes):
             self.pack_bytes_header(len(value))
             self.pack_raw(value)
+        elif isinstance(value, bytearray):
+            self.pack_bytes_header(len(value))
+            self.pack_raw(bytes(value))
 
         # List
         elif isinstance(value, list):
@@ -125,6 +131,8 @@ cdef class Packer(object):
             raise ValueError("Values of type %s are not supported" % type(value))
 
     cdef pack_bytes_header(self, int size):
+        if not self.supports_bytes:
+            raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")
         write = self._write
         if size < 0x100:
             write(b"\xCC")

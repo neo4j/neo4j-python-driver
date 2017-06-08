@@ -111,6 +111,13 @@ class ServerInfo(object):
             return False
         return self.version_info() >= (3, 2)
 
+    def supports_bytes(self):
+        if not self.version:
+            return False
+        if self.product() != "Neo4j":
+            return False
+        return self.version_info() >= (3, 2)
+
 
 class Connection(object):
     """ Server connection for Bolt protocol v1.
@@ -177,6 +184,7 @@ class Connection(object):
         self.sync()
 
         self._supports_statement_reuse = self.server.supports_statement_reuse()
+        self.packer.supports_bytes = self.server.supports_bytes()
 
     def __del__(self):
         self.close()

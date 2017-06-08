@@ -47,6 +47,7 @@ class PackStreamTestCase(TestCase):
     def assert_packable(cls, value, packed_value):
         stream_out = BytesIO()
         packer = cls.Packer(stream_out)
+        packer.supports_bytes = True
         packer.pack(value)
         packed = stream_out.getvalue()
         try:

@@ -757,8 +757,5 @@ def fix_parameters(parameters=None, **kwparameters):
     for key, value in params_in.items():
         if isinstance(key, bytes):
             key = key.decode("UTF-8")
-        if isinstance(value, bytes):
-            params_out[key] = value.decode("UTF-8")
-        else:
-            params_out[key] = value
+        params_out[key] = value
     return params_out
