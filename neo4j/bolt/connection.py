@@ -214,7 +214,7 @@ class Connection(object):
         elif signature == ACK_FAILURE:
             log_info("C: ACK_FAILURE %r", fields)
         elif signature == INIT:
-            log_info("C: INIT %r", fields)
+            log_info("C: INIT (%r, {...})", fields[0])
         else:
             raise ValueError("Unknown message signature")
         self.packer.pack_struct(signature, fields)
