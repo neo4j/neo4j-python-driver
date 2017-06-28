@@ -211,8 +211,6 @@ class Relationship(BaseRelationship):
         return inst
 
     def __init__(self, start, end, type, properties=None, **kwproperties):
-        assert isinstance(start, int)
-        assert isinstance(end, int)
         super(Relationship, self).__init__(type, properties, **kwproperties)
         self.start = start
         self.end = end
@@ -220,6 +218,10 @@ class Relationship(BaseRelationship):
     def __repr__(self):
         return "<Relationship id=%r start=%r end=%r type=%r properties=%r>" % \
                (self.id, self.start, self.end, self.type, self.properties)
+
+    @property
+    def nodes(self):
+        return self.start, self.end
 
 
 class UnboundRelationship(BaseRelationship):
