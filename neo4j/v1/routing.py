@@ -19,6 +19,7 @@
 # limitations under the License.
 
 
+from sys import maxsize
 from threading import Lock
 from time import clock
 
@@ -26,11 +27,16 @@ from neo4j.addressing import SocketAddress, resolve
 from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect
 from neo4j.compat.collections import MutableSet, OrderedDict
 from neo4j.exceptions import CypherError
+from neo4j.util import ServerVersion
 from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS, fix_statement, fix_parameters
 from neo4j.v1.exceptions import SessionExpired
 from neo4j.v1.security import SecurityPlan
 from neo4j.v1.session import BoltSession
-from neo4j.util import ServerVersion
+
+
+LOAD_BALANCING_STRATEGY_LEAST_CONNECTED = 0
+LOAD_BALANCING_STRATEGY_ROUND_ROBIN = 1
+LOAD_BALANCING_STRATEGY_DEFAULT = LOAD_BALANCING_STRATEGY_LEAST_CONNECTED
 
 
 class RoundRobinSet(MutableSet):
@@ -52,7 +58,7 @@ class RoundRobinSet(MutableSet):
                 self._current = 0
             else:
                 self._current = (self._current + 1) % len(self._elements)
-            current = list(self._elements.keys())[self._current]
+            current = self.get(self._current)
         return current
 
     def __iter__(self):
@@ -89,6 +95,9 @@ class RoundRobinSet(MutableSet):
         e = self._elements
         e.clear()
         e.update(OrderedDict.fromkeys(elements))
+
+    def get(self, index):
+        return list(self._elements.keys())[index]
 
 
 class RoutingTable(object):
@@ -168,17 +177,109 @@ class RoutingSession(BoltSession):
         return self._run(fix_statement(statement), fix_parameters(parameters))
 
 
+class LoadBalancingStrategy(object):
+
+    @classmethod
+    def build(cls, connection_pool, **config):
+        load_balancing_strategy = config.get("load_balancing_strategy", LOAD_BALANCING_STRATEGY_DEFAULT)
+        if load_balancing_strategy == LOAD_BALANCING_STRATEGY_LEAST_CONNECTED:
+            return LeastConnectedLoadBalancingStrategy(connection_pool)
+        elif load_balancing_strategy == LOAD_BALANCING_STRATEGY_ROUND_ROBIN:
+            return RoundRobinLoadBalancingStrategy()
+        else:
+            raise ValueError("Unknown load balancing strategy '%s'" % load_balancing_strategy)
+        pass
+
+    def select_reader(self, known_readers):
+        raise NotImplementedError()
+
+    def select_writer(self, known_writers):
+        raise NotImplementedError()
+
+
+class RoundRobinLoadBalancingStrategy(LoadBalancingStrategy):
+
+    _readers_offset = 0
+    _writers_offset = 0
+
+    def select_reader(self, known_readers):
+        address = self.select(self._readers_offset, known_readers)
+        self._readers_offset += 1
+        return address
+
+    def select_writer(self, known_writers):
+        address = self.select(self._writers_offset, known_writers)
+        self._writers_offset += 1
+        return address
+
+    def select(self, offset, addresses):
+        length = len(addresses)
+        if length == 0:
+            return None
+        else:
+            index = offset % length
+            return addresses.get(index)
+
+
+class LeastConnectedLoadBalancingStrategy(LoadBalancingStrategy):
+
+    def __init__(self, connection_pool):
+        self._readers_offset = 0
+        self._writers_offset = 0
+        self._connection_pool = connection_pool
+
+    def select_reader(self, known_readers):
+        address = self.select(self._readers_offset, known_readers)
+        self._readers_offset += 1
+        return address
+
+    def select_writer(self, known_writers):
+        address = self.select(self._writers_offset, known_writers)
+        self._writers_offset += 1
+        return address
+
+    def select(self, offset, addresses):
+        length = len(addresses)
+        if length == 0:
+            return None
+        else:
+            start_index = offset % length
+            index = start_index
+
+            least_connected_address = None
+            least_in_use_connections = maxsize
+
+            while True:
+                address = addresses.get(index)
+                in_use_connections = self._connection_pool.in_use_connection_count(address)
+
+                if in_use_connections < least_in_use_connections:
+                    least_connected_address = address
+                    least_in_use_connections = in_use_connections
+
+                if index == length - 1:
+                    index = 0
+                else:
+                    index += 1
+
+                if index == start_index:
+                    break
+
+            return least_connected_address
+
+
 class RoutingConnectionPool(ConnectionPool):
     """ Connection pool with routing table.
     """
 
-    def __init__(self, connector, initial_address, routing_context, *routers):
+    def __init__(self, connector, initial_address, routing_context, *routers, **config):
         super(RoutingConnectionPool, self).__init__(connector)
         self.initial_address = initial_address
         self.routing_context = routing_context
         self.routing_table = RoutingTable(routers)
         self.missing_writer = False
         self.refresh_lock = Lock()
+        self.load_balancing_strategy = LoadBalancingStrategy.build(self, **config)
 
     def fetch_routing_info(self, address):
         """ Fetch raw routing info from a given router address.
@@ -304,14 +405,16 @@ class RoutingConnectionPool(ConnectionPool):
             access_mode = WRITE_ACCESS
         if access_mode == READ_ACCESS:
             server_list = self.routing_table.readers
+            server_selector = self.load_balancing_strategy.select_reader
         elif access_mode == WRITE_ACCESS:
             server_list = self.routing_table.writers
+            server_selector = self.load_balancing_strategy.select_writer
         else:
             raise ValueError("Unsupported access mode {}".format(access_mode))
 
         self.ensure_routing_table_is_fresh(access_mode)
         while True:
-            address = next(server_list)
+            address = server_selector(server_list)
             if address is None:
                 break
             try:
@@ -354,7 +457,7 @@ class RoutingDriver(Driver):
         def connector(a):
             return connect(a, security_plan.ssl_context, **config)
 
-        pool = RoutingConnectionPool(connector, initial_address, routing_context, *resolve(initial_address))
+        pool = RoutingConnectionPool(connector, initial_address, routing_context, *resolve(initial_address), **config)
         try:
             pool.update_routing_table()
         except:

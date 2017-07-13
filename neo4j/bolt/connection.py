@@ -418,6 +418,20 @@ class ConnectionPool(object):
         with self.lock:
             connection.in_use = False
 
+    def in_use_connection_count(self, address):
+        try:
+            connections = self.connections[address]
+        except KeyError:
+            return 0
+        else:
+            in_use_count = 0
+
+            for connection in list(connections):
+                if connection.in_use:
+                    in_use_count += 1
+
+            return in_use_count
+
     def remove(self, address):
         """ Remove an address from the connection pool, if present, closing
         all connections to that address.
