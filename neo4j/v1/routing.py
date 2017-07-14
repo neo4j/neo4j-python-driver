@@ -17,8 +17,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
+from abc import abstractmethod
 from sys import maxsize
 from threading import Lock
 from time import clock
@@ -175,11 +174,12 @@ class LoadBalancingStrategy(object):
             return RoundRobinLoadBalancingStrategy()
         else:
             raise ValueError("Unknown load balancing strategy '%s'" % load_balancing_strategy)
-        pass
 
+    @abstractmethod
     def select_reader(self, known_readers):
         raise NotImplementedError()
 
+    @abstractmethod
     def select_writer(self, known_writers):
         raise NotImplementedError()
 
@@ -190,22 +190,20 @@ class RoundRobinLoadBalancingStrategy(LoadBalancingStrategy):
     _writers_offset = 0
 
     def select_reader(self, known_readers):
-        address = self.select(self._readers_offset, known_readers)
+        address = self._select(self._readers_offset, known_readers)
         self._readers_offset += 1
         return address
 
     def select_writer(self, known_writers):
-        address = self.select(self._writers_offset, known_writers)
+        address = self._select(self._writers_offset, known_writers)
         self._writers_offset += 1
         return address
 
-    def select(self, offset, addresses):
-        length = len(addresses)
-        if length == 0:
+    @classmethod
+    def _select(cls, offset, addresses):
+        if not addresses:
             return None
-        else:
-            index = offset % length
-            return addresses.get(index)
+        return addresses[offset % len(addresses)]
 
 
 class LeastConnectedLoadBalancingStrategy(LoadBalancingStrategy):
@@ -216,43 +214,42 @@ class LeastConnectedLoadBalancingStrategy(LoadBalancingStrategy):
         self._connection_pool = connection_pool
 
     def select_reader(self, known_readers):
-        address = self.select(self._readers_offset, known_readers)
+        address = self._select(self._readers_offset, known_readers)
         self._readers_offset += 1
         return address
 
     def select_writer(self, known_writers):
-        address = self.select(self._writers_offset, known_writers)
+        address = self._select(self._writers_offset, known_writers)
         self._writers_offset += 1
         return address
 
-    def select(self, offset, addresses):
-        length = len(addresses)
-        if length == 0:
+    def _select(self, offset, addresses):
+        if not addresses:
             return None
-        else:
-            start_index = offset % length
-            index = start_index
+        num_addresses = len(addresses)
+        start_index = offset % num_addresses
+        index = start_index
 
-            least_connected_address = None
-            least_in_use_connections = maxsize
+        least_connected_address = None
+        least_in_use_connections = maxsize
 
-            while True:
-                address = addresses[index]
-                in_use_connections = self._connection_pool.in_use_connection_count(address)
+        while True:
+            address = addresses[index]
+            in_use_connections = self._connection_pool.in_use_connection_count(address)
 
-                if in_use_connections < least_in_use_connections:
-                    least_connected_address = address
-                    least_in_use_connections = in_use_connections
+            if in_use_connections < least_in_use_connections:
+                least_connected_address = address
+                least_in_use_connections = in_use_connections
 
-                if index == length - 1:
-                    index = 0
-                else:
-                    index += 1
+            if index == num_addresses - 1:
+                index = 0
+            else:
+                index += 1
 
-                if index == start_index:
-                    break
+            if index == start_index:
+                break
 
-            return least_connected_address
+        return least_connected_address
 
 
 class RoutingConnectionPool(ConnectionPool):

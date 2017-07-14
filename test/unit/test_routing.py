@@ -17,14 +17,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from collections import OrderedDict
 from unittest import TestCase
 
 from neo4j.bolt import ProtocolError
 from neo4j.bolt.connection import connect
-from neo4j.v1.routing import OrderedSet, RoutingTable, RoutingConnectionPool
+from neo4j.v1.routing import OrderedSet, RoutingTable, RoutingConnectionPool, LeastConnectedLoadBalancingStrategy, \
+    RoundRobinLoadBalancingStrategy
 from neo4j.v1.security import basic_auth
-from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS
+from neo4j.v1.api import READ_ACCESS, WRITE_ACCESS
 
 
 VALID_ROUTING_RECORD = {
@@ -56,7 +57,6 @@ def connector(address):
 
 
 class RoundRobinSetTestCase(TestCase):
-
     def test_should_repr_as_set(self):
         s = OrderedSet([1, 2, 3])
         assert repr(s) == "{1, 2, 3}"
@@ -135,7 +135,6 @@ class RoundRobinSetTestCase(TestCase):
 
 
 class RoutingTableConstructionTestCase(TestCase):
-
     def test_should_be_initially_stale(self):
         table = RoutingTable()
         assert not table.is_fresh(READ_ACCESS)
@@ -143,7 +142,6 @@ class RoutingTableConstructionTestCase(TestCase):
 
 
 class RoutingTableParseRoutingInfoTestCase(TestCase):
-
     def test_should_return_routing_table_on_valid_record(self):
         table = RoutingTable.parse_routing_info([VALID_ROUTING_RECORD])
         assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
@@ -172,7 +170,6 @@ class RoutingTableParseRoutingInfoTestCase(TestCase):
 
 
 class RoutingTableFreshnessTestCase(TestCase):
-
     def test_should_be_fresh_after_update(self):
         table = RoutingTable.parse_routing_info([VALID_ROUTING_RECORD])
         assert table.is_fresh(READ_ACCESS)
@@ -198,7 +195,6 @@ class RoutingTableFreshnessTestCase(TestCase):
 
 
 class RoutingTableUpdateTestCase(TestCase):
-
     def setUp(self):
         self.table = RoutingTable(
             [("192.168.1.1", 7687), ("192.168.1.2", 7687)], [("192.168.1.3", 7687)], [], 0)
@@ -224,9 +220,119 @@ class RoutingTableUpdateTestCase(TestCase):
 
 
 class RoutingConnectionPoolConstructionTestCase(TestCase):
-
     def test_should_populate_initial_router(self):
         initial_router = ("127.0.0.1", 9001)
         router = ("127.0.0.1", 9002)
         with RoutingConnectionPool(connector, initial_router, {}, router) as pool:
             assert pool.routing_table.routers == {("127.0.0.1", 9002)}
+
+
+class FakeConnectionPool(object):
+
+    def __init__(self, addresses):
+        self._addresses = addresses
+
+    def in_use_connection_count(self, address):
+        return self._addresses.get(address, 0)
+
+
+class RoundRobinLoadBalancingStrategyTestCase(TestCase):
+
+    def test_simple_reader_selection(self):
+        strategy = RoundRobinLoadBalancingStrategy()
+        self.assertEqual(strategy.select_reader(["0.0.0.0", "1.1.1.1", "2.2.2.2"]), "0.0.0.0")
+        self.assertEqual(strategy.select_reader(["0.0.0.0", "1.1.1.1", "2.2.2.2"]), "1.1.1.1")
+        self.assertEqual(strategy.select_reader(["0.0.0.0", "1.1.1.1", "2.2.2.2"]), "2.2.2.2")
+        self.assertEqual(strategy.select_reader(["0.0.0.0", "1.1.1.1", "2.2.2.2"]), "0.0.0.0")
+
+    def test_empty_reader_selection(self):
+        strategy = RoundRobinLoadBalancingStrategy()
+        self.assertIsNone(strategy.select_reader([]))
+
+    def test_simple_writer_selection(self):
+        strategy = RoundRobinLoadBalancingStrategy()
+        self.assertEqual(strategy.select_writer(["0.0.0.0", "1.1.1.1", "2.2.2.2"]), "0.0.0.0")
+        self.assertEqual(strategy.select_writer(["0.0.0.0", "1.1.1.1", "2.2.2.2"]), "1.1.1.1")
+        self.assertEqual(strategy.select_writer(["0.0.0.0", "1.1.1.1", "2.2.2.2"]), "2.2.2.2")
+        self.assertEqual(strategy.select_writer(["0.0.0.0", "1.1.1.1", "2.2.2.2"]), "0.0.0.0")
+
+    def test_empty_writer_selection(self):
+        strategy = RoundRobinLoadBalancingStrategy()
+        self.assertIsNone(strategy.select_writer([]))
+
+
+class LeastConnectedLoadBalancingStrategyTestCase(TestCase):
+
+    def test_simple_reader_selection(self):
+        strategy = LeastConnectedLoadBalancingStrategy(FakeConnectionPool(OrderedDict([
+            ("0.0.0.0", 2),
+            ("1.1.1.1", 1),
+            ("2.2.2.2", 0),
+        ])))
+        self.assertEqual(strategy.select_reader(["0.0.0.0", "1.1.1.1", "2.2.2.2"]), "2.2.2.2")
+
+    def test_reader_selection_with_clash(self):
+        strategy = LeastConnectedLoadBalancingStrategy(FakeConnectionPool(OrderedDict([
+            ("0.0.0.0", 0),
+            ("0.0.0.1", 0),
+            ("1.1.1.1", 1),
+        ])))
+        self.assertEqual(strategy.select_reader(["0.0.0.0", "0.0.0.1", "1.1.1.1"]), "0.0.0.0")
+        self.assertEqual(strategy.select_reader(["0.0.0.0", "0.0.0.1", "1.1.1.1"]), "0.0.0.1")
+
+    def test_empty_reader_selection(self):
+        strategy = LeastConnectedLoadBalancingStrategy(FakeConnectionPool(OrderedDict([
+        ])))
+        self.assertIsNone(strategy.select_reader([]))
+
+    def test_not_in_pool_reader_selection(self):
+        strategy = LeastConnectedLoadBalancingStrategy(FakeConnectionPool(OrderedDict([
+            ("1.1.1.1", 1),
+            ("2.2.2.2", 2),
+        ])))
+        self.assertEqual(strategy.select_reader(["2.2.2.2", "3.3.3.3"]), "3.3.3.3")
+
+    def test_partially_in_pool_reader_selection(self):
+        strategy = LeastConnectedLoadBalancingStrategy(FakeConnectionPool(OrderedDict([
+            ("1.1.1.1", 1),
+            ("2.2.2.2", 0),
+        ])))
+        self.assertEqual(strategy.select_reader(["2.2.2.2", "3.3.3.3"]), "2.2.2.2")
+        self.assertEqual(strategy.select_reader(["2.2.2.2", "3.3.3.3"]), "3.3.3.3")
+
+    def test_simple_writer_selection(self):
+        strategy = LeastConnectedLoadBalancingStrategy(FakeConnectionPool(OrderedDict([
+            ("0.0.0.0", 2),
+            ("1.1.1.1", 1),
+            ("2.2.2.2", 0),
+        ])))
+        self.assertEqual(strategy.select_writer(["0.0.0.0", "1.1.1.1", "2.2.2.2"]), "2.2.2.2")
+
+    def test_writer_selection_with_clash(self):
+        strategy = LeastConnectedLoadBalancingStrategy(FakeConnectionPool(OrderedDict([
+            ("0.0.0.0", 0),
+            ("0.0.0.1", 0),
+            ("1.1.1.1", 1),
+        ])))
+        self.assertEqual(strategy.select_writer(["0.0.0.0", "0.0.0.1", "1.1.1.1"]), "0.0.0.0")
+        self.assertEqual(strategy.select_writer(["0.0.0.0", "0.0.0.1", "1.1.1.1"]), "0.0.0.1")
+
+    def test_empty_writer_selection(self):
+        strategy = LeastConnectedLoadBalancingStrategy(FakeConnectionPool(OrderedDict([
+        ])))
+        self.assertIsNone(strategy.select_writer([]))
+
+    def test_not_in_pool_writer_selection(self):
+        strategy = LeastConnectedLoadBalancingStrategy(FakeConnectionPool(OrderedDict([
+            ("1.1.1.1", 1),
+            ("2.2.2.2", 2),
+        ])))
+        self.assertEqual(strategy.select_writer(["2.2.2.2", "3.3.3.3"]), "3.3.3.3")
+
+    def test_partially_in_pool_writer_selection(self):
+        strategy = LeastConnectedLoadBalancingStrategy(FakeConnectionPool(OrderedDict([
+            ("1.1.1.1", 1),
+            ("2.2.2.2", 0),
+        ])))
+        self.assertEqual(strategy.select_writer(["2.2.2.2", "3.3.3.3"]), "2.2.2.2")
+        self.assertEqual(strategy.select_writer(["2.2.2.2", "3.3.3.3"]), "3.3.3.3")
