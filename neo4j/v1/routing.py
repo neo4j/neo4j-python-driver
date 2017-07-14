@@ -235,21 +235,16 @@ class LeastConnectedLoadBalancingStrategy(LoadBalancingStrategy):
 
         while True:
             address = addresses[index]
+            index = (index + 1) % num_addresses
+
             in_use_connections = self._connection_pool.in_use_connection_count(address)
 
             if in_use_connections < least_in_use_connections:
                 least_connected_address = address
                 least_in_use_connections = in_use_connections
 
-            if index == num_addresses - 1:
-                index = 0
-            else:
-                index += 1
-
             if index == start_index:
-                break
-
-        return least_connected_address
+                return least_connected_address
 
 
 class RoutingConnectionPool(ConnectionPool):
