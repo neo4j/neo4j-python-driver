@@ -108,3 +108,11 @@ class ConnectionPoolTestCase(IntegrationTestCase):
             pool.close()
             with self.assertRaises(ServiceUnavailable):
                 _ = pool.acquire_direct("X")
+
+    def test_in_use_count(self):
+        address = ("127.0.0.1", 7687)
+        self.assertEqual(self.pool.in_use_connection_count(address), 0)
+        connection = self.pool.acquire_direct(address)
+        self.assertEqual(self.pool.in_use_connection_count(address), 1)
+        self.pool.release(connection)
+        self.assertEqual(self.pool.in_use_connection_count(address), 0)
