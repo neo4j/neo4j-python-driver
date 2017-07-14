@@ -22,7 +22,7 @@ from unittest import TestCase
 
 from neo4j.bolt import ProtocolError
 from neo4j.bolt.connection import connect
-from neo4j.v1.routing import RoundRobinSet, RoutingTable, RoutingConnectionPool
+from neo4j.v1.routing import OrderedSet, RoutingTable, RoutingConnectionPool
 from neo4j.v1.security import basic_auth
 from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS
 
@@ -58,87 +58,80 @@ def connector(address):
 class RoundRobinSetTestCase(TestCase):
 
     def test_should_repr_as_set(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        assert repr(rrs) == "{1, 2, 3}"
+        s = OrderedSet([1, 2, 3])
+        assert repr(s) == "{1, 2, 3}"
 
     def test_should_contain_element(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        assert 2 in rrs
+        s = OrderedSet([1, 2, 3])
+        assert 2 in s
 
     def test_should_not_contain_non_element(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        assert 4 not in rrs
+        s = OrderedSet([1, 2, 3])
+        assert 4 not in s
 
-    def test_should_be_able_to_get_next_if_empty(self):
-        rrs = RoundRobinSet([])
-        assert next(rrs) is None
+    def test_should_be_able_to_get_item_if_empty(self):
+        s = OrderedSet([])
+        with self.assertRaises(IndexError):
+            _ = s[0]
 
-    def test_should_be_able_to_get_next_repeatedly(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        assert next(rrs) == 1
-        assert next(rrs) == 2
-        assert next(rrs) == 3
-        assert next(rrs) == 1
-
-    def test_should_be_able_to_get_next_repeatedly_via_old_method(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        assert rrs.next() == 1
-        assert rrs.next() == 2
-        assert rrs.next() == 3
-        assert rrs.next() == 1
+    def test_should_be_able_to_get_items_by_index(self):
+        s = OrderedSet([1, 2, 3])
+        self.assertEqual(s[0], 1)
+        self.assertEqual(s[1], 2)
+        self.assertEqual(s[2], 3)
 
     def test_should_be_iterable(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        assert list(iter(rrs)) == [1, 2, 3]
+        s = OrderedSet([1, 2, 3])
+        assert list(iter(s)) == [1, 2, 3]
 
     def test_should_have_length(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        assert len(rrs) == 3
+        s = OrderedSet([1, 2, 3])
+        assert len(s) == 3
 
     def test_should_be_able_to_add_new(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        rrs.add(4)
-        assert list(rrs) == [1, 2, 3, 4]
+        s = OrderedSet([1, 2, 3])
+        s.add(4)
+        assert list(s) == [1, 2, 3, 4]
 
     def test_should_be_able_to_add_existing(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        rrs.add(2)
-        assert list(rrs) == [1, 2, 3]
+        s = OrderedSet([1, 2, 3])
+        s.add(2)
+        assert list(s) == [1, 2, 3]
 
     def test_should_be_able_to_clear(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        rrs.clear()
-        assert list(rrs) == []
+        s = OrderedSet([1, 2, 3])
+        s.clear()
+        assert list(s) == []
 
     def test_should_be_able_to_discard_existing(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        rrs.discard(2)
-        assert list(rrs) == [1, 3]
+        s = OrderedSet([1, 2, 3])
+        s.discard(2)
+        assert list(s) == [1, 3]
 
     def test_should_be_able_to_discard_non_existing(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        rrs.discard(4)
-        assert list(rrs) == [1, 2, 3]
+        s = OrderedSet([1, 2, 3])
+        s.discard(4)
+        assert list(s) == [1, 2, 3]
 
     def test_should_be_able_to_remove_existing(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        rrs.remove(2)
-        assert list(rrs) == [1, 3]
+        s = OrderedSet([1, 2, 3])
+        s.remove(2)
+        assert list(s) == [1, 3]
 
     def test_should_not_be_able_to_remove_non_existing(self):
-        rrs = RoundRobinSet([1, 2, 3])
+        s = OrderedSet([1, 2, 3])
         with self.assertRaises(ValueError):
-            rrs.remove(4)
+            s.remove(4)
 
     def test_should_be_able_to_update(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        rrs.update([3, 4, 5])
-        assert list(rrs) == [1, 2, 3, 4, 5]
+        s = OrderedSet([1, 2, 3])
+        s.update([3, 4, 5])
+        assert list(s) == [1, 2, 3, 4, 5]
 
     def test_should_be_able_to_replace(self):
-        rrs = RoundRobinSet([1, 2, 3])
-        rrs.replace([3, 4, 5])
-        assert list(rrs) == [3, 4, 5]
+        s = OrderedSet([1, 2, 3])
+        s.replace([3, 4, 5])
+        assert list(s) == [3, 4, 5]
 
 
 class RoutingTableConstructionTestCase(TestCase):

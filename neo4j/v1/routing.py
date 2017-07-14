@@ -39,7 +39,7 @@ LOAD_BALANCING_STRATEGY_ROUND_ROBIN = 1
 LOAD_BALANCING_STRATEGY_DEFAULT = LOAD_BALANCING_STRATEGY_LEAST_CONNECTED
 
 
-class RoundRobinSet(MutableSet):
+class OrderedSet(MutableSet):
 
     def __init__(self, elements=()):
         self._elements = OrderedDict.fromkeys(elements)
@@ -51,21 +51,14 @@ class RoundRobinSet(MutableSet):
     def __contains__(self, element):
         return element in self._elements
 
-    def __next__(self):
-        current = None
-        if self._elements:
-            if self._current is None:
-                self._current = 0
-            else:
-                self._current = (self._current + 1) % len(self._elements)
-            current = self.get(self._current)
-        return current
-
     def __iter__(self):
         return iter(self._elements)
 
     def __len__(self):
         return len(self._elements)
+
+    def __getitem__(self, index):
+        return list(self._elements.keys())[index]
 
     def add(self, element):
         self._elements[element] = None
@@ -78,9 +71,6 @@ class RoundRobinSet(MutableSet):
             del self._elements[element]
         except KeyError:
             pass
-
-    def next(self):
-        return self.__next__()
 
     def remove(self, element):
         try:
@@ -95,9 +85,6 @@ class RoundRobinSet(MutableSet):
         e = self._elements
         e.clear()
         e.update(OrderedDict.fromkeys(elements))
-
-    def get(self, index):
-        return list(self._elements.keys())[index]
 
 
 class RoutingTable(object):
@@ -135,9 +122,9 @@ class RoutingTable(object):
             return cls(routers, readers, writers, ttl)
 
     def __init__(self, routers=(), readers=(), writers=(), ttl=0):
-        self.routers = RoundRobinSet(routers)
-        self.readers = RoundRobinSet(readers)
-        self.writers = RoundRobinSet(writers)
+        self.routers = OrderedSet(routers)
+        self.readers = OrderedSet(readers)
+        self.writers = OrderedSet(writers)
         self.last_updated_time = self.timer()
         self.ttl = ttl
 
@@ -250,7 +237,7 @@ class LeastConnectedLoadBalancingStrategy(LoadBalancingStrategy):
             least_in_use_connections = maxsize
 
             while True:
-                address = addresses.get(index)
+                address = addresses[index]
                 in_use_connections = self._connection_pool.in_use_connection_count(address)
 
                 if in_use_connections < least_in_use_connections:
