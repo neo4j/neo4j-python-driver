@@ -20,7 +20,7 @@
 
 
 from neo4j.v1 import GraphDatabase, DirectDriver
-from neo4j.bolt import ServiceUnavailable
+from neo4j.exceptions import ServiceUnavailable
 
 from test.stub.tools import StubTestCase, StubCluster
 

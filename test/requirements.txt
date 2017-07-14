@@ -1,1 +1,8 @@
+boltkit
+coverage
+mock
+pytest
+pytest-benchmark
+pytest-cov
+teamcity-messages
 tox

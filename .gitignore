@@ -9,6 +9,7 @@ htmlcov
 .coverage
 .test
 .tox
+.cache
 
 docs/build
 dist

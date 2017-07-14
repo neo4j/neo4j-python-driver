@@ -18,13 +18,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from contextlib import contextmanager
+from io import StringIO
+import sys
+from unittest import TestCase
+
 from test.integration.tools import IntegrationTestCase
 
 
-## Python2 doesn't have contextlib.redirect_stdout()
-#  http://eli.thegreenplace.net/2015/redirecting-all-kinds-of-stdout-in-python/
-import sys
-from contextlib import contextmanager
+# Python2 doesn't have contextlib.redirect_stdout()
+#   http://eli.thegreenplace.net/2015/redirecting-all-kinds-of-stdout-in-python/
 @contextmanager
 def stdout_redirector(stream):
     old_stdout = sys.stdout
@@ -34,12 +38,6 @@ def stdout_redirector(stream):
     finally:
         sys.stdout = old_stdout
 
-def get_string_io():
-    if sys.version_info[0] < 3:
-        from StringIO import StringIO
-    else:
-        from io import StringIO
-    return StringIO()
 
 class ExamplesTest(IntegrationTestCase):
 
@@ -78,7 +76,7 @@ class ExamplesTest(IntegrationTestCase):
     def test_cypher_error_example(self):
         from test.examples.cypher_error_example import CypherErrorExample
 
-        f = get_string_io()
+        f = StringIO()
         with stdout_redirector(f):
             example = CypherErrorExample(self.bolt_uri, self.user, self.password)
             try:
@@ -102,7 +100,7 @@ class ExamplesTest(IntegrationTestCase):
     def test_hello_world_example(self):
         from test.examples.hello_world_example import HelloWorldExample
 
-        f = get_string_io()
+        f = StringIO()
         with stdout_redirector(f):
             example = HelloWorldExample(self.bolt_uri, self.user, self.password)
             example.print_greeting("hello, world")
@@ -185,6 +183,6 @@ class ServiceUnavailableTest(IntegrationTestCase):
         from test.examples.service_unavailable_example import ServiceUnavailableExample
 
         example = ServiceUnavailableExample(self.bolt_uri, self.user, self.password)
-        self.__class__._stop_server()
+        self._stop_server()
 
-        self.assertFalse(example.addItem())
+        self.assertFalse(example.add_item())

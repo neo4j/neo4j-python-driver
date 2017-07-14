@@ -275,7 +275,10 @@ class Session(object):
     def _disconnect(self, sync):
         if self._connection:
             if sync:
-                self._connection.sync()
+                try:
+                    self._connection.sync()
+                except ServiceUnavailable:
+                    pass
             if self._connection:
                 self._connection.in_use = False
                 self._connection = None

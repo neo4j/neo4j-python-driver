@@ -45,6 +45,7 @@ class ResultRetainExample(BaseApplication):
                "MERGE (com:Company {name: $company_name}) "
                "MERGE (emp)-[:WORKS_FOR]->(com)",
                person_name=person["name"], company_name=company_name)
+        return 1
 
     @staticmethod
     def match_person_nodes(tx):

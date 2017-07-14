@@ -21,7 +21,7 @@
 from test.examples.base_application import BaseApplication
 
 # tag::service-unavailable-import[]
-from neo4j.v1 import ServiceUnavailable
+from neo4j.exceptions import ServiceUnavailable
 # end::service-unavailable-import[]
 
 
@@ -31,10 +31,10 @@ class ServiceUnavailableExample(BaseApplication):
 
     # tag::service-unavailable[]
     def add_item(self):
-        with self._driver.session() as session:
-            try:
+        try:
+            with self._driver.session() as session:
                 session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
-                return True
-            except ServiceUnavailable:
-                return False
+            return True
+        except ServiceUnavailable:
+            return False
     # end::service-unavailable[]
