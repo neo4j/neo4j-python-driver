@@ -19,7 +19,9 @@
 # limitations under the License.
 
 
-from neo4j.v1 import GraphDatabase, RoutingDriver, READ_ACCESS, WRITE_ACCESS, SessionExpired
+from neo4j.v1 import GraphDatabase, READ_ACCESS, WRITE_ACCESS, SessionExpired, \
+    RoutingDriver, RoutingConnectionPool, LeastConnectedLoadBalancingStrategy, LOAD_BALANCING_STRATEGY_ROUND_ROBIN, \
+    RoundRobinLoadBalancingStrategy
 from neo4j.bolt import ProtocolError, ServiceUnavailable
 
 from test.stub.tools import StubTestCase, StubCluster
@@ -215,3 +217,27 @@ class RoutingDriverTestCase(StubTestCase):
             uri = "bolt+routing://127.0.0.1:9001"
             with self.assertRaises(ProtocolError):
                 GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False)
+
+    def test_default_load_balancing_strategy_is_least_connected(self):
+        with StubCluster({9001: "router.script"}):
+            uri = "bolt+routing://127.0.0.1:9001"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                self.assertIsInstance(driver, RoutingDriver)
+                self.assertIsInstance(driver._pool, RoutingConnectionPool)
+                self.assertIsInstance(driver._pool.load_balancing_strategy, LeastConnectedLoadBalancingStrategy)
+
+    def test_can_select_round_robin_load_balancing_strategy(self):
+        with StubCluster({9001: "router.script"}):
+            uri = "bolt+routing://127.0.0.1:9001"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False,
+                                      load_balancing_strategy=LOAD_BALANCING_STRATEGY_ROUND_ROBIN) as driver:
+                self.assertIsInstance(driver, RoutingDriver)
+                self.assertIsInstance(driver._pool, RoutingConnectionPool)
+                self.assertIsInstance(driver._pool.load_balancing_strategy, RoundRobinLoadBalancingStrategy)
+
+    def test_no_other_load_balancing_strategies_are_available(self):
+        with StubCluster({9001: "router.script"}):
+            uri = "bolt+routing://127.0.0.1:9001"
+            with self.assertRaises(ValueError):
+                with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False, load_balancing_strategy=-1):
+                    pass
