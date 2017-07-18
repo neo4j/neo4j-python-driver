@@ -348,6 +348,9 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
                 tx.run("RETURN 1")
 
     def test_last_run_statement_should_be_cleared_on_failure(self):
+        if not self.at_least_version(3, 2):
+            raise SkipTest("Statement reuse is not supported before server 3.2")
+
         with self.driver.session() as session:
             tx = session.begin_transaction()
             tx.run("RETURN 1").consume()
