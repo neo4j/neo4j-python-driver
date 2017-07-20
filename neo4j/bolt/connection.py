@@ -144,6 +144,9 @@ class Connection(object):
     #: Error class used for raising connection errors
     Error = ServiceUnavailable
 
+    #: The function to handle send and receive errors
+    error_handler = None
+
     _supports_statement_reuse = False
 
     _last_run_statement = None
@@ -237,6 +240,14 @@ class Connection(object):
         self.sync()
 
     def send(self):
+        try:
+            self._send()
+        except Exception as error:
+            if self.error_handler is not None:
+                self.error_handler(error)
+            raise error
+
+    def _send(self):
         """ Send all queued messages to the server.
         """
         data = self.output_buffer.view()
@@ -250,6 +261,14 @@ class Connection(object):
         self.output_buffer.clear()
 
     def fetch(self):
+        try:
+            return self._fetch()
+        except Exception as error:
+            if self.error_handler is not None:
+                self.error_handler(error)
+            raise error
+
+    def _fetch(self):
         """ Receive at least one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary messages fetched

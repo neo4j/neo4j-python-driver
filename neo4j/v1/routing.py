@@ -251,6 +251,9 @@ class RoutingConnectionPool(ConnectionPool):
     """ Connection pool with routing table.
     """
 
+    FAILURE_CODES = ("Neo.TransientError.General.DatabaseUnavailable")
+    WRITE_FAILURE_CODES = ("Neo.ClientError.Cluster.NotALeader", "Neo.ClientError.General.ForbiddenOnReadOnlyDatabase")
+
     def __init__(self, connector, initial_address, routing_context, *routers, **config):
         super(RoutingConnectionPool, self).__init__(connector)
         self.initial_address = initial_address
@@ -399,11 +402,20 @@ class RoutingConnectionPool(ConnectionPool):
             try:
                 connection = self.acquire_direct(address)  # should always be a resolved address
                 connection.Error = SessionExpired
+                connection.error_handler = lambda error: self._handle_connection_error(address, error)
             except ServiceUnavailable:
                 self.remove(address)
             else:
                 return connection
         raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode)
+
+    def _handle_connection_error(self, address, error):
+        """ Handle routing connection send or receive error.
+        """
+        if isinstance(error, (SessionExpired, ServiceUnavailable)) or error.code in self.FAILURE_CODES:
+            self.remove(address)
+        elif error.code in self.WRITE_FAILURE_CODES:
+            self._remove_writer(address)
 
     def remove(self, address):
         """ Remove an address from the connection pool, if present, closing
@@ -415,6 +427,11 @@ class RoutingConnectionPool(ConnectionPool):
         self.routing_table.readers.discard(address)
         self.routing_table.writers.discard(address)
         super(RoutingConnectionPool, self).remove(address)
+
+    def _remove_writer(self, address):
+        """ Remove a writer address from the routing table, if present.
+        """
+        self.routing_table.writers.discard(address)
 
 
 class RoutingDriver(Driver):

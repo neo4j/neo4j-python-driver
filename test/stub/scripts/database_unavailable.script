@@ -1,0 +1,12 @@
+!: AUTO INIT
+!: AUTO RESET
+!: AUTO PULL_ALL
+!: AUTO ACK_FAILURE
+!: AUTO RUN "ROLLBACK" {}
+!: AUTO RUN "BEGIN" {}
+!: AUTO RUN "COMMIT" {}
+
+C: RUN "RETURN 1" {}
+C: PULL_ALL
+S: FAILURE {"code": "Neo.TransientError.General.DatabaseUnavailable", "message": "Database is busy doing store copy"}
+S: IGNORED

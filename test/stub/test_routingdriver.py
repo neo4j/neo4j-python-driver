@@ -21,7 +21,7 @@
 
 from neo4j.v1 import GraphDatabase, READ_ACCESS, WRITE_ACCESS, SessionExpired, \
     RoutingDriver, RoutingConnectionPool, LeastConnectedLoadBalancingStrategy, LOAD_BALANCING_STRATEGY_ROUND_ROBIN, \
-    RoundRobinLoadBalancingStrategy
+    RoundRobinLoadBalancingStrategy, TransientError, ClientError
 from neo4j.bolt import ProtocolError, ServiceUnavailable
 
 from test.stub.tools import StubTestCase, StubCluster
@@ -236,8 +236,79 @@ class RoutingDriverTestCase(StubTestCase):
                 self.assertIsInstance(driver._pool.load_balancing_strategy, RoundRobinLoadBalancingStrategy)
 
     def test_no_other_load_balancing_strategies_are_available(self):
-        with StubCluster({9001: "router.script"}):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with self.assertRaises(ValueError):
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False, load_balancing_strategy=-1):
+                pass
+
+    def test_forgets_address_on_not_a_leader_error(self):
+        with StubCluster({9001: "router.script", 9006: "not_a_leader.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
-            with self.assertRaises(ValueError):
-                with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False, load_balancing_strategy=-1):
-                    pass
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                with driver.session(WRITE_ACCESS) as session:
+                    with self.assertRaises(ClientError):
+                        _ = session.run("CREATE (n {name:'Bob'})")
+
+                    pool = driver._pool
+                    table = pool.routing_table
+
+                    # address might still have connections in the pool, failed instance just can't serve writes
+                    assert ('127.0.0.1', 9006) in pool.connections
+                    assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
+                    assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
+                    # writer 127.0.0.1:9006 should've been forgotten because of an error
+                    assert len(table.writers) == 0
+
+    def test_forgets_address_on_forbidden_on_read_only_database_error(self):
+        with StubCluster({9001: "router.script", 9006: "forbidden_on_read_only_database.script"}):
+            uri = "bolt+routing://127.0.0.1:9001"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                with driver.session(WRITE_ACCESS) as session:
+                    with self.assertRaises(ClientError):
+                        _ = session.run("CREATE (n {name:'Bob'})")
+
+                    pool = driver._pool
+                    table = pool.routing_table
+
+                    # address might still have connections in the pool, failed instance just can't serve writes
+                    assert ('127.0.0.1', 9006) in pool.connections
+                    assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
+                    assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
+                    # writer 127.0.0.1:9006 should've been forgotten because of an error
+                    assert len(table.writers) == 0
+
+    def test_forgets_address_on_service_unavailable_error(self):
+        with StubCluster({9001: "router.script", 9004: "rude_reader.script"}):
+            uri = "bolt+routing://127.0.0.1:9001"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                with driver.session(READ_ACCESS) as session:
+                    with self.assertRaises(SessionExpired):
+                        _ = session.run("RETURN 1")
+
+                    pool = driver._pool
+                    table = pool.routing_table
+
+                    # address should not have connections in the pool, it has failed
+                    assert ('127.0.0.1', 9004) not in pool.connections
+                    assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
+                    # reader 127.0.0.1:9004 should've been forgotten because of an error
+                    assert table.readers == {('127.0.0.1', 9005)}
+                    assert table.writers == {('127.0.0.1', 9006)}
+
+    def test_forgets_address_on_database_unavailable_error(self):
+        with StubCluster({9001: "router.script", 9004: "database_unavailable.script"}):
+            uri = "bolt+routing://127.0.0.1:9001"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                with driver.session(READ_ACCESS) as session:
+                    with self.assertRaises(TransientError):
+                        _ = session.run("RETURN 1")
+
+                    pool = driver._pool
+                    table = pool.routing_table
+
+                    # address should not have connections in the pool, it has failed
+                    assert ('127.0.0.1', 9004) not in pool.connections
+                    assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
+                    # reader 127.0.0.1:9004 should've been forgotten because of an error
+                    assert table.readers == {('127.0.0.1', 9005)}
+                    assert table.writers == {('127.0.0.1', 9006)}
