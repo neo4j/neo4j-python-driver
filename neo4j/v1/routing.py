@@ -23,7 +23,7 @@ from threading import Lock
 from time import clock
 
 from neo4j.addressing import SocketAddress, resolve
-from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect
+from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect, ConnectionErrorHandler
 from neo4j.compat.collections import MutableSet, OrderedDict
 from neo4j.exceptions import CypherError, DatabaseUnavailableError, NotALeaderError, ForbiddenOnReadOnlyDatabaseError
 from neo4j.util import ServerVersion
@@ -31,7 +31,6 @@ from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS, fix_statement, fix_p
 from neo4j.v1.exceptions import SessionExpired
 from neo4j.v1.security import SecurityPlan
 from neo4j.v1.session import BoltSession
-
 
 LOAD_BALANCING_STRATEGY_LEAST_CONNECTED = 0
 LOAD_BALANCING_STRATEGY_ROUND_ROBIN = 1
@@ -247,15 +246,26 @@ class LeastConnectedLoadBalancingStrategy(LoadBalancingStrategy):
                 return least_connected_address
 
 
+class RoutingConnectionErrorHandler(ConnectionErrorHandler):
+    """ Handler for errors in routing driver connections.
+    """
+
+    def __init__(self, pool):
+        super(RoutingConnectionErrorHandler, self).__init__({
+            SessionExpired: lambda address: pool.remove(address),
+            ServiceUnavailable: lambda address: pool.remove(address),
+            DatabaseUnavailableError: lambda address: pool.remove(address),
+            NotALeaderError: lambda address: pool.remove_writer(address),
+            ForbiddenOnReadOnlyDatabaseError: lambda address: pool.remove_writer(address)
+        })
+
+
 class RoutingConnectionPool(ConnectionPool):
     """ Connection pool with routing table.
     """
 
-    CLUSTER_MEMBER_FAILURE_ERRORS = (ServiceUnavailable, SessionExpired, DatabaseUnavailableError)
-    WRITE_FAILURE_ERRORS = (NotALeaderError, ForbiddenOnReadOnlyDatabaseError)
-
     def __init__(self, connector, initial_address, routing_context, *routers, **config):
-        super(RoutingConnectionPool, self).__init__(connector)
+        super(RoutingConnectionPool, self).__init__(connector, RoutingConnectionErrorHandler(self))
         self.initial_address = initial_address
         self.routing_context = routing_context
         self.routing_table = RoutingTable(routers)
@@ -402,20 +412,11 @@ class RoutingConnectionPool(ConnectionPool):
             try:
                 connection = self.acquire_direct(address)  # should always be a resolved address
                 connection.Error = SessionExpired
-                connection.error_handler = lambda error: self._handle_connection_error(address, error)
             except ServiceUnavailable:
                 self.remove(address)
             else:
                 return connection
         raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode)
-
-    def _handle_connection_error(self, address, error):
-        """ Handle routing connection send or receive error.
-        """
-        if isinstance(error, self.CLUSTER_MEMBER_FAILURE_ERRORS):
-            self.remove(address)
-        elif isinstance(error, self.WRITE_FAILURE_ERRORS):
-            self._remove_writer(address)
 
     def remove(self, address):
         """ Remove an address from the connection pool, if present, closing
@@ -428,7 +429,7 @@ class RoutingConnectionPool(ConnectionPool):
         self.routing_table.writers.discard(address)
         super(RoutingConnectionPool, self).remove(address)
 
-    def _remove_writer(self, address):
+    def remove_writer(self, address):
         """ Remove a writer address from the routing table, if present.
         """
         self.routing_table.writers.discard(address)
@@ -450,8 +451,8 @@ class RoutingDriver(Driver):
             # scenario right now
             raise ValueError("TRUST_ON_FIRST_USE is not compatible with routing")
 
-        def connector(a):
-            return connect(a, security_plan.ssl_context, **config)
+        def connector(address, error_handler):
+            return connect(address, security_plan.ssl_context, error_handler, **config)
 
         pool = RoutingConnectionPool(connector, initial_address, routing_context, *resolve(initial_address), **config)
         try:

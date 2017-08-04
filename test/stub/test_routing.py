@@ -50,8 +50,8 @@ INVALID_ROUTING_RECORD = {
 UNREACHABLE_ADDRESS = ("127.0.0.1", 8080)
 
 
-def connector(address):
-    return connect(address, auth=basic_auth("neotest", "neotest"))
+def connector(address, error_handler):
+    return connect(address, error_handler=error_handler, auth=basic_auth("neotest", "neotest"))
 
 
 def RoutingPool(*routers):
