@@ -65,17 +65,9 @@ class CypherError(Exception):
             classification = "DatabaseError"
             category = "General"
             title = "UnknownError"
-        if classification == "ClientError":
-            try:
-                error_class = client_errors[code]
-            except KeyError:
-                error_class = ClientError
-        elif classification == "DatabaseError":
-            error_class = DatabaseError
-        elif classification == "TransientError":
-            error_class = TransientError
-        else:
-            error_class = cls
+
+        error_class = cls._extract_error_class(classification, code)
+
         inst = error_class(message)
         inst.message = message
         inst.code = code
@@ -84,6 +76,26 @@ class CypherError(Exception):
         inst.title = title
         inst.metadata = metadata
         return inst
+
+    @classmethod
+    def _extract_error_class(cls, classification, code):
+        if classification == "ClientError":
+            try:
+                return client_errors[code]
+            except KeyError:
+                return ClientError
+
+        elif classification == "TransientError":
+            try:
+                return transient_errors[code]
+            except KeyError:
+                return TransientError
+
+        elif classification == "DatabaseError":
+            return DatabaseError
+
+        else:
+            return cls
 
 
 class ClientError(CypherError):
@@ -98,6 +110,11 @@ class DatabaseError(CypherError):
 
 class TransientError(CypherError):
     """ The database cannot service the request right now, retrying later might yield a successful outcome.
+    """
+
+
+class DatabaseUnavailableError(TransientError):
+    """
     """
 
 
@@ -116,7 +133,17 @@ class CypherTypeError(ClientError):
     """
 
 
+class NotALeaderError(ClientError):
+    """
+    """
+
+
 class Forbidden(ClientError, SecurityError):
+    """
+    """
+
+
+class ForbiddenOnReadOnlyDatabaseError(Forbidden):
     """
     """
 
@@ -144,7 +171,7 @@ client_errors = {
     "Neo.ClientError.Statement.TypeError": CypherTypeError,
 
     # Forbidden
-    "Neo.ClientError.General.ForbiddenOnReadOnlyDatabase": Forbidden,
+    "Neo.ClientError.General.ForbiddenOnReadOnlyDatabase": ForbiddenOnReadOnlyDatabaseError,
     "Neo.ClientError.General.ReadOnly": Forbidden,
     "Neo.ClientError.Schema.ForbiddenOnConstraintIndex": Forbidden,
     "Neo.ClientError.Schema.IndexBelongsToConstraint": Forbidden,
@@ -155,4 +182,12 @@ client_errors = {
     "Neo.ClientError.Security.AuthorizationFailed": AuthError,
     "Neo.ClientError.Security.Unauthorized": AuthError,
 
+    # NotALeaderError
+    "Neo.ClientError.Cluster.NotALeader": NotALeaderError
+}
+
+transient_errors = {
+
+    # DatabaseUnavailableError
+    "Neo.TransientError.General.DatabaseUnavailable": DatabaseUnavailableError
 }

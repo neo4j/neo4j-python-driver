@@ -25,7 +25,7 @@ from time import clock
 from neo4j.addressing import SocketAddress, resolve
 from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect
 from neo4j.compat.collections import MutableSet, OrderedDict
-from neo4j.exceptions import CypherError
+from neo4j.exceptions import CypherError, DatabaseUnavailableError, NotALeaderError, ForbiddenOnReadOnlyDatabaseError
 from neo4j.util import ServerVersion
 from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS, fix_statement, fix_parameters
 from neo4j.v1.exceptions import SessionExpired
@@ -251,8 +251,8 @@ class RoutingConnectionPool(ConnectionPool):
     """ Connection pool with routing table.
     """
 
-    FAILURE_CODES = ("Neo.TransientError.General.DatabaseUnavailable")
-    WRITE_FAILURE_CODES = ("Neo.ClientError.Cluster.NotALeader", "Neo.ClientError.General.ForbiddenOnReadOnlyDatabase")
+    CLUSTER_MEMBER_FAILURE_ERRORS = (ServiceUnavailable, SessionExpired, DatabaseUnavailableError)
+    WRITE_FAILURE_ERRORS = (NotALeaderError, ForbiddenOnReadOnlyDatabaseError)
 
     def __init__(self, connector, initial_address, routing_context, *routers, **config):
         super(RoutingConnectionPool, self).__init__(connector)
@@ -412,9 +412,9 @@ class RoutingConnectionPool(ConnectionPool):
     def _handle_connection_error(self, address, error):
         """ Handle routing connection send or receive error.
         """
-        if isinstance(error, (SessionExpired, ServiceUnavailable)) or error.code in self.FAILURE_CODES:
+        if isinstance(error, self.CLUSTER_MEMBER_FAILURE_ERRORS):
             self.remove(address)
-        elif error.code in self.WRITE_FAILURE_CODES:
+        elif isinstance(error, self.WRITE_FAILURE_ERRORS):
             self._remove_writer(address)
 
     def remove(self, address):
