@@ -277,7 +277,7 @@ class Session(object):
             if sync:
                 try:
                     self._connection.sync()
-                except ServiceUnavailable:
+                except (SessionError, ServiceUnavailable):
                     pass
             if self._connection:
                 self._connection.in_use = False

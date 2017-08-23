@@ -1,0 +1,7 @@
+!: AUTO INIT
+!: AUTO RESET
+
+C: RUN "RETURN 1" {}
+   PULL_ALL
+S: <EXIT>
+

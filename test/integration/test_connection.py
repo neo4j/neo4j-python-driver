@@ -21,7 +21,7 @@
 
 from socket import create_connection
 
-from neo4j.v1 import ConnectionPool, ServiceUnavailable
+from neo4j.v1 import ConnectionPool, ServiceUnavailable, DirectConnectionErrorHandler
 
 from test.integration.tools import IntegrationTestCase
 
@@ -45,10 +45,14 @@ class QuickConnection(object):
         return False
 
 
+def connector(address, _):
+    return QuickConnection(create_connection(address))
+
+
 class ConnectionPoolTestCase(IntegrationTestCase):
 
     def setUp(self):
-        self.pool = ConnectionPool(lambda a: QuickConnection(create_connection(a)))
+        self.pool = ConnectionPool(connector, DirectConnectionErrorHandler())
 
     def tearDown(self):
         self.pool.close()
@@ -104,7 +108,7 @@ class ConnectionPoolTestCase(IntegrationTestCase):
         self.assert_pool_size(address, 0, 1)
 
     def test_cannot_acquire_after_close(self):
-        with ConnectionPool(lambda a: QuickConnection(create_connection(a))) as pool:
+        with ConnectionPool(lambda a: QuickConnection(create_connection(a)), DirectConnectionErrorHandler()) as pool:
             pool.close()
             with self.assertRaises(ServiceUnavailable):
                 _ = pool.acquire_direct("X")

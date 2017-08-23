@@ -52,8 +52,8 @@ INVALID_ROUTING_RECORD = {
 }
 
 
-def connector(address):
-    return connect(address, auth=basic_auth("neotest", "neotest"))
+def connector(address, error_handler):
+    return connect(address, error_handler=error_handler, auth=basic_auth("neotest", "neotest"))
 
 
 class RoundRobinSetTestCase(TestCase):

@@ -119,6 +119,26 @@ class ServerInfo(object):
         return self.version_info() >= (3, 2)
 
 
+class ConnectionErrorHandler(object):
+    """ A handler for send and receive errors.
+    """
+
+    def __init__(self, handlers_by_error_class=None):
+        if handlers_by_error_class is None:
+            handlers_by_error_class = {}
+
+        self.handlers_by_error_class = handlers_by_error_class
+        self.known_errors = tuple(handlers_by_error_class.keys())
+
+    def handle(self, error, address):
+        try:
+            error_class = error.__class__
+            handler = self.handlers_by_error_class[error_class]
+            handler(address)
+        except KeyError:
+            pass
+
+
 class Connection(object):
     """ Server connection for Bolt protocol v1.
 
@@ -148,8 +168,10 @@ class Connection(object):
 
     _last_run_statement = None
 
-    def __init__(self, sock, **config):
+    def __init__(self, address, sock, error_handler, **config):
+        self.address = address
         self.socket = sock
+        self.error_handler = error_handler
         self.server = ServerInfo(SocketAddress.from_socket(sock))
         self.input_buffer = ChunkedInputBuffer()
         self.output_buffer = ChunkedOutputBuffer()
@@ -237,6 +259,13 @@ class Connection(object):
         self.sync()
 
     def send(self):
+        try:
+            self._send()
+        except self.error_handler.known_errors as error:
+            self.error_handler.handle(error, self.address)
+            raise error
+
+    def _send(self):
         """ Send all queued messages to the server.
         """
         data = self.output_buffer.view()
@@ -250,6 +279,13 @@ class Connection(object):
         self.output_buffer.clear()
 
     def fetch(self):
+        try:
+            return self._fetch()
+        except self.error_handler.known_errors as error:
+            self.error_handler.handle(error, self.address)
+            raise error
+
+    def _fetch(self):
         """ Receive at least one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary messages fetched
@@ -360,8 +396,9 @@ class ConnectionPool(object):
 
     _closed = False
 
-    def __init__(self, connector):
+    def __init__(self, connector, connection_error_handler):
         self.connector = connector
+        self.connection_error_handler = connection_error_handler
         self.connections = {}
         self.lock = RLock()
 
@@ -395,7 +432,7 @@ class ConnectionPool(object):
                     connection.in_use = True
                     return connection
             try:
-                connection = self.connector(address)
+                connection = self.connector(address, self.connection_error_handler)
             except ServiceUnavailable:
                 self.remove(address)
                 raise
@@ -457,7 +494,7 @@ class ConnectionPool(object):
             return self._closed
 
 
-def connect(address, ssl_context=None, **config):
+def connect(address, ssl_context=None, error_handler=None, **config):
     """ Connect and perform a handshake and return a valid Connection object, assuming
     a protocol version can be agreed.
     """
@@ -563,7 +600,8 @@ def connect(address, ssl_context=None, **config):
         s.shutdown(SHUT_RDWR)
         s.close()
     elif agreed_version == 1:
-        return Connection(s, der_encoded_server_certificate=der_encoded_server_certificate, **config)
+        return Connection(address, s, der_encoded_server_certificate=der_encoded_server_certificate,
+                          error_handler=error_handler, **config)
     elif agreed_version == 0x48545450:
         log_error("S: [CLOSE]")
         s.close()

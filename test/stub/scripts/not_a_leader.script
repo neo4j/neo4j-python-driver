@@ -1,0 +1,12 @@
+!: AUTO INIT
+!: AUTO RESET
+!: AUTO PULL_ALL
+!: AUTO ACK_FAILURE
+!: AUTO RUN "ROLLBACK" {}
+!: AUTO RUN "BEGIN" {}
+!: AUTO RUN "COMMIT" {}
+
+C: RUN "CREATE (n {name:'Bob'})" {}
+C: PULL_ALL
+S: FAILURE {"code": "Neo.ClientError.Cluster.NotALeader", "message": "Leader switched has happened"}
+S: IGNORED

@@ -23,15 +23,14 @@ from threading import Lock
 from time import clock
 
 from neo4j.addressing import SocketAddress, resolve
-from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect
+from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect, ConnectionErrorHandler
 from neo4j.compat.collections import MutableSet, OrderedDict
-from neo4j.exceptions import CypherError
+from neo4j.exceptions import CypherError, DatabaseUnavailableError, NotALeaderError, ForbiddenOnReadOnlyDatabaseError
 from neo4j.util import ServerVersion
 from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS, fix_statement, fix_parameters
 from neo4j.v1.exceptions import SessionExpired
 from neo4j.v1.security import SecurityPlan
 from neo4j.v1.session import BoltSession
-
 
 LOAD_BALANCING_STRATEGY_LEAST_CONNECTED = 0
 LOAD_BALANCING_STRATEGY_ROUND_ROBIN = 1
@@ -247,12 +246,26 @@ class LeastConnectedLoadBalancingStrategy(LoadBalancingStrategy):
                 return least_connected_address
 
 
+class RoutingConnectionErrorHandler(ConnectionErrorHandler):
+    """ Handler for errors in routing driver connections.
+    """
+
+    def __init__(self, pool):
+        super(RoutingConnectionErrorHandler, self).__init__({
+            SessionExpired: lambda address: pool.remove(address),
+            ServiceUnavailable: lambda address: pool.remove(address),
+            DatabaseUnavailableError: lambda address: pool.remove(address),
+            NotALeaderError: lambda address: pool.remove_writer(address),
+            ForbiddenOnReadOnlyDatabaseError: lambda address: pool.remove_writer(address)
+        })
+
+
 class RoutingConnectionPool(ConnectionPool):
     """ Connection pool with routing table.
     """
 
     def __init__(self, connector, initial_address, routing_context, *routers, **config):
-        super(RoutingConnectionPool, self).__init__(connector)
+        super(RoutingConnectionPool, self).__init__(connector, RoutingConnectionErrorHandler(self))
         self.initial_address = initial_address
         self.routing_context = routing_context
         self.routing_table = RoutingTable(routers)
@@ -416,6 +429,11 @@ class RoutingConnectionPool(ConnectionPool):
         self.routing_table.writers.discard(address)
         super(RoutingConnectionPool, self).remove(address)
 
+    def remove_writer(self, address):
+        """ Remove a writer address from the routing table, if present.
+        """
+        self.routing_table.writers.discard(address)
+
 
 class RoutingDriver(Driver):
     """ A :class:`.RoutingDriver` is created from a ``bolt+routing`` URI. The
@@ -433,8 +451,8 @@ class RoutingDriver(Driver):
             # scenario right now
             raise ValueError("TRUST_ON_FIRST_USE is not compatible with routing")
 
-        def connector(a):
-            return connect(a, security_plan.ssl_context, **config)
+        def connector(address, error_handler):
+            return connect(address, security_plan.ssl_context, error_handler, **config)
 
         pool = RoutingConnectionPool(connector, initial_address, routing_context, *resolve(initial_address), **config)
         try:
