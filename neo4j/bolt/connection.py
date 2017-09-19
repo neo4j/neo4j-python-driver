@@ -42,11 +42,14 @@ from neo4j.exceptions import ProtocolError, SecurityError, ServiceUnavailable
 from neo4j.meta import version
 from neo4j.packstream import Packer, Unpacker
 from neo4j.util import import_best as _import_best
+from time import clock
 
 ChunkedInputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedInputBuffer
 ChunkedOutputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedOutputBuffer
 
 
+INFINITE_CONNECTION_LIFETIME = -1
+DEFAULT_MAX_CONNECTION_LIFETIME = INFINITE_CONNECTION_LIFETIME
 DEFAULT_CONNECTION_TIMEOUT = 5.0
 DEFAULT_PORT = 7687
 DEFAULT_USER_AGENT = "neo4j-python/%s" % version
@@ -178,6 +181,8 @@ class Connection(object):
         self.packer = Packer(self.output_buffer)
         self.unpacker = Unpacker()
         self.responses = deque()
+        self._max_connection_lifetime = config.get("max_connection_lifetime", DEFAULT_MAX_CONNECTION_LIFETIME)
+        self._creation_timestamp = clock()
 
         # Determine the user agent and ensure it is a Unicode value
         user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
@@ -201,6 +206,7 @@ class Connection(object):
         # Pick up the server certificate, if any
         self.der_encoded_server_certificate = config.get("der_encoded_server_certificate")
 
+    def Init(self):
         response = InitResponse(self)
         self.append(INIT, (self.user_agent, self.auth_dict), response=response)
         self.sync()
@@ -360,6 +366,9 @@ class Connection(object):
                 more = False
         return details, summary_signature, summary_metadata
 
+    def timedout(self):
+        return 0 <= self._max_connection_lifetime <= clock() - self._creation_timestamp
+
     def sync(self):
         """ Send and fetch all outstanding messages.
 
@@ -425,7 +434,7 @@ class ConnectionPool(object):
             except KeyError:
                 connections = self.connections[address] = deque()
             for connection in list(connections):
-                if connection.closed() or connection.defunct():
+                if connection.closed() or connection.defunct() or connection.timedout():
                     connections.remove(connection)
                     continue
                 if not connection.in_use:
@@ -600,8 +609,10 @@ def connect(address, ssl_context=None, error_handler=None, **config):
         s.shutdown(SHUT_RDWR)
         s.close()
     elif agreed_version == 1:
-        return Connection(address, s, der_encoded_server_certificate=der_encoded_server_certificate,
+        connection = Connection(address, s, der_encoded_server_certificate=der_encoded_server_certificate,
                           error_handler=error_handler, **config)
+        connection.Init()
+        return connection
     elif agreed_version == 0x48545450:
         log_error("S: [CLOSE]")
         s.close()

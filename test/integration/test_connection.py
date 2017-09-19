@@ -22,7 +22,6 @@
 from socket import create_connection
 
 from neo4j.v1 import ConnectionPool, ServiceUnavailable, DirectConnectionErrorHandler
-
 from test.integration.tools import IntegrationTestCase
 
 
@@ -42,6 +41,9 @@ class QuickConnection(object):
         return False
 
     def defunct(self):
+        return False
+
+    def timedout(self):
         return False
 
 
