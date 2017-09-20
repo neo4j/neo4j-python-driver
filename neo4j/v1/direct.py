@@ -37,8 +37,8 @@ class DirectConnectionErrorHandler(ConnectionErrorHandler):
 
 class DirectConnectionPool(ConnectionPool):
 
-    def __init__(self, connector, address):
-        super(DirectConnectionPool, self).__init__(connector, DirectConnectionErrorHandler())
+    def __init__(self, connector, address, **config):
+        super(DirectConnectionPool, self).__init__(connector, DirectConnectionErrorHandler(), **config)
         self.address = address
 
     def acquire(self, access_mode=None):
@@ -73,7 +73,7 @@ class DirectDriver(Driver):
         def connector(address, error_handler):
             return connect(address, security_plan.ssl_context, error_handler, **config)
 
-        pool = DirectConnectionPool(connector, self.address)
+        pool = DirectConnectionPool(connector, self.address, **config)
         pool.release(pool.acquire())
         Driver.__init__(self, pool, **config)
 

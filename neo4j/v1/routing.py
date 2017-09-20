@@ -34,7 +34,7 @@ from neo4j.v1.session import BoltSession
 
 LOAD_BALANCING_STRATEGY_LEAST_CONNECTED = 0
 LOAD_BALANCING_STRATEGY_ROUND_ROBIN = 1
-LOAD_BALANCING_STRATEGY_DEFAULT = LOAD_BALANCING_STRATEGY_LEAST_CONNECTED
+DEFAULT_LOAD_BALANCING_STRATEGY = LOAD_BALANCING_STRATEGY_LEAST_CONNECTED
 
 
 class OrderedSet(MutableSet):
@@ -166,7 +166,7 @@ class LoadBalancingStrategy(object):
 
     @classmethod
     def build(cls, connection_pool, **config):
-        load_balancing_strategy = config.get("load_balancing_strategy", LOAD_BALANCING_STRATEGY_DEFAULT)
+        load_balancing_strategy = config.get("load_balancing_strategy", DEFAULT_LOAD_BALANCING_STRATEGY)
         if load_balancing_strategy == LOAD_BALANCING_STRATEGY_LEAST_CONNECTED:
             return LeastConnectedLoadBalancingStrategy(connection_pool)
         elif load_balancing_strategy == LOAD_BALANCING_STRATEGY_ROUND_ROBIN:
@@ -265,7 +265,7 @@ class RoutingConnectionPool(ConnectionPool):
     """
 
     def __init__(self, connector, initial_address, routing_context, *routers, **config):
-        super(RoutingConnectionPool, self).__init__(connector, RoutingConnectionErrorHandler(self))
+        super(RoutingConnectionPool, self).__init__(connector, RoutingConnectionErrorHandler(self), **config)
         self.initial_address = initial_address
         self.routing_context = routing_context
         self.routing_table = RoutingTable(routers)

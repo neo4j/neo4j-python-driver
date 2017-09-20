@@ -32,8 +32,9 @@ from collections import deque
 from select import select
 from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, error as SocketError, timeout as SocketTimeout, AF_INET, AF_INET6
 from struct import pack as struct_pack, unpack as struct_unpack
-from threading import RLock
+from threading import RLock, Condition
 
+from neo4j.v1 import ClientError
 from neo4j.addressing import SocketAddress, is_ip_address
 from neo4j.bolt.cert import KNOWN_HOSTS
 from neo4j.bolt.response import InitResponse, AckFailureResponse, ResetResponse
@@ -48,9 +49,11 @@ ChunkedInputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedInpu
 ChunkedOutputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedOutputBuffer
 
 
-INFINITE_CONNECTION_LIFETIME = -1
-DEFAULT_MAX_CONNECTION_LIFETIME = INFINITE_CONNECTION_LIFETIME
+INFINITE = -1
+DEFAULT_MAX_CONNECTION_LIFETIME = INFINITE
+DEFAULT_MAX_CONNECTION_POOL_SIZE = INFINITE
 DEFAULT_CONNECTION_TIMEOUT = 5.0
+DEFAULT_CONNECTION_ACQUISITION_TIMEOUT = 60
 DEFAULT_PORT = 7687
 DEFAULT_USER_AGENT = "neo4j-python/%s" % version
 
@@ -405,11 +408,14 @@ class ConnectionPool(object):
 
     _closed = False
 
-    def __init__(self, connector, connection_error_handler):
+    def __init__(self, connector, connection_error_handler, **config):
         self.connector = connector
         self.connection_error_handler = connection_error_handler
         self.connections = {}
         self.lock = RLock()
+        self.cond = Condition(self.lock)
+        self._max_connection_pool_size = config.get("max_connection_pool_size", DEFAULT_MAX_CONNECTION_POOL_SIZE)
+        self._connection_acquisition_timeout = config.get("connection_acquisition_timeout", DEFAULT_CONNECTION_ACQUISITION_TIMEOUT)
 
     def __enter__(self):
         return self
@@ -433,23 +439,42 @@ class ConnectionPool(object):
                 connections = self.connections[address]
             except KeyError:
                 connections = self.connections[address] = deque()
-            for connection in list(connections):
-                if connection.closed() or connection.defunct() or connection.timedout():
-                    connections.remove(connection)
-                    continue
-                if not connection.in_use:
-                    connection.in_use = True
-                    return connection
-            try:
-                connection = self.connector(address, self.connection_error_handler)
-            except ServiceUnavailable:
-                self.remove(address)
-                raise
-            else:
-                connection.pool = self
-                connection.in_use = True
-                connections.append(connection)
-                return connection
+
+            connection_acquisition_start_timestamp = clock()
+            while True:
+                # try to find a free connection in pool
+                for connection in list(connections):
+                    if connection.closed() or connection.defunct() or connection.timedout():
+                        connections.remove(connection)
+                        continue
+                    if not connection.in_use:
+                        connection.in_use = True
+                        return connection
+                # all connections in pool are in-use
+                can_create_new_connection = self._max_connection_pool_size == INFINITE or len(connections) < self._max_connection_pool_size
+                if can_create_new_connection:
+                    try:
+                        connection = self.connector(address, self.connection_error_handler)
+                    except ServiceUnavailable:
+                        self.remove(address)
+                        raise
+                    else:
+                        connection.pool = self
+                        connection.in_use = True
+                        connections.append(connection)
+                        return connection
+
+                # failed to obtain a connection from pool because the pool is full and no free connection in the pool
+                span_timeout = self._connection_acquisition_timeout - (clock() - connection_acquisition_start_timestamp)
+                if span_timeout > 0:
+                    self.cond.wait(span_timeout)
+                    # if timed out, then we throw error. This time computation is needed, as with python 2.7, we cannot
+                    # tell if the condition is notified or timed out when we come to this line
+                    if self._connection_acquisition_timeout <= (clock() - connection_acquisition_start_timestamp):
+                        raise ClientError("Failed to obtain a connection from pool within {!r}s".format(
+                            self._connection_acquisition_timeout))
+                else:
+                    raise ClientError("Failed to obtain a connection from pool within {!r}s".format(self._connection_acquisition_timeout))
 
     def acquire(self, access_mode=None):
         """ Acquire a connection to a server that can satisfy a set of parameters.
@@ -463,6 +488,7 @@ class ConnectionPool(object):
         """
         with self.lock:
             connection.in_use = False
+            self.cond.notify_all()
 
     def in_use_connection_count(self, address):
         """ Count the number of connections currently in use to a given
