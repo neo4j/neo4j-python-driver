@@ -20,7 +20,7 @@
 
 
 from neo4j.addressing import SocketAddress, resolve
-from neo4j.bolt import DEFAULT_PORT, ConnectionPool, connect, ConnectionErrorHandler
+from neo4j.bolt.connection import DEFAULT_PORT, ConnectionPool, connect, ConnectionErrorHandler
 from neo4j.exceptions import ServiceUnavailable
 from neo4j.v1.api import Driver
 from neo4j.v1.security import SecurityPlan

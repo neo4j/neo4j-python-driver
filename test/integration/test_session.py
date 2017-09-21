@@ -24,7 +24,8 @@ from uuid import uuid4
 from neo4j.v1 import \
     READ_ACCESS, WRITE_ACCESS, \
     CypherError, SessionError, TransactionError, \
-    Node, Relationship, Path, CypherSyntaxError
+    Node, Relationship, Path
+from neo4j.exceptions import CypherSyntaxError
 
 from test.integration.tools import DirectIntegrationTestCase
 

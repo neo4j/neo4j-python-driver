@@ -18,12 +18,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
-import time
 from unittest import TestCase
 from threading import Thread, Event
-from neo4j.v1 import DirectConnectionErrorHandler, ClientError, ServiceUnavailable
+from neo4j.v1 import DirectConnectionErrorHandler, ServiceUnavailable
 from neo4j.bolt import Connection, ConnectionPool
-
+from neo4j.exceptions import ClientError
 
 class FakeSocket(object):
     def __init__(self, address):
@@ -164,9 +163,8 @@ class ConnectionPoolTestCase(TestCase):
             address = ("127.0.0.1", 7687)
             pool.acquire_direct(address)
             self.assertEqual(pool.in_use_connection_count(address), 1)
-            with self.assertRaises(ClientError) as context:
+            with self.assertRaises(ClientError):
                 pool.acquire_direct(address)
-            self.assertTrue('Failed to obtain a connection from pool within 0s' in context.exception)
             self.assertEqual(pool.in_use_connection_count(address), 1)
 
     def test_multithread(self):

@@ -34,7 +34,8 @@ except ImportError:
 
 from boltkit.controller import WindowsController, UnixController
 
-from neo4j.v1 import GraphDatabase, AuthError
+from neo4j.v1 import GraphDatabase
+from neo4j.exceptions import AuthError
 from neo4j.util import ServerVersion
 
 from test.env import NEO4J_SERVER_PACKAGE, NEO4J_USER, NEO4J_PASSWORD

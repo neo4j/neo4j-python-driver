@@ -19,8 +19,8 @@
 # limitations under the License.
 
 
-from neo4j.v1 import GraphDatabase, ProtocolError, ServiceUnavailable
-
+from neo4j.v1 import GraphDatabase, ServiceUnavailable
+from neo4j.exceptions import ProtocolError
 from test.integration.tools import IntegrationTestCase
 
 

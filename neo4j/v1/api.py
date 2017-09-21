@@ -25,8 +25,8 @@ from threading import RLock
 from time import time, sleep
 from warnings import warn
 
-from neo4j.bolt import ProtocolError, ServiceUnavailable
-from neo4j.compat import unicode, urlparse
+from neo4j.exceptions import ProtocolError, ServiceUnavailable
+from neo4j.compat import urlparse
 from neo4j.exceptions import CypherError, TransientError
 
 from .exceptions import DriverError, SessionError, SessionExpired, TransactionError

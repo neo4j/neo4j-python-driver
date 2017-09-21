@@ -34,12 +34,11 @@ from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, error as SocketE
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock, Condition
 
-from neo4j.v1 import ClientError
 from neo4j.addressing import SocketAddress, is_ip_address
 from neo4j.bolt.cert import KNOWN_HOSTS
 from neo4j.bolt.response import InitResponse, AckFailureResponse, ResetResponse
 from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
-from neo4j.exceptions import ProtocolError, SecurityError, ServiceUnavailable
+from neo4j.exceptions import ClientError, ProtocolError, SecurityError, ServiceUnavailable
 from neo4j.meta import version
 from neo4j.packstream import Packer, Unpacker
 from neo4j.util import import_best as _import_best

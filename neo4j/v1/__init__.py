@@ -18,9 +18,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from neo4j.exceptions import *
-
 from .api import *
 from .direct import *
 from .exceptions import *
