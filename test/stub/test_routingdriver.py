@@ -21,7 +21,8 @@
 
 from neo4j.v1 import GraphDatabase, READ_ACCESS, WRITE_ACCESS, SessionExpired, \
     RoutingDriver, RoutingConnectionPool, LeastConnectedLoadBalancingStrategy, LOAD_BALANCING_STRATEGY_ROUND_ROBIN, \
-    RoundRobinLoadBalancingStrategy, TransientError, ClientError
+    RoundRobinLoadBalancingStrategy, TransientError
+from neo4j.exceptions import ClientError
 from neo4j.bolt import ProtocolError, ServiceUnavailable
 
 from test.stub.tools import StubTestCase, StubCluster

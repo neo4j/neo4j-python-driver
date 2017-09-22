@@ -17,13 +17,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import print_function
+from unittest import TestCase
+from threading import Thread, Event
+from neo4j.v1 import DirectConnectionErrorHandler, ServiceUnavailable
+from neo4j.bolt import Connection, ConnectionPool
+from neo4j.exceptions import ClientError
 
+class FakeSocket(object):
+    def __init__(self, address):
+        self.address = address
 
-from socket import create_connection
+    def getpeername(self):
+        return self.address
 
-from neo4j.v1 import ConnectionPool, ServiceUnavailable, DirectConnectionErrorHandler
+    def sendall(self, data):
+        return
 
-from test.integration.tools import IntegrationTestCase
+    def close(self):
+        return
 
 
 class QuickConnection(object):
@@ -44,22 +56,46 @@ class QuickConnection(object):
     def defunct(self):
         return False
 
+    def timedout(self):
+        return False
+
 
 def connector(address, _):
-    return QuickConnection(create_connection(address))
+    return QuickConnection(FakeSocket(address))
 
 
-class ConnectionPoolTestCase(IntegrationTestCase):
+class ConnectionTestCase(TestCase):
 
+    def test_conn_timedout(self):
+        address = ("127.0.0.1", 7687)
+        connection = Connection(address, FakeSocket(address), DirectConnectionErrorHandler(), max_connection_lifetime=0)
+        self.assertEqual(connection.timedout(), True)
+
+    def test_conn_not_timedout_if_not_enabled(self):
+        address = ("127.0.0.1", 7687)
+        connection = Connection(address, FakeSocket(address), DirectConnectionErrorHandler(),
+                                max_connection_lifetime=-1)
+        self.assertEqual(connection.timedout(), False)
+
+    def test_conn_not_timedout(self):
+        address = ("127.0.0.1", 7687)
+        connection = Connection(address, FakeSocket(address), DirectConnectionErrorHandler(),
+                                max_connection_lifetime=999999999)
+        self.assertEqual(connection.timedout(), False)
+
+
+class ConnectionPoolTestCase(TestCase):
     def setUp(self):
         self.pool = ConnectionPool(connector, DirectConnectionErrorHandler())
 
     def tearDown(self):
         self.pool.close()
 
-    def assert_pool_size(self, address, expected_active, expected_inactive):
+    def assert_pool_size(self, address, expected_active, expected_inactive, pool=None):
+        if pool is None:
+            pool = self.pool
         try:
-            connections = self.pool.connections[address]
+            connections = pool.connections[address]
         except KeyError:
             assert 0 == expected_active
             assert 0 == expected_inactive
@@ -108,7 +144,7 @@ class ConnectionPoolTestCase(IntegrationTestCase):
         self.assert_pool_size(address, 0, 1)
 
     def test_cannot_acquire_after_close(self):
-        with ConnectionPool(lambda a: QuickConnection(create_connection(a)), DirectConnectionErrorHandler()) as pool:
+        with ConnectionPool(lambda a: QuickConnection(FakeSocket(a)), DirectConnectionErrorHandler()) as pool:
             pool.close()
             with self.assertRaises(ServiceUnavailable):
                 _ = pool.acquire_direct("X")
@@ -120,3 +156,43 @@ class ConnectionPoolTestCase(IntegrationTestCase):
         self.assertEqual(self.pool.in_use_connection_count(address), 1)
         self.pool.release(connection)
         self.assertEqual(self.pool.in_use_connection_count(address), 0)
+
+    def test_max_conn_pool_size(self):
+        with ConnectionPool(connector, DirectConnectionErrorHandler,
+                            max_connection_pool_size=1, connection_acquisition_timeout=0) as pool:
+            address = ("127.0.0.1", 7687)
+            pool.acquire_direct(address)
+            self.assertEqual(pool.in_use_connection_count(address), 1)
+            with self.assertRaises(ClientError):
+                pool.acquire_direct(address)
+            self.assertEqual(pool.in_use_connection_count(address), 1)
+
+    def test_multithread(self):
+        with ConnectionPool(connector, DirectConnectionErrorHandler,
+                            max_connection_pool_size=5, connection_acquisition_timeout=10) as pool:
+            address = ("127.0.0.1", 7687)
+            releasing_event = Event()
+
+            # We start 10 threads to compete connections from pool with size of 5
+            threads = []
+            for i in range(10):
+                t = Thread(target=acquire_release_conn, args=(pool, address, releasing_event))
+                t.start()
+                threads.append(t)
+
+            # The pool size should be 5, all are in-use
+            self.assert_pool_size(address, 5, 0, pool)
+            # Now we allow thread to release connections they obtained from pool
+            releasing_event.set()
+
+            # wait for all threads to release connections back to pool
+            for t in threads:
+                t.join()
+            # The pool size is still 5, but all are free
+            self.assert_pool_size(address, 0, 5, pool)
+
+
+def acquire_release_conn(pool, address, releasing_event):
+    conn = pool.acquire_direct(address)
+    releasing_event.wait()
+    pool.release(conn)
