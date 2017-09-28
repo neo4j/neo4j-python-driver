@@ -208,7 +208,7 @@ class Connection(object):
         # Pick up the server certificate, if any
         self.der_encoded_server_certificate = config.get("der_encoded_server_certificate")
 
-    def Init(self):
+    def init(self):
         response = InitResponse(self)
         self.append(INIT, (self.user_agent, self.auth_dict), response=response)
         self.sync()
@@ -636,7 +636,7 @@ def connect(address, ssl_context=None, error_handler=None, **config):
     elif agreed_version == 1:
         connection = Connection(address, s, der_encoded_server_certificate=der_encoded_server_certificate,
                           error_handler=error_handler, **config)
-        connection.Init()
+        connection.init()
         return connection
     elif agreed_version == 0x48545450:
         log_error("S: [CLOSE]")
