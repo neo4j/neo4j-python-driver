@@ -19,4 +19,4 @@
 # limitations under the License.
 
 
-version = "1.5.0b1"
+version = "1.5.0rc1"
