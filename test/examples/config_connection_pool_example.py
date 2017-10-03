@@ -18,20 +18,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# tag::config-max-retry-time-import[]
+# tag::config-connection-pool-import[]
 from neo4j.v1 import GraphDatabase
-# end::config-max-retry-time-import[]
+# end::config-connection-pool-import[]
 
 
-class ConfigMaxRetryTimeExample:
-    # tag::config-max-retry-time[]
+class ConfigConnectionPoolExample:
+    # tag::config-connection-pool[]
     def __init__(self, uri, user, password):
-        self._driver = GraphDatabase.driver(uri, auth=(user, password), max_retry_time=15)
-    # end::config-max-retry-time[]
+        self._driver = GraphDatabase.driver(uri, auth=(user, password),
+                                            max_connection_lifetime=30 * 60, max_connection_pool_size=50,
+                                            connection_acquisition_timeout=2 * 60)
+    # end::config-connection-pool[]
 
     def close(self):
         self._driver.close()
 
-    def can_connect(self):
-        result = self._driver.session().run("RETURN 1")
+    def can_connect(driver):
+        result = driver.session().run("RETURN 1")
         return result.single()[0] == 1

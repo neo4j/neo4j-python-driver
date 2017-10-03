@@ -18,16 +18,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# tag::config-max-retry-time-import[]
-from neo4j.v1 import GraphDatabase
-# end::config-max-retry-time-import[]
+# tag::config-load-balancing-strategy-import[]
+from neo4j.v1 import GraphDatabase, LOAD_BALANCING_STRATEGY_LEAST_CONNECTED
+# end::config-load-balancing-strategy-import[]
 
 
-class ConfigMaxRetryTimeExample:
-    # tag::config-max-retry-time[]
+class ConfigLoadBalancingStrategyExample:
+    # tag::config-load-balancing-strategy[]
     def __init__(self, uri, user, password):
-        self._driver = GraphDatabase.driver(uri, auth=(user, password), max_retry_time=15)
-    # end::config-max-retry-time[]
+        self._driver = GraphDatabase.driver(uri, auth=(user, password), load_balancing_strategy=LOAD_BALANCING_STRATEGY_LEAST_CONNECTED)
+    # end::config-load-balancing-strategy[]
 
     def close(self):
         self._driver.close()

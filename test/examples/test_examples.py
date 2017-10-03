@@ -52,6 +52,26 @@ class ExamplesTest(IntegrationTestCase):
 
         self.assertTrue(self.person_count('Alice') > 0)
 
+    def test_config_connection_pool_example(self):
+        from test.examples.config_connection_pool_example import ConfigConnectionPoolExample
+        example = ConfigConnectionPoolExample(self.bolt_uri, self.user, self.password)
+        self.assertTrue(example.can_connect())
+
+    def test_connection_timeout_example(self):
+        from test.examples.config_connection_timeout_example import ConfigConnectionTimeoutExample
+        example = ConfigConnectionTimeoutExample(self.bolt_uri, self.user, self.password)
+        self.assertTrue(example.can_connect())
+
+    def test_load_balancing_strategy_example(self):
+        from test.examples.config_load_balancing_strategy_example import ConfigLoadBalancingStrategyExample
+        example = ConfigLoadBalancingStrategyExample(self.bolt_uri, self.user, self.password)
+        self.assertTrue(example.can_connect())
+
+    def test_max_retry_time_example(self):
+        from test.examples.config_max_retry_time_example import ConfigMaxRetryTimeExample
+        example = ConfigMaxRetryTimeExample(self.bolt_uri, self.user, self.password)
+        self.assertTrue(example.can_connect())
+
     def test_basic_auth_example(self):
         from test.examples.auth_example import BasicAuthExample
 
