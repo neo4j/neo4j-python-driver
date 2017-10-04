@@ -31,10 +31,7 @@ from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS, fix_statement, fix_p
 from neo4j.v1.exceptions import SessionExpired
 from neo4j.v1.security import SecurityPlan
 from neo4j.v1.session import BoltSession
-
-LOAD_BALANCING_STRATEGY_LEAST_CONNECTED = 0
-LOAD_BALANCING_STRATEGY_ROUND_ROBIN = 1
-DEFAULT_LOAD_BALANCING_STRATEGY = LOAD_BALANCING_STRATEGY_LEAST_CONNECTED
+from neo4j.config import default_config, LOAD_BALANCING_STRATEGY_LEAST_CONNECTED, LOAD_BALANCING_STRATEGY_ROUND_ROBIN
 
 
 class OrderedSet(MutableSet):
@@ -166,7 +163,7 @@ class LoadBalancingStrategy(object):
 
     @classmethod
     def build(cls, connection_pool, **config):
-        load_balancing_strategy = config.get("load_balancing_strategy", DEFAULT_LOAD_BALANCING_STRATEGY)
+        load_balancing_strategy = config.get("load_balancing_strategy", default_config["load_balancing_strategy"])
         if load_balancing_strategy == LOAD_BALANCING_STRATEGY_LEAST_CONNECTED:
             return LeastConnectedLoadBalancingStrategy(connection_pool)
         elif load_balancing_strategy == LOAD_BALANCING_STRATEGY_ROUND_ROBIN:

@@ -28,6 +28,7 @@ from warnings import warn
 from neo4j.exceptions import ProtocolError, ServiceUnavailable
 from neo4j.compat import urlparse
 from neo4j.exceptions import CypherError, TransientError
+from neo4j.config import default_config
 
 from .exceptions import DriverError, SessionError, SessionExpired, TransactionError
 
@@ -36,11 +37,9 @@ _warned_about_transaction_bookmarks = False
 READ_ACCESS = "READ"
 WRITE_ACCESS = "WRITE"
 
-DEFAULT_MAX_RETRY_TIME = 30.0
 INITIAL_RETRY_DELAY = 1.0
 RETRY_DELAY_MULTIPLIER = 2.0
 RETRY_DELAY_JITTER_FACTOR = 0.2
-
 
 def last_bookmark(b0, b1):
     """ Return the latest of two bookmarks by looking for the maximum
@@ -114,6 +113,8 @@ class GraphDatabase(object):
             `user_agent`
               A custom user agent string, if required.
 
+              for more config options see neo4j.config.default_config
+
         """
         parsed = urlparse(uri)
         try:
@@ -145,7 +146,7 @@ class Driver(object):
     def __init__(self, pool, **config):
         self._lock = RLock()
         self._pool = pool
-        self._max_retry_time = config.get("max_retry_time", DEFAULT_MAX_RETRY_TIME)
+        self._max_retry_time = config.get("max_retry_time", default_config["max_retry_time"])
 
     def __del__(self):
         self.close()
@@ -233,7 +234,7 @@ class Session(object):
     _bookmarks = ()
 
     # Default maximum time to keep retrying failed transactions.
-    _max_retry_time = DEFAULT_MAX_RETRY_TIME
+    _max_retry_time = default_config["max_retry_time"]
 
     _closed = False
 
