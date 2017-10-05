@@ -18,7 +18,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# tag::config-load-balancing-strategy-import[]
+from neo4j.v1 import GraphDatabase, LOAD_BALANCING_STRATEGY_LEAST_CONNECTED
+# end::config-load-balancing-strategy-import[]
 
-from .cert import *
-from .connection import *
-from .response import *
+
+class ConfigLoadBalancingStrategyExample:
+    # tag::config-load-balancing-strategy[]
+    def __init__(self, uri, user, password):
+        self._driver = GraphDatabase.driver(uri, auth=(user, password), load_balancing_strategy=LOAD_BALANCING_STRATEGY_LEAST_CONNECTED)
+    # end::config-load-balancing-strategy[]
+
+    def close(self):
+        self._driver.close()
+
+    def can_connect(self):
+        result = self._driver.session().run("RETURN 1")
+        return result.single()[0] == 1

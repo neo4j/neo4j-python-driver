@@ -23,8 +23,8 @@ from .direct import *
 from .exceptions import *
 from .result import *
 from .routing import *
-from .session import *
 from .security import *
+from .session import *
 from .types import *
 
 # Register supported URI schemes

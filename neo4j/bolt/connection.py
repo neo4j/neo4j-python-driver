@@ -39,23 +39,15 @@ from neo4j.bolt.cert import KNOWN_HOSTS
 from neo4j.bolt.response import InitResponse, AckFailureResponse, ResetResponse
 from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
 from neo4j.exceptions import ClientError, ProtocolError, SecurityError, ServiceUnavailable
-from neo4j.meta import version
 from neo4j.packstream import Packer, Unpacker
 from neo4j.util import import_best as _import_best
 from time import clock
+from neo4j.config import default_config, INFINITE, TRUST_ON_FIRST_USE
 
 ChunkedInputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedInputBuffer
 ChunkedOutputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedOutputBuffer
 
-
-INFINITE = -1
-DEFAULT_MAX_CONNECTION_LIFETIME = INFINITE
-DEFAULT_MAX_CONNECTION_POOL_SIZE = INFINITE
-DEFAULT_CONNECTION_TIMEOUT = 5.0
-DEFAULT_CONNECTION_ACQUISITION_TIMEOUT = 60
 DEFAULT_PORT = 7687
-DEFAULT_USER_AGENT = "neo4j-python/%s" % version
-
 MAGIC_PREAMBLE = 0x6060B017
 
 
@@ -183,11 +175,11 @@ class Connection(object):
         self.packer = Packer(self.output_buffer)
         self.unpacker = Unpacker()
         self.responses = deque()
-        self._max_connection_lifetime = config.get("max_connection_lifetime", DEFAULT_MAX_CONNECTION_LIFETIME)
+        self._max_connection_lifetime = config.get("max_connection_lifetime", default_config["max_connection_lifetime"])
         self._creation_timestamp = clock()
 
         # Determine the user agent and ensure it is a Unicode value
-        user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
+        user_agent = config.get("user_agent", default_config["user_agent"])
         if isinstance(user_agent, bytes):
             user_agent = user_agent.decode("UTF-8")
         self.user_agent = user_agent
@@ -413,8 +405,8 @@ class ConnectionPool(object):
         self.connections = {}
         self.lock = RLock()
         self.cond = Condition(self.lock)
-        self._max_connection_pool_size = config.get("max_connection_pool_size", DEFAULT_MAX_CONNECTION_POOL_SIZE)
-        self._connection_acquisition_timeout = config.get("connection_acquisition_timeout", DEFAULT_CONNECTION_ACQUISITION_TIMEOUT)
+        self._max_connection_pool_size = config.get("max_connection_pool_size", default_config["max_connection_pool_size"])
+        self._connection_acquisition_timeout = config.get("connection_acquisition_timeout", default_config["connection_acquisition_timeout"])
 
     def __enter__(self):
         return self
@@ -546,10 +538,10 @@ def connect(address, ssl_context=None, error_handler=None, **config):
         else:
             raise ValueError("Unsupported address {!r}".format(address))
         t = s.gettimeout()
-        s.settimeout(config.get("connection_timeout", DEFAULT_CONNECTION_TIMEOUT))
+        s.settimeout(config.get("connection_timeout", default_config["connection_timeout"]))
         s.connect(address)
         s.settimeout(t)
-        s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1 if config.get("keep_alive", True) else 0)
+        s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1 if config.get("keep_alive", default_config["keep_alive"]) else 0)
     except SocketTimeout:
         if s:
             try:
@@ -582,14 +574,13 @@ def connect(address, ssl_context=None, error_handler=None, **config):
             error.__cause__ = cause
             raise error
         else:
-            from neo4j.v1 import TRUST_DEFAULT, TRUST_ON_FIRST_USE
             # Check that the server provides a certificate
             der_encoded_server_certificate = s.getpeercert(binary_form=True)
             if der_encoded_server_certificate is None:
                 s.close()
                 raise ProtocolError("When using a secure socket, the server should always "
                                     "provide a certificate")
-            trust = config.get("trust", TRUST_DEFAULT)
+            trust = config.get("trust", default_config["trust"])
             if trust == TRUST_ON_FIRST_USE:
                 from neo4j.bolt.cert import PersonalCertificateStore
                 store = PersonalCertificateStore()
