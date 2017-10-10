@@ -507,10 +507,17 @@ class ConnectionPool(object):
         """ Close all connections and empty the pool.
         This method is thread safe.
         """
-        with self.lock:
-            self._closed = True
-            for address in list(self.connections):
-                self.remove(address)
+        if self._closed:
+            return
+        try:
+            with self.lock:
+                if not self._closed:
+                    self._closed = True
+                    for address in list(self.connections):
+                        self.remove(address)
+        except TypeError as e:
+            print(e)
+            pass
 
     def closed(self):
         """ Return :const:`True` if this pool is closed, :const:`False`
