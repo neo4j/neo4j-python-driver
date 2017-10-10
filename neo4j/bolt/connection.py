@@ -516,7 +516,6 @@ class ConnectionPool(object):
                     for address in list(self.connections):
                         self.remove(address)
         except TypeError as e:
-            print(e)
             pass
 
     def closed(self):

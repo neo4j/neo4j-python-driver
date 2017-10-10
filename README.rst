@@ -30,6 +30,18 @@ Quick Example
         session.write_transaction(add_friends, "Arthur", "Merlin")
         session.read_transaction(print_friends, "Arthur")
 
+Logging
+=============
+The driver provides a built-in logging. The following example code enables debug logging and prints out logs at stdout:
+
+.. code-block:: python
+
+    from neo4j.util import watch
+    import logging
+    from sys import stdout
+
+    watch("neo4j.bolt", logging.DEBUG, stdout)
+
 
 Installation
 ============
