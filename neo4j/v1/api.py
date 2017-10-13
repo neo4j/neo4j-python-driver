@@ -41,6 +41,7 @@ INITIAL_RETRY_DELAY = 1.0
 RETRY_DELAY_MULTIPLIER = 2.0
 RETRY_DELAY_JITTER_FACTOR = 0.2
 
+
 def last_bookmark(b0, b1):
     """ Return the latest of two bookmarks by looking for the maximum
     integer value following the last colon in the bookmark string.
@@ -141,10 +142,7 @@ class Driver(object):
     #: Indicator of driver closure.
     _closed = False
 
-    _lock = None
-
     def __init__(self, pool, **config):
-        self._lock = RLock()
         self._pool = pool
         self._max_retry_time = config.get("max_retry_time", default_config["max_retry_time"])
 
@@ -185,18 +183,14 @@ class Driver(object):
         """ Shut down, closing any open connections that were spawned by
         this Driver.
         """
-        if self._lock is None:
-            return
-        with self._lock:
-            if not self._closed:
-                self._closed = True
-                if self._pool is not None:
-                    self._pool.close()
-                    self._pool = None
+        if not self._closed:
+            self._closed = True
+            if self._pool is not None:
+                self._pool.close()
+                self._pool = None
 
     def closed(self):
-        with self._lock:
-            return self._closed
+        return self._closed
 
 
 class Session(object):
