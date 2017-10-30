@@ -22,8 +22,8 @@
 from collections import namedtuple
 
 from neo4j.exceptions import CypherError
-from neo4j.v1.api import GraphDatabase, StatementResult, Record
-from neo4j.v1.types import PackStreamValueSystem
+from neo4j.v1.api import GraphDatabase, StatementResult
+from neo4j.v1.types import Record
 
 
 STATEMENT_TYPE_READ_ONLY = "r"
@@ -32,14 +32,11 @@ STATEMENT_TYPE_WRITE_ONLY = "w"
 STATEMENT_TYPE_SCHEMA_WRITE = "s"
 
 
-GraphDatabase.register_value_system(PackStreamValueSystem)
-
-
 class BoltStatementResult(StatementResult):
     """ A handler for the result of Cypher statement execution.
     """
 
-    value_system = GraphDatabase.value_systems[PackStreamValueSystem.__name__]
+    value_system = GraphDatabase.value_systems["packstream"]
 
     zipper = Record
 
@@ -77,6 +74,21 @@ class BoltStatementResult(StatementResult):
         pull_all_response.on_records = on_records
         pull_all_response.on_success = on_footer
         pull_all_response.on_failure = on_failure
+
+    def value(self, item=0, default=None):
+        """ Return the remainder of the result as a list of values.
+        """
+        return [record.value(item, default) for record in self.records()]
+
+    def values(self, *items):
+        """ Return the remainder of the result as a list of tuples.
+        """
+        return [record.values(*items) for record in self.records()]
+
+    def data(self, *items):
+        """ Return the remainder of the result as a list of dictionaries.
+        """
+        return [record.data(*items) for record in self.records()]
 
 
 class BoltStatementResultSummary(object):
