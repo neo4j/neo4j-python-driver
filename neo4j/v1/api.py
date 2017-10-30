@@ -779,11 +779,6 @@ class StatementResult(object):
                 return zipper(keys, hydrate(values))
         return None
 
-    def data(self):
-        """ Return the remainder of the result as a list of dictionaries.
-        """
-        return [dict(record) for record in self]
-
 
 def fix_statement(statement):
     if isinstance(statement, bytes):
