@@ -22,8 +22,8 @@
 from collections import namedtuple
 
 from neo4j.exceptions import CypherError
-from neo4j.v1.api import GraphDatabase, StatementResult
-from neo4j.v1.types import Record
+from neo4j.v1.api import GraphDatabase, StatementResult, Record
+from neo4j.v1.types import PackStreamValueSystem
 
 
 STATEMENT_TYPE_READ_ONLY = "r"
@@ -32,11 +32,14 @@ STATEMENT_TYPE_WRITE_ONLY = "w"
 STATEMENT_TYPE_SCHEMA_WRITE = "s"
 
 
+GraphDatabase.register_value_system(PackStreamValueSystem)
+
+
 class BoltStatementResult(StatementResult):
     """ A handler for the result of Cypher statement execution.
     """
 
-    value_system = GraphDatabase.value_systems["packstream"]
+    value_system = GraphDatabase.value_systems[PackStreamValueSystem.__name__]
 
     zipper = Record
 

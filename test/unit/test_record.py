@@ -42,31 +42,6 @@ class RecordTestCase(TestCase):
         assert hash(record1) != hash(record3)
         assert hash(record2) != hash(record3)
 
-    def test_record_keys(self):
-        a_record = Record(["name", "empire"], ["Nigel", "The British Empire"])
-        assert list(a_record.keys()) == ["name", "empire"]
-
-    def test_record_values(self):
-        a_record = Record(["name", "empire"], ["Nigel", "The British Empire"])
-        assert list(a_record.values()) == ["Nigel", "The British Empire"]
-
-    def test_record_items(self):
-        a_record = Record(["name", "empire"], ["Nigel", "The British Empire"])
-        assert list(a_record.items()) == [("name", "Nigel"), ("empire", "The British Empire")]
-
-    def test_record_index(self):
-        a_record = Record(["name", "empire"], ["Nigel", "The British Empire"])
-        assert a_record.index("name") == 0
-        assert a_record.index("empire") == 1
-        with self.assertRaises(KeyError):
-            a_record.index("crap")
-
-    def test_record_contains(self):
-        a_record = Record(["name", "empire"], ["Nigel", "The British Empire"])
-        assert "name" in a_record
-        assert "empire" in a_record
-        assert "Germans" not in a_record
-
     def test_record_iter(self):
         a_record = Record(["name", "empire"], ["Nigel", "The British Empire"])
         assert list(a_record.__iter__()) == ["name", "empire"]
@@ -93,3 +68,87 @@ class RecordTestCase(TestCase):
     def test_record_repr(self):
         a_record = Record(["name", "empire"], ["Nigel", "The British Empire"])
         assert repr(a_record) == "<Record name='Nigel' empire='The British Empire'>"
+
+    def test_record_data(self):
+        r = Record(["name", "age", "married"], ["Alice", 33, True])
+        self.assertEqual(r.data(), {"name": "Alice", "age": 33, "married": True})
+        self.assertEqual(r.data("name"), {"name": "Alice"})
+        self.assertEqual(r.data("age", "name"), {"age": 33, "name": "Alice"})
+        self.assertEqual(r.data("age", "name", "shoe size"), {"age": 33, "name": "Alice", "shoe size": None})
+        self.assertEqual(r.data(0, "name"), {"name": "Alice"})
+        self.assertEqual(r.data(0), {"name": "Alice"})
+        self.assertEqual(r.data(1, 0), {"age": 33, "name": "Alice"})
+        with self.assertRaises(IndexError):
+            _ = r.data(1, 0, 999)
+
+    def test_record_keys(self):
+        r = Record(["name", "age", "married"], ["Alice", 33, True])
+        self.assertEqual(r.keys(), ("name", "age", "married"))
+
+    def test_record_values(self):
+        r = Record(["name", "age", "married"], ["Alice", 33, True])
+        self.assertEqual(r.values(), ("Alice", 33, True))
+        self.assertEqual(r.values("name"), ("Alice",))
+        self.assertEqual(r.values("age", "name"), (33, "Alice"))
+        self.assertEqual(r.values("age", "name", "shoe size"), (33, "Alice", None))
+        self.assertEqual(r.values(0, "name"), ("Alice", "Alice"))
+        self.assertEqual(r.values(0), ("Alice",))
+        self.assertEqual(r.values(1, 0), (33, "Alice"))
+        with self.assertRaises(IndexError):
+            _ = r.values(1, 0, 999)
+
+    def test_record_items(self):
+        r = Record(["name", "age", "married"], ["Alice", 33, True])
+        self.assertEqual(r.items(), [("name", "Alice"), ("age", 33), ("married", True)])
+        self.assertEqual(r.items("name"), [("name", "Alice")])
+        self.assertEqual(r.items("age", "name"), [("age", 33), ("name", "Alice")])
+        self.assertEqual(r.items("age", "name", "shoe size"), [("age", 33), ("name", "Alice"), ("shoe size", None)])
+        self.assertEqual(r.items(0, "name"), [("name", "Alice"), ("name", "Alice")])
+        self.assertEqual(r.items(0), [("name", "Alice")])
+        self.assertEqual(r.items(1, 0), [("age", 33), ("name", "Alice")])
+        with self.assertRaises(IndexError):
+            _ = r.items(1, 0, 999)
+
+    def test_record_index(self):
+        r = Record(["name", "age", "married"], ["Alice", 33, True])
+        self.assertEqual(r.index("name"), 0)
+        self.assertEqual(r.index("age"), 1)
+        self.assertEqual(r.index("married"), 2)
+        with self.assertRaises(KeyError):
+            _ = r.index("shoe size")
+        self.assertEqual(r.index(0), 0)
+        self.assertEqual(r.index(1), 1)
+        self.assertEqual(r.index(2), 2)
+        with self.assertRaises(IndexError):
+            _ = r.index(3)
+        with self.assertRaises(TypeError):
+            _ = r.index(None)
+
+    def test_record_value(self):
+        r = Record(["name", "age", "married"], ["Alice", 33, True])
+        self.assertEqual(r.value(), "Alice")
+        self.assertEqual(r.value("name"), "Alice")
+        self.assertEqual(r.value("age"), 33)
+        self.assertEqual(r.value("married"), True)
+        self.assertEqual(r.value("shoe size"), None)
+        self.assertEqual(r.value("shoe size", 6), 6)
+        self.assertEqual(r.value(0), "Alice")
+        self.assertEqual(r.value(1), 33)
+        self.assertEqual(r.value(2), True)
+        self.assertEqual(r.value(3), None)
+        self.assertEqual(r.value(3, 6), 6)
+        with self.assertRaises(TypeError):
+            _ = r.value(None)
+
+    def test_record_contains(self):
+        r = Record(["name", "age", "married"], ["Alice", 33, True])
+        self.assertTrue("name" in r)
+        self.assertTrue("age" in r)
+        self.assertTrue("married" in r)
+        self.assertFalse("shoe size" in r)
+        self.assertTrue(0 in r)
+        self.assertTrue(1 in r)
+        self.assertTrue(2 in r)
+        self.assertFalse(3 in r)
+        with self.assertRaises(TypeError):
+            _ = r.index(None)

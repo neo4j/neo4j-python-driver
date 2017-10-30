@@ -26,87 +26,8 @@ of these classes.
 """
 
 from neo4j.packstream import Structure
-from neo4j.compat import string, integer
 
-from .api import GraphDatabase, ValueSystem
-
-
-class Record(object):
-    """ Record is an ordered collection of fields.
-
-    A Record object is used for storing result values along with field names.
-    Fields can be accessed by numeric or named index (``record[0]`` or
-    ``record["field"]``).
-    """
-
-    def __init__(self, keys, values):
-        self._keys = tuple(keys)
-        self._values = tuple(values)
-
-    def keys(self):
-        """ Return the keys (key names) of the record
-        """
-        return self._keys
-
-    def values(self):
-        """ Return the values of the record
-        """
-        return self._values
-
-    def items(self):
-        """ Return the fields of the record as a list of key and value tuples
-        """
-        return zip(self._keys, self._values)
-
-    def index(self, key):
-        """ Return the index of the given key
-        """
-        try:
-            return self._keys.index(key)
-        except ValueError:
-            raise KeyError(key)
-
-    def __record__(self):
-        return self
-
-    def __contains__(self, key):
-        return self._keys.__contains__(key)
-
-    def __iter__(self):
-        return iter(self._keys)
-
-    def copy(self):
-        return Record(self._keys, self._values)
-
-    def __getitem__(self, item):
-        if isinstance(item, string):
-            return self._values[self.index(item)]
-        elif isinstance(item, integer):
-            return self._values[item]
-        else:
-            raise TypeError(item)
-
-    def __len__(self):
-        return len(self._keys)
-
-    def __repr__(self):
-        values = self._values
-        s = []
-        for i, field in enumerate(self._keys):
-            s.append("%s=%r" % (field, values[i]))
-        return "<Record %s>" % " ".join(s)
-
-    def __hash__(self):
-        return hash(self._keys) ^ hash(self._values)
-
-    def __eq__(self, other):
-        try:
-            return self._keys == tuple(other.keys()) and self._values == tuple(other.values())
-        except AttributeError:
-            return False
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
+from .api import ValueSystem
 
 
 class Entity(object):
@@ -334,6 +255,3 @@ class PackStreamValueSystem(ValueSystem):
                 return obj
 
         return tuple(map(hydrate_, values))
-
-
-GraphDatabase.value_systems["packstream"] = PackStreamValueSystem()
