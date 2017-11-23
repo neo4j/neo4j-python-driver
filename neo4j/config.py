@@ -49,9 +49,9 @@ DEFAULT_USER_AGENT = "neo4j-python/%s" % version
 
 default_config = {
     "auth": None,  # provide your own authentication token such as {"username", "password"}
-    "encrypted": True,
+    "encrypted": None,  # default to have encryption enabled if ssl is available on your platform
     "trust": TRUST_DEFAULT,
-    "der-encoded_server_certificate": None,
+    "der_encoded_server_certificate": None,
 
     "user_agent": DEFAULT_USER_AGENT,
 
