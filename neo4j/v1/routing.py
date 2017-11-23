@@ -81,6 +81,9 @@ class OrderedSet(MutableSet):
         e.clear()
         e.update(OrderedDict.fromkeys(elements))
 
+    def elements(self):
+        return list(self._elements)
+
 
 class RoutingTable(object):
 
@@ -139,6 +142,9 @@ class RoutingTable(object):
         self.writers.replace(new_routing_table.writers)
         self.last_updated_time = self.timer()
         self.ttl = new_routing_table.ttl
+
+    def servers(self):
+        return set(self.routers.elements() + self.writers.elements() + self.readers.elements())
 
 
 class RoutingSession(BoltSession):
@@ -249,9 +255,9 @@ class RoutingConnectionErrorHandler(ConnectionErrorHandler):
 
     def __init__(self, pool):
         super(RoutingConnectionErrorHandler, self).__init__({
-            SessionExpired: lambda address: pool.remove(address),
-            ServiceUnavailable: lambda address: pool.remove(address),
-            DatabaseUnavailableError: lambda address: pool.remove(address),
+            SessionExpired: lambda address: pool.deactivate(address),
+            ServiceUnavailable: lambda address: pool.deactivate(address),
+            DatabaseUnavailableError: lambda address: pool.deactivate(address),
             NotALeaderError: lambda address: pool.remove_writer(address),
             ForbiddenOnReadOnlyDatabaseError: lambda address: pool.remove_writer(address)
         })
@@ -288,7 +294,7 @@ class RoutingConnectionPool(ConnectionPool):
             else:
                 raise ServiceUnavailable("Routing support broken on server {!r}".format(address))
         except ServiceUnavailable:
-            self.remove(address)
+            self.deactivate(address)
             return None
 
     def fetch_routing_table(self, address):
@@ -365,6 +371,12 @@ class RoutingConnectionPool(ConnectionPool):
         # None of the routers have been successful, so just fail
         raise ServiceUnavailable("Unable to retrieve routing information")
 
+    def update_connection_pool(self):
+        servers = self.routing_table.servers()
+        for address in list(self.connections):
+            if address not in servers:
+                super(RoutingConnectionPool, self).deactivate(address)
+
     def ensure_routing_table_is_fresh(self, access_mode):
         """ Update the routing table if stale.
 
@@ -387,6 +399,7 @@ class RoutingConnectionPool(ConnectionPool):
                     self.missing_writer = not self.routing_table.is_fresh(WRITE_ACCESS)
                 return False
             self.update_routing_table()
+            self.update_connection_pool()
             return True
 
     def acquire(self, access_mode=None):
@@ -410,21 +423,22 @@ class RoutingConnectionPool(ConnectionPool):
                 connection = self.acquire_direct(address)  # should always be a resolved address
                 connection.Error = SessionExpired
             except ServiceUnavailable:
-                self.remove(address)
+                self.deactivate(address)
             else:
                 return connection
         raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode)
 
-    def remove(self, address):
-        """ Remove an address from the connection pool, if present, closing
-        all connections to that address. Also remove from the routing table.
+    def deactivate(self, address):
+        """ Deactivate an address from the connection pool,
+        if present, remove from the routing table and also closing
+        all idle connections to that address.
         """
         # We use `discard` instead of `remove` here since the former
         # will not fail if the address has already been removed.
         self.routing_table.routers.discard(address)
         self.routing_table.readers.discard(address)
         self.routing_table.writers.discard(address)
-        super(RoutingConnectionPool, self).remove(address)
+        super(RoutingConnectionPool, self).deactivate(address)
 
     def remove_writer(self, address):
         """ Remove a writer address from the routing table, if present.

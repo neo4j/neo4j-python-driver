@@ -289,12 +289,18 @@ class RoutingDriverTestCase(StubTestCase):
                     pool = driver._pool
                     table = pool.routing_table
 
-                    # address should not have connections in the pool, it has failed
-                    assert ('127.0.0.1', 9004) not in pool.connections
+                    # address should have connections in the pool but be inactive, it has failed
+                    assert ('127.0.0.1', 9004) in pool.connections
+                    conns = pool.connections[('127.0.0.1', 9004)]
+                    conn = conns[0]
+                    assert conn._closed == True
+                    assert conn.in_use == True
                     assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
                     # reader 127.0.0.1:9004 should've been forgotten because of an error
                     assert table.readers == {('127.0.0.1', 9005)}
                     assert table.writers == {('127.0.0.1', 9006)}
+
+                assert conn.in_use == False
 
     def test_forgets_address_on_database_unavailable_error(self):
         with StubCluster({9001: "router.script", 9004: "database_unavailable.script"}):

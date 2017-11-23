@@ -492,6 +492,25 @@ class ConnectionPool(object):
         else:
             return sum(1 if connection.in_use else 0 for connection in connections)
 
+    def deactivate(self, address):
+        """ Deactivate an address from the connection pool, if present, closing
+        all idle connection to that address
+        """
+        with self.lock:
+            try:
+                connections = self.connections[address]
+            except KeyError: # already removed from the connection pool
+                return
+            for conn in list(connections):
+                if not conn.in_use:
+                    connections.remove(conn)
+                    try:
+                        conn.close()
+                    except IOError:
+                        pass
+            if len(connections) == 0:
+                self.remove(address)
+
     def remove(self, address):
         """ Remove an address from the connection pool, if present, closing
         all connections to that address.
