@@ -24,6 +24,7 @@ from collections import OrderedDict
 from io import BytesIO
 from math import pi
 from unittest import TestCase
+from uuid import uuid4
 
 from neo4j.bolt.io import MessageFrame as PyMessageFrame
 from neo4j.packstream.packer import Packer as PyPacker
@@ -273,12 +274,8 @@ class PackStreamTestCase(TestCase):
                                  (unpacked, unpacked_value))
 
     def test_illegal_signature(self):
-        try:
+        with self.assertRaises(ValueError):
             self.assert_packable((b"XXX", ()), b"\xB0XXX")
-        except ValueError:
-            assert True
-        else:
-            assert False
 
     def test_empty_struct(self):
         self.assert_packable((b"X", ()), b"\xB0X")
@@ -286,6 +283,9 @@ class PackStreamTestCase(TestCase):
     def test_tiny_struct(self):
         self.assert_packable((b"Z", (u"A", 1)), b"\xB2Z\x81A\x01")
 
+    def test_illegal_uuid(self):
+        with self.assertRaises(ValueError):
+            self.assert_packable(uuid4(), b"\xB0XXX")
 
 try:
     from neo4j.bolt._io import MessageFrame as CMessageFrame

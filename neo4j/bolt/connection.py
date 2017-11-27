@@ -239,7 +239,12 @@ class Connection(object):
             log_info("C: INIT (%r, {...})", fields[0])
         else:
             raise ValueError("Unknown message signature")
-        self.packer.pack_struct(signature, fields)
+        try:
+            self.packer.pack_struct(signature, fields)
+        except ValueError as e:
+            # We failed to pack this message, therefore we close this connection to avoid sending corrupted data
+            self.close()
+            raise e
         self.output_buffer.chunk()
         self.output_buffer.chunk()
         self.responses.append(response)

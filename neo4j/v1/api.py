@@ -614,7 +614,8 @@ class Transaction(object):
     def close(self):
         """ Close this transaction, triggering either a COMMIT or a ROLLBACK.
         """
-        if not self.closed():
+        conn_closed = self.session._connection.closed()
+        if not self.closed() and not conn_closed:
             try:
                 self.sync()
             except CypherError:
