@@ -303,6 +303,59 @@ class RoutingConnectionPoolEnsureRoutingTableTestCase(StubTestCase):
                 pool.ensure_routing_table_is_fresh(READ_ACCESS)
                 assert pool.missing_writer
 
+    def test_should_purge_idle_connections_from_connection_pool(self):
+        with StubCluster({9006: "router.script", 9001: "router_with_multiple_servers.script"}):
+            address = ("127.0.0.1", 9006)
+            with RoutingPool(address) as pool:
+                # close the acquired connection with init router and then set it to be idle
+                conn = pool.acquire(WRITE_ACCESS)
+                conn.close()
+                conn.in_use = False
+
+                table = pool.routing_table
+                assert table.routers == {("127.0.0.1", 9001), ("127.0.0.1", 9002),
+                                         ("127.0.0.1", 9003)}
+                assert table.readers == {("127.0.0.1", 9004), ("127.0.0.1", 9005)}
+                assert table.writers == {("127.0.0.1", 9006)}
+                assert set(pool.connections.keys()) == {("127.0.0.1", 9006)}
+
+                # immediately expire the routing table to enforce update a new routing table
+                pool.routing_table.ttl = 0
+                pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
+                table = pool.routing_table
+                assert table.routers == {("127.0.0.1", 9001), ("127.0.0.1", 9002)}
+                assert table.readers == {("127.0.0.1", 9001), ("127.0.0.1", 9003)}
+                assert table.writers == {("127.0.0.1", 9004)}
+
+                assert set(pool.connections.keys()) == {("127.0.0.1", 9001)}
+
+    def test_should_not_purge_idle_connections_from_connection_pool(self):
+        with StubCluster({9006: "router.script", 9001: "router_with_multiple_servers.script"}):
+            address = ("127.0.0.1", 9006)
+            with RoutingPool(address) as pool:
+                # close the acquired connection with init router and then set it to be inUse
+                conn = pool.acquire(WRITE_ACCESS)
+                conn.close()
+                conn.in_use = True
+
+                table = pool.routing_table
+                assert table.routers == {("127.0.0.1", 9001), ("127.0.0.1", 9002),
+                                         ("127.0.0.1", 9003)}
+                assert table.readers == {("127.0.0.1", 9004), ("127.0.0.1", 9005)}
+                assert table.writers == {("127.0.0.1", 9006)}
+                assert set(pool.connections.keys()) == {("127.0.0.1", 9006)}
+
+                # immediately expire the routing table to enforce update a new routing table
+                pool.routing_table.ttl = 0
+                pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
+                table = pool.routing_table
+                assert table.routers == {("127.0.0.1", 9001), ("127.0.0.1", 9002)}
+                assert table.readers == {("127.0.0.1", 9001), ("127.0.0.1", 9003)}
+                assert table.writers == {("127.0.0.1", 9004)}
+
+                assert set(pool.connections.keys()) == {("127.0.0.1", 9001), ("127.0.0.1", 9006)}
+
+
     # TODO: fix flaky test
     # def test_concurrent_refreshes_should_not_block_if_fresh(self):
     #     address = ("127.0.0.1", 9001)
@@ -481,7 +534,7 @@ class RoutingConnectionPoolAcquireForWriteTestCase(StubTestCase):
                 assert not pool.missing_writer
 
 
-class RoutingConnectionPoolRemoveTestCase(StubTestCase):
+class RoutingConnectionPoolDeactivateTestCase(StubTestCase):
     def test_should_remove_router_from_routing_table_if_present(self):
         with StubCluster({9001: "router.script"}):
             address = ("127.0.0.1", 9001)
@@ -489,7 +542,7 @@ class RoutingConnectionPoolRemoveTestCase(StubTestCase):
                 pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
                 target = ("127.0.0.1", 9001)
                 assert target in pool.routing_table.routers
-                pool.remove(target)
+                pool.deactivate(target)
                 assert target not in pool.routing_table.routers
 
     def test_should_remove_reader_from_routing_table_if_present(self):
@@ -499,7 +552,7 @@ class RoutingConnectionPoolRemoveTestCase(StubTestCase):
                 pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
                 target = ("127.0.0.1", 9004)
                 assert target in pool.routing_table.readers
-                pool.remove(target)
+                pool.deactivate(target)
                 assert target not in pool.routing_table.readers
 
     def test_should_remove_writer_from_routing_table_if_present(self):
@@ -509,7 +562,7 @@ class RoutingConnectionPoolRemoveTestCase(StubTestCase):
                 pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
                 target = ("127.0.0.1", 9006)
                 assert target in pool.routing_table.writers
-                pool.remove(target)
+                pool.deactivate(target)
                 assert target not in pool.routing_table.writers
 
     def test_should_not_fail_if_absent(self):
@@ -518,4 +571,4 @@ class RoutingConnectionPoolRemoveTestCase(StubTestCase):
             with RoutingPool(address) as pool:
                 pool.ensure_routing_table_is_fresh(WRITE_ACCESS)
                 target = ("127.0.0.1", 9007)
-                pool.remove(target)
+                pool.deactivate(target)
