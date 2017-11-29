@@ -43,40 +43,28 @@ class Record(object):
         self._keys = tuple(keys)
         self._values = tuple(values)
 
-    def keys(self):
-        """ Return the keys (key names) of the record
-        """
-        return self._keys
+    def __repr__(self):
+        values = self._values
+        s = []
+        for i, field in enumerate(self._keys):
+            s.append("%s=%r" % (field, values[i]))
+        return "<%s %s>" % (self.__class__.__name__, " ".join(s))
 
-    def values(self):
-        """ Return the values of the record
-        """
-        return self._values
+    def __hash__(self):
+        return hash(self._keys) ^ hash(self._values)
 
-    def items(self):
-        """ Return the fields of the record as a list of key and value tuples
-        """
-        return zip(self._keys, self._values)
-
-    def index(self, key):
-        """ Return the index of the given key
-        """
+    def __eq__(self, other):
         try:
-            return self._keys.index(key)
-        except ValueError:
-            raise KeyError(key)
+            return (self._keys == tuple(other.keys()) and
+                    self._values == tuple(other.values()))
+        except AttributeError:
+            return False
 
-    def __record__(self):
-        return self
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
-    def __contains__(self, key):
-        return self._keys.__contains__(key)
-
-    def __iter__(self):
-        return iter(self._keys)
-
-    def copy(self):
-        return Record(self._keys, self._values)
+    def __len__(self):
+        return len(self._keys)
 
     def __getitem__(self, item):
         if isinstance(item, string):
@@ -86,27 +74,122 @@ class Record(object):
         else:
             raise TypeError(item)
 
-    def __len__(self):
-        return len(self._keys)
+    def __iter__(self):
+        return iter(self._keys)
 
-    def __repr__(self):
-        values = self._values
-        s = []
-        for i, field in enumerate(self._keys):
-            s.append("%s=%r" % (field, values[i]))
-        return "<Record %s>" % " ".join(s)
-
-    def __hash__(self):
-        return hash(self._keys) ^ hash(self._values)
-
-    def __eq__(self, other):
+    def __contains__(self, key):
         try:
-            return self._keys == tuple(other.keys()) and self._values == tuple(other.values())
-        except AttributeError:
+            self.index(key)
+        except (IndexError, KeyError):
             return False
+        else:
+            return True
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
+    def index(self, item):
+        """ Return the index of the given item.
+        """
+        if isinstance(item, integer):
+            if 0 <= item < len(self._keys):
+                return item
+            raise IndexError(item)
+        if isinstance(item, string):
+            try:
+                return self._keys.index(item)
+            except ValueError:
+                raise KeyError(item)
+        raise TypeError(item)
+
+    def value(self, item=0, default=None):
+        """ Obtain a single value from the record by index or key. If no
+        index or key is specified, the first value is returned. If the
+        specified item does not exist, the default value is returned.
+
+        :param item:
+        :param default:
+        :return:
+        """
+        try:
+            index = self.index(item)
+        except (IndexError, KeyError):
+            return default
+        else:
+            return self._values[index]
+
+    def keys(self):
+        """ Return the keys of the record.
+
+        :return: tuple of key names
+        """
+        return self._keys
+
+    def values(self, *items):
+        """ Return the values of the record, optionally filtering to
+        include only certain values by index or key.
+
+        :param items: indexes or keys of the items to include; if none
+                          are provided, all values will be included
+        :return: tuple of values
+        """
+        if items:
+            d = []
+            values = self._values
+            for item in items:
+                try:
+                    i = self.index(item)
+                except KeyError:
+                    d.append(None)
+                else:
+                    d.append(values[i])
+            return tuple(d)
+        return self._values
+
+    def items(self, *items):
+        """ Return the fields of the record as a list of key and value tuples
+
+        :return:
+        """
+        if items:
+            d = []
+            keys = self._keys
+            values = self._values
+            for item in items:
+                try:
+                    i = self.index(item)
+                except KeyError:
+                    d.append((item, None))
+                else:
+                    d.append((keys[i], values[i]))
+            return d
+        return list(zip(self._keys, self._values))
+
+    def data(self, *items):
+        """ Return the keys and values of this record as a dictionary,
+        optionally including only certain values by index or key. Keys
+        provided in the items that are not in the record will be
+        inserted with a value of :py:const:`None`; indexes provided
+        that are out of bounds will trigger an :py:`IndexError`.
+
+        :param items: indexes or keys of the items to include; if none
+                          are provided, all values will be included
+        :return: dictionary of values, keyed by field name
+        :raises: :py:`IndexError` if an out-of-bounds index is specified
+        """
+        if items:
+            d = {}
+            keys = self._keys
+            values = self._values
+            for item in items:
+                try:
+                    i = self.index(item)
+                except KeyError:
+                    d[item] = None
+                else:
+                    d[keys[i]] = values[i]
+            return d
+        return dict(self)
+
+    def copy(self):
+        return self.__class__(self._keys, self._values)
 
 
 class Entity(object):

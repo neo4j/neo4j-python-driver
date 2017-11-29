@@ -75,6 +75,21 @@ class BoltStatementResult(StatementResult):
         pull_all_response.on_success = on_footer
         pull_all_response.on_failure = on_failure
 
+    def value(self, item=0, default=None):
+        """ Return the remainder of the result as a list of values.
+        """
+        return [record.value(item, default) for record in self.records()]
+
+    def values(self, *items):
+        """ Return the remainder of the result as a list of tuples.
+        """
+        return [record.values(*items) for record in self.records()]
+
+    def data(self, *items):
+        """ Return the remainder of the result as a list of dictionaries.
+        """
+        return [record.data(*items) for record in self.records()]
+
 
 class BoltStatementResultSummary(object):
     """ A summary of execution returned with a :class:`.StatementResult` object.
