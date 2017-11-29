@@ -17,7 +17,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from unittest import SkipTest
 from uuid import uuid4
 
@@ -434,7 +433,21 @@ class SessionCompletionTestCase(DirectIntegrationTestCase):
             assert len(buffer) == 1
             assert buffer[0][0] == 1
 
-    def test_errors_on_run(self):
+    def test_errors_on_write_transaction(self):
+        session = self.driver.session()
+        with self.assertRaises(TypeError):
+            session.write_transaction(lambda tx, uuid : tx.run("CREATE (a:Thing {uuid:$uuid})", uuid=uuid), uuid4())
+        session.close()
+
+    def test_errors_on_run_transaction(self):
+        session = self.driver.session()
+        tx = session.begin_transaction()
+        with self.assertRaises(TypeError):
+            tx.run("CREATE (a:Thing {uuid:$uuid})", uuid=uuid4())
+        tx.rollback()
+        session.close()
+
+    def test_errors_on_run_session(self):
         session = self.driver.session()
         session.close()
         with self.assertRaises(SessionError):
