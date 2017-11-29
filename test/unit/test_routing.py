@@ -169,6 +169,20 @@ class RoutingTableParseRoutingInfoTestCase(TestCase):
             _ = RoutingTable.parse_routing_info([VALID_ROUTING_RECORD, VALID_ROUTING_RECORD])
 
 
+class RoutingTableServersTestCase(TestCase):
+    def test_should_return_all_distinct_servers_in_routing_table(self):
+        routing_table = {
+            "ttl": 300,
+            "servers": [
+                {"role": "ROUTE", "addresses": ["127.0.0.1:9001", "127.0.0.1:9002", "127.0.0.1:9003"]},
+                {"role": "READ", "addresses": ["127.0.0.1:9001", "127.0.0.1:9005"]},
+                {"role": "WRITE", "addresses": ["127.0.0.1:9002"]},
+            ],
+        }
+        table = RoutingTable.parse_routing_info([routing_table])
+        assert table.servers() == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003), ('127.0.0.1', 9005)}
+
+
 class RoutingTableFreshnessTestCase(TestCase):
     def test_should_be_fresh_after_update(self):
         table = RoutingTable.parse_routing_info([VALID_ROUTING_RECORD])
