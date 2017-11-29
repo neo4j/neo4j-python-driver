@@ -435,14 +435,14 @@ class SessionCompletionTestCase(DirectIntegrationTestCase):
 
     def test_errors_on_write_transaction(self):
         session = self.driver.session()
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             session.write_transaction(lambda tx, uuid : tx.run("CREATE (a:Thing {uuid:$uuid})", uuid=uuid), uuid4())
         session.close()
 
     def test_errors_on_run_transaction(self):
         session = self.driver.session()
         tx = session.begin_transaction()
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             tx.run("CREATE (a:Thing {uuid:$uuid})", uuid=uuid4())
         tx.rollback()
         session.close()
