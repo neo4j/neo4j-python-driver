@@ -508,7 +508,7 @@ class ConnectionPool(object):
                         conn.close()
                     except IOError:
                         pass
-            if len(connections) == 0:
+            if not connections:
                 self.remove(address)
 
     def remove(self, address):

@@ -81,9 +81,6 @@ class OrderedSet(MutableSet):
         e.clear()
         e.update(OrderedDict.fromkeys(elements))
 
-    def elements(self):
-        return list(self._elements)
-
 
 class RoutingTable(object):
 
@@ -144,7 +141,7 @@ class RoutingTable(object):
         self.ttl = new_routing_table.ttl
 
     def servers(self):
-        return set(self.routers.elements() + self.writers.elements() + self.readers.elements())
+        return set(self.routers) | set(self.writers) | set(self.readers)
 
 
 class RoutingSession(BoltSession):
