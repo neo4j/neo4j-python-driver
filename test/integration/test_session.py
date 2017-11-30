@@ -23,11 +23,10 @@ from uuid import uuid4
 from neo4j.v1 import \
     READ_ACCESS, WRITE_ACCESS, \
     CypherError, SessionError, TransactionError, \
-    Node, Relationship, Path
+    Node, Relationship, Path, GraphDatabase
 from neo4j.exceptions import CypherSyntaxError
 
 from test.integration.tools import DirectIntegrationTestCase
-
 
 class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
 
@@ -459,6 +458,12 @@ class SessionCompletionTestCase(DirectIntegrationTestCase):
         with self.assertRaises(SessionError):
             session.begin_transaction()
 
+    def test_large_values(self):
+        driver = GraphDatabase.driver(self.bolt_uri, auth=self.auth_token, default_read_buffer_size=16)
+        session = driver.session()
+        session.run("RETURN '{}'".format("A" * 251172))
+        session.close()
+        driver.close()
 
 class TransactionCommittedTestCase(DirectIntegrationTestCase):
 

@@ -83,6 +83,9 @@ class MessageFrame(object):
             value.extend(self.read(n - (end - start)))
         return value
 
+    def close(self):
+        self._view = None
+
 
 class ChunkedInputBuffer(object):
 
@@ -200,6 +203,7 @@ class ChunkedInputBuffer(object):
 
     def discard_message(self):
         if self._frame is not None:
+            self._frame.close()
             self._origin = self._limit
             self._limit = -1
             self._frame = None
