@@ -67,24 +67,28 @@ class MessageFrame(object):
     def read(self, n):
         if n == 0 or self._current_pane == -1:
             return _empty_view
-        p, q = self._panes[self._current_pane]
-        size = q - p
-        remaining = size - self._current_offset
-        if n <= remaining:
+        value = None
+        while n > 0 and self._current_pane >= 0:
+            p, q = self._panes[self._current_pane]
+            size = q - p
+            remaining = size - self._current_offset
             start = p + self._current_offset
-            end = start + n
-            if n < remaining:
-                self._current_offset += n
+            if n <= remaining:
+                end = start + n
+                if n < remaining:
+                    self._current_offset += n
+                else:
+                    self._next_pane()
             else:
+                end = q
                 self._next_pane()
-            return memoryview(self._view[start:end])
-        start = p + self._current_offset
-        end = q
-        value = bytearray(self._view[start:end])
-        self._next_pane()
-        if len(value) < n and self._current_pane >= 0:
-            value.extend(self.read(n - (end - start)))
-        return value
+            if value:
+                value.extend(self._view[start:end])
+            else:
+                value = bytearray(self._view[start:end])
+            n -= end - start
+            continue
+        return memoryview(value)
 
     def close(self):
         self._view = None
