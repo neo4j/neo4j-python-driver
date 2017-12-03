@@ -39,6 +39,9 @@ class MessageFrame(object):
             self._current_pane = 0
             self._current_offset = 0
 
+    def close(self):
+         self._view = None
+
     def _next_pane(self):
         self._current_pane += 1
         if self._current_pane < len(self._panes):
@@ -206,6 +209,7 @@ class ChunkedInputBuffer(object):
             self._frame.close()
             self._origin = self._limit
             self._limit = -1
+            self._frame.close()  # close the frame to release the reference
             self._frame = None
 
 
@@ -228,23 +232,25 @@ class ChunkedOutputBuffer(object):
         self._data[0:2] = b"\x00\x00"
 
     def write(self, b):
-        data = self._data
+        new_data_start = 0
         new_data_size = len(b)
-        chunk_size = self._end - self._start
-        max_chunk_size = self._max_chunk_size
-        chunk_remaining = max_chunk_size - chunk_size
-        if new_data_size > max_chunk_size:
-            self.write(b[:chunk_remaining])
-            self.chunk()
-            self.write(b[chunk_remaining:])
-            return
-        if new_data_size > chunk_remaining:
-            self.chunk()
-        new_end = self._end + new_data_size
-        new_chunk_size = new_end - self._start
-        data[self._end:new_end] = b
-        self._end = new_end
-        data[self._header:(self._header + 2)] = struct_pack(">H", new_chunk_size)
+        data_size = self._end - self._start
+        if data_size > new_data_size:
+            new_end = self._end + new_data_size
+            self._data[self._end:new_end] = bytearray(data_size)
+        while new_data_start < new_data_size:
+            chunk_occupied = self._end - self._start
+            chunk_remaining = self._max_chunk_size - chunk_occupied
+            if chunk_remaining == 0:
+                self.chunk()
+                chunk_remaining = self._max_chunk_size
+            chunk_write_size = min(chunk_remaining, new_data_size - new_data_start)
+            new_end = self._end + chunk_write_size
+            new_chunk_size = new_end - self._start
+            self._data[self._end:new_end] = b[new_data_start:(new_data_start + chunk_write_size)]
+            new_data_start += chunk_write_size
+            self._end = new_end
+            self._data[self._header:(self._header + 2)] = struct_pack(">H", new_chunk_size)
 
     def chunk(self):
         self._header = self._end
