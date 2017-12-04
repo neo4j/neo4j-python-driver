@@ -23,6 +23,18 @@ class Runner(Thread):
         self.create_nodes()
         self.create_index()
         self.match_nodes()
+        self.read_large()
+
+    def read_large(self):
+        for i in range(1, 7):
+            t0 = time()
+            with self.driver.session() as session:
+                try:
+                    session.run("RETURN '{}'".format("x" * (i * 2 ** 20))).consume()
+                except CypherError:
+                    pass
+            t1 = time()
+            stderr.write("Read %d MB in %fs\n" % (i, t1 - t0))
 
     def drop_index(self):
         with self.driver.session() as session:
