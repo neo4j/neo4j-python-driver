@@ -191,7 +191,7 @@ class ChunkedInputBuffer(object):
             p += 2
             if chunk_size == 0:
                 self._limit = p
-                self._frame = MessageFrame(memoryview(self._view[origin:self._limit]), panes)
+                self._frame = MessageFrame(memoryview(self._data[origin:self._limit]), panes)
                 return True
             q = p + chunk_size
             panes.append((p - origin, q - origin))
