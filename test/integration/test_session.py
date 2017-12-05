@@ -23,7 +23,7 @@ from uuid import uuid4
 from neo4j.v1 import \
     READ_ACCESS, WRITE_ACCESS, \
     CypherError, SessionError, TransactionError, \
-    Node, Relationship, Path, GraphDatabase
+    Node, Relationship, Path
 from neo4j.exceptions import CypherSyntaxError
 
 from test.integration.tools import DirectIntegrationTestCase
@@ -459,12 +459,10 @@ class SessionCompletionTestCase(DirectIntegrationTestCase):
             session.begin_transaction()
 
     def test_large_values(self):
-        driver = GraphDatabase.driver(self.bolt_uri, auth=self.auth_token)
         for i in range(1, 7):
-            session = driver.session()
+            session = self.driver.session()
             session.run("RETURN '{}'".format("A" * 2 ** 20))
             session.close()
-        driver.close()
 
 class TransactionCommittedTestCase(DirectIntegrationTestCase):
 
