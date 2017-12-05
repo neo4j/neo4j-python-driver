@@ -170,11 +170,7 @@ class Connection(object):
         self.socket = sock
         self.error_handler = error_handler
         self.server = ServerInfo(SocketAddress.from_socket(sock))
-        input_buffer_size = config.get("default_read_buffer_size")
-        if input_buffer_size:
-            self.input_buffer = ChunkedInputBuffer(capacity=input_buffer_size)
-        else:
-            self.input_buffer = ChunkedInputBuffer()
+        self.input_buffer = ChunkedInputBuffer()
         self.output_buffer = ChunkedOutputBuffer()
         self.packer = Packer(self.output_buffer)
         self.unpacker = Unpacker()

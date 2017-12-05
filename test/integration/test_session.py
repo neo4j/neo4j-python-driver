@@ -459,10 +459,11 @@ class SessionCompletionTestCase(DirectIntegrationTestCase):
             session.begin_transaction()
 
     def test_large_values(self):
-        driver = GraphDatabase.driver(self.bolt_uri, auth=self.auth_token, default_read_buffer_size=16)
-        session = driver.session()
-        session.run("RETURN '{}'".format("A" * 251172))
-        session.close()
+        driver = GraphDatabase.driver(self.bolt_uri, auth=self.auth_token)
+        for i in range(1, 7):
+            session = driver.session()
+            session.run("RETURN '{}'".format("A" * 2 ** 20))
+            session.close()
         driver.close()
 
 class TransactionCommittedTestCase(DirectIntegrationTestCase):
