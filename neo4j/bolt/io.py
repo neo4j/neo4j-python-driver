@@ -68,26 +68,39 @@ class MessageFrame(object):
         if n == 0 or self._current_pane == -1:
             return _empty_view
         value = None
-        while n > 0 and self._current_pane >= 0:
+        is_memoryview = False
+        offset = 0
+
+        to_read = n
+        while to_read > 0 and self._current_pane >= 0:
             p, q = self._panes[self._current_pane]
             size = q - p
             remaining = size - self._current_offset
             start = p + self._current_offset
-            if n <= remaining:
-                end = start + n
-                if n < remaining:
-                    self._current_offset += n
+            if to_read <= remaining:
+                end = start + to_read
+                if to_read < remaining:
+                    self._current_offset += to_read
                 else:
                     self._next_pane()
             else:
                 end = q
                 self._next_pane()
+
+            read = end - start
             if value:
-                value.extend(self._view[start:end])
+                if is_memoryview:
+                    new_value = bytearray(n)
+                    new_value[:offset] = value[:offset]
+                    value = new_value
+                    is_memoryview = False
+                value[offset:offset+read] = self._view[start:end]
             else:
-                value = bytearray(self._view[start:end])
-            n -= end - start
-        return memoryview(value)
+                value = memoryview(self._view[start:end])
+                is_memoryview = True
+            offset += read
+            to_read -= read
+        return value
 
 
 class ChunkedInputBuffer(object):
