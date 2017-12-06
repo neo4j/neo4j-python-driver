@@ -101,6 +101,9 @@ cdef class MessageFrame(object):
             value.extend(self.read(n - (end - start)))
         return value
 
+    cpdef close(self):
+        self._view = None
+
 
 cdef class ChunkedInputBuffer(object):
 
@@ -245,6 +248,7 @@ cdef class ChunkedInputBuffer(object):
 
     cpdef discard_message(self):
         if self._frame is not None:
+            self._frame.close()
             self._origin = self._limit
             self._limit = -1
             self._frame = None
