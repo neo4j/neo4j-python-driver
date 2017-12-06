@@ -39,6 +39,9 @@ class MessageFrame(object):
             self._current_pane = 0
             self._current_offset = 0
 
+    def close(self):
+         self._view = None
+
     def _next_pane(self):
         self._current_pane += 1
         if self._current_pane < len(self._panes):
@@ -64,23 +67,39 @@ class MessageFrame(object):
     def read(self, n):
         if n == 0 or self._current_pane == -1:
             return _empty_view
-        p, q = self._panes[self._current_pane]
-        size = q - p
-        remaining = size - self._current_offset
-        if n <= remaining:
+        value = None
+        is_memoryview = False
+        offset = 0
+
+        to_read = n
+        while to_read > 0 and self._current_pane >= 0:
+            p, q = self._panes[self._current_pane]
+            size = q - p
+            remaining = size - self._current_offset
             start = p + self._current_offset
-            end = start + n
-            if n < remaining:
-                self._current_offset += n
+            if to_read <= remaining:
+                end = start + to_read
+                if to_read < remaining:
+                    self._current_offset += to_read
+                else:
+                    self._next_pane()
             else:
+                end = q
                 self._next_pane()
-            return memoryview(self._view[start:end])
-        start = p + self._current_offset
-        end = q
-        value = bytearray(self._view[start:end])
-        self._next_pane()
-        if len(value) < n and self._current_pane >= 0:
-            value.extend(self.read(n - (end - start)))
+
+            read = end - start
+            if value:
+                if is_memoryview:
+                    new_value = bytearray(n)
+                    new_value[:offset] = value[:offset]
+                    value = new_value
+                    is_memoryview = False
+                value[offset:offset+read] = self._view[start:end]
+            else:
+                value = memoryview(self._view[start:end])
+                is_memoryview = True
+            offset += read
+            to_read -= read
         return value
 
 
@@ -200,6 +219,7 @@ class ChunkedInputBuffer(object):
 
     def discard_message(self):
         if self._frame is not None:
+            self._frame.close()
             self._origin = self._limit
             self._limit = -1
             self._frame = None
@@ -224,23 +244,23 @@ class ChunkedOutputBuffer(object):
         self._data[0:2] = b"\x00\x00"
 
     def write(self, b):
-        data = self._data
-        new_data_size = len(b)
-        chunk_size = self._end - self._start
+        to_write = len(b)
         max_chunk_size = self._max_chunk_size
-        chunk_remaining = max_chunk_size - chunk_size
-        if new_data_size > max_chunk_size:
-            self.write(b[:chunk_remaining])
-            self.chunk()
-            self.write(b[chunk_remaining:])
-            return
-        if new_data_size > chunk_remaining:
-            self.chunk()
-        new_end = self._end + new_data_size
-        new_chunk_size = new_end - self._start
-        data[self._end:new_end] = b
-        self._end = new_end
-        data[self._header:(self._header + 2)] = struct_pack(">H", new_chunk_size)
+        pos = 0
+        while to_write > 0:
+            chunk_size = self._end - self._start
+            remaining = max_chunk_size - chunk_size
+            if remaining == 0 or remaining < to_write <= max_chunk_size:
+                self.chunk()
+            else:
+                wrote = min(to_write, remaining)
+                new_end = self._end + wrote
+                self._data[self._end:new_end] = b[pos:pos+wrote]
+                self._end = new_end
+                pos += wrote
+                new_chunk_size = self._end - self._start
+                self._data[self._header:(self._header + 2)] = struct_pack(">H", new_chunk_size)
+                to_write -= wrote
 
     def chunk(self):
         self._header = self._end

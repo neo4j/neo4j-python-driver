@@ -28,7 +28,6 @@ from neo4j.exceptions import CypherSyntaxError
 
 from test.integration.tools import DirectIntegrationTestCase
 
-
 class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
 
     def test_can_run_simple_statement(self):
@@ -459,6 +458,11 @@ class SessionCompletionTestCase(DirectIntegrationTestCase):
         with self.assertRaises(SessionError):
             session.begin_transaction()
 
+    def test_large_values(self):
+        for i in range(1, 7):
+            session = self.driver.session()
+            session.run("RETURN '{}'".format("A" * 2 ** 20))
+            session.close()
 
 class TransactionCommittedTestCase(DirectIntegrationTestCase):
 

@@ -28,7 +28,7 @@ from sys import stdout, stderr
 
 from .util import Watcher
 from .v1 import GraphDatabase
-from neo4j.v1.exceptions import CypherError
+from neo4j.exceptions import CypherError
 
 
 def main():
