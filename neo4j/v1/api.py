@@ -737,7 +737,8 @@ class StatementResult(object):
         :returns: The :class:`.ResultSummary` for this result
         """
         if self.attached():
-            list(self)
+            for x in self:
+                pass
         return self.summary()
 
     def single(self):
