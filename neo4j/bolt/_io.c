@@ -3,11 +3,11 @@
 /* BEGIN: Cython Metadata
 {
     "distutils": {
-        "name": "neo4j.bolt._io", 
+        "name": "neo4j.bolt._io",
         "sources": [
-            "/Users/zhenli/git/python-driver/neo4j/bolt/_io.pyx"
+            "neo4j/bolt/_io.pyx"
         ]
-    }, 
+    },
     "module_name": "neo4j.bolt._io"
 }
 END: Cython Metadata */
@@ -735,7 +735,7 @@ static const char *__pyx_filename;
 
 
 static const char *__pyx_f[] = {
-  "bolt/_io.pyx",
+  "neo4j/bolt/_io.pyx",
   "stringsource",
 };
 
