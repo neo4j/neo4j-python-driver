@@ -58,6 +58,7 @@ cdef class Unpacker(object):
         marker = self.read_int()
 
         if marker == -1:
+            return None
             raise RuntimeError("Nothing to unpack")
 
         # Tiny Integer
