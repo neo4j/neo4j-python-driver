@@ -36,7 +36,7 @@ from threading import RLock, Condition
 
 from neo4j.addressing import SocketAddress, is_ip_address
 from neo4j.bolt.cert import KNOWN_HOSTS
-from neo4j.bolt.response import InitResponse, AckFailureResponse, ResetResponse
+from neo4j.bolt.response import InitResponse, AckFailureResponse, ResetResponse, Response
 from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
 from neo4j.exceptions import ClientError, ProtocolError, SecurityError, ServiceUnavailable
 from neo4j.packstream import Packer, Unpacker
@@ -309,6 +309,15 @@ class Connection(object):
             response = self.responses.popleft()
             response.complete = True
             self._reset_in_flight = False
+            while 1:
+                inputready, o, e = select([self.socket],[],[], 0.0)
+                ct = 0
+                if len(inputready)==0:
+                    break
+                for s in inputready:
+                    s.recv(1)
+                    ct += 1
+                log_info("dropped socket %d bytes", ct)
             return 0,1
 
         self._receive()
