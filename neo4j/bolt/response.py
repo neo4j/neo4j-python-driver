@@ -70,6 +70,5 @@ class AckFailureResponse(Response):
 
 
 class ResetResponse(Response):
-
     def on_failure(self, metadata):
         raise ProtocolError("RESET failed")

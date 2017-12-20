@@ -400,7 +400,7 @@ class Session(object):
         return last
 
     def has_transaction(self):
-        return bool(self._transaction)
+        return bool(self._transaction) and not self._transaction._reset
 
     def _create_transaction(self):
         self._transaction = Transaction(self, on_close=self._destroy_transaction)
@@ -458,6 +458,15 @@ class Session(object):
         self._transaction = None
         self.__rollback__().consume()
 
+    def reset(self):
+        """ Interrupts the currently running transaction and resets the session state
+
+       """
+        #self._reset_in_flight = True
+        #self._transaction = None
+        self.__reset__()
+        self._transaction = None
+
     def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):
         if not callable(unit_of_work):
             raise TypeError("Unit of work is not callable")
@@ -472,7 +481,13 @@ class Session(object):
                 self._create_transaction()
                 self.__begin__()
                 with self._transaction as tx:
-                    return unit_of_work(tx, *args, **kwargs)
+                    try:
+                        return unit_of_work(tx, *args, **kwargs)
+                    except Exception:
+                        tx._reset = True
+                        self.reset()
+
+                        raise
             except (ServiceUnavailable, SessionExpired) as error:
                 last_error = error
             except TransientError as error:
@@ -516,6 +531,9 @@ def is_retriable_transient_error(error):
                                "Neo.TransientError.Transaction.LockClientStopped"))
 
 
+class ResetSessionException(Exception):
+    pass
+
 class Transaction(object):
     """ Container for multiple Cypher queries to be executed within
     a single context. Transactions can be used within a :py:const:`with`
@@ -538,11 +556,13 @@ class Transaction(object):
     def __init__(self, session, on_close):
         self.session = session
         self.on_close = on_close
+        self._reset = False
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+
         if self.success is None:
             self.success = not bool(exc_type)
         self.close()
@@ -621,7 +641,9 @@ class Transaction(object):
                 self.success = False
                 raise
             finally:
-                if self.success:
+                if self._reset:
+                    pass
+                elif self.success:
                     self.session.commit_transaction()
                 else:
                     self.session.rollback_transaction()

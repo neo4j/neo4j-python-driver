@@ -19,7 +19,8 @@
 # limitations under the License.
 
 
-from neo4j.bolt import Response, RUN, PULL_ALL
+from neo4j.bolt import Response, RUN, PULL_ALL, RESET
+from neo4j.bolt.response import ResetResponse
 from neo4j.compat import unicode
 from neo4j.v1.api import Session
 from neo4j.v1.exceptions import SessionError
@@ -34,6 +35,9 @@ class BoltSession(Session):
 
         if self.closed():
             raise SessionError("Session closed")
+
+        #if self._reset_in_flight:
+        #    raise SessionError("Cannot use session. Reset in progress")
 
         run_response = Response(self._connection)
         pull_all_response = Response(self._connection)
@@ -64,6 +68,14 @@ class BoltSession(Session):
 
     def __rollback__(self):
         return self.__run__(u"ROLLBACK", {})
+
+    def __reset__(self):
+        if self.closed():
+            raise SessionError("Session closed")
+        self._last_result = None
+        self._connection.reset()
+
+        return None
 
     def __bookmark__(self, result):
         summary = result.summary()

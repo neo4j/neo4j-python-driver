@@ -36,7 +36,7 @@ from threading import RLock, Condition
 
 from neo4j.addressing import SocketAddress, is_ip_address
 from neo4j.bolt.cert import KNOWN_HOSTS
-from neo4j.bolt.response import InitResponse, AckFailureResponse, ResetResponse
+from neo4j.bolt.response import InitResponse, AckFailureResponse, ResetResponse, Response
 from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
 from neo4j.exceptions import ClientError, ProtocolError, SecurityError, ServiceUnavailable
 from neo4j.packstream import Packer, Unpacker
@@ -177,6 +177,7 @@ class Connection(object):
         self.responses = deque()
         self._max_connection_lifetime = config.get("max_connection_lifetime", default_config["max_connection_lifetime"])
         self._creation_timestamp = clock()
+        self._reset_in_flight = False
 
         # Determine the user agent and ensure it is a Unicode value
         user_agent = config.get("user_agent", default_config["user_agent"])
@@ -255,7 +256,10 @@ class Connection(object):
         """ Add a RESET message to the outgoing queue, send
         it and consume all remaining messages.
         """
+        if self._reset_in_flight:
+            raise Exception("Reset already in flight")
         self.append(RESET, response=ResetResponse(self))
+        self._reset_in_flight = True
         self.sync()
 
     def send(self):
@@ -280,8 +284,10 @@ class Connection(object):
 
     def fetch(self):
         try:
+            log_info("fetch")
             return self._fetch()
         except self.error_handler.known_errors as error:
+            log_info("handle known error")
             self.error_handler.handle(error, self.address)
             raise error
 
@@ -290,6 +296,7 @@ class Connection(object):
 
         :return: 2-tuple of number of detail messages and number of summary messages fetched
         """
+        log_info("_fetch")
         if self.closed():
             raise self.Error("Failed to read from closed connection {!r}".format(self.server.address))
         if self.defunct():
@@ -297,9 +304,33 @@ class Connection(object):
         if not self.responses:
             return 0, 0
 
+        if self._reset_in_flight and isinstance(self.responses[0], ResetResponse):
+            log_info('resetting')
+            response = self.responses.popleft()
+            response.complete = True
+            self._reset_in_flight = False
+            while 1:
+                inputready, o, e = select([self.socket],[],[], 0.0)
+                ct = 0
+                if len(inputready)==0:
+                    break
+                for s in inputready:
+                    s.recv(1)
+                    ct += 1
+                log_info("dropped socket %d bytes", ct)
+            return 0,1
+
         self._receive()
 
         details, summary_signature, summary_metadata = self._unpack()
+
+        log_info("S: DETAILS %s", details)
+        if len(details) > 0 and len(details[-1]) > 0 and details[-1][-1] and hasattr(details[-1][-1], 'signature') and details[-1][-1].signature == FAILURE:
+            #log_info("hidden error", details)
+            summary_signature = FAILURE
+            summary_metadata = details[-1][-1][0]
+            #log_info("S: METADATA * %s", summary_metadata)
+            details = []
 
         if details:
             log_info("S: RECORD * %d", len(details))  # TODO
@@ -328,6 +359,7 @@ class Connection(object):
         return len(details), 1
 
     def _receive(self):
+        log_info("RECEIVE")
         try:
             received = self.input_buffer.receive_message(self.socket, 8192)
         except SocketError:
@@ -373,6 +405,7 @@ class Connection(object):
         while self.responses:
             response = self.responses[0]
             while not response.complete:
+                log_info("RESPONSE %s", response)
                 detail_delta, summary_delta = self.fetch()
                 detail_count += detail_delta
                 summary_count += summary_delta
