@@ -334,6 +334,25 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
             result = session.run("UNWIND range(1, 10) AS n WITH n MATCH (a) RETURN n, a LIMIT 10")
             assert len(list(result)) == 10
 
+    def test_can_reset_session_in_with_explicit_transaction(self):
+        with self.driver.session() as session:
+            session.run("CREATE (a) RETURN id(a)")
+            tx = session.begin_transaction()
+
+            try:
+                for x in tx.run("UNWIND range(1, 100000000) AS n WITH n MATCH (a) RETURN n, a, 1, 'foo'"):
+                    raise TestException("testing")
+            except TestException:
+                tx._reset = True
+                session.reset()
+
+                pass
+
+            tx.close()
+            # Check that we haven't broken session
+            result = session.run("UNWIND range(1, 10) AS n WITH n MATCH (a) RETURN n, a LIMIT 10")
+            assert len(list(result)) == 10
+
     def test_can_reset_session_in_read_transaction(self):
         with self.driver.session() as session:
             session.run("CREATE (a) RETURN id(a)")
