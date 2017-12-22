@@ -30,13 +30,13 @@ try:
 except ImportError:
     from urllib import urlretrieve
 
-from boltkit.controller import WindowsController, UnixController
+from boltkit.controller import _install, WindowsController, UnixController
 
 from neo4j.v1 import GraphDatabase
 from neo4j.exceptions import AuthError
 from neo4j.util import ServerVersion
 
-from test.env import NEO4J_SERVER_PACKAGE, NEO4J_USER, NEO4J_PASSWORD
+from test.env import NEO4J_SERVER_PACKAGE, NEO4J_USER, NEO4J_PASSWORD, NEOCTRL_ARGS
 
 
 def copy_dist(source, target):
@@ -85,6 +85,8 @@ class IntegrationTestCase(TestCase):
 
     server_package = NEO4J_SERVER_PACKAGE
     local_server_package = path_join(dist_path, basename(server_package)) if server_package else None
+    neoctrl_args = NEOCTRL_ARGS
+
 
     @classmethod
     def server_version_info(cls):
@@ -104,16 +106,18 @@ class IntegrationTestCase(TestCase):
             remove(known_hosts)
 
     @classmethod
-    def _start_server(cls, package):
+    def _unpack(cls, package):
         try:
             makedirs(cls.run_path)
         except OSError:
             pass
-        if platform.system() == "Windows":
-            controller_class = WindowsController
-        else:
-            controller_class = UnixController
+        controller_class = WindowsController if platform.system() == "Windows" else UnixController
         home = realpath(controller_class.extract(package, cls.run_path))
+        return home
+
+    @classmethod
+    def _start_server(cls, home):
+        controller_class = WindowsController if platform.system() == "Windows" else UnixController
         cls.controller = controller_class(home, 1)
         if NEO4J_USER is None:
             cls.controller.create_user(cls.user, cls.password)
@@ -138,12 +142,19 @@ class IntegrationTestCase(TestCase):
                 except AuthError as error:
                     stderr.write("{}\n".format(error))
                     exit(1)
-            return
-        if cls.server_package is None:
+        elif cls.server_package is not None:
+            stderr.write("Using server from package {}\n".format(cls.server_package))
+            package = copy_dist(cls.server_package, cls.local_server_package)
+            home = cls._unpack(package)
+            cls._start_server(home)
+        elif cls.neoctrl_args is not None:
+            stderr.write("Using boltkit to install server 'neotrl-install {}'\n".format(cls.neoctrl_args))
+            edition = "enterprise" if "-e" in cls.neoctrl_args else "community"
+            version = cls.neoctrl_args.split()[-1]
+            home = _install(edition, version, cls.run_path)
+            cls._start_server(home)
+        else:
             raise SkipTest("No Neo4j server available for %s" % cls.__name__)
-        stderr.write("Using server from package {}\n".format(cls.server_package))
-        package = copy_dist(cls.server_package, cls.local_server_package)
-        cls._start_server(package)
 
     @classmethod
     def tearDownClass(cls):
