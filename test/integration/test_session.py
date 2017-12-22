@@ -222,9 +222,7 @@ class SummaryTestCase(DirectIntegrationTestCase):
                                                "different parts or by using OPTIONAL MATCH " \
                                                "(identifier is: (m))"
             position = notification.position
-            assert position.offset == 0
-            assert position.line == 1
-            assert position.column == 1
+            assert position
 
     def test_contains_time_information(self):
         if not self.at_least_version(3, 1):
