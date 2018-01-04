@@ -21,13 +21,14 @@
 
 from collections import deque
 from random import random
-from time import time, sleep
+from time import sleep
 from warnings import warn
 
 from neo4j.exceptions import ProtocolError, ServiceUnavailable
 from neo4j.compat import urlparse, ustr, string, integer
 from neo4j.exceptions import CypherError, TransientError
 from neo4j.config import default_config
+from neo4j.compat import perf_counter
 
 from .exceptions import DriverError, SessionError, SessionExpired, TransactionError
 
@@ -465,7 +466,7 @@ class Session(object):
                                             RETRY_DELAY_MULTIPLIER,
                                             RETRY_DELAY_JITTER_FACTOR)
         last_error = None
-        t0 = time()
+        t0 = perf_counter()
         while True:
             try:
                 self._connect(access_mode)
@@ -480,7 +481,7 @@ class Session(object):
                     last_error = error
                 else:
                     raise error
-            t1 = time()
+            t1 = perf_counter()
             if t1 - t0 > self._max_retry_time:
                 break
             sleep(next(retry_delay))

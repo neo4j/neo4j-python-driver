@@ -41,7 +41,7 @@ from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
 from neo4j.exceptions import ClientError, ProtocolError, SecurityError, ServiceUnavailable
 from neo4j.packstream import Packer, Unpacker
 from neo4j.util import import_best as _import_best
-from time import clock
+from neo4j.compat import perf_counter
 from neo4j.config import default_config, INFINITE, TRUST_ON_FIRST_USE
 
 ChunkedInputBuffer = _import_best("neo4j.bolt._io", "neo4j.bolt.io").ChunkedInputBuffer
@@ -176,7 +176,7 @@ class Connection(object):
         self.unpacker = Unpacker()
         self.responses = deque()
         self._max_connection_lifetime = config.get("max_connection_lifetime", default_config["max_connection_lifetime"])
-        self._creation_timestamp = clock()
+        self._creation_timestamp = perf_counter()
 
         # Determine the user agent and ensure it is a Unicode value
         user_agent = config.get("user_agent", default_config["user_agent"])
@@ -361,7 +361,7 @@ class Connection(object):
         return details, summary_signature, summary_metadata
 
     def timedout(self):
-        return 0 <= self._max_connection_lifetime <= clock() - self._creation_timestamp
+        return 0 <= self._max_connection_lifetime <= perf_counter() - self._creation_timestamp
 
     def sync(self):
         """ Send and fetch all outstanding messages.
@@ -431,7 +431,7 @@ class ConnectionPool(object):
             except KeyError:
                 connections = self.connections[address] = deque()
 
-            connection_acquisition_start_timestamp = clock()
+            connection_acquisition_start_timestamp = perf_counter()
             while True:
                 # try to find a free connection in pool
                 for connection in list(connections):
@@ -456,12 +456,12 @@ class ConnectionPool(object):
                         return connection
 
                 # failed to obtain a connection from pool because the pool is full and no free connection in the pool
-                span_timeout = self._connection_acquisition_timeout - (clock() - connection_acquisition_start_timestamp)
+                span_timeout = self._connection_acquisition_timeout - (perf_counter() - connection_acquisition_start_timestamp)
                 if span_timeout > 0:
                     self.cond.wait(span_timeout)
                     # if timed out, then we throw error. This time computation is needed, as with python 2.7, we cannot
                     # tell if the condition is notified or timed out when we come to this line
-                    if self._connection_acquisition_timeout <= (clock() - connection_acquisition_start_timestamp):
+                    if self._connection_acquisition_timeout <= (perf_counter() - connection_acquisition_start_timestamp):
                         raise ClientError("Failed to obtain a connection from pool within {!r}s".format(
                             self._connection_acquisition_timeout))
                 else:
