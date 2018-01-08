@@ -34,6 +34,7 @@ from neo4j.exceptions import CypherError
 def main():
     parser = ArgumentParser(description="Execute one or more Cypher statements using Bolt.")
     parser.add_argument("statement", nargs="+")
+    parser.add_argument("-i", "--insecure", action="store_true")
     parser.add_argument("-k", "--keys", action="store_true")
     parser.add_argument("-P", "--password")
     parser.add_argument("-p", "--parameter", action="append", metavar="NAME=VALUE")
@@ -60,7 +61,7 @@ def main():
             except ValueError:
                 parameters[name] = value
 
-    driver = GraphDatabase.driver(args.url, auth=(args.user, args.password))
+    driver = GraphDatabase.driver(args.url, auth=(args.user, args.password), encrypted=not args.insecure)
     session = driver.session()
     for _ in range(args.times):
         for statement in args.statement:
