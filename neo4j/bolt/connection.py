@@ -226,17 +226,17 @@ class Connection(object):
                         fields = ("",) + fields[1:]
                     else:
                         self._last_run_statement = statement
-            log_info("C: RUN %r", fields)
+            log_debug("C: RUN %r", fields)
         elif signature == PULL_ALL:
-            log_info("C: PULL_ALL %r", fields)
+            log_debug("C: PULL_ALL %r", fields)
         elif signature == DISCARD_ALL:
-            log_info("C: DISCARD_ALL %r", fields)
+            log_debug("C: DISCARD_ALL %r", fields)
         elif signature == RESET:
-            log_info("C: RESET %r", fields)
+            log_debug("C: RESET %r", fields)
         elif signature == ACK_FAILURE:
-            log_info("C: ACK_FAILURE %r", fields)
+            log_debug("C: ACK_FAILURE %r", fields)
         elif signature == INIT:
-            log_info("C: INIT (%r, {...})", fields[0])
+            log_debug("C: INIT (%r, {...})", fields[0])
         else:
             raise ValueError("Unknown message signature")
         self.packer.pack_struct(signature, fields)
@@ -302,7 +302,7 @@ class Connection(object):
         details, summary_signature, summary_metadata = self._unpack()
 
         if details:
-            log_info("S: RECORD * %d", len(details))  # TODO
+            log_debug("S: RECORD * %d", len(details))  # TODO
             self.responses[0].on_records(details)
 
         if summary_signature is None:
@@ -311,15 +311,15 @@ class Connection(object):
         response = self.responses.popleft()
         response.complete = True
         if summary_signature == SUCCESS:
-            log_info("S: SUCCESS (%r)", summary_metadata)
+            log_debug("S: SUCCESS (%r)", summary_metadata)
             response.on_success(summary_metadata or {})
         elif summary_signature == IGNORED:
             self._last_run_statement = None
-            log_info("S: IGNORED (%r)", summary_metadata)
+            log_debug("S: IGNORED (%r)", summary_metadata)
             response.on_ignored(summary_metadata or {})
         elif summary_signature == FAILURE:
             self._last_run_statement = None
-            log_info("S: FAILURE (%r)", summary_metadata)
+            log_debug("S: FAILURE (%r)", summary_metadata)
             response.on_failure(summary_metadata or {})
         else:
             self._last_run_statement = None
@@ -382,7 +382,7 @@ class Connection(object):
         """ Close the connection.
         """
         if not self.closed():
-            log_info("~~ [CLOSE]")
+            log_debug("~~ [CLOSE]")
             self.socket.close()
             self._closed = True
 
@@ -553,7 +553,7 @@ def connect(address, ssl_context=None, error_handler=None, **config):
     # Establish a connection to the host and port specified
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
-    log_info("~~ [CONNECT] %s", address)
+    log_debug("~~ [CONNECT] %s", address)
     s = None
     try:
         if len(address) == 2:
@@ -590,7 +590,7 @@ def connect(address, ssl_context=None, error_handler=None, **config):
     # Secure the connection if an SSL context has been provided
     if ssl_context and SSL_AVAILABLE:
         host = address[0]
-        log_info("~~ [SECURE] %s", host)
+        log_debug("~~ [SECURE] %s", host)
         try:
             s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
         except SSLError as cause:
@@ -619,7 +619,7 @@ def connect(address, ssl_context=None, error_handler=None, **config):
     # Send details of the protocol versions supported
     supported_versions = [1, 0, 0, 0]
     handshake = [MAGIC_PREAMBLE] + supported_versions
-    log_info("C: [HANDSHAKE] 0x%X %r", MAGIC_PREAMBLE, supported_versions)
+    log_debug("C: [HANDSHAKE] 0x%X %r", MAGIC_PREAMBLE, supported_versions)
     data = b"".join(struct_pack(">I", num) for num in handshake)
     s.sendall(data)
 
@@ -644,14 +644,14 @@ def connect(address, ssl_context=None, error_handler=None, **config):
         s.close()
         raise ProtocolError("Expected four byte handshake response, received %r instead" % data)
     agreed_version, = struct_unpack(">I", data)
-    log_info("S: [HANDSHAKE] %d", agreed_version)
+    log_debug("S: [HANDSHAKE] %d", agreed_version)
     if agreed_version == 0:
-        log_info("~~ [CLOSE]")
+        log_debug("~~ [CLOSE]")
         s.shutdown(SHUT_RDWR)
         s.close()
     elif agreed_version == 1:
         connection = Connection(address, s, der_encoded_server_certificate=der_encoded_server_certificate,
-                          error_handler=error_handler, **config)
+                                error_handler=error_handler, **config)
         connection.init()
         return connection
     elif agreed_version == 0x48545450:
