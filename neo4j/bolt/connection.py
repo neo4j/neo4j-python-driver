@@ -545,7 +545,7 @@ class ConnectionPool(object):
             return self._closed
 
 
-def connect(address, ssl_context=None, error_handler=None, **config):
+def connect(address, ssl_context=None, hostname=None, error_handler=None, **config):
     """ Connect and perform a handshake and return a valid Connection object, assuming
     a protocol version can be agreed.
     """
@@ -589,10 +589,11 @@ def connect(address, ssl_context=None, error_handler=None, **config):
 
     # Secure the connection if an SSL context has been provided
     if ssl_context and SSL_AVAILABLE:
-        host = address[0]
-        log_debug("~~ [SECURE] %s", host)
+        host_ip = address[0]
+        log_debug("~~ [SECURE] %s", host_ip)
         try:
-            s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI else None)
+            s = ssl_context.wrap_socket(s, server_hostname=hostname if HAS_SNI and hostname else
+            None)
         except SSLError as cause:
             s.close()
             error = SecurityError("Failed to establish secure connection to {!r}".format(cause.args[1]))
@@ -609,10 +610,10 @@ def connect(address, ssl_context=None, error_handler=None, **config):
             if trust == TRUST_ON_FIRST_USE:
                 from neo4j.bolt.cert import PersonalCertificateStore
                 store = PersonalCertificateStore()
-                if not store.match_or_trust(host, der_encoded_server_certificate):
+                if not store.match_or_trust(host_ip, der_encoded_server_certificate):
                     s.close()
                     raise ProtocolError("Server certificate does not match known certificate "
-                                        "for %r; check details in file %r" % (host, KNOWN_HOSTS))
+                                        "for %r; check details in file %r" % (host_ip, KNOWN_HOSTS))
     else:
         der_encoded_server_certificate = None
 
