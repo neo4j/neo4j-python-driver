@@ -24,6 +24,7 @@ from time import clock
 
 from neo4j.addressing import SocketAddress, resolve
 from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect, ConnectionErrorHandler
+from neo4j.compat import urlparse
 from neo4j.compat.collections import MutableSet, OrderedDict
 from neo4j.exceptions import CypherError, DatabaseUnavailableError, NotALeaderError, ForbiddenOnReadOnlyDatabaseError
 from neo4j.util import ServerVersion
@@ -460,7 +461,7 @@ class RoutingDriver(Driver):
             raise ValueError("TRUST_ON_FIRST_USE is not compatible with routing")
 
         def connector(address, error_handler):
-            return connect(address, security_plan.ssl_context, error_handler, **config)
+            return connect(address, security_plan.ssl_context, urlparse(uri).hostname, error_handler, **config)
 
         pool = RoutingConnectionPool(connector, initial_address, routing_context, *resolve(initial_address), **config)
         try:
