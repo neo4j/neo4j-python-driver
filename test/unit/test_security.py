@@ -40,17 +40,17 @@ class AuthTokenTestCase(TestCase):
         assert not hasattr(auth, "parameters")
 
     def test_should_generate_base_auth_with_realm_correctly(self):
-        auth = basic_auth("molly", "meoooow", "cat_caffe")
+        auth = basic_auth("molly", "meoooow", "cat_cafe")
         assert auth.scheme == "basic"
         assert auth.principal == "molly"
         assert auth.credentials == "meoooow"
-        assert auth.realm == "cat_caffe"
+        assert auth.realm == "cat_cafe"
         assert not hasattr(auth, "parameters")
 
     def test_should_generate_custom_auth_correctly(self):
-        auth = custom_auth("molly", "meoooow", "cat_caffe", "cat", age="1", color="white")
+        auth = custom_auth("molly", "meoooow", "cat_cafe", "cat", age="1", color="white")
         assert auth.scheme == "cat"
         assert auth.principal == "molly"
         assert auth.credentials == "meoooow"
-        assert auth.realm == "cat_caffe"
+        assert auth.realm == "cat_cafe"
         assert auth.parameters == {"age": "1", "color": "white"}
