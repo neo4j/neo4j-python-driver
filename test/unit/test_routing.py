@@ -20,6 +20,7 @@
 from collections import OrderedDict
 from unittest import TestCase
 
+from neo4j.addressing import IPv4SocketAddress
 from neo4j.bolt import ProtocolError
 from neo4j.bolt.connection import connect
 from neo4j.v1.routing import OrderedSet, RoutingTable, RoutingConnectionPool, LeastConnectedLoadBalancingStrategy, \
@@ -144,16 +145,18 @@ class RoutingTableConstructionTestCase(TestCase):
 class RoutingTableParseRoutingInfoTestCase(TestCase):
     def test_should_return_routing_table_on_valid_record(self):
         table = RoutingTable.parse_routing_info([VALID_ROUTING_RECORD])
-        assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-        assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
-        assert table.writers == {('127.0.0.1', 9006)}
+        assert table.routers == {('127.0.0.1', 9001, '127.0.0.1'), ('127.0.0.1', 9002, '127.0.0.1'),
+                                 ('127.0.0.1', 9003, '127.0.0.1')}
+        assert table.readers == {('127.0.0.1', 9004, '127.0.0.1'), ('127.0.0.1', 9005, '127.0.0.1')}
+        assert table.writers == {('127.0.0.1', 9006, '127.0.0.1')}
         assert table.ttl == 300
 
     def test_should_return_routing_table_on_valid_record_with_extra_role(self):
         table = RoutingTable.parse_routing_info([VALID_ROUTING_RECORD_WITH_EXTRA_ROLE])
-        assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-        assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
-        assert table.writers == {('127.0.0.1', 9006)}
+        assert table.routers == {('127.0.0.1', 9001, '127.0.0.1'), ('127.0.0.1', 9002, '127.0.0.1'),
+                                 ('127.0.0.1', 9003, '127.0.0.1')}
+        assert table.readers == {('127.0.0.1', 9004, '127.0.0.1'), ('127.0.0.1', 9005, '127.0.0.1')}
+        assert table.writers == {('127.0.0.1', 9006, '127.0.0.1')}
         assert table.ttl == 300
 
     def test_should_fail_on_invalid_record(self):
@@ -180,7 +183,9 @@ class RoutingTableServersTestCase(TestCase):
             ],
         }
         table = RoutingTable.parse_routing_info([routing_table])
-        assert table.servers() == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003), ('127.0.0.1', 9005)}
+        assert table.servers() == {
+            ('127.0.0.1', 9001, '127.0.0.1'), ('127.0.0.1', 9002, '127.0.0.1'),
+            ('127.0.0.1', 9003, '127.0.0.1'), ('127.0.0.1', 9005, '127.0.0.1')}
 
 
 class RoutingTableFreshnessTestCase(TestCase):
@@ -211,22 +216,31 @@ class RoutingTableFreshnessTestCase(TestCase):
 class RoutingTableUpdateTestCase(TestCase):
     def setUp(self):
         self.table = RoutingTable(
-            [("192.168.1.1", 7687), ("192.168.1.2", 7687)], [("192.168.1.3", 7687)], [], 0)
+            [("192.168.1.1", 7687, "192.168.1.1"),
+             ("192.168.1.2", 7687, "192.168.1.1")],
+            [("192.168.1.3", 7687, "192.168.1.1")], [], 0)
         self.new_table = RoutingTable(
-            [("127.0.0.1", 9001), ("127.0.0.1", 9002), ("127.0.0.1", 9003)],
-            [("127.0.0.1", 9004), ("127.0.0.1", 9005)], [("127.0.0.1", 9006)], 300)
+            [("127.0.0.1", 9001, "127.0.0.1"),
+             ("127.0.0.1", 9002, "127.0.0.1"),
+             ("127.0.0.1", 9003, "127.0.0.1")],
+            [("127.0.0.1", 9004, "127.0.0.1"),
+             ("127.0.0.1", 9005, "127.0.0.1")],
+            [("127.0.0.1", 9006, "127.0.0.1")], 300)
 
     def test_update_should_replace_routers(self):
         self.table.update(self.new_table)
-        assert self.table.routers == {("127.0.0.1", 9001), ("127.0.0.1", 9002), ("127.0.0.1", 9003)}
+        assert self.table.routers == {("127.0.0.1", 9001, "127.0.0.1"),
+                                      ("127.0.0.1", 9002, "127.0.0.1"),
+                                      ("127.0.0.1", 9003, "127.0.0.1")}
 
     def test_update_should_replace_readers(self):
         self.table.update(self.new_table)
-        assert self.table.readers == {("127.0.0.1", 9004), ("127.0.0.1", 9005)}
+        assert self.table.readers == {("127.0.0.1", 9004, "127.0.0.1"),
+                                      ("127.0.0.1", 9005, "127.0.0.1")}
 
     def test_update_should_replace_writers(self):
         self.table.update(self.new_table)
-        assert self.table.writers == {("127.0.0.1", 9006)}
+        assert self.table.writers == {("127.0.0.1", 9006, "127.0.0.1")}
 
     def test_update_should_replace_ttl(self):
         self.table.update(self.new_table)
@@ -235,10 +249,10 @@ class RoutingTableUpdateTestCase(TestCase):
 
 class RoutingConnectionPoolConstructionTestCase(TestCase):
     def test_should_populate_initial_router(self):
-        initial_router = ("127.0.0.1", 9001)
-        router = ("127.0.0.1", 9002)
+        initial_router = IPv4SocketAddress("127.0.0.1", 9001, "host.name")
+        router = ("127.0.0.1", 9002, "host.name")
         with RoutingConnectionPool(connector, initial_router, {}, router) as pool:
-            assert pool.routing_table.routers == {("127.0.0.1", 9002)}
+            assert pool.routing_table.routers == {("127.0.0.1", 9002, "host.name")}
 
 
 class FakeConnectionPool(object):
@@ -284,6 +298,18 @@ class LeastConnectedLoadBalancingStrategyTestCase(TestCase):
             ("2.2.2.2", 0),
         ])))
         self.assertEqual(strategy.select_reader(["0.0.0.0", "1.1.1.1", "2.2.2.2"]), "2.2.2.2")
+
+    def test_simple_reader_selection_with_tuples(self):
+        strategy = LeastConnectedLoadBalancingStrategy(FakeConnectionPool(OrderedDict([
+            (("0.0.0.0", 7687, "host.name"), 2),
+            (("1.1.1.1", 7687, "host.name"), 1),
+            (("2.2.2.2", 7687, "host.name"), 0),
+        ])))
+        self.assertEqual(strategy.select_reader([
+            ("0.0.0.0", 7687, "host.name"),
+            ("1.1.1.1", 7687, "host.name"),
+            ("2.2.2.2", 7687, "host.name")
+        ]), ("2.2.2.2", 7687, "host.name"))
 
     def test_reader_selection_with_clash(self):
         strategy = LeastConnectedLoadBalancingStrategy(FakeConnectionPool(OrderedDict([

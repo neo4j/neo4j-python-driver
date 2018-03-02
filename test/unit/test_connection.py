@@ -26,7 +26,8 @@ from neo4j.exceptions import ClientError
 
 class FakeSocket(object):
     def __init__(self, address):
-        self.address = address
+        self.address = address[0:-1]
+        assert len(self.address) == 2 or len(self.address) == 4
 
     def getpeername(self):
         return self.address
@@ -40,9 +41,9 @@ class FakeSocket(object):
 
 class QuickConnection(object):
 
-    def __init__(self, socket):
+    def __init__(self, address, socket):
         self.socket = socket
-        self.address = socket.getpeername()
+        self.address = address
 
     def reset(self):
         pass
@@ -61,24 +62,24 @@ class QuickConnection(object):
 
 
 def connector(address, _):
-    return QuickConnection(FakeSocket(address))
+    return QuickConnection(address, FakeSocket(address))
 
 
 class ConnectionTestCase(TestCase):
 
     def test_conn_timedout(self):
-        address = ("127.0.0.1", 7687)
+        address = ("127.0.0.1", 7687, "host.name")
         connection = Connection(address, FakeSocket(address), DirectConnectionErrorHandler(), max_connection_lifetime=0)
         self.assertEqual(connection.timedout(), True)
 
     def test_conn_not_timedout_if_not_enabled(self):
-        address = ("127.0.0.1", 7687)
+        address = ("127.0.0.1", 7687, "host.name")
         connection = Connection(address, FakeSocket(address), DirectConnectionErrorHandler(),
                                 max_connection_lifetime=-1)
         self.assertEqual(connection.timedout(), False)
 
     def test_conn_not_timedout(self):
-        address = ("127.0.0.1", 7687)
+        address = ("127.0.0.1", 7687, "host.name")
         connection = Connection(address, FakeSocket(address), DirectConnectionErrorHandler(),
                                 max_connection_lifetime=999999999)
         self.assertEqual(connection.timedout(), False)
@@ -104,13 +105,13 @@ class ConnectionPoolTestCase(TestCase):
             assert len([c for c in connections if not c.in_use]) == expected_inactive
 
     def test_can_acquire(self):
-        address = ("127.0.0.1", 7687)
+        address = ("127.0.0.1", 7687, "host.name")
         connection = self.pool.acquire_direct(address)
         assert connection.address == address
         self.assert_pool_size(address, 1, 0)
 
     def test_can_acquire_twice(self):
-        address = ("127.0.0.1", 7687)
+        address = ("127.0.0.1", 7687, "host.name")
         connection_1 = self.pool.acquire_direct(address)
         connection_2 = self.pool.acquire_direct(address)
         assert connection_1.address == address
@@ -119,8 +120,8 @@ class ConnectionPoolTestCase(TestCase):
         self.assert_pool_size(address, 2, 0)
 
     def test_can_acquire_two_addresses(self):
-        address_1 = ("127.0.0.1", 7687)
-        address_2 = ("127.0.0.1", 7474)
+        address_1 = ("127.0.0.1", 7687, "host.name")
+        address_2 = ("127.0.0.1", 7474, "host.name")
         connection_1 = self.pool.acquire_direct(address_1)
         connection_2 = self.pool.acquire_direct(address_2)
         assert connection_1.address == address_1
@@ -129,14 +130,14 @@ class ConnectionPoolTestCase(TestCase):
         self.assert_pool_size(address_2, 1, 0)
 
     def test_can_acquire_and_release(self):
-        address = ("127.0.0.1", 7687)
+        address = ("127.0.0.1", 7687, "host.name")
         connection = self.pool.acquire_direct(address)
         self.assert_pool_size(address, 1, 0)
         self.pool.release(connection)
         self.assert_pool_size(address, 0, 1)
 
     def test_releasing_twice(self):
-        address = ("127.0.0.1", 7687)
+        address = ("127.0.0.1", 7687, "host.name")
         connection = self.pool.acquire_direct(address)
         self.pool.release(connection)
         self.assert_pool_size(address, 0, 1)
@@ -150,7 +151,7 @@ class ConnectionPoolTestCase(TestCase):
                 _ = pool.acquire_direct("X")
 
     def test_in_use_count(self):
-        address = ("127.0.0.1", 7687)
+        address = ("127.0.0.1", 7687, "host.name")
         self.assertEqual(self.pool.in_use_connection_count(address), 0)
         connection = self.pool.acquire_direct(address)
         self.assertEqual(self.pool.in_use_connection_count(address), 1)
@@ -160,7 +161,7 @@ class ConnectionPoolTestCase(TestCase):
     def test_max_conn_pool_size(self):
         with ConnectionPool(connector, DirectConnectionErrorHandler,
                             max_connection_pool_size=1, connection_acquisition_timeout=0) as pool:
-            address = ("127.0.0.1", 7687)
+            address = ("127.0.0.1", 7687, "host.name")
             pool.acquire_direct(address)
             self.assertEqual(pool.in_use_connection_count(address), 1)
             with self.assertRaises(ClientError):
@@ -170,7 +171,7 @@ class ConnectionPoolTestCase(TestCase):
     def test_multithread(self):
         with ConnectionPool(connector, DirectConnectionErrorHandler,
                             max_connection_pool_size=5, connection_acquisition_timeout=10) as pool:
-            address = ("127.0.0.1", 7687)
+            address = ("127.0.0.1", 7687, "host.name")
             releasing_event = Event()
 
             # We start 10 threads to compete connections from pool with size of 5

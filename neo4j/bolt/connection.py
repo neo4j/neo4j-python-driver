@@ -165,11 +165,11 @@ class Connection(object):
 
     _last_run_statement = None
 
-    def __init__(self, address, sock, error_handler, hostname, **config):
+    def __init__(self, address, sock, error_handler, **config):
         self.address = address
         self.socket = sock
         self.error_handler = error_handler
-        self.server = ServerInfo(SocketAddress.from_socket(sock, hostname))
+        self.server = ServerInfo(SocketAddress.from_socket(sock, address[-1]))
         self.input_buffer = ChunkedInputBuffer()
         self.output_buffer = ChunkedOutputBuffer()
         self.packer = Packer(self.output_buffer)
@@ -565,10 +565,10 @@ def connect(address, ssl_context=None, error_handler=None, **config):
 
         # pop hostname off the end of address
         hostname = address[-1]
-        address = address[0:-1]
+        socket_address = address[0:-1]
         t = s.gettimeout()
         s.settimeout(config.get("connection_timeout", default_config["connection_timeout"]))
-        s.connect(address)
+        s.connect(socket_address)
         s.settimeout(t)
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1 if config.get("keep_alive", default_config["keep_alive"]) else 0)
     except SocketTimeout:
