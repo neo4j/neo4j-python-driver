@@ -55,10 +55,12 @@ class RoutingDriverTestCase(StubTestCase):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 table = driver._pool.routing_table
-                assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002),
-                                         ('127.0.0.1', 9003)}
-                assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
-                assert table.writers == {('127.0.0.1', 9006)}
+                assert table.routers == {('127.0.0.1', 9001, '127.0.0.1'),
+                                         ('127.0.0.1', 9002, '127.0.0.1'),
+                                         ('127.0.0.1', 9003, '127.0.0.1')}
+                assert table.readers == {('127.0.0.1', 9004, '127.0.0.1'),
+                                         ('127.0.0.1', 9005, '127.0.0.1')}
+                assert table.writers == {('127.0.0.1', 9006, '127.0.0.1')}
 
     def test_should_be_able_to_read(self):
         with StubCluster({9001: "router.script", 9004: "return_1.script"}):
@@ -68,7 +70,7 @@ class RoutingDriverTestCase(StubTestCase):
                     result = session.run("RETURN $x", {"x": 1})
                     for record in result:
                         assert record["x"] == 1
-                    assert result.summary().server.address == ('127.0.0.1', 9004)
+                    assert result.summary().server.address == ('127.0.0.1', 9004, '127.0.0.1')
 
     def test_should_be_able_to_write(self):
         with StubCluster({9001: "router.script", 9006: "create_a.script"}):
@@ -77,7 +79,7 @@ class RoutingDriverTestCase(StubTestCase):
                 with driver.session(access_mode=WRITE_ACCESS) as session:
                     result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
                     assert not list(result)
-                    assert result.summary().server.address == ('127.0.0.1', 9006)
+                    assert result.summary().server.address == ('127.0.0.1', 9006, '127.0.0.1')
 
     def test_should_be_able_to_write_as_default(self):
         with StubCluster({9001: "router.script", 9006: "create_a.script"}):
@@ -86,7 +88,7 @@ class RoutingDriverTestCase(StubTestCase):
                 with driver.session() as session:
                     result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
                     assert not list(result)
-                    assert result.summary().server.address == ('127.0.0.1', 9006)
+                    assert result.summary().server.address == ('127.0.0.1', 9006, '127.0.0.1')
 
     def test_routing_disconnect_on_run(self):
         with StubCluster({9001: "router.script", 9004: "disconnect_on_run.script"}):
@@ -191,7 +193,7 @@ class RoutingDriverTestCase(StubTestCase):
                     result = session.run("RETURN $x", {"x": 1})
                     for record in result:
                         assert record["x"] == 1
-                    assert result.summary().server.address == ('127.0.0.1', 9002)
+                    assert result.summary().server.address == ('127.0.0.1', 9002, '127.0.0.1')
 
     def test_should_call_get_routing_table_with_context(self):
         with StubCluster({9001: "get_routing_table_with_context.script", 9002: "return_1.script"}):
@@ -201,7 +203,7 @@ class RoutingDriverTestCase(StubTestCase):
                     result = session.run("RETURN $x", {"x": 1})
                     for record in result:
                         assert record["x"] == 1
-                    assert result.summary().server.address == ('127.0.0.1', 9002)
+                    assert result.summary().server.address == ('127.0.0.1', 9002, '127.0.0.1')
 
     def test_should_serve_read_when_missing_writer(self):
         with StubCluster({9001: "router_no_writers.script", 9005: "return_1.script"}):
@@ -211,7 +213,7 @@ class RoutingDriverTestCase(StubTestCase):
                     result = session.run("RETURN $x", {"x": 1})
                     for record in result:
                         assert record["x"] == 1
-                    assert result.summary().server.address == ('127.0.0.1', 9005)
+                    assert result.summary().server.address == ('127.0.0.1', 9005, '127.0.0.1')
 
     def test_should_error_when_missing_reader(self):
         with StubCluster({9001: "router_no_readers.script"}):
@@ -254,9 +256,12 @@ class RoutingDriverTestCase(StubTestCase):
                     table = pool.routing_table
 
                     # address might still have connections in the pool, failed instance just can't serve writes
-                    assert ('127.0.0.1', 9006) in pool.connections
-                    assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-                    assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
+                    assert ('127.0.0.1', 9006, '127.0.0.1') in pool.connections
+                    assert table.routers == {('127.0.0.1', 9001, '127.0.0.1'),
+                                             ('127.0.0.1', 9002, '127.0.0.1'),
+                                             ('127.0.0.1', 9003, '127.0.0.1')}
+                    assert table.readers == {('127.0.0.1', 9004, '127.0.0.1'),
+                                             ('127.0.0.1', 9005, '127.0.0.1')}
                     # writer 127.0.0.1:9006 should've been forgotten because of an error
                     assert len(table.writers) == 0
 
@@ -272,9 +277,12 @@ class RoutingDriverTestCase(StubTestCase):
                     table = pool.routing_table
 
                     # address might still have connections in the pool, failed instance just can't serve writes
-                    assert ('127.0.0.1', 9006) in pool.connections
-                    assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-                    assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
+                    assert ('127.0.0.1', 9006, '127.0.0.1') in pool.connections
+                    assert table.routers == {('127.0.0.1', 9001, '127.0.0.1'),
+                                             ('127.0.0.1', 9002, '127.0.0.1'),
+                                             ('127.0.0.1', 9003, '127.0.0.1')}
+                    assert table.readers == {('127.0.0.1', 9004, '127.0.0.1'),
+                                             ('127.0.0.1', 9005, '127.0.0.1')}
                     # writer 127.0.0.1:9006 should've been forgotten because of an error
                     assert len(table.writers) == 0
 
@@ -290,15 +298,17 @@ class RoutingDriverTestCase(StubTestCase):
                     table = pool.routing_table
 
                     # address should have connections in the pool but be inactive, it has failed
-                    assert ('127.0.0.1', 9004) in pool.connections
-                    conns = pool.connections[('127.0.0.1', 9004)]
+                    assert ('127.0.0.1', 9004, '127.0.0.1') in pool.connections
+                    conns = pool.connections[('127.0.0.1', 9004, '127.0.0.1')]
                     conn = conns[0]
                     assert conn._closed == True
                     assert conn.in_use == True
-                    assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
+                    assert table.routers == {('127.0.0.1', 9001, '127.0.0.1'),
+                                             ('127.0.0.1', 9002, '127.0.0.1'),
+                                             ('127.0.0.1', 9003, '127.0.0.1')}
                     # reader 127.0.0.1:9004 should've been forgotten because of an error
-                    assert table.readers == {('127.0.0.1', 9005)}
-                    assert table.writers == {('127.0.0.1', 9006)}
+                    assert table.readers == {('127.0.0.1', 9005, '127.0.0.1')}
+                    assert table.writers == {('127.0.0.1', 9006, '127.0.0.1')}
 
                 assert conn.in_use == False
 
@@ -314,8 +324,10 @@ class RoutingDriverTestCase(StubTestCase):
                     table = pool.routing_table
 
                     # address should not have connections in the pool, it has failed
-                    assert ('127.0.0.1', 9004) not in pool.connections
-                    assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
+                    assert ('127.0.0.1', 9004, '127.0.0.1') not in pool.connections
+                    assert table.routers == {('127.0.0.1', 9001, '127.0.0.1'),
+                                             ('127.0.0.1', 9002, '127.0.0.1'),
+                                             ('127.0.0.1', 9003, '127.0.0.1')}
                     # reader 127.0.0.1:9004 should've been forgotten because of an error
-                    assert table.readers == {('127.0.0.1', 9005)}
-                    assert table.writers == {('127.0.0.1', 9006)}
+                    assert table.readers == {('127.0.0.1', 9005, '127.0.0.1')}
+                    assert table.writers == {('127.0.0.1', 9006, '127.0.0.1')}

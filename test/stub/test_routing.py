@@ -46,7 +46,7 @@ INVALID_ROUTING_RECORD = {
     "X": 1,
 }
 
-UNREACHABLE_ADDRESS = IPv4SocketAddress("127.0.0.1", 8080)
+UNREACHABLE_ADDRESS = IPv4SocketAddress("127.0.0.1", 8080, 'host.name')
 
 
 def connector(address, error_handler):
