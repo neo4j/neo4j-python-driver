@@ -21,7 +21,6 @@
 
 from neo4j.addressing import SocketAddress, resolve
 from neo4j.bolt.connection import DEFAULT_PORT, ConnectionPool, connect, ConnectionErrorHandler
-from neo4j.compat import urlparse
 from neo4j.exceptions import ServiceUnavailable
 from neo4j.v1.api import Driver
 from neo4j.v1.security import SecurityPlan
@@ -72,7 +71,7 @@ class DirectDriver(Driver):
         self.encrypted = security_plan.encrypted
 
         def connector(address, error_handler):
-            return connect(address, security_plan.ssl_context, urlparse(uri).hostname,
+            return connect(address, security_plan.ssl_context,
                            error_handler, **config)
 
         pool = DirectConnectionPool(connector, self.address, **config)

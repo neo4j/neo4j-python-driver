@@ -165,11 +165,11 @@ class Connection(object):
 
     _last_run_statement = None
 
-    def __init__(self, address, sock, error_handler, **config):
+    def __init__(self, address, sock, error_handler, hostname, **config):
         self.address = address
         self.socket = sock
         self.error_handler = error_handler
-        self.server = ServerInfo(SocketAddress.from_socket(sock))
+        self.server = ServerInfo(SocketAddress.from_socket(sock, hostname))
         self.input_buffer = ChunkedInputBuffer()
         self.output_buffer = ChunkedOutputBuffer()
         self.packer = Packer(self.output_buffer)
@@ -545,7 +545,7 @@ class ConnectionPool(object):
             return self._closed
 
 
-def connect(address, ssl_context=None, hostname=None, error_handler=None, **config):
+def connect(address, ssl_context=None, error_handler=None, **config):
     """ Connect and perform a handshake and return a valid Connection object, assuming
     a protocol version can be agreed.
     """
@@ -556,12 +556,16 @@ def connect(address, ssl_context=None, hostname=None, error_handler=None, **conf
     log_debug("~~ [CONNECT] %s", address)
     s = None
     try:
-        if len(address) == 2:
+        if len(address) == 3:
             s = socket(AF_INET)
-        elif len(address) == 4:
+        elif len(address) == 5:
             s = socket(AF_INET6)
         else:
             raise ValueError("Unsupported address {!r}".format(address))
+
+        # pop hostname off the end of address
+        hostname = address[-1]
+        address = address[0:-1]
         t = s.gettimeout()
         s.settimeout(config.get("connection_timeout", default_config["connection_timeout"]))
         s.connect(address)
@@ -652,7 +656,7 @@ def connect(address, ssl_context=None, hostname=None, error_handler=None, **conf
         s.close()
     elif agreed_version == 1:
         connection = Connection(address, s, der_encoded_server_certificate=der_encoded_server_certificate,
-                                error_handler=error_handler, **config)
+                                error_handler=error_handler, hostname=hostname, **config)
         connection.init()
         return connection
     elif agreed_version == 0x48545450:
