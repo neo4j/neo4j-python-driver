@@ -331,3 +331,42 @@ class RoutingDriverTestCase(StubTestCase):
                     # reader 127.0.0.1:9004 should've been forgotten because of an error
                     assert table.readers == {('127.0.0.1', 9005, '127.0.0.1')}
                     assert table.writers == {('127.0.0.1', 9006, '127.0.0.1')}
+
+    def test_routing_table_stores_dns_names(self):
+        with StubCluster({9001: "router_with_dns_names.script"}):
+            uri = "bolt+routing://127.0.0.1:9001"
+            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+                with driver.session(READ_ACCESS) as session:
+
+                    pool = driver._pool
+                    table = pool.routing_table
+
+                    expected_routers = set()
+                    expected_readers = set()
+                    expected_writers = set()
+
+                    # If the system has ipv6 route for localhost
+                    if any('::1' == address[0] for address in table.routers):
+                        expected_routers.add(('::1',9001, 0, 0,  'localhost'))
+                        expected_routers.add(('::1',9002, 0, 0,  'localhost'))
+                        expected_routers.add(('::1',9003, 0, 0,  'localhost'))
+
+                        expected_readers.add(('::1',9004, 0, 0,  'localhost'))
+                        expected_writers.add(('::1',9005, 0, 0, 'localhost'))
+
+                    # If the system has ipv4 route for localhost
+                    if any('127.0.0.1' == address[0] for address in table.routers):
+                        expected_routers.add(('127.0.0.1', 9001, 'localhost'))
+                        expected_routers.add(('127.0.0.1', 9002, 'localhost'))
+                        expected_routers.add(('127.0.0.1', 9003, 'localhost'))
+
+                        expected_readers.add(('127.0.0.1', 9004, 'localhost'))
+                        expected_writers.add(('127.0.0.1', 9005, 'localhost'))
+
+                    assert len(expected_routers) >= 3, 'localhost must resolve'
+                    assert len(expected_readers) >= 1, 'localhost must resolve'
+                    assert len(expected_writers) >= 1, 'localhost must resolve'
+
+                    assert set(table.routers) == expected_routers
+                    assert set(table.readers) == expected_readers
+                    assert set(table.writers) == expected_writers
