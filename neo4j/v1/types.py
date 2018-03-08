@@ -49,45 +49,6 @@ def iter_items(iterable):
             yield key, value
 
 
-NODE_STRUCTURE_TAG = b"N"
-RELATIONSHIP_STRUCTURE_TAG = b"R"
-UNBOUND_RELATIONSHIP_STRUCTURE_TAG = b"r"
-PATH_STRUCTURE_TAG = b"P"
-POINT_2D_STRUCTURE_TAG = b"X"
-POINT_3D_STRUCTURE_TAG = b"Y"
-
-
-class PackStreamValueSystem(ValueSystem):
-
-    def hydrate(self, values):
-
-        def hydrate_(obj):
-            if isinstance(obj, Structure):
-                tag, args = obj
-                if tag == NODE_STRUCTURE_TAG:
-                    return Node.hydrate(*map(hydrate_, args))
-                elif tag == RELATIONSHIP_STRUCTURE_TAG:
-                    return Relationship.hydrate(*map(hydrate_, args))
-                elif tag == UNBOUND_RELATIONSHIP_STRUCTURE_TAG:
-                    return UnboundRelationship.hydrate(*map(hydrate_, args))
-                elif tag == PATH_STRUCTURE_TAG:
-                    return Path.hydrate(*map(hydrate_, args))
-                else:
-                    # If we don't recognise the structure type, just return it as-is
-                    return obj
-            elif isinstance(obj, list):
-                return list(map(hydrate_, obj))
-            elif isinstance(obj, dict):
-                return {key: hydrate_(value) for key, value in obj.items()}
-            else:
-                return obj
-
-        return tuple(map(hydrate_, values))
-
-
-GraphDatabase.value_systems["packstream"] = PackStreamValueSystem()
-
-
 class Record(tuple):
     """ A :class:`.Record` is an immutable ordered collection of key-value
     pairs. It is generally closer to a :py:class:`namedtuple` than to a
@@ -341,6 +302,10 @@ class Relationship(Entity):
         inst.id = id_
         return inst
 
+    @classmethod
+    def hydrate_unbound(cls, id_, type, properties=None):
+        return cls.hydrate(id_, None, None, type, properties)
+
     def __init__(self, start, end, type, properties=None, **kwproperties):
         super(Relationship, self).__init__(properties, **kwproperties)
         self.start = start
@@ -354,30 +319,6 @@ class Relationship(Entity):
     @property
     def nodes(self):
         return self.start, self.end
-
-
-class UnboundRelationship(Entity):
-    """ Self-contained graph relationship without endpoints. These are
-    created as part of the Path hydration process, later being converted
-    to full Relationships.
-    """
-
-    type = None
-
-    @classmethod
-    def hydrate(cls, id_, type, properties=None):
-        inst = cls(type, properties)
-        inst.id = id_
-        return inst
-
-    def __init__(self, type, properties=None, **kwproperties):
-        super(UnboundRelationship, self).__init__(properties, **kwproperties)
-        self.type = type
-
-    def bind(self, start, end):
-        inst = Relationship(start, end, self.type, self.properties)
-        inst.id = self.id
-        return inst
 
 
 class Path(object):
@@ -396,9 +337,15 @@ class Path(object):
             assert rel_index != 0
             next_node = nodes[sequence[2 * i + 1]]
             if rel_index > 0:
-                entities.append(rels[rel_index - 1].bind(last_node.id, next_node.id))
+                r = rels[rel_index - 1]
+                r.start = last_node.id
+                r.end = next_node.id
+                entities.append(r)
             else:
-                entities.append(rels[-rel_index - 1].bind(next_node.id, last_node.id))
+                r = rels[-rel_index - 1]
+                r.start = next_node.id
+                r.end = last_node.id
+                entities.append(r)
             entities.append(next_node)
             last_node = next_node
         return cls(*entities)
@@ -439,3 +386,37 @@ class Path(object):
     @property
     def end(self):
         return self.nodes[-1]
+
+
+class PackStreamValueSystem(ValueSystem):
+
+    hydrants = {
+        b"N": Node.hydrate,
+        b"R": Relationship.hydrate,
+        b"r": Relationship.hydrate_unbound,
+        b"P": Path.hydrate,
+    }
+
+    def hydrate(self, values):
+
+        def hydrate_(obj):
+            if isinstance(obj, Structure):
+                tag, args = obj
+                try:
+                    hydrant = self.hydrants[tag]
+                except KeyError:
+                    # If we don't recognise the structure type, just return it as-is
+                    return obj
+                else:
+                    return hydrant(*map(hydrate_, args))
+            elif isinstance(obj, list):
+                return list(map(hydrate_, obj))
+            elif isinstance(obj, dict):
+                return {key: hydrate_(value) for key, value in obj.items()}
+            else:
+                return obj
+
+        return tuple(map(hydrate_, values))
+
+
+GraphDatabase.value_systems["packstream"] = PackStreamValueSystem()

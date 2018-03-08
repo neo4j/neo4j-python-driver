@@ -22,7 +22,7 @@
 from unittest import TestCase
 
 from neo4j.packstream import Structure
-from neo4j.v1.types import Node, Relationship, UnboundRelationship, Path, PackStreamValueSystem
+from neo4j.v1.types import Node, Relationship, Path, PackStreamValueSystem
 
 
 class NodeTestCase(TestCase):
@@ -92,18 +92,6 @@ class RelationshipTestCase(TestCase):
         assert repr(alice_knows_bob)
 
 
-class UnboundRelationshipTestCase(TestCase):
-
-    def test_can_create_unbound_relationship(self):
-        alice_knows_bob = UnboundRelationship("KNOWS", {"since": 1999})
-        assert alice_knows_bob.type == "KNOWS"
-        assert set(alice_knows_bob.keys()) == {"since"}
-        assert set(alice_knows_bob.values()) == {1999}
-        assert set(alice_knows_bob.items()) == {("since", 1999)}
-        assert alice_knows_bob.get("since") == 1999
-        assert repr(alice_knows_bob)
-
-
 class PathTestCase(TestCase):
 
     def test_can_create_path(self):
@@ -126,8 +114,8 @@ class PathTestCase(TestCase):
         carol = Node.hydrate(3, {"Person"}, {"name": "Carol", "age": 55})
         alice_knows_bob = Relationship(alice.id, bob.id, "KNOWS", {"since": 1999})
         carol_dislikes_bob = Relationship(carol.id, bob.id, "DISLIKES")
-        rels = [UnboundRelationship(alice_knows_bob.type, alice_knows_bob.properties),
-                UnboundRelationship(carol_dislikes_bob.type, carol_dislikes_bob.properties)]
+        rels = [Relationship(None, None, alice_knows_bob.type, alice_knows_bob.properties),
+                Relationship(None, None, carol_dislikes_bob.type, carol_dislikes_bob.properties)]
         rels[0].id = alice_knows_bob.id
         rels[1].id = carol_dislikes_bob.id
         path = Path.hydrate([alice, bob, carol], rels, [1, 1, -2, 2])
