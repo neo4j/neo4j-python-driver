@@ -22,7 +22,7 @@
 from unittest import TestCase
 
 from neo4j.packstream import Structure
-from neo4j.v1 import Node, Relationship, UnboundRelationship, Path, PackStreamValueSystem
+from neo4j.v1.types import Node, Relationship, UnboundRelationship, Path, PackStreamValueSystem
 
 
 class NodeTestCase(TestCase):

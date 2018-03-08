@@ -34,6 +34,14 @@ from neo4j.compat import string, integer, ustr
 from .api import GraphDatabase, ValueSystem
 
 
+NODE_STRUCTURE_TAG = b"N"
+RELATIONSHIP_STRUCTURE_TAG = b"R"
+UNBOUND_RELATIONSHIP_STRUCTURE_TAG = b"r"
+PATH_STRUCTURE_TAG = b"P"
+POINT_2D_STRUCTURE_TAG = b"X"
+POINT_3D_STRUCTURE_TAG = b"Y"
+
+
 def iter_items(iterable):
     """ Iterate through all items (key-value pairs) within an iterable
     dictionary-like object. If the object has a `keys` method, this is
@@ -283,17 +291,7 @@ class Node(Entity):
                (self.id, self.labels, self.properties)
 
 
-class BaseRelationship(Entity):
-    """ Base class for Relationship and UnboundRelationship.
-    """
-    type = None
-
-    def __init__(self, type, properties=None, **kwproperties):
-        super(BaseRelationship, self).__init__(properties, **kwproperties)
-        self.type = type
-
-
-class Relationship(BaseRelationship):
+class Relationship(Entity):
     """ Self-contained graph relationship.
     """
 
@@ -303,6 +301,9 @@ class Relationship(BaseRelationship):
     #: The end node of this relationship
     end = None
 
+    #: The type of this relationship
+    type = None
+
     @classmethod
     def hydrate(cls, id_, start, end, type, properties=None):
         inst = cls(start, end, type, properties)
@@ -310,9 +311,10 @@ class Relationship(BaseRelationship):
         return inst
 
     def __init__(self, start, end, type, properties=None, **kwproperties):
-        super(Relationship, self).__init__(type, properties, **kwproperties)
+        super(Relationship, self).__init__(properties, **kwproperties)
         self.start = start
         self.end = end
+        self.type = type
 
     def __repr__(self):
         return "<Relationship id=%r start=%r end=%r type=%r properties=%r>" % \
@@ -323,9 +325,13 @@ class Relationship(BaseRelationship):
         return self.start, self.end
 
 
-class UnboundRelationship(BaseRelationship):
-    """ Self-contained graph relationship without endpoints.
+class UnboundRelationship(Entity):
+    """ Self-contained graph relationship without endpoints. These are
+    created as part of the Path hydration process, later being converted
+    to full Relationships.
     """
+
+    type = None
 
     @classmethod
     def hydrate(cls, id_, type, properties=None):
@@ -334,11 +340,8 @@ class UnboundRelationship(BaseRelationship):
         return inst
 
     def __init__(self, type, properties=None, **kwproperties):
-        super(UnboundRelationship, self).__init__(type, properties, **kwproperties)
-
-    def __repr__(self):
-        return "<UnboundRelationship id=%r type=%r properties=%r>" % \
-               (self.id, self.type, self.properties)
+        super(UnboundRelationship, self).__init__(properties, **kwproperties)
+        self.type = type
 
     def bind(self, start, end):
         inst = Relationship(start, end, self.type, self.properties)
@@ -413,14 +416,14 @@ class PackStreamValueSystem(ValueSystem):
 
         def hydrate_(obj):
             if isinstance(obj, Structure):
-                signature, args = obj
-                if signature == b"N":
+                tag, args = obj
+                if tag == NODE_STRUCTURE_TAG:
                     return Node.hydrate(*map(hydrate_, args))
-                elif signature == b"R":
+                elif tag == RELATIONSHIP_STRUCTURE_TAG:
                     return Relationship.hydrate(*map(hydrate_, args))
-                elif signature == b"r":
+                elif tag == UNBOUND_RELATIONSHIP_STRUCTURE_TAG:
                     return UnboundRelationship.hydrate(*map(hydrate_, args))
-                elif signature == b"P":
+                elif tag == PATH_STRUCTURE_TAG:
                     return Path.hydrate(*map(hydrate_, args))
                 else:
                     # If we don't recognise the structure type, just return it as-is
