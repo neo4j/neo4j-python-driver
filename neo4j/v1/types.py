@@ -34,14 +34,6 @@ from neo4j.compat import string, integer, ustr
 from .api import GraphDatabase, ValueSystem
 
 
-NODE_STRUCTURE_TAG = b"N"
-RELATIONSHIP_STRUCTURE_TAG = b"R"
-UNBOUND_RELATIONSHIP_STRUCTURE_TAG = b"r"
-PATH_STRUCTURE_TAG = b"P"
-POINT_2D_STRUCTURE_TAG = b"X"
-POINT_3D_STRUCTURE_TAG = b"Y"
-
-
 def iter_items(iterable):
     """ Iterate through all items (key-value pairs) within an iterable
     dictionary-like object. If the object has a `keys` method, this is
@@ -55,6 +47,45 @@ def iter_items(iterable):
     else:
         for key, value in iterable:
             yield key, value
+
+
+NODE_STRUCTURE_TAG = b"N"
+RELATIONSHIP_STRUCTURE_TAG = b"R"
+UNBOUND_RELATIONSHIP_STRUCTURE_TAG = b"r"
+PATH_STRUCTURE_TAG = b"P"
+POINT_2D_STRUCTURE_TAG = b"X"
+POINT_3D_STRUCTURE_TAG = b"Y"
+
+
+class PackStreamValueSystem(ValueSystem):
+
+    def hydrate(self, values):
+
+        def hydrate_(obj):
+            if isinstance(obj, Structure):
+                tag, args = obj
+                if tag == NODE_STRUCTURE_TAG:
+                    return Node.hydrate(*map(hydrate_, args))
+                elif tag == RELATIONSHIP_STRUCTURE_TAG:
+                    return Relationship.hydrate(*map(hydrate_, args))
+                elif tag == UNBOUND_RELATIONSHIP_STRUCTURE_TAG:
+                    return UnboundRelationship.hydrate(*map(hydrate_, args))
+                elif tag == PATH_STRUCTURE_TAG:
+                    return Path.hydrate(*map(hydrate_, args))
+                else:
+                    # If we don't recognise the structure type, just return it as-is
+                    return obj
+            elif isinstance(obj, list):
+                return list(map(hydrate_, obj))
+            elif isinstance(obj, dict):
+                return {key: hydrate_(value) for key, value in obj.items()}
+            else:
+                return obj
+
+        return tuple(map(hydrate_, values))
+
+
+GraphDatabase.value_systems["packstream"] = PackStreamValueSystem()
 
 
 class Record(tuple):
@@ -408,34 +439,3 @@ class Path(object):
     @property
     def end(self):
         return self.nodes[-1]
-
-
-class PackStreamValueSystem(ValueSystem):
-
-    def hydrate(self, values):
-
-        def hydrate_(obj):
-            if isinstance(obj, Structure):
-                tag, args = obj
-                if tag == NODE_STRUCTURE_TAG:
-                    return Node.hydrate(*map(hydrate_, args))
-                elif tag == RELATIONSHIP_STRUCTURE_TAG:
-                    return Relationship.hydrate(*map(hydrate_, args))
-                elif tag == UNBOUND_RELATIONSHIP_STRUCTURE_TAG:
-                    return UnboundRelationship.hydrate(*map(hydrate_, args))
-                elif tag == PATH_STRUCTURE_TAG:
-                    return Path.hydrate(*map(hydrate_, args))
-                else:
-                    # If we don't recognise the structure type, just return it as-is
-                    return obj
-            elif isinstance(obj, list):
-                return list(map(hydrate_, obj))
-            elif isinstance(obj, dict):
-                return {key: hydrate_(value) for key, value in obj.items()}
-            else:
-                return obj
-
-        return tuple(map(hydrate_, values))
-
-
-GraphDatabase.value_systems["packstream"] = PackStreamValueSystem()
