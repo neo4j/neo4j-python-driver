@@ -68,18 +68,18 @@ class ConnectionTestCase(TestCase):
 
     def test_conn_timedout(self):
         address = ("127.0.0.1", 7687)
-        connection = Connection(address, FakeSocket(address), DirectConnectionErrorHandler(), max_connection_lifetime=0)
+        connection = Connection(address, FakeSocket(address), 1, DirectConnectionErrorHandler(), max_connection_lifetime=0)
         self.assertEqual(connection.timedout(), True)
 
     def test_conn_not_timedout_if_not_enabled(self):
         address = ("127.0.0.1", 7687)
-        connection = Connection(address, FakeSocket(address), DirectConnectionErrorHandler(),
+        connection = Connection(address, FakeSocket(address), 1, DirectConnectionErrorHandler(),
                                 max_connection_lifetime=-1)
         self.assertEqual(connection.timedout(), False)
 
     def test_conn_not_timedout(self):
         address = ("127.0.0.1", 7687)
-        connection = Connection(address, FakeSocket(address), DirectConnectionErrorHandler(),
+        connection = Connection(address, FakeSocket(address), 1, DirectConnectionErrorHandler(),
                                 max_connection_lifetime=999999999)
         self.assertEqual(connection.timedout(), False)
 
