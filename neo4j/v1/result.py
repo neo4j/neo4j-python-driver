@@ -38,7 +38,9 @@ class BoltStatementResult(StatementResult):
 
     value_system = GraphDatabase.value_systems["packstream"]
 
-    zipper = Record
+    @classmethod
+    def zipper(cls, k, v):
+        return Record(zip(k, v))
 
     def __init__(self, session, run_response, pull_all_response):
         super(BoltStatementResult, self).__init__(session)

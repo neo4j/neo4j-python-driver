@@ -25,171 +25,187 @@ also included, allows PackStream structures to be turned into instances
 of these classes.
 """
 
+from functools import reduce
+from operator import xor as xor_operator
+
 from neo4j.packstream import Structure
-from neo4j.compat import string, integer
+from neo4j.compat import string, integer, ustr
 
 from .api import GraphDatabase, ValueSystem
 
 
-class Record(object):
-    """ Record is an ordered collection of fields.
+def iter_items(iterable):
+    """ Iterate through all items (key-value pairs) within an iterable
+    dictionary-like object. If the object has a `keys` method, this is
+    used along with `__getitem__` to yield each pair in turn. If no
+    `keys` method exists, each iterable element is assumed to be a
+    2-tuple of key and value.
+    """
+    if hasattr(iterable, "keys"):
+        for key in iterable.keys():
+            yield key, iterable[key]
+    else:
+        for key, value in iterable:
+            yield key, value
 
-    A Record object is used for storing result values along with field names.
-    Fields can be accessed by numeric or named index (``record[0]`` or
-    ``record["field"]``).
+
+class Record(tuple):
+    """ A :class:`.Record` is an immutable ordered collection of key-value
+    pairs. It is generally closer to a :py:class:`namedtuple` than to a
+    :py:class:`OrderedDict` inasmuch as iteration of the collection will
+    yield values rather than keys.
     """
 
-    def __init__(self, keys, values):
-        self._keys = tuple(keys)
-        self._values = tuple(values)
+    __keys = None
+
+    def __new__(cls, iterable):
+        keys = []
+        values = []
+        for key, value in iter_items(iterable):
+            keys.append(key)
+            values.append(value)
+        inst = tuple.__new__(cls, values)
+        inst.__keys = tuple(keys)
+        return inst
 
     def __repr__(self):
-        values = self._values
-        s = []
-        for i, field in enumerate(self._keys):
-            s.append("%s=%r" % (field, values[i]))
-        return "<%s %s>" % (self.__class__.__name__, " ".join(s))
-
-    def __hash__(self):
-        return hash(self._keys) ^ hash(self._values)
+        return "<%s %s>" % (self.__class__.__name__,
+                            " ".join("%s=%r" % (field, self[i]) for i, field in enumerate(self.__keys)))
 
     def __eq__(self, other):
-        try:
-            return (self._keys == tuple(other.keys()) and
-                    self._values == tuple(other.values()))
-        except AttributeError:
-            return False
+        return dict(self) == dict(other)
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __len__(self):
-        return len(self._keys)
+    def __hash__(self):
+        return reduce(xor_operator, map(hash, self.items()))
 
-    def __getitem__(self, item):
-        if isinstance(item, string):
-            return self._values[self.index(item)]
-        elif isinstance(item, integer):
-            return self._values[item]
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            keys = self.__keys[key]
+            values = super(Record, self).__getitem__(key)
+            return self.__class__(zip(keys, values))
+        index = self.index(key)
+        if 0 <= index < len(self):
+            return super(Record, self).__getitem__(index)
         else:
-            raise TypeError(item)
+            return None
 
-    def __iter__(self):
-        return iter(self._keys)
+    def __getslice__(self, start, stop):
+        key = slice(start, stop)
+        keys = self.__keys[key]
+        values = tuple(self)[key]
+        return self.__class__(zip(keys, values))
 
-    def __contains__(self, key):
+    def get(self, key, default=None):
         try:
-            self.index(key)
-        except (IndexError, KeyError):
-            return False
+            index = self.__keys.index(ustr(key))
+        except ValueError:
+            return default
+        if 0 <= index < len(self):
+            return super(Record, self).__getitem__(index)
         else:
-            return True
+            return default
 
-    def index(self, item):
+    def index(self, key):
         """ Return the index of the given item.
         """
-        if isinstance(item, integer):
-            if 0 <= item < len(self._keys):
-                return item
-            raise IndexError(item)
-        if isinstance(item, string):
+        if isinstance(key, integer):
+            if 0 <= key < len(self.__keys):
+                return key
+            raise IndexError(key)
+        elif isinstance(key, string):
             try:
-                return self._keys.index(item)
+                return self.__keys.index(key)
             except ValueError:
-                raise KeyError(item)
-        raise TypeError(item)
+                raise KeyError(key)
+        else:
+            raise TypeError(key)
 
-    def value(self, item=0, default=None):
+    def value(self, key=0, default=None):
         """ Obtain a single value from the record by index or key. If no
         index or key is specified, the first value is returned. If the
         specified item does not exist, the default value is returned.
 
-        :param item:
+        :param key:
         :param default:
         :return:
         """
         try:
-            index = self.index(item)
+            index = self.index(key)
         except (IndexError, KeyError):
             return default
         else:
-            return self._values[index]
+            return self[index]
 
     def keys(self):
         """ Return the keys of the record.
 
-        :return: tuple of key names
+        :return: list of key names
         """
-        return self._keys
+        return list(self.__keys)
 
-    def values(self, *items):
+    def values(self, *keys):
         """ Return the values of the record, optionally filtering to
         include only certain values by index or key.
 
-        :param items: indexes or keys of the items to include; if none
-                          are provided, all values will be included
-        :return: tuple of values
+        :param keys: indexes or keys of the items to include; if none
+                     are provided, all values will be included
+        :return: list of values
         """
-        if items:
+        if keys:
             d = []
-            values = self._values
-            for item in items:
+            for key in keys:
                 try:
-                    i = self.index(item)
+                    i = self.index(key)
                 except KeyError:
                     d.append(None)
                 else:
-                    d.append(values[i])
-            return tuple(d)
-        return self._values
+                    d.append(self[i])
+            return d
+        return list(self)
 
-    def items(self, *items):
+    def items(self, *keys):
         """ Return the fields of the record as a list of key and value tuples
 
         :return:
         """
-        if items:
+        if keys:
             d = []
-            keys = self._keys
-            values = self._values
-            for item in items:
+            for key in keys:
                 try:
-                    i = self.index(item)
+                    i = self.index(key)
                 except KeyError:
-                    d.append((item, None))
+                    d.append((key, None))
                 else:
-                    d.append((keys[i], values[i]))
+                    d.append((self.__keys[i], self[i]))
             return d
-        return list(zip(self._keys, self._values))
+        return list((self.__keys[i], super(Record, self).__getitem__(i)) for i in range(len(self)))
 
-    def data(self, *items):
+    def data(self, *keys):
         """ Return the keys and values of this record as a dictionary,
         optionally including only certain values by index or key. Keys
         provided in the items that are not in the record will be
         inserted with a value of :py:const:`None`; indexes provided
         that are out of bounds will trigger an :py:`IndexError`.
 
-        :param items: indexes or keys of the items to include; if none
-                          are provided, all values will be included
+        :param keys: indexes or keys of the items to include; if none
+                      are provided, all values will be included
         :return: dictionary of values, keyed by field name
         :raises: :py:`IndexError` if an out-of-bounds index is specified
         """
-        if items:
+        if keys:
             d = {}
-            keys = self._keys
-            values = self._values
-            for item in items:
+            for key in keys:
                 try:
-                    i = self.index(item)
+                    i = self.index(key)
                 except KeyError:
-                    d[item] = None
+                    d[key] = None
                 else:
-                    d[keys[i]] = values[i]
+                    d[self.__keys[i]] = self[i]
             return d
         return dict(self)
-
-    def copy(self):
-        return self.__class__(self._keys, self._values)
 
 
 class Entity(object):

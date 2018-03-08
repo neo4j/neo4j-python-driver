@@ -27,50 +27,43 @@ from neo4j.v1 import Record
 class RecordTestCase(TestCase):
 
     def test_record_equality(self):
-        record1 = Record(["name", "empire"], ["Nigel", "The British Empire"])
-        record2 = Record(["name", "empire"], ["Nigel", "The British Empire"])
-        record3 = Record(["name", "empire"], ["Stefan", "Das Deutschland"])
+        record1 = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
+        record2 = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
+        record3 = Record(zip(["name", "empire"], ["Stefan", "Das Deutschland"]))
         assert record1 == record2
         assert record1 != record3
         assert record2 != record3
 
     def test_record_hashing(self):
-        record1 = Record(["name", "empire"], ["Nigel", "The British Empire"])
-        record2 = Record(["name", "empire"], ["Nigel", "The British Empire"])
-        record3 = Record(["name", "empire"], ["Stefan", "Das Deutschland"])
+        record1 = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
+        record2 = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
+        record3 = Record(zip(["name", "empire"], ["Stefan", "Das Deutschland"]))
         assert hash(record1) == hash(record2)
         assert hash(record1) != hash(record3)
         assert hash(record2) != hash(record3)
 
     def test_record_iter(self):
-        a_record = Record(["name", "empire"], ["Nigel", "The British Empire"])
-        assert list(a_record.__iter__()) == ["name", "empire"]
-
-    def test_record_copy(self):
-        original = Record(["name", "empire"], ["Nigel", "The British Empire"])
-        duplicate = original.copy()
-        assert dict(original) == dict(duplicate)
-        assert original.keys() == duplicate.keys()
-        assert original is not duplicate
+        a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
+        assert list(a_record.__iter__()) == ["Nigel", "The British Empire"]
 
     def test_record_as_dict(self):
-        a_record = Record(["name", "empire"], ["Nigel", "The British Empire"])
+        a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
         assert dict(a_record) == {"name": "Nigel", "empire": "The British Empire"}
 
     def test_record_as_list(self):
-        a_record = Record(["name", "empire"], ["Nigel", "The British Empire"])
-        assert list(a_record) == ["name", "empire"]
+        a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
+        assert list(a_record) == ["Nigel", "The British Empire"]
 
     def test_record_len(self):
-        a_record = Record(["name", "empire"], ["Nigel", "The British Empire"])
+        a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
         assert len(a_record) == 2
 
     def test_record_repr(self):
-        a_record = Record(["name", "empire"], ["Nigel", "The British Empire"])
+        a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
         assert repr(a_record) == "<Record name='Nigel' empire='The British Empire'>"
 
     def test_record_data(self):
-        r = Record(["name", "age", "married"], ["Alice", 33, True])
+        r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
         self.assertEqual(r.data(), {"name": "Alice", "age": 33, "married": True})
         self.assertEqual(r.data("name"), {"name": "Alice"})
         self.assertEqual(r.data("age", "name"), {"age": 33, "name": "Alice"})
@@ -82,23 +75,23 @@ class RecordTestCase(TestCase):
             _ = r.data(1, 0, 999)
 
     def test_record_keys(self):
-        r = Record(["name", "age", "married"], ["Alice", 33, True])
-        self.assertEqual(r.keys(), ("name", "age", "married"))
+        r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+        self.assertEqual(r.keys(), ["name", "age", "married"])
 
     def test_record_values(self):
-        r = Record(["name", "age", "married"], ["Alice", 33, True])
-        self.assertEqual(r.values(), ("Alice", 33, True))
-        self.assertEqual(r.values("name"), ("Alice",))
-        self.assertEqual(r.values("age", "name"), (33, "Alice"))
-        self.assertEqual(r.values("age", "name", "shoe size"), (33, "Alice", None))
-        self.assertEqual(r.values(0, "name"), ("Alice", "Alice"))
-        self.assertEqual(r.values(0), ("Alice",))
-        self.assertEqual(r.values(1, 0), (33, "Alice"))
+        r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+        self.assertEqual(r.values(), ["Alice", 33, True])
+        self.assertEqual(r.values("name"), ["Alice"])
+        self.assertEqual(r.values("age", "name"), [33, "Alice"])
+        self.assertEqual(r.values("age", "name", "shoe size"), [33, "Alice", None])
+        self.assertEqual(r.values(0, "name"), ["Alice", "Alice"])
+        self.assertEqual(r.values(0), ["Alice"])
+        self.assertEqual(r.values(1, 0), [33, "Alice"])
         with self.assertRaises(IndexError):
             _ = r.values(1, 0, 999)
 
     def test_record_items(self):
-        r = Record(["name", "age", "married"], ["Alice", 33, True])
+        r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
         self.assertEqual(r.items(), [("name", "Alice"), ("age", 33), ("married", True)])
         self.assertEqual(r.items("name"), [("name", "Alice")])
         self.assertEqual(r.items("age", "name"), [("age", 33), ("name", "Alice")])
@@ -110,7 +103,7 @@ class RecordTestCase(TestCase):
             _ = r.items(1, 0, 999)
 
     def test_record_index(self):
-        r = Record(["name", "age", "married"], ["Alice", 33, True])
+        r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
         self.assertEqual(r.index("name"), 0)
         self.assertEqual(r.index("age"), 1)
         self.assertEqual(r.index("married"), 2)
@@ -125,7 +118,7 @@ class RecordTestCase(TestCase):
             _ = r.index(None)
 
     def test_record_value(self):
-        r = Record(["name", "age", "married"], ["Alice", 33, True])
+        r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
         self.assertEqual(r.value(), "Alice")
         self.assertEqual(r.value("name"), "Alice")
         self.assertEqual(r.value("age"), 33)
@@ -141,14 +134,10 @@ class RecordTestCase(TestCase):
             _ = r.value(None)
 
     def test_record_contains(self):
-        r = Record(["name", "age", "married"], ["Alice", 33, True])
-        self.assertTrue("name" in r)
-        self.assertTrue("age" in r)
-        self.assertTrue("married" in r)
-        self.assertFalse("shoe size" in r)
-        self.assertTrue(0 in r)
-        self.assertTrue(1 in r)
-        self.assertTrue(2 in r)
-        self.assertFalse(3 in r)
+        r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+        self.assertTrue("Alice" in r)
+        self.assertTrue(33 in r)
+        self.assertTrue(True in r)
+        self.assertFalse(7.5 in r)
         with self.assertRaises(TypeError):
             _ = r.index(None)
