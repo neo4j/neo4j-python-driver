@@ -388,6 +388,96 @@ class Path(object):
         return self.nodes[-1]
 
 
+class Point(tuple):
+    """ A point within a geometric space.
+    """
+
+    crs = None
+
+    @classmethod
+    def hydrate(cls, crs, *coordinates):
+        try:
+            point_class = point_classes[crs]
+        except KeyError:
+            raise ValueError("CRS %d not supported" % crs)
+        if 2 <= len(coordinates) <= 3:
+            inst = point_class(coordinates)
+            inst.crs = crs
+            return inst
+        else:
+            raise ValueError("%d-dimensional Point values are not supported" % len(coordinates))
+
+    def __new__(cls, iterable):
+        return tuple.__new__(cls, iterable)
+
+    def __repr__(self):
+        return "POINT(%s)" % " ".join(map(str, self))
+
+    def __eq__(self, other):
+        try:
+            return self.crs == other.crs and tuple(self) == tuple(other)
+        except (AttributeError, TypeError):
+            return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self.crs) ^ hash(tuple(self))
+
+
+class CartesianPoint(Point):
+
+    crs = 7203
+
+    @property
+    def x(self):
+        return self[0]
+
+    @property
+    def y(self):
+        return self[1]
+
+
+class CartesianPoint3D(CartesianPoint):
+
+    crs = 9157
+
+    @property
+    def z(self):
+        return self[2]
+
+
+class WGS84Point(Point):
+
+    crs = 4326
+
+    @property
+    def longitude(self):
+        return self[0]
+
+    @property
+    def latitude(self):
+        return self[1]
+
+
+class WGS84Point3D(WGS84Point):
+
+    crs = 4979
+
+    @property
+    def height(self):
+        return self[2]
+
+
+point_classes = {cls.crs: cls for cls in [
+    CartesianPoint,
+    CartesianPoint3D,
+    WGS84Point,
+    WGS84Point3D,
+]}
+
+
 class PackStreamValueSystem(ValueSystem):
 
     hydrants = {
@@ -395,6 +485,8 @@ class PackStreamValueSystem(ValueSystem):
         b"R": Relationship.hydrate,
         b"r": Relationship.hydrate_unbound,
         b"P": Path.hydrate,
+        b"X": Point.hydrate,
+        b"Y": Point.hydrate,
     }
 
     def hydrate(self, values):
