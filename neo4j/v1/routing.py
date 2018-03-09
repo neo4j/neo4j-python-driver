@@ -152,7 +152,7 @@ class RoutingSession(BoltSession):
     call_get_routing_table = "CALL dbms.cluster.routing.getRoutingTable({%s})" % get_routing_table_param
 
     def routing_info_procedure(self, routing_context):
-        if ServerVersion.from_str(self._connection.server.version).at_least_server_version(3, 2):
+        if ServerVersion.from_str(self._connection.server.version).at_least_version(3, 2):
             return self.call_get_routing_table, {self.get_routing_table_param: routing_context}
         else:
             return self.call_get_servers, {}
