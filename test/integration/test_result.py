@@ -19,6 +19,8 @@
 # limitations under the License.
 
 
+from unittest import SkipTest
+
 from neo4j.exceptions import CypherError
 from neo4j.v1 import Node, Relationship, Path, CartesianPoint, CartesianPoint3D, WGS84Point, WGS84Point3D
 
@@ -407,6 +409,8 @@ class ResultValuesTestCase(DirectIntegrationTestCase):
             self.assertEqual(p.end, c)
 
     def test_cartesian_point_value(self):
+        if not self.at_least_protocol_version(2):
+            raise SkipTest("Point type requires Bolt protocol v2 or above")
         with self.driver.session() as session:
             result = session.run("RETURN point({x:3, y:4})")
             point = result.single().value()
@@ -415,6 +419,8 @@ class ResultValuesTestCase(DirectIntegrationTestCase):
             self.assertEqual(point.y, 4.0)
 
     def test_cartesian_3d_point_value(self):
+        if not self.at_least_protocol_version(2):
+            raise SkipTest("Point type requires Bolt protocol v2 or above")
         with self.driver.session() as session:
             result = session.run("RETURN point({x:3, y:4, z:5})")
             point = result.single().value()
@@ -424,6 +430,8 @@ class ResultValuesTestCase(DirectIntegrationTestCase):
             self.assertEqual(point.z, 5.0)
 
     def test_wgs84_point_value(self):
+        if not self.at_least_protocol_version(2):
+            raise SkipTest("Point type requires Bolt protocol v2 or above")
         with self.driver.session() as session:
             result = session.run("RETURN point({latitude:3, longitude:4})")
             point = result.single().value()
@@ -432,6 +440,8 @@ class ResultValuesTestCase(DirectIntegrationTestCase):
             self.assertEqual(point.longitude, 4.0)
 
     def test_wgs84_3d_point_value(self):
+        if not self.at_least_protocol_version(2):
+            raise SkipTest("Point type requires Bolt protocol v2 or above")
         with self.driver.session() as session:
             result = session.run("RETURN point({latitude:3, longitude:4, height:5})")
             point = result.single().value()

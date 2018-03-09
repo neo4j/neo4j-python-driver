@@ -58,8 +58,9 @@ class BoltStatementResult(StatementResult):
 
         def on_footer(metadata):
             # Called on receipt of the result footer.
+            connection = self._session._connection
             all_metadata.update(metadata, statement=self.statement, parameters=self.parameters,
-                                server=self._session._connection.server)
+                                server=connection.server, protocol_version=connection.protocol_version)
             self._summary = BoltStatementResultSummary(**all_metadata)
             self._session, session_ = None, self._session
             session_.detach(self)
@@ -97,6 +98,9 @@ class BoltStatementResultSummary(object):
     """ A summary of execution returned with a :class:`.StatementResult` object.
     """
 
+    #: The version of Bolt protocol over which this result was obtained.
+    protocol_version = None
+
     #: The server on which this result was generated.
     server = None
 
@@ -132,6 +136,7 @@ class BoltStatementResultSummary(object):
 
     def __init__(self, **metadata):
         self.metadata = metadata
+        self.protocol_version = metadata.get("protocol_version")
         self.server = metadata.get("server")
         self.statement = metadata.get("statement")
         self.parameters = metadata.get("parameters")
