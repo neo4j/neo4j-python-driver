@@ -654,7 +654,7 @@ def connect(address, ssl_context=None, hostname=None, error_handler=None, **conf
         log_debug("~~ [CLOSE]")
         s.shutdown(SHUT_RDWR)
         s.close()
-    elif agreed_version == 1:
+    elif agreed_version in (1, 2):
         connection = Connection(address, s, agreed_version,
                                 der_encoded_server_certificate=der_encoded_server_certificate,
                                 error_handler=error_handler, **config)
