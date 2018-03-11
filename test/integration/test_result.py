@@ -19,7 +19,11 @@
 # limitations under the License.
 
 
+from unittest import SkipTest
+
 from neo4j.exceptions import CypherError
+from neo4j.v1 import Node, Relationship, Path, CartesianPoint, CartesianPoint3D, WGS84Point, WGS84Point3D
+
 from test.integration.tools import DirectIntegrationTestCase
 
 
@@ -186,23 +190,23 @@ class ResultConsumptionTestCase(DirectIntegrationTestCase):
     def test_multiple_values(self):
         with self.driver.session() as session:
             result = session.run("UNWIND range(1, 3) AS n RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-            self.assertEqual(result.values(), [(1, 2, 3),
-                                               (2, 4, 6),
-                                               (3, 6, 9)])
+            self.assertEqual(result.values(), [[1, 2, 3],
+                                               [2, 4, 6],
+                                               [3, 6, 9]])
 
     def test_multiple_indexed_values(self):
         with self.driver.session() as session:
             result = session.run("UNWIND range(1, 3) AS n RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-            self.assertEqual(result.values(2, 0), [(3, 1),
-                                                   (6, 2),
-                                                   (9, 3)])
+            self.assertEqual(result.values(2, 0), [[3, 1],
+                                                   [6, 2],
+                                                   [9, 3]])
 
     def test_multiple_keyed_values(self):
         with self.driver.session() as session:
             result = session.run("UNWIND range(1, 3) AS n RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-            self.assertEqual(result.values("z", "x"), [(3, 1),
-                                                       (6, 2),
-                                                       (9, 3)])
+            self.assertEqual(result.values("z", "x"), [[3, 1],
+                                                       [6, 2],
+                                                       [9, 3]])
 
     def test_multiple_data(self):
         with self.driver.session() as session:
@@ -298,17 +302,17 @@ class SingleRecordTestCase(DirectIntegrationTestCase):
     def test_single_values(self):
         with self.driver.session() as session:
             result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
-            self.assertEqual(result.single().values(), (1, 2, 3))
+            self.assertEqual(result.single().values(), [1, 2, 3])
 
     def test_single_indexed_values(self):
         with self.driver.session() as session:
             result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
-            self.assertEqual(result.single().values(2, 0), (3, 1))
+            self.assertEqual(result.single().values(2, 0), [3, 1])
 
     def test_single_keyed_values(self):
         with self.driver.session() as session:
             result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
-            self.assertEqual(result.single().values("z", "x"), (3, 1))
+            self.assertEqual(result.single().values("z", "x"), [3, 1])
 
     def test_single_data(self):
         with self.driver.session() as session:
@@ -324,3 +328,124 @@ class SingleRecordTestCase(DirectIntegrationTestCase):
         with self.driver.session() as session:
             result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
             self.assertEqual(result.single().data("z", "x"), {"x": 1, "z": 3})
+
+
+def run_and_rollback(tx, statement, **parameters):
+    result = tx.run(statement, **parameters)
+    value = result.single().value()
+    tx.success = False
+    return value
+
+
+class ResultValuesTestCase(DirectIntegrationTestCase):
+
+    def test_null_value(self):
+        with self.driver.session() as session:
+            result = session.run("RETURN null")
+            self.assertIs(result.single().value(), None)
+
+    def test_boolean_value(self):
+        with self.driver.session() as session:
+            result = session.run("RETURN true")
+            self.assertIs(result.single().value(), True)
+
+    def test_integer_value(self):
+        with self.driver.session() as session:
+            result = session.run("RETURN 123456789")
+            self.assertEqual(result.single().value(), 123456789)
+
+    def test_float_value(self):
+        with self.driver.session() as session:
+            result = session.run("RETURN 3.1415926")
+            self.assertEqual(result.single().value(), 3.1415926)
+
+    def test_string_value(self):
+        with self.driver.session() as session:
+            result = session.run("RETURN 'hello, world'")
+            self.assertEqual(result.single().value(), "hello, world")
+
+    def test_bytes_value(self):
+        with self.driver.session() as session:
+            data = bytearray([0x00, 0x33, 0x66, 0x99, 0xCC, 0xFF])
+            value = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
+            self.assertEqual(value, data)
+
+    def test_list_value(self):
+        with self.driver.session() as session:
+            result = session.run("RETURN ['one', 'two', 'three']")
+            self.assertEqual(result.single().value(), ["one", "two", "three"])
+
+    def test_map_value(self):
+        with self.driver.session() as session:
+            result = session.run("RETURN {one: 'eins', two: 'zwei', three: 'drei'}")
+            self.assertEqual(result.single().value(), {"one": "eins", "two": "zwei", "three": "drei"})
+
+    def test_node_value(self):
+        with self.driver.session() as session:
+            a = session.write_transaction(run_and_rollback, "CREATE (a:Person {name:'Alice'}) RETURN a")
+            self.assertIsInstance(a, Node)
+            self.assertEqual(a.labels, {"Person"})
+            self.assertEqual(a.properties, {"name": "Alice"})
+
+    def test_relationship_value(self):
+        with self.driver.session() as session:
+            a, b, r = session.write_transaction(
+                run_and_rollback, "CREATE (a)-[r:KNOWS {since:1999}]->(b) RETURN [a, b, r]")
+            self.assertIsInstance(r, Relationship)
+            self.assertEqual(r.type, "KNOWS")
+            self.assertEqual(r.properties, {"since": 1999})
+            self.assertEqual(r.start, a.id)
+            self.assertEqual(r.end, b.id)
+
+    def test_path_value(self):
+        with self.driver.session() as session:
+            a, b, c, ab, bc, p = session.write_transaction(
+                run_and_rollback, "CREATE p=(a)-[ab:X]->(b)-[bc:X]->(c) RETURN [a, b, c, ab, bc, p]")
+            self.assertIsInstance(p, Path)
+            self.assertEqual(len(p), 2)
+            self.assertEqual(p.nodes, (a, b, c))
+            self.assertEqual(p.relationships, (ab, bc))
+            self.assertEqual(p.start, a)
+            self.assertEqual(p.end, c)
+
+    def test_cartesian_point_value(self):
+        if not self.at_least_protocol_version(2):
+            raise SkipTest("Point type requires Bolt protocol v2 or above")
+        with self.driver.session() as session:
+            result = session.run("RETURN point({x:3, y:4})")
+            point = result.single().value()
+            self.assertIsInstance(point, CartesianPoint)
+            self.assertEqual(point.x, 3.0)
+            self.assertEqual(point.y, 4.0)
+
+    def test_cartesian_3d_point_value(self):
+        if not self.at_least_protocol_version(2):
+            raise SkipTest("Point type requires Bolt protocol v2 or above")
+        with self.driver.session() as session:
+            result = session.run("RETURN point({x:3, y:4, z:5})")
+            point = result.single().value()
+            self.assertIsInstance(point, CartesianPoint3D)
+            self.assertEqual(point.x, 3.0)
+            self.assertEqual(point.y, 4.0)
+            self.assertEqual(point.z, 5.0)
+
+    def test_wgs84_point_value(self):
+        if not self.at_least_protocol_version(2):
+            raise SkipTest("Point type requires Bolt protocol v2 or above")
+        with self.driver.session() as session:
+            result = session.run("RETURN point({latitude:3, longitude:4})")
+            point = result.single().value()
+            self.assertIsInstance(point, WGS84Point)
+            self.assertEqual(point.latitude, 3.0)
+            self.assertEqual(point.longitude, 4.0)
+
+    def test_wgs84_3d_point_value(self):
+        if not self.at_least_protocol_version(2):
+            raise SkipTest("Point type requires Bolt protocol v2 or above")
+        with self.driver.session() as session:
+            result = session.run("RETURN point({latitude:3, longitude:4, height:5})")
+            point = result.single().value()
+            self.assertIsInstance(point, WGS84Point3D)
+            self.assertEqual(point.latitude, 3.0)
+            self.assertEqual(point.longitude, 4.0)
+            self.assertEqual(point.height, 5.0)

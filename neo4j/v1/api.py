@@ -68,7 +68,8 @@ def retry_delay_generator(initial_delay, multiplier, jitter_factor):
         delay *= multiplier
 
 
-class ValueSystem(object):
+class Hydrant(object):
+
     def hydrate(self, values):
         """ Hydrate values from raw representations into client objects.
         """
@@ -81,8 +82,6 @@ class GraphDatabase(object):
     """
 
     uri_schemes = {}
-
-    value_systems = {}
 
     @classmethod
     def driver(cls, uri, **config):
@@ -648,24 +647,21 @@ class StatementResult(object):
     #: Dictionary of parameters passed with the statement.
     parameters = None
 
-    value_system = None
-
     zipper = zip
 
-    _session = None
-
-    _keys = None
-
-    _records = None
-
-    _summary = None
-
-    def __init__(self, session):
+    def __init__(self, session, hydrant):
         self._session = session
+        self._hydrant = hydrant
+        self._keys = None
         self._records = deque()
+        self._summary = None
 
     def __iter__(self):
         return self.records()
+
+    @property
+    def session(self):
+        return self._session
 
     def attached(self):
         """ Indicator for whether or not this result is still attached to
@@ -704,7 +700,7 @@ class StatementResult(object):
 
         :yields: iterable of :class:`.Record` objects
         """
-        hydrate = self.value_system.hydrate
+        hydrate = self._hydrant.hydrate
         zipper = self.zipper
         keys = self.keys()
         records = self._records
@@ -765,7 +761,7 @@ class StatementResult(object):
 
         :returns: the next :class:`.Record` or :const:`None` if none remain
         """
-        hydrate = self.value_system.hydrate
+        hydrate = self._hydrant.hydrate
         zipper = self.zipper
         keys = self.keys()
         records = self._records

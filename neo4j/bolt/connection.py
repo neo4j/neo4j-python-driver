@@ -146,6 +146,9 @@ class Connection(object):
     .. note:: logs at INFO level
     """
 
+    #: The protocol version in use on this connection
+    protocol_version = 0
+
     #: Server details for this connection
     server = None
 
@@ -165,9 +168,10 @@ class Connection(object):
 
     _last_run_statement = None
 
-    def __init__(self, address, sock, error_handler, **config):
+    def __init__(self, address, sock, protocol_version, error_handler, **config):
         self.address = address
         self.socket = sock
+        self.protocol_version = protocol_version
         self.error_handler = error_handler
         self.server = ServerInfo(SocketAddress.from_socket(sock))
         self.input_buffer = ChunkedInputBuffer()
@@ -618,7 +622,7 @@ def connect(address, ssl_context=None, hostname=None, error_handler=None, **conf
         der_encoded_server_certificate = None
 
     # Send details of the protocol versions supported
-    supported_versions = [1, 0, 0, 0]
+    supported_versions = [2, 1, 0, 0]
     handshake = [MAGIC_PREAMBLE] + supported_versions
     log_debug("C: [HANDSHAKE] 0x%X %r", MAGIC_PREAMBLE, supported_versions)
     data = b"".join(struct_pack(">I", num) for num in handshake)
@@ -650,8 +654,9 @@ def connect(address, ssl_context=None, hostname=None, error_handler=None, **conf
         log_debug("~~ [CLOSE]")
         s.shutdown(SHUT_RDWR)
         s.close()
-    elif agreed_version == 1:
-        connection = Connection(address, s, der_encoded_server_certificate=der_encoded_server_certificate,
+    elif agreed_version in (1, 2):
+        connection = Connection(address, s, agreed_version,
+                                der_encoded_server_certificate=der_encoded_server_certificate,
                                 error_handler=error_handler, **config)
         connection.init()
         return connection
