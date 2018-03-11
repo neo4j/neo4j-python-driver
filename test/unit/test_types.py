@@ -22,7 +22,7 @@
 from unittest import TestCase
 
 from neo4j.packstream import Structure
-from neo4j.v1.types import Node, Relationship, Path, PackStreamValueSystem
+from neo4j.v1.types import Node, Relationship, Path, PackStreamHydrant, Graph
 
 
 class NodeTestCase(TestCase):
@@ -151,14 +151,15 @@ class PathTestCase(TestCase):
 class HydrationTestCase(TestCase):
 
     def setUp(self):
-        self.value_system = PackStreamValueSystem()
+        self.graph = Graph()
+        self.hydrant = PackStreamHydrant(self.graph)
 
     def test_can_hydrate_node_structure(self):
         struct = Structure(3, b'N')
         struct.append(123)
         struct.append(["Person"])
         struct.append({"name": "Alice"})
-        alice, = self.value_system.hydrate([struct])
+        alice, = self.hydrant.hydrate([struct])
         assert alice.id == 123
         assert alice.labels == {"Person"}
         assert set(alice.keys()) == {"name"}
@@ -167,7 +168,7 @@ class HydrationTestCase(TestCase):
     def test_hydrating_unknown_structure_returns_same(self):
         struct = Structure(1, b'X')
         struct.append("foo")
-        mystery = self.value_system.hydrate(struct)
+        mystery = self.hydrant.hydrate(struct)
         assert mystery == struct
 
     def test_can_hydrate_in_list(self):
@@ -175,7 +176,7 @@ class HydrationTestCase(TestCase):
         struct.append(123)
         struct.append(["Person"])
         struct.append({"name": "Alice"})
-        alice_in_list, = self.value_system.hydrate([[struct]])
+        alice_in_list, = self.hydrant.hydrate([[struct]])
         assert isinstance(alice_in_list, list)
         alice, = alice_in_list
         assert alice.id == 123
@@ -188,7 +189,7 @@ class HydrationTestCase(TestCase):
         struct.append(123)
         struct.append(["Person"])
         struct.append({"name": "Alice"})
-        alice_in_dict, = self.value_system.hydrate([{"foo": struct}])
+        alice_in_dict, = self.hydrant.hydrate([{"foo": struct}])
         assert isinstance(alice_in_dict, dict)
         alice = alice_in_dict["foo"]
         assert alice.id == 123

@@ -22,8 +22,8 @@
 from collections import namedtuple
 
 from neo4j.exceptions import CypherError
-from neo4j.v1.api import GraphDatabase, StatementResult
-from neo4j.v1.types import Record
+from neo4j.v1.api import StatementResult
+from neo4j.v1.types import Record, PackStreamHydrant, Graph
 
 
 STATEMENT_TYPE_READ_ONLY = "r"
@@ -36,14 +36,13 @@ class BoltStatementResult(StatementResult):
     """ A handler for the result of Cypher statement execution.
     """
 
-    value_system = GraphDatabase.value_systems["packstream"]
-
     @classmethod
     def zipper(cls, k, v):
         return Record(zip(k, v))
 
     def __init__(self, session, run_response, pull_all_response):
-        super(BoltStatementResult, self).__init__(session)
+        self.graph = Graph()
+        super(BoltStatementResult, self).__init__(session, PackStreamHydrant(self.graph))
 
         all_metadata = {}
 
@@ -58,7 +57,7 @@ class BoltStatementResult(StatementResult):
 
         def on_footer(metadata):
             # Called on receipt of the result footer.
-            connection = self._session._connection
+            connection = self.session._connection
             all_metadata.update(metadata, statement=self.statement, parameters=self.parameters,
                                 server=connection.server, protocol_version=connection.protocol_version)
             self._summary = BoltStatementResultSummary(**all_metadata)
@@ -67,7 +66,7 @@ class BoltStatementResult(StatementResult):
 
         def on_failure(metadata):
             # Called on execution failure.
-            self._session._connection.acknowledge_failure()
+            self.session._connection.acknowledge_failure()
             on_footer(metadata)
             raise CypherError.hydrate(**metadata)
 

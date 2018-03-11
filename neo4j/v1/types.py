@@ -31,7 +31,7 @@ from operator import xor as xor_operator
 from neo4j.packstream import Structure
 from neo4j.compat import string, integer, ustr
 
-from .api import GraphDatabase, ValueSystem
+from .api import GraphDatabase, Hydrant
 
 
 def iter_items(iterable):
@@ -208,9 +208,17 @@ class Record(tuple):
         return dict(self)
 
 
+class Graph(object):
+
+    def __init__(self):
+        self.__nodes = {}
+        self.__relationships = {}
+
+
 class Entity(object):
     """ Base class for Node and Relationship.
     """
+    graph = None
     id = None
     properties = None
 
@@ -392,13 +400,24 @@ class Point(tuple):
     """ A point within a geometric space.
     """
 
+    @classmethod
+    def __get_subclass(cls, crs):
+        """ Finds the Point subclass with the given CRS.
+        """
+        if cls.crs == crs:
+            return cls
+        for subclass in cls.__subclasses__():
+            got = subclass.__get_subclass(crs)
+            if got:
+                return got
+        return None
+
     crs = None
 
     @classmethod
     def hydrate(cls, crs, *coordinates):
-        try:
-            point_class = point_classes[crs]
-        except KeyError:
+        point_class = cls.__get_subclass(crs)
+        if point_class is None:
             raise ValueError("CRS %d not supported" % crs)
         if 2 <= len(coordinates) <= 3:
             inst = point_class(coordinates)
@@ -427,6 +446,8 @@ class Point(tuple):
 
 
 class CartesianPoint(Point):
+    """ A point in 2-dimensional Cartesian space.
+    """
 
     crs = 7203
 
@@ -440,6 +461,8 @@ class CartesianPoint(Point):
 
 
 class CartesianPoint3D(CartesianPoint):
+    """ A point in 3-dimensional Cartesian space.
+    """
 
     crs = 9157
 
@@ -449,6 +472,9 @@ class CartesianPoint3D(CartesianPoint):
 
 
 class WGS84Point(Point):
+    """
+
+    """
 
     crs = 4326
 
@@ -462,6 +488,9 @@ class WGS84Point(Point):
 
 
 class WGS84Point3D(WGS84Point):
+    """
+
+    """
 
     crs = 4979
 
@@ -470,24 +499,19 @@ class WGS84Point3D(WGS84Point):
         return self[2]
 
 
-point_classes = {cls.crs: cls for cls in [
-    CartesianPoint,
-    CartesianPoint3D,
-    WGS84Point,
-    WGS84Point3D,
-]}
+class PackStreamHydrant(Hydrant):
 
-
-class PackStreamValueSystem(ValueSystem):
-
-    hydrants = {
-        b"N": Node.hydrate,
-        b"R": Relationship.hydrate,
-        b"r": Relationship.hydrate_unbound,
-        b"P": Path.hydrate,
-        b"X": Point.hydrate,
-        b"Y": Point.hydrate,
-    }
+    def __init__(self, graph):
+        super(PackStreamHydrant, self).__init__()
+        self.graph = graph
+        self.structure_hydrants = {
+            b"N": Node.hydrate,
+            b"R": Relationship.hydrate,
+            b"r": Relationship.hydrate_unbound,
+            b"P": Path.hydrate,
+            b"X": Point.hydrate,
+            b"Y": Point.hydrate,
+        }
 
     def hydrate(self, values):
 
@@ -495,7 +519,7 @@ class PackStreamValueSystem(ValueSystem):
             if isinstance(obj, Structure):
                 tag, args = obj
                 try:
-                    hydrant = self.hydrants[tag]
+                    hydrant = self.structure_hydrants[tag]
                 except KeyError:
                     # If we don't recognise the structure type, just return it as-is
                     return obj
@@ -509,6 +533,3 @@ class PackStreamValueSystem(ValueSystem):
                 return obj
 
         return tuple(map(hydrate_, values))
-
-
-GraphDatabase.value_systems["packstream"] = PackStreamValueSystem()
