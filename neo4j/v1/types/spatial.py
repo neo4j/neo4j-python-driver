@@ -18,27 +18,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 """
-Spatial data types
+This module defines spatial data types.
 """
 
 
 __all__ = [
     "Point",
-    "CartesianPoint",
-    "CartesianPoint3D",
-    "WGS84Point",
-    "WGS84Point3D",
+]
+
+# This list contains definitions for the set of Point subclasses to be
+# dynamically created within the module scope. Each definition consists
+# of the CRS code, type name and type attribute names respectively.
+# New Point subclasses should be added to this list.
+__point_types = [
+    (7203, "CartesianPoint", ["x", "y"]),
+    (9157, "CartesianPoint3D", ["x", "y", "z"]),
+    (4326, "WGS84Point", ["longitude", "latitude"]),
+    (4979, "WGS84Point3D", ["longitude", "latitude", "height"]),
 ]
 
 
 class Point(tuple):
-    """ A point within a geometric space.
+    """ A point within a geometric space. This type is generally used
+    via its subclasses and should not be instantiated directly unless
+    there is no subclass defined for the required CRS.
     """
 
     @classmethod
     def __get_subclass(cls, crs):
-        """ Finds the Point subclass with the given CRS.
+        """ Find the the correct Point subclass for a given CRS.
+        If no subclass can be found, None is returned.
         """
         if cls.crs == crs:
             return cls
@@ -48,10 +59,13 @@ class Point(tuple):
                 return got
         return None
 
-    crs = None
-
     @classmethod
     def hydrate(cls, crs, *coordinates):
+        """ Create a new instance of a Point subclass from a raw
+        set of fields. The subclass chosen is determined by the
+        given CRS code; a ValueError will be raised if no such
+        subclass can be found.
+        """
         point_class = cls.__get_subclass(crs)
         if point_class is None:
             raise ValueError("CRS %d not supported" % crs)
@@ -61,6 +75,8 @@ class Point(tuple):
             return inst
         else:
             raise ValueError("%d-dimensional Point values are not supported" % len(coordinates))
+
+    crs = None
 
     def __new__(cls, iterable):
         return tuple.__new__(cls, iterable)
@@ -81,53 +97,20 @@ class Point(tuple):
         return hash(self.crs) ^ hash(tuple(self))
 
 
-class CartesianPoint(Point):
-    """ Point in 2-dimensional Cartesian space.
+def __create_point_types():
+    """ Dynamically add the defined set of Point subclasses to the
+    module scope.
     """
-
-    crs = 7203
-
-    @property
-    def x(self):
-        return self[0]
-
-    @property
-    def y(self):
-        return self[1]
+    from sys import modules
+    this_module = modules[__name__]
+    for crs, name, fields in __point_types:
+        attributes = {"crs": crs}
+        for i, field in enumerate(fields):
+            attributes[field] = property(lambda self, index=i: self[index])
+        setattr(this_module, name, type(name, (Point,), attributes))
+        __all__.append(name)
 
 
-class CartesianPoint3D(CartesianPoint):
-    """ Point in 3-dimensional Cartesian space.
-    """
-
-    crs = 9157
-
-    @property
-    def z(self):
-        return self[2]
-
-
-class WGS84Point(Point):
-    """ Point in 2-dimensional World Geodetic System space.
-    """
-
-    crs = 4326
-
-    @property
-    def longitude(self):
-        return self[0]
-
-    @property
-    def latitude(self):
-        return self[1]
-
-
-class WGS84Point3D(WGS84Point):
-    """ Point in 3-dimensional World Geodetic System space.
-    """
-
-    crs = 4979
-
-    @property
-    def height(self):
-        return self[2]
+# This top-level call ensures that the dynamic Point subclasses are loaded
+# into module scope on import.
+__create_point_types()
