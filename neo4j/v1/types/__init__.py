@@ -32,8 +32,9 @@ from neo4j.packstream import Structure
 from neo4j.compat import string, integer, ustr
 from neo4j.v1.api import Hydrant
 
-from .graph import *
-from .spatial import *
+from .graph import structures as graph_structures
+from .spatial import structures as spatial_structures
+from .temporal import structures as temporal_structures
 
 
 def iter_items(iterable):
@@ -215,14 +216,10 @@ class PackStreamHydrant(Hydrant):
     def __init__(self, graph):
         super(PackStreamHydrant, self).__init__()
         self.graph = graph
-        self.structure_hydrants = {
-            b"N": Node.hydrate,
-            b"R": Relationship.hydrate,
-            b"r": Relationship.hydrate_unbound,
-            b"P": Path.hydrate,
-            b"X": Point.hydrate,
-            b"Y": Point.hydrate,
-        }
+        self.structures = {}
+        self.structures.update(graph_structures)
+        self.structures.update(spatial_structures)
+        self.structures.update(temporal_structures)
 
     def hydrate(self, values):
 
@@ -230,12 +227,12 @@ class PackStreamHydrant(Hydrant):
             if isinstance(obj, Structure):
                 tag, args = obj
                 try:
-                    hydrant = self.structure_hydrants[tag]
+                    structure = self.structures[tag]
                 except KeyError:
                     # If we don't recognise the structure type, just return it as-is
                     return obj
                 else:
-                    return hydrant(*map(hydrate_, args))
+                    return structure(*map(hydrate_, args))
             elif isinstance(obj, list):
                 return list(map(hydrate_, obj))
             elif isinstance(obj, dict):

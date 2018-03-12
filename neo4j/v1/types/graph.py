@@ -218,3 +218,11 @@ class Path(object):
     @property
     def end(self):
         return self.nodes[-1]
+
+
+structures = {
+    b"N": Node.hydrate,
+    b"R": Relationship.hydrate,
+    b"r": Relationship.hydrate_unbound,
+    b"P": Path.hydrate,
+}

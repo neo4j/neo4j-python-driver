@@ -22,7 +22,8 @@
 from unittest import TestCase
 
 from neo4j.packstream import Structure
-from neo4j.v1.types import Node, Relationship, Path, PackStreamHydrant, Graph
+from neo4j.v1.types import PackStreamHydrant
+from neo4j.v1.types.graph import Node, Relationship, Path, Graph
 
 
 class NodeTestCase(TestCase):

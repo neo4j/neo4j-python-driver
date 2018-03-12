@@ -23,7 +23,8 @@ from collections import namedtuple
 
 from neo4j.exceptions import CypherError
 from neo4j.v1.api import StatementResult
-from neo4j.v1.types import Record, PackStreamHydrant, Graph
+from neo4j.v1.types import Record, PackStreamHydrant
+from neo4j.v1.types.graph import Graph
 
 
 STATEMENT_TYPE_READ_ONLY = "r"
