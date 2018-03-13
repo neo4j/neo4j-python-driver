@@ -25,6 +25,7 @@ represented by PackStream structures on the wire before being converted
 into concrete values through the PackStreamHydrant.
 """
 
+from datetime import date
 from functools import reduce
 from operator import xor as xor_operator
 
@@ -35,6 +36,10 @@ from neo4j.v1.api import Hydrant
 from .graph import structures as graph_structures
 from .spatial import structures as spatial_structures
 from .temporal import structures as temporal_structures
+
+
+INT64_MIN = -(2 ** 63)
+INT64_MAX = (2 ** 63) - 1
 
 
 def iter_items(iterable):
@@ -225,14 +230,13 @@ class PackStreamHydrant(Hydrant):
 
         def hydrate_(obj):
             if isinstance(obj, Structure):
-                tag, args = obj
                 try:
-                    structure = self.structures[tag]
+                    structure = self.structures[obj.tag]
                 except KeyError:
                     # If we don't recognise the structure type, just return it as-is
                     return obj
                 else:
-                    return structure(*map(hydrate_, args))
+                    return structure(*map(hydrate_, obj.fields))
             elif isinstance(obj, list):
                 return list(map(hydrate_, obj))
             elif isinstance(obj, dict):
@@ -241,3 +245,28 @@ class PackStreamHydrant(Hydrant):
                 return obj
 
         return tuple(map(hydrate_, values))
+
+
+def dehydrate_parameters(x):
+    if x is None:
+        return None
+    elif isinstance(x, bool):
+        return x
+    elif isinstance(x, integer):
+        if INT64_MIN <= x <= INT64_MAX:
+            return x
+        raise ValueError("Integer out of bounds (64-bit signed integer values only)")
+    elif isinstance(x, float):
+        return x
+    elif isinstance(x, string):
+        return ustr(x)
+    elif isinstance(x, (bytes, bytearray)):  # the order is important here - bytes must be checked after string
+        return x
+    elif isinstance(x, list):
+        return list(map(dehydrate_parameters, x))
+    elif isinstance(x, dict):
+        return {ustr(key): dehydrate_parameters(value) for key, value in x.items()}
+    elif isinstance(x, date):
+        return Structure(None)
+    else:
+        raise TypeError("Parameters of type {} are not supported".format(type(x).__name__))

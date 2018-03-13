@@ -19,21 +19,29 @@
 # limitations under the License.
 
 
-class Structure(list):
+class Structure(object):
 
-    def __init__(self, capacity, signature):
-        self.capacity = capacity
-        self.signature = signature
+    def __init__(self, tag, *fields):
+        self.tag = tag
+        self.fields = list(fields)
 
     def __repr__(self):
-        return repr(tuple(iter(self)))
+        return "Structure<%s>(%s)" % (self.tag, ", ".join(map(repr, self.fields)))
 
     def __eq__(self, other):
-        return list(self) == list(other)
+        try:
+            return self.tag == other.tag and self.fields == other.fields
+        except AttributeError:
+            return False
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __iter__(self):
-        yield self.signature
-        yield tuple(super(Structure, self).__iter__())
+    def __len__(self):
+        return len(self.fields)
+
+    def __getitem__(self, key):
+        return self.fields[key]
+
+    def __setitem__(self, key, value):
+        self.fields[key] = value

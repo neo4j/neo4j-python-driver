@@ -114,13 +114,8 @@ class Packer(object):
                 self._pack(item)
 
         # Structure
-        elif isinstance(value, (Structure, tuple)):
-            try:
-                signature, fields = value
-            except ValueError:
-                raise ValueError("Structures require a 2-tuple of (signature, fields)")
-            else:
-                self.pack_struct(signature, fields)
+        elif isinstance(value, Structure):
+            self.pack_struct(value.tag, value.fields)
 
         # Other
         else:

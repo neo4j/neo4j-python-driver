@@ -158,6 +158,18 @@ class SpatialTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value.height, 5.0)
 
 
+# class TemporalTypeInputTestCase(DirectIntegrationTestCase):
+#
+#     def test_date(self):
+#         if not self.at_least_protocol_version(2):
+#             raise SkipTest("Date type requires Bolt protocol v2 or above")
+#         with self.driver.session() as session:
+#             result = session.run("RETURN $x", x=date(1976, 6, 13))
+#             value = result.single().value()
+#             self.assertIsInstance(value, date)
+#             self.assertEqual(value, date(1976, 6, 13))
+
+
 class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
 
     def test_date(self):

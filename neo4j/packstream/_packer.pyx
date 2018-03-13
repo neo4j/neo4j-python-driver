@@ -118,13 +118,8 @@ cdef class Packer(object):
                 self._pack(item)
 
         # Structure
-        elif isinstance(value, (Structure, tuple)):
-            try:
-                signature, fields = value
-            except ValueError:
-                raise ValueError("Structures require a 2-tuple of (signature, fields)")
-            else:
-                self.pack_struct(signature, fields)
+        elif isinstance(value, Structure):
+            self.pack_struct(value.tag, value.fields)
 
         # Other
         else:
@@ -290,7 +285,7 @@ cdef class Packer(object):
     cpdef pack_map_stream_header(self):
         self._write(b"\xDB")
 
-    cpdef pack_struct(self, bytes signature, tuple fields):
+    cpdef pack_struct(self, bytes signature, fields):
         if len(signature) != 1:
             raise ValueError("Structure signature must be a single byte value")
         write = self._write
