@@ -39,36 +39,6 @@ class Point(tuple):
     there is no subclass defined for the required CRS.
     """
 
-    @classmethod
-    def __get_subclass(cls, crs):
-        """ Find the the correct Point subclass for a given CRS.
-        If no subclass can be found, None is returned.
-        """
-        if cls.crs == crs:
-            return cls
-        for subclass in cls.__subclasses__():
-            got = subclass.__get_subclass(crs)
-            if got:
-                return got
-        return None
-
-    @classmethod
-    def hydrate(cls, crs, *coordinates):
-        """ Create a new instance of a Point subclass from a raw
-        set of fields. The subclass chosen is determined by the
-        given CRS code; a ValueError will be raised if no such
-        subclass can be found.
-        """
-        point_class = cls.__get_subclass(crs)
-        if point_class is None:
-            raise ValueError("CRS %d not supported" % crs)
-        if 2 <= len(coordinates) <= 3:
-            inst = point_class(coordinates)
-            inst.crs = crs
-            return inst
-        else:
-            raise ValueError("%d-dimensional Point values are not supported" % len(coordinates))
-
     crs = None
 
     def __new__(cls, iterable):
@@ -106,9 +76,30 @@ WGS84Point = __point_subclass(4326, "WGS84Point", ["longitude", "latitude"])
 WGS84Point3D = __point_subclass(4979, "WGS84Point3D", ["longitude", "latitude", "height"])
 
 
+def hydrate_point(crs, *coordinates):
+    """ Create a new instance of a Point subclass from a raw
+    set of fields. The subclass chosen is determined by the
+    given CRS code; a ValueError will be raised if no such
+    subclass can be found.
+    """
+    point_class = None
+    for subclass in Point.__subclasses__():
+        if subclass.crs == crs:
+            point_class = subclass
+            break
+    if point_class is None:
+        raise ValueError("CRS %d not supported" % crs)
+    if 2 <= len(coordinates) <= 3:
+        inst = point_class(coordinates)
+        inst.crs = crs
+        return inst
+    else:
+        raise ValueError("%d-dimensional Point values are not supported" % len(coordinates))
+
+
 hydration_functions = {
-    b"X": Point.hydrate,
-    b"Y": Point.hydrate,
+    b"X": hydrate_point,
+    b"Y": hydrate_point,
 }
 
 dehydration_functions = {
