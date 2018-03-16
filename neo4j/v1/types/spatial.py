@@ -27,9 +27,7 @@ This module defines spatial data types.
 __all__ = [
     "Point",
     "CartesianPoint",
-    "CartesianPoint3D",
     "WGS84Point",
-    "WGS84Point3D",
 ]
 
 
@@ -39,8 +37,6 @@ class Point(tuple):
     there is no subclass defined for the required SRID.
     """
 
-    srid = None
-
     def __new__(cls, iterable):
         return tuple.__new__(cls, iterable)
 
@@ -49,7 +45,7 @@ class Point(tuple):
 
     def __eq__(self, other):
         try:
-            return self.srid == other.srid and tuple(self) == tuple(other)
+            return type(self) is type(other) and tuple(self) == tuple(other)
         except (AttributeError, TypeError):
             return False
 
@@ -57,23 +53,40 @@ class Point(tuple):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash(self.srid) ^ hash(tuple(self))
+        return hash(type(self)) ^ hash(tuple(self))
 
 
-def __point_subclass(srid, name, fields):
+def __point_subclass(name, fields):
     """ Dynamically create a Point subclass.
     """
-    attributes = {"srid": srid}
-    for i, field in enumerate(fields):
-        attributes[field] = property(lambda self, index=i: self[index])
+    core_fields = "xyz"
+    attributes = {}
+    for index, subclass_field in enumerate(fields):
+
+        def accessor(self, i=index, f=subclass_field):
+            try:
+                return self[i]
+            except IndexError:
+                raise AttributeError(f)
+
+        for field_alias in {subclass_field, core_fields[index]}:
+            attributes[field_alias] = property(accessor)
+
     return type(name, (Point,), attributes)
 
 
 # Point subclass definitions
-CartesianPoint = __point_subclass(7203, "CartesianPoint", ["x", "y"])
-CartesianPoint3D = __point_subclass(9157, "CartesianPoint3D", ["x", "y", "z"])
-WGS84Point = __point_subclass(4326, "WGS84Point", ["longitude", "latitude"])
-WGS84Point3D = __point_subclass(4979, "WGS84Point3D", ["longitude", "latitude", "height"])
+CartesianPoint = __point_subclass("CartesianPoint", ["x", "y", "z"])
+WGS84Point = __point_subclass("WGS84Point", ["longitude", "latitude", "height"])
+
+
+# SRID to subclass mappings
+__srid_table = {
+    7203: CartesianPoint,
+    9157: CartesianPoint,
+    4326: WGS84Point,
+    4979: WGS84Point,
+}
 
 
 def hydrate_point(srid, *coordinates):
@@ -82,17 +95,12 @@ def hydrate_point(srid, *coordinates):
     given SRID; a ValueError will be raised if no such
     subclass can be found.
     """
-    point_class = None
-    for subclass in Point.__subclasses__():
-        if subclass.srid == srid:
-            point_class = subclass
-            break
-    if point_class is None:
+    try:
+        point_class = __srid_table[srid]
+    except KeyError:
         raise ValueError("SRID %d not supported" % srid)
     if 2 <= len(coordinates) <= 3:
-        inst = point_class(coordinates)
-        inst.srid = srid
-        return inst
+        return point_class(coordinates)
     else:
         raise ValueError("%d-dimensional Point values are not supported" % len(coordinates))
 

@@ -24,7 +24,7 @@ from datetime import date, datetime, time, timedelta
 from pytz import FixedOffset, timezone, utc
 
 from neo4j.v1.types.graph import Node, Relationship, Path
-from neo4j.v1.types.spatial import CartesianPoint, CartesianPoint3D, WGS84Point, WGS84Point3D
+from neo4j.v1.types.spatial import CartesianPoint, WGS84Point
 from neo4j.v1.types.temporal import duration
 
 from test.integration.tools import DirectIntegrationTestCase
@@ -122,13 +122,15 @@ class SpatialTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertIsInstance(value, CartesianPoint)
             self.assertEqual(value.x, 3.0)
             self.assertEqual(value.y, 4.0)
+            with self.assertRaises(AttributeError):
+                _ = value.z
 
     def test_cartesian_3d_point(self):
         self.assert_supports_spatial_types()
         with self.driver.session() as session:
             result = session.run("RETURN point({x:3, y:4, z:5})")
             value = result.single().value()
-            self.assertIsInstance(value, CartesianPoint3D)
+            self.assertIsInstance(value, CartesianPoint)
             self.assertEqual(value.x, 3.0)
             self.assertEqual(value.y, 4.0)
             self.assertEqual(value.z, 5.0)
@@ -140,17 +142,26 @@ class SpatialTypeOutputTestCase(DirectIntegrationTestCase):
             value = result.single().value()
             self.assertIsInstance(value, WGS84Point)
             self.assertEqual(value.latitude, 3.0)
+            self.assertEqual(value.y, 3.0)
             self.assertEqual(value.longitude, 4.0)
+            self.assertEqual(value.x, 4.0)
+            with self.assertRaises(AttributeError):
+                _ = value.height
+            with self.assertRaises(AttributeError):
+                _ = value.z
 
     def test_wgs84_3d_point(self):
         self.assert_supports_spatial_types()
         with self.driver.session() as session:
             result = session.run("RETURN point({latitude:3, longitude:4, height:5})")
             value = result.single().value()
-            self.assertIsInstance(value, WGS84Point3D)
+            self.assertIsInstance(value, WGS84Point)
             self.assertEqual(value.latitude, 3.0)
+            self.assertEqual(value.y, 3.0)
             self.assertEqual(value.longitude, 4.0)
+            self.assertEqual(value.x, 4.0)
             self.assertEqual(value.height, 5.0)
+            self.assertEqual(value.z, 5.0)
 
 
 class TemporalTypeInputTestCase(DirectIntegrationTestCase):

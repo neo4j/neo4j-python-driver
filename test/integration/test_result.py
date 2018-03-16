@@ -19,12 +19,7 @@
 # limitations under the License.
 
 
-from datetime import date, time
-from unittest import SkipTest
-
 from neo4j.exceptions import CypherError
-from neo4j.v1.types.graph import Node, Relationship, Path
-from neo4j.v1.types.spatial import CartesianPoint, CartesianPoint3D, WGS84Point, WGS84Point3D
 
 from test.integration.tools import DirectIntegrationTestCase
 
