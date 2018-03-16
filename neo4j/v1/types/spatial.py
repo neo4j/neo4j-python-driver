@@ -36,10 +36,10 @@ __all__ = [
 class Point(tuple):
     """ A point within a geometric space. This type is generally used
     via its subclasses and should not be instantiated directly unless
-    there is no subclass defined for the required CRS.
+    there is no subclass defined for the required SRID.
     """
 
-    crs = None
+    srid = None
 
     def __new__(cls, iterable):
         return tuple.__new__(cls, iterable)
@@ -49,7 +49,7 @@ class Point(tuple):
 
     def __eq__(self, other):
         try:
-            return self.crs == other.crs and tuple(self) == tuple(other)
+            return self.srid == other.srid and tuple(self) == tuple(other)
         except (AttributeError, TypeError):
             return False
 
@@ -57,13 +57,13 @@ class Point(tuple):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash(self.crs) ^ hash(tuple(self))
+        return hash(self.srid) ^ hash(tuple(self))
 
 
-def __point_subclass(crs, name, fields):
+def __point_subclass(srid, name, fields):
     """ Dynamically create a Point subclass.
     """
-    attributes = {"crs": crs}
+    attributes = {"srid": srid}
     for i, field in enumerate(fields):
         attributes[field] = property(lambda self, index=i: self[index])
     return type(name, (Point,), attributes)
@@ -76,22 +76,22 @@ WGS84Point = __point_subclass(4326, "WGS84Point", ["longitude", "latitude"])
 WGS84Point3D = __point_subclass(4979, "WGS84Point3D", ["longitude", "latitude", "height"])
 
 
-def hydrate_point(crs, *coordinates):
+def hydrate_point(srid, *coordinates):
     """ Create a new instance of a Point subclass from a raw
     set of fields. The subclass chosen is determined by the
-    given CRS code; a ValueError will be raised if no such
+    given SRID; a ValueError will be raised if no such
     subclass can be found.
     """
     point_class = None
     for subclass in Point.__subclasses__():
-        if subclass.crs == crs:
+        if subclass.srid == srid:
             point_class = subclass
             break
     if point_class is None:
-        raise ValueError("CRS %d not supported" % crs)
+        raise ValueError("SRID %d not supported" % srid)
     if 2 <= len(coordinates) <= 3:
         inst = point_class(coordinates)
-        inst.crs = crs
+        inst.srid = srid
         return inst
     else:
         raise ValueError("%d-dimensional Point values are not supported" % len(coordinates))
