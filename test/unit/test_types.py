@@ -22,7 +22,7 @@
 from unittest import TestCase
 
 from neo4j.packstream import Structure
-from neo4j.v1.types import PackStreamHydrant
+from neo4j.v1.types import PackStreamHydrator
 from neo4j.v1.types.graph import Node, Relationship, Path, Graph
 
 
@@ -153,7 +153,7 @@ class HydrationTestCase(TestCase):
 
     def setUp(self):
         self.graph = Graph()
-        self.hydrant = PackStreamHydrant(self.graph)
+        self.hydrant = PackStreamHydrator(self.graph)
 
     def test_can_hydrate_node_structure(self):
         struct = Structure(b'N', 123, ["Person"], {"name": "Alice"})

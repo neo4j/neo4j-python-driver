@@ -29,23 +29,37 @@ from warnings import warn
 
 from pytz import FixedOffset, timezone, utc
 
+from neo4j.packstream.structure import Structure
 
-UNIX_EPOCH = date.fromtimestamp(0)
+
+UNIX_EPOCH_DATE = date(1970, 1, 1)
+UNIX_EPOCH_DATETIME_UTC = datetime(1970, 1, 1, 0, 0, 0, 0, utc)
 
 duration = namedtuple("duration", ("years", "months", "days", "hours", "minutes", "seconds"))
 
 
 def hydrate_date(days):
-    """ Hydrant for `Date` values.
+    """ Hydrator for `Date` values.
 
     :param days:
     :return: date
     """
-    return UNIX_EPOCH + timedelta(days=days)
+    return UNIX_EPOCH_DATE + timedelta(days=days)
+
+
+def dehydrate_date(value):
+    """ Dehydrator for `date` values.
+
+    :param value:
+    :type value: date
+    :return:
+    """
+    delta = value - UNIX_EPOCH_DATE
+    return Structure(b"D", delta.days)
 
 
 def hydrate_time(nanoseconds, tz=None):
-    """ Hydrant for `Time` and `LocalTime` values.
+    """ Hydrator for `Time` and `LocalTime` values.
 
     :param nanoseconds:
     :param tz:
@@ -62,12 +76,34 @@ def hydrate_time(nanoseconds, tz=None):
         return t
     tz_offset_minutes, tz_offset_seconds = divmod(tz, 60)
     zone = FixedOffset(tz_offset_minutes)
-    zoned_datetime = utc.localize(datetime.combine(UNIX_EPOCH, t)).astimezone(zone)
+    zoned_datetime = utc.localize(datetime.combine(UNIX_EPOCH_DATE, t)).astimezone(zone)
     return zone.localize(zoned_datetime.time())
 
 
+def dehydrate_time(value):
+    """ Dehydrator for `time` values.
+
+    :param value:
+    :type value: time
+    :return:
+    """
+    # Save the TZ info as this will get lost during the conversion to UTC
+    tz = value.tzinfo
+    if tz:
+        # If we have a TZ offset, convert to UTC (and drop the TZ info)
+        value = datetime.combine(UNIX_EPOCH_DATE, value).astimezone(utc).time()
+    minutes = 60 * value.hour + value.minute
+    seconds = 60 * minutes + value.second
+    microseconds = 1000000 * seconds + value.microsecond
+    nanoseconds = 1000 * microseconds
+    if tz:
+        return Structure(b"T", nanoseconds, tz.utcoffset(value).seconds)
+    else:
+        return Structure(b"t", nanoseconds)
+
+
 def hydrate_datetime(seconds, nanoseconds, tz=None):
-    """ Hydrant for `DateTime` and `LocalDateTime` values.
+    """ Hydrator for `DateTime` and `LocalDateTime` values.
 
     :param seconds:
     :param nanoseconds:
@@ -80,7 +116,7 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):
     minutes, seconds = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
     days, hours = divmod(hours, 24)
-    t = datetime.combine(UNIX_EPOCH + timedelta(days=days), time(hours, minutes, seconds, microseconds))
+    t = datetime.combine(UNIX_EPOCH_DATE + timedelta(days=days), time(hours, minutes, seconds, microseconds))
     if tz is None:
         return t
     if isinstance(tz, int):
@@ -92,8 +128,39 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):
     return zoned_datetime
 
 
+def dehydrate_datetime(value):
+    """ Dehydrator for `datetime` values.
+
+    :param value:
+    :type value: datetime
+    :return:
+    """
+
+    def seconds_and_nanoseconds(dt):
+        whole_seconds, fraction_of_second = divmod((dt - UNIX_EPOCH_DATETIME_UTC).total_seconds(), 1)
+        return int(whole_seconds), int(1000000000 * fraction_of_second)
+
+    # Save the TZ info as this will get lost during the conversion to UTC
+    tz = value.tzinfo
+    if tz is None:
+        # without time zone
+        value = utc.localize(value)
+        seconds, nanoseconds = seconds_and_nanoseconds(value)
+        return Structure(b"d", seconds, nanoseconds)
+    elif hasattr(tz, "zone") and tz.zone:
+        # with named time zone
+        value = value.astimezone(utc)
+        seconds, nanoseconds = seconds_and_nanoseconds(value)
+        return Structure(b"f", seconds, nanoseconds, tz.zone)
+    else:
+        # with time offset
+        value = value.astimezone(utc)
+        seconds, nanoseconds = seconds_and_nanoseconds(value)
+        return Structure(b"F", seconds, nanoseconds, tz.utcoffset(value).seconds)
+
+
 def hydrate_duration(months, days, seconds, nanoseconds):
-    """ Hydrant for `Duration` values.
+    """ Hydrator for `Duration` values.
 
     :param months:
     :param days:
@@ -110,7 +177,36 @@ def hydrate_duration(months, days, seconds, nanoseconds):
     return duration(years, months, days, hours, minutes, seconds + (microseconds / 1000000.0))
 
 
-structures = {
+def dehydrate_duration(value):
+    """ Dehydrator for `duration` values.
+
+    :param value:
+    :type value: duration
+    :return:
+    """
+    months = 12 * value.years + value.months
+    days = value.days
+    seconds, fraction_of_second = divmod(value.seconds, 1)
+    seconds = 60 * (60 * value.hours + value.minutes) + int(seconds)
+    nanoseconds = 1000 * int(round(1000000 * fraction_of_second))
+    return Structure(b"E", months, days, seconds, nanoseconds)
+
+
+def dehydrate_timedelta(value):
+    """ Dehydrator for `timedelta` values.
+
+    :param value:
+    :type value: timedelta
+    :return:
+    """
+    months = 0
+    days = value.days
+    seconds = value.seconds
+    nanoseconds = 1000 * value.microseconds
+    return Structure(b"E", months, days, seconds, nanoseconds)
+
+
+hydration_functions = {
     b"D": hydrate_date,
     b"T": hydrate_time,         # time zone offset
     b"t": hydrate_time,         # no time zone
@@ -118,4 +214,12 @@ structures = {
     b"f": hydrate_datetime,     # time zone name
     b"d": hydrate_datetime,     # no time zone
     b"E": hydrate_duration,
+}
+
+dehydration_functions = {
+    date: dehydrate_date,
+    time: dehydrate_time,
+    datetime: dehydrate_datetime,
+    duration: dehydrate_duration,
+    timedelta: dehydrate_timedelta,
 }

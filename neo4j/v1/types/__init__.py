@@ -25,17 +25,20 @@ represented by PackStream structures on the wire before being converted
 into concrete values through the PackStreamHydrant.
 """
 
-from datetime import date
+
 from functools import reduce
 from operator import xor as xor_operator
 
 from neo4j.packstream import Structure
 from neo4j.compat import string, integer, ustr
-from neo4j.v1.api import Hydrant
+from neo4j.v1.api import Hydrator
 
-from .graph import structures as graph_structures
-from .spatial import structures as spatial_structures
-from .temporal import structures as temporal_structures
+from .graph import hydration_functions as graph_hydration_functions, \
+                   dehydration_functions as graph_dehydration_functions
+from .spatial import hydration_functions as spatial_hydration_functions, \
+                     dehydration_functions as spatial_dehydration_functions
+from .temporal import hydration_functions as temporal_hydration_functions, \
+                      dehydration_functions as temporal_dehydration_functions
 
 
 INT64_MIN = -(2 ** 63)
@@ -216,27 +219,29 @@ class Record(tuple):
         return dict(self)
 
 
-class PackStreamHydrant(Hydrant):
+class PackStreamHydrator(Hydrator):
 
     def __init__(self, graph):
-        super(PackStreamHydrant, self).__init__()
+        super(PackStreamHydrator, self).__init__()
         self.graph = graph
-        self.structures = {}
-        self.structures.update(graph_structures)
-        self.structures.update(spatial_structures)
-        self.structures.update(temporal_structures)
+        self.hydration_functions = {}
+        self.hydration_functions.update(graph_hydration_functions)
+        self.hydration_functions.update(spatial_hydration_functions)
+        self.hydration_functions.update(temporal_hydration_functions)
 
     def hydrate(self, values):
+        """ Convert PackStream values into native values.
+        """
 
         def hydrate_(obj):
             if isinstance(obj, Structure):
                 try:
-                    structure = self.structures[obj.tag]
+                    f = self.hydration_functions[obj.tag]
                 except KeyError:
                     # If we don't recognise the structure type, just return it as-is
                     return obj
                 else:
-                    return structure(*map(hydrate_, obj.fields))
+                    return f(*map(hydrate_, obj.fields))
             elif isinstance(obj, list):
                 return list(map(hydrate_, obj))
             elif isinstance(obj, dict):
@@ -247,26 +252,41 @@ class PackStreamHydrant(Hydrant):
         return tuple(map(hydrate_, values))
 
 
-def dehydrate_parameters(x):
-    if x is None:
-        return None
-    elif isinstance(x, bool):
-        return x
-    elif isinstance(x, integer):
-        if INT64_MIN <= x <= INT64_MAX:
-            return x
-        raise ValueError("Integer out of bounds (64-bit signed integer values only)")
-    elif isinstance(x, float):
-        return x
-    elif isinstance(x, string):
-        return ustr(x)
-    elif isinstance(x, (bytes, bytearray)):  # the order is important here - bytes must be checked after string
-        return x
-    elif isinstance(x, list):
-        return list(map(dehydrate_parameters, x))
-    elif isinstance(x, dict):
-        return {ustr(key): dehydrate_parameters(value) for key, value in x.items()}
-    elif isinstance(x, date):
-        return Structure(None)
-    else:
-        raise TypeError("Parameters of type {} are not supported".format(type(x).__name__))
+class PackStreamDehydrator(object):
+
+    def __init__(self):
+        self.dehydration_functions = {}
+        self.dehydration_functions.update(graph_dehydration_functions)
+        self.dehydration_functions.update(spatial_dehydration_functions)
+        self.dehydration_functions.update(temporal_dehydration_functions)
+
+    def dehydrate(self, values):
+        """ Convert native values into PackStream values.
+        """
+
+        def dehydrate_(obj):
+            if type(obj) in self.dehydration_functions:
+                f = self.dehydration_functions[type(obj)]
+                return f(obj)
+            elif obj is None:
+                return None
+            elif isinstance(obj, bool):
+                return obj
+            elif isinstance(obj, integer):
+                if INT64_MIN <= obj <= INT64_MAX:
+                    return obj
+                raise ValueError("Integer out of bounds (64-bit signed integer values only)")
+            elif isinstance(obj, float):
+                return obj
+            elif isinstance(obj, string):
+                return ustr(obj)
+            elif isinstance(obj, (bytes, bytearray)):  # order is important here - bytes must be checked after string
+                return obj
+            elif isinstance(obj, list):
+                return list(map(dehydrate_, obj))
+            elif isinstance(obj, dict):
+                return {key: dehydrate_(value) for key, value in obj.items()}
+            else:
+                raise TypeError(obj)
+
+        return tuple(map(dehydrate_, values))

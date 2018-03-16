@@ -19,8 +19,7 @@
 # limitations under the License.
 
 
-from datetime import date, datetime, time
-from unittest import SkipTest
+from datetime import date, datetime, time, timedelta
 
 from pytz import FixedOffset, timezone, utc
 
@@ -116,8 +115,7 @@ class GraphTypeOutputTestCase(DirectIntegrationTestCase):
 class SpatialTypeOutputTestCase(DirectIntegrationTestCase):
 
     def test_cartesian_point(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("Point type requires Bolt protocol v2 or above")
+        self.assert_supports_spatial_types()
         with self.driver.session() as session:
             result = session.run("RETURN point({x:3, y:4})")
             value = result.single().value()
@@ -126,8 +124,7 @@ class SpatialTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value.y, 4.0)
 
     def test_cartesian_3d_point(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("Point type requires Bolt protocol v2 or above")
+        self.assert_supports_spatial_types()
         with self.driver.session() as session:
             result = session.run("RETURN point({x:3, y:4, z:5})")
             value = result.single().value()
@@ -137,8 +134,7 @@ class SpatialTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value.z, 5.0)
 
     def test_wgs84_point(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("Point type requires Bolt protocol v2 or above")
+        self.assert_supports_spatial_types()
         with self.driver.session() as session:
             result = session.run("RETURN point({latitude:3, longitude:4})")
             value = result.single().value()
@@ -147,8 +143,7 @@ class SpatialTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value.longitude, 4.0)
 
     def test_wgs84_3d_point(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("Point type requires Bolt protocol v2 or above")
+        self.assert_supports_spatial_types()
         with self.driver.session() as session:
             result = session.run("RETURN point({latitude:3, longitude:4, height:5})")
             value = result.single().value()
@@ -158,23 +153,150 @@ class SpatialTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value.height, 5.0)
 
 
-# class TemporalTypeInputTestCase(DirectIntegrationTestCase):
-#
-#     def test_date(self):
-#         if not self.at_least_protocol_version(2):
-#             raise SkipTest("Date type requires Bolt protocol v2 or above")
-#         with self.driver.session() as session:
-#             result = session.run("RETURN $x", x=date(1976, 6, 13))
-#             value = result.single().value()
-#             self.assertIsInstance(value, date)
-#             self.assertEqual(value, date(1976, 6, 13))
+class TemporalTypeInputTestCase(DirectIntegrationTestCase):
+
+    def test_date(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.year, x.month, x.day",
+                                 x=date(1976, 6, 13))
+            year, month, day = result.single()
+            self.assertEqual(year, 1976)
+            self.assertEqual(month, 6)
+            self.assertEqual(day, 13)
+
+    def test_whole_second_time(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.hour, x.minute, x.second",
+                                 x=time(12, 34, 56))
+            hour, minute, second = result.single()
+            self.assertEqual(hour, 12)
+            self.assertEqual(minute, 34)
+            self.assertEqual(second, 56)
+
+    def test_microsecond_resolution_time(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.hour, x.minute, x.second, x.microsecond",
+                                 x=time(12, 34, 56, 789012))
+            hour, minute, second, microsecond = result.single()
+            self.assertEqual(hour, 12)
+            self.assertEqual(minute, 34)
+            self.assertEqual(second, 56)
+            self.assertEqual(microsecond, 789012)
+
+    def test_time_with_numeric_time_offset(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.hour, x.minute, x.second, x.microsecond, x.offset",
+                                 x=time(12, 34, 56, 789012, tzinfo=FixedOffset(90)))
+            hour, minute, second, microsecond, offset = result.single()
+            self.assertEqual(hour, 12)
+            self.assertEqual(minute, 34)
+            self.assertEqual(second, 56)
+            self.assertEqual(microsecond, 789012)
+            self.assertEqual(offset, "+01:30")
+
+    def test_whole_second_datetime(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.year, x.month, x.day, "
+                                 "       x.hour, x.minute, x.second",
+                                 x=datetime(1976, 6, 13, 12, 34, 56))
+            year, month, day, hour, minute, second = result.single()
+            self.assertEqual(year, 1976)
+            self.assertEqual(month, 6)
+            self.assertEqual(day, 13)
+            self.assertEqual(hour, 12)
+            self.assertEqual(minute, 34)
+            self.assertEqual(second, 56)
+
+    def test_microsecond_resolution_datetime(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.year, x.month, x.day, "
+                                 "       x.hour, x.minute, x.second, x.microsecond",
+                                 x=datetime(1976, 6, 13, 12, 34, 56, 789012))
+            year, month, day, hour, minute, second, microsecond = result.single()
+            self.assertEqual(year, 1976)
+            self.assertEqual(month, 6)
+            self.assertEqual(day, 13)
+            self.assertEqual(hour, 12)
+            self.assertEqual(minute, 34)
+            self.assertEqual(second, 56)
+            self.assertEqual(microsecond, 789012)
+
+    def test_datetime_with_numeric_time_offset(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.year, x.month, x.day, "
+                                 "       x.hour, x.minute, x.second, x.microsecond, x.offset",
+                                 x=datetime(1976, 6, 13, 12, 34, 56, 789012, tzinfo=FixedOffset(90)))
+            year, month, day, hour, minute, second, microsecond, offset = result.single()
+            self.assertEqual(year, 1976)
+            self.assertEqual(month, 6)
+            self.assertEqual(day, 13)
+            self.assertEqual(hour, 12)
+            self.assertEqual(minute, 34)
+            self.assertEqual(second, 56)
+            self.assertEqual(microsecond, 789012)
+            self.assertEqual(offset, "+01:30")
+
+    def test_datetime_with_named_time_zone(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            input_value = timezone("US/Pacific").localize(datetime(1976, 6, 13, 12, 34, 56, 789012))
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.year, x.month, x.day, "
+                                 "       x.hour, x.minute, x.second, x.microsecond, x.timezone",
+                                 x=input_value)
+            year, month, day, hour, minute, second, microsecond, tz = result.single()
+            self.assertEqual(year, input_value.year)
+            self.assertEqual(month, input_value.month)
+            self.assertEqual(day, input_value.day)
+            self.assertEqual(hour, input_value.hour)
+            self.assertEqual(minute, input_value.minute)
+            self.assertEqual(second, input_value.second)
+            self.assertEqual(microsecond, input_value.microsecond)
+            self.assertEqual(tz, input_value.tzinfo.zone)
+
+    def test_duration(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.months, x.days, x.seconds, x.microsecondsOfSecond",
+                                 x=duration(years=1, months=2, days=3, hours=4, minutes=5, seconds=6.789012))
+            months, days, seconds, microseconds = result.single()
+            self.assertEqual(months, 14)
+            self.assertEqual(days, 3)
+            self.assertEqual(seconds, 14706)
+            self.assertEqual(microseconds, 789012)
+
+    def test_timedelta(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.months, x.days, x.seconds, x.microsecondsOfSecond",
+                                 x=timedelta(days=3, hours=4, minutes=5, seconds=6.789012))
+            months, days, seconds, microseconds = result.single()
+            self.assertEqual(months, 0)
+            self.assertEqual(days, 3)
+            self.assertEqual(seconds, 14706)
+            self.assertEqual(microseconds, 789012)
 
 
 class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
 
     def test_date(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("Date type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN date('1976-06-13')")
             value = result.single().value()
@@ -182,8 +304,7 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, date(1976, 6, 13))
 
     def test_whole_second_time(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("Time type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN time('12:34:56')")
             value = result.single().value()
@@ -191,8 +312,7 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, time(12, 34, 56, tzinfo=FixedOffset(0)))
 
     def test_microsecond_resolution_time(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("Time type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN time('12:34:56.789012')")
             value = result.single().value()
@@ -200,17 +320,15 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, time(12, 34, 56, 789012, tzinfo=FixedOffset(0)))
 
     def test_nanosecond_resolution_time(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("Time type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN time('12:34:56.789012345')")
             value = result.single().value()
             self.assertIsInstance(value, time)
             self.assertEqual(value, time(12, 34, 56, 789012, tzinfo=FixedOffset(0)))
 
-    def test_time_with_numeric_time_zone(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("Time type requires Bolt protocol v2 or above")
+    def test_time_with_numeric_time_offset(self):
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN time('12:34:56.789012+0130')")
             value = result.single().value()
@@ -218,8 +336,7 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, time(12, 34, 56, 789012, tzinfo=FixedOffset(90)))
 
     def test_whole_second_localtime(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("LocalTime type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN localtime('12:34:56')")
             value = result.single().value()
@@ -227,8 +344,7 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, time(12, 34, 56))
 
     def test_microsecond_resolution_localtime(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("LocalTime type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN localtime('12:34:56.789012')")
             value = result.single().value()
@@ -236,8 +352,7 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, time(12, 34, 56, 789012))
 
     def test_nanosecond_resolution_localtime(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("LocalTime type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN localtime('12:34:56.789012345')")
             value = result.single().value()
@@ -245,8 +360,7 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, time(12, 34, 56, 789012))
 
     def test_whole_second_datetime(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("DateTime type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN datetime('1976-06-13T12:34:56')")
             value = result.single().value()
@@ -254,8 +368,7 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, tzinfo=utc))
 
     def test_microsecond_resolution_datetime(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("DateTime type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN datetime('1976-06-13T12:34:56.789012')")
             value = result.single().value()
@@ -263,26 +376,23 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012, tzinfo=utc))
 
     def test_nanosecond_resolution_datetime(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("DateTime type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN datetime('1976-06-13T12:34:56.789012345')")
             value = result.single().value()
             self.assertIsInstance(value, datetime)
             self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012, tzinfo=utc))
 
-    def test_datetime_with_numeric_time_zone(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("DateTime type requires Bolt protocol v2 or above")
+    def test_datetime_with_numeric_time_offset(self):
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN datetime('1976-06-13T12:34:56.789012+01:30')")
             value = result.single().value()
             self.assertIsInstance(value, datetime)
             self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012, tzinfo=FixedOffset(90)))
 
-    def test_datetime_with_textual_time_zone(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("DateTime type requires Bolt protocol v2 or above")
+    def test_datetime_with_named_time_zone(self):
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN datetime('1976-06-13T12:34:56.789012[Europe/London]')")
             value = result.single().value()
@@ -290,8 +400,7 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, timezone("Europe/London").localize(datetime(1976, 6, 13, 12, 34, 56, 789012)))
 
     def test_whole_second_localdatetime(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("LocalDateTime type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN localdatetime('1976-06-13T12:34:56')")
             value = result.single().value()
@@ -299,8 +408,7 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56))
 
     def test_microsecond_resolution_localdatetime(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("LocalDateTime type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN localdatetime('1976-06-13T12:34:56.789012')")
             value = result.single().value()
@@ -308,8 +416,7 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012))
 
     def test_nanosecond_resolution_localdatetime(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("LocalDateTime type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN localdatetime('1976-06-13T12:34:56.789012345')")
             value = result.single().value()
@@ -317,10 +424,17 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012))
 
     def test_duration(self):
-        if not self.at_least_protocol_version(2):
-            raise SkipTest("Duration type requires Bolt protocol v2 or above")
+        self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN duration('P1Y2M3DT4H5M6.789S')")
             value = result.single().value()
             self.assertIsInstance(value, duration)
             self.assertEqual(value, duration(1, 2, 3, 4, 5, 6.789))
+
+    def test_nanosecond_resolution_duration(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("RETURN duration('P1Y2M3DT4H5M6.789123456S')")
+            value = result.single().value()
+            self.assertIsInstance(value, duration)
+            self.assertEqual(value, duration(1, 2, 3, 4, 5, 6.789123))

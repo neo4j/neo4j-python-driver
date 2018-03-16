@@ -106,7 +106,11 @@ WGS84Point = __point_subclass(4326, "WGS84Point", ["longitude", "latitude"])
 WGS84Point3D = __point_subclass(4979, "WGS84Point3D", ["longitude", "latitude", "height"])
 
 
-structures = {
+hydration_functions = {
     b"X": Point.hydrate,
     b"Y": Point.hydrate,
+}
+
+dehydration_functions = {
+    # TODO
 }

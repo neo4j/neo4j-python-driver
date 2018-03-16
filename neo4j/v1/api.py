@@ -65,7 +65,7 @@ def retry_delay_generator(initial_delay, multiplier, jitter_factor):
         delay *= multiplier
 
 
-class Hydrant(object):
+class Hydrator(object):
 
     def hydrate(self, values):
         """ Hydrate values from raw representations into client objects.
@@ -784,7 +784,14 @@ def fix_statement(statement):
 
 
 def fix_parameters(parameters=None, **kwparameters):
-    from neo4j.v1.types import dehydrate_parameters
+    from neo4j.v1.types import PackStreamDehydrator
     p = parameters or {}
     p.update(kwparameters)
-    return dehydrate_parameters(p)
+    dehydrator = PackStreamDehydrator()
+    try:
+        dehydrated, = dehydrator.dehydrate([p])
+    except TypeError as error:
+        value = error.args[0]
+        raise TypeError("Parameters of type {} are not supported".format(type(value).__name__))
+    else:
+        return dehydrated
