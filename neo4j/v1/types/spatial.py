@@ -24,6 +24,9 @@ This module defines spatial data types.
 """
 
 
+from neo4j.packstream.structure import Structure
+
+
 __all__ = [
     "Point",
     "CartesianPoint",
@@ -31,11 +34,17 @@ __all__ = [
 ]
 
 
+# SRID to subclass mappings
+__srid_table = {}
+
+
 class Point(tuple):
     """ A point within a geometric space. This type is generally used
     via its subclasses and should not be instantiated directly unless
     there is no subclass defined for the required SRID.
     """
+
+    srid = None
 
     def __new__(cls, iterable):
         return tuple.__new__(cls, iterable)
@@ -56,11 +65,18 @@ class Point(tuple):
         return hash(type(self)) ^ hash(tuple(self))
 
 
-def __point_subclass(name, fields):
+def __point_subclass(name, fields, srid_map):
     """ Dynamically create a Point subclass.
     """
-    core_fields = "xyz"
-    attributes = {}
+
+    def srid(self):
+        try:
+            return srid_map[len(self)]
+        except KeyError:
+            return None
+
+    attributes = {"srid": property(srid)}
+
     for index, subclass_field in enumerate(fields):
 
         def accessor(self, i=index, f=subclass_field):
@@ -69,24 +85,20 @@ def __point_subclass(name, fields):
             except IndexError:
                 raise AttributeError(f)
 
-        for field_alias in {subclass_field, core_fields[index]}:
+        for field_alias in {subclass_field, "xyz"[index]}:
             attributes[field_alias] = property(accessor)
 
-    return type(name, (Point,), attributes)
+    cls = type(name, (Point,), attributes)
+
+    for dim, srid in srid_map.items():
+        __srid_table[srid] = (cls, dim)
+
+    return cls
 
 
 # Point subclass definitions
-CartesianPoint = __point_subclass("CartesianPoint", ["x", "y", "z"])
-WGS84Point = __point_subclass("WGS84Point", ["longitude", "latitude", "height"])
-
-
-# SRID to subclass mappings
-__srid_table = {
-    7203: CartesianPoint,
-    9157: CartesianPoint,
-    4326: WGS84Point,
-    4979: WGS84Point,
-}
+CartesianPoint = __point_subclass("CartesianPoint", ["x", "y", "z"], {2: 7203, 3: 9157})
+WGS84Point = __point_subclass("WGS84Point", ["longitude", "latitude", "height"], {2: 4326, 3: 4979})
 
 
 def hydrate_point(srid, *coordinates):
@@ -96,13 +108,31 @@ def hydrate_point(srid, *coordinates):
     subclass can be found.
     """
     try:
-        point_class = __srid_table[srid]
+        point_class, dim = __srid_table[srid]
     except KeyError:
-        raise ValueError("SRID %d not supported" % srid)
-    if 2 <= len(coordinates) <= 3:
-        return point_class(coordinates)
+        point = Point(coordinates)
+        point.srid = srid
+        return point
     else:
-        raise ValueError("%d-dimensional Point values are not supported" % len(coordinates))
+        if len(coordinates) != dim:
+            raise ValueError("SRID %d requires %d coordinates (%d provided)" % (srid, dim, len(coordinates)))
+        return point_class(coordinates)
+
+
+def dehydrate_point(value):
+    """ Dehydrator for Point data.
+
+    :param value:
+    :type value: Point
+    :return:
+    """
+    dim = len(value)
+    if dim == 2:
+        return Structure(b"X", value.srid, *value)
+    elif dim == 3:
+        return Structure(b"Y", value.srid, *value)
+    else:
+        raise ValueError("Cannot dehydrate Point with %d dimensions" % dim)
 
 
 hydration_functions = {
@@ -111,5 +141,6 @@ hydration_functions = {
 }
 
 dehydration_functions = {
-    # TODO
+    Point: dehydrate_point,
 }
+dehydration_functions.update({cls: dehydrate_point for cls in Point.__subclasses__()})
