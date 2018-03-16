@@ -25,7 +25,7 @@ from time import sleep
 from warnings import warn
 
 from neo4j.exceptions import ProtocolError, ServiceUnavailable
-from neo4j.compat import urlparse, ustr, string, integer
+from neo4j.compat import urlparse
 from neo4j.exceptions import CypherError, TransientError
 from neo4j.config import default_config
 from neo4j.compat import perf_counter
@@ -40,9 +40,6 @@ WRITE_ACCESS = "WRITE"
 INITIAL_RETRY_DELAY = 1.0
 RETRY_DELAY_MULTIPLIER = 2.0
 RETRY_DELAY_JITTER_FACTOR = 0.2
-
-INT64_MIN = -(2 ** 63)
-INT64_MAX = (2 ** 63) - 1
 
 
 def last_bookmark(b0, b1):
@@ -68,7 +65,7 @@ def retry_delay_generator(initial_delay, multiplier, jitter_factor):
         delay *= multiplier
 
 
-class Hydrant(object):
+class Hydrator(object):
 
     def hydrate(self, values):
         """ Hydrate values from raw representations into client objects.
@@ -786,30 +783,15 @@ def fix_statement(statement):
     return statement
 
 
-def coerce_parameters(x):
-    if x is None:
-        return None
-    elif isinstance(x, bool):
-        return x
-    elif isinstance(x, integer):
-        if INT64_MIN <= x <= INT64_MAX:
-            return x
-        raise ValueError("Integer out of bounds (64-bit signed integer values only)")
-    elif isinstance(x, float):
-        return x
-    elif isinstance(x, string):
-        return ustr(x)
-    elif isinstance(x, (bytes, bytearray)):  # the order is important here - bytes must be checked after string
-        return x
-    elif isinstance(x, list):
-        return list(map(coerce_parameters, x))
-    elif isinstance(x, dict):
-        return {ustr(key): coerce_parameters(value) for key, value in x.items()}
-    else:
-        raise TypeError("Parameters of type {} are not supported".format(type(x).__name__))
-
-
 def fix_parameters(parameters=None, **kwparameters):
+    from neo4j.v1.types import PackStreamDehydrator
     p = parameters or {}
     p.update(kwparameters)
-    return coerce_parameters(p)
+    dehydrator = PackStreamDehydrator()
+    try:
+        dehydrated, = dehydrator.dehydrate([p])
+    except TypeError as error:
+        value = error.args[0]
+        raise TypeError("Parameters of type {} are not supported".format(type(value).__name__))
+    else:
+        return dehydrated

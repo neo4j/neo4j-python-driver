@@ -75,8 +75,8 @@ class IntegrationTestCase(TestCase):
     bolt_uri = "bolt://%s:%d" % bolt_address
     bolt_routing_uri = "bolt+routing://%s:%d" % bolt_address
 
-    user = NEO4J_USER or "test"
-    password = NEO4J_PASSWORD or "test"
+    user = NEO4J_USER or "neo4j"
+    password = NEO4J_PASSWORD or "password"
     auth_token = (user, password)
 
     controller = None
@@ -107,6 +107,16 @@ class IntegrationTestCase(TestCase):
     @classmethod
     def at_least_protocol_version(cls, version):
         return cls.protocol_version() >= version
+
+    @classmethod
+    def assert_supports_spatial_types(cls):
+        if not cls.at_least_protocol_version(2):
+            raise SkipTest("Spatial types require Bolt protocol v2 or above")
+
+    @classmethod
+    def assert_supports_temporal_types(cls):
+        if not cls.at_least_protocol_version(2):
+            raise SkipTest("Temporal types require Bolt protocol v2 or above")
 
     @classmethod
     def delete_known_hosts_file(cls):

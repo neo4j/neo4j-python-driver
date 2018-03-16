@@ -127,10 +127,10 @@ cdef class Unpacker(object):
 
             # Structure
             elif 0xB0 <= marker <= 0xBF or 0xDC <= marker <= 0xDD:
-                size, signature = self._unpack_structure_header(marker)
-                value = Structure(size, signature)
-                for _ in range(value.capacity):
-                    value.append(self._unpack())
+                size, tag = self._unpack_structure_header(marker)
+                value = Structure(tag, *([None] * size))
+                for i in range(len(value)):
+                    value[i] = self._unpack()
                 return value
 
             elif marker == 0xDF:  # END_OF_STREAM:

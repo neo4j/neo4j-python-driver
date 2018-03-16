@@ -26,17 +26,10 @@ This module defines spatial data types.
 
 __all__ = [
     "Point",
-]
-
-# This list contains definitions for the set of Point subclasses to be
-# dynamically created within the module scope. Each definition consists
-# of the CRS code, type name and type attribute names respectively.
-# New Point subclasses should be added to this list.
-__point_types = [
-    (7203, "CartesianPoint", ["x", "y"]),
-    (9157, "CartesianPoint3D", ["x", "y", "z"]),
-    (4326, "WGS84Point", ["longitude", "latitude"]),
-    (4979, "WGS84Point3D", ["longitude", "latitude", "height"]),
+    "CartesianPoint",
+    "CartesianPoint3D",
+    "WGS84Point",
+    "WGS84Point3D",
 ]
 
 
@@ -97,20 +90,27 @@ class Point(tuple):
         return hash(self.crs) ^ hash(tuple(self))
 
 
-def __create_point_types():
-    """ Dynamically add the defined set of Point subclasses to the
-    module scope.
+def __point_subclass(crs, name, fields):
+    """ Dynamically create a Point subclass.
     """
-    from sys import modules
-    this_module = modules[__name__]
-    for crs, name, fields in __point_types:
-        attributes = {"crs": crs}
-        for i, field in enumerate(fields):
-            attributes[field] = property(lambda self, index=i: self[index])
-        setattr(this_module, name, type(name, (Point,), attributes))
-        __all__.append(name)
+    attributes = {"crs": crs}
+    for i, field in enumerate(fields):
+        attributes[field] = property(lambda self, index=i: self[index])
+    return type(name, (Point,), attributes)
 
 
-# This top-level call ensures that the dynamic Point subclasses are loaded
-# into module scope on import.
-__create_point_types()
+# Point subclass definitions
+CartesianPoint = __point_subclass(7203, "CartesianPoint", ["x", "y"])
+CartesianPoint3D = __point_subclass(9157, "CartesianPoint3D", ["x", "y", "z"])
+WGS84Point = __point_subclass(4326, "WGS84Point", ["longitude", "latitude"])
+WGS84Point3D = __point_subclass(4979, "WGS84Point3D", ["longitude", "latitude", "height"])
+
+
+hydration_functions = {
+    b"X": Point.hydrate,
+    b"Y": Point.hydrate,
+}
+
+dehydration_functions = {
+    # TODO
+}

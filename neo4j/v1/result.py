@@ -23,7 +23,8 @@ from collections import namedtuple
 
 from neo4j.exceptions import CypherError
 from neo4j.v1.api import StatementResult
-from neo4j.v1.types import Record, PackStreamHydrant, Graph
+from neo4j.v1.types import Record, PackStreamHydrator
+from neo4j.v1.types.graph import Graph
 
 
 STATEMENT_TYPE_READ_ONLY = "r"
@@ -42,7 +43,7 @@ class BoltStatementResult(StatementResult):
 
     def __init__(self, session, run_response, pull_all_response):
         self.graph = Graph()
-        super(BoltStatementResult, self).__init__(session, PackStreamHydrant(self.graph))
+        super(BoltStatementResult, self).__init__(session, PackStreamHydrator(self.graph))
 
         all_metadata = {}
 

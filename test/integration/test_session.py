@@ -17,16 +17,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
 from unittest import SkipTest
 from uuid import uuid4
 
 from neo4j.v1 import \
     READ_ACCESS, WRITE_ACCESS, \
-    CypherError, SessionError, TransactionError, \
-    Node, Relationship, Path
+    CypherError, SessionError, TransactionError
+from neo4j.v1.types.graph import Node, Relationship, Path
 from neo4j.exceptions import CypherSyntaxError
 
 from test.integration.tools import DirectIntegrationTestCase
+
 
 class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
 
