@@ -220,13 +220,21 @@ class Path(object):
         return self.nodes[-1]
 
 
-hydration_functions = {
+__hydration_functions = {
     b"N": Node.hydrate,
     b"R": Relationship.hydrate,
     b"r": Relationship.hydrate_unbound,
     b"P": Path.hydrate,
 }
 
-dehydration_functions = {
+__dehydration_functions = {
     # There is no support for passing graph types into queries as parameters
 }
+
+
+def hydration_functions(graph):
+    return __hydration_functions
+
+
+def dehydration_functions():
+    return __dehydration_functions

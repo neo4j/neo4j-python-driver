@@ -223,11 +223,10 @@ class PackStreamHydrator(Hydrator):
 
     def __init__(self, graph):
         super(PackStreamHydrator, self).__init__()
-        self.graph = graph
         self.hydration_functions = {}
-        self.hydration_functions.update(graph_hydration_functions)
-        self.hydration_functions.update(spatial_hydration_functions)
-        self.hydration_functions.update(temporal_hydration_functions)
+        self.hydration_functions.update(graph_hydration_functions(graph))
+        self.hydration_functions.update(spatial_hydration_functions())
+        self.hydration_functions.update(temporal_hydration_functions())
 
     def hydrate(self, values):
         """ Convert PackStream values into native values.
@@ -256,9 +255,9 @@ class PackStreamDehydrator(object):
 
     def __init__(self):
         self.dehydration_functions = {}
-        self.dehydration_functions.update(graph_dehydration_functions)
-        self.dehydration_functions.update(spatial_dehydration_functions)
-        self.dehydration_functions.update(temporal_dehydration_functions)
+        self.dehydration_functions.update(graph_dehydration_functions())
+        self.dehydration_functions.update(spatial_dehydration_functions())
+        self.dehydration_functions.update(temporal_dehydration_functions())
 
     def dehydrate(self, values):
         """ Convert native values into PackStream values.

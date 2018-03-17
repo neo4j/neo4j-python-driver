@@ -135,12 +135,20 @@ def dehydrate_point(value):
         raise ValueError("Cannot dehydrate Point with %d dimensions" % dim)
 
 
-hydration_functions = {
+__hydration_functions = {
     b"X": hydrate_point,
     b"Y": hydrate_point,
 }
 
-dehydration_functions = {
+__dehydration_functions = {
     Point: dehydrate_point,
 }
-dehydration_functions.update({cls: dehydrate_point for cls in Point.__subclasses__()})
+__dehydration_functions.update({cls: dehydrate_point for cls in Point.__subclasses__()})
+
+
+def hydration_functions():
+    return __hydration_functions
+
+
+def dehydration_functions():
+    return __dehydration_functions

@@ -206,7 +206,7 @@ def dehydrate_timedelta(value):
     return Structure(b"E", months, days, seconds, nanoseconds)
 
 
-hydration_functions = {
+__hydration_functions = {
     b"D": hydrate_date,
     b"T": hydrate_time,         # time zone offset
     b"t": hydrate_time,         # no time zone
@@ -216,10 +216,18 @@ hydration_functions = {
     b"E": hydrate_duration,
 }
 
-dehydration_functions = {
+__dehydration_functions = {
     date: dehydrate_date,
     time: dehydrate_time,
     datetime: dehydrate_datetime,
     duration: dehydrate_duration,
     timedelta: dehydrate_timedelta,
 }
+
+
+def hydration_functions():
+    return __hydration_functions
+
+
+def dehydration_functions():
+    return __dehydration_functions
