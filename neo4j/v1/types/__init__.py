@@ -26,6 +26,7 @@ into concrete values through the PackStreamHydrant.
 """
 
 
+from collections import Mapping, Sequence
 from functools import reduce
 from operator import xor as xor_operator
 
@@ -281,9 +282,9 @@ class PackStreamDehydrator(object):
                 return ustr(obj)
             elif isinstance(obj, (bytes, bytearray)):  # order is important here - bytes must be checked after string
                 return obj
-            elif isinstance(obj, list):
+            elif isinstance(obj, Sequence):
                 return list(map(dehydrate_, obj))
-            elif isinstance(obj, dict):
+            elif isinstance(obj, Mapping):
                 return {key: dehydrate_(value) for key, value in obj.items()}
             else:
                 raise TypeError(obj)
