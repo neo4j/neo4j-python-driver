@@ -166,10 +166,16 @@ class Connection(object):
     _last_run_statement = None
 
     def __init__(self, address, sock, error_handler, **config):
+
+        # IPv4 addresses must be tuples of: (ip, port, hostname)
+        # IPv6 addresses must be tuples of: (site_prefix, subnet_id, interface_id, port, hostname)
+        assert len(address) == 3 or len(address) == 5
+        hostname = address[-1]
+
         self.address = address
         self.socket = sock
         self.error_handler = error_handler
-        self.server = ServerInfo(SocketAddress.from_socket(sock, address[-1]))
+        self.server = ServerInfo(SocketAddress.from_socket(sock, hostname))
         self.input_buffer = ChunkedInputBuffer()
         self.output_buffer = ChunkedOutputBuffer()
         self.packer = Packer(self.output_buffer)
@@ -584,7 +590,7 @@ def connect(address, ssl_context=None, error_handler=None, **config):
                 s.close()
             except:
                 pass
-        if error.errno in (61, 111, 10061):
+        if error.errno in (61, 99, 111, 10061):
             raise ServiceUnavailable("Failed to establish connection to {!r}".format(address))
         else:
             raise
