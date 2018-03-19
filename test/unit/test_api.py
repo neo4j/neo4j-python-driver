@@ -22,55 +22,60 @@
 from unittest import TestCase
 from uuid import uuid4
 
-from neo4j.v1.api import coerce_parameters
+from neo4j.v1.api import fix_parameters
 
 
-class ParameterTypeTestCase(TestCase):
+def dehydrated_value(value):
+    return fix_parameters(_=value)["_"]
+
+
+class ValueDehydrationTestCase(TestCase):
+
     def test_should_allow_none(self):
-        self.assertIsNone(coerce_parameters(None))
+        self.assertIsNone(dehydrated_value(None))
 
     def test_should_allow_boolean(self):
-        self.assertTrue(coerce_parameters(True))
-        self.assertFalse(coerce_parameters(False))
+        self.assertTrue(dehydrated_value(True))
+        self.assertFalse(dehydrated_value(False))
 
     def test_should_allow_integer(self):
-        self.assertEqual(coerce_parameters(0), 0)
-        self.assertEqual(coerce_parameters(0x7F), 0x7F)
-        self.assertEqual(coerce_parameters(0x7FFF), 0x7FFF)
-        self.assertEqual(coerce_parameters(0x7FFFFFFF), 0x7FFFFFFF)
-        self.assertEqual(coerce_parameters(0x7FFFFFFFFFFFFFFF), 0x7FFFFFFFFFFFFFFF)
+        self.assertEqual(dehydrated_value(0), 0)
+        self.assertEqual(dehydrated_value(0x7F), 0x7F)
+        self.assertEqual(dehydrated_value(0x7FFF), 0x7FFF)
+        self.assertEqual(dehydrated_value(0x7FFFFFFF), 0x7FFFFFFF)
+        self.assertEqual(dehydrated_value(0x7FFFFFFFFFFFFFFF), 0x7FFFFFFFFFFFFFFF)
 
     def test_should_disallow_oversized_integer(self):
         with self.assertRaises(ValueError):
-            coerce_parameters(0x10000000000000000)
+            dehydrated_value(0x10000000000000000)
         with self.assertRaises(ValueError):
-            coerce_parameters(-0x10000000000000000)
+            dehydrated_value(-0x10000000000000000)
 
     def test_should_allow_float(self):
-        self.assertEqual(coerce_parameters(0.0), 0.0)
-        self.assertEqual(coerce_parameters(3.1415926), 3.1415926)
+        self.assertEqual(dehydrated_value(0.0), 0.0)
+        self.assertEqual(dehydrated_value(3.1415926), 3.1415926)
 
     def test_should_allow_string(self):
-        self.assertEqual(coerce_parameters(u""), u"")
-        self.assertEqual(coerce_parameters(u"hello, world"), u"hello, world")
+        self.assertEqual(dehydrated_value(u""), u"")
+        self.assertEqual(dehydrated_value(u"hello, world"), u"hello, world")
 
     def test_should_allow_bytes(self):
-        self.assertEqual(coerce_parameters(bytearray()), bytearray())
-        self.assertEqual(coerce_parameters(bytearray([1, 2, 3])), bytearray([1, 2, 3]))
+        self.assertEqual(dehydrated_value(bytearray()), bytearray())
+        self.assertEqual(dehydrated_value(bytearray([1, 2, 3])), bytearray([1, 2, 3]))
 
     def test_should_allow_list(self):
-        self.assertEqual(coerce_parameters([]), [])
-        self.assertEqual(coerce_parameters([1, 2, 3]), [1, 2, 3])
+        self.assertEqual(dehydrated_value([]), [])
+        self.assertEqual(dehydrated_value([1, 2, 3]), [1, 2, 3])
 
     def test_should_allow_dict(self):
-        self.assertEqual(coerce_parameters({}), {})
-        self.assertEqual(coerce_parameters({u"one": 1, u"two": 1, u"three": 1}), {u"one": 1, u"two": 1, u"three": 1})
-        self.assertEqual(coerce_parameters(
+        self.assertEqual(dehydrated_value({}), {})
+        self.assertEqual(dehydrated_value({u"one": 1, u"two": 1, u"three": 1}), {u"one": 1, u"two": 1, u"three": 1})
+        self.assertEqual(dehydrated_value(
             {u"list": [1, 2, 3, [4, 5, 6]], u"dict": {u"a": 1, u"b": 2}}),
             {u"list": [1, 2, 3, [4, 5, 6]], u"dict": {u"a": 1, u"b": 2}})
 
     def test_should_disallow_object(self):
         with self.assertRaises(TypeError):
-            coerce_parameters(object())
+            dehydrated_value(object())
         with self.assertRaises(TypeError):
-            coerce_parameters(uuid4())
+            dehydrated_value(uuid4())

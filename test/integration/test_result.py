@@ -20,6 +20,7 @@
 
 
 from neo4j.exceptions import CypherError
+
 from test.integration.tools import DirectIntegrationTestCase
 
 
@@ -186,23 +187,23 @@ class ResultConsumptionTestCase(DirectIntegrationTestCase):
     def test_multiple_values(self):
         with self.driver.session() as session:
             result = session.run("UNWIND range(1, 3) AS n RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-            self.assertEqual(result.values(), [(1, 2, 3),
-                                               (2, 4, 6),
-                                               (3, 6, 9)])
+            self.assertEqual(result.values(), [[1, 2, 3],
+                                               [2, 4, 6],
+                                               [3, 6, 9]])
 
     def test_multiple_indexed_values(self):
         with self.driver.session() as session:
             result = session.run("UNWIND range(1, 3) AS n RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-            self.assertEqual(result.values(2, 0), [(3, 1),
-                                                   (6, 2),
-                                                   (9, 3)])
+            self.assertEqual(result.values(2, 0), [[3, 1],
+                                                   [6, 2],
+                                                   [9, 3]])
 
     def test_multiple_keyed_values(self):
         with self.driver.session() as session:
             result = session.run("UNWIND range(1, 3) AS n RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-            self.assertEqual(result.values("z", "x"), [(3, 1),
-                                                       (6, 2),
-                                                       (9, 3)])
+            self.assertEqual(result.values("z", "x"), [[3, 1],
+                                                       [6, 2],
+                                                       [9, 3]])
 
     def test_multiple_data(self):
         with self.driver.session() as session:
@@ -298,17 +299,17 @@ class SingleRecordTestCase(DirectIntegrationTestCase):
     def test_single_values(self):
         with self.driver.session() as session:
             result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
-            self.assertEqual(result.single().values(), (1, 2, 3))
+            self.assertEqual(result.single().values(), [1, 2, 3])
 
     def test_single_indexed_values(self):
         with self.driver.session() as session:
             result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
-            self.assertEqual(result.single().values(2, 0), (3, 1))
+            self.assertEqual(result.single().values(2, 0), [3, 1])
 
     def test_single_keyed_values(self):
         with self.driver.session() as session:
             result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
-            self.assertEqual(result.single().values("z", "x"), (3, 1))
+            self.assertEqual(result.single().values("z", "x"), [3, 1])
 
     def test_single_data(self):
         with self.driver.session() as session:

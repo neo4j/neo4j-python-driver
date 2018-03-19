@@ -41,6 +41,9 @@ except ImportError:
 else:
     ext_modules = cythonize([Extension("*", ["**/*.pyx"])])
 
+install_requires = [
+    "pytz",
+]
 classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
@@ -73,6 +76,7 @@ setup_args = {
     "author_email": "drivers@neo4j.com",
     "keywords": "neo4j graph database",
     "url": "https://github.com/neo4j/neo4j-python-driver",
+    "install_requires": install_requires,
     "classifiers": classifiers,
     "packages": packages,
     "ext_modules": ext_modules,

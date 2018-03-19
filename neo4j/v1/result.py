@@ -22,8 +22,9 @@
 from collections import namedtuple
 
 from neo4j.exceptions import CypherError
-from neo4j.v1.api import GraphDatabase, StatementResult
-from neo4j.v1.types import Record
+from neo4j.v1.api import StatementResult
+from neo4j.v1.types import Record, PackStreamHydrator
+from neo4j.v1.types.graph import Graph
 
 
 STATEMENT_TYPE_READ_ONLY = "r"
@@ -36,12 +37,13 @@ class BoltStatementResult(StatementResult):
     """ A handler for the result of Cypher statement execution.
     """
 
-    value_system = GraphDatabase.value_systems["packstream"]
-
-    zipper = Record
+    @classmethod
+    def zipper(cls, k, v):
+        return Record(zip(k, v))
 
     def __init__(self, session, run_response, pull_all_response):
-        super(BoltStatementResult, self).__init__(session)
+        self.graph = Graph()
+        super(BoltStatementResult, self).__init__(session, PackStreamHydrator(self.graph))
 
         all_metadata = {}
 
@@ -56,15 +58,16 @@ class BoltStatementResult(StatementResult):
 
         def on_footer(metadata):
             # Called on receipt of the result footer.
+            connection = self.session._connection
             all_metadata.update(metadata, statement=self.statement, parameters=self.parameters,
-                                server=self._session._connection.server)
+                                server=connection.server, protocol_version=connection.protocol_version)
             self._summary = BoltStatementResultSummary(**all_metadata)
             self._session, session_ = None, self._session
             session_.detach(self)
 
         def on_failure(metadata):
             # Called on execution failure.
-            self._session._connection.acknowledge_failure()
+            self.session._connection.acknowledge_failure()
             on_footer(metadata)
             raise CypherError.hydrate(**metadata)
 
@@ -94,6 +97,9 @@ class BoltStatementResult(StatementResult):
 class BoltStatementResultSummary(object):
     """ A summary of execution returned with a :class:`.StatementResult` object.
     """
+
+    #: The version of Bolt protocol over which this result was obtained.
+    protocol_version = None
 
     #: The server on which this result was generated.
     server = None
@@ -130,6 +136,7 @@ class BoltStatementResultSummary(object):
 
     def __init__(self, **metadata):
         self.metadata = metadata
+        self.protocol_version = metadata.get("protocol_version")
         self.server = metadata.get("server")
         self.statement = metadata.get("statement")
         self.parameters = metadata.get("parameters")

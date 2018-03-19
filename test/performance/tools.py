@@ -95,7 +95,7 @@ class GraphDatabaseServer(object):
 
     @classmethod
     def at_least_version(cls, major, minor):
-        return cls.server_version_info().at_least_version(major, minor);
+        return cls.server_version_info().at_least_version(major, minor)
 
     @classmethod
     def delete_known_hosts_file(cls):
