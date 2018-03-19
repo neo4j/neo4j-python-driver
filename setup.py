@@ -61,6 +61,7 @@ packages = [
     "neo4j.compat",
     "neo4j.packstream",
     "neo4j.v1",
+    "neo4j.v1.types",
 ]
 package_data = {
     "neo4j.bolt": ["*.pyx"],
