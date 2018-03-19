@@ -584,7 +584,7 @@ def connect(address, ssl_context=None, hostname=None, error_handler=None, **conf
                 s.close()
             except:
                 pass
-        if error.errno in (61, 111, 10061):
+        if error.errno in (61, 99, 111, 10061):
             raise ServiceUnavailable("Failed to establish connection to {!r}".format(address))
         else:
             raise
