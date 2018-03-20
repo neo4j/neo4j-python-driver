@@ -53,19 +53,20 @@ def is_ip_address(string):
     return is_ipv4_address(string) or is_ipv6_address(string)
 
 
-IPv4SocketAddress = namedtuple("Address", ["host", "port"])
-IPv6SocketAddress = namedtuple("Address", ["host", "port", "flow_info", "scope_id"])
+IPv4SocketAddress = namedtuple("Address", ["host", "port", "hostname"])
+IPv6SocketAddress = namedtuple("Address", ["host", "port", "flow_info", "scope_id", "hostname"])
 
 
 class SocketAddress(object):
 
     @classmethod
-    def from_socket(cls, socket):
+    def from_socket(cls, socket, hostname):
         address = socket.getpeername()
+        hostname = hostname or address[0]
         if len(address) == 2:
-            return IPv4SocketAddress(*address)
+            return IPv4SocketAddress(*address, hostname=hostname)
         elif len(address) == 4:
-            return IPv6SocketAddress(*address)
+            return IPv6SocketAddress(*address, hostname=hostname)
         else:
             raise ValueError("Unsupported address {!r}".format(address))
 
@@ -73,9 +74,9 @@ class SocketAddress(object):
     def from_uri(cls, uri, default_port=0):
         parsed = urlparse(uri)
         if parsed.netloc.startswith("["):
-            return IPv6SocketAddress(parsed.hostname, parsed.port or default_port, 0, 0)
+            return IPv6SocketAddress(parsed.hostname, parsed.port or default_port, 0, 0, parsed.hostname)
         else:
-            return IPv4SocketAddress(parsed.hostname, parsed.port or default_port)
+            return IPv4SocketAddress(parsed.hostname, parsed.port or default_port, parsed.hostname)
 
     @classmethod
     def parse(cls, string, default_port=0):
@@ -105,7 +106,7 @@ class SocketAddress(object):
 
 def resolve(socket_address):
     try:
-        return [address for _, _, _, _, address in
+        return [address + (socket_address.hostname,) for _, _, _, _, address in
                 getaddrinfo(socket_address[0], socket_address[1], 0, SOCK_STREAM, IPPROTO_TCP)]
     except gaierror:
         raise AddressError("Cannot resolve address {!r}".format(socket_address[0]))

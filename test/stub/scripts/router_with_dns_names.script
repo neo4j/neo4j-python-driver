@@ -1,0 +1,8 @@
+!: AUTO INIT
+!: AUTO RESET
+
+C: RUN "CALL dbms.cluster.routing.getServers" {}
+   PULL_ALL
+S: SUCCESS {"fields": ["ttl", "servers"]}
+   RECORD [300, [{"role":"ROUTE","addresses":["localhost:9001","localhost:9002","localhost:9003"]},{"role":"READ","addresses":["localhost:9004"]},{"role":"WRITE","addresses":["localhost:9005"]}]]
+   SUCCESS {}
