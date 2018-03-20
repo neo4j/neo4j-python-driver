@@ -35,6 +35,15 @@ except NameError:
     integer = int
     string = str
     unicode = str
+    unichr = chr
+
+    def bstr(x):
+        if isinstance(x, bytes):
+            return x
+        elif isinstance(x, str):
+            return x.encode("utf-8")
+        else:
+            return str(x).encode("utf-8")
 
     def ustr(x):
         if isinstance(x, bytes):
@@ -43,6 +52,8 @@ except NameError:
             return x
         else:
             return str(x)
+
+    xstr = ustr
 
     def memoryview_at(view, index):
         return view[index]
@@ -53,6 +64,15 @@ else:
     integer = (int, long)
     string = (str, unicode)
     unicode = unicode
+    unichr = unichr
+
+    def bstr(x):
+        if isinstance(x, str):
+            return x
+        elif isinstance(x, unicode):
+            return x.encode("utf-8")
+        else:
+            return unicode(x).encode("utf-8")
 
     def ustr(x):
         if isinstance(x, str):
@@ -61,6 +81,8 @@ else:
             return x
         else:
             return unicode(x)
+
+    xstr = bstr
 
     def memoryview_at(view, index):
         return ord(view[index])

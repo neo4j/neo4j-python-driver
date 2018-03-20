@@ -23,6 +23,7 @@ from importlib import import_module
 import logging
 from os import getenv as getenv
 from sys import stdout
+from warnings import warn
 
 
 class ServerVersion(object):
@@ -120,3 +121,24 @@ def import_best(c_module, py_module):
             return import_module(c_module)
         except ImportError:
             return import_module(py_module)
+
+
+def deprecated(message):
+    """ Decorator for deprecating functions and methods.
+
+    ::
+
+        @deprecated("'foo' has been deprecated in favour of 'bar'")
+        def foo(x):
+            pass
+
+    """
+    def f__(f):
+        def f_(*args, **kwargs):
+            warn(message, category=DeprecationWarning, stacklevel=2)
+            return f(*args, **kwargs)
+        f_.__name__ = f.__name__
+        f_.__doc__ = f.__doc__
+        f_.__dict__.update(f.__dict__)
+        return f_
+    return f__
