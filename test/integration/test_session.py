@@ -108,7 +108,7 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
                 alice = record[0]
                 assert isinstance(alice, Node)
                 assert alice.labels == {"Person"}
-                assert alice.properties == {"name": "Alice"}
+                assert dict(alice) == {"name": "Alice"}
 
     def test_can_return_relationship(self):
         with self.driver.session() as session:
@@ -118,7 +118,7 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
                 rel = record[0]
                 assert isinstance(rel, Relationship)
                 assert rel.type == "KNOWS"
-                assert rel.properties == {"since": 1999}
+                assert dict(rel) == {"since": 1999}
 
     def test_can_return_path(self):
         with self.driver.session() as session:
@@ -127,8 +127,8 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
             for record in record_list:
                 path = record[0]
                 assert isinstance(path, Path)
-                assert path.start.properties == {"name": "Alice"}
-                assert path.end.properties == {"name": "Bob"}
+                assert path.start_node["name"] == "Alice"
+                assert path.end_node["name"] == "Bob"
                 assert path.relationships[0].type == "KNOWS"
                 assert len(path.nodes) == 2
                 assert len(path.relationships) == 1

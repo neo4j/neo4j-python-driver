@@ -88,7 +88,7 @@ class GraphTypeOutputTestCase(DirectIntegrationTestCase):
             a = session.write_transaction(run_and_rollback, "CREATE (a:Person {name:'Alice'}) RETURN a")
             self.assertIsInstance(a, Node)
             self.assertEqual(a.labels, {"Person"})
-            self.assertEqual(a.properties, {"name": "Alice"})
+            self.assertEqual(dict(a), {"name": "Alice"})
 
     def test_relationship(self):
         with self.driver.session() as session:
@@ -96,9 +96,9 @@ class GraphTypeOutputTestCase(DirectIntegrationTestCase):
                 run_and_rollback, "CREATE (a)-[r:KNOWS {since:1999}]->(b) RETURN [a, b, r]")
             self.assertIsInstance(r, Relationship)
             self.assertEqual(r.type, "KNOWS")
-            self.assertEqual(r.properties, {"since": 1999})
-            self.assertEqual(r.start, a.id)
-            self.assertEqual(r.end, b.id)
+            self.assertEqual(dict(r), {"since": 1999})
+            self.assertEqual(r.start_node, a)
+            self.assertEqual(r.end_node, b)
 
     def test_path(self):
         with self.driver.session() as session:
@@ -108,8 +108,8 @@ class GraphTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(len(p), 2)
             self.assertEqual(p.nodes, (a, b, c))
             self.assertEqual(p.relationships, (ab, bc))
-            self.assertEqual(p.start, a)
-            self.assertEqual(p.end, c)
+            self.assertEqual(p.start_node, a)
+            self.assertEqual(p.end_node, c)
 
 
 class SpatialTypeInputTestCase(DirectIntegrationTestCase):

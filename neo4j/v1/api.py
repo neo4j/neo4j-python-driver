@@ -697,22 +697,17 @@ class StatementResult(object):
 
         :yields: iterable of :class:`.Record` objects
         """
-        hydrate = self._hydrant.hydrate
-        zipper = self.zipper
-        keys = self.keys()
         records = self._records
-        pop_first_record = records.popleft
+        next_record = records.popleft
         while records:
-            values = pop_first_record()
-            yield zipper(keys, hydrate(values))
+            yield next_record()
         attached = self.attached
         if attached():
             self._session.send()
         while attached():
             self._session.fetch()
             while records:
-                values = pop_first_record()
-                yield zipper(keys, hydrate(values))
+                yield next_record()
 
     def summary(self):
         """ Obtain the summary of this result, buffering any remaining records.
@@ -731,7 +726,7 @@ class StatementResult(object):
         :returns: The :class:`.ResultSummary` for this result
         """
         if self.attached():
-            for x in self:
+            for _ in self:
                 pass
         return self.summary()
 
@@ -775,6 +770,16 @@ class StatementResult(object):
                 values = records[0]
                 return zipper(keys, hydrate(values))
         return None
+
+    def graph(self):
+        """ Return a Graph instance containing all the graph objects
+        in the result. After calling this method, the result becomes
+        detached, buffering all remaining records.
+
+        :returns: result graph
+        """
+        self.detach()
+        return self._hydrant.graph
 
 
 def fix_statement(statement):

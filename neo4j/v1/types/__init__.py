@@ -33,8 +33,8 @@ from neo4j.packstream import Structure
 from neo4j.compat import string, integer, ustr
 from neo4j.v1.api import Hydrator
 
-from .graph import hydration_functions as graph_hydration_functions, \
-                   dehydration_functions as graph_dehydration_functions
+from .graph import Graph, hydration_functions as graph_hydration_functions, \
+                          dehydration_functions as graph_dehydration_functions
 from .spatial import hydration_functions as spatial_hydration_functions, \
                      dehydration_functions as spatial_dehydration_functions
 from .temporal import hydration_functions as temporal_hydration_functions, \
@@ -221,10 +221,11 @@ class Record(tuple):
 
 class PackStreamHydrator(Hydrator):
 
-    def __init__(self, graph):
+    def __init__(self):
         super(PackStreamHydrator, self).__init__()
+        self.graph = Graph()
         self.hydration_functions = {}
-        self.hydration_functions.update(graph_hydration_functions(graph))
+        self.hydration_functions.update(graph_hydration_functions(self.graph))
         self.hydration_functions.update(spatial_hydration_functions())
         self.hydration_functions.update(temporal_hydration_functions())
 
@@ -256,6 +257,7 @@ class PackStreamDehydrator(object):
     def __init__(self):
         self.dehydration_functions = {}
         self.dehydration_functions.update(graph_dehydration_functions())
+        # TODO: check for v2 before adding these...
         self.dehydration_functions.update(spatial_dehydration_functions())
         self.dehydration_functions.update(temporal_dehydration_functions())
 
@@ -264,10 +266,13 @@ class PackStreamDehydrator(object):
         """
 
         def dehydrate_(obj):
-            if type(obj) in self.dehydration_functions:
+            try:
                 f = self.dehydration_functions[type(obj)]
+            except KeyError:
+                pass
+            else:
                 return f(obj)
-            elif obj is None:
+            if obj is None:
                 return None
             elif isinstance(obj, bool):
                 return obj

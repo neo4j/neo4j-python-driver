@@ -42,8 +42,7 @@ class BoltStatementResult(StatementResult):
         return Record(zip(k, v))
 
     def __init__(self, session, run_response, pull_all_response):
-        self.graph = Graph()
-        super(BoltStatementResult, self).__init__(session, PackStreamHydrator(self.graph))
+        super(BoltStatementResult, self).__init__(session, PackStreamHydrator())
 
         all_metadata = {}
 
@@ -54,7 +53,7 @@ class BoltStatementResult(StatementResult):
 
         def on_records(records):
             # Called on receipt of one or more result records.
-            self._records.extend(records)
+            self._records.extend(map(lambda record: self.zipper(self.keys(), self._hydrant.hydrate(record)), records))
 
         def on_footer(metadata):
             # Called on receipt of the result footer.
