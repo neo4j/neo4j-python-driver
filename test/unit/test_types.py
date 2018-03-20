@@ -154,7 +154,7 @@ class PathTestCase(TestCase):
 class HydrationTestCase(TestCase):
 
     def setUp(self):
-        self.hydrant = PackStreamHydrator()
+        self.hydrant = PackStreamHydrator(1)
 
     def test_can_hydrate_node_structure(self):
         struct = Structure(b'N', 123, ["Person"], {"name": "Alice"})

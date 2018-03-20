@@ -330,7 +330,7 @@ class Session(object):
         if not self.has_transaction():
             self._connect()
 
-        result = self.__run__(fix_statement(statement), fix_parameters(parameters, **kwparameters))
+        result = self.__run__(statement, dict(parameters or {}, **kwparameters))
 
         if not self.has_transaction():
             self._connection.send()
@@ -780,23 +780,3 @@ class StatementResult(object):
         """
         self.detach()
         return self._hydrant.graph
-
-
-def fix_statement(statement):
-    if isinstance(statement, bytes):
-        statement = statement.decode("UTF-8")
-    return statement
-
-
-def fix_parameters(parameters=None, **kwparameters):
-    from neo4j.v1.types import PackStreamDehydrator
-    p = parameters or {}
-    p.update(kwparameters)
-    dehydrator = PackStreamDehydrator()
-    try:
-        dehydrated, = dehydrator.dehydrate([p])
-    except TypeError as error:
-        value = error.args[0]
-        raise TypeError("Parameters of type {} are not supported".format(type(value).__name__))
-    else:
-        return dehydrated

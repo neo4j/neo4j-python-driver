@@ -42,7 +42,7 @@ class BoltStatementResult(StatementResult):
         return Record(zip(k, v))
 
     def __init__(self, session, run_response, pull_all_response):
-        super(BoltStatementResult, self).__init__(session, PackStreamHydrator())
+        super(BoltStatementResult, self).__init__(session, PackStreamHydrator(session._connection.protocol_version))
 
         all_metadata = {}
 

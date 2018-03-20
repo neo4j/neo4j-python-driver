@@ -221,13 +221,14 @@ class Record(tuple):
 
 class PackStreamHydrator(Hydrator):
 
-    def __init__(self):
+    def __init__(self, protocol_version):
         super(PackStreamHydrator, self).__init__()
         self.graph = Graph()
         self.hydration_functions = {}
         self.hydration_functions.update(graph_hydration_functions(self.graph))
-        self.hydration_functions.update(spatial_hydration_functions())
-        self.hydration_functions.update(temporal_hydration_functions())
+        if protocol_version >= 2:
+            self.hydration_functions.update(spatial_hydration_functions())
+            self.hydration_functions.update(temporal_hydration_functions())
 
     def hydrate(self, values):
         """ Convert PackStream values into native values.
@@ -254,12 +255,12 @@ class PackStreamHydrator(Hydrator):
 
 class PackStreamDehydrator(object):
 
-    def __init__(self):
+    def __init__(self, protocol_version):
         self.dehydration_functions = {}
         self.dehydration_functions.update(graph_dehydration_functions())
-        # TODO: check for v2 before adding these...
-        self.dehydration_functions.update(spatial_dehydration_functions())
-        self.dehydration_functions.update(temporal_dehydration_functions())
+        if protocol_version >= 2:
+            self.dehydration_functions.update(spatial_dehydration_functions())
+            self.dehydration_functions.update(temporal_dehydration_functions())
 
     def dehydrate(self, values):
         """ Convert native values into PackStream values.

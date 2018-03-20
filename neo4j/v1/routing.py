@@ -28,7 +28,7 @@ from neo4j.compat import urlparse
 from neo4j.compat.collections import MutableSet, OrderedDict
 from neo4j.exceptions import CypherError, DatabaseUnavailableError, NotALeaderError, ForbiddenOnReadOnlyDatabaseError
 from neo4j.util import ServerVersion
-from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS, fix_statement, fix_parameters
+from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS
 from neo4j.v1.exceptions import SessionExpired
 from neo4j.v1.security import SecurityPlan
 from neo4j.v1.session import BoltSession
@@ -160,7 +160,7 @@ class RoutingSession(BoltSession):
     def __run__(self, ignored, routing_context):
         # the statement is ignored as it will be get routing table procedure call.
         statement, parameters = self.routing_info_procedure(routing_context)
-        return self._run(fix_statement(statement), fix_parameters(parameters))
+        return self._run(statement, parameters)
 
 
 class LoadBalancingStrategy(object):

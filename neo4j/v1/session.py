@@ -20,29 +20,40 @@
 
 
 from neo4j.bolt import Response, RUN, PULL_ALL
-from neo4j.compat import unicode
+from neo4j.compat import ustr
 from neo4j.v1.api import Session
 from neo4j.v1.exceptions import SessionError
 from neo4j.v1.result import BoltStatementResult
+from neo4j.v1.types import PackStreamDehydrator
+
+
+def _fix_parameters(parameters, protocol_version):
+    if not parameters:
+        return {}
+    dehydrator = PackStreamDehydrator(protocol_version)
+    try:
+        dehydrated, = dehydrator.dehydrate([parameters])
+    except TypeError as error:
+        value = error.args[0]
+        raise TypeError("Parameters of type {} are not supported".format(type(value).__name__))
+    else:
+        return dehydrated
 
 
 class BoltSession(Session):
 
     def _run(self, statement, parameters):
-        assert isinstance(statement, unicode)
-        assert isinstance(parameters, dict)
-
         if self.closed():
             raise SessionError("Session closed")
 
         run_response = Response(self._connection)
         pull_all_response = Response(self._connection)
         self._last_result = result = BoltStatementResult(self, run_response, pull_all_response)
-        result.statement = statement
-        result.parameters = parameters
+        result.statement = ustr(statement)
+        result.parameters = _fix_parameters(parameters, self._connection.protocol_version)
 
         try:
-            self._connection.append(RUN, (statement, parameters), response=run_response)
+            self._connection.append(RUN, (result.statement, result.parameters), response=run_response)
             self._connection.append(PULL_ALL, response=pull_all_response)
         except AttributeError:
             pass
