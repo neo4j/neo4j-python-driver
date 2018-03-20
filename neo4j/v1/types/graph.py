@@ -21,7 +21,11 @@
 """
 Graph data types
 """
-from neo4j.util import deprecated
+
+
+from collections import Mapping
+
+from neo4j.compat import xstr
 
 
 __all__ = [
@@ -34,31 +38,64 @@ __all__ = [
 
 
 class Graph(object):
+    """ A local, self-contained graph object.
+    """
 
     def __init__(self):
         self._nodes = {}
         self._relationships = {}
+        self._relationship_types = {}
+        self._node_set_view = EntitySetView(self._nodes)
+        self._relationship_set_view = EntitySetView(self._relationships)
+
+    @property
+    def nodes(self):
+        """ Access a view of the set of nodes in this graph.
+        """
+        return self._node_set_view
+
+    @property
+    def relationships(self):
+        """ Access a view of the set of relationships in this graph.
+        """
+        return self._relationship_set_view
+
+    def relationship_type(self, name):
+        """ Obtain a Relationship subclass for a given relationship
+        type.
+        """
+        try:
+            cls = self._relationship_types[name]
+        except KeyError:
+            cls = self._relationship_types[name] = type(xstr(name), (Relationship,), {})
+        return cls
 
     def put_node(self, n_id, labels=(), properties=None, **kwproperties):
+        """ Put a node into this graph, overwriting any existing node with
+        the same ID.
+        """
         inst = Node(self, n_id)
         inst._labels.update(labels)
         inst._update(properties, **kwproperties)
         return inst
 
-    def _put_unbound_relationship(self, r_id, r_type, properties=None, **kwproperties):
-        inst = Relationship(self, r_id)
-        inst._type = r_type
-        inst._update(properties, **kwproperties)
-        return inst
-
     def put_relationship(self, r_id, start_node, end_node, r_type, properties=None, **kwproperties):
+        """ Put a relationship into this graph, overwriting any existing
+        relationship with the same ID.
+        """
         if not isinstance(start_node, Node) or not isinstance(end_node, Node):
             raise TypeError("Start and end nodes must be Node instances (%s and %s passed)" %
                             (type(start_node).__name__, type(end_node).__name__))
-        inst = self._put_unbound_relationship(r_id, r_type, properties, **kwproperties)
+        inst = _put_unbound_relationship(self, r_id, r_type, properties, **kwproperties)
         inst._start_node = start_node
         inst._end_node = end_node
         return inst
+
+
+def _put_unbound_relationship(graph, r_id, r_type, properties=None, **kwproperties):
+    inst = Relationship(graph, r_id, r_type)
+    inst._update(properties, **kwproperties)
+    return inst
 
 
 class Entity(object):
@@ -71,6 +108,10 @@ class Entity(object):
         inst._id = id
         inst._properties = {}
         return inst
+
+    def __repr__(self):
+        from neo4j.cypher.encoding import cypher_repr
+        return cypher_repr(self)
 
     def __eq__(self, other):
         try:
@@ -129,21 +170,32 @@ class Entity(object):
         return self._properties.items()
 
 
+class EntitySetView(Mapping):
+
+    def __init__(self, entity_dict):
+        self._entity_dict = entity_dict
+
+    def __getitem__(self, e_id):
+        return self._entity_dict[e_id]
+
+    def __len__(self):
+        return len(self._entity_dict)
+
+    def __iter__(self):
+        return iter(self._entity_dict.values())
+
+
 class Node(Entity):
     """ Self-contained graph node.
     """
 
-    def __new__(cls, graph, id):
+    def __new__(cls, graph, n_id):
         try:
-            inst = graph._nodes[id]
+            inst = graph._nodes[n_id]
         except KeyError:
-            inst = graph._nodes[id] = Entity.__new__(cls, graph, id)
+            inst = graph._nodes[n_id] = Entity.__new__(cls, graph, n_id)
             inst._labels = set()
         return inst
-
-    def __repr__(self):
-        return "<Node id=%r labels=%r properties=%r>" % \
-               (self.id, self.labels, self._properties)
 
     @property
     def labels(self):
@@ -154,19 +206,15 @@ class Relationship(Entity):
     """ Self-contained graph relationship.
     """
 
-    def __new__(cls, graph, id):
+    def __new__(cls, graph, r_id, r_type):
         try:
-            inst = graph._relationships[id]
+            inst = graph._relationships[r_id]
         except KeyError:
-            inst = graph._relationships[id] = Entity.__new__(cls, graph, id)
+            inst = graph._relationships[r_id] = Entity.__new__(cls, graph, r_id)
+            inst.__class__ = graph.relationship_type(r_type)
             inst._start_node = None
             inst._end_node = None
-            inst._type = None
         return inst
-
-    def __repr__(self):
-        return "<Relationship id=%r start=%r end=%r type=%r properties=%r>" % \
-               (self.id, self._start_node, self._end_node, self.type, self._properties)
 
     @property
     def nodes(self):
@@ -182,7 +230,7 @@ class Relationship(Entity):
 
     @property
     def type(self):
-        return self._type
+        return type(self).__name__
 
 
 class Path(object):
@@ -276,7 +324,7 @@ def hydration_functions(graph):
         b"N": graph.put_node,
         b"R": lambda r_id, n0_id, n1_id, r_type, properties:
             graph.put_relationship(r_id, Node(graph, n0_id), Node(graph, n1_id), r_type, properties),
-        b"r": graph._put_unbound_relationship,
+        b"r": lambda *args: _put_unbound_relationship(graph, *args),
         b"P": hydrate_path,
     }
 

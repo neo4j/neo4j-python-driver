@@ -110,13 +110,13 @@ class PathTestCase(TestCase):
         self.assertTrue(repr(path))
 
     def test_can_hydrate_path(self):
-        from neo4j.v1.types.graph import hydrate_path
+        from neo4j.v1.types.graph import hydrate_path, _put_unbound_relationship
         g = Graph()
         alice = g.put_node(1, {"Person"}, {"name": "Alice", "age": 33})
         bob = g.put_node(2, {"Person"}, {"name": "Bob", "age": 44})
         carol = g.put_node(3, {"Person"}, {"name": "Carol", "age": 55})
-        r = [g._put_unbound_relationship(1, "KNOWS", {"since": 1999}),
-             g._put_unbound_relationship(2, "DISLIKES")]
+        r = [_put_unbound_relationship(g, 1, "KNOWS", {"since": 1999}),
+             _put_unbound_relationship(g, 2, "DISLIKES")]
         path = hydrate_path([alice, bob, carol], r, [1, 1, -2, 2])
         self.assertEqual(path.start_node, alice)
         self.assertEqual(path.end_node, carol)
