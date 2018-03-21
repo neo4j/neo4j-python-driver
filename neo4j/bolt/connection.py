@@ -34,7 +34,7 @@ from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, error as SocketE
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock, Condition
 
-from neo4j.addressing import SocketAddress, is_ip_address
+from neo4j.addressing import SocketAddress, resolve
 from neo4j.bolt.cert import KNOWN_HOSTS
 from neo4j.bolt.response import InitResponse, AckFailureResponse, ResetResponse
 from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
@@ -427,8 +427,6 @@ class ConnectionPool(object):
         """
         if self.closed():
             raise ServiceUnavailable("Connection pool closed")
-        if not is_ip_address(address[0]):
-            raise ValueError("Invalid IP address {!r}".format(address[0]))
         with self.lock:
             try:
                 connections = self.connections[address]
@@ -549,57 +547,57 @@ class ConnectionPool(object):
             return self._closed
 
 
-def connect(address, ssl_context=None, hostname=None, error_handler=None, **config):
-    """ Connect and perform a handshake and return a valid Connection object, assuming
-    a protocol version can be agreed.
+def _force_close(s):
+    try:
+        s.close()
+    except:
+        pass
+
+
+def _connect(resolved_address, **config):
     """
 
-    # Establish a connection to the host and port specified
-    # Catches refused connections see:
-    # https://docs.python.org/2/library/errno.html
-    log_debug("~~ [CONNECT] %s", address)
+    :param resolved_address:
+    :param config:
+    :return: socket object
+    """
     s = None
     try:
-        if len(address) == 2:
+        if len(resolved_address) == 2:
             s = socket(AF_INET)
-        elif len(address) == 4:
+        elif len(resolved_address) == 4:
             s = socket(AF_INET6)
         else:
-            raise ValueError("Unsupported address {!r}".format(address))
+            raise ValueError("Unsupported address {!r}".format(resolved_address))
         t = s.gettimeout()
         s.settimeout(config.get("connection_timeout", default_config["connection_timeout"]))
-        s.connect(address)
+        log_debug("~~ [CONNECT] %s", resolved_address)
+        s.connect(resolved_address)
         s.settimeout(t)
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1 if config.get("keep_alive", default_config["keep_alive"]) else 0)
     except SocketTimeout:
-        if s:
-            try:
-                s.close()
-            except:
-                pass
-        raise ServiceUnavailable("Timed out trying to establish connection to {!r}".format(address))
+        _force_close(s)
+        raise ServiceUnavailable("Timed out trying to establish connection to {!r}".format(resolved_address))
     except SocketError as error:
-        if s:
-            try:
-                s.close()
-            except:
-                pass
+        _force_close(s)
         if error.errno in (61, 99, 111, 10061):
-            raise ServiceUnavailable("Failed to establish connection to {!r}".format(address))
+            raise ServiceUnavailable("Failed to establish connection to {!r} (reason {})".format(resolved_address, error.errno))
         else:
             raise
     except ConnectionResetError:
-        raise ServiceUnavailable("Failed to establish connection to {!r}".format(address))
+        raise ServiceUnavailable("Failed to establish connection to {!r}".format(resolved_address))
+    else:
+        return s
 
+
+def _secure(s, host, ssl_context, **config):
     # Secure the connection if an SSL context has been provided
     if ssl_context and SSL_AVAILABLE:
-        host_ip = address[0]
-        log_debug("~~ [SECURE] %s", host_ip)
+        log_debug("~~ [SECURE] %s", host)
         try:
-            s = ssl_context.wrap_socket(s, server_hostname=hostname if HAS_SNI and hostname else
-            None)
+            s = ssl_context.wrap_socket(s, server_hostname=host if HAS_SNI and host else None)
         except SSLError as cause:
-            s.close()
+            _force_close(s)
             error = SecurityError("Failed to establish secure connection to {!r}".format(cause.args[1]))
             error.__cause__ = cause
             raise error
@@ -607,19 +605,28 @@ def connect(address, ssl_context=None, hostname=None, error_handler=None, **conf
             # Check that the server provides a certificate
             der_encoded_server_certificate = s.getpeercert(binary_form=True)
             if der_encoded_server_certificate is None:
-                s.close()
+                _force_close(s)
                 raise ProtocolError("When using a secure socket, the server should always "
                                     "provide a certificate")
             trust = config.get("trust", default_config["trust"])
             if trust == TRUST_ON_FIRST_USE:
                 from neo4j.bolt.cert import PersonalCertificateStore
                 store = PersonalCertificateStore()
-                if not store.match_or_trust(host_ip, der_encoded_server_certificate):
-                    s.close()
+                if not store.match_or_trust(host, der_encoded_server_certificate):
+                    _force_close(s)
                     raise ProtocolError("Server certificate does not match known certificate "
-                                        "for %r; check details in file %r" % (host_ip, KNOWN_HOSTS))
+                                        "for %r; check details in file %r" % (host, KNOWN_HOSTS))
     else:
         der_encoded_server_certificate = None
+    return s, der_encoded_server_certificate
+
+
+def _handshake(s, resolved_address, der_encoded_server_certificate, error_handler, **config):
+    """
+
+    :param s:
+    :return:
+    """
 
     # Send details of the protocol versions supported
     supported_versions = [2, 1, 0, 0]
@@ -635,14 +642,14 @@ def connect(address, ssl_context=None, hostname=None, error_handler=None, **conf
     try:
         data = s.recv(4)
     except ConnectionResetError:
-        raise ServiceUnavailable("Failed to read any data from server {!r} after connected".format(address))
+        raise ServiceUnavailable("Failed to read any data from server {!r} after connected".format(resolved_address))
     data_size = len(data)
     if data_size == 0:
         # If no data is returned after a successful select
         # response, the server has closed the connection
         log_error("S: [CLOSE]")
         s.close()
-        raise ProtocolError("Connection to %r closed without handshake response" % (address,))
+        raise ProtocolError("Connection to %r closed without handshake response" % (resolved_address,))
     if data_size != 4:
         # Some garbled data has been received
         log_error("S: @*#!")
@@ -655,7 +662,7 @@ def connect(address, ssl_context=None, hostname=None, error_handler=None, **conf
         s.shutdown(SHUT_RDWR)
         s.close()
     elif agreed_version in (1, 2):
-        connection = Connection(address, s, agreed_version,
+        connection = Connection(resolved_address, s, agreed_version,
                                 der_encoded_server_certificate=der_encoded_server_certificate,
                                 error_handler=error_handler, **config)
         connection.init()
@@ -664,8 +671,34 @@ def connect(address, ssl_context=None, hostname=None, error_handler=None, **conf
         log_error("S: [CLOSE]")
         s.close()
         raise ServiceUnavailable("Cannot to connect to Bolt service on {!r} "
-                                 "(looks like HTTP)".format(address))
+                                 "(looks like HTTP)".format(resolved_address))
     else:
         log_error("S: [CLOSE]")
         s.close()
         raise ProtocolError("Unknown Bolt protocol version: {}".format(agreed_version))
+
+
+def connect(address, ssl_context=None, error_handler=None, **config):
+    """ Connect and perform a handshake and return a valid Connection object, assuming
+    a protocol version can be agreed.
+    """
+
+    # Establish a connection to the host and port specified
+    # Catches refused connections see:
+    # https://docs.python.org/2/library/errno.html
+    log_debug("~~ [RESOLVE] %s", address)
+    last_error = None
+    for resolved_address in resolve(address):
+        log_debug("~~ [RESOLVED] %s -> %s", address, resolved_address)
+        try:
+            s = _connect(resolved_address, **config)
+            s, der_encoded_server_certificate = _secure(s, address[0], ssl_context, **config)
+            connection = _handshake(s, resolved_address, der_encoded_server_certificate, error_handler, **config)
+        except Exception as error:
+            last_error = error
+        else:
+            return connection
+    if last_error is None:
+        raise ServiceUnavailable("Failed to resolve addresses for %s" % address)
+    else:
+        raise last_error

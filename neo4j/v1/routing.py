@@ -17,14 +17,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
 from abc import abstractmethod
 from sys import maxsize
 from threading import Lock
 from time import clock
 
-from neo4j.addressing import SocketAddress, resolve
+from neo4j.addressing import SocketAddress
 from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAULT_PORT, connect, ConnectionErrorHandler
-from neo4j.compat import urlparse
 from neo4j.compat.collections import MutableSet, OrderedDict
 from neo4j.exceptions import CypherError, DatabaseUnavailableError, NotALeaderError, ForbiddenOnReadOnlyDatabaseError
 from neo4j.util import ServerVersion
@@ -104,7 +105,7 @@ class RoutingTable(object):
                 role = server["role"]
                 addresses = []
                 for address in server["addresses"]:
-                    addresses.extend(resolve(SocketAddress.parse(address, DEFAULT_PORT)))
+                    addresses.append(SocketAddress.parse(address, DEFAULT_PORT))
                 if role == "ROUTE":
                     routers.extend(addresses)
                 elif role == "READ":
@@ -330,8 +331,9 @@ class RoutingConnectionPool(ConnectionPool):
         # At least one of each is fine, so return this table
         return new_routing_table
 
-    def update_routing_table_with_routers(self, routers):
-        """Try to update routing tables with the given routers
+    def update_routing_table_from(self, *routers):
+        """ Try to update routing tables with the given routers.
+
         :return: True if the routing table is successfully updated, otherwise False
         """
         for router in routers:
@@ -346,25 +348,20 @@ class RoutingConnectionPool(ConnectionPool):
         valid routing information.
         """
         # copied because it can be modified
-        copy_of_routers = list(self.routing_table.routers)
+        existing_routers = list(self.routing_table.routers)
 
         has_tried_initial_routers = False
         if self.missing_writer:
             has_tried_initial_routers = True
-            if self.update_routing_table_with_routers(resolve(self.initial_address)):
+            if self.update_routing_table_from(self.initial_address):
                 return
 
-        if self.update_routing_table_with_routers(copy_of_routers):
+        if self.update_routing_table_from(*existing_routers):
             return
 
-        if not has_tried_initial_routers:
-            initial_routers = resolve(self.initial_address)
-            for router in copy_of_routers:
-                if router in initial_routers:
-                    initial_routers.remove(router)
-            if initial_routers:
-                if self.update_routing_table_with_routers(initial_routers):
-                    return
+        if not has_tried_initial_routers and self.initial_address not in existing_routers:
+            if self.update_routing_table_from(self.initial_address):
+                return
 
         # None of the routers have been successful, so just fail
         raise ServiceUnavailable("Unable to retrieve routing information")
@@ -461,9 +458,9 @@ class RoutingDriver(Driver):
             raise ValueError("TRUST_ON_FIRST_USE is not compatible with routing")
 
         def connector(address, error_handler):
-            return connect(address, security_plan.ssl_context, urlparse(uri).hostname, error_handler, **config)
+            return connect(address, security_plan.ssl_context, error_handler, **config)
 
-        pool = RoutingConnectionPool(connector, initial_address, routing_context, *resolve(initial_address), **config)
+        pool = RoutingConnectionPool(connector, initial_address, routing_context, initial_address, **config)
         try:
             pool.update_routing_table()
         except:
