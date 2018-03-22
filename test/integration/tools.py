@@ -153,21 +153,20 @@ class IntegrationTestCase(TestCase):
     @classmethod
     def setUpClass(cls):
         if is_listening(cls.bolt_address):
-            stderr.write("Using existing server listening on port {}\n".format(cls.bolt_port))
+            print("Using existing server listening on port {}\n".format(cls.bolt_port))
             with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth_token) as driver:
                 try:
                     with driver.session():
                         pass
                 except AuthError as error:
-                    stderr.write("{}\n".format(error))
-                    exit(1)
+                    raise RuntimeError("Failed to authenticate (%s)" % error)
         elif cls.server_package is not None:
-            stderr.write("Using server from package {}\n".format(cls.server_package))
+            print("Using server from package {}\n".format(cls.server_package))
             package = copy_dist(cls.server_package, cls.local_server_package)
             home = cls._unpack(package)
             cls._start_server(home)
         elif cls.neoctrl_args is not None:
-            stderr.write("Using boltkit to install server 'neotrl-install {}'\n".format(cls.neoctrl_args))
+            print("Using boltkit to install server 'neoctrl-install {}'\n".format(cls.neoctrl_args))
             edition = "enterprise" if "-e" in cls.neoctrl_args else "community"
             version = cls.neoctrl_args.split()[-1]
             home = _install(edition, version, cls.run_path)

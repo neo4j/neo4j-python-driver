@@ -20,6 +20,7 @@
 
 
 from datetime import date, datetime, time, timedelta
+from warnings import catch_warnings, simplefilter
 
 from pytz import FixedOffset, timezone, utc
 
@@ -377,11 +378,14 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
 
     def test_nanosecond_resolution_time(self):
         self.assert_supports_temporal_types()
-        with self.driver.session() as session:
-            result = session.run("RETURN time('12:34:56.789012345')")
-            value = result.single().value()
-            self.assertIsInstance(value, time)
-            self.assertEqual(value, time(12, 34, 56, 789012, tzinfo=FixedOffset(0)))
+        with catch_warnings(record=True) as warning_list:
+            simplefilter("always")
+            with self.driver.session() as session:
+                result = session.run("RETURN time('12:34:56.789012345')")
+                value = result.single().value()
+                self.assertIsInstance(value, time)
+                self.assertEqual(value, time(12, 34, 56, 789012, tzinfo=FixedOffset(0)))
+                self.assertEqual(len(warning_list), 1)
 
     def test_time_with_numeric_time_offset(self):
         self.assert_supports_temporal_types()
@@ -409,11 +413,14 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
 
     def test_nanosecond_resolution_localtime(self):
         self.assert_supports_temporal_types()
-        with self.driver.session() as session:
-            result = session.run("RETURN localtime('12:34:56.789012345')")
-            value = result.single().value()
-            self.assertIsInstance(value, time)
-            self.assertEqual(value, time(12, 34, 56, 789012))
+        with catch_warnings(record=True) as warning_list:
+            simplefilter("always")
+            with self.driver.session() as session:
+                result = session.run("RETURN localtime('12:34:56.789012345')")
+                value = result.single().value()
+                self.assertIsInstance(value, time)
+                self.assertEqual(value, time(12, 34, 56, 789012))
+                self.assertEqual(len(warning_list), 1)
 
     def test_whole_second_datetime(self):
         self.assert_supports_temporal_types()
@@ -433,11 +440,14 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
 
     def test_nanosecond_resolution_datetime(self):
         self.assert_supports_temporal_types()
-        with self.driver.session() as session:
-            result = session.run("RETURN datetime('1976-06-13T12:34:56.789012345')")
-            value = result.single().value()
-            self.assertIsInstance(value, datetime)
-            self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012, tzinfo=utc))
+        with catch_warnings(record=True) as warning_list:
+            simplefilter("always")
+            with self.driver.session() as session:
+                result = session.run("RETURN datetime('1976-06-13T12:34:56.789012345')")
+                value = result.single().value()
+                self.assertIsInstance(value, datetime)
+                self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012, tzinfo=utc))
+                self.assertEqual(len(warning_list), 1)
 
     def test_datetime_with_numeric_time_offset(self):
         self.assert_supports_temporal_types()
@@ -473,11 +483,14 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
 
     def test_nanosecond_resolution_localdatetime(self):
         self.assert_supports_temporal_types()
-        with self.driver.session() as session:
-            result = session.run("RETURN localdatetime('1976-06-13T12:34:56.789012345')")
-            value = result.single().value()
-            self.assertIsInstance(value, datetime)
-            self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012))
+        with catch_warnings(record=True) as warning_list:
+            simplefilter("always")
+            with self.driver.session() as session:
+                result = session.run("RETURN localdatetime('1976-06-13T12:34:56.789012345')")
+                value = result.single().value()
+                self.assertIsInstance(value, datetime)
+                self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012))
+                self.assertEqual(len(warning_list), 1)
 
     def test_duration(self):
         self.assert_supports_temporal_types()
@@ -489,8 +502,11 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
 
     def test_nanosecond_resolution_duration(self):
         self.assert_supports_temporal_types()
-        with self.driver.session() as session:
-            result = session.run("RETURN duration('P1Y2M3DT4H5M6.789123456S')")
-            value = result.single().value()
-            self.assertIsInstance(value, duration)
-            self.assertEqual(value, duration(1, 2, 3, 4, 5, 6.789123))
+        with catch_warnings(record=True) as warning_list:
+            simplefilter("always")
+            with self.driver.session() as session:
+                result = session.run("RETURN duration('P1Y2M3DT4H5M6.789123456S')")
+                value = result.single().value()
+                self.assertIsInstance(value, duration)
+                self.assertEqual(value, duration(1, 2, 3, 4, 5, 6.789123))
+                self.assertEqual(len(warning_list), 1)
