@@ -75,9 +75,7 @@ def hydrate_time(nanoseconds, tz=None):
     if tz is None:
         return t
     tz_offset_minutes, tz_offset_seconds = divmod(tz, 60)
-    zone = FixedOffset(tz_offset_minutes)
-    zoned_datetime = utc.localize(datetime.combine(UNIX_EPOCH_DATE, t)).astimezone(zone)
-    return zone.localize(zoned_datetime.time())
+    return FixedOffset(tz_offset_minutes).localize(t)
 
 
 def dehydrate_time(value):
@@ -87,17 +85,12 @@ def dehydrate_time(value):
     :type value: time
     :return:
     """
-    # Save the TZ info as this will get lost during the conversion to UTC
-    tz = value.tzinfo
-    if tz:
-        # If we have a TZ offset, convert to UTC (and drop the TZ info)
-        value = datetime.combine(UNIX_EPOCH_DATE, value).astimezone(utc).time()
     minutes = 60 * value.hour + value.minute
     seconds = 60 * minutes + value.second
     microseconds = 1000000 * seconds + value.microsecond
     nanoseconds = 1000 * microseconds
-    if tz:
-        return Structure(b"T", nanoseconds, tz.utcoffset(value).seconds)
+    if value.tzinfo:
+        return Structure(b"T", nanoseconds, value.tzinfo.utcoffset(value).seconds)
     else:
         return Structure(b"t", nanoseconds)
 
