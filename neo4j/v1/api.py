@@ -453,7 +453,11 @@ class Session(object):
         if not self.has_transaction():
             raise TransactionError("No transaction to rollback")
         self._transaction = None
-        self.__rollback__().consume()
+        rollback_result = self.__rollback__()
+        try:
+            rollback_result.consume()
+        except ServiceUnavailable:
+            pass
 
     def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):
         if not callable(unit_of_work):
@@ -461,27 +465,42 @@ class Session(object):
         retry_delay = retry_delay_generator(INITIAL_RETRY_DELAY,
                                             RETRY_DELAY_MULTIPLIER,
                                             RETRY_DELAY_JITTER_FACTOR)
-        last_error = None
+        errors = []
         t0 = perf_counter()
         while True:
             try:
-                self._connect(access_mode)
                 self._create_transaction()
+                self._connect(access_mode)
                 self.__begin__()
-                with self._transaction as tx:
-                    return unit_of_work(tx, *args, **kwargs)
+                tx = self._transaction
+                try:
+                    result = unit_of_work(tx, *args, **kwargs)
+                except:
+                    if tx.success is None:
+                        tx.success = False
+                    raise
+                else:
+                    if tx.success is None:
+                        tx.success = True
+                finally:
+                    tx.close()
             except (ServiceUnavailable, SessionExpired) as error:
-                last_error = error
+                errors.append(error)
             except TransientError as error:
                 if is_retriable_transient_error(error):
-                    last_error = error
+                    errors.append(error)
                 else:
-                    raise error
+                    raise
+            else:
+                return result
             t1 = perf_counter()
             if t1 - t0 > self._max_retry_time:
                 break
             sleep(next(retry_delay))
-        raise last_error
+        if errors:
+            raise errors[-1]
+        else:
+            raise ServiceUnavailable("Transaction failed")
 
     def read_transaction(self, unit_of_work, *args, **kwargs):
         return self._run_transaction(READ_ACCESS, unit_of_work, *args, **kwargs)

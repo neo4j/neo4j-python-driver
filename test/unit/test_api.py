@@ -26,7 +26,7 @@ from neo4j.v1.session import _fix_parameters
 
 
 def dehydrated_value(value):
-    return _fix_parameters({"_": value}, 1)["_"]
+    return _fix_parameters({"_": value}, 1, supports_bytes=True)["_"]
 
 
 class ValueDehydrationTestCase(TestCase):

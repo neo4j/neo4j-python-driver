@@ -255,7 +255,8 @@ class PackStreamHydrator(Hydrator):
 
 class PackStreamDehydrator(object):
 
-    def __init__(self, protocol_version):
+    def __init__(self, protocol_version, supports_bytes=False):
+        self.supports_bytes = supports_bytes
         self.dehydration_functions = {}
         self.dehydration_functions.update(graph_dehydration_functions())
         if protocol_version >= 2:
@@ -286,7 +287,10 @@ class PackStreamDehydrator(object):
             elif isinstance(obj, string):
                 return ustr(obj)
             elif isinstance(obj, (bytes, bytearray)):  # order is important here - bytes must be checked after string
-                return obj
+                if self.supports_bytes:
+                    return obj
+                else:
+                    raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")
             elif isinstance(obj, list):
                 return list(map(dehydrate_, obj))
             elif isinstance(obj, dict):

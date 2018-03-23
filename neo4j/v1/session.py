@@ -27,10 +27,10 @@ from neo4j.v1.result import BoltStatementResult
 from neo4j.v1.types import PackStreamDehydrator
 
 
-def _fix_parameters(parameters, protocol_version):
+def _fix_parameters(parameters, protocol_version, **kwargs):
     if not parameters:
         return {}
-    dehydrator = PackStreamDehydrator(protocol_version)
+    dehydrator = PackStreamDehydrator(protocol_version, **kwargs)
     try:
         dehydrated, = dehydrator.dehydrate([parameters])
     except TypeError as error:
@@ -50,13 +50,11 @@ class BoltSession(Session):
         pull_all_response = Response(self._connection)
         self._last_result = result = BoltStatementResult(self, run_response, pull_all_response)
         result.statement = ustr(statement)
-        result.parameters = _fix_parameters(parameters, self._connection.protocol_version)
+        result.parameters = _fix_parameters(parameters, self._connection.protocol_version,
+                                            supports_bytes=self._connection.server.supports_bytes())
 
-        try:
-            self._connection.append(RUN, (result.statement, result.parameters), response=run_response)
-            self._connection.append(PULL_ALL, response=pull_all_response)
-        except AttributeError:
-            pass
+        self._connection.append(RUN, (result.statement, result.parameters), response=run_response)
+        self._connection.append(PULL_ALL, response=pull_all_response)
 
         return result
 

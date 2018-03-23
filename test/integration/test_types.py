@@ -20,12 +20,14 @@
 
 
 from datetime import date, datetime, time, timedelta
+from math import isnan
+from unittest import SkipTest
 from warnings import catch_warnings, simplefilter
 
 from pytz import FixedOffset, timezone, utc
 
 from neo4j.v1.types.graph import Node, Relationship, Path
-from neo4j.v1.types.spatial import Point, CartesianPoint, WGS84Point
+from neo4j.v1.types.spatial import CartesianPoint, WGS84Point
 from neo4j.v1.types.temporal import duration
 
 from test.integration.tools import DirectIntegrationTestCase
@@ -60,6 +62,24 @@ class CoreTypeOutputTestCase(DirectIntegrationTestCase):
             result = session.run("RETURN 3.1415926")
             self.assertEqual(result.single().value(), 3.1415926)
 
+    def test_float_nan(self):
+        not_a_number = float("NaN")
+        with self.driver.session() as session:
+            result = session.run("WITH $x AS x RETURN x", x=not_a_number)
+            self.assertTrue(isnan(result.single().value()))
+
+    def test_float_positive_infinity(self):
+        infinity = float("+Inf")
+        with self.driver.session() as session:
+            result = session.run("WITH $x AS x RETURN x", x=infinity)
+            self.assertEqual(result.single().value(), infinity)
+
+    def test_float_negative_infinity(self):
+        infinity = float("-Inf")
+        with self.driver.session() as session:
+            result = session.run("WITH $x AS x RETURN x", x=infinity)
+            self.assertEqual(result.single().value(), infinity)
+
     def test_string(self):
         with self.driver.session() as session:
             result = session.run("RETURN 'hello, world'")
@@ -68,7 +88,10 @@ class CoreTypeOutputTestCase(DirectIntegrationTestCase):
     def test_bytes(self):
         with self.driver.session() as session:
             data = bytearray([0x00, 0x33, 0x66, 0x99, 0xCC, 0xFF])
-            value = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
+            try:
+                value = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
+            except TypeError:
+                raise SkipTest("Bytes not supported in this server version")
             self.assertEqual(value, data)
 
     def test_list(self):
