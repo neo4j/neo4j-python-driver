@@ -387,7 +387,10 @@ class Connection(object):
         """
         if not self.closed():
             log_debug("~~ [CLOSE]")
-            self.socket.close()
+            try:
+                self.socket.close()
+            except AttributeError:
+                pass
             self._closed = True
 
     def closed(self):
