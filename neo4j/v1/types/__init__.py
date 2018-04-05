@@ -26,6 +26,7 @@ into concrete values through the PackStreamHydrant.
 """
 
 
+from collections import Mapping
 from functools import reduce
 from operator import xor as xor_operator
 
@@ -60,7 +61,7 @@ def iter_items(iterable):
             yield key, value
 
 
-class Record(tuple):
+class Record(tuple, Mapping):
     """ A :class:`.Record` is an immutable ordered collection of key-value
     pairs. It is generally closer to a :py:class:`namedtuple` than to a
     :py:class:`OrderedDict` inasmuch as iteration of the collection will
