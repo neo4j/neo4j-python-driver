@@ -75,7 +75,8 @@ def hydrate_time(nanoseconds, tz=None):
     if tz is None:
         return t
     tz_offset_minutes, tz_offset_seconds = divmod(tz, 60)
-    return FixedOffset(tz_offset_minutes).localize(t)
+    zone = FixedOffset(tz_offset_minutes)
+    return zone.localize(t)
 
 
 def dehydrate_time(value):
@@ -117,8 +118,7 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):
         zone = FixedOffset(tz_offset_minutes)
     else:
         zone = timezone(tz)
-    zoned_datetime = utc.localize(t).astimezone(zone)
-    return zoned_datetime
+    return zone.localize(t)
 
 
 def dehydrate_datetime(value):
@@ -130,10 +130,9 @@ def dehydrate_datetime(value):
     """
 
     def seconds_and_nanoseconds(dt):
-        whole_seconds, fraction_of_second = divmod((dt - UNIX_EPOCH_DATETIME_UTC).total_seconds(), 1)
+        whole_seconds, fraction_of_second = divmod(dt.replace(tzinfo=utc).timestamp(), 1)
         return int(whole_seconds), int(1000000000 * fraction_of_second)
 
-    # Save the TZ info as this will get lost during the conversion to UTC
     tz = value.tzinfo
     if tz is None:
         # without time zone
@@ -142,12 +141,10 @@ def dehydrate_datetime(value):
         return Structure(b"d", seconds, nanoseconds)
     elif hasattr(tz, "zone") and tz.zone:
         # with named time zone
-        value = value.astimezone(utc)
         seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"f", seconds, nanoseconds, tz.zone)
     else:
         # with time offset
-        value = value.astimezone(utc)
         seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"F", seconds, nanoseconds, tz.utcoffset(value).seconds)
 
