@@ -84,7 +84,7 @@ class Watcher(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
 
-    def watch(self, level=logging.INFO, out=stdout):
+    def watch(self, level=logging.DEBUG, out=stdout):
         self.stop()
         handler = logging.StreamHandler(out)
         handler.setFormatter(self.formatter)
@@ -99,7 +99,7 @@ class Watcher(object):
             pass
 
 
-def watch(logger_name, level=logging.INFO, out=stdout):
+def watch(logger_name, level=logging.DEBUG, out=stdout):
     """ Quick wrapper for using the Watcher.
 
     :param logger_name: name of logger to watch
