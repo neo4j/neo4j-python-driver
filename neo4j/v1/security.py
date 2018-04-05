@@ -112,7 +112,7 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
     :param credentials: authenticates the principal
     :param realm: specifies the authentication provider
     :param scheme: specifies the type of authentication
-    :param parameters: parameters passed along to the authenticatin provider
+    :param parameters: parameters passed along to the authentication provider
     :return: auth token for use with :meth:`GraphDatabase.driver`
     """
     return AuthToken(scheme, principal, credentials, realm, **parameters)
