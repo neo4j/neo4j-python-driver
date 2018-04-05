@@ -130,7 +130,8 @@ def dehydrate_datetime(value):
     """
 
     def seconds_and_nanoseconds(dt):
-        whole_seconds, fraction_of_second = divmod(dt.replace(tzinfo=utc).timestamp(), 1)
+        zone_epoch = datetime(1970, 1, 1, tzinfo=dt.tzinfo)
+        whole_seconds, fraction_of_second = divmod((dt - zone_epoch).total_seconds(), 1)
         return int(whole_seconds), int(1000000000 * fraction_of_second)
 
     tz = value.tzinfo
