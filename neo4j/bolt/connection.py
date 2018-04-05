@@ -213,7 +213,10 @@ class Connection(object):
         self.packer.supports_bytes = self.server.supports_bytes()
 
     def __del__(self):
-        self.close()
+        try:
+            self.close()
+        except (AttributeError, TypeError):
+            pass
 
     def append(self, signature, fields=(), response=None):
         """ Add a message to the outgoing queue.
