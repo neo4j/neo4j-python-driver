@@ -18,6 +18,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from sys import platform, version_info
+
 from neo4j.meta import version
 
 # Auth
@@ -45,7 +48,8 @@ LOAD_BALANCING_STRATEGY_ROUND_ROBIN = 1
 DEFAULT_LOAD_BALANCING_STRATEGY = LOAD_BALANCING_STRATEGY_LEAST_CONNECTED
 
 # Client name
-DEFAULT_USER_AGENT = "neo4j-python/%s" % version
+DEFAULT_USER_AGENT = "neo4j-python/{} Python/{}.{}.{}-{}-{} ({})".format(
+    *((version,) + tuple(version_info) + (platform,)))
 
 default_config = {
     "auth": None,  # provide your own authentication token such as {"username", "password"}
