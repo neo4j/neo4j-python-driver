@@ -26,6 +26,7 @@ from warnings import catch_warnings, simplefilter
 
 from pytz import FixedOffset, timezone, utc
 
+from neo4j.exceptions import CypherTypeError
 from neo4j.v1.types.graph import Node, Relationship, Path
 from neo4j.v1.types.spatial import CartesianPoint, WGS84Point
 from neo4j.v1.types.temporal import duration
@@ -180,6 +181,13 @@ class SpatialTypeInputTestCase(DirectIntegrationTestCase):
             self.assertEqual(latitude, 4.56)
             self.assertEqual(height, 7.89)
 
+    def test_point_array(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            data = [WGS84Point((1.23, 4.56)), WGS84Point((9.87, 6.54))]
+            value = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
+            self.assertEqual(value, data)
+
 
 class SpatialTypeOutputTestCase(DirectIntegrationTestCase):
 
@@ -246,6 +254,13 @@ class TemporalTypeInputTestCase(DirectIntegrationTestCase):
             self.assertEqual(month, 6)
             self.assertEqual(day, 13)
 
+    def test_date_array(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            data = [datetime.now().date(), date(1976, 6, 13)]
+            value = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
+            self.assertEqual(value, data)
+
     def test_whole_second_time(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
@@ -281,6 +296,13 @@ class TemporalTypeInputTestCase(DirectIntegrationTestCase):
             self.assertEqual(second, 56)
             self.assertEqual(microsecond, 789012)
             self.assertEqual(offset, "+01:30")
+
+    def test_time_array(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            data = [time(12, 34, 56), time(10, 0, 0)]
+            value = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
+            self.assertEqual(value, data)
 
     def test_whole_second_datetime(self):
         self.assert_supports_temporal_types()
@@ -348,6 +370,13 @@ class TemporalTypeInputTestCase(DirectIntegrationTestCase):
             self.assertEqual(microsecond, input_value.microsecond)
             self.assertEqual(tz, input_value.tzinfo.zone)
 
+    def test_datetime_array(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            data = [datetime(2018, 4, 6, 13, 4, 42, 516120), datetime(1976, 6, 13)]
+            value = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
+            self.assertEqual(value, data)
+
     def test_duration(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
@@ -360,6 +389,13 @@ class TemporalTypeInputTestCase(DirectIntegrationTestCase):
             self.assertEqual(seconds, 14706)
             self.assertEqual(microseconds, 789012)
 
+    def test_duration_array(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            data = [duration(1, 2, 3, 4, 5, 6), duration(9, 8, 7, 6, 5, 4)]
+            value = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
+            self.assertEqual(value, data)
+
     def test_timedelta(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
@@ -371,6 +407,13 @@ class TemporalTypeInputTestCase(DirectIntegrationTestCase):
             self.assertEqual(days, 3)
             self.assertEqual(seconds, 14706)
             self.assertEqual(microseconds, 789012)
+
+    def test_mixed_array(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            data = [date(1976, 6, 13), duration(9, 8, 7, 6, 5, 4)]
+            with self.assertRaises(CypherTypeError):
+                _ = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
 
 
 class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
