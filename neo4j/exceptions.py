@@ -24,27 +24,32 @@ This module contains the core driver exceptions.
 """
 
 
-class AddressError(Exception):
+class Neo4jError(Exception):
+    """ Base Exception.
+    """
+
+
+class AddressError(Neo4jError):
     """ Raised when a network address is invalid.
     """
 
 
-class ProtocolError(Exception):
+class ProtocolError(Neo4jError):
     """ Raised when an unexpected or unsupported protocol event occurs.
     """
 
 
-class ServiceUnavailable(Exception):
+class ServiceUnavailable(Neo4jError):
     """ Raised when no database service is available.
     """
 
 
-class SecurityError(Exception):
+class SecurityError(Neo4jError):
     """ Raised when an action is denied due to security settings.
     """
 
 
-class CypherError(Exception):
+class CypherError(Neo4jError):
     """ Raised when the Cypher engine returns an error to the client.
     """
 
