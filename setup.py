@@ -59,7 +59,6 @@ packages = [
     "neo4j",
     "neo4j.bolt",
     "neo4j.compat",
-    "neo4j.cypher",
     "neo4j.packstream",
     "neo4j.v1",
     "neo4j.v1.types",

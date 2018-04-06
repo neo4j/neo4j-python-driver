@@ -109,10 +109,6 @@ class Entity(object):
         inst._properties = {}
         return inst
 
-    def __repr__(self):
-        from neo4j.cypher.encoding import cypher_repr
-        return cypher_repr(self)
-
     def __eq__(self, other):
         try:
             return type(self) == type(other) and self.graph == other.graph and self.id == other.id
@@ -197,6 +193,9 @@ class Node(Entity):
             inst._labels = set()
         return inst
 
+    def __repr__(self):
+        return "<Node id=%r labels=%r properties=%r>" % (self._id, self._labels, self._properties)
+
     @property
     def labels(self):
         return frozenset(self._labels)
@@ -215,6 +214,10 @@ class Relationship(Entity):
             inst._start_node = None
             inst._end_node = None
         return inst
+
+    def __repr__(self):
+        return "<Relationship id=%r nodes=(%r, %r) type=%r properties=%r>" % (
+            self._id, self._start_node, self._end_node, self.type, self._properties)
 
     @property
     def nodes(self):
