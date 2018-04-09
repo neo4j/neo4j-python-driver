@@ -50,7 +50,3 @@ Trust Options
    Trust server certificates that can be verified against the system
    certificate authority. This option is primarily intended for use with
    full certificates.
-
-.. NOTE:: The option :attr:`.TRUST_CUSTOM_CA_SIGNED_CERTIFICATES` is not yet available for Python
-
-.. NOTE:: The options :attr:`.TRUST_ON_FIRST_USE` and :attr:`.TRUST_SIGNED_CERTIFICATES` are deprecated.

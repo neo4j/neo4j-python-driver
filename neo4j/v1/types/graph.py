@@ -38,7 +38,8 @@ __all__ = [
 
 
 class Graph(object):
-    """ A local, self-contained graph object.
+    """ Local, self-contained graph object that acts as a container for
+    :class:`.Node` and :class:`.Relationship` instances.
     """
 
     def __init__(self):
@@ -50,19 +51,21 @@ class Graph(object):
 
     @property
     def nodes(self):
-        """ Access a view of the set of nodes in this graph.
+        """ Access an :class:`.EntitySetView` of the nodes in this
+        graph.
         """
         return self._node_set_view
 
     @property
     def relationships(self):
-        """ Access a view of the set of relationships in this graph.
+        """ Access an :class:`.EntitySetView` of the relationships in
+        this graph.
         """
         return self._relationship_set_view
 
     def relationship_type(self, name):
-        """ Obtain a Relationship subclass for a given relationship
-        type.
+        """ Obtain a :class:`.Relationship` subclass for a given
+        relationship type name.
         """
         try:
             cls = self._relationship_types[name]
@@ -71,18 +74,12 @@ class Graph(object):
         return cls
 
     def put_node(self, n_id, labels=(), properties=None, **kwproperties):
-        """ Put a node into this graph, overwriting any existing node with
-        the same ID.
-        """
         inst = Node(self, n_id)
         inst._labels.update(labels)
         inst._update(properties, **kwproperties)
         return inst
 
     def put_relationship(self, r_id, start_node, end_node, r_type, properties=None, **kwproperties):
-        """ Put a relationship into this graph, overwriting any existing
-        relationship with the same ID.
-        """
         if not isinstance(start_node, Node) or not isinstance(end_node, Node):
             raise TypeError("Start and end nodes must be Node instances (%s and %s passed)" %
                             (type(start_node).__name__, type(end_node).__name__))
@@ -98,8 +95,10 @@ def _put_unbound_relationship(graph, r_id, r_type, properties=None, **kwproperti
     return inst
 
 
-class Entity(object):
-    """ Base class for Node and Relationship.
+class Entity(Mapping):
+    """ Base class for :class:`.Node` and :class:`.Relationship` that
+    provides :class:`.Graph` membership and property containment
+    functionality.
     """
 
     def __new__(cls, graph, id):
@@ -135,10 +134,14 @@ class Entity(object):
 
     @property
     def graph(self):
+        """ The :class:`.Graph` to which this entity belongs.
+        """
         return self._graph
 
     @property
     def id(self):
+        """ The identity of this entity in its container :class:`.Graph`.
+        """
         return self._id
 
     def _update(self, properties, **kwproperties):
@@ -167,6 +170,8 @@ class Entity(object):
 
 
 class EntitySetView(Mapping):
+    """ View of a set of :class:`.Entity` instances within a :class:`.Graph`.
+    """
 
     def __init__(self, entity_dict):
         self._entity_dict = entity_dict
@@ -187,9 +192,9 @@ class Node(Entity):
 
     def __new__(cls, graph, n_id):
         try:
-            inst = graph._nodes[n_id]
+            inst = graph.nodes[n_id]
         except KeyError:
-            inst = graph._nodes[n_id] = Entity.__new__(cls, graph, n_id)
+            inst = graph.nodes[n_id] = Entity.__new__(cls, graph, n_id)
             inst._labels = set()
         return inst
 
@@ -207,9 +212,9 @@ class Relationship(Entity):
 
     def __new__(cls, graph, r_id, r_type):
         try:
-            inst = graph._relationships[r_id]
+            inst = graph.relationships[r_id]
         except KeyError:
-            inst = graph._relationships[r_id] = Entity.__new__(cls, graph, r_id)
+            inst = graph.relationships[r_id] = Entity.__new__(cls, graph, r_id)
             inst.__class__ = graph.relationship_type(r_type)
             inst._start_node = None
             inst._end_node = None
