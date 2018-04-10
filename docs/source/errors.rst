@@ -1,33 +1,7 @@
-***************
-Cypher Sessions
-***************
+******
+Errors
+******
 
-
-.. autoclass:: neo4j.v1.Session
-   :members:
-
-.. autoclass:: neo4j.v1.Transaction
-   :members:
-
-.. autoclass:: neo4j.v1.StatementResult
-   :members: attached, consume, detach, graph, keys, parameters, peek, records, single, statement, summary
-
-.. autoclass:: neo4j.v1.Record
-   :members:
-
-
-Summary Details
----------------
-
-.. autoclass:: neo4j.v1.result.BoltStatementResultSummary
-   :members:
-
-.. autoclass:: neo4j.v1.result.SummaryCounters
-   :members:
-
-
-Exceptions
-----------
 
 .. autoclass:: neo4j.exceptions.AddressError
    :members:

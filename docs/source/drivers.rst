@@ -6,11 +6,23 @@ A `Driver` object holds the detail of a Neo4j database including server URIs, cr
 It also manages a pool of connections which are used to power :class:`.Session` instances.
 
 The scheme of the URI passed to the `Driver` constructor determines the type of `Driver` object constructed.
-For example, the ``bolt`` scheme generates a :class:`.DirectDriver` instance::
+The ``bolt`` scheme will generate a :class:`.DirectDriver` instance and the ``bolt+routing`` scheme a :class:`.RoutingDriver` instance.
+
+`Driver` objects hold a connection pool, are thread-safe and are designed to live for the lifetime of an application.
+Closing a driver will immediately shut down all connections in the pool.
+
+
+.. code-block:: python
 
     from neo4j.v1 import GraphDatabase
-    uri = "bolt://localhost:7687"
-    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
+
+    class Application(object):
+
+        def __init__(self, uri, user, password)
+            self.driver = GraphDatabase.driver(uri, auth=(user, password))
+
+        def close(self):
+            self.driver.close()
 
 
 .. autoclass:: neo4j.v1.GraphDatabase
@@ -27,9 +39,6 @@ For example, the ``bolt`` scheme generates a :class:`.DirectDriver` instance::
 .. autoclass:: neo4j.v1.RoutingDriver
    :members:
    :inherited-members:
-
-.. autoclass:: neo4j.v1.AuthToken
-   :members:
 
 .. autofunction:: neo4j.v1.basic_auth
 

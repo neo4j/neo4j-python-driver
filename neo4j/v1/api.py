@@ -87,17 +87,17 @@ class GraphDatabase(object):
         that will be returned. Options are:
 
             ``bolt``
-              Returns a :class:`.DirectDriver`.
+              Returns a :class:`.DirectDriver` that can target a single address.
 
             ``bolt+routing``
-              Returns a :class:`.RoutingDriver`.
+              Returns a :class:`.RoutingDriver` that can target a cluster with routing capabilities.
 
         :param uri: URI for a graph database service
         :param config: configuration and authentication details (valid keys are listed below)
 
             `auth`
-              An authentication token for the server, for example
-              ``("neo4j", "password")``.
+              An authentication token for the server. For basic auth, this can
+               be a simple tuple, for example ``("neo4j", "password")``.
 
             `der_encoded_server_certificate`
               The server certificate in DER format, if required.
@@ -194,12 +194,8 @@ class Driver(object):
 
 class Session(object):
     """ A `Session` is a logical context for transactional units of work.
-    It typically wraps a TCP connection and should generally be constructed
-    using the :meth:`.Driver.session` method.
-
-    Sessions are not thread safe and can recycle connections via a
-    :class:`.Driver` connection pool. As such, they should be considered
-    lightweight and disposable.
+    It borrows connections from the :class:`.Driver` connection pool, is
+    not thread-safe and should be considered lightweight and disposable.
 
     Typically, Session instances will be created and destroyed within a
     `with` context. For example::
@@ -738,9 +734,6 @@ class StatementResult(object):
 
     def consume(self):
         """ Consume the remainder of this result and return the summary.
-
-        .. NOTE:: It is generally recommended to use :meth:`.summary`
-                  instead of this method.
 
         :returns: The :class:`.ResultSummary` for this result
         """
