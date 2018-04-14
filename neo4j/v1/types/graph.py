@@ -26,6 +26,7 @@ Graph data types
 from collections import Mapping
 
 from neo4j.compat import xstr
+from neo4j.util import deprecated
 
 
 __all__ = [
@@ -192,9 +193,9 @@ class Node(Entity):
 
     def __new__(cls, graph, n_id):
         try:
-            inst = graph.nodes[n_id]
+            inst = graph._nodes[n_id]
         except KeyError:
-            inst = graph.nodes[n_id] = Entity.__new__(cls, graph, n_id)
+            inst = graph._nodes[n_id] = Entity.__new__(cls, graph, n_id)
             inst._labels = set()
         return inst
 
@@ -212,9 +213,9 @@ class Relationship(Entity):
 
     def __new__(cls, graph, r_id, r_type):
         try:
-            inst = graph.relationships[r_id]
+            inst = graph._relationships[r_id]
         except KeyError:
-            inst = graph.relationships[r_id] = Entity.__new__(cls, graph, r_id)
+            inst = graph._relationships[r_id] = Entity.__new__(cls, graph, r_id)
             inst.__class__ = graph.relationship_type(r_type)
             inst._start_node = None
             inst._end_node = None
@@ -239,6 +240,16 @@ class Relationship(Entity):
     @property
     def type(self):
         return type(self).__name__
+
+    @property
+    @deprecated("Relationship.start is deprecated, please use Relationship.start_node.id instead")
+    def start(self):
+        return self.start_node.id
+
+    @property
+    @deprecated("Relationship.end is deprecated, please use Relationship.end_node.id instead")
+    def end(self):
+        return self.end_node.id
 
 
 class Path(object):
@@ -303,6 +314,16 @@ class Path(object):
     @property
     def relationships(self):
         return self._relationships
+
+    @property
+    @deprecated("Path.start is deprecated, please use Path.start_node instead")
+    def start(self):
+        return self.start_node
+
+    @property
+    @deprecated("Path.end is deprecated, please use Path.end_node instead")
+    def end(self):
+        return self.end_node
 
 
 def hydrate_path(nodes, relationships, sequence):
