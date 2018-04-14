@@ -41,6 +41,10 @@ from .spatial import hydration_functions as spatial_hydration_functions, \
 from .temporal import hydration_functions as temporal_hydration_functions, \
                       dehydration_functions as temporal_dehydration_functions
 
+# These classes are imported in order to retain backward compatibility with 1.5.
+# They should be removed in 2.0.
+from .graph import Entity, Node, Relationship, Path
+
 
 INT64_MIN = -(2 ** 63)
 INT64_MAX = (2 ** 63) - 1
