@@ -1,0 +1,60 @@
+{% set name = "neo4j-driver" %}
+{% set version = "1.6.0b1" %}
+{% set file_ext = "tar.gz" %}
+{% set hash_type = "sha256" %}
+{% set hash_value = "38b4977482a747b5beaa831e59f4b9c5639d005de4620f06d36d75ab4e2450d2" %}
+
+package:
+  name: '{{ name|lower }}'
+  version: '{{ version }}'
+
+source:
+  fn: '{{ name }}-{{ version }}.{{ file_ext }}'
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.{{ file_ext }}
+  '{{ hash_type }}': '{{ hash_value }}'
+
+build:
+  number: 0
+  script: python setup.py install --single-version-externally-managed --record=record.txt
+
+requirements:
+  host:
+    - python
+    - setuptools
+    - pytz
+  run:
+    - python
+    - pytz
+
+test:
+  imports:
+    - neo4j
+    - neo4j.bolt
+    - neo4j.compat
+    - neo4j.cypher
+    - neo4j.packstream
+    - neo4j.v1
+    - neo4j.v1.types
+
+about:
+  home: https://github.com/neo4j/neo4j-python-driver
+  license: Apache Software License
+  license_family: APACHE
+  license_file: ''
+  summary: Neo4j Bolt driver for Python
+  description: "****************************\nNeo4j Bolt Driver for Python\n****************************\n\nThe Official Neo4j Driver for Python supports Neo4j 3.0 and above and Python versions 2.7, 3.4,\
+    \ 3.5 and 3.6.\n\n\nQuick Example\n=============\n\n.. code-block:: python\n\n    from neo4j.v1 import GraphDatabase\n\n    driver = GraphDatabase.driver(\"bolt://localhost:7687\", auth=(\"neo4j\",\
+    \ \"password\"))\n\n    def add_friends(tx, name, friend_name):\n        tx.run(\"MERGE (a:Person {name: $name}) \"\n               \"MERGE (a)-[:KNOWS]->(friend:Person {name: $friend_name})\",\n  \
+    \             name=name, friend_name=friend_name)\n\n    def print_friends(tx, name):\n        for record in tx.run(\"MATCH (a:Person)-[:KNOWS]->(friend) WHERE a.name = $name \"\n                  \
+    \           \"RETURN friend.name ORDER BY friend.name\", name=name):\n            print(record[\"friend.name\"])\n\n    with driver.session() as session:\n        session.write_transaction(add_friends,\
+    \ \"Arthur\", \"Guinevere\")\n        session.write_transaction(add_friends, \"Arthur\", \"Lancelot\")\n        session.write_transaction(add_friends, \"Arthur\", \"Merlin\")\n        session.read_transaction(print_friends,\
+    \ \"Arthur\")\n\nLogging\n=============\nThe driver provides a built-in logging. The following example code enables debug logging and prints out logs at stdout:\n\n.. code-block:: python\n\n    from\
+    \ neo4j.util import watch\n    import logging\n    from sys import stdout\n\n    watch(\"neo4j.bolt\", logging.DEBUG, stdout)\n\n\nInstallation\n============\n\nTo install the latest stable version,\
+    \ use:\n\n.. code:: bash\n\n    pip install neo4j-driver\n\nFor the most up-to-date version (generally unstable), use:\n\n.. code:: bash\n\n    pip install git+https://github.com/neo4j/neo4j-python-driver.git#egg=neo4j-driver\n\
+    \n\nOther Information\n=================\n\n* `Neo4j Manual`_\n* `Neo4j Quick Reference Card`_\n* `Example Project`_\n* `Driver Wiki`_ (includes change logs)\n\n.. _`Neo4j Manual`: https://neo4j.com/docs/\n\
+    .. _`Neo4j Quick Reference Card`: https://neo4j.com/docs/cypher-refcard/current/\n.. _`Example Project`: https://github.com/neo4j-examples/movies-python-bolt\n.. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki\n"
+  doc_url: ''
+  dev_url: ''
+
+extra:
+  recipe-maintainers: ''
