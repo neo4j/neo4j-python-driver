@@ -5,6 +5,9 @@ python:
   - "3.4"
   - "3.6"
 
+env:
+  - NEO4J_SERVER_PACKAGE=https://neo4j.com/artifact.php?name=neo4j-community-3.3.5-unix.tar.gz
+
 install:
   - sudo apt-get update
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
@@ -18,13 +21,16 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
-  - conda install conda-build
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION 
+  - conda install conda-build
   - source activate test-environment
-  - conda build .
+  - pip install -r test/requirements.txt
  
 script: 
-  - echo "script step"
+  - coverage erase
+  - coverage run -m pytest -v test/unit test/stub
+  - coverage report
+  - conda build .
 
 deploy:
   - provider: script
