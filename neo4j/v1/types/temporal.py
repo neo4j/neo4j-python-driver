@@ -23,39 +23,35 @@
 This module defines temporal data types.
 """
 
-from collections import namedtuple
-from datetime import date, datetime, time, timedelta
-from warnings import warn
+from datetime import date, time, datetime, timedelta
 
+from neotime import Duration, Date, Time, DateTime
 from pytz import FixedOffset, timezone, utc
 
 from neo4j.packstream.structure import Structure
 
 
-UNIX_EPOCH_DATE = date(1970, 1, 1)
-UNIX_EPOCH_DATETIME_UTC = datetime(1970, 1, 1, 0, 0, 0, 0, utc)
-
-duration = namedtuple("duration", ("years", "months", "days", "hours", "minutes", "seconds"))
+UNIX_EPOCH_DATE = Date(1970, 1, 1)
+UNIX_EPOCH_DATETIME_UTC = DateTime(1970, 1, 1, 0, 0, 0, utc)
 
 
 def hydrate_date(days):
     """ Hydrator for `Date` values.
 
     :param days:
-    :return: date
+    :return: Date
     """
-    return UNIX_EPOCH_DATE + timedelta(days=days)
+    return UNIX_EPOCH_DATE + Duration(days=days)
 
 
 def dehydrate_date(value):
     """ Dehydrator for `date` values.
 
     :param value:
-    :type value: date
+    :type value: Date
     :return:
     """
-    delta = value - UNIX_EPOCH_DATE
-    return Structure(b"D", delta.days)
+    return Structure(b"D", value.toordinal() - UNIX_EPOCH_DATE.toordinal())
 
 
 def hydrate_time(nanoseconds, tz=None):
@@ -63,15 +59,13 @@ def hydrate_time(nanoseconds, tz=None):
 
     :param nanoseconds:
     :param tz:
-    :return: time
+    :return: Time
     """
-    microseconds, nanoseconds = divmod(nanoseconds, 1000)
-    if nanoseconds != 0:
-        warn("Nanosecond resolution is not available on this platform, value is truncated at microsecond resolution")
-    seconds, microseconds = divmod(microseconds, 1000000)
-    minutes, seconds = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    t = time(hours, minutes, seconds, microseconds)
+    seconds, nanoseconds = map(int, divmod(nanoseconds, 1000000000))
+    minutes, seconds = map(int, divmod(seconds, 60))
+    hours, minutes = map(int, divmod(minutes, 60))
+    seconds = (1000000000 * seconds + nanoseconds) / 1000000000
+    t = Time(hours, minutes, seconds)
     if tz is None:
         return t
     tz_offset_minutes, tz_offset_seconds = divmod(tz, 60)
@@ -83,13 +77,16 @@ def dehydrate_time(value):
     """ Dehydrator for `time` values.
 
     :param value:
-    :type value: time
+    :type value: Time
     :return:
     """
-    minutes = 60 * value.hour + value.minute
-    seconds = 60 * minutes + value.second
-    microseconds = 1000000 * seconds + value.microsecond
-    nanoseconds = 1000 * microseconds
+    if isinstance(value, Time):
+        nanoseconds = int(value.ticks * 1000000000)
+    elif isinstance(value, time):
+        nanoseconds = (3600000000000 * value.hour + 60000000000 * value.minute +
+                       1000000000 * value.second + 1000 * value.microsecond)
+    else:
+        raise TypeError("Value must be a neotime.Time or a datetime.time")
     if value.tzinfo:
         return Structure(b"T", nanoseconds, value.tzinfo.utcoffset(value).seconds)
     else:
@@ -104,13 +101,11 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):
     :param tz:
     :return: datetime
     """
-    microseconds, nanoseconds = divmod(nanoseconds, 1000)
-    if nanoseconds != 0:
-        warn("Nanosecond resolution is not available on this platform, value is truncated at microsecond resolution")
-    minutes, seconds = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    days, hours = divmod(hours, 24)
-    t = datetime.combine(UNIX_EPOCH_DATE + timedelta(days=days), time(hours, minutes, seconds, microseconds))
+    minutes, seconds = map(int, divmod(seconds, 60))
+    hours, minutes = map(int, divmod(minutes, 60))
+    days, hours = map(int, divmod(hours, 24))
+    seconds = (1000000000 * seconds + nanoseconds) / 1000000000
+    t = DateTime.combine(UNIX_EPOCH_DATE + Duration(days=days), Time(hours, minutes, seconds))
     if tz is None:
         return t
     if isinstance(tz, int):
@@ -130,12 +125,11 @@ def dehydrate_datetime(value):
     """
 
     def seconds_and_nanoseconds(dt):
-        zone_epoch = datetime(1970, 1, 1, tzinfo=dt.tzinfo)
-        total_seconds = (dt - zone_epoch).total_seconds()
-        whole_seconds = int(total_seconds)
-        fraction_of_second = total_seconds - whole_seconds
-        microseconds = int(round(1000000 * fraction_of_second))
-        return whole_seconds, 1000 * microseconds
+        if isinstance(dt, datetime):
+            dt = DateTime.from_native(dt)
+        zone_epoch = DateTime(1970, 1, 1, tzinfo=dt.tzinfo)
+        t = dt.to_clock_time() - zone_epoch.to_clock_time()
+        return t.seconds, t.nanoseconds
 
     tz = value.tzinfo
     if tz is None:
@@ -162,28 +156,17 @@ def hydrate_duration(months, days, seconds, nanoseconds):
     :param nanoseconds:
     :return: `duration` namedtuple
     """
-    microseconds, nanoseconds = divmod(nanoseconds, 1000)
-    minutes, seconds = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    years, months = divmod(months, 12)
-    if nanoseconds != 0:
-        warn("Nanosecond resolution is not available on this platform, value is truncated at microsecond resolution")
-    return duration(years, months, days, hours, minutes, seconds + (microseconds / 1000000.0))
+    return Duration(months=months, days=days, seconds=seconds, nanoseconds=nanoseconds)
 
 
 def dehydrate_duration(value):
     """ Dehydrator for `duration` values.
 
     :param value:
-    :type value: duration
+    :type value: Duration
     :return:
     """
-    months = 12 * value.years + value.months
-    days = value.days
-    seconds, fraction_of_second = divmod(value.seconds, 1)
-    seconds = 60 * (60 * value.hours + value.minutes) + int(seconds)
-    nanoseconds = 1000 * int(round(1000000 * fraction_of_second))
-    return Structure(b"E", months, days, seconds, nanoseconds)
+    return Structure(b"E", value.months, value.days, value.seconds, int(1000000000 * value.subseconds))
 
 
 def dehydrate_timedelta(value):
@@ -210,11 +193,15 @@ __hydration_functions = {
     b"E": hydrate_duration,
 }
 
+# TODO: re-add built-in types
 __dehydration_functions = {
+    Date: dehydrate_date,
     date: dehydrate_date,
+    Time: dehydrate_time,
     time: dehydrate_time,
+    DateTime: dehydrate_datetime,
     datetime: dehydrate_datetime,
-    duration: dehydrate_duration,
+    Duration: dehydrate_duration,
     timedelta: dehydrate_timedelta,
 }
 

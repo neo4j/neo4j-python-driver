@@ -19,17 +19,15 @@
 # limitations under the License.
 
 
-from datetime import date, datetime, time, timedelta
 from math import isnan
 from unittest import SkipTest
-from warnings import catch_warnings, simplefilter
 
 from pytz import FixedOffset, timezone, utc
 
 from neo4j.exceptions import CypherTypeError
 from neo4j.v1.types.graph import Node, Relationship, Path
 from neo4j.v1.types.spatial import CartesianPoint, WGS84Point
-from neo4j.v1.types.temporal import duration
+from neo4j.v1.types.temporal import Duration, Date, Time, DateTime
 
 from test.integration.tools import DirectIntegrationTestCase
 
@@ -243,7 +241,8 @@ class SpatialTypeOutputTestCase(DirectIntegrationTestCase):
 
 class TemporalTypeInputTestCase(DirectIntegrationTestCase):
 
-    def test_date(self):
+    def test_native_date(self):
+        from datetime import date
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("CYPHER runtime=interpreted WITH $x AS x "
@@ -254,55 +253,96 @@ class TemporalTypeInputTestCase(DirectIntegrationTestCase):
             self.assertEqual(month, 6)
             self.assertEqual(day, 13)
 
+    def test_date(self):
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.year, x.month, x.day",
+                                 x=Date(1976, 6, 13))
+            year, month, day = result.single()
+            self.assertEqual(year, 1976)
+            self.assertEqual(month, 6)
+            self.assertEqual(day, 13)
+
     def test_date_array(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
-            data = [datetime.now().date(), date(1976, 6, 13)]
+            data = [DateTime.now().date(), Date(1976, 6, 13)]
             value = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
             self.assertEqual(value, data)
+
+    def test_native_time(self):
+        from datetime import time
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.hour, x.minute, x.second, x.nanosecond",
+                                 x=time(12, 34, 56, 789012))
+            hour, minute, second, nanosecond = result.single()
+            self.assertEqual(hour, 12)
+            self.assertEqual(minute, 34)
+            self.assertEqual(second, 56)
+            self.assertEqual(nanosecond, 789012000)
 
     def test_whole_second_time(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("CYPHER runtime=interpreted WITH $x AS x "
                                  "RETURN x.hour, x.minute, x.second",
-                                 x=time(12, 34, 56))
+                                 x=Time(12, 34, 56))
             hour, minute, second = result.single()
             self.assertEqual(hour, 12)
             self.assertEqual(minute, 34)
             self.assertEqual(second, 56)
 
-    def test_microsecond_resolution_time(self):
+    def test_nanosecond_resolution_time(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("CYPHER runtime=interpreted WITH $x AS x "
-                                 "RETURN x.hour, x.minute, x.second, x.microsecond",
-                                 x=time(12, 34, 56, 789012))
-            hour, minute, second, microsecond = result.single()
+                                 "RETURN x.hour, x.minute, x.second, x.nanosecond",
+                                 x=Time(12, 34, 56.789012345))
+            hour, minute, second, nanosecond = result.single()
             self.assertEqual(hour, 12)
             self.assertEqual(minute, 34)
             self.assertEqual(second, 56)
-            self.assertEqual(microsecond, 789012)
+            self.assertEqual(nanosecond, 789012345)
 
     def test_time_with_numeric_time_offset(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("CYPHER runtime=interpreted WITH $x AS x "
-                                 "RETURN x.hour, x.minute, x.second, x.microsecond, x.offset",
-                                 x=time(12, 34, 56, 789012, tzinfo=FixedOffset(90)))
-            hour, minute, second, microsecond, offset = result.single()
+                                 "RETURN x.hour, x.minute, x.second, x.nanosecond, x.offset",
+                                 x=Time(12, 34, 56.789012345, tzinfo=FixedOffset(90)))
+            hour, minute, second, nanosecond, offset = result.single()
             self.assertEqual(hour, 12)
             self.assertEqual(minute, 34)
             self.assertEqual(second, 56)
-            self.assertEqual(microsecond, 789012)
+            self.assertEqual(nanosecond, 789012345)
             self.assertEqual(offset, "+01:30")
 
     def test_time_array(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
-            data = [time(12, 34, 56), time(10, 0, 0)]
+            data = [Time(12, 34, 56), Time(10, 0, 0)]
             value = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
             self.assertEqual(value, data)
+
+    def test_native_datetime(self):
+        from datetime import datetime
+        self.assert_supports_temporal_types()
+        with self.driver.session() as session:
+            result = session.run("CYPHER runtime=interpreted WITH $x AS x "
+                                 "RETURN x.year, x.month, x.day, "
+                                 "       x.hour, x.minute, x.second, x.nanosecond",
+                                 x=datetime(1976, 6, 13, 12, 34, 56, 789012))
+            year, month, day, hour, minute, second, nanosecond = result.single()
+            self.assertEqual(year, 1976)
+            self.assertEqual(month, 6)
+            self.assertEqual(day, 13)
+            self.assertEqual(hour, 12)
+            self.assertEqual(minute, 34)
+            self.assertEqual(second, 56)
+            self.assertEqual(nanosecond, 789012000)
 
     def test_whole_second_datetime(self):
         self.assert_supports_temporal_types()
@@ -310,7 +350,7 @@ class TemporalTypeInputTestCase(DirectIntegrationTestCase):
             result = session.run("CYPHER runtime=interpreted WITH $x AS x "
                                  "RETURN x.year, x.month, x.day, "
                                  "       x.hour, x.minute, x.second",
-                                 x=datetime(1976, 6, 13, 12, 34, 56))
+                                 x=DateTime(1976, 6, 13, 12, 34, 56))
             year, month, day, hour, minute, second = result.single()
             self.assertEqual(year, 1976)
             self.assertEqual(month, 6)
@@ -319,61 +359,61 @@ class TemporalTypeInputTestCase(DirectIntegrationTestCase):
             self.assertEqual(minute, 34)
             self.assertEqual(second, 56)
 
-    def test_microsecond_resolution_datetime(self):
+    def test_nanosecond_resolution_datetime(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("CYPHER runtime=interpreted WITH $x AS x "
                                  "RETURN x.year, x.month, x.day, "
-                                 "       x.hour, x.minute, x.second, x.microsecond",
-                                 x=datetime(1976, 6, 13, 12, 34, 56, 789012))
-            year, month, day, hour, minute, second, microsecond = result.single()
+                                 "       x.hour, x.minute, x.second, x.nanosecond",
+                                 x=DateTime(1976, 6, 13, 12, 34, 56.789012345))
+            year, month, day, hour, minute, second, nanosecond = result.single()
             self.assertEqual(year, 1976)
             self.assertEqual(month, 6)
             self.assertEqual(day, 13)
             self.assertEqual(hour, 12)
             self.assertEqual(minute, 34)
             self.assertEqual(second, 56)
-            self.assertEqual(microsecond, 789012)
+            self.assertEqual(nanosecond, 789012345)
 
     def test_datetime_with_numeric_time_offset(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("CYPHER runtime=interpreted WITH $x AS x "
                                  "RETURN x.year, x.month, x.day, "
-                                 "       x.hour, x.minute, x.second, x.microsecond, x.offset",
-                                 x=datetime(1976, 6, 13, 12, 34, 56, 789012, tzinfo=FixedOffset(90)))
-            year, month, day, hour, minute, second, microsecond, offset = result.single()
+                                 "       x.hour, x.minute, x.second, x.nanosecond, x.offset",
+                                 x=DateTime(1976, 6, 13, 12, 34, 56.789012345, tzinfo=FixedOffset(90)))
+            year, month, day, hour, minute, second, nanosecond, offset = result.single()
             self.assertEqual(year, 1976)
             self.assertEqual(month, 6)
             self.assertEqual(day, 13)
             self.assertEqual(hour, 12)
             self.assertEqual(minute, 34)
             self.assertEqual(second, 56)
-            self.assertEqual(microsecond, 789012)
+            self.assertEqual(nanosecond, 789012345)
             self.assertEqual(offset, "+01:30")
 
     def test_datetime_with_named_time_zone(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
-            input_value = timezone("US/Pacific").localize(datetime(1976, 6, 13, 12, 34, 56, 789012))
+            input_value = timezone("US/Pacific").localize(DateTime(1976, 6, 13, 12, 34, 56.789012345))
             result = session.run("CYPHER runtime=interpreted WITH $x AS x "
                                  "RETURN x.year, x.month, x.day, "
-                                 "       x.hour, x.minute, x.second, x.microsecond, x.timezone",
+                                 "       x.hour, x.minute, x.second, x.nanosecond, x.timezone",
                                  x=input_value)
-            year, month, day, hour, minute, second, microsecond, tz = result.single()
+            year, month, day, hour, minute, second, nanosecond, tz = result.single()
             self.assertEqual(year, input_value.year)
             self.assertEqual(month, input_value.month)
             self.assertEqual(day, input_value.day)
             self.assertEqual(hour, input_value.hour)
             self.assertEqual(minute, input_value.minute)
-            self.assertEqual(second, input_value.second)
-            self.assertEqual(microsecond, input_value.microsecond)
+            self.assertEqual(second, int(input_value.second))
+            self.assertEqual(nanosecond, int (1000000000 * input_value.second) % 1000000000)
             self.assertEqual(tz, input_value.tzinfo.zone)
 
     def test_datetime_array(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
-            data = [datetime(2018, 4, 6, 13, 4, 42, 516120), datetime(1976, 6, 13)]
+            data = [DateTime(2018, 4, 6, 13, 4, 42.516120), DateTime(1976, 6, 13)]
             value = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
             self.assertEqual(value, data)
 
@@ -382,7 +422,7 @@ class TemporalTypeInputTestCase(DirectIntegrationTestCase):
         with self.driver.session() as session:
             result = session.run("CYPHER runtime=interpreted WITH $x AS x "
                                  "RETURN x.months, x.days, x.seconds, x.microsecondsOfSecond",
-                                 x=duration(years=1, months=2, days=3, hours=4, minutes=5, seconds=6.789012))
+                                 x=Duration(years=1, months=2, days=3, hours=4, minutes=5, seconds=6.789012))
             months, days, seconds, microseconds = result.single()
             self.assertEqual(months, 14)
             self.assertEqual(days, 3)
@@ -392,11 +432,12 @@ class TemporalTypeInputTestCase(DirectIntegrationTestCase):
     def test_duration_array(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
-            data = [duration(1, 2, 3, 4, 5, 6), duration(9, 8, 7, 6, 5, 4)]
+            data = [Duration(1, 2, 3, 4, 5, 6), Duration(9, 8, 7, 6, 5, 4)]
             value = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
             self.assertEqual(value, data)
 
     def test_timedelta(self):
+        from datetime import timedelta
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("CYPHER runtime=interpreted WITH $x AS x "
@@ -411,7 +452,7 @@ class TemporalTypeInputTestCase(DirectIntegrationTestCase):
     def test_mixed_array(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
-            data = [date(1976, 6, 13), duration(9, 8, 7, 6, 5, 4)]
+            data = [Date(1976, 6, 13), Duration(9, 8, 7, 6, 5, 4)]
             with self.assertRaises(CypherTypeError):
                 _ = session.write_transaction(run_and_rollback, "CREATE (a {x:$x}) RETURN a.x", x=data)
 
@@ -423,156 +464,109 @@ class TemporalTypeOutputTestCase(DirectIntegrationTestCase):
         with self.driver.session() as session:
             result = session.run("RETURN date('1976-06-13')")
             value = result.single().value()
-            self.assertIsInstance(value, date)
-            self.assertEqual(value, date(1976, 6, 13))
+            self.assertIsInstance(value, Date)
+            self.assertEqual(value, Date(1976, 6, 13))
 
     def test_whole_second_time(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN time('12:34:56')")
             value = result.single().value()
-            self.assertIsInstance(value, time)
-            self.assertEqual(value, time(12, 34, 56, tzinfo=FixedOffset(0)))
-
-    def test_microsecond_resolution_time(self):
-        self.assert_supports_temporal_types()
-        with self.driver.session() as session:
-            result = session.run("RETURN time('12:34:56.789012')")
-            value = result.single().value()
-            self.assertIsInstance(value, time)
-            self.assertEqual(value, time(12, 34, 56, 789012, tzinfo=FixedOffset(0)))
+            self.assertIsInstance(value, Time)
+            self.assertEqual(value, Time(12, 34, 56, tzinfo=FixedOffset(0)))
 
     def test_nanosecond_resolution_time(self):
         self.assert_supports_temporal_types()
-        with catch_warnings(record=True) as warning_list:
-            simplefilter("always")
-            with self.driver.session() as session:
-                result = session.run("RETURN time('12:34:56.789012345')")
-                value = result.single().value()
-                self.assertIsInstance(value, time)
-                self.assertEqual(value, time(12, 34, 56, 789012, tzinfo=FixedOffset(0)))
-                self.assertEqual(len(warning_list), 1)
+        with self.driver.session() as session:
+            result = session.run("RETURN time('12:34:56.789012345')")
+            value = result.single().value()
+            self.assertIsInstance(value, Time)
+            self.assertEqual(value, Time(12, 34, 56.789012345, tzinfo=FixedOffset(0)))
 
     def test_time_with_numeric_time_offset(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
-            result = session.run("RETURN time('12:34:56.789012+0130')")
+            result = session.run("RETURN time('12:34:56.789012345+0130')")
             value = result.single().value()
-            self.assertIsInstance(value, time)
-            self.assertEqual(value, time(12, 34, 56, 789012, tzinfo=FixedOffset(90)))
+            self.assertIsInstance(value, Time)
+            self.assertEqual(value, Time(12, 34, 56.789012345, tzinfo=FixedOffset(90)))
 
     def test_whole_second_localtime(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN localtime('12:34:56')")
             value = result.single().value()
-            self.assertIsInstance(value, time)
-            self.assertEqual(value, time(12, 34, 56))
-
-    def test_microsecond_resolution_localtime(self):
-        self.assert_supports_temporal_types()
-        with self.driver.session() as session:
-            result = session.run("RETURN localtime('12:34:56.789012')")
-            value = result.single().value()
-            self.assertIsInstance(value, time)
-            self.assertEqual(value, time(12, 34, 56, 789012))
+            self.assertIsInstance(value, Time)
+            self.assertEqual(value, Time(12, 34, 56))
 
     def test_nanosecond_resolution_localtime(self):
         self.assert_supports_temporal_types()
-        with catch_warnings(record=True) as warning_list:
-            simplefilter("always")
-            with self.driver.session() as session:
-                result = session.run("RETURN localtime('12:34:56.789012345')")
-                value = result.single().value()
-                self.assertIsInstance(value, time)
-                self.assertEqual(value, time(12, 34, 56, 789012))
-                self.assertEqual(len(warning_list), 1)
+        with self.driver.session() as session:
+            result = session.run("RETURN localtime('12:34:56.789012345')")
+            value = result.single().value()
+            self.assertIsInstance(value, Time)
+            self.assertEqual(value, Time(12, 34, 56.789012345))
 
     def test_whole_second_datetime(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN datetime('1976-06-13T12:34:56')")
             value = result.single().value()
-            self.assertIsInstance(value, datetime)
-            self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, tzinfo=utc))
-
-    def test_microsecond_resolution_datetime(self):
-        self.assert_supports_temporal_types()
-        with self.driver.session() as session:
-            result = session.run("RETURN datetime('1976-06-13T12:34:56.789012')")
-            value = result.single().value()
-            self.assertIsInstance(value, datetime)
-            self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012, tzinfo=utc))
+            self.assertIsInstance(value, DateTime)
+            self.assertEqual(value, DateTime(1976, 6, 13, 12, 34, 56, tzinfo=utc))
 
     def test_nanosecond_resolution_datetime(self):
         self.assert_supports_temporal_types()
-        with catch_warnings(record=True) as warning_list:
-            simplefilter("always")
-            with self.driver.session() as session:
-                result = session.run("RETURN datetime('1976-06-13T12:34:56.789012345')")
-                value = result.single().value()
-                self.assertIsInstance(value, datetime)
-                self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012, tzinfo=utc))
-                self.assertEqual(len(warning_list), 1)
+        with self.driver.session() as session:
+            result = session.run("RETURN datetime('1976-06-13T12:34:56.789012345')")
+            value = result.single().value()
+            self.assertIsInstance(value, DateTime)
+            self.assertEqual(value, DateTime(1976, 6, 13, 12, 34, 56.789012345, tzinfo=utc))
 
     def test_datetime_with_numeric_time_offset(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
-            result = session.run("RETURN datetime('1976-06-13T12:34:56.789012+01:30')")
+            result = session.run("RETURN datetime('1976-06-13T12:34:56.789012345+01:30')")
             value = result.single().value()
-            self.assertIsInstance(value, datetime)
-            self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012, tzinfo=FixedOffset(90)))
+            self.assertIsInstance(value, DateTime)
+            self.assertEqual(value, DateTime(1976, 6, 13, 12, 34, 56.789012345, tzinfo=FixedOffset(90)))
 
     def test_datetime_with_named_time_zone(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
-            result = session.run("RETURN datetime('1976-06-13T12:34:56.789012[Europe/London]')")
+            result = session.run("RETURN datetime('1976-06-13T12:34:56.789012345[Europe/London]')")
             value = result.single().value()
-            self.assertIsInstance(value, datetime)
-            self.assertEqual(value, timezone("Europe/London").localize(datetime(1976, 6, 13, 12, 34, 56, 789012)))
+            self.assertIsInstance(value, DateTime)
+            self.assertEqual(value, timezone("Europe/London").localize(DateTime(1976, 6, 13, 12, 34, 56.789012345)))
 
     def test_whole_second_localdatetime(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN localdatetime('1976-06-13T12:34:56')")
             value = result.single().value()
-            self.assertIsInstance(value, datetime)
-            self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56))
-
-    def test_microsecond_resolution_localdatetime(self):
-        self.assert_supports_temporal_types()
-        with self.driver.session() as session:
-            result = session.run("RETURN localdatetime('1976-06-13T12:34:56.789012')")
-            value = result.single().value()
-            self.assertIsInstance(value, datetime)
-            self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012))
+            self.assertIsInstance(value, DateTime)
+            self.assertEqual(value, DateTime(1976, 6, 13, 12, 34, 56))
 
     def test_nanosecond_resolution_localdatetime(self):
         self.assert_supports_temporal_types()
-        with catch_warnings(record=True) as warning_list:
-            simplefilter("always")
-            with self.driver.session() as session:
-                result = session.run("RETURN localdatetime('1976-06-13T12:34:56.789012345')")
-                value = result.single().value()
-                self.assertIsInstance(value, datetime)
-                self.assertEqual(value, datetime(1976, 6, 13, 12, 34, 56, 789012))
-                self.assertEqual(len(warning_list), 1)
+        with self.driver.session() as session:
+            result = session.run("RETURN localdatetime('1976-06-13T12:34:56.789012345')")
+            value = result.single().value()
+            self.assertIsInstance(value, DateTime)
+            self.assertEqual(value, DateTime(1976, 6, 13, 12, 34, 56.789012345))
 
     def test_duration(self):
         self.assert_supports_temporal_types()
         with self.driver.session() as session:
             result = session.run("RETURN duration('P1Y2M3DT4H5M6.789S')")
             value = result.single().value()
-            self.assertIsInstance(value, duration)
-            self.assertEqual(value, duration(1, 2, 3, 4, 5, 6.789))
+            self.assertIsInstance(value, Duration)
+            self.assertEqual(value, Duration(years=1, months=2, days=3, hours=4, minutes=5, seconds=6.789))
 
     def test_nanosecond_resolution_duration(self):
         self.assert_supports_temporal_types()
-        with catch_warnings(record=True) as warning_list:
-            simplefilter("always")
-            with self.driver.session() as session:
-                result = session.run("RETURN duration('P1Y2M3DT4H5M6.789123456S')")
-                value = result.single().value()
-                self.assertIsInstance(value, duration)
-                self.assertEqual(value, duration(1, 2, 3, 4, 5, 6.789123))
-                self.assertEqual(len(warning_list), 1)
+        with self.driver.session() as session:
+            result = session.run("RETURN duration('P1Y2M3DT4H5M6.789123456S')")
+            value = result.single().value()
+            self.assertIsInstance(value, Duration)
+            self.assertEqual(value, Duration(years=1, months=2, days=3, hours=4, minutes=5, seconds=6.789123456))

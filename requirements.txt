@@ -1,1 +1,1 @@
-pytz
+neotime==1.0.0
