@@ -18,4 +18,4 @@
 # limitations under the License.
 
 
-version = "1.6.0.dev0"
+version = "1.6.0b2"
