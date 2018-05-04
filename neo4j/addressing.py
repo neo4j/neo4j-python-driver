@@ -104,7 +104,15 @@ class SocketAddress(object):
 
 def resolve(socket_address):
     try:
-        return [address for _, _, _, _, address in
-                getaddrinfo(socket_address[0], socket_address[1], 0, SOCK_STREAM, IPPROTO_TCP)]
+        info = getaddrinfo(socket_address[0], socket_address[1], 0, SOCK_STREAM, IPPROTO_TCP)
     except gaierror:
         raise AddressError("Cannot resolve address {!r}".format(socket_address[0]))
+    else:
+        addresses = []
+        for _, _, _, _, address in info:
+            if len(address) == 4 and address[3] != 0:
+                # skip any IPv6 addresses with a non-zero scope id
+                # as these appear to cause problems on some platforms
+                continue
+            addresses.append(address)
+        return addresses
