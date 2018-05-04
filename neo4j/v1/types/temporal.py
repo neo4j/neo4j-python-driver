@@ -18,6 +18,9 @@
 # limitations under the License.
 
 
+from __future__ import division
+
+
 """
 This module defines temporal data types.
 """
