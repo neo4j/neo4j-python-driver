@@ -42,7 +42,7 @@ else:
     ext_modules = cythonize([Extension("*", ["**/*.pyx"])])
 
 install_requires = [
-    "pytz",
+    "neotime==1.0.0",
 ]
 classifiers = [
     "Intended Audience :: Developers",
