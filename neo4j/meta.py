@@ -18,4 +18,5 @@
 # limitations under the License.
 
 
-version = "1.6.0b2"
+# This version number will be automatically set in release-prepare build.
+version = "1.7.0.dev0"
