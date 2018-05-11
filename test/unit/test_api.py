@@ -21,11 +21,11 @@
 from unittest import TestCase
 from uuid import uuid4
 
-from neo4j.v1.session import _fix_parameters
+from neo4j.v1.types import fix_parameters
 
 
 def dehydrated_value(value):
-    return _fix_parameters({"_": value}, 1, supports_bytes=True)["_"]
+    return fix_parameters({"_": value}, 1, supports_bytes=True)["_"]
 
 
 class ValueDehydrationTestCase(TestCase):

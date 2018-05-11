@@ -23,8 +23,10 @@ from random import random
 from time import sleep
 from warnings import warn
 
-from neo4j.exceptions import ProtocolError, ServiceUnavailable
-from neo4j.compat import urlparse
+from neo4j.bolt.connection import RUN, PULL_ALL
+from neo4j.bolt.response import Response
+from neo4j.exceptions import ServiceUnavailable
+from neo4j.compat import urlparse, ustr
 from neo4j.exceptions import CypherError, TransientError
 from neo4j.config import default_config
 from neo4j.compat import perf_counter
@@ -64,75 +66,38 @@ def retry_delay_generator(initial_delay, multiplier, jitter_factor):
         delay *= multiplier
 
 
-class Hydrator(object):
-
-    def hydrate(self, values):
-        """ Hydrate values from raw representations into client objects.
-        """
+def is_retriable_transient_error(error):
+    """
+    :type error: TransientError
+    """
+    return not (error.code in ("Neo.TransientError.Transaction.Terminated",
+                               "Neo.TransientError.Transaction.LockClientStopped"))
 
 
 class GraphDatabase(object):
-    """ The `GraphDatabase` class provides access to all graph
-    database functionality. This class is primarily used to construct a
-    :class:`.Driver` instance, using the :meth:`.driver` method.
+    """ Accessor for :class:`.Driver` construction.
     """
-
-    uri_schemes = {}
 
     @classmethod
     def driver(cls, uri, **config):
-        """ Acquire a :class:`.Driver` instance for the given URI and
-        configuration. The URI scheme determines the Driver implementation
-        that will be returned. Options are:
-
-            ``bolt``
-              Returns a :class:`.DirectDriver` that can target a single address.
-
-            ``bolt+routing``
-              Returns a :class:`.RoutingDriver` that can target a cluster with routing capabilities.
-
-        :param uri: URI for a graph database service
-        :param config: configuration and authentication details (valid keys are listed below)
-
-            `auth`
-              An authentication token for the server. For basic auth, this can
-               be a simple tuple, for example ``("neo4j", "password")``.
-
-            `der_encoded_server_certificate`
-              The server certificate in DER format, if required.
-
-            `encrypted`
-              A boolean flag to determine whether encryption should be used.
-              Defaults to :const:`True`.
-
-            `trust`
-              Trust level: one of :attr:`.TRUST_ALL_CERTIFICATES` (default) or
-              :attr:`.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES`.
-
-            `user_agent`
-              A custom user agent string, if required.
-
-              for more config options see neo4j.config.default_config
-
+        """ Create a :class:`.Driver` object. Calling this method provides
+        identical functionality to constructing a :class:`.Driver` or
+        :class:`.Driver` subclass instance directly.
         """
-        parsed = urlparse(uri)
-        try:
-            driver_class = cls.uri_schemes[parsed.scheme]
-        except KeyError:
-            raise ProtocolError("URI scheme %r not supported" % parsed.scheme)
-        else:
-            return driver_class(uri, **config)
+        return Driver(uri, **config)
 
 
 class Driver(object):
-    """ The base class for all `Driver` implementations. A Driver is an accessor for
-    a specific graph database. It is typically thread-safe, acts as a template for
-    :class:`.Session` creation and hosts a connection pool.
+    """ Base class for all types of :class:`.Driver`, instances of which are
+    used as the primary access point to Neo4j.
 
-    All configuration and authentication settings are held immutably by the
-    Driver. Should different settings be required, a new Driver instance
-    should be created via the :meth:`.GraphDatabase.driver` method.
+    :param uri: URI for a graph database service
+    :param config: configuration and authentication details (valid keys are listed below)
     """
+
+    #: Overridden by subclasses to specify the URI scheme owned by that
+    #: class.
+    uri_scheme = None
 
     #: Connection pool
     _pool = None
@@ -140,9 +105,26 @@ class Driver(object):
     #: Indicator of driver closure.
     _closed = False
 
-    def __init__(self, pool, **config):
-        self._pool = pool
-        self._max_retry_time = config.get("max_retry_time", default_config["max_retry_time"])
+    @classmethod
+    def _check_uri(cls, uri):
+        """ Check whether a URI is compatible with a :class:`.Driver`
+        subclass. When called from a subclass, execution simply passes
+        through if the URI scheme is valid for that class. If invalid,
+        a `ValueError` is raised.
+
+        :param uri: URI to check for compatibility
+        :raise: `ValueError` if URI scheme is incompatible
+        """
+        parsed = urlparse(uri)
+        if parsed.scheme != cls.uri_scheme:
+            raise ValueError("%s objects require the %r URI scheme" % (cls.__name__, cls.uri_scheme))
+
+    def __new__(cls, uri, **config):
+        parsed = urlparse(uri)
+        for subclass in Driver.__subclasses__():
+            if parsed.scheme == subclass.uri_scheme:
+                return subclass(uri, **config)
+        raise ValueError("URI scheme %r not supported" % parsed.scheme)
 
     def __del__(self):
         self.close()
@@ -154,24 +136,13 @@ class Driver(object):
         self.close()
 
     def session(self, access_mode=None, **parameters):
-        """ Create a new session using a connection from the driver connection
-        pool. Session creation is a lightweight operation and sessions are
-        not thread safe, therefore a session should generally be short-lived
-        within a single thread.
+        """ Create a new :class:`.Session` object based on this
+        :class:`.Driver`.
 
-        :param access_mode: access mode for this session (read or write)
-        :param parameters: set of parameters for this session:
-
-        `bookmark`
-            A bookmark after which this session should begin.
-
-        `bookmarks`
-            A collection of bookmarks after which this session should begin.
-
-        `max_retry_time`
-            The maximum time after which to stop attempting retries of failed
-            transactions.
-
+        :param access_mode: default access mode (read or write) for
+                            transactions in this session
+        :param parameters: custom session parameters (see
+                           :class:`.Session` for details)
         :returns: new :class:`.Session` object
         """
         if self.closed():
@@ -179,7 +150,7 @@ class Driver(object):
 
     def close(self):
         """ Shut down, closing any open connections that were spawned by
-        this Driver.
+        this :class:`.Driver`.
         """
         if not self._closed:
             self._closed = True
@@ -192,16 +163,37 @@ class Driver(object):
 
 
 class Session(object):
-    """ A `Session` is a logical context for transactional units of work.
-    It borrows connections from the :class:`.Driver` connection pool, is
-    not thread-safe and should be considered lightweight and disposable.
+    """ A :class:`.Session` is a logical context for transactional units
+    of work. Connections are drawn from the :class:`.Driver` connection
+    pool as required.
 
-    Typically, Session instances will be created and destroyed within a
-    `with` context. For example::
+    Session creation is a lightweight operation and sessions are not thread
+    safe. Therefore a session should generally be short-lived, and not
+    span multiple threads.
+
+    In general, sessions will be created and destroyed within a `with`
+    context. For example::
 
         with driver.session() as session:
             result = session.run("MATCH (a:Person) RETURN a.name")
             # do something with the result...
+
+    :param acquirer: callback function for acquiring new connections
+                     with a given access mode
+    :param access_mode: default access mode (read or write) for
+                        transactions in this session
+    :param parameters: custom session parameters, including:
+
+        `bookmark`
+            A single bookmark after which this session should begin.
+            (Deprecated, use `bookmarks` instead)
+
+        `bookmarks`
+            A collection of bookmarks after which this session should begin.
+
+        `max_retry_time`
+            The maximum time after which to stop attempting retries of failed
+            transactions.
 
     """
 
@@ -503,28 +495,43 @@ class Session(object):
     def write_transaction(self, unit_of_work, *args, **kwargs):
         return self._run_transaction(WRITE_ACCESS, unit_of_work, *args, **kwargs)
 
+    def _run(self, statement, parameters):
+        from neo4j.v1.result import BoltStatementResult
+        from neo4j.v1.types import fix_parameters
+        if self.closed():
+            raise SessionError("Session closed")
+
+        run_response = Response(self._connection)
+        pull_all_response = Response(self._connection)
+        self._last_result = result = BoltStatementResult(self, run_response, pull_all_response)
+        result.statement = ustr(statement)
+        result.parameters = fix_parameters(parameters, self._connection.protocol_version,
+                                           supports_bytes=self._connection.server.supports_bytes())
+
+        self._connection.append(RUN, (result.statement, result.parameters), response=run_response)
+        self._connection.append(PULL_ALL, response=pull_all_response)
+
+        return result
+
     def __run__(self, statement, parameters):
-        pass
+        return self._run(statement, parameters)
 
     def __begin__(self):
-        pass
+        if self._bookmarks:
+            parameters = {"bookmark": self.last_bookmark(), "bookmarks": self._bookmarks}
+        else:
+            parameters = {}
+        return self.__run__(u"BEGIN", parameters)
 
     def __commit__(self):
-        pass
+        return self.__run__(u"COMMIT", {})
 
     def __rollback__(self):
-        pass
+        return self.__run__(u"ROLLBACK", {})
 
     def __bookmark__(self, result):
-        pass
-
-
-def is_retriable_transient_error(error):
-    """
-    :type error: TransientError
-    """
-    return not (error.code in ("Neo.TransientError.Transaction.Terminated",
-                               "Neo.TransientError.Transaction.LockClientStopped"))
+        summary = result.summary()
+        return summary.metadata.get("bookmark")
 
 
 class Transaction(object):

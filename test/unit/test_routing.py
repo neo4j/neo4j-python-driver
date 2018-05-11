@@ -55,7 +55,7 @@ def connector(address, error_handler):
     return connect(address, error_handler=error_handler, auth=basic_auth("neotest", "neotest"))
 
 
-class RoundRobinSetTestCase(TestCase):
+class OrderedSetTestCase(TestCase):
     def test_should_repr_as_set(self):
         s = OrderedSet([1, 2, 3])
         assert repr(s) == "{1, 2, 3}"

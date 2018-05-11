@@ -31,7 +31,6 @@ from operator import xor as xor_operator
 
 from neo4j.packstream import Structure
 from neo4j.compat import string, integer, ustr
-from neo4j.v1.api import Hydrator
 
 from .graph import Graph, hydration_functions as graph_hydration_functions, \
                           dehydration_functions as graph_dehydration_functions
@@ -62,6 +61,19 @@ def iter_items(iterable):
     else:
         for key, value in iterable:
             yield key, value
+
+
+def fix_parameters(parameters, protocol_version, **kwargs):
+    if not parameters:
+        return {}
+    dehydrator = PackStreamDehydrator(protocol_version, **kwargs)
+    try:
+        dehydrated, = dehydrator.dehydrate([parameters])
+    except TypeError as error:
+        value = error.args[0]
+        raise TypeError("Parameters of type {} are not supported".format(type(value).__name__))
+    else:
+        return dehydrated
 
 
 class Record(tuple, Mapping):
@@ -223,7 +235,7 @@ class Record(tuple, Mapping):
         return dict(self)
 
 
-class PackStreamHydrator(Hydrator):
+class PackStreamHydrator(object):
 
     def __init__(self, protocol_version):
         super(PackStreamHydrator, self).__init__()
