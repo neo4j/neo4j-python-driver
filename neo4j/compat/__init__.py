@@ -25,6 +25,8 @@ excluded from test coverage.
 """
 
 
+map_type = type(map(str, range(0)))
+
 # Workaround for Python 2/3 type differences
 try:
     unicode
