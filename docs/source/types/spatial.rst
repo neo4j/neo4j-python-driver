@@ -2,11 +2,11 @@
 Spatial Data Types
 ==================
 
-=============  ========  ==============  ======================
-Cypher Type    Property  Array Property  Python Type
-=============  ========  ==============  ======================
-Point          *yes*     *yes*           :class:`.Point`
-=============  ========  ==============  ======================
+=============  ======================
+Cypher Type    Python Type
+=============  ======================
+Point          :class:`.Point`
+=============  ======================
 
 .. autoclass:: neo4j.v1.types.spatial.Point
    :members:

@@ -1,28 +1,23 @@
+.. py:currentmodule:: neotime
+
 ===================
 Temporal Data Types
 ===================
 
-.. py:currentmodule:: neotime
+Temporal data types are implemented by the `neotime <http://neotime.readthedocs.io/en/latest/>`_ package.
+These provide a set of types compliant with ISO-8601 and Cypher, which are similar to those found in the built-in ``datetime`` module.
+Sub-second values are measured to nanosecond precision and the types are compatible with `pytz <http://pytz.sourceforge.net/>`_.
 
-=============  ========  ==============  ======================================
-Cypher         Property  Array Property  Python
-=============  ========  ==============  ======================================
-Date           *yes*     *yes*           ``neotime.Date``
-Time           *yes*     *yes*           ``neotime.Time`` (tzinfo != None)
-LocalTime      *yes*     *yes*           ``neotime.Time`` (tzinfo == None)
-DateTime       *yes*     *yes*           ``neotime.DateTime`` (tzinfo != None)
-LocalDateTime  *yes*     *yes*           ``neotime.DateTime`` (tzinfo == None)
-Duration       *yes*     *yes*           ``neotime.Duration`` :sup:`[1]`
-=============  ========  ==============  ======================================
+The table below shows the general mappings between Cypher and the temporal types provided by the driver.
+In addition, the built-in temporal types can be passed as parameters and will be mapped appropriately.
 
-.. admonition:: Notes
-
-   1. A ``datetime.timespan`` value passed as a parameter will always be implicitly converted to a :class:`.Duration` value.
-
-.. class:: Duration
-
-.. class:: Date
-
-.. class:: Time
-
-.. class:: DateTime
+=============  =========================  ==================================  ============
+Cypher         Python driver type         Python built-in type                ``tzinfo``
+=============  =========================  ==================================  ============
+Date           :class:`neotime:Date`      :class:`python:datetime.date`
+Time           :class:`neotime:Time`      :class:`python:datetime.time`       ``not None``
+LocalTime      :class:`neotime:Time`      :class:`python:datetime.time`       ``None``
+DateTime       :class:`neotime:DateTime`  :class:`python:datetime.datetime`   ``not None``
+LocalDateTime  :class:`neotime:DateTime`  :class:`python:datetime.datetime`   ``None``
+Duration       :class:`neotime:Duration`  :class:`python:datetime.timedelta`
+=============  =========================  ==================================  ============

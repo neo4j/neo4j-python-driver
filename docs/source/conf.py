@@ -38,6 +38,7 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
+    'sphinx.ext.intersphinx',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -296,3 +297,11 @@ texinfo_documents = [
 
 def setup(app):
     app.add_stylesheet('custom.css')
+
+
+# -- Options for Intersphinx
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'neotime': ('http://neotime.readthedocs.io/en/latest/', None),
+}
