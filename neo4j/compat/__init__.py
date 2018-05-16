@@ -122,6 +122,6 @@ else:
 
 # The location of urlparse varies between Python 2 and 3
 try:
-    from urllib.parse import urlparse
+    from urllib.parse import urlparse, parse_qs
 except ImportError:
-    from urlparse import urlparse
+    from urlparse import urlparse, parse_qs

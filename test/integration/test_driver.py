@@ -18,7 +18,8 @@
 # limitations under the License.
 
 
-from neo4j.v1 import GraphDatabase, ServiceUnavailable
+from neo4j.bolt import DEFAULT_PORT
+from neo4j.v1 import GraphDatabase, Driver, ServiceUnavailable
 from test.integration.tools import IntegrationTestCase
 
 
@@ -43,3 +44,15 @@ class DriverTestCase(IntegrationTestCase):
         with self.assertRaises(ServiceUnavailable):
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False):
                 pass
+
+    def test_custom_resolver(self):
+
+        def my_resolver(socket_address):
+            self.assertEqual(socket_address, ("*", DEFAULT_PORT))
+            yield "99.99.99.99", self.bolt_port     # this should be rejected as unable to connect
+            yield "127.0.0.1", self.bolt_port       # this should succeed
+
+        with Driver("bolt://*", auth=self.auth_token, resolver=my_resolver) as driver:
+            with driver.session() as session:
+                summary = session.run("RETURN 1").summary()
+                self.assertEqual(summary.server.address, ("127.0.0.1", 7687))

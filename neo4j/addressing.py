@@ -21,13 +21,8 @@
 from collections import namedtuple
 from socket import getaddrinfo, gaierror, SOCK_STREAM, IPPROTO_TCP
 
-from neo4j.compat import urlparse
+from neo4j.compat import urlparse, parse_qs
 from neo4j.exceptions import AddressError
-
-try:
-    from urllib.parse import parse_qs
-except ImportError:
-    from urlparse import parse_qs
 
 
 VALID_IPv4_SEGMENTS = [str(i).encode("latin1") for i in range(0x100)]

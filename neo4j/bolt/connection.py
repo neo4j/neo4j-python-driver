@@ -685,12 +685,15 @@ def connect(address, ssl_context=None, error_handler=None, **config):
     a protocol version can be agreed.
     """
 
+    last_error = None
     # Establish a connection to the host and port specified
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
     log_debug("~~ [RESOLVE] %s", address)
-    last_error = None
-    for resolved_address in resolve(address):
+    resolver = config.get("resolver")
+    if not callable(resolver):
+        resolver = resolve
+    for resolved_address in resolver(address):
         log_debug("~~ [RESOLVED] %s -> %s", address, resolved_address)
         try:
             s = _connect(resolved_address, **config)
