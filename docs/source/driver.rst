@@ -160,7 +160,7 @@ For example::
             from socket import gaierror
             raise gaierror("Unexpected socket address %r" % socket_address)
 
-     driver = GraphDatabase.driver("bolt://foo:9999", auth=("neo4j", "password"), resolver=my_resolver)
+     driver = GraphDatabase.driver("bolt+routing://foo:9999", auth=("neo4j", "password"), resolver=my_resolver)
 
 
 
