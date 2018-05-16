@@ -147,8 +147,9 @@ This setting does not terminate running queries.
 ``resolver``
 ------------
 
-A custom resolver function to use for DNS resolution.
+A custom resolver function to resolve host and port values ahead of DNS resolution.
 This function is called with a 2-tuple of (host, port) and should return an iterable of tuples as would be returned from ``getaddrinfo``.
+If no custom resolver function is supplied, the internal resolver moves straight to regular DNS resolution.
 
 For example::
 
