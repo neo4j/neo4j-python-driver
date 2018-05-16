@@ -33,7 +33,7 @@ from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, error as SocketE
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock, Condition
 
-from neo4j.addressing import SocketAddress, resolve
+from neo4j.addressing import SocketAddress, Resolver
 from neo4j.bolt.cert import KNOWN_HOSTS
 from neo4j.bolt.response import InitResponse, AckFailureResponse, ResetResponse
 from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
@@ -690,10 +690,11 @@ def connect(address, ssl_context=None, error_handler=None, **config):
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
     log_debug("~~ [RESOLVE] %s", address)
-    resolver = config.get("resolver")
-    if not callable(resolver):
-        resolver = resolve
-    for resolved_address in resolver(address):
+    resolver = Resolver(custom_resolver=config.get("resolver"))
+    resolver.addresses.append(address)
+    resolver.custom_resolve()
+    resolver.dns_resolve()
+    for resolved_address in resolver.addresses:
         log_debug("~~ [RESOLVED] %s -> %s", address, resolved_address)
         try:
             s = _connect(resolved_address, **config)

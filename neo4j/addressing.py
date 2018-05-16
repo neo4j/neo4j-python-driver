@@ -97,17 +97,46 @@ class SocketAddress(object):
         return context
 
 
-def resolve(socket_address):
-    try:
-        info = getaddrinfo(socket_address[0], socket_address[1], 0, SOCK_STREAM, IPPROTO_TCP)
-    except gaierror:
-        raise AddressError("Cannot resolve address {!r}".format(socket_address[0]))
-    else:
-        addresses = []
-        for _, _, _, _, address in info:
-            if len(address) == 4 and address[3] != 0:
-                # skip any IPv6 addresses with a non-zero scope id
-                # as these appear to cause problems on some platforms
-                continue
-            addresses.append(address)
-        return addresses
+class Resolver(object):
+    """ A Resolver instance stores a list of addresses, each in a tuple, and
+    provides methods to perform resolution on these, thereby replacing them
+    with the resolved values.
+    """
+
+    def __init__(self, custom_resolver=None):
+        self.addresses = []
+        self.custom_resolver = custom_resolver
+
+    def custom_resolve(self):
+        """ If a custom resolver is defined, perform custom resolution on
+        the contained addresses.
+
+        :return:
+        """
+        if not callable(self.custom_resolver):
+            return
+        new_addresses = []
+        for address in self.addresses:
+            for new_address in self.custom_resolver(address):
+                new_addresses.append(new_address)
+        self.addresses = new_addresses
+
+    def dns_resolve(self):
+        """ Perform DNS resolution on the contained addresses.
+
+        :return:
+        """
+        new_addresses = []
+        for address in self.addresses:
+            try:
+                info = getaddrinfo(address[0], address[1], 0, SOCK_STREAM, IPPROTO_TCP)
+            except gaierror:
+                raise AddressError("Cannot resolve address {!r}".format(address))
+            else:
+                for _, _, _, _, address in info:
+                    if len(address) == 4 and address[3] != 0:
+                        # skip any IPv6 addresses with a non-zero scope id
+                        # as these appear to cause problems on some platforms
+                        continue
+                    new_addresses.append(address)
+        self.addresses = new_addresses
