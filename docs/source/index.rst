@@ -2,7 +2,7 @@
 Neo4j Bolt Driver 1.6 for Python
 ********************************
 
-The Official Neo4j Driver for Python supports Neo4j 3.0 and above and Python versions 2.7, 3.4, 3.5 and 3.6.
+The Official Neo4j Driver for Python supports Neo4j 3.1 and above and requires Python version 2.7, 3.4, 3.5 or 3.6.
 
 
 Quick Example
@@ -47,10 +47,13 @@ API Documentation
 .. toctree::
    :maxdepth: 1
 
-   drivers
+   driver
    transactions
    results
-   types
+   types/core
+   types/graph
+   types/spatial
+   types/temporal
    errors
 
 

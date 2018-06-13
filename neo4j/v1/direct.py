@@ -21,9 +21,9 @@
 
 from neo4j.addressing import SocketAddress
 from neo4j.bolt.connection import DEFAULT_PORT, ConnectionPool, connect, ConnectionErrorHandler
-from neo4j.v1.api import Driver
+from neo4j.config import default_config
+from neo4j.v1.api import Driver, Session
 from neo4j.v1.security import SecurityPlan
-from neo4j.v1.session import BoltSession
 
 
 class DirectConnectionErrorHandler(ConnectionErrorHandler):
@@ -50,26 +50,32 @@ class DirectDriver(Driver):
     database service topology.
     """
 
-    def __init__(self, uri, **config):
+    uri_scheme = "bolt"
+
+    def __new__(cls, uri, **config):
+        cls._check_uri(uri)
+        if SocketAddress.parse_routing_context(uri):
+            raise ValueError("Parameters are not supported with scheme 'bolt'. Given URI: '%s'." % uri)
+        instance = object.__new__(cls)
         # We keep the address containing the host name or IP address exactly
         # as-is from the original URI. This means that every new connection
         # will carry out DNS resolution, leading to the possibility that
         # the connection pool may contain multiple IP address keys, one for
         # an old address and one for a new address.
-        if SocketAddress.parse_routing_context(uri):
-            raise ValueError("Parameters are not supported with scheme 'bolt'. Given URI: '%s'." % uri)
-        self.address = SocketAddress.from_uri(uri, DEFAULT_PORT)
-        self.security_plan = security_plan = SecurityPlan.build(**config)
-        self.encrypted = security_plan.encrypted
+        instance.address = SocketAddress.from_uri(uri, DEFAULT_PORT)
+        instance.security_plan = security_plan = SecurityPlan.build(**config)
+        instance.encrypted = security_plan.encrypted
 
         def connector(address, error_handler):
             return connect(address, security_plan.ssl_context, error_handler, **config)
 
-        pool = DirectConnectionPool(connector, self.address, **config)
+        pool = DirectConnectionPool(connector, instance.address, **config)
         pool.release(pool.acquire())
-        Driver.__init__(self, pool, **config)
+        instance._pool = pool
+        instance._max_retry_time = config.get("max_retry_time", default_config["max_retry_time"])
+        return instance
 
     def session(self, access_mode=None, **parameters):
         if "max_retry_time" not in parameters:
             parameters["max_retry_time"] = self._max_retry_time
-        return BoltSession(self._pool.acquire, access_mode, **parameters)
+        return Session(self._pool.acquire, access_mode, **parameters)
