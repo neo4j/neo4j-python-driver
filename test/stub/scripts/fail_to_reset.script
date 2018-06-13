@@ -1,0 +1,22 @@
+!: AUTO INIT
+
+S: SUCCESS {"server": "Neo4j/3.5.0"}
+C: RUN "MATCH (n) RETURN n.name AS name" {}
+   PULL_ALL
+S: SUCCESS {"fields": ["name"]}
+   RECORD ["Alice"]
+   RECORD ["Bob"]
+   RECORD ["Eve"]
+   SUCCESS {}
+C: RESET
+S: FAILURE {"code": "Neo.TransientError.General.DatabaseUnavailable", "message": "I am busy."}
+S: SUCCESS {"server": "Neo4j/3.5.0"}
+C: RUN "MATCH (n) RETURN n.name AS name" {}
+   PULL_ALL
+S: SUCCESS {"fields": ["name"]}
+   RECORD ["Alice"]
+   RECORD ["Bob"]
+   RECORD ["Eve"]
+   SUCCESS {}
+C: RESET
+S: IGNORED

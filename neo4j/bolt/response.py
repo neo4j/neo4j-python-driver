@@ -72,4 +72,7 @@ class AckFailureResponse(Response):
 class ResetResponse(Response):
 
     def on_failure(self, metadata):
-        raise ProtocolError("RESET failed")
+        self.connection.close()
+
+    def on_ignored(self, metadata=None):
+        self.connection.close()
