@@ -29,10 +29,9 @@ from neo4j.bolt import ConnectionPool, ServiceUnavailable, ProtocolError, DEFAUL
 from neo4j.compat.collections import MutableSet, OrderedDict
 from neo4j.exceptions import CypherError, DatabaseUnavailableError, NotALeaderError, ForbiddenOnReadOnlyDatabaseError
 from neo4j.util import ServerVersion
-from neo4j.v1.api import Driver, READ_ACCESS, WRITE_ACCESS
+from neo4j.v1.api import Driver, Session, READ_ACCESS, WRITE_ACCESS
 from neo4j.v1.exceptions import SessionExpired
 from neo4j.v1.security import SecurityPlan
-from neo4j.v1.session import BoltSession
 from neo4j.config import default_config, LOAD_BALANCING_STRATEGY_LEAST_CONNECTED, LOAD_BALANCING_STRATEGY_ROUND_ROBIN
 
 
@@ -144,24 +143,6 @@ class RoutingTable(object):
 
     def servers(self):
         return set(self.routers) | set(self.writers) | set(self.readers)
-
-
-class RoutingSession(BoltSession):
-
-    call_get_servers = "CALL dbms.cluster.routing.getServers"
-    get_routing_table_param = "context"
-    call_get_routing_table = "CALL dbms.cluster.routing.getRoutingTable({%s})" % get_routing_table_param
-
-    def routing_info_procedure(self, routing_context):
-        if ServerVersion.from_str(self._connection.server.version).at_least_version(3, 2):
-            return self.call_get_routing_table, {self.get_routing_table_param: routing_context}
-        else:
-            return self.call_get_servers, {}
-
-    def __run__(self, ignored, routing_context):
-        # the statement is ignored as it will be get routing table procedure call.
-        statement, parameters = self.routing_info_procedure(routing_context)
-        return self._run(statement, parameters)
 
 
 class LoadBalancingStrategy(object):
@@ -284,8 +265,19 @@ class RoutingConnectionPool(ConnectionPool):
         :raise ServiceUnavailable: if the server does not support routing or
                                    if routing support is broken
         """
+
+        class RoutingInfoUpdateSession(Session):
+
+            def __run__(self, _, routing_context):
+                if ServerVersion.from_str(self._connection.server.version).at_least_version(3, 2):
+                    statement, parameters = ("CALL dbms.cluster.routing.getRoutingTable({context})",
+                                             {"context": routing_context})
+                else:
+                    statement, parameters = "CALL dbms.cluster.routing.getServers", {}
+                return self._run(statement, parameters)
+
         try:
-            with RoutingSession(lambda _: self.acquire_direct(address), access_mode=None) as session:
+            with RoutingInfoUpdateSession(lambda _: self.acquire_direct(address), access_mode=None) as session:
                 return list(session.run("ignored", self.routing_context))
         except CypherError as error:
             if error.code == "Neo.ClientError.Procedure.ProcedureNotFound":
@@ -447,10 +439,14 @@ class RoutingDriver(Driver):
     by directing read and write behaviour to appropriate cluster members.
     """
 
-    def __init__(self, uri, **config):
-        self.initial_address = initial_address = SocketAddress.from_uri(uri, DEFAULT_PORT)
-        self.security_plan = security_plan = SecurityPlan.build(**config)
-        self.encrypted = security_plan.encrypted
+    uri_scheme = "bolt+routing"
+
+    def __new__(cls, uri, **config):
+        cls._check_uri(uri)
+        instance = object.__new__(cls)
+        instance.initial_address = initial_address = SocketAddress.from_uri(uri, DEFAULT_PORT)
+        instance.security_plan = security_plan = SecurityPlan.build(**config)
+        instance.encrypted = security_plan.encrypted
         routing_context = SocketAddress.parse_routing_context(uri)
         if not security_plan.routing_compatible:
             # this error message is case-specific as there is only one incompatible
@@ -467,9 +463,11 @@ class RoutingDriver(Driver):
             pool.close()
             raise
         else:
-            Driver.__init__(self, pool, **config)
+            instance._pool = pool
+            instance._max_retry_time = config.get("max_retry_time", default_config["max_retry_time"])
+            return instance
 
     def session(self, access_mode=None, **parameters):
         if "max_retry_time" not in parameters:
             parameters["max_retry_time"] = self._max_retry_time
-        return BoltSession(self._pool.acquire, access_mode, **parameters)
+        return Session(self._pool.acquire, access_mode, **parameters)

@@ -38,6 +38,7 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
+    'sphinx.ext.intersphinx',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -118,7 +119,7 @@ todo_include_todos = True
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'alabaster'
+html_theme = 'nature'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -296,3 +297,11 @@ texinfo_documents = [
 
 def setup(app):
     app.add_stylesheet('custom.css')
+
+
+# -- Options for Intersphinx
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'neotime': ('http://neotime.readthedocs.io/en/latest/', None),
+}

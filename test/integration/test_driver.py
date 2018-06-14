@@ -20,14 +20,13 @@
 
 
 from neo4j.v1 import GraphDatabase, ServiceUnavailable
-from neo4j.exceptions import ProtocolError
 from test.integration.tools import IntegrationTestCase
 
 
 class DriverTestCase(IntegrationTestCase):
 
     def test_must_use_valid_url_scheme(self):
-        with self.assertRaises(ProtocolError):
+        with self.assertRaises(ValueError):
             GraphDatabase.driver("x://xxx", auth=self.auth_token)
 
     def test_connections_are_reused(self):

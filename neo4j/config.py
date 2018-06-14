@@ -70,5 +70,5 @@ default_config = {
 
     # Routing settings:
     "max_retry_time": DEFAULT_MAX_RETRY_TIME,
-    "load_balancing_strategy": DEFAULT_LOAD_BALANCING_STRATEGY
+    "load_balancing_strategy": DEFAULT_LOAD_BALANCING_STRATEGY,
 }
