@@ -144,6 +144,25 @@ The maximum time to allow for retries to be attempted when using transaction fun
 After this time, no more retries will be attempted.
 This setting does not terminate running queries.
 
+``resolver``
+------------
+
+A custom resolver function to resolve host and port values ahead of DNS resolution.
+This function is called with a 2-tuple of (host, port) and should return an iterable of tuples as would be returned from ``getaddrinfo``.
+If no custom resolver function is supplied, the internal resolver moves straight to regular DNS resolution.
+
+For example::
+
+    def my_resolver(socket_address):
+         if socket_address == ("foo", 9999):
+            yield "::1", 7687
+            yield "127.0.0.1", 7687
+         else:
+            from socket import gaierror
+            raise gaierror("Unexpected socket address %r" % socket_address)
+
+     driver = GraphDatabase.driver("bolt+routing://foo:9999", auth=("neo4j", "password"), resolver=my_resolver)
+
 
 
 Object Lifetime
