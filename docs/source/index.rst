@@ -1,5 +1,5 @@
 ********************************
-Neo4j Bolt Driver 1.6 for Python
+Neo4j Bolt Driver |version| for Python
 ********************************
 
 The Official Neo4j Driver for Python supports Neo4j 3.1 and above and requires Python version 2.7, 3.4, 3.5 or 3.6.
