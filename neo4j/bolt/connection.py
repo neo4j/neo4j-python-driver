@@ -36,7 +36,7 @@ from threading import RLock, Condition
 
 from neo4j.addressing import SocketAddress, Resolver
 from neo4j.bolt.cert import KNOWN_HOSTS
-from neo4j.bolt.response import InitResponse, AckFailureResponse, ResetResponse
+from neo4j.bolt.response import InitResponse, ResetResponse
 from neo4j.compat.ssl import SSL_AVAILABLE, HAS_SNI, SSLError
 from neo4j.exceptions import ClientError, ProtocolError, SecurityError, ServiceUnavailable
 from neo4j.packstream import Packer, Unpacker
@@ -53,7 +53,6 @@ MAGIC_PREAMBLE = 0x6060B017
 
 # Signature bytes for each message type
 INIT = b"\x01"             # 0000 0001 // INIT <user_agent> <auth>
-ACK_FAILURE = b"\x0E"      # 0000 1110 // ACK_FAILURE
 RESET = b"\x0F"            # 0000 1111 // RESET
 RUN = b"\x10"              # 0001 0000 // RUN <statement> <parameters>
 DISCARD_ALL = b"\x2F"      # 0010 1111 // DISCARD *
@@ -240,8 +239,6 @@ class Connection(object):
             log_debug("C: DISCARD_ALL %r", fields)
         elif signature == RESET:
             log_debug("C: RESET %r", fields)
-        elif signature == ACK_FAILURE:
-            log_debug("C: ACK_FAILURE %r", fields)
         elif signature == INIT:
             log_debug("C: INIT (%r, {...})", fields[0])
         else:
@@ -250,13 +247,6 @@ class Connection(object):
         self.output_buffer.chunk()
         self.output_buffer.chunk()
         self.responses.append(response)
-
-    def acknowledge_failure(self):
-        """ Add an ACK_FAILURE message to the outgoing queue, send
-        it and consume all remaining messages.
-        """
-        self.append(ACK_FAILURE, response=AckFailureResponse(self))
-        self.sync()
 
     def reset(self):
         """ Add a RESET message to the outgoing queue, send
