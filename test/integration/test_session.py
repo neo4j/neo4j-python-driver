@@ -357,8 +357,10 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
             connection_1 = session._connection
             assert connection_1._last_run_statement == "RETURN 1"
             with self.assertRaises(CypherSyntaxError):
-                tx.run("X").consume()
-            connection_2 = session._connection
+                result = tx.run("X")
+                connection_2 = session._connection
+                result.consume()
+            # connection_2 = session._connection
             assert connection_2 is connection_1
             assert connection_2._last_run_statement is None
             tx.close()
