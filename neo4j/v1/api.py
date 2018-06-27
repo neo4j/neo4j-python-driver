@@ -440,12 +440,18 @@ class Session(object):
         """
         if not self.has_transaction():
             raise TransactionError("No transaction to rollback")
-        self._transaction = None
+        self._destroy_transaction()
         rollback_result = self.__rollback__()
         try:
             rollback_result.consume()
         except ServiceUnavailable:
             pass
+
+    def reset(self):
+        """ Reset the session.
+        """
+        self._destroy_transaction()
+        self._connection.reset()
 
     def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):
         if not callable(unit_of_work):
@@ -640,10 +646,11 @@ class Transaction(object):
                 self.success = False
                 raise
             finally:
-                if self.success:
-                    self.session.commit_transaction()
-                else:
-                    self.session.rollback_transaction()
+                if self.session.has_transaction():
+                    if self.success:
+                        self.session.commit_transaction()
+                    else:
+                        self.session.rollback_transaction()
                 self._closed = True
                 self.on_close()
 

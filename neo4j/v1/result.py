@@ -65,7 +65,7 @@ class BoltStatementResult(StatementResult):
 
         def on_failure(metadata):
             # Called on execution failure.
-            self.session._connection.reset()
+            self.session.reset()
             on_footer(metadata)
             raise CypherError.hydrate(**metadata)
 
