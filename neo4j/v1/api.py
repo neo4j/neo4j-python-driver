@@ -43,20 +43,26 @@ INITIAL_RETRY_DELAY = 1.0
 RETRY_DELAY_MULTIPLIER = 2.0
 RETRY_DELAY_JITTER_FACTOR = 0.2
 
+BOOKMARK_PREFIX = "neo4j:bookmark:v1:tx"
+
 
 def last_bookmark(b0, b1):
-    """ Return the latest of two bookmarks by looking for the maximum
-    integer value following the last colon in the bookmark string.
+    """ Return the latest of two bookmarks.
     """
-    n = [None, None]
-    _, _, n[0] = b0.rpartition(":")
-    _, _, n[1] = b1.rpartition(":")
-    for i in range(2):
-        try:
-            n[i] = int(n[i])
-        except ValueError:
-            raise ValueError("Invalid bookmark: {}".format(b0))
-    return b0 if n[0] > n[1] else b1
+    return b0 if _bookmark_value(b0) > _bookmark_value(b1) else b1
+
+
+def _bookmark_value(b):
+    """Return the int value of the given bookmark.
+    """
+    if b is None or not b.startswith(BOOKMARK_PREFIX):
+        raise ValueError("Invalid bookmark: {}".format(b))
+
+    value_string = b[len(BOOKMARK_PREFIX):]
+    try:
+        return int(value_string)
+    except ValueError:
+        raise ValueError("Invalid bookmark: {}".format(b))
 
 
 def retry_delay_generator(initial_delay, multiplier, jitter_factor):

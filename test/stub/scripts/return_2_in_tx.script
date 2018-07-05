@@ -1,7 +1,7 @@
 !: AUTO INIT
 !: AUTO RESET
 
-C: RUN "BEGIN" {"bookmark": "bookmark:1", "bookmarks": ["bookmark:1"]}
+C: RUN "BEGIN" {"bookmark": "neo4j:bookmark:v1:tx1", "bookmarks": ["neo4j:bookmark:v1:tx1"]}
    PULL_ALL
 S: SUCCESS {"fields": []}
    SUCCESS {}
@@ -14,5 +14,5 @@ S: SUCCESS {"fields": ["2"]}
 
 C: RUN "COMMIT" {}
    PULL_ALL
-S: SUCCESS {"bookmark": "bookmark:2", "bookmarks": ["bookmark:2"]}
+S: SUCCESS {"bookmark": "neo4j:bookmark:v1:tx2", "bookmarks": ["neo4j:bookmark:v1:tx2"]}
    SUCCESS {}
