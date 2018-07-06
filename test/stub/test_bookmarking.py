@@ -44,31 +44,31 @@ class BookmarkingTestCase(StubTestCase):
         with StubCluster({9001: "router.script"}):
             uri = "bolt+routing://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                with driver.session(bookmarks=[":1", ":2"]) as session:
-                    assert session.last_bookmark() == ":2"
+                with driver.session(bookmarks=["neo4j:bookmark:v1:tx1", "neo4j:bookmark:v1:tx2"]) as session:
+                    assert session.last_bookmark() == "neo4j:bookmark:v1:tx2"
 
     def test_should_automatically_chain_bookmarks(self):
         with StubCluster({9001: "router.script", 9004: "bookmark_chain.script"}):
             uri = "bolt+routing://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                with driver.session(access_mode=READ_ACCESS, bookmarks=["bookmark:0", "bookmark:1"]) as session:
+                with driver.session(access_mode=READ_ACCESS, bookmarks=["neo4j:bookmark:v1:tx0", "neo4j:bookmark:v1:tx1"]) as session:
                     with session.begin_transaction():
                         pass
-                    assert session.last_bookmark() == "bookmark:2"
+                    assert session.last_bookmark() == "neo4j:bookmark:v1:tx2"
                     with session.begin_transaction():
                         pass
-                    assert session.last_bookmark() == "bookmark:3"
+                    assert session.last_bookmark() == "neo4j:bookmark:v1:tx3"
 
     def test_autocommit_transaction_does_not_break_chain(self):
         with StubCluster({9001: "router.script", 9004: "bookmark_chain_with_autocommit.script"}):
             uri = "bolt+routing://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                with driver.session(access_mode=READ_ACCESS, bookmark="bookmark:1") as session:
+                with driver.session(access_mode=READ_ACCESS, bookmark="neo4j:bookmark:v1:tx1") as session:
                     with session.begin_transaction():
                         pass
-                    assert session.last_bookmark() == "bookmark:2"
+                    assert session.last_bookmark() == "neo4j:bookmark:v1:tx2"
                     session.run("RETURN 1").consume()
-                    assert session.last_bookmark() == "bookmark:2"
+                    assert session.last_bookmark() == "neo4j:bookmark:v1:tx2"
                     with session.begin_transaction():
                         pass
-                    assert session.last_bookmark() == "bookmark:3"
+                    assert session.last_bookmark() == "neo4j:bookmark:v1:tx3"
