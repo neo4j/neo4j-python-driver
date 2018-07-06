@@ -63,12 +63,6 @@ class InitResponse(Response):
             raise ServiceUnavailable(message)
 
 
-class AckFailureResponse(Response):
-
-    def on_failure(self, metadata):
-        raise ProtocolError("ACK_FAILURE failed")
-
-
 class ResetResponse(Response):
 
     def on_failure(self, metadata):

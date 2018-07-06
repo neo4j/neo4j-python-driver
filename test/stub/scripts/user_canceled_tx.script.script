@@ -11,7 +11,7 @@ C: RUN "RETURN 1" {}
 S: FAILURE {"code": "Neo.TransientError.Transaction.LockClientStopped", "message": "X"}
    IGNORED {}
 
-C: ACK_FAILURE
+C: RESET
 S: SUCCESS {}
 
 C: RUN "ROLLBACK" {}

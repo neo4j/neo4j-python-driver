@@ -11,7 +11,7 @@ C: RUN "X" {}
 S: FAILURE {"code": "Neo.ClientError.Statement.SyntaxError", "message": "X"}
    IGNORED {}
 
-C: ACK_FAILURE
+C: RESET
 S: SUCCESS {}
 
 C: RUN "ROLLBACK" {}
