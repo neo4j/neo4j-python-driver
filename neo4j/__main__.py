@@ -26,7 +26,8 @@ from argparse import ArgumentParser
 from json import loads as json_loads
 from sys import stdout, stderr
 
-from .util import Watcher
+from neobolt.util import Watcher
+
 from .v1 import GraphDatabase
 from neo4j.exceptions import CypherError
 

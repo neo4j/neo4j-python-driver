@@ -1,4 +1,2 @@
 global-exclude *.class *.pyc *.pyo *.so *.dll __pycache__
-recursive-include neo4j *.c
-recursive-include neo4j *.pyx
 prune test

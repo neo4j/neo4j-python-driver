@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from neo4j.bolt import DEFAULT_PORT
+from neobolt.bolt import DEFAULT_PORT
 from neo4j.v1 import GraphDatabase, Driver, ServiceUnavailable
 from test.integration.tools import IntegrationTestCase
 

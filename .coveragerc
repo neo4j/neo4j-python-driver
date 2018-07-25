@@ -5,6 +5,7 @@ omit =
     test/*
     neo4j/compat/*
     neo4j/util.py
+    *neobolt*
 
 [report]
 show_missing = True

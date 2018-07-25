@@ -21,9 +21,9 @@
 
 from sys import argv
 
-from neo4j.v1 import basic_auth
-from neo4j.v1.api import GraphDatabase
-from neo4j.util import Watcher
+from neobolt.util import Watcher
+
+from neo4j.v1 import GraphDatabase, basic_auth
 
 
 def update_password(user, password, new_password):

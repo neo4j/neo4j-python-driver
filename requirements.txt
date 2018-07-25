@@ -1,1 +1,2 @@
-neotime==1.0.0
+neobolt==1.7.0a2
+neotime

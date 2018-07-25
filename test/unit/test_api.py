@@ -22,7 +22,7 @@
 from unittest import TestCase
 from uuid import uuid4
 
-from neo4j.v1.types import fix_parameters
+from neo4j import fix_parameters
 
 
 def dehydrated_value(value):
