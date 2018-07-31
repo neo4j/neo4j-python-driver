@@ -89,6 +89,7 @@ STATEMENT_TYPE_WRITE_ONLY = "w"
 STATEMENT_TYPE_SCHEMA_WRITE = "s"
 
 
+# TODO: remove in 2.0
 _warned_about_transaction_bookmarks = False
 
 
@@ -426,7 +427,10 @@ class Session(object):
         if not self.has_transaction():
             self._connect()
 
-        result = self.__run__(statement, dict(parameters or {}, **kwparameters))
+        statement = ustr(statement)
+        parameters = fix_parameters(dict(parameters or {}, **kwparameters), self._connection.protocol_version,
+                                    supports_bytes=self._connection.server.supports_bytes())
+        result = self._run(statement, parameters)
 
         if not self.has_transaction():
             try:
@@ -477,25 +481,28 @@ class Session(object):
                 return detail_count
         return 0
 
-    def detach(self, result):
+    def detach(self, result, sync=True):
         """ Detach a result from this session by fetching and buffering any
         remaining records.
 
         :param result:
+        :param sync:
         :returns: number of records fetched
         """
         count = 0
 
-        self.send()
-        fetch = self.fetch
-        while result.attached():
-            count += fetch()
+        if sync and result.attached():
+            self.send()
+            fetch = self.fetch
+            while result.attached():
+                count += fetch()
 
         if self._last_result is result:
             self._last_result = None
             if not self.has_transaction():
                 self._disconnect(sync=False)
 
+        result._session = None
         return count
 
     def last_bookmark(self):
@@ -530,6 +537,7 @@ class Session(object):
         if self.has_transaction():
             raise TransactionError("Explicit transaction already open")
 
+        # TODO: remove in 2.0
         if bookmark is not None:
             global _warned_about_transaction_bookmarks
             if not _warned_about_transaction_bookmarks:
@@ -540,7 +548,7 @@ class Session(object):
 
         self._create_transaction()
         self._connect()
-        self.__begin__()
+        self._begin()
         return self._transaction
 
     def commit_transaction(self):
@@ -552,9 +560,7 @@ class Session(object):
         if not self.has_transaction():
             raise TransactionError("No transaction to commit")
         self._transaction = None
-        result = self.__commit__()
-        result.consume()
-        bookmark = self.__bookmark__(result)
+        bookmark = self._commit()
         self._bookmarks = [bookmark]
         return bookmark
 
@@ -567,11 +573,7 @@ class Session(object):
         if not self.has_transaction():
             raise TransactionError("No transaction to rollback")
         self._destroy_transaction()
-        rollback_result = self.__rollback__()
-        try:
-            rollback_result.consume()
-        except ServiceUnavailable:
-            pass
+        self._rollback()
 
     def reset(self):
         """ Reset the session.
@@ -593,7 +595,7 @@ class Session(object):
             try:
                 self._create_transaction()
                 self._connect(access_mode)
-                self.__begin__()
+                self._begin()
                 tx = self._transaction
                 try:
                     result = unit_of_work(tx, *args, **kwargs)
@@ -630,43 +632,61 @@ class Session(object):
     def write_transaction(self, unit_of_work, *args, **kwargs):
         return self._run_transaction(WRITE_ACCESS, unit_of_work, *args, **kwargs)
 
-    def _run(self, statement, parameters):
-        from neobolt.bolt.connection import RUN, PULL_ALL
-        from neobolt.bolt.response import Response
+    def _assert_open(self):
         if self.closed():
             raise SessionError("Session closed")
 
-        run_response = Response(self._connection)
-        pull_all_response = Response(self._connection)
-        self._last_result = result = BoltStatementResult(self, run_response, pull_all_response)
-        result.statement = ustr(statement)
-        result.parameters = fix_parameters(parameters, self._connection.protocol_version,
-                                           supports_bytes=self._connection.server.supports_bytes())
-
-        self._connection.append(RUN, (result.statement, result.parameters), response=run_response)
-        self._connection.append(PULL_ALL, response=pull_all_response)
-
+    def _run(self, statement, parameters):
+        self._assert_open()
+        cx = self._connection
+        hydrant = PackStreamHydrator(cx.protocol_version)
+        metadata = {
+            "statement": statement,
+            "parameters": parameters,
+            "server": cx.server,
+            "protocol_version": cx.protocol_version,
+        }
+        self._last_result = result = BoltStatementResult(self, hydrant, metadata)
+        cx.run(statement, parameters, metadata)
+        cx.pull_all(
+            metadata,
+            on_records=lambda records: result._records.extend(
+                hydrant.hydrate_records(result.keys(), records)),
+            on_summary=lambda: result.detach(sync=False),
+        )
         return result
 
-    def __run__(self, statement, parameters):
-        return self._run(statement, parameters)
-
-    def __begin__(self):
+    def _begin(self):
+        self._assert_open()
+        metadata = {}
+        parameters = {}
         if self._bookmarks:
-            parameters = {"bookmark": self.last_bookmark(), "bookmarks": self._bookmarks}
-        else:
-            parameters = {}
-        return self.__run__(u"BEGIN", parameters)
+            parameters["bookmark"] = self.last_bookmark()   # TODO: remove in 2.0
+            parameters["bookmarks"] = self._bookmarks
+        cx = self._connection
+        cx.run(u"BEGIN", parameters, metadata)
+        cx.pull_all(metadata)
 
-    def __commit__(self):
-        return self.__run__(u"COMMIT", {})
+    def _commit(self):
+        self._assert_open()
+        metadata = {}
+        try:
+            cx = self._connection
+            cx.run(u"COMMIT", {}, metadata)
+            cx.pull_all(metadata)
+        finally:
+            self._disconnect(sync=True)
+        return metadata.get("bookmark")
 
-    def __rollback__(self):
-        return self.__run__(u"ROLLBACK", {})
-
-    def __bookmark__(self, result):
-        summary = result.summary()
-        return summary.metadata.get("bookmark")
+    def _rollback(self):
+        self._assert_open()
+        metadata = {}
+        try:
+            cx = self._connection
+            cx.run(u"ROLLBACK", {}, metadata)
+            cx.pull_all(metadata)
+        finally:
+            self._disconnect(sync=True)
 
 
 class Transaction(object):
@@ -796,18 +816,10 @@ class StatementResult(object):
     :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
 
-    #: The statement text that was executed to produce this result.
-    statement = None
-
-    #: Dictionary of parameters passed with the statement.
-    parameters = None
-
-    zipper = zip
-
-    def __init__(self, session, hydrant):
+    def __init__(self, session, hydrant, metadata):
         self._session = session
         self._hydrant = hydrant
-        self._keys = None
+        self._metadata = metadata
         self._records = deque()
         self._summary = None
 
@@ -826,14 +838,14 @@ class StatementResult(object):
         """
         return self._session and not self._session.closed()
 
-    def detach(self):
+    def detach(self, sync=True):
         """ Detach this result from its parent session by fetching the
         remainder of this result from the network into the buffer.
 
         :returns: number of records fetched
         """
         if self.attached():
-            return self._session.detach(self)
+            return self._session.detach(self, sync=sync)
         else:
             return 0
 
@@ -842,13 +854,14 @@ class StatementResult(object):
 
         :returns: tuple of key names
         """
-        if self._keys is not None:
-            return self._keys
-        if self.attached():
-            self._session.send()
-        while self.attached() and self._keys is None:
-            self._session.fetch()
-        return self._keys
+        try:
+            return self._metadata["fields"]
+        except KeyError:
+            if self.attached():
+                self._session.send()
+            while self.attached() and "fields" not in self._metadata:
+                self._session.fetch()
+            return self._metadata.get("fields")
 
     def records(self):
         """ Generator for records obtained from this result.
@@ -873,6 +886,8 @@ class StatementResult(object):
         :returns: The :class:`.ResultSummary` for this result
         """
         self.detach()
+        if self._summary is None:
+            self._summary = BoltStatementResultSummary(**self._metadata)
         return self._summary
 
     def consume(self):
@@ -908,13 +923,9 @@ class StatementResult(object):
 
         :returns: the next :class:`.Record` or :const:`None` if none remain
         """
-        hydrate = self._hydrant.hydrate
-        zipper = self.zipper
-        keys = self.keys()
         records = self._records
         if records:
-            values = records[0]
-            return zipper(keys, hydrate(values))
+            return records[0]
         if not self.attached():
             return None
         if self.attached():
@@ -922,8 +933,7 @@ class StatementResult(object):
         while self.attached() and not records:
             self._session.fetch()
             if records:
-                values = records[0]
-                return zipper(keys, hydrate(values))
+                return records[0]
         return None
 
     def graph(self):
@@ -941,47 +951,8 @@ class BoltStatementResult(StatementResult):
     """ A handler for the result of Cypher statement execution.
     """
 
-    @classmethod
-    def zipper(cls, k, v):
-        return Record(zip(k, v))
-
-    def __init__(self, session, run_response, pull_all_response):
-        from neobolt.exceptions import CypherError
-
-        super(BoltStatementResult, self).__init__(session, PackStreamHydrator(session._connection.protocol_version))
-
-        all_metadata = {}
-
-        def on_header(metadata):
-            # Called on receipt of the result header.
-            all_metadata.update(metadata)
-            self._keys = tuple(metadata.get("fields", ()))
-
-        def on_records(records):
-            # Called on receipt of one or more result records.
-            self._records.extend(map(lambda record: self.zipper(self.keys(), self._hydrant.hydrate(record)), records))
-
-        def on_footer(metadata):
-            # Called on receipt of the result footer.
-            connection = self.session._connection
-            all_metadata.update(metadata, statement=self.statement, parameters=self.parameters,
-                                server=connection.server, protocol_version=connection.protocol_version)
-            self._summary = BoltStatementResultSummary(**all_metadata)
-            self._session, session_ = None, self._session
-            session_.detach(self)
-
-        def on_failure(metadata):
-            # Called on execution failure.
-            self.session.reset()
-            on_footer(metadata)
-            raise CypherError.hydrate(**metadata)
-
-        run_response.on_success = on_header
-        run_response.on_failure = on_failure
-
-        pull_all_response.on_records = on_records
-        pull_all_response.on_success = on_footer
-        pull_all_response.on_failure = on_failure
+    def __init__(self, session, hydrant, metadata):
+        super(BoltStatementResult, self).__init__(session, hydrant, metadata)
 
     def value(self, item=0, default=None):
         """ Return the remainder of the result as a list of values.

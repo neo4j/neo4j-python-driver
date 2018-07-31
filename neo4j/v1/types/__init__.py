@@ -26,6 +26,7 @@ into concrete values through the PackStreamHydrant.
 """
 
 
+from neo4j import Record
 from neo4j.compat import map_type, string, integer, ustr
 
 # These classes are imported in order to retain backward compatibility with 1.5.
@@ -74,6 +75,10 @@ class PackStreamHydrator(object):
                 return obj
 
         return tuple(map(hydrate_, values))
+
+    def hydrate_records(self, keys, record_values):
+        for values in record_values:
+            yield Record(zip(keys, self.hydrate(values)))
 
 
 class PackStreamDehydrator(object):
