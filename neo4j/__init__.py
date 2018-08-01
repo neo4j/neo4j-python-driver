@@ -232,7 +232,7 @@ class RoutingDriver(Driver):
 
     def __new__(cls, uri, **config):
         from neobolt.addressing import SocketAddress
-        from neobolt.bolt.connection import DEFAULT_PORT
+        from neobolt.bolt.connection import DEFAULT_PORT, connect
         from neobolt.routing import RoutingConnectionPool
         from neobolt.security import SecurityPlan
         cls._check_uri(uri)
@@ -247,7 +247,6 @@ class RoutingDriver(Driver):
             raise ValueError("TRUST_ON_FIRST_USE is not compatible with routing")
 
         def connector(address, error_handler):
-            from neobolt.bolt.connection import connect
             return connect(address, security_plan.ssl_context, error_handler, **config)
 
         pool = RoutingConnectionPool(connector, initial_address, routing_context, initial_address, **config)
@@ -337,10 +336,9 @@ class Session(object):
                 pass  # for compatibility
 
     def __del__(self):
-        from neobolt.exceptions import ServiceUnavailable
         try:
             self.close()
-        except (SessionError, ServiceUnavailable):
+        except:
             pass
 
     def __enter__(self):
@@ -519,10 +517,7 @@ class Session(object):
     def has_transaction(self):
         return bool(self._transaction)
 
-    def _create_transaction(self):
-        self._transaction = Transaction(self, on_close=self._destroy_transaction)
-
-    def _destroy_transaction(self):
+    def _close_transaction(self):
         self._transaction = None
 
     def begin_transaction(self, bookmark=None):
@@ -546,10 +541,7 @@ class Session(object):
                 _warned_about_transaction_bookmarks = True
             self._bookmarks = [bookmark]
 
-        self._create_transaction()
-        self._connect()
-        self._begin()
-        return self._transaction
+        return self._open_transaction()
 
     def commit_transaction(self):
         """ Commit the current transaction.
@@ -557,10 +549,18 @@ class Session(object):
         :returns: the bookmark returned from the server, if any
         :raise: :class:`.TransactionError` if no transaction is currently open
         """
-        if not self.has_transaction():
+        self._assert_open()
+        if not self._transaction:
             raise TransactionError("No transaction to commit")
-        self._transaction = None
-        bookmark = self._commit()
+        metadata = {}
+        try:
+            cx = self._connection
+            cx.run(u"COMMIT", {}, metadata)
+            cx.pull_all(metadata)
+        finally:
+            self._disconnect(sync=True)
+            self._transaction = None
+        bookmark = metadata.get("bookmark")
         self._bookmarks = [bookmark]
         return bookmark
 
@@ -569,17 +569,17 @@ class Session(object):
 
         :raise: :class:`.TransactionError` if no transaction is currently open
         """
-        from neobolt.exceptions import ServiceUnavailable
-        if not self.has_transaction():
+        self._assert_open()
+        if not self._transaction:
             raise TransactionError("No transaction to rollback")
-        self._destroy_transaction()
-        self._rollback()
-
-    def reset(self):
-        """ Reset the session.
-        """
-        self._destroy_transaction()
-        self._connection.reset()
+        metadata = {}
+        try:
+            cx = self._connection
+            cx.run(u"ROLLBACK", {}, metadata)
+            cx.pull_all(metadata)
+        finally:
+            self._disconnect(sync=True)
+            self._transaction = None
 
     def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):
         from neobolt.exceptions import ConnectionExpired, TransientError, ServiceUnavailable
@@ -593,10 +593,7 @@ class Session(object):
         t0 = perf_counter()
         while True:
             try:
-                self._create_transaction()
-                self._connect(access_mode)
-                self._begin()
-                tx = self._transaction
+                tx = self._open_transaction(access_mode)
                 try:
                     result = unit_of_work(tx, *args, **kwargs)
                 except:
@@ -656,7 +653,9 @@ class Session(object):
         )
         return result
 
-    def _begin(self):
+    def _open_transaction(self, access_mode=None):
+        self._transaction = Transaction(self, on_close=self._close_transaction)
+        self._connect(access_mode)
         self._assert_open()
         metadata = {}
         parameters = {}
@@ -666,27 +665,7 @@ class Session(object):
         cx = self._connection
         cx.run(u"BEGIN", parameters, metadata)
         cx.pull_all(metadata)
-
-    def _commit(self):
-        self._assert_open()
-        metadata = {}
-        try:
-            cx = self._connection
-            cx.run(u"COMMIT", {}, metadata)
-            cx.pull_all(metadata)
-        finally:
-            self._disconnect(sync=True)
-        return metadata.get("bookmark")
-
-    def _rollback(self):
-        self._assert_open()
-        metadata = {}
-        try:
-            cx = self._connection
-            cx.run(u"ROLLBACK", {}, metadata)
-            cx.pull_all(metadata)
-        finally:
-            self._disconnect(sync=True)
+        return self._transaction
 
 
 class Transaction(object):
