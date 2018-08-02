@@ -2,7 +2,7 @@
 !: AUTO RESET
 
 C: RUN "BEGIN" {}
-   PULL_ALL
+   DISCARD_ALL
 S: SUCCESS {"fields": []}
    SUCCESS {}
 
@@ -15,6 +15,6 @@ C: RESET
 S: SUCCESS {}
 
 C: RUN "ROLLBACK" {}
-   PULL_ALL
+   DISCARD_ALL
 S: SUCCESS {}
    SUCCESS {}

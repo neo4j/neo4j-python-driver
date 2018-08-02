@@ -313,9 +313,12 @@ class Session(object):
     # The last result received.
     _last_result = None
 
-    # The collection of bookmarks after which the next
+    # The set of bookmarks after which the next
     # :class:`.Transaction` should be carried out.
-    _bookmarks = ()
+    _bookmarks_in = None
+
+    # The bookmark returned from the last commit.
+    _bookmark_out = None
 
     # Default maximum time to keep retrying failed transactions.
     _max_retry_time = default_config["max_retry_time"]
@@ -327,9 +330,11 @@ class Session(object):
         self._default_access_mode = access_mode
         for key, value in parameters.items():
             if key == "bookmark":
-                self._bookmarks = [value] if value else []
+                if value:
+                    self._bookmarks_in = tuple([value])
             elif key == "bookmarks":
-                self._bookmarks = value or []
+                if value:
+                    self._bookmarks_in = tuple(value)
             elif key == "max_retry_time":
                 self._max_retry_time = value
             else:
@@ -417,18 +422,35 @@ class Session(object):
         """
         from neobolt.exceptions import ConnectionExpired
 
-        if self.closed():
-            raise SessionError("Session closed")
+        self._assert_open()
         if not statement:
             raise ValueError("Cannot run an empty statement")
 
-        if not self.has_transaction():
+        if not self._connection:
             self._connect()
+        cx = self._connection
+        protocol_version = cx.protocol_version
+        server = cx.server
 
         statement = ustr(statement)
-        parameters = fix_parameters(dict(parameters or {}, **kwparameters), self._connection.protocol_version,
-                                    supports_bytes=self._connection.server.supports_bytes())
-        result = self._run(statement, parameters)
+        parameters = fix_parameters(dict(parameters or {}, **kwparameters), protocol_version,
+                                    supports_bytes=server.supports_bytes())
+
+        hydrant = PackStreamHydrator(protocol_version)
+        metadata = {
+            "statement": statement,
+            "parameters": parameters,
+            "server": server,
+            "protocol_version": protocol_version,
+        }
+        self._last_result = result = BoltStatementResult(self, hydrant, metadata)
+        cx.run(statement, parameters, metadata)
+        cx.pull_all(
+            metadata,
+            on_records=lambda records: result._records.extend(
+                hydrant.hydrate_records(result.keys(), records)),
+            on_summary=lambda: result.detach(sync=False),
+        )
 
         if not self.has_transaction():
             try:
@@ -503,16 +525,16 @@ class Session(object):
         result._session = None
         return count
 
+    def next_bookmarks(self):
+        """ The set of bookmarks to be passed into the next
+        :class:`.Transaction`.
+        """
+        return self._bookmarks_in
+
     def last_bookmark(self):
         """ The bookmark returned by the last :class:`.Transaction`.
         """
-        last = None
-        for bookmark in self._bookmarks:
-            if last is None:
-                last = bookmark
-            else:
-                last = last_bookmark(last, bookmark)
-        return last
+        return self._bookmark_out
 
     def has_transaction(self):
         return bool(self._transaction)
@@ -529,6 +551,7 @@ class Session(object):
         :returns: new :class:`.Transaction` instance.
         :raise: :class:`.TransactionError` if a transaction is already open
         """
+        self._assert_open()
         if self.has_transaction():
             raise TransactionError("Explicit transaction already open")
 
@@ -539,9 +562,15 @@ class Session(object):
                 from warnings import warn
                 warn("Passing bookmarks at transaction level is deprecated", category=DeprecationWarning, stacklevel=2)
                 _warned_about_transaction_bookmarks = True
-            self._bookmarks = [bookmark]
+            self._bookmarks_in = tuple([bookmark])
 
-        return self._open_transaction()
+        self._open_transaction()
+        return self._transaction
+
+    def _open_transaction(self, access_mode=None):
+        self._transaction = Transaction(self, on_close=self._close_transaction)
+        self._connect(access_mode)
+        self._connection.begin(self._bookmarks_in, {})
 
     def commit_transaction(self):
         """ Commit the current transaction.
@@ -554,14 +583,13 @@ class Session(object):
             raise TransactionError("No transaction to commit")
         metadata = {}
         try:
-            cx = self._connection
-            cx.run(u"COMMIT", {}, metadata)
-            cx.pull_all(metadata)
+            self._connection.commit(metadata)
         finally:
             self._disconnect(sync=True)
             self._transaction = None
         bookmark = metadata.get("bookmark")
-        self._bookmarks = [bookmark]
+        self._bookmarks_in = tuple([bookmark])
+        self._bookmark_out = bookmark
         return bookmark
 
     def rollback_transaction(self):
@@ -574,9 +602,7 @@ class Session(object):
             raise TransactionError("No transaction to rollback")
         metadata = {}
         try:
-            cx = self._connection
-            cx.run(u"ROLLBACK", {}, metadata)
-            cx.pull_all(metadata)
+            self._connection.rollback(metadata)
         finally:
             self._disconnect(sync=True)
             self._transaction = None
@@ -593,7 +619,8 @@ class Session(object):
         t0 = perf_counter()
         while True:
             try:
-                tx = self._open_transaction(access_mode)
+                self._open_transaction(access_mode)
+                tx = self._transaction
                 try:
                     result = unit_of_work(tx, *args, **kwargs)
                 except:
@@ -624,48 +651,16 @@ class Session(object):
             raise ServiceUnavailable("Transaction failed")
 
     def read_transaction(self, unit_of_work, *args, **kwargs):
+        self._assert_open()
         return self._run_transaction(READ_ACCESS, unit_of_work, *args, **kwargs)
 
     def write_transaction(self, unit_of_work, *args, **kwargs):
+        self._assert_open()
         return self._run_transaction(WRITE_ACCESS, unit_of_work, *args, **kwargs)
 
     def _assert_open(self):
         if self.closed():
             raise SessionError("Session closed")
-
-    def _run(self, statement, parameters):
-        self._assert_open()
-        cx = self._connection
-        hydrant = PackStreamHydrator(cx.protocol_version)
-        metadata = {
-            "statement": statement,
-            "parameters": parameters,
-            "server": cx.server,
-            "protocol_version": cx.protocol_version,
-        }
-        self._last_result = result = BoltStatementResult(self, hydrant, metadata)
-        cx.run(statement, parameters, metadata)
-        cx.pull_all(
-            metadata,
-            on_records=lambda records: result._records.extend(
-                hydrant.hydrate_records(result.keys(), records)),
-            on_summary=lambda: result.detach(sync=False),
-        )
-        return result
-
-    def _open_transaction(self, access_mode=None):
-        self._transaction = Transaction(self, on_close=self._close_transaction)
-        self._connect(access_mode)
-        self._assert_open()
-        metadata = {}
-        parameters = {}
-        if self._bookmarks:
-            parameters["bookmark"] = self.last_bookmark()   # TODO: remove in 2.0
-            parameters["bookmarks"] = self._bookmarks
-        cx = self._connection
-        cx.run(u"BEGIN", parameters, metadata)
-        cx.pull_all(metadata)
-        return self._transaction
 
 
 class Transaction(object):
@@ -1399,21 +1394,6 @@ def iter_items(iterable):
     else:
         for key, value in iterable:
             yield key, value
-
-
-def last_bookmark(b0, b1):
-    """ Return the latest of two bookmarks by looking for the maximum
-    integer value following the last colon in the bookmark string.
-    """
-    n = [None, None]
-    _, _, n[0] = b0.rpartition(":")
-    _, _, n[1] = b1.rpartition(":")
-    for i in range(2):
-        try:
-            n[i] = int(n[i])
-        except ValueError:
-            raise ValueError("Invalid bookmark: {}".format(b0))
-    return b0 if n[0] > n[1] else b1
 
 
 def retry_delay_generator(initial_delay, multiplier, jitter_factor):
