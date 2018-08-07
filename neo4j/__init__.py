@@ -191,8 +191,9 @@ class DirectDriver(Driver):
 
     def __new__(cls, uri, **config):
         from neobolt.addressing import SocketAddress
-        from neobolt.direct import DirectConnectionPool, DEFAULT_PORT, connect
-        from neobolt.security import SecurityPlan
+        from neobolt.compat.ssl import SSL_AVAILABLE
+        from neobolt.direct import ConnectionPool, DEFAULT_PORT, connect
+        from neobolt.security import ENCRYPTION_OFF, ENCRYPTION_ON, SecurityPlan
         cls._check_uri(uri)
         if SocketAddress.parse_routing_context(uri):
             raise ValueError("Parameters are not supported with scheme 'bolt'. Given URI: '%s'." % uri)
@@ -203,13 +204,15 @@ class DirectDriver(Driver):
         # the connection pool may contain multiple IP address keys, one for
         # an old address and one for a new address.
         instance.address = SocketAddress.from_uri(uri, DEFAULT_PORT)
+        if config.get("encrypted") is None:
+            config["encrypted"] = ENCRYPTION_ON if SSL_AVAILABLE else ENCRYPTION_OFF
         instance.security_plan = security_plan = SecurityPlan.build(**config)
         instance.encrypted = security_plan.encrypted
 
-        def connector(address, error_handler):
-            return connect(address, security_plan.ssl_context, error_handler, **config)
+        def connector(address, **kwargs):
+            return connect(address, **dict(config, **kwargs))
 
-        pool = DirectConnectionPool(connector, instance.address, **config)
+        pool = ConnectionPool(connector, instance.address, **config)
         pool.release(pool.acquire())
         instance._pool = pool
         instance._max_retry_time = config.get("max_retry_time", default_config["max_retry_time"])
@@ -231,12 +234,15 @@ class RoutingDriver(Driver):
 
     def __new__(cls, uri, **config):
         from neobolt.addressing import SocketAddress
+        from neobolt.compat.ssl import SSL_AVAILABLE
         from neobolt.direct import DEFAULT_PORT, connect
         from neobolt.routing import RoutingConnectionPool
-        from neobolt.security import SecurityPlan
+        from neobolt.security import ENCRYPTION_OFF, ENCRYPTION_ON, SecurityPlan
         cls._check_uri(uri)
         instance = object.__new__(cls)
         instance.initial_address = initial_address = SocketAddress.from_uri(uri, DEFAULT_PORT)
+        if config.get("encrypted") is None:
+            config["encrypted"] = ENCRYPTION_ON if SSL_AVAILABLE else ENCRYPTION_OFF
         instance.security_plan = security_plan = SecurityPlan.build(**config)
         instance.encrypted = security_plan.encrypted
         routing_context = SocketAddress.parse_routing_context(uri)
@@ -245,8 +251,8 @@ class RoutingDriver(Driver):
             # scenario right now
             raise ValueError("TRUST_ON_FIRST_USE is not compatible with routing")
 
-        def connector(address, error_handler):
-            return connect(address, security_plan.ssl_context, error_handler, **config)
+        def connector(address, **kwargs):
+            return connect(address, **dict(config, **kwargs))
 
         pool = RoutingConnectionPool(connector, initial_address, routing_context, initial_address, **config)
         try:
@@ -1003,6 +1009,8 @@ class BoltStatementResultSummary(object):
         self.counters = SummaryCounters(metadata.get("stats", {}))
         self.result_available_after = metadata.get("result_available_after")
         self.result_consumed_after = metadata.get("result_consumed_after")
+        self.t_first = metadata.get("t_first")
+        self.t_last = metadata.get("t_last")
         if "plan" in metadata:
             self.plan = _make_plan(metadata["plan"])
         if "profile" in metadata:

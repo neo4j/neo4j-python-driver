@@ -29,6 +29,10 @@ from test.integration.tools import IntegrationTestCase
 
 class SecurityTestCase(IntegrationTestCase):
 
+    def test_secure_by_default(self):
+        with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
+            self.assertTrue(driver.encrypted)
+
     def test_insecure_session_uses_normal_socket(self):
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token, encrypted=False) as driver:
             with driver.session() as session:
