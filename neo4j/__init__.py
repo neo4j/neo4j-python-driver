@@ -191,8 +191,7 @@ class DirectDriver(Driver):
 
     def __new__(cls, uri, **config):
         from neobolt.addressing import SocketAddress
-        from neobolt.bolt.connection import DEFAULT_PORT, connect
-        from neobolt.direct import DirectConnectionPool
+        from neobolt.direct import DirectConnectionPool, DEFAULT_PORT, connect
         from neobolt.security import SecurityPlan
         cls._check_uri(uri)
         if SocketAddress.parse_routing_context(uri):
@@ -232,7 +231,7 @@ class RoutingDriver(Driver):
 
     def __new__(cls, uri, **config):
         from neobolt.addressing import SocketAddress
-        from neobolt.bolt.connection import DEFAULT_PORT, connect
+        from neobolt.direct import DEFAULT_PORT, connect
         from neobolt.routing import RoutingConnectionPool
         from neobolt.security import SecurityPlan
         cls._check_uri(uri)
@@ -434,7 +433,7 @@ class Session(object):
 
         statement = ustr(statement)
         parameters = fix_parameters(dict(parameters or {}, **kwparameters), protocol_version,
-                                    supports_bytes=server.supports_bytes())
+                                    supports_bytes=server.supports("bytes"))
 
         hydrant = PackStreamHydrator(protocol_version)
         metadata = {
@@ -444,9 +443,9 @@ class Session(object):
             "protocol_version": protocol_version,
         }
         self._last_result = result = BoltStatementResult(self, hydrant, metadata)
-        cx.run(statement, parameters, metadata)
+        cx.run(statement, parameters, on_success=metadata.update)
         cx.pull_all(
-            metadata,
+            on_success=metadata.update,
             on_records=lambda records: result._records.extend(
                 hydrant.hydrate_records(result.keys(), records)),
             on_summary=lambda: result.detach(sync=False),
@@ -570,7 +569,7 @@ class Session(object):
     def _open_transaction(self, access_mode=None):
         self._transaction = Transaction(self, on_close=self._close_transaction)
         self._connect(access_mode)
-        self._connection.begin(self._bookmarks_in, {})
+        self._connection.begin(self._bookmarks_in)
 
     def commit_transaction(self):
         """ Commit the current transaction.
@@ -583,7 +582,7 @@ class Session(object):
             raise TransactionError("No transaction to commit")
         metadata = {}
         try:
-            self._connection.commit(metadata)
+            self._connection.commit(on_success=metadata.update)
         finally:
             self._disconnect(sync=True)
             self._transaction = None
@@ -602,7 +601,7 @@ class Session(object):
             raise TransactionError("No transaction to rollback")
         metadata = {}
         try:
-            self._connection.rollback(metadata)
+            self._connection.rollback(on_success=metadata.update)
         finally:
             self._disconnect(sync=True)
             self._transaction = None

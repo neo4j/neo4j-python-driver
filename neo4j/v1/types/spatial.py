@@ -24,7 +24,7 @@ This module defines spatial data types.
 """
 
 
-from neobolt.packstream.structure import Structure
+from neobolt.packstream import Structure
 
 
 __all__ = [
