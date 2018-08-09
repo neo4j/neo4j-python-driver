@@ -1,2 +1,2 @@
-neobolt>=1.7.0b1
+neobolt==1.7.0b1
 neotime

@@ -27,10 +27,10 @@ try:
 except ImportError:
     from distutils.core import setup, Extension
 
-from neo4j.meta import version
+from neo4j.meta import package, version
 
 install_requires = [
-    "neobolt>=1.7.0b1",
+    "neobolt==1.7.0b1",
     "neotime",
 ]
 classifiers = [
@@ -52,7 +52,7 @@ packages = [
     "neo4j.v1.types",
 ]
 setup_args = {
-    "name": "neo4j-driver",
+    "name": package,
     "version": version,
     "description": "Neo4j Bolt driver for Python",
     "license": "Apache License, Version 2.0",

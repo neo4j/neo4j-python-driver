@@ -19,5 +19,6 @@
 # limitations under the License.
 
 
-# This version number will be automatically set in release-prepare build.
+# Can be automatically overridden in builds
+package = "neo4j"
 version = "1.7.0.dev0"
