@@ -191,9 +191,8 @@ class DirectDriver(Driver):
 
     def __new__(cls, uri, **config):
         from neobolt.addressing import SocketAddress
-        from neobolt.compat.ssl import SSL_AVAILABLE
         from neobolt.direct import ConnectionPool, DEFAULT_PORT, connect
-        from neobolt.security import ENCRYPTION_OFF, ENCRYPTION_ON, SecurityPlan
+        from neobolt.security import ENCRYPTION_OFF, ENCRYPTION_ON, SSL_AVAILABLE, SecurityPlan
         cls._check_uri(uri)
         if SocketAddress.parse_routing_context(uri):
             raise ValueError("Parameters are not supported with scheme 'bolt'. Given URI: '%s'." % uri)
@@ -234,10 +233,9 @@ class RoutingDriver(Driver):
 
     def __new__(cls, uri, **config):
         from neobolt.addressing import SocketAddress
-        from neobolt.compat.ssl import SSL_AVAILABLE
         from neobolt.direct import DEFAULT_PORT, connect
         from neobolt.routing import RoutingConnectionPool
-        from neobolt.security import ENCRYPTION_OFF, ENCRYPTION_ON, SecurityPlan
+        from neobolt.security import ENCRYPTION_OFF, ENCRYPTION_ON, SSL_AVAILABLE, SecurityPlan
         cls._check_uri(uri)
         instance = object.__new__(cls)
         instance.initial_address = initial_address = SocketAddress.from_uri(uri, DEFAULT_PORT)
@@ -441,6 +439,9 @@ class Session(object):
         parameters = fix_parameters(dict(parameters or {}, **kwparameters), protocol_version,
                                     supports_bytes=server.supports("bytes"))
 
+        def fail(_):
+            self._close_transaction()
+
         hydrant = PackStreamHydrator(protocol_version)
         metadata = {
             "statement": statement,
@@ -449,11 +450,12 @@ class Session(object):
             "protocol_version": protocol_version,
         }
         self._last_result = result = BoltStatementResult(self, hydrant, metadata)
-        cx.run(statement, parameters, on_success=metadata.update)
+        cx.run(statement, parameters, on_success=metadata.update, on_failure=fail)
         cx.pull_all(
-            on_success=metadata.update,
             on_records=lambda records: result._records.extend(
                 hydrant.hydrate_records(result.keys(), records)),
+            on_success=metadata.update,
+            on_failure=fail,
             on_summary=lambda: result.detach(sync=False),
         )
 
