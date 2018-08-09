@@ -18,8 +18,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from unittest import TestCase
-from neo4j.v1.security import kerberos_auth, basic_auth, custom_auth
+from neo4j.v1 import kerberos_auth, basic_auth, custom_auth
+
 
 class AuthTokenTestCase(TestCase):
 

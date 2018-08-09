@@ -2,7 +2,7 @@
 !: AUTO RESET
 
 C: RUN "BEGIN" {}
-   PULL_ALL
+   DISCARD_ALL
 S: SUCCESS {"fields": []}
    SUCCESS {}
 
@@ -13,12 +13,12 @@ S: SUCCESS {"fields": ["1"]}
    SUCCESS {}
 
 C: RUN "COMMIT" {}
-   PULL_ALL
+   DISCARD_ALL
 S: SUCCESS {"bookmark": "bookmark:1", "bookmarks": ["bookmark:1"]}
    SUCCESS {}
 
 C: RUN "BEGIN" {"bookmark": "bookmark:1", "bookmarks": ["bookmark:1"]}
-   PULL_ALL
+   DISCARD_ALL
 S: SUCCESS {"fields": []}
    SUCCESS {}
 
@@ -29,6 +29,6 @@ S: SUCCESS {"fields": ["1"]}
    SUCCESS {}
 
 C: RUN "COMMIT" {}
-   PULL_ALL
+   DISCARD_ALL
 S: SUCCESS {"bookmark": "bookmark:2", "bookmarks": ["bookmark:2"]}
    SUCCESS {}

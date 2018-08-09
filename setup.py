@@ -29,20 +29,9 @@ except ImportError:
 
 from neo4j.meta import version
 
-try:
-    from Cython.Build import cythonize
-    from Cython.Distutils import build_ext
-except ImportError:
-    ext_modules = [
-        Extension("neo4j.bolt._io", ["neo4j/bolt/_io.c"]),
-        Extension("neo4j.packstream._packer", ["neo4j/packstream/_packer.c"]),
-        Extension("neo4j.packstream._unpacker", ["neo4j/packstream/_unpacker.c"]),
-    ]
-else:
-    ext_modules = cythonize([Extension("*", ["**/*.pyx"])])
-
 install_requires = [
-    "neotime==1.0.0",
+    "neobolt>=1.7.0b1",
+    "neotime",
 ]
 classifiers = [
     "Intended Audience :: Developers",
@@ -54,19 +43,14 @@ classifiers = [
     "Programming Language :: Python :: 3.4",
     "Programming Language :: Python :: 3.5",
     "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
 ]
 packages = [
     "neo4j",
-    "neo4j.bolt",
     "neo4j.compat",
-    "neo4j.packstream",
     "neo4j.v1",
     "neo4j.v1.types",
 ]
-package_data = {
-    "neo4j.bolt": ["*.pyx"],
-    "neo4j.packstream": ["*.pyx"],
-}
 setup_args = {
     "name": "neo4j-driver",
     "version": version,
@@ -80,12 +64,6 @@ setup_args = {
     "install_requires": install_requires,
     "classifiers": classifiers,
     "packages": packages,
-    "ext_modules": ext_modules,
 }
 
-try:
-    setup(**setup_args)
-except SystemExit:
-    print("Compilation failed, falling back to pure Python.")
-    del setup_args["ext_modules"]
-    setup(**setup_args)
+setup(**setup_args)

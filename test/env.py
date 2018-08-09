@@ -31,4 +31,4 @@ NEO4J_USER = getenv("NEO4J_USER")
 # Password for the currently running server
 NEO4J_PASSWORD = getenv("NEO4J_PASSWORD")
 
-NEOCTRL_ARGS = getenv("NEOCTRL_ARGS", "3.3.1")
+NEOCTRL_ARGS = getenv("NEOCTRL_ARGS", "3.4.1")

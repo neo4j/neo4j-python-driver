@@ -19,6 +19,8 @@
 # limitations under the License.
 
 
+import pytest
+
 from neo4j.exceptions import CypherError
 
 from test.integration.tools import DirectIntegrationTestCase
@@ -273,11 +275,9 @@ class SingleRecordTestCase(DirectIntegrationTestCase):
         assert not result.attached()
 
     def test_single_consumes_entire_result_if_multiple_records(self):
-        import warnings
         session = self.driver.session()
         result = session.run("UNWIND range(1, 3) AS n RETURN n")
-        with warnings.catch_warnings():
-            warnings.simplefilter("always")
+        with pytest.warns(UserWarning):
             _ = result.single()
         assert not result.attached()
 

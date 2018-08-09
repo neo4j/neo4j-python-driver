@@ -19,11 +19,12 @@
 # limitations under the License.
 
 
-from neo4j.v1 import GraphDatabase, READ_ACCESS, WRITE_ACCESS, SessionExpired, \
-    RoutingDriver, RoutingConnectionPool, LeastConnectedLoadBalancingStrategy, LOAD_BALANCING_STRATEGY_ROUND_ROBIN, \
-    RoundRobinLoadBalancingStrategy, TransientError
+from neobolt.exceptions import ServiceUnavailable
+from neobolt.routing import LeastConnectedLoadBalancingStrategy, RoundRobinLoadBalancingStrategy, \
+    LOAD_BALANCING_STRATEGY_ROUND_ROBIN, RoutingProtocolError
+
 from neo4j.exceptions import ClientError
-from neo4j.bolt import ProtocolError, ServiceUnavailable
+from neo4j.v1 import GraphDatabase, READ_ACCESS, WRITE_ACCESS, SessionExpired, RoutingDriver, TransientError
 
 from test.stub.tools import StubTestCase, StubCluster
 
@@ -46,7 +47,7 @@ class RoutingDriverTestCase(StubTestCase):
     def test_cannot_discover_servers_on_silent_router(self):
         with StubCluster({9001: "silent_router.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
-            with self.assertRaises(ProtocolError):
+            with self.assertRaises(RoutingProtocolError):
                 with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False):
                     pass
 
@@ -216,10 +217,11 @@ class RoutingDriverTestCase(StubTestCase):
     def test_should_error_when_missing_reader(self):
         with StubCluster({9001: "router_no_readers.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
-            with self.assertRaises(ProtocolError):
+            with self.assertRaises(RoutingProtocolError):
                 GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False)
 
     def test_default_load_balancing_strategy_is_least_connected(self):
+        from neobolt.routing import RoutingConnectionPool
         with StubCluster({9001: "router.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
@@ -228,6 +230,7 @@ class RoutingDriverTestCase(StubTestCase):
                 self.assertIsInstance(driver._pool.load_balancing_strategy, LeastConnectedLoadBalancingStrategy)
 
     def test_can_select_round_robin_load_balancing_strategy(self):
+        from neobolt.routing import RoutingConnectionPool
         with StubCluster({9001: "router.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False,

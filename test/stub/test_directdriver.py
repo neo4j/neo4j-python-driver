@@ -19,8 +19,9 @@
 # limitations under the License.
 
 
+from neobolt.exceptions import ServiceUnavailable
+
 from neo4j.v1 import GraphDatabase, DirectDriver
-from neo4j.exceptions import ServiceUnavailable
 
 from test.stub.tools import StubTestCase, StubCluster
 

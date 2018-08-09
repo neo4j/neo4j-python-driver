@@ -133,8 +133,10 @@ class AccessLevelTestCase(StubTestCase):
                         return total
 
                     value = session.read_transaction(unit_of_work_1)
+                    assert session.last_bookmark() == "bookmark:1"
                     assert value == 1
                     value = session.write_transaction(unit_of_work_2)
+                    assert session.last_bookmark() == "bookmark:2"
                     assert value == 2
 
     def test_write_tx_then_read_tx(self):
