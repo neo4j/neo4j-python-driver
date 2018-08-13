@@ -75,8 +75,8 @@ Returning a live result object would prevent the driver from correctly managing 
 
 API
 ===
-.. autoclass:: neo4j.v1.Session
+.. autoclass:: neo4j.Session
    :members:
 
-.. autoclass:: neo4j.v1.Transaction
+.. autoclass:: neo4j.Transaction
    :members:

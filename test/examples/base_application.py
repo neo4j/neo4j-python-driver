@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from neo4j.v1 import GraphDatabase
+from neo4j import GraphDatabase
 
 
 class BaseApplication(object):

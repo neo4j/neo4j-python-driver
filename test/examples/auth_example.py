@@ -19,7 +19,7 @@
 # limitations under the License.
 
 # tag::basic-auth-import[]
-from neo4j.v1 import GraphDatabase
+from neo4j import GraphDatabase
 # end::basic-auth-import[]
 
 

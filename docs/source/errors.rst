@@ -2,10 +2,6 @@
 Errors
 ******
 
-
-.. autoclass:: neo4j.exceptions.AddressError
-   :members:
-
 .. autoclass:: neo4j.exceptions.CypherError
    :members:
 

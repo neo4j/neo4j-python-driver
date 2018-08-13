@@ -12,10 +12,10 @@ Construction
 
 :class:`.Driver` construction can either be carried out directly or via a `classmethod` on the :class:`.GraphDatabase` class.
 
-.. autoclass:: neo4j.v1.GraphDatabase
+.. autoclass:: neo4j.GraphDatabase
    :members:
 
-.. autoclass:: neo4j.v1.Driver(uri, **config)
+.. autoclass:: neo4j.Driver(uri, **config)
    :members:
 
 
@@ -42,7 +42,7 @@ This may be a standalone server or could be a specific member of a cluster.
 
 Connections established by a :class:`.DirectDriver` are always made to the exact host and port detailed in the URI.
 
-.. autoclass:: neo4j.v1.DirectDriver
+.. autoclass:: neo4j.DirectDriver
    :members:
    :inherited-members:
 
@@ -55,7 +55,7 @@ URI scheme:
 Driver subclass:
     :class:`.RoutingDriver`
 
-.. autoclass:: neo4j.v1.RoutingDriver
+.. autoclass:: neo4j.RoutingDriver
    :members:
    :inherited-members:
 
@@ -72,9 +72,9 @@ An authentication token for the server.
 For basic auth, this can be a simple tuple, for example ``("neo4j", "password")``.
 Alternatively, one of the auth token functions can be used.
 
-.. autofunction:: neo4j.v1.basic_auth
+.. autofunction:: neo4j.basic_auth
 
-.. autofunction:: neo4j.v1.custom_auth
+.. autofunction:: neo4j.custom_auth
 
 ``encrypted``
 -------------
@@ -88,14 +88,14 @@ Defaults to :py:const:`True` if TLS is available.
 The trust level for certificates received from the server during TLS negotiation.
 This setting does not have any effect if ``encrypted`` is set to :py:const:`False`.
 
-.. py:attribute:: neo4j.v1.TRUST_ALL_CERTIFICATES
+.. py:attribute:: neo4j.TRUST_ALL_CERTIFICATES
 
    Trust any server certificate (default). This ensures that communication
    is encrypted but does not verify the server certificate against a
    certificate authority. This option is primarily intended for use with
    the default auto-generated server certificate.
 
-.. py:attribute:: neo4j.v1.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+.. py:attribute:: neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
 
    Trust server certificates that can be verified against the system
    certificate authority. This option is primarily intended for use with
@@ -173,7 +173,7 @@ For example:
 
 .. code-block:: python
 
-    from neo4j.v1 import GraphDatabase
+    from neo4j import GraphDatabase
 
     class Application(object):
 

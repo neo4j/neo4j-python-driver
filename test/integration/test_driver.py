@@ -21,7 +21,7 @@
 
 from neobolt.direct import DEFAULT_PORT
 
-from neo4j.v1 import GraphDatabase, Driver, ServiceUnavailable
+from neo4j import GraphDatabase, Driver, ServiceUnavailable
 
 from test.integration.tools import IntegrationTestCase
 

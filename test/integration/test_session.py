@@ -22,7 +22,7 @@
 from unittest import SkipTest
 from uuid import uuid4
 
-from neo4j.v1 import \
+from neo4j import \
     READ_ACCESS, WRITE_ACCESS, \
     CypherError, SessionError, TransactionError
 from neo4j.v1.types.graph import Node, Relationship, Path

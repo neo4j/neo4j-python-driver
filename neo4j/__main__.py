@@ -28,7 +28,7 @@ from sys import stdout, stderr
 
 from neobolt.util import Watcher
 
-from .v1 import GraphDatabase
+from neo4j import GraphDatabase
 from neo4j.exceptions import CypherError
 
 

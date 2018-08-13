@@ -19,7 +19,7 @@
 # limitations under the License.
 
 # tag::config-connection-timeout-import[]
-from neo4j.v1 import GraphDatabase
+from neo4j import GraphDatabase
 # end::config-connection-timeout-import[]
 
 

@@ -175,13 +175,13 @@ class ExamplesTest(IntegrationTestCase):
         self.assertEqual(self.person_count("Alice"), 1)
 
     def read(self, statement):
-        from neo4j.v1 import GraphDatabase
+        from neo4j import GraphDatabase
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
             with driver.session() as session:
                 return session.read_transaction(lambda tx: tx.run(statement))
 
     def write(self, statement):
-        from neo4j.v1 import GraphDatabase
+        from neo4j import GraphDatabase
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
             with driver.session() as session:
                 return session.write_transaction(lambda tx: tx.run(statement))
@@ -190,7 +190,7 @@ class ExamplesTest(IntegrationTestCase):
         self.write("MATCH (a) DETACH DELETE a")
         
     def person_count(self, name):
-        from neo4j.v1 import GraphDatabase
+        from neo4j import GraphDatabase
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
             with driver.session() as session:
                 record_list = list(session.run("MATCH (a:Person {name: $name}) RETURN count(a)", {"name": name}))

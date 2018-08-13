@@ -19,7 +19,7 @@
 # limitations under the License.
 
 # tag::config-trust-import[]
-from neo4j.v1 import GraphDatabase, TRUST_ALL_CERTIFICATES
+from neo4j import GraphDatabase, TRUST_ALL_CERTIFICATES
 # end::config-trust-import[]
 
 

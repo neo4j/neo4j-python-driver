@@ -31,7 +31,7 @@ class ReadmeTestCase(IntegrationTestCase):
         names = set()
         print = names.add
 
-        from neo4j.v1 import GraphDatabase
+        from neo4j import GraphDatabase
 
         driver = GraphDatabase.driver(self.bolt_uri, auth=self.auth_token)
 

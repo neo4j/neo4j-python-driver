@@ -23,7 +23,7 @@ from sys import argv
 
 from neobolt.util import Watcher
 
-from neo4j.v1 import GraphDatabase, basic_auth
+from neo4j import GraphDatabase, basic_auth
 
 
 def update_password(user, password, new_password):

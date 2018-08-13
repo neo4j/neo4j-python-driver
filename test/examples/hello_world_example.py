@@ -19,7 +19,7 @@
 # limitations under the License.
 
 # tag::hello-world-import[]
-from neo4j.v1 import GraphDatabase
+from neo4j import GraphDatabase
 # end::hello-world-import[]
 
 

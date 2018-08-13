@@ -19,7 +19,7 @@
 # limitations under the License.
 
 # tag::driver-lifecycle-import[]
-from neo4j.v1 import GraphDatabase
+from neo4j import GraphDatabase
 # end::driver-lifecycle-import[]
 
 

@@ -9,19 +9,19 @@ Each result consists of header metadata, zero or more :class:`.Record` objects a
 Results also contain a buffer that automatically stores unconsumed records when results are consumed out of order.
 A :class:`.BoltStatementResult` is attached to an active connection, through a :class:`.Session`, until all its content has been buffered or consumed.
 
-.. autoclass:: neo4j.v1.BoltStatementResult
+.. autoclass:: neo4j.BoltStatementResult
    :inherited-members:
    :members:
 
-.. autoclass:: neo4j.v1.Record
+.. autoclass:: neo4j.Record
    :members:
 
 
 Summary Details
 ---------------
 
-.. autoclass:: neo4j.v1.result.BoltStatementResultSummary
+.. autoclass:: neo4j.BoltStatementResultSummary
    :members:
 
-.. autoclass:: neo4j.v1.result.SummaryCounters
+.. autoclass:: neo4j.SummaryCounters
    :members:

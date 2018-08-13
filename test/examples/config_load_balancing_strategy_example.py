@@ -19,7 +19,7 @@
 # limitations under the License.
 
 # tag::config-load-balancing-strategy-import[]
-from neo4j.v1 import GraphDatabase, LOAD_BALANCING_STRATEGY_LEAST_CONNECTED
+from neo4j import GraphDatabase, LOAD_BALANCING_STRATEGY_LEAST_CONNECTED
 # end::config-load-balancing-strategy-import[]
 
 

@@ -32,7 +32,7 @@ except ImportError:
 
 from boltkit.controller import _install, WindowsController, UnixController
 
-from neo4j.v1 import GraphDatabase
+from neo4j import GraphDatabase
 from neo4j.exceptions import AuthError
 
 from test.env import NEO4J_SERVER_PACKAGE, NEO4J_USER, NEO4J_PASSWORD, NEOCTRL_ARGS
@@ -202,7 +202,7 @@ class DirectIntegrationTestCase(IntegrationTestCase):
     driver = None
 
     def setUp(self):
-        from neo4j.v1 import GraphDatabase
+        from neo4j import GraphDatabase
         self.driver = GraphDatabase.driver(self.bolt_uri, auth=self.auth_token)
 
     def tearDown(self):
@@ -214,7 +214,7 @@ class RoutingIntegrationTestCase(IntegrationTestCase):
     driver = None
 
     def setUp(self):
-        from neo4j.v1 import GraphDatabase
+        from neo4j import GraphDatabase
         self.driver = GraphDatabase.driver(self.bolt_routing_uri, auth=self.auth_token)
 
     def tearDown(self):

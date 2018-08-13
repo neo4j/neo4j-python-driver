@@ -1,6 +1,6 @@
-********************************
+**************************************
 Neo4j Bolt Driver |version| for Python
-********************************
+**************************************
 
 The Official Neo4j Driver for Python supports Neo4j 3.1 and above and requires Python version 2.7, 3.4, 3.5 or 3.6.
 
@@ -10,7 +10,7 @@ Quick Example
 
 .. code-block:: python
 
-    from neo4j.v1 import GraphDatabase
+    from neo4j import GraphDatabase
 
     uri = "bolt://localhost:7687"
     driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
@@ -32,13 +32,13 @@ To install the latest stable version, use:
 
 .. code:: bash
 
-    pip install neo4j-driver
+    pip install neo4j
 
 For the most up-to-date version (possibly unstable), use:
 
 .. code:: bash
 
-    pip install git+https://github.com/neo4j/neo4j-python-driver.git#egg=neo4j-driver
+    pip install git+https://github.com/neo4j/neo4j-python-driver.git#egg=neo4j
 
 
 API Documentation

@@ -19,7 +19,7 @@
 # limitations under the License.
 
 # tag::config-unencrypted-import[]
-from neo4j.v1 import GraphDatabase
+from neo4j import GraphDatabase
 # end::config-unencrypted-import[]
 
 
