@@ -14,7 +14,7 @@ Quick Example
 
     driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "password"))
 
-    def add_friends(tx, name, friend_name):
+    def add_friend(tx, name, friend_name):
         tx.run("MERGE (a:Person {name: $name}) "
                "MERGE (a)-[:KNOWS]->(friend:Person {name: $friend_name})",
                name=name, friend_name=friend_name)
@@ -25,9 +25,9 @@ Quick Example
             print(record["friend.name"])
 
     with driver.session() as session:
-        session.write_transaction(add_friends, "Arthur", "Guinevere")
-        session.write_transaction(add_friends, "Arthur", "Lancelot")
-        session.write_transaction(add_friends, "Arthur", "Merlin")
+        session.write_transaction(add_friend, "Arthur", "Guinevere")
+        session.write_transaction(add_friend, "Arthur", "Lancelot")
+        session.write_transaction(add_friend, "Arthur", "Merlin")
         session.read_transaction(print_friends, "Arthur")
 
 
