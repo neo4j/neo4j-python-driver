@@ -1421,4 +1421,4 @@ def is_retriable_transient_error(error):
                                "Neo.TransientError.Transaction.LockClientStopped"))
 
 
-from .v1.types import *
+from neo4j.types import *

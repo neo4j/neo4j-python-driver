@@ -6,7 +6,7 @@ The official Neo4j driver for Python supports Neo4j 3.0 and above and Python ver
 
 .. note::
 
-    Python 2 support is deprecated and will be discontinued for the 2.x series driver releases.
+    Python 2 support is deprecated and will be discontinued in the 2.x series driver releases.
 
 
 Quick Example
@@ -43,6 +43,11 @@ To install the latest stable version, use:
 .. code:: bash
 
     pip install neo4j
+
+.. note::
+
+    Installation from the ``neo4j-driver`` package on PyPI is now deprecated and will be discontinued in the 2.x series driver releases.
+    Please install from the ``neo4j`` package instead.
 
 For the most up-to-date version (generally unstable), use:
 

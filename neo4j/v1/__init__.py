@@ -20,3 +20,7 @@
 
 
 from .. import *
+
+
+from warnings import warn as _warn
+_warn("The 'neo4j.v1' package is deprecated, import from 'neo4j' instead", category=DeprecationWarning, stacklevel=2)
