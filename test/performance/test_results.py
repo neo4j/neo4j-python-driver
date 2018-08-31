@@ -23,7 +23,7 @@ from itertools import product
 
 from pytest import mark
 
-from neo4j.v1 import GraphDatabase
+from neo4j import GraphDatabase
 from .tools import GraphDatabaseServer
 
 

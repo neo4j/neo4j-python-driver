@@ -21,7 +21,7 @@
 
 from unittest import TestCase
 
-from neo4j.v1 import Record
+from neo4j import Record
 
 
 class RecordTestCase(TestCase):

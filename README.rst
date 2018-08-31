@@ -4,6 +4,10 @@ Neo4j Bolt Driver for Python
 
 The official Neo4j driver for Python supports Neo4j 3.0 and above and Python versions 2.7, 3.4, 3.5, 3.6, and 3.7.
 
+.. note::
+
+    Python 2 support is deprecated and will be discontinued for the 2.x series driver releases.
+
 
 Quick Example
 =============
@@ -55,7 +59,7 @@ Other Information
 * `Example Project`_
 * `Driver Wiki`_ (includes change logs)
 
-.. _`Neo4j Manual`: https://neo4j.com/docs/
+.. _`Neo4j Manual`: https://neo4j.com/docs/developer-manual/current/drivers/
 .. _`Neo4j Quick Reference Card`: https://neo4j.com/docs/cypher-refcard/current/
 .. _`Example Project`: https://github.com/neo4j-examples/movies-python-bolt
 .. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki

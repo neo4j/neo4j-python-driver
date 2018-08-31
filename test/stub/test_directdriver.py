@@ -21,7 +21,7 @@
 
 from neobolt.exceptions import ServiceUnavailable
 
-from neo4j.v1 import GraphDatabase, DirectDriver
+from neo4j import GraphDatabase, DirectDriver
 
 from test.stub.tools import StubTestCase, StubCluster
 

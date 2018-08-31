@@ -24,7 +24,7 @@ from neobolt.routing import LeastConnectedLoadBalancingStrategy, RoundRobinLoadB
     LOAD_BALANCING_STRATEGY_ROUND_ROBIN, RoutingProtocolError
 
 from neo4j.exceptions import ClientError
-from neo4j.v1 import GraphDatabase, READ_ACCESS, WRITE_ACCESS, SessionExpired, RoutingDriver, TransientError
+from neo4j import GraphDatabase, READ_ACCESS, WRITE_ACCESS, SessionExpired, RoutingDriver, TransientError
 
 from test.stub.tools import StubTestCase, StubCluster
 

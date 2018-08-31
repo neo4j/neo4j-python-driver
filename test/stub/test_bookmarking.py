@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from neo4j.v1 import GraphDatabase, READ_ACCESS
+from neo4j import GraphDatabase, READ_ACCESS
 
 from test.stub.tools import StubTestCase, StubCluster
 

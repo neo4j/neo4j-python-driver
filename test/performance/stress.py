@@ -22,7 +22,7 @@ from sys import stderr
 from threading import Thread
 from timeit import default_timer as time
 
-from neo4j.v1 import GraphDatabase, CypherError
+from neo4j import GraphDatabase, CypherError
 
 
 class Runner(Thread):

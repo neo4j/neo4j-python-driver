@@ -20,7 +20,7 @@
 
 
 from unittest import TestCase
-from neo4j.v1 import kerberos_auth, basic_auth, custom_auth
+from neo4j import kerberos_auth, basic_auth, custom_auth
 
 
 class AuthTokenTestCase(TestCase):
