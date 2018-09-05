@@ -1,4 +1,4 @@
-boltkit>=1.0.34
+boltkit>=1.0.39
 coverage
 mock
 pytest

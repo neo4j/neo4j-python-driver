@@ -40,6 +40,7 @@ __all__ = [
     "SessionError",
     "SessionExpired",
     "TransactionError",
+    "unit_of_work",
     "basic_auth",
     "custom_auth",
     "kerberos_auth",
@@ -574,7 +575,7 @@ class Session(object):
         self._open_transaction()
         return self._transaction
 
-    def _open_transaction(self, access_mode=None):
+    def _open_transaction(self, access_mode=None, metadata=None):
         self._transaction = Transaction(self, on_close=self._close_transaction)
         self._connect(access_mode)
         self._connection.begin(self._bookmarks_in)
@@ -619,6 +620,9 @@ class Session(object):
 
         if not callable(unit_of_work):
             raise TypeError("Unit of work is not callable")
+
+        metadata = getattr(unit_of_work, "metadata", None)
+        print(metadata)    # TODO
         retry_delay = retry_delay_generator(INITIAL_RETRY_DELAY,
                                             RETRY_DELAY_MULTIPLIER,
                                             RETRY_DELAY_JITTER_FACTOR)
@@ -1339,6 +1343,21 @@ class TransactionError(Exception):
     def __init__(self, transaction, *args, **kwargs):
         super(TransactionError, self).__init__(*args, **kwargs)
         self.transaction = transaction
+
+
+def unit_of_work(**metadata):
+    """ Decorator for transaction functions.
+    """
+
+    def wrapper(f):
+
+        def wrapped(*args, **kwargs):
+            return f(*args, **kwargs)
+
+        wrapped.metadata = metadata
+        return wrapped
+
+    return wrapper
 
 
 def basic_auth(user, password, realm=None):

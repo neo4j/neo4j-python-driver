@@ -24,8 +24,8 @@ from uuid import uuid4
 
 from neo4j import \
     READ_ACCESS, WRITE_ACCESS, \
-    CypherError, SessionError, TransactionError
-from neo4j.v1.types.graph import Node, Relationship, Path
+    CypherError, SessionError, TransactionError, unit_of_work
+from neo4j.types.graph import Node, Relationship, Path
 from neo4j.exceptions import CypherSyntaxError
 
 from test.integration.tools import DirectIntegrationTestCase
@@ -471,6 +471,7 @@ class SessionCompletionTestCase(DirectIntegrationTestCase):
             session.run("RETURN '{}'".format("A" * 2 ** 20))
             session.close()
 
+
 class TransactionCommittedTestCase(DirectIntegrationTestCase):
 
     def setUp(self):
@@ -483,3 +484,62 @@ class TransactionCommittedTestCase(DirectIntegrationTestCase):
     def test_errors_on_run(self):
         with self.assertRaises(TransactionError):
             self.transaction.run("RETURN 1")
+
+
+class TransactionFunctionTestCase(DirectIntegrationTestCase):
+
+    def test_simple_read(self):
+
+        def work(tx):
+            return tx.run("RETURN 1").single().value()
+
+        with self.driver.session() as session:
+            value = session.read_transaction(work)
+            self.assertEqual(value, 1)
+
+    def test_read_with_arg(self):
+
+        def work(tx, x):
+            return tx.run("RETURN $x", x=x).single().value()
+
+        with self.driver.session() as session:
+            value = session.read_transaction(work, x=1)
+            self.assertEqual(value, 1)
+
+    def test_read_with_arg_and_metadata(self):
+
+        @unit_of_work(timeout=25, metadata={"foo": "bar"})
+        def work(tx, x):
+            return tx.run("RETURN $x", x=x).single().value()
+
+        with self.driver.session() as session:
+            value = session.read_transaction(work, x=1)
+            self.assertEqual(value, 1)
+
+    def test_simple_write(self):
+
+        def work(tx):
+            return tx.run("CREATE (a {x: 1}) RETURN a.x").single().value()
+
+        with self.driver.session() as session:
+            value = session.write_transaction(work)
+            self.assertEqual(value, 1)
+
+    def test_write_with_arg(self):
+
+        def work(tx, x):
+            return tx.run("CREATE (a {x: $x}) RETURN a.x", x=x).single().value()
+
+        with self.driver.session() as session:
+            value = session.write_transaction(work, x=1)
+            self.assertEqual(value, 1)
+
+    def test_write_with_arg_and_metadata(self):
+
+        @unit_of_work(timeout=25, metadata={"foo": "bar"})
+        def work(tx, x):
+            return tx.run("CREATE (a {x: $x}) RETURN a.x", x=x).single().value()
+
+        with self.driver.session() as session:
+            value = session.write_transaction(work, x=1)
+            self.assertEqual(value, 1)
