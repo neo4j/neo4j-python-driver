@@ -19,6 +19,7 @@
 # limitations under the License.
 
 
+from time import sleep
 from unittest import SkipTest
 from uuid import uuid4
 
@@ -26,7 +27,7 @@ from neo4j import \
     READ_ACCESS, WRITE_ACCESS, \
     CypherError, SessionError, TransactionError, unit_of_work
 from neo4j.types.graph import Node, Relationship, Path
-from neo4j.exceptions import CypherSyntaxError
+from neo4j.exceptions import CypherSyntaxError, TransientError
 
 from test.integration.tools import DirectIntegrationTestCase
 
@@ -61,6 +62,24 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
             count += 1
         session.close()
         assert count == 1
+
+    def test_autocommit_transactions_use_bookmarks(self):
+        if self.protocol_version() < 3:
+            raise SkipTest("Test requires Bolt v3")
+        bookmarks = []
+        # Generate an initial bookmark
+        with self.driver.session() as session:
+            session.run("CREATE ()").consume()
+            bookmark = session.last_bookmark()
+            self.assertIsNotNone(bookmark)
+            bookmarks.append(bookmark)
+        # Propagate into another session
+        with self.driver.session(bookmarks=bookmarks) as session:
+            self.assertEqual(list(session.next_bookmarks()), bookmarks)
+            session.run("CREATE ()").consume()
+            bookmark = session.last_bookmark()
+            self.assertIsNotNone(bookmark)
+            self.assertNotIn(bookmark, bookmarks)
 
     def test_fails_on_bad_syntax(self):
         session = self.driver.session()
@@ -368,6 +387,27 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
             assert connection_2 is connection_1
             assert connection_2._last_run_statement is None
             tx.close()
+
+    def test_transaction_metadata(self):
+        if self.protocol_version() < 3:
+            raise SkipTest("Test requires Bolt v3")
+        with self.driver.session() as session:
+            metadata_in = {"foo": "bar"}
+            with session.begin_transaction(metadata=metadata_in) as tx:
+                metadata_out = tx.run("CALL dbms.getTXMetaData").single().value()
+            self.assertEqual(metadata_in, metadata_out)
+
+    def test_transaction_timeout(self):
+        if self.protocol_version() < 3:
+            raise SkipTest("Test requires Bolt v3")
+        with self.driver.session() as s1:
+            s1.run("CREATE (a:Node)").consume()
+            with self.driver.session() as s2:
+                tx1 = s1.begin_transaction()
+                tx1.run("MATCH (a:Node) SET a.property = 1").consume()
+                tx2 = s2.begin_transaction(timeout=0.25)
+                with self.assertRaises(TransientError):
+                    tx2.run("MATCH (a:Node) SET a.property = 2").consume()
 
 
 class BookmarkingTestCase(DirectIntegrationTestCase):

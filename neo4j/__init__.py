@@ -450,12 +450,20 @@ class Session(object):
             "server": server,
             "protocol_version": protocol_version,
         }
+
+        def done(summary_metadata):
+            metadata.update(summary_metadata)
+            bookmark = metadata.get("bookmark")
+            if bookmark:
+                self._bookmarks_in = tuple([bookmark])
+                self._bookmark_out = bookmark
+
         self._last_result = result = BoltStatementResult(self, hydrant, metadata)
         cx.run(statement, parameters, on_success=metadata.update, on_failure=fail)
         cx.pull_all(
             on_records=lambda records: result._records.extend(
                 hydrant.hydrate_records(result.keys(), records)),
-            on_success=metadata.update,
+            on_success=done,
             on_failure=fail,
             on_summary=lambda: result.detach(sync=False),
         )
@@ -550,12 +558,14 @@ class Session(object):
     def _close_transaction(self):
         self._transaction = None
 
-    def begin_transaction(self, bookmark=None):
+    def begin_transaction(self, bookmark=None, metadata=None, timeout=None):
         """ Create a new :class:`.Transaction` within this session.
         Calling this method with a bookmark is equivalent to
 
         :param bookmark: a bookmark to which the server should
                          synchronise before beginning the transaction
+        :param metadata:
+        :param timeout:
         :returns: new :class:`.Transaction` instance.
         :raise: :class:`.TransactionError` if a transaction is already open
         """
@@ -572,13 +582,13 @@ class Session(object):
                 _warned_about_transaction_bookmarks = True
             self._bookmarks_in = tuple([bookmark])
 
-        self._open_transaction()
+        self._open_transaction(metadata=metadata, timeout=timeout)
         return self._transaction
 
-    def _open_transaction(self, access_mode=None, metadata=None):
+    def _open_transaction(self, access_mode=None, metadata=None, timeout=None):
         self._transaction = Transaction(self, on_close=self._close_transaction)
         self._connect(access_mode)
-        self._connection.begin(self._bookmarks_in)
+        self._connection.begin(bookmarks=self._bookmarks_in, metadata=metadata, timeout=timeout)
 
     def commit_transaction(self):
         """ Commit the current transaction.
