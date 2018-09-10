@@ -32,6 +32,7 @@ __all__ = [
     "RoutingDriver",
     "Session",
     "Transaction",
+    "Statement",
     "StatementResult",
     "BoltStatementResult",
     "BoltStatementResultSummary",
@@ -72,7 +73,7 @@ from time import sleep
 from warnings import warn
 
 
-from .compat import perf_counter, urlparse
+from .compat import perf_counter, urlparse, xstr
 from .config import *
 from .meta import version as __version__
 
@@ -436,7 +437,11 @@ class Session(object):
         protocol_version = cx.protocol_version
         server = cx.server
 
-        statement = ustr(statement)
+        has_transaction = self.has_transaction()
+
+        statement_text = ustr(statement)
+        statement_metadata = getattr(statement, "metadata", None)
+        statement_timeout = getattr(statement, "timeout", None)
         parameters = fix_parameters(dict(parameters or {}, **kwparameters), protocol_version,
                                     supports_bytes=server.supports("bytes"))
 
@@ -444,22 +449,37 @@ class Session(object):
             self._close_transaction()
 
         hydrant = PackStreamHydrator(protocol_version)
-        metadata = {
-            "statement": statement,
+        result_metadata = {
+            "statement": statement_text,
             "parameters": parameters,
             "server": server,
             "protocol_version": protocol_version,
         }
+        run_metadata = {
+            "metadata": statement_metadata,
+            "timeout": statement_timeout,
+            "on_success": result_metadata.update,
+            "on_failure": fail,
+        }
 
         def done(summary_metadata):
-            metadata.update(summary_metadata)
-            bookmark = metadata.get("bookmark")
+            result_metadata.update(summary_metadata)
+            bookmark = result_metadata.get("bookmark")
             if bookmark:
                 self._bookmarks_in = tuple([bookmark])
                 self._bookmark_out = bookmark
 
-        self._last_result = result = BoltStatementResult(self, hydrant, metadata)
-        cx.run(statement, parameters, on_success=metadata.update, on_failure=fail)
+        self._last_result = result = BoltStatementResult(self, hydrant, result_metadata)
+
+        if has_transaction:
+            if statement_metadata:
+                raise ValueError("Metadata can only be attached at transaction level")
+            if statement_timeout:
+                raise ValueError("Timeouts only apply at transaction level")
+        else:
+            run_metadata["bookmarks"] = self._bookmarks_in
+
+        cx.run(statement_text, parameters, **run_metadata)
         cx.pull_all(
             on_records=lambda records: result._records.extend(
                 hydrant.hydrate_records(result.keys(), records)),
@@ -468,7 +488,7 @@ class Session(object):
             on_summary=lambda: result.detach(sync=False),
         )
 
-        if not self.has_transaction():
+        if not has_transaction:
             try:
                 self._connection.send()
                 self._connection.fetch()
@@ -803,6 +823,36 @@ class Transaction(object):
         :returns: :const:`True` if closed, :const:`False` otherwise.
         """
         return self._closed
+
+
+class Statement(object):
+
+    def __init__(self, text, metadata=None, timeout=None):
+        self.text = text
+        try:
+            self.metadata = metadata
+        except TypeError:
+            raise TypeError("Metadata must be coercible to a dict")
+        try:
+            self.timeout = timeout
+        except TypeError:
+            raise TypeError("Timeout must be specified as a number of seconds")
+
+    def __str__(self):
+        return xstr(self.text)
+
+
+def fix_parameters(parameters, protocol_version, **kwargs):
+    if not parameters:
+        return {}
+    dehydrator = PackStreamDehydrator(protocol_version, **kwargs)
+    try:
+        dehydrated, = dehydrator.dehydrate([parameters])
+    except TypeError as error:
+        value = error.args[0]
+        raise TypeError("Parameters of type {} are not supported".format(type(value).__name__))
+    else:
+        return dehydrated
 
 
 class StatementResult(object):
@@ -1404,19 +1454,6 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
     """
     from neobolt.security import AuthToken
     return AuthToken(scheme, principal, credentials, realm, **parameters)
-
-
-def fix_parameters(parameters, protocol_version, **kwargs):
-    if not parameters:
-        return {}
-    dehydrator = PackStreamDehydrator(protocol_version, **kwargs)
-    try:
-        dehydrated, = dehydrator.dehydrate([parameters])
-    except TypeError as error:
-        value = error.args[0]
-        raise TypeError("Parameters of type {} are not supported".format(type(value).__name__))
-    else:
-        return dehydrated
 
 
 def iter_items(iterable):

@@ -59,7 +59,7 @@ class BookmarkingTestCase(StubTestCase):
                         pass
                     assert session.last_bookmark() == "bookmark:3"
 
-    def test_autocommit_transaction_does_not_break_chain(self):
+    def test_autocommit_transaction_included_in_chain(self):
         with StubCluster({9001: "router.script", 9004: "bookmark_chain_with_autocommit.script"}):
             uri = "bolt+routing://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
@@ -68,7 +68,7 @@ class BookmarkingTestCase(StubTestCase):
                         pass
                     assert session.last_bookmark() == "bookmark:2"
                     session.run("RETURN 1").consume()
-                    assert session.last_bookmark() == "bookmark:2"
+                    assert session.last_bookmark() == "bookmark:3"
                     with session.begin_transaction():
                         pass
-                    assert session.last_bookmark() == "bookmark:3"
+                    assert session.last_bookmark() == "bookmark:4"

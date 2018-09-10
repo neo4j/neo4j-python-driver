@@ -25,7 +25,7 @@ from uuid import uuid4
 
 from neo4j import \
     READ_ACCESS, WRITE_ACCESS, \
-    CypherError, SessionError, TransactionError, unit_of_work
+    CypherError, SessionError, TransactionError, unit_of_work, Statement
 from neo4j.types.graph import Node, Relationship, Path
 from neo4j.exceptions import CypherSyntaxError, TransientError
 
@@ -174,6 +174,32 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
         with self.driver.session() as session:
             with self.assertRaises(ValueError):
                 _ = session.run("")
+
+    def test_statement_object(self):
+        if self.protocol_version() < 3:
+            raise SkipTest("Test requires Bolt v3")
+        with self.driver.session() as session:
+            value = session.run(Statement("RETURN $x"), x=1).single().value()
+            self.assertEqual(value, 1)
+
+    def test_autocommit_transactions_should_support_metadata(self):
+        if self.protocol_version() < 3:
+            raise SkipTest("Test requires Bolt v3")
+        metadata_in = {"foo": "bar"}
+        with self.driver.session() as session:
+            metadata_out = session.run(Statement("CALL dbms.getTXMetaData", metadata=metadata_in)).single().value()
+            self.assertEqual(metadata_in, metadata_out)
+
+    def test_autocommit_transactions_should_support_timeout(self):
+        if self.protocol_version() < 3:
+            raise SkipTest("Test requires Bolt v3")
+        with self.driver.session() as s1:
+            s1.run("CREATE (a:Node)").consume()
+            with self.driver.session() as s2:
+                tx1 = s1.begin_transaction()
+                tx1.run("MATCH (a:Node) SET a.property = 1").consume()
+                with self.assertRaises(TransientError):
+                    s2.run(Statement("MATCH (a:Node) SET a.property = 2", timeout=0.25)).consume()
 
 
 class SummaryTestCase(DirectIntegrationTestCase):
@@ -387,6 +413,12 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
             assert connection_2 is connection_1
             assert connection_2._last_run_statement is None
             tx.close()
+
+    def test_statement_object_not_supported(self):
+        with self.driver.session() as session:
+            with session.begin_transaction() as tx:
+                with self.assertRaises(ValueError):
+                    tx.run(Statement("RETURN 1", timeout=0.25))
 
     def test_transaction_metadata(self):
         if self.protocol_version() < 3:
