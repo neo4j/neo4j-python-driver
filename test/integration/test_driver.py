@@ -19,6 +19,8 @@
 # limitations under the License.
 
 
+from unittest import SkipTest
+
 from neo4j.v1 import GraphDatabase, ServiceUnavailable
 from test.integration.tools import IntegrationTestCase
 
@@ -46,6 +48,8 @@ class DriverTestCase(IntegrationTestCase):
                 pass
 
     def test_multiple_chunk_response(self):
+        if self.protocol_version() < 2:
+            raise SkipTest("Bytes are not supported in early versions of Bolt v1")
         b = bytearray(16365)
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
             with driver.session() as session:
