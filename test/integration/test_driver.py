@@ -44,3 +44,10 @@ class DriverTestCase(IntegrationTestCase):
         with self.assertRaises(ServiceUnavailable):
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False):
                 pass
+
+    def test_multiple_chunk_response(self):
+        b = bytearray(16365)
+        with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
+            with driver.session() as session:
+                a = session.run("CREATE (a) SET a.foo = $x RETURN a", {"x": b}).single().value()
+        self.assertEqual(b, a["foo"])

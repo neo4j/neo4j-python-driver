@@ -99,7 +99,7 @@ cdef class MessageFrame(object):
         self._next_pane()
         if len(value) < n and self._current_pane >= 0:
             value.extend(self.read(n - (end - start)))
-        return value
+        return memoryview(value)
 
     cpdef close(self):
         self._view = None

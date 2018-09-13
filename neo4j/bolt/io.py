@@ -100,7 +100,7 @@ class MessageFrame(object):
                 is_memoryview = True
             offset += read
             to_read -= read
-        return value
+        return memoryview(value)
 
 
 class ChunkedInputBuffer(object):
