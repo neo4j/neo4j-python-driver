@@ -69,9 +69,6 @@ SUMMARY = {SUCCESS, IGNORED, FAILURE}
 # Set up logger
 log = logging.getLogger("neo4j.bolt")
 log_debug = log.debug
-log_info = log.info
-log_warning = log.warning
-log_error = log.error
 
 
 class ServerInfo(object):
@@ -650,12 +647,12 @@ def _handshake(s, resolved_address, der_encoded_server_certificate, error_handle
     if data_size == 0:
         # If no data is returned after a successful select
         # response, the server has closed the connection
-        log_error("S: [CLOSE]")
+        log_debug("S: [CLOSE]")
         s.close()
         raise ProtocolError("Connection to %r closed without handshake response" % (resolved_address,))
     if data_size != 4:
         # Some garbled data has been received
-        log_error("S: @*#!")
+        log_debug("S: @*#!")
         s.close()
         raise ProtocolError("Expected four byte handshake response, received %r instead" % data)
     agreed_version, = struct_unpack(">I", data)
@@ -671,12 +668,12 @@ def _handshake(s, resolved_address, der_encoded_server_certificate, error_handle
         connection.init()
         return connection
     elif agreed_version == 0x48545450:
-        log_error("S: [CLOSE]")
+        log_debug("S: [CLOSE]")
         s.close()
         raise ServiceUnavailable("Cannot to connect to Bolt service on {!r} "
                                  "(looks like HTTP)".format(resolved_address))
     else:
-        log_error("S: [CLOSE]")
+        log_debug("S: [CLOSE]")
         s.close()
         raise ProtocolError("Unknown Bolt protocol version: {}".format(agreed_version))
 
