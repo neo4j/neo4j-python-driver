@@ -229,17 +229,17 @@ class ResultConsumptionTestCase(DirectIntegrationTestCase):
     def test_value_with_no_keys_and_no_records(self):
         with self.driver.session() as session:
             result = session.run("CREATE ()")
-            self.assertEquals(result.value(), [])
+            self.assertEqual(result.value(), [])
 
     def test_values_with_one_key_and_no_records(self):
         with self.driver.session() as session:
             result = session.run("UNWIND range(1, 0) AS n RETURN n")
-            self.assertEquals(result.values(), [])
+            self.assertEqual(result.values(), [])
 
     def test_data_with_one_key_and_no_records(self):
         with self.driver.session() as session:
             result = session.run("UNWIND range(1, 0) AS n RETURN n")
-            self.assertEquals(result.data(), [])
+            self.assertEqual(result.data(), [])
 
 
 class SingleRecordTestCase(DirectIntegrationTestCase):

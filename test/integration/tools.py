@@ -30,11 +30,11 @@ try:
 except ImportError:
     from urllib import urlretrieve
 
+from boltkit.config import update as update_config
 from boltkit.controller import _install, WindowsController, UnixController
 
 from neo4j.v1 import GraphDatabase
 from neo4j.exceptions import AuthError
-from neo4j.util import ServerVersion
 
 from test.env import NEO4J_SERVER_PACKAGE, NEO4J_USER, NEO4J_PASSWORD, NEOCTRL_ARGS
 
@@ -63,6 +63,25 @@ def is_listening(address):
     else:
         s.close()
         return True
+
+
+class ServerVersion(object):
+    def __init__(self, product, version_tuple, tags_tuple):
+        self.product = product
+        self.version_tuple = version_tuple
+        self.tags_tuple = tags_tuple
+
+    def at_least_version(self, major, minor):
+        return self.version_tuple >= (major, minor)
+
+    @classmethod
+    def from_str(cls, full_version):
+        if full_version is None:
+            return ServerVersion("Neo4j", (3, 0), ())
+        product, _, tagged_version = full_version.partition("/")
+        tags = tagged_version.split("-")
+        version = map(int, tags[0].split("."))
+        return ServerVersion(product, tuple(version), tuple(tags[1:]))
 
 
 class IntegrationTestCase(TestCase):
@@ -138,10 +157,11 @@ class IntegrationTestCase(TestCase):
     def _start_server(cls, home):
         controller_class = WindowsController if platform.system() == "Windows" else UnixController
         cls.controller = controller_class(home, 1)
+        update_config(cls.controller.home, {"dbms.connectors.default_listen_address": "::"})
         if NEO4J_USER is None:
             cls.controller.create_user(cls.user, cls.password)
             cls.controller.set_user_role(cls.user, "admin")
-        cls.controller.start()
+        cls.controller.start(timeout=90)
 
     @classmethod
     def _stop_server(cls):
