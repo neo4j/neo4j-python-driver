@@ -4,5 +4,6 @@ mock
 pytest
 pytest-benchmark
 pytest-cov
+six
 teamcity-messages
 tox
