@@ -579,14 +579,16 @@ class TransactionFunctionTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, 1)
 
     def test_read_with_arg_and_metadata(self):
+        if self.protocol_version() < 3:
+            raise SkipTest("Transaction metadata and timeout only supported in Bolt v3+")
 
         @unit_of_work(timeout=25, metadata={"foo": "bar"})
-        def work(tx, x):
-            return tx.run("RETURN $x", x=x).single().value()
+        def work(tx):
+            return tx.run("CALL dbms.getTXMetaData").single().value()
 
         with self.driver.session() as session:
-            value = session.read_transaction(work, x=1)
-            self.assertEqual(value, 1)
+            value = session.read_transaction(work)
+            self.assertEqual(value, {"foo": "bar"})
 
     def test_simple_write(self):
 
@@ -607,6 +609,8 @@ class TransactionFunctionTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, 1)
 
     def test_write_with_arg_and_metadata(self):
+        if self.protocol_version() < 3:
+            raise SkipTest("Transaction metadata and timeout only supported in Bolt v3+")
 
         @unit_of_work(timeout=25, metadata={"foo": "bar"})
         def work(tx, x):

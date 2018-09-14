@@ -652,7 +652,8 @@ class Session(object):
             raise TypeError("Unit of work is not callable")
 
         metadata = getattr(unit_of_work, "metadata", None)
-        print(metadata)    # TODO
+        timeout = getattr(unit_of_work, "timeout", None)
+
         retry_delay = retry_delay_generator(INITIAL_RETRY_DELAY,
                                             RETRY_DELAY_MULTIPLIER,
                                             RETRY_DELAY_JITTER_FACTOR)
@@ -660,7 +661,7 @@ class Session(object):
         t0 = perf_counter()
         while True:
             try:
-                self._open_transaction(access_mode)
+                self._open_transaction(access_mode, metadata, timeout)
                 tx = self._transaction
                 try:
                     result = unit_of_work(tx, *args, **kwargs)
@@ -1405,7 +1406,7 @@ class TransactionError(Exception):
         self.transaction = transaction
 
 
-def unit_of_work(**metadata):
+def unit_of_work(metadata=None, timeout=None):
     """ Decorator for transaction functions.
     """
 
@@ -1415,6 +1416,7 @@ def unit_of_work(**metadata):
             return f(*args, **kwargs)
 
         wrapped.metadata = metadata
+        wrapped.timeout = timeout
         return wrapped
 
     return wrapper
