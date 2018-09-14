@@ -19,9 +19,12 @@
 # limitations under the License.
 
 
+import sys
 from time import sleep
 from unittest import SkipTest
 from uuid import uuid4
+
+from six import StringIO
 
 from neo4j import \
     READ_ACCESS, WRITE_ACCESS, \
@@ -542,6 +545,20 @@ class SessionCompletionTestCase(DirectIntegrationTestCase):
             session = self.driver.session()
             session.run("RETURN '{}'".format("A" * 2 ** 20))
             session.close()
+
+    def test_nothing_written_to_stdout_during_session(self):
+        captured_output = StringIO()
+        sys.stdout = captured_output
+
+        def work(tx):
+            return tx.run("RETURN 1")
+
+        with self.driver.session() as session:
+            session.write_transaction(work)
+
+        sys.stdout = sys.__stdout__
+
+        self.assertEqual(captured_output.getvalue(), "")
 
 
 class TransactionCommittedTestCase(DirectIntegrationTestCase):
