@@ -651,8 +651,6 @@ class Session(object):
         if not callable(unit_of_work):
             raise TypeError("Unit of work is not callable")
 
-        metadata = getattr(unit_of_work, "metadata", None)
-        print(metadata)    # TODO
         retry_delay = retry_delay_generator(INITIAL_RETRY_DELAY,
                                             RETRY_DELAY_MULTIPLIER,
                                             RETRY_DELAY_JITTER_FACTOR)
