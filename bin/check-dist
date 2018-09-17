@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+ROOT=$(dirname "$0")/..
+SCRIPT=$(basename "$0")
+DIST="${ROOT}/dist"
+STATUS=0
+
+function check_file
+{
+    FILE=$1
+    echo -n "Checking file $(basename ${FILE})... "
+    if [ -f "${FILE}" ]
+    then
+        echo "OK"
+    else
+        echo "missing"
+        STATUS=1
+    fi
+}
+
+VERSION="$1"
+if [ "${VERSION}" == "" ]
+then
+    echo "usage: ${SCRIPT} VERSION"
+    exit 1
+else
+    check_file "${DIST}/neo4j-driver-${VERSION}.tar.gz"
+    check_file "${DIST}/neo4j-${VERSION}.tar.gz"
+fi
+
+exit ${STATUS}

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+ROOT=$(dirname "$0")/..
+SCRIPT=$(basename "$0")
+
+VERSION="$1"
+if [ "${VERSION}" == "" ]
+then
+    echo "usage: ${SCRIPT} VERSION"
+    exit 1
+else
+    source "${ROOT}/bin/dist-functions"
+    setup "${VERSION}" sdist
+fi

@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+SCRIPT=$(basename "$0")
+
+PYPIRC="${HOME}/.pypirc"
+PYPI_USERNAME="$1"
+PYPI_PASSWORD="$2"
+
+if [ -f "${PYPIRC}" ]
+then
+    echo "${PYPIRC}" already exists - not overwriting
+    exit 1
+fi
+
+if [ "${PYPI_USERNAME}" == "" ]
+then
+    echo "usage: ${SCRIPT} USERNAME PASSWORD"
+    exit 1
+fi
+
+if [ "${PYPI_PASSWORD}" == "" ]
+then
+    echo "usage: ${SCRIPT} USERNAME PASSWORD"
+    exit 1
+fi
+
+touch ${PYPIRC}
+echo "[distutils]" >> ${PYPIRC}
+echo "index-servers =" >> ${PYPIRC}
+echo "    pypi" >> ${PYPIRC}
+echo "" >> ${PYPIRC}
+echo "[pypi]" >> ${PYPIRC}
+echo "repository: https://upload.pypi.org/legacy/" >> ${PYPIRC}
+echo "username: ${PYPI_USERNAME}" >> ${PYPIRC}
+echo "password: ${PYPI_PASSWORD}" >> ${PYPIRC}
