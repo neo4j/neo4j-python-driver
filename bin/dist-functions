@@ -35,6 +35,8 @@ function set_metadata_and_setup
     set_version "$1"; shift
 
     # Create source distribution
+    rm -rf ${ROOT}/dist 2> /dev/null
+    rm -rf ${ROOT}/*.egg-info 2> /dev/null
     python setup.py $*
 
     # Reset to original package metadata
@@ -46,9 +48,6 @@ function set_metadata_and_setup
 function setup
 {
     ARGS="$*"
-
-    rm -r ${ROOT}/*.egg-info
-    rm -r ${ROOT}/dist
 
     # Legacy package; can be removed in 2.0
     set_metadata_and_setup "neo4j-driver" ${ARGS}
