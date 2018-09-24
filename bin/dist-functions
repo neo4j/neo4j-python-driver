@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 ROOT=$(dirname "$0")/..
+DIST="${ROOT}/dist"
 
 function get_package
 {
@@ -22,35 +23,62 @@ function set_version
     sed -i 's/^version = .*/version = "'$1'"/g' neo4j/meta.py
 }
 
+function check_file
+{
+    FILE=$1
+    echo -n "Checking file $(basename ${FILE})... "
+    if [ -f "${FILE}" ]
+    then
+        echo "OK"
+    else
+        echo "missing"
+        STATUS=1
+    fi
+}
+
 function set_metadata_and_setup
 {
+    PACKAGE="$1"; shift
+    VERSION="$1"; shift
+
     cd ${ROOT}
 
     # Capture original package metadata
     ORIGINAL_PACKAGE=$(get_package)
     ORIGINAL_VERSION=$(get_version)
+    echo "Source code originally configured for package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}"
+    echo "----------------------------------------"
+    tail -2 neo4j/meta.py
+    echo "----------------------------------------"
 
     # Temporarily override package metadata
-    set_package "$1"; shift
-    set_version "$1"; shift
+    set_package "${PACKAGE}"
+    set_version "${VERSION}"
+    echo "Source code reconfigured for package ${PACKAGE}/${VERSION}"
+    echo "----------------------------------------"
+    tail -2 neo4j/meta.py
+    echo "----------------------------------------"
 
     # Create source distribution
-    rm -rf ${ROOT}/dist 2> /dev/null
+    find . -name *.pyc -delete
     rm -rf ${ROOT}/*.egg-info 2> /dev/null
     python setup.py $*
+    check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"
 
     # Reset to original package metadata
     set_package "${ORIGINAL_PACKAGE}"
     set_version "${ORIGINAL_VERSION}"
+    echo "Source code reconfigured back to original package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}"
+    echo "----------------------------------------"
+    tail -2 neo4j/meta.py
+    echo "----------------------------------------"
 
 }
 
 function setup
 {
     ARGS="$*"
-
-    # Legacy package; can be removed in 2.0
-    set_metadata_and_setup "neo4j-driver" ${ARGS}
-
+    rm -rf ${DIST} 2> /dev/null
+    set_metadata_and_setup "neo4j-driver" ${ARGS}   # Legacy package; can be removed in 2.0
     set_metadata_and_setup "neo4j" ${ARGS}
 }
