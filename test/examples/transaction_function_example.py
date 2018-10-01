@@ -18,22 +18,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from test.examples.base_application import BaseApplication
 
 # tag::transaction-function-import[]
+from neo4j import unit_of_work
 # end::transaction-function-import[]
+
+
+# tag::transaction-function[]
+def add_person(driver, name):
+    with driver.session() as session:
+        # Caller for transactional unit of work
+        return session.write_transaction(create_person_node, name)
+
+
+# Simple implementation of the unit of work
+def create_person_node(tx, name):
+    return tx.run("CREATE (a:Person {name: $name}) RETURN id(a)", name=name).single().value()
+
+
+# Alternative implementation, with timeout
+@unit_of_work(timeout=0.5)
+def create_person_node_within_half_a_second(tx, name):
+    return tx.run("CREATE (a:Person {name: $name}) RETURN id(a)", name=name).single().value()
+# end::transaction-function[]
 
 
 class TransactionFunctionExample(BaseApplication):
     def __init__(self, uri, user, password):
         super(TransactionFunctionExample, self).__init__(uri, user, password)
 
-    # tag::transaction-function[]
     def add_person(self, name):
-        with self._driver.session() as session:
-            session.write_transaction(self.create_person_node, name)
-            
-    @staticmethod
-    def create_person_node(tx, name):
-        tx.run("CREATE (a:Person {name: $name})", name=name)
-    # end::transaction-function[]
+        return add_person(self._driver, name)
