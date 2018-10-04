@@ -303,5 +303,6 @@ def setup(app):
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
-    'neotime': ('http://neotime.readthedocs.io/en/latest/', None),
+    'neobolt': ('https://neobolt.readthedocs.io/en/latest/', None),
+    'neotime': ('https://neotime.readthedocs.io/en/latest/', None),
 }

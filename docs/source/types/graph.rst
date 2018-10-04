@@ -19,22 +19,22 @@ Relationship   :class:`.Relationship`
 Path           :class:`.Path`
 =============  ======================
 
-.. autoclass:: neo4j.v1.types.graph.Graph
+.. autoclass:: neo4j.types.graph.Graph
    :members:
 
-.. autoclass:: neo4j.v1.types.graph.Entity
+.. autoclass:: neo4j.types.graph.Entity
    :members:
 
-.. autoclass:: neo4j.v1.types.graph.EntitySetView
+.. autoclass:: neo4j.types.graph.EntitySetView
    :members:
 
-.. autoclass:: neo4j.v1.types.graph.Node
-   :members:
-   :inherited-members:
-
-.. autoclass:: neo4j.v1.types.graph.Relationship
+.. autoclass:: neo4j.types.graph.Node
    :members:
    :inherited-members:
 
-.. autoclass:: neo4j.v1.types.graph.Path
+.. autoclass:: neo4j.types.graph.Relationship
+   :members:
+   :inherited-members:
+
+.. autoclass:: neo4j.types.graph.Path
    :members:
