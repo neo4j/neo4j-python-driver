@@ -93,6 +93,14 @@ class ExamplesTest(IntegrationTestCase):
 
         self.assertIsInstance(example, ConfigUnencryptedExample)
 
+    def test_config_custom_resolver_example(self):
+        from test.examples.config_custom_resolver import ConfigCustomResolverExample
+
+        example = ConfigCustomResolverExample("bolt://x.acme.com", self.user, self.password,
+                                              [("localhost", self.bolt_port)])
+
+        self.assertIsInstance(example, ConfigCustomResolverExample)
+
     def test_cypher_error_example(self):
         from test.examples.cypher_error_example import CypherErrorExample
 
