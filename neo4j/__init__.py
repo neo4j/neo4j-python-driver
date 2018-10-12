@@ -665,7 +665,7 @@ class Session(object):
                 tx = self._transaction
                 try:
                     result = unit_of_work(tx, *args, **kwargs)
-                except:
+                except Exception:
                     if tx.success is None:
                         tx.success = False
                     raise

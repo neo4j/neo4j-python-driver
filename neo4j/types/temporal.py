@@ -35,6 +35,7 @@ from neobolt.packstream import Structure
 
 
 UNIX_EPOCH_DATE = Date(1970, 1, 1)
+UNIX_EPOCH_DATE_ORDINAL = UNIX_EPOCH_DATE.to_ordinal()
 UNIX_EPOCH_DATETIME_UTC = DateTime(1970, 1, 1, 0, 0, 0, utc)
 
 
@@ -44,7 +45,7 @@ def hydrate_date(days):
     :param days:
     :return: Date
     """
-    return UNIX_EPOCH_DATE + Duration(days=days)
+    return Date.from_ordinal(UNIX_EPOCH_DATE_ORDINAL + days)
 
 
 def dehydrate_date(value):
@@ -108,7 +109,7 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):
     hours, minutes = map(int, divmod(minutes, 60))
     days, hours = map(int, divmod(hours, 24))
     seconds = (1000000000 * seconds + nanoseconds) / 1000000000
-    t = DateTime.combine(UNIX_EPOCH_DATE + Duration(days=days), Time(hours, minutes, seconds))
+    t = DateTime.combine(Date.from_ordinal(UNIX_EPOCH_DATE_ORDINAL + days), Time(hours, minutes, seconds))
     if tz is None:
         return t
     if isinstance(tz, int):
