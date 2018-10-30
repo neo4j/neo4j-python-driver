@@ -65,7 +65,7 @@ else:
     ])
 
 
-from collections import deque, namedtuple, Mapping
+from collections import deque, namedtuple
 from functools import reduce
 from operator import xor as xor_operator
 from random import random
@@ -73,7 +73,7 @@ from time import sleep
 from warnings import warn
 
 
-from .compat import perf_counter, urlparse, xstr
+from .compat import perf_counter, urlparse, xstr, Mapping
 from .config import *
 from .meta import version as __version__
 

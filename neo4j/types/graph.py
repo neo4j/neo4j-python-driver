@@ -23,9 +23,7 @@ Graph data types
 """
 
 
-from collections import Mapping
-
-from neo4j.compat import xstr, deprecated
+from neo4j.compat import xstr, deprecated, Mapping
 
 
 __all__ = [
