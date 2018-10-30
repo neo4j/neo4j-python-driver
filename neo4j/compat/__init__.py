@@ -121,6 +121,14 @@ else:
         return nanoTime() / 1000000000
 
 
+# Using or importing the ABCs from 'collections' instead of from
+# 'collections.abc' is deprecated, and in 3.8 it will stop working
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
+
+
 # The location of urlparse varies between Python 2 and 3
 try:
     from urllib.parse import urlparse, parse_qs
