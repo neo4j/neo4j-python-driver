@@ -13,10 +13,10 @@ Construction
 :class:`.Driver` construction can either be carried out directly or via a `classmethod` on the :class:`.GraphDatabase` class.
 
 .. autoclass:: neo4j.GraphDatabase
-   :members:
+   :members: driver
 
 .. autoclass:: neo4j.Driver(uri, **config)
-   :members:
+   :members: session, close, closed
 
 
 URI
@@ -37,14 +37,7 @@ URI scheme:
 Driver subclass:
     :class:`.DirectDriver`
 
-A Bolt :class:`.DirectDriver` is used to target a single machine.
-This may be a standalone server or could be a specific member of a cluster.
-
-Connections established by a :class:`.DirectDriver` are always made to the exact host and port detailed in the URI.
-
 .. autoclass:: neo4j.DirectDriver
-   :members:
-   :inherited-members:
 
 
 Bolt Routing
@@ -56,8 +49,6 @@ Driver subclass:
     :class:`.RoutingDriver`
 
 .. autoclass:: neo4j.RoutingDriver
-   :members:
-   :inherited-members:
 
 
 Configuration

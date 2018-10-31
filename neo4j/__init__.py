@@ -170,8 +170,7 @@ class Driver(object):
             raise DriverError("Driver closed")
 
     def close(self):
-        """ Shut down, closing any open connections that were spawned by
-        this :class:`.Driver`.
+        """ Shut down, closing any open connections in the pool.
         """
         if not self._closed:
             self._closed = True
@@ -180,13 +179,18 @@ class Driver(object):
                 self._pool = None
 
     def closed(self):
+        """ Return :const:`True` if closed, :const:`False` otherwise.
+        """
         return self._closed
 
 
 class DirectDriver(Driver):
     """ A :class:`.DirectDriver` is created from a ``bolt`` URI and addresses
-    a single database instance. This provides basic connectivity to any
-    database service topology.
+    a single database machine. This may be a standalone server or could be a
+    specific member of a cluster.
+
+    Connections established by a :class:`.DirectDriver` are always made to the
+    exact host and port detailed in the URI.
     """
 
     uri_scheme = "bolt"
@@ -227,7 +231,8 @@ class DirectDriver(Driver):
 
 class RoutingDriver(Driver):
     """ A :class:`.RoutingDriver` is created from a ``bolt+routing`` URI. The
-    routing behaviour works in tandem with Neo4j's causal clustering feature
+    routing behaviour works in tandem with Neo4j's `Causal Clustering
+    <https://neo4j.com/docs/operations-manual/current/clustering/>`_ feature
     by directing read and write behaviour to appropriate cluster members.
     """
 
@@ -701,7 +706,7 @@ class Session(object):
         return self._run_transaction(WRITE_ACCESS, unit_of_work, *args, **kwargs)
 
     def _assert_open(self):
-        if self.closed():
+        if self._closed:
             raise SessionError("Session closed")
 
 
@@ -718,7 +723,7 @@ class Transaction(object):
 
     #: When set, the transaction will be committed on close, otherwise it
     #: will be rolled back. This attribute can be set in user code
-    #: multiple times before a transaction completes with only the final
+    #: multiple times before a transaction completes, with only the final
     #: value taking effect.
     success = None
 
@@ -732,6 +737,8 @@ class Transaction(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        if self._closed:
+            return
         if self.success is None:
             self.success = not bool(exc_type)
         self.close()
@@ -763,9 +770,9 @@ class Transaction(object):
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
         :returns: :class:`.StatementResult` object
+        :raise TransactionError: if the transaction is closed
         """
-        if self.closed():
-            raise TransactionError("Transaction closed")
+        self._assert_open()
         return self.session.run(statement, parameters, **kwparameters)
 
     def sync(self):
@@ -774,56 +781,64 @@ class Transaction(object):
 
         :raise TransactionError: if the transaction is closed
         """
-        if self.closed():
-            raise TransactionError("Transaction closed")
+        self._assert_open()
         self.session.sync()
 
     def commit(self):
         """ Mark this transaction as successful and close in order to
-        trigger a COMMIT.
+        trigger a COMMIT. This is functionally equivalent to::
+
+            tx.success = True
+            tx.close()
 
         :raise TransactionError: if already closed
         """
-        if self.closed():
-            raise TransactionError("Transaction closed")
         self.success = True
         self.close()
 
     def rollback(self):
         """ Mark this transaction as unsuccessful and close in order to
-        trigger a ROLLBACK.
+        trigger a ROLLBACK. This is functionally equivalent to::
+
+            tx.success = False
+            tx.close()
 
         :raise TransactionError: if already closed
         """
-        if self.closed():
-            raise TransactionError("Transaction closed")
         self.success = False
         self.close()
 
     def close(self):
-        """ Close this transaction, triggering either a COMMIT or a ROLLBACK.
+        """ Close this transaction, triggering either a COMMIT or a ROLLBACK,
+        depending on the value of :attr:`.success`.
+
+        :raise TransactionError: if already closed
         """
         from neobolt.exceptions import CypherError
-        if not self.closed():
-            try:
-                self.sync()
-            except CypherError:
-                self.success = False
-                raise
-            finally:
-                if self.session.has_transaction():
-                    if self.success:
-                        self.session.commit_transaction()
-                    else:
-                        self.session.rollback_transaction()
-                self._closed = True
-                self.on_close()
+        self._assert_open()
+        try:
+            self.sync()
+        except CypherError:
+            self.success = False
+            raise
+        finally:
+            if self.session.has_transaction():
+                if self.success:
+                    self.session.commit_transaction()
+                else:
+                    self.session.rollback_transaction()
+            self._closed = True
+            self.on_close()
 
     def closed(self):
         """ Indicator to show whether the transaction has been closed.
         :returns: :const:`True` if closed, :const:`False` otherwise.
         """
         return self._closed
+
+    def _assert_open(self):
+        if self._closed:
+            raise TransactionError("Transaction closed")
 
 
 class Statement(object):
@@ -1407,7 +1422,15 @@ class TransactionError(Exception):
 
 
 def unit_of_work(metadata=None, timeout=None):
-    """ Decorator for transaction functions.
+    """ This function is a decorator for transaction functions that allows
+    extra control over how the transaction is carried out.
+
+    For example, a timeout (in seconds) may be applied::
+
+        @unit_of_work(timeout=25.0)
+        def count_people(tx):
+            return tx.run("MATCH (a:Person) RETURN count(a)").single().value()
+
     """
 
     def wrapper(f):

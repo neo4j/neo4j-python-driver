@@ -441,6 +441,14 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
                 with self.assertRaises(TransientError):
                     tx2.run("MATCH (a:Node) SET a.property = 2").consume()
 
+    def test_exit_after_explicit_close_should_be_silent(self):
+        with self.driver.session() as s:
+            with s.begin_transaction() as tx:
+                self.assertFalse(tx.closed())
+                tx.close()
+                self.assertTrue(tx.closed())
+            self.assertTrue(tx.closed())
+
 
 class BookmarkingTestCase(DirectIntegrationTestCase):
 
