@@ -73,7 +73,7 @@ from time import sleep
 from warnings import warn
 
 
-from .compat import perf_counter, urlparse, xstr, Mapping
+from .compat import perf_counter, urlparse, xstr, Sequence, Mapping
 from .config import *
 from .meta import version as __version__
 
@@ -889,13 +889,13 @@ class StatementResult(object):
 
     @property
     def session(self):
+        """ The :class:`.Session` to which this result is attached, if any.
+        """
         return self._session
 
     def attached(self):
         """ Indicator for whether or not this result is still attached to
-        a :class:`.Session`.
-
-        :returns: :const:`True` if still attached, :const:`False` otherwise
+        an open :class:`.Session`.
         """
         return self._session and not self._session.closed()
 
@@ -1250,7 +1250,22 @@ class Record(tuple, Mapping):
                             " ".join("%s=%r" % (field, self[i]) for i, field in enumerate(self.__keys)))
 
     def __eq__(self, other):
-        return dict(self) == dict(other)
+        """ In order to be flexible regarding comparison, the equality rules
+        for a record permit comparison with any other Sequence or Mapping.
+
+        :param other:
+        :return:
+        """
+        compare_as_sequence = isinstance(other, Sequence)
+        compare_as_mapping = isinstance(other, Mapping)
+        if compare_as_sequence and compare_as_mapping:
+            return list(self) == list(other) and dict(self) == dict(other)
+        elif compare_as_sequence:
+            return list(self) == list(other)
+        elif compare_as_mapping:
+            return dict(self) == dict(other)
+        else:
+            return False
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -1276,6 +1291,13 @@ class Record(tuple, Mapping):
         return self.__class__(zip(keys, values))
 
     def get(self, key, default=None):
+        """ Obtain a value from the record by key, returning a default
+        value if the key does not exist.
+
+        :param key:
+        :param default:
+        :return:
+        """
         try:
             index = self.__keys.index(ustr(key))
         except ValueError:
@@ -1287,6 +1309,9 @@ class Record(tuple, Mapping):
 
     def index(self, key):
         """ Return the index of the given item.
+
+        :param key:
+        :return:
         """
         if isinstance(key, integer):
             if 0 <= key < len(self.__keys):
