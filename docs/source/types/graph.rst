@@ -4,11 +4,10 @@ Graph Data Types
 
 Cypher queries can return entire graph structures as well as individual property values.
 
-, The graph types model graph data returned from a Cypher query.
+The graph data types detailed here model graph data returned from a Cypher query.
 Graph values cannot be passed in as parameters as it would be unclear whether the entity was intended to be passed by reference or by value.
 The identity or properties of that entity should be passed explicitly instead.
 
-All graph values returned within a given :class:`.StatementResult` are contained within a :class:`.Graph` instance, accessible via :meth:`.StatementResult.graph`.
 The driver contains a corresponding class for each of the graph types that can be returned.
 
 =============  ======================
@@ -19,22 +18,149 @@ Relationship   :class:`.Relationship`
 Path           :class:`.Path`
 =============  ======================
 
-.. autoclass:: neo4j.types.graph.Graph
-   :members:
+.. class:: neo4j.types.graph.Graph
 
-.. autoclass:: neo4j.types.graph.Entity
-   :members:
+    A local, self-contained graph object that acts as a container for :class:`.Node` and :class:`.Relationship` instances.
+    This is typically obtained via the :meth:`.BoltStatementResult.graph` method.
 
-.. autoclass:: neo4j.types.graph.EntitySetView
-   :members:
+    .. autoattribute:: nodes
 
-.. autoclass:: neo4j.types.graph.Node
-   :members:
-   :inherited-members:
+    .. autoattribute:: relationships
 
-.. autoclass:: neo4j.types.graph.Relationship
-   :members:
-   :inherited-members:
+    .. automethod:: relationship_type
 
-.. autoclass:: neo4j.types.graph.Path
-   :members:
+
+.. class:: neo4j.types.graph.Node
+
+    .. describe:: node == other
+
+        Compares nodes for equality.
+
+    .. describe:: node != other
+
+        Compares nodes for inequality.
+
+    .. describe:: hash(node)
+
+        Computes the hash of a node.
+
+    .. describe:: len(node)
+
+        Returns the number of properties on a node.
+
+    .. describe:: iter(node)
+
+        Iterates through all properties on a node.
+
+    .. describe:: node[key]
+
+        Returns a node property by key.
+        Raises :exc:`KeyError` if the key does not exist.
+
+    .. describe:: key in node
+
+        Checks whether a property key exists for a given node.
+
+    .. autoattribute:: graph
+
+    .. autoattribute:: id
+
+    .. autoattribute:: labels
+
+    .. automethod:: get
+
+    .. automethod:: keys
+
+    .. automethod:: values
+
+    .. automethod:: items
+
+
+.. class:: neo4j.types.graph.Relationship
+
+    .. describe:: relationship == other
+
+        Compares relationships for equality.
+
+    .. describe:: relationship != other
+
+        Compares relationships for inequality.
+
+    .. describe:: hash(relationship)
+
+        Computes the hash of a relationship.
+
+    .. describe:: len(relationship)
+
+        Returns the number of properties on a relationship.
+
+    .. describe:: iter(relationship)
+
+        Iterates through all properties on a relationship.
+
+    .. describe:: relationship[key]
+
+        Returns a relationship property by key.
+        Raises :exc:`KeyError` if the key does not exist.
+
+    .. describe:: key in relationship
+
+        Checks whether a property key exists for a given relationship.
+
+    .. describe:: type(relationship)
+
+        Returns the type (class) of a relationship.
+        Relationship objects belong to a custom subtype based on the type name in the underlying database.
+
+    .. autoattribute:: graph
+
+    .. autoattribute:: id
+
+    .. autoattribute:: nodes
+
+    .. autoattribute:: start_node
+
+    .. autoattribute:: end_node
+
+    .. autoattribute:: type
+
+    .. automethod:: get
+
+    .. automethod:: keys
+
+    .. automethod:: values
+
+    .. automethod:: items
+
+
+.. class:: neo4j.types.graph.Path
+
+    .. describe:: path == other
+
+        Compares paths for equality.
+
+    .. describe:: path != other
+
+        Compares paths for inequality.
+
+    .. describe:: hash(path)
+
+        Computes the hash of a path.
+
+    .. describe:: len(path)
+
+        Returns the number of relationships in a path.
+
+    .. describe:: iter(path)
+
+        Iterates through all the relationships in a path.
+
+    .. autoattribute:: graph
+
+    .. autoattribute:: nodes
+
+    .. autoattribute:: start_node
+
+    .. autoattribute:: end_node
+
+    .. autoattribute:: relationships

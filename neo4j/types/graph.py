@@ -49,15 +49,13 @@ class Graph(object):
 
     @property
     def nodes(self):
-        """ Access an :class:`.EntitySetView` of the nodes in this
-        graph.
+        """ Access a set view of the nodes in this graph.
         """
         return self._node_set_view
 
     @property
     def relationships(self):
-        """ Access an :class:`.EntitySetView` of the relationships in
-        this graph.
+        """ Access a set view of the relationships in this graph.
         """
         return self._relationship_set_view
 
@@ -201,6 +199,8 @@ class Node(Entity):
 
     @property
     def labels(self):
+        """ The set of labels attached to this node.
+        """
         return frozenset(self._labels)
 
 
@@ -224,18 +224,27 @@ class Relationship(Entity):
 
     @property
     def nodes(self):
+        """ The pair of nodes which this relationship connects.
+        """
         return self._start_node, self._end_node
 
     @property
     def start_node(self):
+        """ The start node of this relationship.
+        """
         return self._start_node
 
     @property
     def end_node(self):
+        """ The end node of this relationship.
+        """
         return self._end_node
 
     @property
     def type(self):
+        """ The type name of this relationship.
+        This is functionally equivalent to ``type(relationship).__name__``.
+        """
         return type(self).__name__
 
     @property
@@ -294,22 +303,32 @@ class Path(object):
 
     @property
     def graph(self):
+        """ The :class:`.Graph` to which this path belongs.
+        """
         return self._nodes[0].graph
 
     @property
     def nodes(self):
+        """ The sequence of :class:`.Node` objects in this path.
+        """
         return self._nodes
 
     @property
     def start_node(self):
+        """ The first :class:`.Node` in this path.
+        """
         return self._nodes[0]
 
     @property
     def end_node(self):
+        """ The last :class:`.Node` in this path.
+        """
         return self._nodes[-1]
 
     @property
     def relationships(self):
+        """ The sequence of :class:`.Relationship` objects in this path.
+        """
         return self._relationships
 
     @property

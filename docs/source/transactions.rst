@@ -2,27 +2,65 @@
 Sessions & Transactions
 ***********************
 
+All database activity is co-ordinated through two mechanisms: the :class:`.Session` and the :class:`.Transaction`.
 A :class:`.Transaction` is a unit of work that is either committed in its entirety or is rolled back on failure.
-A :class:`.Session` is a logical container for one or more transactional units of work.
-Sessions automatically provide guarantees of causal consistency within a clustered environment.
+A :class:`.Session` is a logical container for any number of causally-related transactional units of work.
+Sessions automatically provide guarantees of causal consistency within a clustered environment but multiple sessions can also be causally chained if required.
 
-A session can be given a default `access mode` on construction.
-This applies only in clustered environments and determines whether transactions carried out within that session should be routed to a `read` or `write` server.
-Transaction functions within that session can override this access mode.
 
-.. note::
-    The driver does not parse Cypher statements and cannot determine whether a statement tagged as `read` or `write` is tagged correctly.
-    Since the access mode is not passed to the server, this can allow a `write` statement to be executed in a `read` call on a single instance.
-    Clustered environments are not susceptible to this loophole as cluster roles prevent it.
+Sessions
+========
+
+Sessions provide the top-level of containment for database activity.
+Session creation is a lightweight operation and sessions are `not` thread safe.
+
+Connections are drawn from the :class:`.Driver` connection pool as required; an idle session will not hold onto a connection.
+
+Sessions will often be created and destroyed using a `with` block context.
+For example::
+
+    with driver.session() as session:
+        result = session.run("MATCH (a:Person) RETURN a.name")
+        # do something with the result...
+
+To construct a :class:`.Session` use the :meth:`.Driver.session` method.
+
+.. class:: neo4j.Session
+
+    .. automethod:: close
+
+    .. automethod:: closed
+
+    .. automethod:: run
+
+    .. automethod:: sync
+
+    .. automethod:: detach
+
+    .. automethod:: next_bookmarks
+
+    .. automethod:: last_bookmark
+
+    .. automethod:: has_transaction
+
+    .. automethod:: begin_transaction
+
+    .. automethod:: read_transaction
+
+    .. automethod:: write_transaction
+
+
+Transactions
+============
 
 Neo4j supports three kinds of transaction: `auto-commit transactions`, `explicit transactions` and `transaction functions`.
 Each has pros and cons but if in doubt, use a transaction function.
 
 Auto-commit Transactions
-========================
-Auto-commit transactions are the simplest form, available via :meth:`.Session.run`.
-These are fast and easy to use but support only one statement per transaction and are not automatically retried on failure.
-Auto-commit transactions are also the only way to run ``USING PERIODIC COMMIT`` statements.
+------------------------
+Auto-commit transactions are the simplest form of transaction, available via :meth:`.Session.run`.
+These are easy to use but support only one statement per transaction and are not automatically retried on failure.
+Auto-commit transactions are also the only way to run ``PERIODIC COMMIT`` statements, since this Cypher clause manages its own transactions internally.
 
 .. code-block:: python
 
@@ -32,8 +70,43 @@ Auto-commit transactions are also the only way to run ``USING PERIODIC COMMIT`` 
                                "RETURN id(a)", name=name).single().value()
 
 Explicit Transactions
-=====================
+---------------------
 Explicit transactions support multiple statements and must be created with an explicit :meth:`.Session.begin_transaction` call.
+This creates a new :class:`.Transaction` object that can be used to run Cypher.
+It also gives applications the ability to directly control `commit` and `rollback` activity.
+
+.. class:: neo4j.Transaction
+
+    .. automethod:: run
+
+    .. automethod:: sync
+
+    .. attribute:: success
+
+        This attribute can be used to determine the outcome of a transaction on closure.
+        Specifically, this will be either a COMMIT or a ROLLBACK.
+        A value can be set for this attribute multiple times in user code before a transaction completes, with only the final value taking effect.
+
+        On closure, the outcome is evaluated according to the following rules:
+
+        ================  ====================  ===========================  ==============  ===============  =================
+        :attr:`.success`  ``__exit__`` cleanly  ``__exit__`` with exception  ``tx.close()``  ``tx.commit()``  ``tx.rollback()``
+        ================  ====================  ===========================  ==============  ===============  =================
+        :const:`None`     COMMIT                ROLLBACK                     ROLLBACK        COMMIT           ROLLBACK
+        :const:`True`     COMMIT                COMMIT [1]_                  COMMIT          COMMIT           ROLLBACK
+        :const:`False`    ROLLBACK              ROLLBACK                     ROLLBACK        COMMIT           ROLLBACK
+        ================  ====================  ===========================  ==============  ===============  =================
+
+        .. [1] While a COMMIT will be attempted in this scenario, it will likely fail if the exception originated from Cypher execution within that transaction.
+
+    .. automethod:: close
+
+    .. automethod:: closed
+
+    .. automethod:: commit
+
+    .. automethod:: rollback
+
 Closing an explicit transaction can either happen automatically at the end of a ``with`` block, using the :attr:`.Transaction.success` attribute to determine success,
 or can be explicitly controlled through the :meth:`.Transaction.commit` and :meth:`.Transaction.rollback` methods.
 Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction.
@@ -56,7 +129,7 @@ Explicit transactions are most useful for applications that need to distribute C
                "SET a.name = $name", id=node_id, name=name)
 
 Transaction Functions
-=====================
+---------------------
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
 These allow a function object representing the transactional unit of work to be passed as a parameter.
 This function is called one or more times, within a configurable time limit, until it succeeds.
@@ -72,11 +145,22 @@ Returning a live result object would prevent the driver from correctly managing 
     with driver.session() as session:
         node_id = session.write_transaction(create_person, "Alice")
 
+To exert more control over how a transaction function is carried out, the :func:`.unit_of_work` decorator can be used.
 
-API
-===
-.. autoclass:: neo4j.Session
-   :members:
+.. autofunction:: neo4j.unit_of_work
 
-.. autoclass:: neo4j.Transaction
-   :members:
+
+Access modes
+============
+
+A session can be given a default `access mode` on construction.
+This applies only in clustered environments and determines whether transactions carried out within that session should be routed to a `read` or `write` server by default.
+
+Note that this mode is simply a default and not a constraint.
+This means that transaction functions within a session can override the access mode passed to that session on construction.
+
+.. note::
+    The driver does not parse Cypher statements and cannot determine whether a statement tagged as `read` or `write` is tagged correctly.
+    Since the access mode is not passed to the server, this can allow a `write` statement to be executed in a `read` call on a single instance.
+    Clustered environments are not susceptible to this loophole as cluster roles prevent it.
+    This behaviour should not be relied upon as the loophole may be closed in a future release.
