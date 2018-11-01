@@ -643,12 +643,14 @@ class Session(object):
         self._assert_open()
         if not self._transaction:
             raise TransactionError("No transaction to rollback")
-        metadata = {}
-        try:
-            self._connection.rollback(on_success=metadata.update)
-        finally:
-            self._disconnect(sync=True)
-            self._transaction = None
+        cx = self._connection
+        if cx:
+            metadata = {}
+            try:
+                cx.rollback(on_success=metadata.update)
+            finally:
+                self._disconnect(sync=True)
+                self._transaction = None
 
     def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):
         from neobolt.exceptions import ConnectionExpired, TransientError, ServiceUnavailable
