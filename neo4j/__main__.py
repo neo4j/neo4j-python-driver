@@ -23,6 +23,7 @@ from __future__ import unicode_literals
 
 import logging
 from argparse import ArgumentParser
+from getpass import getpass
 from json import loads as json_loads
 from sys import stdout, stderr
 
@@ -35,13 +36,14 @@ from neo4j.exceptions import CypherError
 def main():
     parser = ArgumentParser(description="Execute one or more Cypher statements using Bolt.")
     parser.add_argument("statement", nargs="+")
-    parser.add_argument("-i", "--insecure", action="store_true")
-    parser.add_argument("-k", "--keys", action="store_true")
+    parser.add_argument("-H", "--header", action="store_true")
     parser.add_argument("-P", "--password")
     parser.add_argument("-p", "--parameter", action="append", metavar="NAME=VALUE")
     parser.add_argument("-q", "--quiet", action="store_true")
+    parser.add_argument("-r", "--read-only", action="store_true")
+    parser.add_argument("-s", "--secure", action="store_true")
     parser.add_argument("-U", "--user", default="neo4j")
-    parser.add_argument("-u", "--url", default="bolt://localhost:7687", metavar="CONNECTION_URL")
+    parser.add_argument("-u", "--uri", default="bolt://", metavar="CONNECTION_URI")
     parser.add_argument("-v", "--verbose", action="count")
     parser.add_argument("-x", "--times", type=int, default=1)
     parser.add_argument("-z", "--summary", action="store_true")
@@ -62,28 +64,38 @@ def main():
             except ValueError:
                 parameters[name] = value
 
-    driver = GraphDatabase.driver(args.url, auth=(args.user, args.password), encrypted=not args.insecure)
-    session = driver.session()
-    for _ in range(args.times):
-        for statement in args.statement:
-            try:
-                result = session.run(statement, parameters)
-            except CypherError as error:
-                stderr.write("%s: %s\r\n" % (error.code, error.message))
-            else:
-                if not args.quiet:
-                    if args.keys:
-                        stdout.write("%s\r\n" % "\t".join(result.keys()))
-                    for i, record in enumerate(result):
-                        stdout.write("%s\r\n" % "\t".join(map(repr, record.values())))
-                    if args.summary:
-                        summary = result.summary
-                        stdout.write("Statement      : %r\r\n" % summary.statement)
-                        stdout.write("Parameters     : %r\r\n" % summary.parameters)
-                        stdout.write("Statement Type : %r\r\n" % summary.statement_type)
-                        stdout.write("Counters       : %r\r\n" % summary.counters)
-                        stdout.write("\r\n")
-    session.close()
+    try:
+        password = args.password or getpass()
+    except KeyboardInterrupt:
+        exit(0)
+    else:
+        with GraphDatabase.driver(args.uri, auth=(args.user, password), encrypted=args.secure) as driver:
+            with driver.session() as session:
+
+                run = session.read_transaction if args.read_only else session.write_transaction
+
+                for _ in range(args.times):
+                    for statement in args.statement:
+
+                        def work(tx, p):
+                            result = tx.run(statement, p)
+                            if not args.quiet:
+                                if args.header:
+                                    stdout.write("%s\r\n" % "\t".join(result.keys()))
+                                for i, record in enumerate(result):
+                                    stdout.write("%s\r\n" % "\t".join(map(repr, record.values())))
+                                if args.summary:
+                                    summary = result.summary()
+                                    stdout.write("Statement      : %r\r\n" % summary.statement)
+                                    stdout.write("Parameters     : %r\r\n" % summary.parameters)
+                                    stdout.write("Statement Type : %r\r\n" % summary.statement_type)
+                                    stdout.write("Counters       : %r\r\n" % summary.counters)
+                                    stdout.write("\r\n")
+
+                        try:
+                            run(work, parameters)
+                        except CypherError as error:
+                            stderr.write("%s: %s\r\n" % (error.code, error.message))
 
 
 if __name__ == "__main__":
