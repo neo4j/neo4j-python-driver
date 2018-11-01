@@ -103,6 +103,11 @@ class CoreTypeOutputTestCase(DirectIntegrationTestCase):
             result = session.run("RETURN {one: 'eins', two: 'zwei', three: 'drei'}")
             self.assertEqual(result.single().value(), {"one": "eins", "two": "zwei", "three": "drei"})
 
+    def test_non_string_map_keys(self):
+        with self.driver.session() as session:
+            with self.assertRaises(TypeError):
+                _ = session.run("RETURN $x", x={1: 'eins', 2: 'zwei', 3: 'drei'})
+
 
 class GraphTypeOutputTestCase(DirectIntegrationTestCase):
 

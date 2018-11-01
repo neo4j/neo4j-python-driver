@@ -125,6 +125,8 @@ class PackStreamDehydrator(object):
             elif isinstance(obj, (list, map_type)):
                 return list(map(dehydrate_, obj))
             elif isinstance(obj, dict):
+                if any(not isinstance(key, string) for key in obj.keys()):
+                    raise TypeError("Non-string dictionary keys are not supported")
                 return {key: dehydrate_(value) for key, value in obj.items()}
             else:
                 raise TypeError(obj)
