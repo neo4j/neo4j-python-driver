@@ -191,6 +191,17 @@ class Driver(object):
         """
         raise NotImplementedError("Pipelines are not implemented for the %s class" % type(self).__name__)
 
+    @experimental("The pipeline API is experimental and may be removed or "
+                  "changed in a future release")
+    def pipeline(self, access_mode=None, **parameters):
+        """ Create a new :class:`.Pipeline` objects based on this
+        :class:`.Driver`.
+        """
+        if self.closed():
+            raise DriverError("Driver closed")
+        else:
+            raise NotImplementedError("Pipelines are not implemented for this type of driver")
+
     def close(self):
         """ Shut down, closing any open connections in the pool.
         """
@@ -253,6 +264,10 @@ class DirectDriver(Driver):
     def pipeline(self, **parameters):
         from .pipelines import Pipeline
         return Pipeline(self._pool.acquire, **parameters)
+
+    def pipeline(self, access_mode=None, **parameters):
+        from .pipelines import Pipeline
+        return Pipeline(self._pool.acquire, access_mode, **parameters)
 
 
 class RoutingDriver(Driver):
