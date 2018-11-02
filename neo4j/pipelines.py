@@ -21,7 +21,7 @@
 
 from collections import deque
 from threading import Thread
-from time import perf_counter, sleep
+from time import sleep
 
 
 class WorkspaceError(Exception):
@@ -125,7 +125,6 @@ class Pusher(Thread):
         while self.running:
             self.pipeline.push("RETURN $x", {"x": self.count})
             self.count += 1
-            # sleep(0.1)
 
 
 class Puller(Thread):
