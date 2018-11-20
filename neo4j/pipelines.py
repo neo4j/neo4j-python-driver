@@ -101,6 +101,7 @@ class Pipeline(Workspace):
         if output_buffer_size >= self._flush_every:
             self._connection.send()
 
+
     def pull(self):
         summary = 0
         while summary == 0:
@@ -108,8 +109,9 @@ class Pipeline(Workspace):
         summary = 0
         while summary == 0:
             detail, summary = self._connection.fetch()
-            if detail:
-                yield self._data.popleft()
+            for n in range(detail):
+                response = self._data.popleft()
+                yield response
 
 
 class Pusher(Thread):
