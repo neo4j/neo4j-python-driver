@@ -31,7 +31,7 @@ I got connection reset by peer errors.
 
 **Neo4j Version:** 3.4.10 Community  
 **Neo4j Mode**: Single instance  
-**Driver version**: JS driver 1.7.1  
+**Driver version**: Python driver 1.7.1  
 **Operating System:** Ubuntu 16.10 on AWS  
 
 ### Steps to reproduce
