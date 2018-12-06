@@ -1,10 +1,10 @@
 # Contributing to the Neo4j Ecosystem
 
-At [Neo Technology](http://neo4j.com/), we develop our software in the open at GitHub.
+At [Neo4j](http://neo4j.com/), we develop our software in the open at GitHub.
 This provides transparency for you, our users, and allows you to fork the software to make your own additions and enhancements.
 We also provide areas specifically for community contributions, in particular the [neo4j-contrib](https://github.com/neo4j-contrib) space.
 
-There's an active [mailing list](https://groups.google.com/forum/#!forum/neo4j) and [Slack channel](http://neo4j.com/slack) where we work directly with the community.
+There's an active [Neo4j Online Community](https://community.neo4j.com/) where we work directly with the community.
 If you're not already a member, sign up!
 
 We love our community and wouldn't be where we are without you.
@@ -17,7 +17,7 @@ Where you raise an issue depends largely on the nature of the problem.
 Firstly, if you are an Enterprise customer, you might want to head over to our [Customer Support Portal](http://support.neo4j.com/).
 
 There are plenty of public channels available too, though.
-If you simply want to get started or have a question on how to use a particular feature, drop a line to the [mailing list](https://groups.google.com/forum/#!forum/neo4j), ask a question in [Slack](http://neo4j.com/slack), or [tweet](https://twitter.com/neo4j) us.
+If you simply want to get started or have a question on how to use a particular feature, ask a question in [Neo4j Online Community](https://community.neo4j.com/).
 If you think you might have hit a bug in our software (it happens occasionally!) or you have specific feature request then use the issue feature on the relevant GitHub repository.
 Check first though as someone else may have already raised something similar.
 
@@ -62,4 +62,3 @@ And we'll do our best to help you promote and co-ordinate your Neo ecosystem pro
 ## Further reading
 
 If you want to find out more about how you can contribute, head over to our website for [more information](http://neo4j.com/developer/contributing-code/).
-
