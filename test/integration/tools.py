@@ -161,7 +161,7 @@ class IntegrationTestCase(TestCase):
         if NEO4J_USER is None:
             cls.controller.create_user(cls.user, cls.password)
             cls.controller.set_user_role(cls.user, "admin")
-        cls.controller.start()
+        cls.controller.start(timeout=90)
 
     @classmethod
     def _stop_server(cls):
