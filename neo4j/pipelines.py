@@ -20,7 +20,7 @@
 
 
 from collections import deque
-from threading import Thread
+from threading import Thread, Lock
 from time import sleep
 
 
@@ -93,6 +93,7 @@ class Pipeline(Workspace):
         self._connect()
         self._flush_every = parameters.get("flush_every", 8192)
         self._data = deque()
+        self._pull_lock = Lock()
 
     def push(self, statement, parameters=None):
         self._connection.run(statement, parameters)
@@ -101,18 +102,35 @@ class Pipeline(Workspace):
         if output_buffer_size >= self._flush_every:
             self._connection.send()
 
+    def _results_generator(self):
+        results_returned_count = 0
+        try:
+            summary = 0
+            while summary == 0:
+                _, summary = self._connection.fetch()
+            summary = 0
+            while summary == 0:
+                detail, summary = self._connection.fetch()
+                for n in range(detail):
+                    response = self._data.popleft()
+                    results_returned_count += 1
+                    yield response
+        finally:
+            self._pull_lock.release()
 
     def pull(self):
-        summary = 0
-        while summary == 0:
-            detail, summary = self._connection.fetch()
-        summary = 0
-        while summary == 0:
-            detail, summary = self._connection.fetch()
-            for n in range(detail):
-                response = self._data.popleft()
-                yield response
+        """Returns a generator containing the results of the next query in the pipeline"""
+        # n.b. pull is now somewhat misleadingly named because it doesn't do anything
+        # the connection isn't touched until you try and iterate the generator we return
+        lock_acquired = self._pull_lock.acquire(blocking=False)
+        if not lock_acquired:
+            raise PullOrderException()
+        return self._results_generator()
 
+
+
+class PullOrderException(Exception):
+    """Raise when calling pull if a previous pull result has not been fully consumed"""
 
 class Pusher(Thread):
 
