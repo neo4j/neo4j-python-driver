@@ -201,6 +201,18 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
                 with self.assertRaises(TransientError):
                     s2.run(Statement("MATCH (a:Node) SET a.property = 2", timeout=0.25)).consume()
 
+    def test_regex_in_parameter(self):
+        with self.driver.session() as s:
+            matches = s.run("UNWIND ['A', 'B', 'C', 'A B', 'B C', 'A B C', 'A BC', 'AB C'] AS t "
+                            "WITH t WHERE t =~ $re RETURN t", re=r'.*\bB\b.*').value()
+            self.assertEqual(["B", "A B", "B C", "A B C"], matches)
+
+    def test_regex_inline(self):
+        with self.driver.session() as s:
+            matches = s.run(r"UNWIND ['A', 'B', 'C', 'A B', 'B C', 'A B C', 'A BC', 'AB C'] AS t "
+                            r"WITH t WHERE t =~ '.*\\bB\\b.*' RETURN t").value()
+            self.assertEqual(["B", "A B", "B C", "A B C"], matches)
+
 
 class SummaryTestCase(DirectIntegrationTestCase):
 
