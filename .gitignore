@@ -12,6 +12,7 @@ htmlcov
 .benchmarks
 .cache
 .pytest_cache
+.DS_Store
 
 docs/build
 dist
