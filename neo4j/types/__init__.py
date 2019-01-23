@@ -27,7 +27,6 @@ into concrete values through the PackStreamHydrant.
 
 
 from neo4j import Record
-from neo4j.compat import map_type, string, integer, ustr
 
 # These classes are imported in order to retain backward compatibility with 1.5.
 # They should be removed in 2.0.
@@ -36,6 +35,9 @@ from .graph import Entity, Node, Relationship, Path
 
 INT64_MIN = -(2 ** 63)
 INT64_MAX = (2 ** 63) - 1
+
+
+map_type = type(map(str, range(0)))
 
 
 class PackStreamHydrator(object):
@@ -109,14 +111,14 @@ class PackStreamDehydrator(object):
                 return None
             elif isinstance(obj, bool):
                 return obj
-            elif isinstance(obj, integer):
+            elif isinstance(obj, int):
                 if INT64_MIN <= obj <= INT64_MAX:
                     return obj
                 raise ValueError("Integer out of bounds (64-bit signed integer values only)")
             elif isinstance(obj, float):
                 return obj
-            elif isinstance(obj, string):
-                return ustr(obj)
+            elif isinstance(obj, str):
+                return obj
             elif isinstance(obj, (bytes, bytearray)):  # order is important here - bytes must be checked after string
                 if self.supports_bytes:
                     return obj
@@ -125,7 +127,7 @@ class PackStreamDehydrator(object):
             elif isinstance(obj, (list, map_type)):
                 return list(map(dehydrate_, obj))
             elif isinstance(obj, dict):
-                if any(not isinstance(key, string) for key in obj.keys()):
+                if any(not isinstance(key, str) for key in obj.keys()):
                     raise TypeError("Non-string dictionary keys are not supported")
                 return {key: dehydrate_(value) for key, value in obj.items()}
             else:

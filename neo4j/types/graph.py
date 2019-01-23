@@ -23,7 +23,7 @@ Graph data types
 """
 
 
-from neo4j.compat import xstr, deprecated, Mapping
+from collections.abc import Mapping
 
 
 __all__ = [
@@ -66,7 +66,7 @@ class Graph(object):
         try:
             cls = self._relationship_types[name]
         except KeyError:
-            cls = self._relationship_types[name] = type(xstr(name), (Relationship,), {})
+            cls = self._relationship_types[name] = type(str(name), (Relationship,), {})
         return cls
 
     def put_node(self, n_id, labels=(), properties=None, **kwproperties):
@@ -247,16 +247,6 @@ class Relationship(Entity):
         """
         return type(self).__name__
 
-    @property
-    @deprecated("Relationship.start is deprecated, please use Relationship.start_node.id instead")
-    def start(self):
-        return self.start_node.id
-
-    @property
-    @deprecated("Relationship.end is deprecated, please use Relationship.end_node.id instead")
-    def end(self):
-        return self.end_node.id
-
 
 class Path(object):
     """ Self-contained graph path.
@@ -330,16 +320,6 @@ class Path(object):
         """ The sequence of :class:`.Relationship` objects in this path.
         """
         return self._relationships
-
-    @property
-    @deprecated("Path.start is deprecated, please use Path.start_node instead")
-    def start(self):
-        return self.start_node
-
-    @property
-    @deprecated("Path.end is deprecated, please use Path.end_node instead")
-    def end(self):
-        return self.end_node
 
 
 def hydrate_path(nodes, relationships, sequence):
