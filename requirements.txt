@@ -1,2 +1,2 @@
 neobolt~=4.0.0a1
-neotime~=1.7.1
+neotime~=1.7.4

@@ -31,7 +31,7 @@ from neo4j.meta import package, version
 
 install_requires = [
     "neobolt~=4.0.0a1",
-    "neotime~=1.7.1",
+    "neotime~=1.7.4",
 ]
 classifiers = [
     "Intended Audience :: Developers",
@@ -49,8 +49,6 @@ packages = [
     "neo4j",
     "neo4j.compat",
     "neo4j.types",
-    "neo4j.v1",         # TODO 2.0: remove
-    "neo4j.v1.types",   # TODO 2.0: remove
 ]
 setup_args = {
     "name": package,
