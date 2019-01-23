@@ -1,2 +1,2 @@
-neobolt<2,>=1.7.3
-neotime<2,>=1.7.1
+neobolt==2.0.dev0
+neotime==2.0.dev0

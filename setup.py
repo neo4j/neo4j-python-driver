@@ -30,8 +30,8 @@ except ImportError:
 from neo4j.meta import package, version
 
 install_requires = [
-    "neobolt<2,>=1.7.3",
-    "neotime<2,>=1.7.1",
+    "neobolt==2.0.dev0",
+    "neotime==2.0.dev0",
 ]
 classifiers = [
     "Intended Audience :: Developers",
