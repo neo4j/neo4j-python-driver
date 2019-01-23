@@ -39,15 +39,14 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Database",
     "Topic :: Software Development",
-    "Programming Language :: Python :: 2.7",    # TODO 2.0: remove
     "Programming Language :: Python :: 3.4",
     "Programming Language :: Python :: 3.5",
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
 ]
 packages = [
     "neo4j",
-    "neo4j.compat",
     "neo4j.types",
 ]
 setup_args = {

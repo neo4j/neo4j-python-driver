@@ -66,14 +66,15 @@ else:
 
 
 from collections import deque, namedtuple
+from collections.abc import Sequence, Mapping
 from functools import reduce
 from operator import xor as xor_operator
 from random import random
-from time import sleep
+from time import perf_counter, sleep
+from urllib.parse import urlparse
 from warnings import warn
 
 
-from .compat import perf_counter, urlparse, xstr, Sequence, Mapping
 from .config import *
 from .meta import version as __version__
 
@@ -444,7 +445,7 @@ class Session(object):
 
         has_transaction = self.has_transaction()
 
-        statement_text = ustr(statement)
+        statement_text = str(statement)
         statement_metadata = getattr(statement, "metadata", None)
         statement_timeout = getattr(statement, "timeout", None)
         parameters = fix_parameters(dict(parameters or {}, **kwparameters), protocol_version,
@@ -857,7 +858,7 @@ class Statement(object):
             raise TypeError("Timeout must be specified as a number of seconds")
 
     def __str__(self):
-        return xstr(self.text)
+        return str(self.text)
 
 
 def fix_parameters(parameters, protocol_version, **kwargs):
@@ -1301,7 +1302,7 @@ class Record(tuple, Mapping):
         :return:
         """
         try:
-            index = self.__keys.index(ustr(key))
+            index = self.__keys.index(str(key))
         except ValueError:
             return default
         if 0 <= index < len(self):
@@ -1315,11 +1316,11 @@ class Record(tuple, Mapping):
         :param key:
         :return:
         """
-        if isinstance(key, integer):
+        if isinstance(key, int):
             if 0 <= key < len(self.__keys):
                 return key
             raise IndexError(key)
-        elif isinstance(key, string):
+        elif isinstance(key, str):
             try:
                 return self.__keys.index(key)
             except ValueError:

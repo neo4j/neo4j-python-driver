@@ -3,7 +3,6 @@ branch = True
 omit =
     .*/*
     test/*
-    neo4j/compat/*
     neo4j/util.py
     *neobolt*
 

@@ -22,3 +22,25 @@
 # Can be automatically overridden in builds
 package = "neo4j"
 version = "2.0.dev0"
+
+
+def deprecated(message):
+    """ Decorator for deprecating functions and methods.
+
+    ::
+
+        @deprecated("'foo' has been deprecated in favour of 'bar'")
+        def foo(x):
+            pass
+
+    """
+    def f__(f):
+        def f_(*args, **kwargs):
+            from warnings import warn
+            warn(message, category=DeprecationWarning, stacklevel=2)
+            return f(*args, **kwargs)
+        f_.__name__ = f.__name__
+        f_.__doc__ = f.__doc__
+        f_.__dict__.update(f.__dict__)
+        return f_
+    return f__
