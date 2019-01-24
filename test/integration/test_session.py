@@ -91,18 +91,6 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
         with self.assertRaises(CypherError):
             session.run("RETURN {x}").consume()
 
-    def test_can_run_simple_statement_from_bytes_string(self):
-        session = self.driver.session()
-        count = 0
-        for record in session.run(b"RETURN 1 AS n"):
-            assert record[0] == 1
-            assert record["n"] == 1
-            assert repr(record)
-            assert len(record) == 1
-            count += 1
-        session.close()
-        assert count == 1
-
     def test_can_run_statement_that_returns_multiple_records(self):
         session = self.driver.session()
         count = 0
