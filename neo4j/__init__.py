@@ -92,10 +92,6 @@ STATEMENT_TYPE_WRITE_ONLY = "w"
 STATEMENT_TYPE_SCHEMA_WRITE = "s"
 
 
-# TODO: remove in 2.0
-_warned_about_transaction_bookmarks = False
-
-
 class GraphDatabase(object):
     """ Accessor for :class:`.Driver` construction.
     """
@@ -600,15 +596,6 @@ class Session(object):
         self._assert_open()
         if self.has_transaction():
             raise TransactionError("Explicit transaction already open")
-
-        # TODO: remove in 2.0
-        if bookmark is not None:
-            global _warned_about_transaction_bookmarks
-            if not _warned_about_transaction_bookmarks:
-                from warnings import warn
-                warn("Passing bookmarks at transaction level is deprecated", category=DeprecationWarning, stacklevel=2)
-                _warned_about_transaction_bookmarks = True
-            self._bookmarks_in = tuple([bookmark])
 
         self._open_transaction(metadata=metadata, timeout=timeout)
         return self._transaction
