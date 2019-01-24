@@ -436,6 +436,8 @@ class Session(object):
         self._assert_open()
         if not statement:
             raise ValueError("Cannot run an empty statement")
+        if not isinstance(statement, (str, Statement)):
+            raise TypeError("Statement must be a string or a Statement instance")
 
         if not self._connection:
             self._connect()
