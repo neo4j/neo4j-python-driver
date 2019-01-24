@@ -28,10 +28,6 @@ into concrete values through the PackStreamHydrant.
 
 from neo4j import Record
 
-# These classes are imported in order to retain backward compatibility with 1.5.
-# They should be removed in 2.0.
-from .graph import Entity, Node, Relationship, Path
-
 
 INT64_MIN = -(2 ** 63)
 INT64_MAX = (2 ** 63) - 1
