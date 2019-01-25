@@ -141,3 +141,24 @@ class RecordTestCase(TestCase):
         self.assertFalse(7.5 in r)
         with self.assertRaises(TypeError):
             _ = r.index(None)
+
+    def test_record_from_dict(self):
+        r = Record({"name": "Alice", "age": 33})
+        self.assertEqual("Alice", r["name"])
+        self.assertEqual(33, r["age"])
+
+    def test_record_get_slice(self):
+        r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+        self.assertEqual(Record(zip(["name", "age"], ["Alice", 33])), r[0:2])
+
+    def test_record_get_by_index(self):
+        r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+        self.assertEqual("Alice", r[0])
+
+    def test_record_get_by_name(self):
+        r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+        self.assertEqual("Alice", r["name"])
+
+    def test_record_get_by_out_of_bounds_index(self):
+        r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+        self.assertIsNone(r[9])

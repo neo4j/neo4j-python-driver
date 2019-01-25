@@ -3,8 +3,16 @@ branch = True
 omit =
     .*/*
     test/*
-    neo4j/util.py
+    neo4j/meta.py
     *neobolt*
 
 [report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    except ImportError
+
 show_missing = True

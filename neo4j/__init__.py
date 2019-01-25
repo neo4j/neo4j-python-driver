@@ -1227,7 +1227,7 @@ class Record(tuple, Mapping):
 
     __keys = None
 
-    def __new__(cls, iterable):
+    def __new__(cls, iterable=()):
         keys = []
         values = []
         for key, value in iter_items(iterable):
@@ -1270,11 +1270,12 @@ class Record(tuple, Mapping):
             keys = self.__keys[key]
             values = super(Record, self).__getitem__(key)
             return self.__class__(zip(keys, values))
-        index = self.index(key)
-        if 0 <= index < len(self):
-            return super(Record, self).__getitem__(index)
-        else:
+        try:
+            index = self.index(key)
+        except IndexError:
             return None
+        else:
+            return super(Record, self).__getitem__(index)
 
     def __getslice__(self, start, stop):
         key = slice(start, stop)
