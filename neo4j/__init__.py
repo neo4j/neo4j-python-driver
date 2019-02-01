@@ -163,18 +163,25 @@ class Driver(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def session(self, access_mode=None, **parameters):
+    def _assert_open(self):
+        if self.closed():
+            raise DriverError("Driver closed")
+
+    def session(self, **parameters):
         """ Create a new :class:`.Session` object based on this
         :class:`.Driver`.
 
-        :param access_mode: default access mode (read or write) for
-                            transactions in this session
         :param parameters: custom session parameters (see
                            :class:`.Session` for details)
         :returns: new :class:`.Session` object
         """
-        if self.closed():
-            raise DriverError("Driver closed")
+        raise NotImplementedError("Blocking sessions are not implemented for the %s class" % type(self).__name__)
+
+    def async_session(self, **parameters):
+        raise NotImplementedError("Asynchronous sessions are not implemented for the %s class" % type(self).__name__)
+
+    def rx_session(self, **parameters):
+        raise NotImplementedError("Reactive sessions are not implemented for the %s class" % type(self).__name__)
 
     def close(self):
         """ Shut down, closing any open connections in the pool.
@@ -229,10 +236,11 @@ class DirectDriver(Driver):
         instance._max_retry_time = config.get("max_retry_time", default_config["max_retry_time"])
         return instance
 
-    def session(self, access_mode=None, **parameters):
+    def session(self, **parameters):
+        self._assert_open()
         if "max_retry_time" not in parameters:
             parameters["max_retry_time"] = self._max_retry_time
-        return Session(self._pool.acquire, access_mode, **parameters)
+        return Session(self._pool.acquire, **parameters)
 
 
 class RoutingDriver(Driver):
@@ -276,10 +284,11 @@ class RoutingDriver(Driver):
             instance._max_retry_time = config.get("max_retry_time", default_config["max_retry_time"])
             return instance
 
-    def session(self, access_mode=None, **parameters):
+    def session(self, **parameters):
+        self._assert_open()
         if "max_retry_time" not in parameters:
             parameters["max_retry_time"] = self._max_retry_time
-        return Session(self._pool.acquire, access_mode, **parameters)
+        return Session(self._pool.acquire, **parameters)
 
 
 class Session(object):
@@ -338,9 +347,9 @@ class Session(object):
 
     _closed = False
 
-    def __init__(self, acquirer, access_mode, **parameters):
+    def __init__(self, acquirer, **parameters):
         self._acquirer = acquirer
-        self._default_access_mode = access_mode
+        self._default_access_mode = parameters.get("access_mode")
         for key, value in parameters.items():
             if key == "bookmark":
                 if value:

@@ -187,7 +187,7 @@ class RoutingDriverTestCase(StubTestCase):
         with StubCluster({9001: "get_routing_table.script", 9002: "return_1.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                with driver.session(READ_ACCESS) as session:
+                with driver.session(access_mode=READ_ACCESS) as session:
                     result = session.run("RETURN $x", {"x": 1})
                     for record in result:
                         assert record["x"] == 1
@@ -197,7 +197,7 @@ class RoutingDriverTestCase(StubTestCase):
         with StubCluster({9001: "get_routing_table_with_context.script", 9002: "return_1.script"}):
             uri = "bolt+routing://127.0.0.1:9001/?name=molly&age=1"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                with driver.session(READ_ACCESS) as session:
+                with driver.session(access_mode=READ_ACCESS) as session:
                     result = session.run("RETURN $x", {"x": 1})
                     for record in result:
                         assert record["x"] == 1
@@ -207,7 +207,7 @@ class RoutingDriverTestCase(StubTestCase):
         with StubCluster({9001: "router_no_writers.script", 9005: "return_1.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                with driver.session(READ_ACCESS) as session:
+                with driver.session(access_mode=READ_ACCESS) as session:
                     result = session.run("RETURN $x", {"x": 1})
                     for record in result:
                         assert record["x"] == 1
@@ -223,7 +223,7 @@ class RoutingDriverTestCase(StubTestCase):
         with StubCluster({9001: "router.script", 9006: "not_a_leader.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                with driver.session(WRITE_ACCESS) as session:
+                with driver.session(access_mode=WRITE_ACCESS) as session:
                     with self.assertRaises(ClientError):
                         _ = session.run("CREATE (n {name:'Bob'})")
 
@@ -241,7 +241,7 @@ class RoutingDriverTestCase(StubTestCase):
         with StubCluster({9001: "router.script", 9006: "forbidden_on_read_only_database.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                with driver.session(WRITE_ACCESS) as session:
+                with driver.session(access_mode=WRITE_ACCESS) as session:
                     with self.assertRaises(ClientError):
                         _ = session.run("CREATE (n {name:'Bob'})")
 
@@ -259,7 +259,7 @@ class RoutingDriverTestCase(StubTestCase):
         with StubCluster({9001: "router.script", 9004: "rude_reader.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                with driver.session(READ_ACCESS) as session:
+                with driver.session(access_mode=READ_ACCESS) as session:
                     with self.assertRaises(SessionExpired):
                         _ = session.run("RETURN 1")
 
@@ -283,7 +283,7 @@ class RoutingDriverTestCase(StubTestCase):
         with StubCluster({9001: "router.script", 9004: "database_unavailable.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                with driver.session(READ_ACCESS) as session:
+                with driver.session(access_mode=READ_ACCESS) as session:
                     with self.assertRaises(TransientError):
                         _ = session.run("RETURN 1")
 
