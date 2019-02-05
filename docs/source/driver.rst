@@ -44,7 +44,7 @@ Bolt Routing
 ------------
 
 URI scheme:
-    ``bolt+routing``
+    ``neo4j``
 Driver subclass:
     :class:`.RoutingDriver`
 
@@ -152,7 +152,7 @@ For example::
             from socket import gaierror
             raise gaierror("Unexpected socket address %r" % socket_address)
 
-     driver = GraphDatabase.driver("bolt+routing://foo:9999", auth=("neo4j", "password"), resolver=my_resolver)
+     driver = GraphDatabase.driver("neo4j://foo:9999", auth=("neo4j", "password"), resolver=my_resolver)
 
 
 
