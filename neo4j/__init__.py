@@ -179,14 +179,11 @@ class Driver(object):
 
     @experimental("The pipeline API is experimental and may be removed or "
                   "changed in a future release")
-    def pipeline(self, access_mode=None, **parameters):
+    def pipeline(self, **parameters):
         """ Create a new :class:`.Pipeline` objects based on this
         :class:`.Driver`.
         """
-        if self.closed():
-            raise DriverError("Driver closed")
-        else:
-            raise NotImplementedError("Pipelines are not implemented for this type of driver")
+        raise NotImplementedError("Pipelines are not implemented for the %s class" % type(self).__name__)
 
     def close(self):
         """ Shut down, closing any open connections in the pool.
@@ -248,9 +245,9 @@ class DirectDriver(Driver):
             parameters["max_retry_time"] = self._max_retry_time
         return Session(self._pool.acquire, **parameters)
 
-    def pipeline(self, access_mode=None, **parameters):
+    def pipeline(self, **parameters):
         from .pipelines import Pipeline
-        return Pipeline(self._pool.acquire, access_mode, **parameters)
+        return Pipeline(self._pool.acquire, **parameters)
 
 
 class RoutingDriver(Driver):

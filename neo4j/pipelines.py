@@ -31,9 +31,8 @@ class WorkspaceError(Exception):
 
 class Workspace(object):
 
-    def __init__(self, acquirer, access_mode, **parameters):
+    def __init__(self, acquirer, **parameters):
         self._acquirer = acquirer
-        self._default_access_mode = access_mode
         self._parameters = parameters
         self._connection = None
         self._closed = False
@@ -52,7 +51,7 @@ class Workspace(object):
 
     def _connect(self, access_mode=None):
         if access_mode is None:
-            access_mode = self._default_access_mode
+            access_mode = self._parameters.get("access_mode", "WRITE")
         if self._connection:
             if access_mode == self._connection_access_mode:
                 return
@@ -89,9 +88,9 @@ class Workspace(object):
 
 class Pipeline(Workspace):
 
-    def __init__(self, acquirer, access_mode, **parameters):
-        super(Pipeline, self).__init__(acquirer, access_mode, **parameters)
-        self._connect(access_mode)
+    def __init__(self, acquirer, **parameters):
+        super(Pipeline, self).__init__(acquirer, **parameters)
+        self._connect()
         self._flush_every = parameters.get("flush_every", 8192)
         self._data = deque()
 
