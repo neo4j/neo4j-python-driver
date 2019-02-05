@@ -31,7 +31,7 @@ class StubTestCase(TestCase):
     """
 
     bolt_uri = "bolt://localhost:7687"
-    bolt_routing_uri = "bolt+routing://localhost:7687"
+    neo4j_uri = "neo4j://localhost:7687"
 
     user = "test"
     password = "test"

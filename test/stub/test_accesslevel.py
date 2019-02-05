@@ -28,7 +28,7 @@ class AccessLevelTestCase(StubTestCase):
 
     def test_read_transaction(self):
         with StubCluster({9001: "router.script", 9004: "return_1_in_tx.script"}):
-            uri = "bolt+routing://localhost:9001"
+            uri = "neo4j://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
 
@@ -43,7 +43,7 @@ class AccessLevelTestCase(StubTestCase):
 
     def test_write_transaction(self):
         with StubCluster({9001: "router.script", 9006: "return_1_in_tx.script"}):
-            uri = "bolt+routing://localhost:9001"
+            uri = "neo4j://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
 
@@ -58,7 +58,7 @@ class AccessLevelTestCase(StubTestCase):
 
     def test_read_transaction_with_error(self):
         with StubCluster({9001: "router.script", 9004: "error_in_tx.script"}):
-            uri = "bolt+routing://localhost:9001"
+            uri = "neo4j://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
 
@@ -70,7 +70,7 @@ class AccessLevelTestCase(StubTestCase):
 
     def test_write_transaction_with_error(self):
         with StubCluster({9001: "router.script", 9006: "error_in_tx.script"}):
-            uri = "bolt+routing://localhost:9001"
+            uri = "neo4j://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
 
@@ -82,7 +82,7 @@ class AccessLevelTestCase(StubTestCase):
 
     def test_two_subsequent_read_transactions(self):
         with StubCluster({9001: "router.script", 9004: "return_1_in_tx_twice.script"}):
-            uri = "bolt+routing://localhost:9001"
+            uri = "neo4j://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
 
@@ -99,7 +99,7 @@ class AccessLevelTestCase(StubTestCase):
 
     def test_two_subsequent_write_transactions(self):
         with StubCluster({9001: "router.script", 9006: "return_1_in_tx_twice.script"}):
-            uri = "bolt+routing://localhost:9001"
+            uri = "neo4j://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
 
@@ -116,7 +116,7 @@ class AccessLevelTestCase(StubTestCase):
 
     def test_read_tx_then_write_tx(self):
         with StubCluster({9001: "router.script", 9004: "return_1_in_tx.script", 9006: "return_2_in_tx.script"}):
-            uri = "bolt+routing://localhost:9001"
+            uri = "neo4j://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
 
@@ -141,7 +141,7 @@ class AccessLevelTestCase(StubTestCase):
 
     def test_write_tx_then_read_tx(self):
         with StubCluster({9001: "router.script", 9004: "return_2_in_tx.script", 9006: "return_1_in_tx.script"}):
-            uri = "bolt+routing://localhost:9001"
+            uri = "neo4j://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
 
@@ -164,7 +164,7 @@ class AccessLevelTestCase(StubTestCase):
 
     def test_no_retry_read_on_user_canceled_tx(self):
         with StubCluster({9001: "router.script", 9004: "user_canceled_tx.script.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
                     def unit_of_work(tx):
@@ -175,7 +175,7 @@ class AccessLevelTestCase(StubTestCase):
 
     def test_no_retry_write_on_user_canceled_tx(self):
         with StubCluster({9001: "router.script", 9006: "user_canceled_tx.script.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
                     def unit_of_work(tx):

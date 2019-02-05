@@ -139,8 +139,12 @@ class Driver(object):
 
     def __new__(cls, uri, **config):
         parsed = urlparse(uri)
+        parsed_scheme = parsed.scheme
+        if parsed_scheme == "bolt+routing":
+            warn("The 'bolt+routing' URI scheme is deprecated, please use the 'neo4j' scheme instead")
+            parsed_scheme = "neo4j"
         for subclass in Driver.__subclasses__():
-            if parsed.scheme == subclass.uri_scheme:
+            if parsed_scheme == subclass.uri_scheme:
                 return subclass(uri, **config)
         raise ValueError("URI scheme %r not supported" % parsed.scheme)
 
@@ -235,13 +239,13 @@ class DirectDriver(Driver):
 
 
 class RoutingDriver(Driver):
-    """ A :class:`.RoutingDriver` is created from a ``bolt+routing`` URI. The
+    """ A :class:`.RoutingDriver` is created from a ``neo4j`` URI. The
     routing behaviour works in tandem with Neo4j's `Causal Clustering
     <https://neo4j.com/docs/operations-manual/current/clustering/>`_ feature
     by directing read and write behaviour to appropriate cluster members.
     """
 
-    uri_scheme = "bolt+routing"
+    uri_scheme = "neo4j"
 
     def __new__(cls, uri, **config):
         from neobolt.addressing import SocketAddress
