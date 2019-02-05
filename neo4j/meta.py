@@ -44,3 +44,31 @@ def deprecated(message):
         f_.__dict__.update(f.__dict__)
         return f_
     return f__
+
+
+class ExperimentalWarning(Warning):
+    """ Base class for warnings about experimental features.
+    """
+
+
+def experimental(message):
+    """ Decorator for tagging experimental functions and methods.
+
+    ::
+
+        @experimental("'foo' is an experimental function and may be "
+                      "removed in a future release")
+        def foo(x):
+            pass
+
+    """
+    def f__(f):
+        def f_(*args, **kwargs):
+            from warnings import warn
+            warn(message, category=ExperimentalWarning, stacklevel=2)
+            return f(*args, **kwargs)
+        f_.__name__ = f.__name__
+        f_.__doc__ = f.__doc__
+        f_.__dict__.update(f.__dict__)
+        return f_
+    return f__
