@@ -253,9 +253,6 @@ class Path(object):
     """
 
     def __init__(self, start_node, *relationships):
-        print("Path.start_node: %r", start_node)
-        for r in relationships:
-            print("Path.relationship: %r", r)
         assert isinstance(start_node, Node)
         nodes = [start_node]
         for i, relationship in enumerate(relationships, start=1):
@@ -326,9 +323,6 @@ class Path(object):
 
 
 def hydrate_path(nodes, relationships, sequence):
-    print("hydrate_path.nodes: %r", nodes)
-    print("hydrate_path.relationships: %r", relationships)
-    print("hydrate_path.sequence: %r", sequence)
     assert len(nodes) >= 1
     assert len(sequence) % 2 == 0
     last_node = nodes[0]

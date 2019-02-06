@@ -58,7 +58,6 @@ class PackStreamHydrator(object):
 
         def hydrate_(obj):
             if isinstance(obj, Structure):
-                print(obj)
                 try:
                     f = self.hydration_functions[obj.tag]
                 except KeyError:
