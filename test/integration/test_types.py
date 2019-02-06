@@ -129,6 +129,8 @@ class GraphTypeOutputTestCase(DirectIntegrationTestCase):
             self.assertEqual(r.end_node, b)
 
     def test_path(self):
+        from neobolt.diagnostics import watch
+        watch("neobolt")
         with self.driver.session() as session:
             a, b, c, ab, bc, p = session.write_transaction(
                 run_and_rollback, "CREATE p=(a)-[ab:X]->(b)-[bc:X]->(c) RETURN [a, b, c, ab, bc, p]")
