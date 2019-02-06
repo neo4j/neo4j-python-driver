@@ -92,7 +92,7 @@ class IntegrationTestCase(TestCase):
     bolt_address = ("localhost", bolt_port)
 
     bolt_uri = "bolt://%s:%d" % bolt_address
-    bolt_routing_uri = "bolt+routing://%s:%d" % bolt_address
+    neo4j_uri = "neo4j://%s:%d" % bolt_address
 
     user = NEO4J_USER or "neo4j"
     password = NEO4J_PASSWORD or "password"
@@ -217,7 +217,7 @@ class RoutingIntegrationTestCase(IntegrationTestCase):
 
     def setUp(self):
         from neo4j import GraphDatabase
-        self.driver = GraphDatabase.driver(self.bolt_routing_uri, auth=self.auth_token)
+        self.driver = GraphDatabase.driver(self.neo4j_uri, auth=self.auth_token)
 
     def tearDown(self):
         self.driver.close()

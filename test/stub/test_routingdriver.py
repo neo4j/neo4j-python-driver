@@ -33,27 +33,27 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_bolt_plus_routing_uri_constructs_routing_driver(self):
         with StubCluster({9001: "router.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 assert isinstance(driver, RoutingDriver)
 
     def test_cannot_discover_servers_on_non_router(self):
         with StubCluster({9001: "non_router.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with self.assertRaises(ServiceUnavailable):
                 with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False):
                     pass
 
     def test_cannot_discover_servers_on_silent_router(self):
         with StubCluster({9001: "silent_router.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with self.assertRaises(RoutingProtocolError):
                 with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False):
                     pass
 
     def test_should_discover_servers_on_driver_construction(self):
         with StubCluster({9001: "router.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 table = driver._pool.routing_table
                 assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002),
@@ -63,7 +63,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_should_be_able_to_read(self):
         with StubCluster({9001: "router.script", 9004: "return_1.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
                     result = session.run("RETURN $x", {"x": 1})
@@ -73,7 +73,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_should_be_able_to_write(self):
         with StubCluster({9001: "router.script", 9006: "create_a.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=WRITE_ACCESS) as session:
                     result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
@@ -82,7 +82,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_should_be_able_to_write_as_default(self):
         with StubCluster({9001: "router.script", 9006: "create_a.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
                     result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
@@ -91,7 +91,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_routing_disconnect_on_run(self):
         with StubCluster({9001: "router.script", 9004: "disconnect_on_run.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with self.assertRaises(SessionExpired):
                     with driver.session(access_mode=READ_ACCESS) as session:
@@ -99,7 +99,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_routing_disconnect_on_pull_all(self):
         with StubCluster({9001: "router.script", 9004: "disconnect_on_pull_all.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with self.assertRaises(SessionExpired):
                     with driver.session(access_mode=READ_ACCESS) as session:
@@ -107,7 +107,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_should_disconnect_after_fetching_autocommit_result(self):
         with StubCluster({9001: "router.script", 9004: "return_1.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
                     result = session.run("RETURN $x", {"x": 1})
@@ -117,7 +117,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_should_disconnect_after_explicit_commit(self):
         with StubCluster({9001: "router.script", 9004: "return_1_twice_in_tx.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
                     with session.begin_transaction() as tx:
@@ -133,7 +133,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_should_reconnect_for_new_query(self):
         with StubCluster({9001: "router.script", 9004: "return_1_twice.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
                     result_1 = session.run("RETURN $x", {"x": 1})
@@ -147,7 +147,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_should_retain_connection_if_fetching_multiple_results(self):
         with StubCluster({9001: "router.script", 9004: "return_1_twice.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
                     result_1 = session.run("RETURN $x", {"x": 1})
@@ -160,7 +160,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_two_sessions_can_share_a_connection(self):
         with StubCluster({9001: "router.script", 9004: "return_1_four_times.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 session_1 = driver.session(access_mode=READ_ACCESS)
                 session_2 = driver.session(access_mode=READ_ACCESS)
@@ -186,7 +186,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_should_call_get_routing_table_procedure(self):
         with StubCluster({9001: "get_routing_table.script", 9002: "return_1.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
                     result = session.run("RETURN $x", {"x": 1})
@@ -196,7 +196,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_should_call_get_routing_table_with_context(self):
         with StubCluster({9001: "get_routing_table_with_context.script", 9002: "return_1.script"}):
-            uri = "bolt+routing://127.0.0.1:9001/?name=molly&age=1"
+            uri = "neo4j://127.0.0.1:9001/?name=molly&age=1"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
                     result = session.run("RETURN $x", {"x": 1})
@@ -206,7 +206,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_should_serve_read_when_missing_writer(self):
         with StubCluster({9001: "router_no_writers.script", 9005: "return_1.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
                     result = session.run("RETURN $x", {"x": 1})
@@ -216,14 +216,14 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_should_error_when_missing_reader(self):
         with StubCluster({9001: "router_no_readers.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with self.assertRaises(RoutingProtocolError):
                 GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False)
 
     def test_default_load_balancing_strategy_is_least_connected(self):
         from neobolt.routing import RoutingConnectionPool
         with StubCluster({9001: "router.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 self.assertIsInstance(driver, RoutingDriver)
                 self.assertIsInstance(driver._pool, RoutingConnectionPool)
@@ -232,7 +232,7 @@ class RoutingDriverTestCase(StubTestCase):
     def test_can_select_round_robin_load_balancing_strategy(self):
         from neobolt.routing import RoutingConnectionPool
         with StubCluster({9001: "router.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False,
                                       load_balancing_strategy=LOAD_BALANCING_STRATEGY_ROUND_ROBIN) as driver:
                 self.assertIsInstance(driver, RoutingDriver)
@@ -240,14 +240,14 @@ class RoutingDriverTestCase(StubTestCase):
                 self.assertIsInstance(driver._pool.load_balancing_strategy, RoundRobinLoadBalancingStrategy)
 
     def test_no_other_load_balancing_strategies_are_available(self):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with self.assertRaises(ValueError):
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False, load_balancing_strategy=-1):
                 pass
 
     def test_forgets_address_on_not_a_leader_error(self):
         with StubCluster({9001: "router.script", 9006: "not_a_leader.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=WRITE_ACCESS) as session:
                     with self.assertRaises(ClientError):
@@ -265,7 +265,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_forgets_address_on_forbidden_on_read_only_database_error(self):
         with StubCluster({9001: "router.script", 9006: "forbidden_on_read_only_database.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=WRITE_ACCESS) as session:
                     with self.assertRaises(ClientError):
@@ -283,7 +283,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_forgets_address_on_service_unavailable_error(self):
         with StubCluster({9001: "router.script", 9004: "rude_reader.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
                     with self.assertRaises(SessionExpired):
@@ -307,7 +307,7 @@ class RoutingDriverTestCase(StubTestCase):
 
     def test_forgets_address_on_database_unavailable_error(self):
         with StubCluster({9001: "router.script", 9004: "database_unavailable.script"}):
-            uri = "bolt+routing://127.0.0.1:9001"
+            uri = "neo4j://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
                     with self.assertRaises(TransientError):
