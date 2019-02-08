@@ -21,10 +21,8 @@
 from uuid import uuid4
 from unittest import SkipTest
 
-from neo4j import \
-    READ_ACCESS, WRITE_ACCESS, \
-    CypherError, SessionError, TransactionError, unit_of_work, Statement
-from neo4j.exceptions import CypherSyntaxError, TransientError
+from neo4j import CypherError
+from neo4j.exceptions import CypherSyntaxError
 from neo4j.pipelines import Pipeline, PullOrderException
 from neo4j.types.graph import Node, Relationship, Path
 from neobolt.packstream import Structure
