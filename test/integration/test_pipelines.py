@@ -33,7 +33,7 @@ from test.integration.tools import DirectIntegrationTestCase
 class PipelineBasicsTestCase(DirectIntegrationTestCase):
 
     def test_can_run_simple_statement(self):
-        pipeline: Pipeline = self.driver.pipeline(flush_every=0)
+        pipeline = self.driver.pipeline(flush_every=0)
         pipeline.push("RETURN 1 AS n")
         for record in pipeline.pull():
             assert len(record) == 1
@@ -52,7 +52,7 @@ class PipelineBasicsTestCase(DirectIntegrationTestCase):
         pipeline.close()
 
     def test_can_run_simple_statement_with_params(self):
-        pipeline: Pipeline = self.driver.pipeline(flush_every=0)
+        pipeline = self.driver.pipeline(flush_every=0)
         count = 0
         pipeline.push("RETURN {x} AS n", {"x": {"abc": ["d", "e", "f"]}})
         for record in pipeline.pull():
@@ -66,7 +66,7 @@ class PipelineBasicsTestCase(DirectIntegrationTestCase):
         assert count == 1
 
     def test_can_run_write_statement_with_no_return(self):
-        pipeline: Pipeline = self.driver.pipeline(flush_every=0)
+        pipeline = self.driver.pipeline(flush_every=0)
         count = 0
         test_uid = str(uuid4())
         pipeline.push("CREATE (a:Person {uid:$test_uid})", dict(test_uid=test_uid))
@@ -83,13 +83,13 @@ class PipelineBasicsTestCase(DirectIntegrationTestCase):
         assert count == 1
 
     def test_fails_on_bad_syntax(self):
-        pipeline: Pipeline = self.driver.pipeline(flush_every=0)
+        pipeline = self.driver.pipeline(flush_every=0)
         with self.assertRaises(CypherError):
             pipeline.push("X")
             next(pipeline.pull())
 
     def test_doesnt_fail_on_bad_syntax_somewhere(self):
-        pipeline: Pipeline = self.driver.pipeline(flush_every=0)
+        pipeline = self.driver.pipeline(flush_every=0)
         pipeline.push("RETURN 1 AS n")
         pipeline.push("X")
         assert next(pipeline.pull())[0] == 1
@@ -97,13 +97,13 @@ class PipelineBasicsTestCase(DirectIntegrationTestCase):
             next(pipeline.pull())
 
     def test_fails_on_missing_parameter(self):
-        pipeline: Pipeline = self.driver.pipeline(flush_every=0)
+        pipeline = self.driver.pipeline(flush_every=0)
         with self.assertRaises(CypherError):
             pipeline.push("RETURN {x}")
             next(pipeline.pull())
 
     def test_can_run_simple_statement_from_bytes_string(self):
-        pipeline: Pipeline = self.driver.pipeline(flush_every=0)
+        pipeline = self.driver.pipeline(flush_every=0)
         count = 0
         raise SkipTest("FIXME: why can't pipeline handle bytes string?")
         pipeline.push(b"RETURN 1 AS n")
@@ -117,7 +117,7 @@ class PipelineBasicsTestCase(DirectIntegrationTestCase):
         assert count == 1
 
     def test_can_run_statement_that_returns_multiple_records(self):
-        pipeline: Pipeline = self.driver.pipeline(flush_every=0)
+        pipeline = self.driver.pipeline(flush_every=0)
         count = 0
         pipeline.push("unwind(range(1, 10)) AS z RETURN z")
         for record in pipeline.pull():
@@ -204,7 +204,7 @@ class PipelineSpecificBehavioursTestCase(DirectIntegrationTestCase):
 
     def test_pull_order_exception(self):
         """If you try and pull when you haven't finished iterating the previous result you get an error"""
-        pipeline: Pipeline = self.driver.pipeline(flush_every=0)
+        pipeline = self.driver.pipeline(flush_every=0)
         with self.assertRaises(PullOrderException):
             pipeline.push("unwind(range(1, 10)) AS z RETURN z")
             pipeline.push("unwind(range(11, 20)) AS z RETURN z")
