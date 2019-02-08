@@ -265,10 +265,6 @@ class DirectDriver(Driver):
         from .pipelines import Pipeline
         return Pipeline(self._pool.acquire, **parameters)
 
-    def pipeline(self, access_mode=None, **parameters):
-        from .pipelines import Pipeline
-        return Pipeline(self._pool.acquire, access_mode, **parameters)
-
 
 class RoutingDriver(Driver):
     """ A :class:`.RoutingDriver` is created from a ``neo4j`` URI. The
