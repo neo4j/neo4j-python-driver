@@ -51,7 +51,7 @@ def main():
 
     if args.verbose:
         level = logging.INFO if args.verbose == 1 else logging.DEBUG
-        Watcher("neo4j").watch(level, stderr)
+        Watcher("neobolt").watch(level, stderr)
 
     parameters = {}
     for parameter in args.parameter or []:
