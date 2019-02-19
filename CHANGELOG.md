@@ -5,3 +5,5 @@
 - Support dropped for Python 2.7; explicit support added for Python 3.7 and 3.8
 - The `neo4j.v1` subpackage is now no longer available; all imports should be taken from the `neo4j` package instead
 - Changed `session(access_mode)` from a positional to a keyword argument
+- Removed `load_balancing_strategy` configuration option; "least connected" is now always used
+- Removed `INFINITY` value for specifying connection pool size; use -1 or `float("inf")` instead

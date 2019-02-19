@@ -20,8 +20,7 @@
 
 
 from neobolt.exceptions import ServiceUnavailable
-from neobolt.routing import LeastConnectedLoadBalancingStrategy, RoundRobinLoadBalancingStrategy, \
-    LOAD_BALANCING_STRATEGY_ROUND_ROBIN, RoutingProtocolError
+from neobolt.routing import RoutingProtocolError
 
 from neo4j.exceptions import ClientError
 from neo4j import GraphDatabase, READ_ACCESS, WRITE_ACCESS, RoutingDriver, TransientError
@@ -220,31 +219,6 @@ class RoutingDriverTestCase(StubTestCase):
             uri = "neo4j://127.0.0.1:9001"
             with self.assertRaises(RoutingProtocolError):
                 GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False)
-
-    def test_default_load_balancing_strategy_is_least_connected(self):
-        from neobolt.routing import RoutingConnectionPool
-        with StubCluster({9001: "router.script"}):
-            uri = "neo4j://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
-                self.assertIsInstance(driver, RoutingDriver)
-                self.assertIsInstance(driver._pool, RoutingConnectionPool)
-                self.assertIsInstance(driver._pool.load_balancing_strategy, LeastConnectedLoadBalancingStrategy)
-
-    def test_can_select_round_robin_load_balancing_strategy(self):
-        from neobolt.routing import RoutingConnectionPool
-        with StubCluster({9001: "router.script"}):
-            uri = "neo4j://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False,
-                                      load_balancing_strategy=LOAD_BALANCING_STRATEGY_ROUND_ROBIN) as driver:
-                self.assertIsInstance(driver, RoutingDriver)
-                self.assertIsInstance(driver._pool, RoutingConnectionPool)
-                self.assertIsInstance(driver._pool.load_balancing_strategy, RoundRobinLoadBalancingStrategy)
-
-    def test_no_other_load_balancing_strategies_are_available(self):
-        uri = "neo4j://127.0.0.1:9001"
-        with self.assertRaises(ValueError):
-            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False, load_balancing_strategy=-1):
-                pass
 
     def test_forgets_address_on_not_a_leader_error(self):
         with StubCluster({9001: "router.script", 9006: "not_a_leader.script"}):
