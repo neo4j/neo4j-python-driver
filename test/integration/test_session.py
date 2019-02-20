@@ -19,15 +19,13 @@
 # limitations under the License.
 
 
-from time import sleep
 from unittest import SkipTest
 from uuid import uuid4
 
-from neo4j import \
-    READ_ACCESS, WRITE_ACCESS, \
-    CypherError, SessionError, TransactionError, unit_of_work, Statement
-from neo4j.types.graph import Node, Relationship, Path
-from neo4j.exceptions import CypherSyntaxError, TransientError
+from neo4j import READ_ACCESS, WRITE_ACCESS, CypherError
+from neo4j.blocking import Statement, SessionError, TransactionError, unit_of_work
+from neo4j.exceptions import CypherSyntaxError, TransientError, ClientError
+from neo4j.types.graph import Node, Relationship
 
 from test.integration.tools import DirectIntegrationTestCase
 
@@ -176,8 +174,16 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
             raise SkipTest("Test requires Bolt v3")
         metadata_in = {"foo": "bar"}
         with self.driver.session() as session:
-            metadata_out = session.run(Statement("CALL dbms.getTXMetaData", metadata=metadata_in)).single().value()
-            self.assertEqual(metadata_in, metadata_out)
+            try:
+                metadata_out = session.run(Statement("CALL dbms.getTXMetaData", metadata=metadata_in)).single().value()
+            except ClientError as e:
+                if e.code == "Neo.ClientError.Procedure.ProcedureNotFound":
+                    raise SkipTest("Cannot assert correct metadata as Neo4j edition does not "
+                                   "support procedure dbms.getTXMetaData")
+                else:
+                    raise
+            else:
+                self.assertEqual(metadata_in, metadata_out)
 
     def test_autocommit_transactions_should_support_timeout(self):
         if self.protocol_version() < 3:
@@ -409,8 +415,16 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
         with self.driver.session() as session:
             metadata_in = {"foo": "bar"}
             with session.begin_transaction(metadata=metadata_in) as tx:
-                metadata_out = tx.run("CALL dbms.getTXMetaData").single().value()
-            self.assertEqual(metadata_in, metadata_out)
+                try:
+                    metadata_out = tx.run("CALL dbms.getTXMetaData").single().value()
+                except ClientError as e:
+                    if e.code == "Neo.ClientError.Procedure.ProcedureNotFound":
+                        raise SkipTest("Cannot assert correct metadata as Neo4j edition does not "
+                                       "support procedure dbms.getTXMetaData")
+                    else:
+                        raise
+                else:
+                    self.assertEqual(metadata_in, metadata_out)
 
     def test_transaction_timeout(self):
         if self.protocol_version() < 3:
