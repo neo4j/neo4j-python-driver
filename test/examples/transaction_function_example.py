@@ -22,7 +22,9 @@
 from test.examples.base_application import BaseApplication
 
 # tag::transaction-function-import[]
-from neo4j import unit_of_work
+from neo4j.blocking import unit_of_work
+
+
 # end::transaction-function-import[]
 
 

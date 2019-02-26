@@ -22,7 +22,9 @@
 from test.examples.base_application import BaseApplication
 
 # tag::autocommit-transaction-import[]
-from neo4j import Statement
+from neo4j.blocking import Statement
+
+
 # end::autocommit-transaction-import[]
 
 

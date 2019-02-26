@@ -607,7 +607,14 @@ class TransactionFunctionTestCase(DirectIntegrationTestCase):
 
         @unit_of_work(timeout=25, metadata={"foo": "bar"})
         def work(tx):
-            return tx.run("CALL dbms.getTXMetaData").single().value()
+            try:
+                return tx.run("CALL dbms.getTXMetaData").single().value()
+            except ClientError as e:
+                if e.code == "Neo.ClientError.Procedure.ProcedureNotFound":
+                    raise SkipTest("Cannot assert correct metadata as Neo4j edition does not "
+                                   "support procedure dbms.getTXMetaData")
+                else:
+                    raise
 
         with self.driver.session() as session:
             value = session.read_transaction(work)
