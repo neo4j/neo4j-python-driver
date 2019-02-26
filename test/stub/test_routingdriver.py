@@ -22,8 +22,9 @@
 from neobolt.exceptions import ServiceUnavailable
 from neobolt.routing import RoutingProtocolError
 
-from neo4j.exceptions import ClientError
-from neo4j import GraphDatabase, READ_ACCESS, WRITE_ACCESS, SessionExpired, RoutingDriver, TransientError
+from neo4j.exceptions import ClientError, TransientError
+from neo4j import GraphDatabase, READ_ACCESS, WRITE_ACCESS, RoutingDriver
+from neo4j.blocking import SessionExpired
 
 from test.stub.tools import StubTestCase, StubCluster
 
@@ -284,8 +285,9 @@ class RoutingDriverTestCase(StubTestCase):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
-                    with self.assertRaises(TransientError):
+                    with self.assertRaises(TransientError) as raised:
                         _ = session.run("RETURN 1")
+                    assert raised.exception.title == "DatabaseUnavailable"
 
                     pool = driver._pool
                     table = pool.routing_table
@@ -293,6 +295,6 @@ class RoutingDriverTestCase(StubTestCase):
                     # address should not have connections in the pool, it has failed
                     assert ('127.0.0.1', 9004) not in pool.connections
                     assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-                    # reader 127.0.0.1:9004 should've been forgotten because of an error
+                    # reader 127.0.0.1:9004 should've been forgotten because of an raised
                     assert table.readers == {('127.0.0.1', 9005)}
                     assert table.writers == {('127.0.0.1', 9006)}

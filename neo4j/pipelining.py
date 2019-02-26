@@ -23,6 +23,8 @@ from collections import deque
 from threading import Thread, Lock
 from time import sleep
 
+from neo4j import Workspace
+
 
 class WorkspaceError(Exception):
 
@@ -64,7 +66,8 @@ class Workspace(object):
         if self._connection:
             if sync:
                 try:
-                    self._connection.sync()
+                    self._connection.send_all()
+                    self._connection.fetch_all()
                 except (WorkspaceError, ConnectionExpired, ServiceUnavailable):
                     pass
             if self._connection:
@@ -98,19 +101,19 @@ class Pipeline(Workspace):
     def push(self, statement, parameters=None):
         self._connection.run(statement, parameters)
         self._connection.pull_all(on_records=self._data.extend)
-        output_buffer_size = len(self._connection.output_buffer.view())
+        output_buffer_size = len(self._connection.outbox.view())
         if output_buffer_size >= self._flush_every:
-            self._connection.send()
+            self._connection.send_all()
 
     def _results_generator(self):
         results_returned_count = 0
         try:
             summary = 0
             while summary == 0:
-                _, summary = self._connection.fetch()
+                _, summary = self._connection.fetch_message()
             summary = 0
             while summary == 0:
-                detail, summary = self._connection.fetch()
+                detail, summary = self._connection.fetch_message()
                 for n in range(detail):
                     response = self._data.popleft()
                     results_returned_count += 1

@@ -110,7 +110,7 @@ class IntegrationTestCase(TestCase):
     def server_version_info(cls):
         with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth_token) as driver:
             with driver.session() as session:
-                full_version = session.run("RETURN 1").summary().server.version
+                full_version = session.run("RETURN 1").summary().server.agent
                 return ServerVersion.from_str(full_version)
 
     @classmethod
@@ -122,6 +122,13 @@ class IntegrationTestCase(TestCase):
         with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth_token) as driver:
             with driver.session() as session:
                 return session.run("RETURN 1").summary().protocol_version
+
+    @classmethod
+    def edition(cls):
+        with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth_token) as driver:
+            with driver.session() as session:
+                return (session.run("CALL dbms.components")
+                        .single().value("edition"))
 
     @classmethod
     def at_least_protocol_version(cls, version):

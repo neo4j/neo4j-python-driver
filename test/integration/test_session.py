@@ -22,9 +22,9 @@
 from unittest import SkipTest
 from uuid import uuid4
 
-from neo4j import READ_ACCESS, WRITE_ACCESS, CypherError
+from neo4j import READ_ACCESS, WRITE_ACCESS
 from neo4j.blocking import Statement, SessionError, TransactionError, unit_of_work
-from neo4j.exceptions import CypherSyntaxError, TransientError, ClientError
+from neo4j.exceptions import CypherError, CypherSyntaxError, TransientError, ClientError
 from neo4j.types.graph import Node, Relationship
 
 from test.integration.tools import DirectIntegrationTestCase
@@ -584,8 +584,9 @@ class TransactionFunctionTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, 1)
 
     def test_read_with_arg_and_metadata(self):
-        if self.protocol_version() < 3:
-            raise SkipTest("Transaction metadata and timeout only supported in Bolt v3+")
+        if self.edition() != "enterprise" or self.protocol_version() < 3:
+            raise SkipTest("Transaction metadata and timeout only supported "
+                           "in Neo4j EE 3.5+")
 
         @unit_of_work(timeout=25, metadata={"foo": "bar"})
         def work(tx):
@@ -614,8 +615,9 @@ class TransactionFunctionTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, 1)
 
     def test_write_with_arg_and_metadata(self):
-        if self.protocol_version() < 3:
-            raise SkipTest("Transaction metadata and timeout only supported in Bolt v3+")
+        if self.edition() != "enterprise" or self.protocol_version() < 3:
+            raise SkipTest("Transaction metadata and timeout only supported "
+                           "in Neo4j EE 3.5+")
 
         @unit_of_work(timeout=25, metadata={"foo": "bar"})
         def work(tx, x):

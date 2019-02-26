@@ -29,12 +29,13 @@ from test.integration.tools import IntegrationTestCase
 
 class SecurityTestCase(IntegrationTestCase):
 
-    def test_secure_by_default(self):
+    def test_insecure_by_default(self):
         with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
-            self.assertTrue(driver.encrypted)
+            self.assertFalse(driver.encrypted)
 
     def test_insecure_session_uses_normal_socket(self):
-        with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token, encrypted=False) as driver:
+        with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token,
+                                  encrypted=False) as driver:
             with driver.session() as session:
                 result = session.run("RETURN 1")
                 connection = session._connection
@@ -45,6 +46,7 @@ class SecurityTestCase(IntegrationTestCase):
     def test_custom_ca_not_implemented(self):
         with self.assertRaises(NotImplementedError):
             _ = GraphDatabase.driver(self.bolt_uri, auth=self.auth_token,
+                                     encrypted=True,
                                      trust=TRUST_CUSTOM_CA_SIGNED_CERTIFICATES)
 
     def test_should_fail_on_incorrect_password(self):

@@ -19,7 +19,8 @@
 # limitations under the License.
 
 
-from neo4j import GraphDatabase, CypherError, TransientError
+from neo4j import GraphDatabase
+from neo4j.exceptions import CypherError, TransientError
 
 from test.stub.tools import StubTestCase, StubCluster
 

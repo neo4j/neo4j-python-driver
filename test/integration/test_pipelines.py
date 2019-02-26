@@ -21,11 +21,10 @@
 from uuid import uuid4
 from unittest import SkipTest
 
-from neo4j import CypherError
-from neo4j.exceptions import CypherSyntaxError
-from neo4j.pipelines import Pipeline, PullOrderException
+from neo4j.exceptions import CypherError, CypherSyntaxError
+from neo4j.pipelining import PullOrderException
 from neo4j.types.graph import Node, Relationship, Path
-from neobolt.packstream import Structure
+from neobolt.types import Structure
 
 from test.integration.tools import DirectIntegrationTestCase
 
