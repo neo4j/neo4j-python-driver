@@ -26,9 +26,9 @@ into concrete values through the PackStreamHydrant.
 """
 
 
+from collections.abc import Mapping, Sequence
 from functools import reduce
 from operator import xor as xor_operator
-from typing import Mapping, Sequence
 
 
 INT64_MIN = -(2 ** 63)
