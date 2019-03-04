@@ -77,9 +77,6 @@ class Session(object):
     # The current connection.
     _connection = None
 
-    # The access mode for the current connection.
-    _connection_access_mode = None
-
     # The current :class:`.Transaction` instance, if any.
     _transaction = None
 
@@ -129,11 +126,8 @@ class Session(object):
         if access_mode is None:
             access_mode = self._default_access_mode
         if self._connection:
-            if access_mode == self._connection_access_mode:
-                return
             self._disconnect(sync=True)
         self._connection = self._acquirer(access_mode)
-        self._connection_access_mode = access_mode
 
     def _disconnect(self, sync):
         from neobolt.exceptions import ConnectionExpired, ServiceUnavailable
@@ -146,7 +140,6 @@ class Session(object):
             if self._connection:
                 self._connection.in_use = False
                 self._connection = None
-            self._connection_access_mode = None
 
     def close(self):
         """ Close the session. This will release any borrowed resources,
