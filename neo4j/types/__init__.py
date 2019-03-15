@@ -56,7 +56,7 @@ class PackStreamHydrator(object):
     def hydrate(self, values):
         """ Convert PackStream values into native values.
         """
-        from neobolt.packstream import Structure
+        from neobolt.types import Structure
 
         def hydrate_(obj):
             if isinstance(obj, Structure):

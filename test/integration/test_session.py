@@ -280,7 +280,7 @@ class SummaryTestCase(DirectIntegrationTestCase):
             assert position
 
     def test_contains_time_information(self):
-        if not self.at_least_server_version(3, 1):
+        if not self.server_supports("execution_times"):
             raise SkipTest("Execution times are not supported before server 3.1")
         with self.driver.session() as session:
             summary = session.run("UNWIND range(1,1000) AS n RETURN n AS number").consume()
@@ -404,7 +404,7 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
                 tx.run("RETURN 1")
 
     def test_last_run_statement_should_be_cleared_on_failure(self):
-        if not self.at_least_server_version(3, 2):
+        if not self.server_supports("statement_reuse"):
             raise SkipTest("Statement reuse is not supported before server 3.2")
 
         with self.driver.session() as session:
@@ -468,7 +468,7 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
 class BookmarkingTestCase(DirectIntegrationTestCase):
 
     def test_can_obtain_bookmark_after_commit(self):
-        if not self.at_least_server_version(3, 1):
+        if not self.server_supports("bookmarking"):
             raise SkipTest("Bookmarking is not supported before server 3.1")
         with self.driver.session() as session:
             with session.begin_transaction() as tx:
@@ -476,7 +476,7 @@ class BookmarkingTestCase(DirectIntegrationTestCase):
             assert session.last_bookmark() is not None
 
     def test_can_pass_bookmark_into_next_transaction(self):
-        if not self.at_least_server_version(3, 1):
+        if not self.server_supports("bookmarking"):
             raise SkipTest("Bookmarking is not supported before server 3.1")
 
         unique_id = uuid4().hex
@@ -500,7 +500,7 @@ class BookmarkingTestCase(DirectIntegrationTestCase):
                 assert thing["uuid"] == unique_id
 
     def test_bookmark_should_be_none_after_rollback(self):
-        if not self.at_least_server_version(3, 1):
+        if not self.server_supports("bookmarking"):
             raise SkipTest("Bookmarking is not supported before server 3.1")
 
         with self.driver.session(access_mode=WRITE_ACCESS) as session:

@@ -253,10 +253,10 @@ class Path(object):
     """
 
     def __init__(self, start_node, *relationships):
-        assert isinstance(start_node, Node)
+        # assert isinstance(start_node, Node)
         nodes = [start_node]
         for i, relationship in enumerate(relationships, start=1):
-            assert isinstance(relationship, Relationship)
+            # assert isinstance(relationship, Relationship)
             if relationship.start_node == nodes[-1]:
                 nodes.append(relationship.end_node)
             elif relationship.end_node == nodes[-1]:

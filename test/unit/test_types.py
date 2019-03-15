@@ -21,9 +21,8 @@
 
 from unittest import TestCase
 
-from neobolt.packstream import Structure
-from neo4j.types import PackStreamHydrator
-from neo4j.types.graph import Node, Path, Graph
+from neobolt.types import Structure, PackStreamHydrator
+from neobolt.types.graph import Node, Path, Graph
 
 
 class NodeTestCase(TestCase):

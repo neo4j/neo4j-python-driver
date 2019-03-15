@@ -107,15 +107,10 @@ class IntegrationTestCase(TestCase):
     neoctrl_args = NEOCTRL_ARGS
 
     @classmethod
-    def server_version_info(cls):
+    def server_supports(cls, feature):
         with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth_token) as driver:
             with driver.session() as session:
-                full_version = session.run("RETURN 1").summary().server.version
-                return ServerVersion.from_str(full_version)
-
-    @classmethod
-    def at_least_server_version(cls, major, minor):
-        return cls.server_version_info().at_least_version(major, minor)
+                return session.run("RETURN 1").summary().server.supports(feature)
 
     @classmethod
     def protocol_version(cls):
@@ -129,12 +124,12 @@ class IntegrationTestCase(TestCase):
 
     @classmethod
     def assert_supports_spatial_types(cls):
-        if not cls.at_least_protocol_version(2):
+        if not cls.server_supports("spatial_types"):
             raise SkipTest("Spatial types require Bolt protocol v2 or above")
 
     @classmethod
     def assert_supports_temporal_types(cls):
-        if not cls.at_least_protocol_version(2):
+        if not cls.server_supports("temporal_types"):
             raise SkipTest("Temporal types require Bolt protocol v2 or above")
 
     @classmethod

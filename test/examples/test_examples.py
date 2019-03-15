@@ -205,4 +205,4 @@ class ServiceUnavailableTest(IntegrationTestCase):
         example = ServiceUnavailableExample(self.bolt_uri, self.user, self.password)
         self._stop_server()
 
-        self.assertFalse(example.add_item())
+        self.assertTrue(example.add_item())

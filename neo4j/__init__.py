@@ -189,7 +189,6 @@ class DirectDriver(Driver):
     def __new__(cls, uri, **config):
         from neobolt.addressing import SocketAddress
         from neobolt.direct import ConnectionPool, DEFAULT_PORT, connect
-        from neobolt.security import ENCRYPTION_OFF, ENCRYPTION_ON, SSL_AVAILABLE, SecurityPlan
         cls._check_uri(uri)
         if SocketAddress.parse_routing_context(uri):
             raise ValueError("Parameters are not supported with scheme 'bolt'. Given URI: '%s'." % uri)
@@ -201,9 +200,9 @@ class DirectDriver(Driver):
         # an old address and one for a new address.
         instance.address = SocketAddress.from_uri(uri, DEFAULT_PORT)
         if config.get("encrypted") is None:
-            config["encrypted"] = ENCRYPTION_ON if SSL_AVAILABLE else ENCRYPTION_OFF
-        instance.security_plan = security_plan = SecurityPlan.build(**config)
-        instance.encrypted = security_plan.encrypted
+            # TODO 2.0: default to 'no encryption'
+            config["encrypted"] = True
+        instance.encrypted = bool(config["encrypted"])
 
         def connector(address, **kwargs):
             return connect(address, **dict(config, **kwargs))
@@ -239,19 +238,14 @@ class RoutingDriver(Driver):
         from neobolt.addressing import SocketAddress
         from neobolt.direct import DEFAULT_PORT, connect
         from neobolt.routing import RoutingConnectionPool
-        from neobolt.security import ENCRYPTION_OFF, ENCRYPTION_ON, SSL_AVAILABLE, SecurityPlan
         cls._check_uri(uri)
         instance = object.__new__(cls)
         instance.initial_address = initial_address = SocketAddress.from_uri(uri, DEFAULT_PORT)
         if config.get("encrypted") is None:
-            config["encrypted"] = ENCRYPTION_ON if SSL_AVAILABLE else ENCRYPTION_OFF
-        instance.security_plan = security_plan = SecurityPlan.build(**config)
-        instance.encrypted = security_plan.encrypted
+            # TODO 2.0: default to 'no encryption'
+            config["encrypted"] = True
+        instance.encrypted = bool(config["encrypted"])
         routing_context = SocketAddress.parse_routing_context(uri)
-        if not security_plan.routing_compatible:
-            # this error message is case-specific as there is only one incompatible
-            # scenario right now
-            raise ValueError("TRUST_ON_FIRST_USE is not compatible with routing")
 
         def connector(address, **kwargs):
             return connect(address, **dict(config, **kwargs))
@@ -292,7 +286,7 @@ def basic_auth(user, password, realm=None):
     :param realm: specifies the authentication provider
     :return: auth token for use with :meth:`GraphDatabase.driver`
     """
-    from neobolt.security import AuthToken
+    from neobolt.direct import AuthToken
     return AuthToken("basic", user, password, realm)
 
 
@@ -302,7 +296,7 @@ def kerberos_auth(base64_encoded_ticket):
     :param base64_encoded_ticket: a base64 encoded service ticket
     :return: an authentication token that can be used to connect to Neo4j
     """
-    from neobolt.security import AuthToken
+    from neobolt.direct import AuthToken
     return AuthToken("kerberos", "", base64_encoded_ticket)
 
 
@@ -316,7 +310,7 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
     :param parameters: parameters passed along to the authentication provider
     :return: auth token for use with :meth:`GraphDatabase.driver`
     """
-    from neobolt.security import AuthToken
+    from neobolt.direct import AuthToken
     return AuthToken(scheme, principal, credentials, realm, **parameters)
 
 
