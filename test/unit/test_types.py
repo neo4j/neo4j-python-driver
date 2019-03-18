@@ -29,7 +29,8 @@ class NodeTestCase(TestCase):
 
     def test_can_create_node(self):
         g = Graph()
-        alice = g.put_node(1, {"Person"}, {"name": "Alice", "age": 33})
+        gh = Graph.Hydrator(g)
+        alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
         self.assertEqual(alice.labels, {"Person"})
         self.assertEqual(set(alice.keys()), {"name", "age"})
         self.assertEqual(set(alice.values()), {"Alice", 33})
@@ -46,7 +47,8 @@ class NodeTestCase(TestCase):
 
     def test_null_properties(self):
         g = Graph()
-        stuff = g.put_node(1, (), good=["puppies", "kittens"], bad=None)
+        gh = Graph.Hydrator(g)
+        stuff = gh.hydrate_node(1, (), {"good": ["puppies", "kittens"], "bad": None})
         self.assertEqual(set(stuff.keys()), {"good"})
         self.assertEqual(stuff.get("good"), ["puppies", "kittens"])
         self.assertIsNone(stuff.get("bad"))
@@ -78,9 +80,10 @@ class RelationshipTestCase(TestCase):
 
     def test_can_create_relationship(self):
         g = Graph()
-        alice = g.put_node(1, {"Person"}, name="Alice", age=33)
-        bob = g.put_node(2, {"Person"}, name="Bob", age=44)
-        alice_knows_bob = g.put_relationship(1, alice, bob, "KNOWS", since=1999)
+        gh = Graph.Hydrator(g)
+        alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
+        bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
+        alice_knows_bob = gh.hydrate_relationship(1, alice.id, bob.id, "KNOWS", {"since": 1999})
         self.assertEqual(alice_knows_bob.start_node, alice)
         self.assertEqual(alice_knows_bob.type, "KNOWS")
         self.assertEqual(alice_knows_bob.end_node, bob)
@@ -95,11 +98,12 @@ class PathTestCase(TestCase):
 
     def test_can_create_path(self):
         g = Graph()
-        alice = g.put_node(1, {"Person"}, {"name": "Alice", "age": 33})
-        bob = g.put_node(2, {"Person"}, {"name": "Bob", "age": 44})
-        carol = g.put_node(3, {"Person"}, {"name": "Carol", "age": 55})
-        alice_knows_bob = g.put_relationship(1, alice, bob, "KNOWS", {"since": 1999})
-        carol_dislikes_bob = g.put_relationship(2, carol, bob, "DISLIKES")
+        gh = Graph.Hydrator(g)
+        alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
+        bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
+        carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol", "age": 55})
+        alice_knows_bob = gh.hydrate_relationship(1, alice.id, bob.id, "KNOWS", {"since": 1999})
+        carol_dislikes_bob = gh.hydrate_relationship(2, carol.id, bob.id, "DISLIKES", {})
         path = Path(alice, alice_knows_bob, carol_dislikes_bob)
         self.assertEqual(path.start_node, alice)
         self.assertEqual(path.end_node, carol)
@@ -109,30 +113,31 @@ class PathTestCase(TestCase):
         self.assertTrue(repr(path))
 
     def test_can_hydrate_path(self):
-        from neo4j.types.graph import hydrate_path, _put_unbound_relationship
         g = Graph()
-        alice = g.put_node(1, {"Person"}, {"name": "Alice", "age": 33})
-        bob = g.put_node(2, {"Person"}, {"name": "Bob", "age": 44})
-        carol = g.put_node(3, {"Person"}, {"name": "Carol", "age": 55})
-        r = [_put_unbound_relationship(g, 1, "KNOWS", {"since": 1999}),
-             _put_unbound_relationship(g, 2, "DISLIKES")]
-        path = hydrate_path([alice, bob, carol], r, [1, 1, -2, 2])
+        gh = Graph.Hydrator(g)
+        alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
+        bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
+        carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol", "age": 55})
+        r = [gh.hydrate_unbound_relationship(1, "KNOWS", {"since": 1999}),
+             gh.hydrate_unbound_relationship(2, "DISLIKES", {})]
+        path = gh.hydrate_path([alice, bob, carol], r, [1, 1, -2, 2])
         self.assertEqual(path.start_node, alice)
         self.assertEqual(path.end_node, carol)
         self.assertEqual(path.nodes, (alice, bob, carol))
-        expected_alice_knows_bob = g.put_relationship(1, alice, bob, "KNOWS", {"since": 1999})
-        expected_carol_dislikes_bob = g.put_relationship(2, carol, bob, "DISLIKES")
+        expected_alice_knows_bob = gh.hydrate_relationship(1, alice.id, bob.id, "KNOWS", {"since": 1999})
+        expected_carol_dislikes_bob = gh.hydrate_relationship(2, carol.id, bob.id, "DISLIKES", {})
         self.assertEqual(path.relationships, (expected_alice_knows_bob, expected_carol_dislikes_bob))
         self.assertEqual(list(path), [expected_alice_knows_bob, expected_carol_dislikes_bob])
         self.assertTrue(repr(path))
 
     def test_path_equality(self):
         g = Graph()
-        alice = g.put_node(1, {"Person"}, {"name": "Alice", "age": 33})
-        bob = g.put_node(2, {"Person"}, {"name": "Bob", "age": 44})
-        carol = g.put_node(3, {"Person"}, {"name": "Carol", "age": 55})
-        alice_knows_bob = g.put_relationship(1, alice, bob, "KNOWS", {"since": 1999})
-        carol_dislikes_bob = g.put_relationship(2, carol, bob, "DISLIKES")
+        gh = Graph.Hydrator(g)
+        alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
+        bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
+        carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol", "age": 55})
+        alice_knows_bob = gh.hydrate_relationship(1, alice.id, bob.id, "KNOWS", {"since": 1999})
+        carol_dislikes_bob = gh.hydrate_relationship(2, carol.id, bob.id, "DISLIKES", {})
         path_1 = Path(alice, alice_knows_bob, carol_dislikes_bob)
         path_2 = Path(alice, alice_knows_bob, carol_dislikes_bob)
         self.assertEqual(path_1, path_2)
@@ -140,11 +145,12 @@ class PathTestCase(TestCase):
 
     def test_path_hashing(self):
         g = Graph()
-        alice = g.put_node(1, {"Person"}, {"name": "Alice", "age": 33})
-        bob = g.put_node(2, {"Person"}, {"name": "Bob", "age": 44})
-        carol = g.put_node(3, {"Person"}, {"name": "Carol", "age": 55})
-        alice_knows_bob = g.put_relationship(1, alice, bob, "KNOWS", {"since": 1999})
-        carol_dislikes_bob = g.put_relationship(2, carol, bob, "DISLIKES")
+        gh = Graph.Hydrator(g)
+        alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
+        bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
+        carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol", "age": 55})
+        alice_knows_bob = gh.hydrate_relationship(1, alice.id, bob.id, "KNOWS", {"since": 1999})
+        carol_dislikes_bob = gh.hydrate_relationship(2, carol.id, bob.id, "DISLIKES", {})
         path_1 = Path(alice, alice_knows_bob, carol_dislikes_bob)
         path_2 = Path(alice, alice_knows_bob, carol_dislikes_bob)
         self.assertEqual(hash(path_1), hash(path_2))
