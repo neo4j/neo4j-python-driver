@@ -49,9 +49,11 @@ __all__ = [
 
 try:
     from neobolt.exceptions import (
+        ConnectionExpired,
         CypherError,
-        TransientError,
+        IncompleteCommitError,
         ServiceUnavailable,
+        TransientError,
     )
 except ImportError:
     # We allow this to fail because this module can be imported implicitly
@@ -59,9 +61,11 @@ except ImportError:
     pass
 else:
     __all__.extend([
+        "ConnectionExpired",
         "CypherError",
-        "TransientError",
+        "IncompleteCommitError",
         "ServiceUnavailable",
+        "TransientError",
     ])
 
 
@@ -363,35 +367,31 @@ class Session(object):
         if access_mode is None:
             access_mode = self._default_access_mode
         if self._connection:
-            self._disconnect(sync=True)
+            self._connection.sync()
+            self._disconnect()
         self._connection = self._acquirer(access_mode)
 
-    def _disconnect(self, sync):
-        from neobolt.exceptions import ConnectionExpired, ServiceUnavailable
+    def _disconnect(self):
         if self._connection:
-            if sync:
-                try:
-                    self._connection.sync()
-                except (SessionError, ConnectionExpired, ServiceUnavailable):
-                    pass
-            if self._connection:
-                self._connection.in_use = False
-                self._connection = None
+            self._connection.in_use = False
+            self._connection = None
 
     def close(self):
         """ Close the session. This will release any borrowed resources,
         such as connections, and will roll back any outstanding transactions.
         """
-        from neobolt.exceptions import ConnectionExpired, CypherError, ServiceUnavailable
-        try:
-            if self.has_transaction():
-                try:
-                    self.rollback_transaction()
-                except (CypherError, TransactionError, SessionError, ConnectionExpired, ServiceUnavailable):
-                    pass
-        finally:
-            self._closed = True
-        self._disconnect(sync=True)
+        if self._connection:
+            if self._transaction:
+                self._connection.rollback()
+                self._transaction = None
+            try:
+                self._connection.sync()
+            except (ConnectionExpired, CypherError, TransactionError,
+                    ServiceUnavailable, SessionError):
+                pass
+            finally:
+                self._disconnect()
+        self._closed = True
 
     def closed(self):
         """ Indicator for whether or not this session has been closed.
@@ -554,7 +554,7 @@ class Session(object):
         if self._last_result is result:
             self._last_result = None
             if not self.has_transaction():
-                self._disconnect(sync=False)
+                self._disconnect()
 
         result._session = None
         return count
@@ -620,8 +620,11 @@ class Session(object):
         metadata = {}
         try:
             self._connection.commit(on_success=metadata.update)
+            self._connection.sync()
+        except IncompleteCommitError:
+            raise ServiceUnavailable("Connection closed during commit")
         finally:
-            self._disconnect(sync=True)
+            self._disconnect()
             self._transaction = None
         bookmark = metadata.get("bookmark")
         self._bookmarks_in = tuple([bookmark])
@@ -641,8 +644,9 @@ class Session(object):
             metadata = {}
             try:
                 cx.rollback(on_success=metadata.update)
+                cx.sync()
             finally:
-                self._disconnect(sync=True)
+                self._disconnect()
                 self._transaction = None
 
     def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):

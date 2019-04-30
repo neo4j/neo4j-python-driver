@@ -22,7 +22,7 @@ C: RUN "BEGIN" {"bookmark": "bookmark:1", "bookmarks": ["bookmark:1"]}
 S: SUCCESS {"fields": []}
    SUCCESS {}
 
-C: RUN "" {}
+C: RUN "RETURN 1" {}
    PULL_ALL
 S: SUCCESS {"fields": ["1"]}
    RECORD [1]
