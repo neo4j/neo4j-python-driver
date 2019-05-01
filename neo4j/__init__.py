@@ -71,6 +71,7 @@ else:
 
 from collections import deque, namedtuple
 from functools import reduce
+from logging import getLogger
 from operator import xor as xor_operator
 from random import random
 from time import sleep
@@ -93,6 +94,9 @@ STATEMENT_TYPE_READ_ONLY = "r"
 STATEMENT_TYPE_READ_WRITE = "rw"
 STATEMENT_TYPE_WRITE_ONLY = "w"
 STATEMENT_TYPE_SCHEMA_WRITE = "s"
+
+
+log = getLogger("neo4j")
 
 
 # TODO: remove in 2.0
@@ -690,7 +694,10 @@ class Session(object):
             t1 = perf_counter()
             if t1 - t0 > self._max_retry_time:
                 break
-            sleep(next(retry_delay))
+            delay = next(retry_delay)
+            log.warning("Transaction failed and will be retried in {}s "
+                        "({})".format(delay, "; ".join(errors[-1].args)))
+            sleep(delay)
         if errors:
             raise errors[-1]
         else:
