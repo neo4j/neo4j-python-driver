@@ -30,7 +30,7 @@ except ImportError:
 from neo4j.meta import package, version
 
 install_requires = [
-    "neobolt~=1.7.11",
+    "neobolt~=1.7.12",
     "neotime~=1.7.1",
 ]
 classifiers = [

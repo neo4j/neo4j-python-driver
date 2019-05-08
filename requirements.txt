@@ -1,2 +1,2 @@
-neobolt~=1.7.11
+neobolt~=1.7.12
 neotime~=1.7.1
