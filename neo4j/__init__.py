@@ -371,6 +371,7 @@ class Session(object):
         if access_mode is None:
             access_mode = self._default_access_mode
         if self._connection:
+            log.warn("FIXME: should always disconnect before connect")
             self._connection.sync()
             self._disconnect()
         self._connection = self._acquirer(access_mode)
@@ -674,8 +675,7 @@ class Session(object):
                 try:
                     result = unit_of_work(tx, *args, **kwargs)
                 except Exception:
-                    if tx.success is None:
-                        tx.success = False
+                    tx.success = False
                     raise
                 else:
                     if tx.success is None:
