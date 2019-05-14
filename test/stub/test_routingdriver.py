@@ -323,3 +323,17 @@ class RoutingDriverTestCase(StubTestCase):
                     # reader 127.0.0.1:9004 should've been forgotten because of an error
                     assert table.readers == {('127.0.0.1', 9005)}
                     assert table.writers == {('127.0.0.1', 9006)}
+
+    def test_bolt_plus_routing_multiple_uris_as_comma_separated_list_constructs_routing_driver(self):
+        with StubCluster({9002: "router.script"}):
+            uris = "neo4j://127.0.0.1:9001,neo4j://127.0.0.1:9002,neo4j://127.0.0.1:9003"
+            with self.assertWarnsRegex(UserWarning, "Unable to create routing driver for URI:"):
+                with GraphDatabase.routing_driver(uris, auth=self.auth_token, encrypted=False) as driver:
+                    assert isinstance(driver, RoutingDriver)
+
+    def test_bolt_plus_routing_multiple_uris_as_list_constructs_routing_driver(self):
+        with StubCluster({9002: "router.script"}):
+            uris = ["neo4j://127.0.0.1:9001", "neo4j://127.0.0.1:9002", "neo4j://127.0.0.1:9003"]
+            with self.assertWarnsRegex(UserWarning, "Unable to create routing driver for URI:"):
+                with GraphDatabase.routing_driver(uris, auth=self.auth_token, encrypted=False) as driver:
+                    assert isinstance(driver, RoutingDriver)

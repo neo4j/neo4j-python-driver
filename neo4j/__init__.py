@@ -76,8 +76,29 @@ class GraphDatabase(object):
         """ Create a :class:`.Driver` object. Calling this method provides
         identical functionality to constructing a :class:`.Driver` or
         :class:`.Driver` subclass instance directly.
+        :param uri: the URL to a Neo4j instance
+        :param config: user defined configuration
+        :return: a new driver to the database instance specified by the URL
         """
         return Driver(uri, **config)
+
+    @classmethod
+    def routing_driver(cls, routing_uris, **config):
+        """ Create a :class`.RoutingDriver` object from the first available address.
+        :param routing_uris: List or comma separated list of URIs for Neo4j instances. All given URIs should
+        have 'neo4j' scheme
+        :param config: user defined configuration
+        :return: a new driver instance
+        """
+        if isinstance(routing_uris, list):
+            uris = routing_uris
+        else:
+            uris = routing_uris.split(",")
+        for uri in uris:
+            try:
+                return RoutingDriver(uri, **config)
+            except ServiceUnavailable:
+                warn(f"Unable to create routing driver for URI: {uri}")
 
 
 class Driver(object):
