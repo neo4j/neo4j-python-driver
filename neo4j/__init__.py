@@ -126,7 +126,7 @@ class Driver(object):
 
     #: Overridden by subclasses to specify the URI scheme owned by that
     #: class.
-    uri_scheme = None
+    uri_schemes = ()
 
     #: Connection pool
     _pool = None
@@ -145,16 +145,15 @@ class Driver(object):
         :raise: `ValueError` if URI scheme is incompatible
         """
         parsed = urlparse(uri)
-        if parsed.scheme != cls.uri_scheme:
-            raise ValueError("%s objects require the %r URI scheme" % (cls.__name__, cls.uri_scheme))
+        if parsed.scheme not in cls.uri_schemes:
+            raise ValueError("%s objects require the one of the URI "
+                             "schemes %r" % (cls.__name__, cls.uri_schemes))
 
     def __new__(cls, uri, **config):
         parsed = urlparse(uri)
         parsed_scheme = parsed.scheme
-        if parsed_scheme == "neo4j":
-            parsed_scheme = "neo4j"     # TODO: remove alias in future version
         for subclass in Driver.__subclasses__():
-            if parsed_scheme == subclass.uri_scheme:
+            if parsed_scheme in subclass.uri_schemes:
                 return subclass(uri, **config)
         raise ValueError("URI scheme %r not supported" % parsed.scheme)
 
@@ -204,7 +203,7 @@ class DirectDriver(Driver):
     exact host and port detailed in the URI.
     """
 
-    uri_scheme = "bolt"
+    uri_schemes = ("bolt",)
 
     def __new__(cls, uri, **config):
         from neobolt.addressing import SocketAddress
@@ -247,7 +246,7 @@ class RoutingDriver(Driver):
     by directing read and write behaviour to appropriate cluster members.
     """
 
-    uri_scheme = "neo4j"
+    uri_schemes = ("neo4j", "bolt+routing")
 
     def __new__(cls, uri, **config):
         from neobolt.addressing import SocketAddress
