@@ -21,4 +21,4 @@
 
 # Can be automatically overridden in builds
 package = "neo4j"
-version = "1.7.0.dev0"
+version = "4.0.dev0"
