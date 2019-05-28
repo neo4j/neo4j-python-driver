@@ -208,7 +208,6 @@ class DirectDriver(Driver):
     def __new__(cls, uri, **config):
         from neobolt.addressing import SocketAddress
         from neobolt.direct import ConnectionPool, DEFAULT_PORT, connect
-        from neobolt.security import ENCRYPTION_OFF, ENCRYPTION_ON, SSL_AVAILABLE, SecurityPlan
         cls._check_uri(uri)
         if SocketAddress.parse_routing_context(uri):
             raise ValueError("Parameters are not supported with scheme 'bolt'. Given URI: '%s'." % uri)
@@ -220,7 +219,7 @@ class DirectDriver(Driver):
         # an old address and one for a new address.
         instance.address = SocketAddress.from_uri(uri, DEFAULT_PORT)
         if config.get("encrypted") is None:
-            config["encrypted"] = ENCRYPTION_ON if SSL_AVAILABLE else ENCRYPTION_OFF
+            config["encrypted"] = False
         instance.security_plan = security_plan = SecurityPlan.build(**config)
         instance.encrypted = security_plan.encrypted
 
@@ -374,7 +373,8 @@ class Session(object):
             access_mode = self._default_access_mode
         if self._connection:
             log.warn("FIXME: should always disconnect before connect")
-            self._connection.sync()
+            self._connection.send_all()
+            self._connection.fetch_all()
             self._disconnect()
         self._connection = self._acquirer(access_mode)
 
@@ -392,7 +392,8 @@ class Session(object):
                 self._connection.rollback()
                 self._transaction = None
             try:
-                self._connection.sync()
+                self._connection.send_all()
+                self._connection.fetch_all()
             except (ConnectionExpired, CypherError, TransactionError,
                     ServiceUnavailable, SessionError):
                 pass
@@ -495,8 +496,8 @@ class Session(object):
 
         if not has_transaction:
             try:
-                self._connection.send()
-                self._connection.fetch()
+                self._connection.send_all()
+                self._connection.fetch_message()
             except ConnectionExpired as error:
                 raise SessionExpired(*error.args)
 
@@ -508,7 +509,7 @@ class Session(object):
         from neobolt.exceptions import ConnectionExpired
         if self._connection:
             try:
-                self._connection.send()
+                self._connection.send_all()
             except ConnectionExpired as error:
                 raise SessionExpired(*error.args)
 
@@ -520,7 +521,7 @@ class Session(object):
         from neobolt.exceptions import ConnectionExpired
         if self._connection:
             try:
-                detail_count, _ = self._connection.fetch()
+                detail_count, _ = self._connection.fetch_message()
             except ConnectionExpired as error:
                 raise SessionExpired(*error.args)
             else:
@@ -535,7 +536,8 @@ class Session(object):
         from neobolt.exceptions import ConnectionExpired
         if self._connection:
             try:
-                detail_count, _ = self._connection.sync()
+                self._connection.send_all()
+                detail_count, _ = self._connection.fetch_all()
             except ConnectionExpired as error:
                 raise SessionExpired(*error.args)
             else:
@@ -627,7 +629,8 @@ class Session(object):
         metadata = {}
         try:
             self._connection.commit(on_success=metadata.update)
-            self._connection.sync()
+            self._connection.send_all()
+            self._connection.fetch_all()
         except IncompleteCommitError:
             raise ServiceUnavailable("Connection closed during commit")
         finally:
@@ -651,7 +654,8 @@ class Session(object):
             metadata = {}
             try:
                 cx.rollback(on_success=metadata.update)
-                cx.sync()
+                cx.send_all()
+                cx.fetch_all()
             finally:
                 self._disconnect()
                 self._transaction = None
@@ -927,9 +931,9 @@ class StatementResult(object):
             return self._metadata["fields"]
         except KeyError:
             if self.attached():
-                self._session.send()
+                self._session.send_all()
             while self.attached() and "fields" not in self._metadata:
-                self._session.fetch()
+                self._session.fetch_message()
             return self._metadata.get("fields")
 
     def records(self):
@@ -943,9 +947,9 @@ class StatementResult(object):
             yield next_record()
         attached = self.attached
         if attached():
-            self._session.send()
+            self._session.send_all()
         while attached():
-            self._session.fetch()
+            self._session.fetch_message()
             while records:
                 yield next_record()
 
@@ -998,9 +1002,9 @@ class StatementResult(object):
         if not self.attached():
             return None
         if self.attached():
-            self._session.send()
+            self._session.send_all()
         while self.attached() and not records:
-            self._session.fetch()
+            self._session.fetch_message()
             if records:
                 return records[0]
         return None
