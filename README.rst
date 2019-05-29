@@ -2,11 +2,22 @@
 Neo4j Bolt Driver for Python
 ****************************
 
-The official Neo4j driver for Python supports Neo4j 3.0 and above and Python versions 2.7, 3.4, 3.5, 3.6, and 3.7.
+This repository contains the official Neo4j driver for Python.
+Each driver release (from 4.0 upwards) is built specifically to work with a corresponding Neo4j release, i.e. that with the same `major.minor` version number.
+These drivers will also be compatible with the previous Neo4j release, although new server features will not be available.
 
-.. note::
+Python 3.4 or above is required.
+Python 2 support has been dropped as of the Neo4j 4.0 release.
 
-    Python 2 support is deprecated and will be discontinued in the 2.x series driver releases.
+
+Installation
+============
+
+To install the latest stable version, use:
+
+.. code:: bash
+
+    pip install neo4j
 
 
 Quick Example
@@ -33,27 +44,6 @@ Quick Example
         session.write_transaction(add_friend, "Arthur", "Lancelot")
         session.write_transaction(add_friend, "Arthur", "Merlin")
         session.read_transaction(print_friends, "Arthur")
-
-
-Installation
-============
-
-To install the latest stable version, use:
-
-.. code:: bash
-
-    pip install neo4j
-
-.. note::
-
-    Installation from the ``neo4j-driver`` package on PyPI is now deprecated and will be discontinued in the 2.x series driver releases.
-    Please install from the ``neo4j`` package instead.
-
-For the most up-to-date version (generally unstable), use:
-
-.. code:: bash
-
-    pip install git+https://github.com/neo4j/neo4j-python-driver.git#egg=neo4j
 
 
 Other Information
