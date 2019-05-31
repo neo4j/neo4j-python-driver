@@ -26,7 +26,7 @@ from neo4j.blocking import fix_parameters
 
 
 def dehydrated_value(value):
-    return fix_parameters({"_": value}, 1, supports_bytes=True)["_"]
+    return fix_parameters({"_": value})["_"]
 
 
 class ValueDehydrationTestCase(TestCase):

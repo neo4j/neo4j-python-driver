@@ -215,8 +215,7 @@ class Session(object):
         statement_text = str(statement)
         statement_metadata = getattr(statement, "metadata", None)
         statement_timeout = getattr(statement, "timeout", None)
-        parameters = fix_parameters(dict(parameters or {}, **kwparameters), protocol_version,
-                                    supports_bytes=server.supports("bytes"))
+        parameters = fix_parameters(dict(parameters or {}, **kwparameters), protocol_version)
 
         def fail(_):
             self._close_transaction()
@@ -628,10 +627,10 @@ class Statement(object):
         return str(self.text)
 
 
-def fix_parameters(parameters, protocol_version, **kwargs):
+def fix_parameters(parameters):
     if not parameters:
         return {}
-    dehydrator = PackStreamDehydrator(protocol_version, **kwargs)
+    dehydrator = PackStreamDehydrator()
     try:
         dehydrated, = dehydrator.dehydrate([parameters])
     except TypeError as error:

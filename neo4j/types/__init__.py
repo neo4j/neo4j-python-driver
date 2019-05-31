@@ -83,16 +83,14 @@ class PackStreamHydrator(object):
 
 class PackStreamDehydrator(object):
 
-    def __init__(self, protocol_version, supports_bytes=False):
+    def __init__(self):
         from .graph import Graph, dehydration_functions as graph_dehydration_functions
-        self.supports_bytes = supports_bytes
+        from .spatial import dehydration_functions as spatial_dehydration_functions
+        from .temporal import dehydration_functions as temporal_dehydration_functions
         self.dehydration_functions = {}
         self.dehydration_functions.update(graph_dehydration_functions())
-        if protocol_version >= 2:
-            from .spatial import dehydration_functions as spatial_dehydration_functions
-            from .temporal import dehydration_functions as temporal_dehydration_functions
-            self.dehydration_functions.update(spatial_dehydration_functions())
-            self.dehydration_functions.update(temporal_dehydration_functions())
+        self.dehydration_functions.update(spatial_dehydration_functions())
+        self.dehydration_functions.update(temporal_dehydration_functions())
 
     def dehydrate(self, values):
         """ Convert native values into PackStream values.
@@ -118,10 +116,7 @@ class PackStreamDehydrator(object):
             elif isinstance(obj, str):
                 return obj
             elif isinstance(obj, (bytes, bytearray)):  # order is important here - bytes must be checked after string
-                if self.supports_bytes:
-                    return obj
-                else:
-                    raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")
+                return obj
             elif isinstance(obj, (list, map_type)):
                 return list(map(dehydrate_, obj))
             elif isinstance(obj, dict):
