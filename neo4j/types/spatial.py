@@ -24,18 +24,22 @@ This module defines spatial data types.
 """
 
 
+from threading import Lock
+
 from neo4j.packstream import Structure
 
 
 __all__ = [
     "Point",
-    "CartesianPoint",
-    "WGS84Point",
+    "point_type",
+    "hydrate_point",
+    "dehydrate_point",
 ]
 
 
 # SRID to subclass mappings
 __srid_table = {}
+__srid_table_lock = Lock()
 
 
 class Point(tuple):
@@ -65,7 +69,7 @@ class Point(tuple):
         return hash(type(self)) ^ hash(tuple(self))
 
 
-def __point_subclass(name, fields, srid_map):
+def point_type(name, fields, srid_map):
     """ Dynamically create a Point subclass.
     """
 
@@ -90,15 +94,16 @@ def __point_subclass(name, fields, srid_map):
 
     cls = type(name, (Point,), attributes)
 
-    for dim, srid in srid_map.items():
-        __srid_table[srid] = (cls, dim)
+    with __srid_table_lock:
+        for dim, srid in srid_map.items():
+            __srid_table[srid] = (cls, dim)
 
     return cls
 
 
 # Point subclass definitions
-CartesianPoint = __point_subclass("CartesianPoint", ["x", "y", "z"], {2: 7203, 3: 9157})
-WGS84Point = __point_subclass("WGS84Point", ["longitude", "latitude", "height"], {2: 4326, 3: 4979})
+CartesianPoint = point_type("CartesianPoint", ["x", "y", "z"], {2: 7203, 3: 9157})
+WGS84Point = point_type("WGS84Point", ["longitude", "latitude", "height"], {2: 4326, 3: 4979})
 
 
 def hydrate_point(srid, *coordinates):
@@ -133,22 +138,3 @@ def dehydrate_point(value):
         return Structure(b"Y", value.srid, *value)
     else:
         raise ValueError("Cannot dehydrate Point with %d dimensions" % dim)
-
-
-__hydration_functions = {
-    b"X": hydrate_point,
-    b"Y": hydrate_point,
-}
-
-__dehydration_functions = {
-    Point: dehydrate_point,
-}
-__dehydration_functions.update({cls: dehydrate_point for cls in Point.__subclasses__()})
-
-
-def hydration_functions():
-    return __hydration_functions
-
-
-def dehydration_functions():
-    return __dehydration_functions

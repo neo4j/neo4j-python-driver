@@ -220,7 +220,7 @@ class Session(object):
         def fail(_):
             self._close_transaction()
 
-        hydrant = PackStreamHydrator(protocol_version)
+        hydrant = PackStreamHydrator()
         result_metadata = {
             "statement": statement_text,
             "parameters": parameters,

@@ -28,7 +28,6 @@ from collections.abc import Mapping
 
 __all__ = [
     "Graph",
-    "Entity",
     "Node",
     "Relationship",
     "Path",
@@ -69,26 +68,55 @@ class Graph(object):
             cls = self._relationship_types[name] = type(str(name), (Relationship,), {})
         return cls
 
-    def put_node(self, n_id, labels=(), properties=None, **kwproperties):
-        inst = Node(self, n_id)
-        inst._labels.update(labels)
-        inst._update(properties, **kwproperties)
-        return inst
+    class Hydrator(object):
 
-    def put_relationship(self, r_id, start_node, end_node, r_type, properties=None, **kwproperties):
-        if not isinstance(start_node, Node) or not isinstance(end_node, Node):
-            raise TypeError("Start and end nodes must be Node instances (%s and %s passed)" %
-                            (type(start_node).__name__, type(end_node).__name__))
-        inst = _put_unbound_relationship(self, r_id, r_type, properties, **kwproperties)
-        inst._start_node = start_node
-        inst._end_node = end_node
-        return inst
+        def __init__(self, graph):
+            self.graph = graph
 
+        def hydrate_node(self, n_id, n_labels=None, properties=None):
+            assert isinstance(self.graph, Graph)
+            try:
+                inst = self.graph._nodes[n_id]
+            except KeyError:
+                inst = self.graph._nodes[n_id] = Node(self.graph, n_id, n_labels, properties)
+            return inst
 
-def _put_unbound_relationship(graph, r_id, r_type, properties=None, **kwproperties):
-    inst = Relationship(graph, r_id, r_type)
-    inst._update(properties, **kwproperties)
-    return inst
+        def hydrate_relationship(self, r_id, n0_id, n1_id, r_type, properties=None):
+            inst = self.hydrate_unbound_relationship(r_id, r_type, properties)
+            inst._start_node = self.hydrate_node(n0_id)
+            inst._end_node = self.hydrate_node(n1_id)
+            return inst
+
+        def hydrate_unbound_relationship(self, r_id, r_type, properties=None):
+            assert isinstance(self.graph, Graph)
+            try:
+                inst = self.graph._relationships[r_id]
+            except KeyError:
+                r = self.graph.relationship_type(r_type)
+                inst = self.graph._relationships[r_id] = r(self.graph, r_id, properties)
+            return inst
+
+        def hydrate_path(self, nodes, relationships, sequence):
+            assert isinstance(self.graph, Graph)
+            assert len(nodes) >= 1
+            assert len(sequence) % 2 == 0
+            last_node = nodes[0]
+            entities = [last_node]
+            for i, rel_index in enumerate(sequence[::2]):
+                assert rel_index != 0
+                next_node = nodes[sequence[2 * i + 1]]
+                if rel_index > 0:
+                    r = relationships[rel_index - 1]
+                    r._start_node = last_node
+                    r._end_node = next_node
+                    entities.append(r)
+                else:
+                    r = relationships[-rel_index - 1]
+                    r._start_node = next_node
+                    r._end_node = last_node
+                    entities.append(r)
+                last_node = next_node
+            return Path(*entities)
 
 
 class Entity(Mapping):
@@ -97,12 +125,10 @@ class Entity(Mapping):
     functionality.
     """
 
-    def __new__(cls, graph, id):
-        inst = object.__new__(cls)
-        inst._graph = graph
-        inst._id = id
-        inst._properties = {}
-        return inst
+    def __init__(self, graph, id, properties):
+        self._graph = graph
+        self._id = id
+        self._properties = dict((k, v) for k, v in (properties or {}).items() if v is not None)
 
     def __eq__(self, other):
         try:
@@ -139,10 +165,6 @@ class Entity(Mapping):
         """ The identity of this entity in its container :class:`.Graph`.
         """
         return self._id
-
-    def _update(self, properties, **kwproperties):
-        properties = dict(properties or {}, **kwproperties)
-        self._properties.update((k, v) for k, v in properties.items() if v is not None)
 
     def get(self, name, default=None):
         """ Get a property value by name, optionally with a default.
@@ -186,13 +208,9 @@ class Node(Entity):
     """ Self-contained graph node.
     """
 
-    def __new__(cls, graph, n_id):
-        try:
-            inst = graph._nodes[n_id]
-        except KeyError:
-            inst = graph._nodes[n_id] = Entity.__new__(cls, graph, n_id)
-            inst._labels = set()
-        return inst
+    def __init__(self, graph, n_id, n_labels=None, properties=None):
+        Entity.__init__(self, graph, n_id, properties)
+        self._labels = frozenset(n_labels or ())
 
     def __repr__(self):
         return "<Node id=%r labels=%r properties=%r>" % (self._id, self._labels, self._properties)
@@ -201,22 +219,17 @@ class Node(Entity):
     def labels(self):
         """ The set of labels attached to this node.
         """
-        return frozenset(self._labels)
+        return self._labels
 
 
 class Relationship(Entity):
     """ Self-contained graph relationship.
     """
 
-    def __new__(cls, graph, r_id, r_type):
-        try:
-            inst = graph._relationships[r_id]
-        except KeyError:
-            inst = graph._relationships[r_id] = Entity.__new__(cls, graph, r_id)
-            inst.__class__ = graph.relationship_type(r_type)
-            inst._start_node = None
-            inst._end_node = None
-        return inst
+    def __init__(self, graph, r_id, properties):
+        Entity.__init__(self, graph, r_id, properties)
+        self._start_node = None
+        self._end_node = None
 
     def __repr__(self):
         return "<Relationship id=%r nodes=(%r, %r) type=%r properties=%r>" % (
@@ -320,40 +333,3 @@ class Path(object):
         """ The sequence of :class:`.Relationship` objects in this path.
         """
         return self._relationships
-
-
-def hydrate_path(nodes, relationships, sequence):
-    assert len(nodes) >= 1
-    assert len(sequence) % 2 == 0
-    last_node = nodes[0]
-    entities = [last_node]
-    for i, rel_index in enumerate(sequence[::2]):
-        assert rel_index != 0
-        next_node = nodes[sequence[2 * i + 1]]
-        if rel_index > 0:
-            r = relationships[rel_index - 1]
-            r._start_node = last_node
-            r._end_node = next_node
-            entities.append(r)
-        else:
-            r = relationships[-rel_index - 1]
-            r._start_node = next_node
-            r._end_node = last_node
-            entities.append(r)
-        last_node = next_node
-    return Path(*entities)
-
-
-def hydration_functions(graph):
-    return {
-        b"N": graph.put_node,
-        b"R": lambda r_id, n0_id, n1_id, r_type, properties:
-            graph.put_relationship(r_id, Node(graph, n0_id), Node(graph, n1_id), r_type, properties),
-        b"r": lambda *args: _put_unbound_relationship(graph, *args),
-        b"P": hydrate_path,
-    }
-
-
-def dehydration_functions():
-    # There is no support for passing graph types into queries as parameters
-    return {}

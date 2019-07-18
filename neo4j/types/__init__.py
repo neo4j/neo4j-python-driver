@@ -30,6 +30,8 @@ from collections.abc import Mapping, Sequence
 from functools import reduce
 from operator import xor as xor_operator
 
+from neo4j.packstream import Structure
+
 
 INT64_MIN = -(2 ** 63)
 INT64_MAX = (2 ** 63) - 1
@@ -40,23 +42,32 @@ map_type = type(map(str, range(0)))
 
 class PackStreamHydrator(object):
 
-    def __init__(self, protocol_version):
-        from .graph import Graph, hydration_functions as graph_hydration_functions
-
+    def __init__(self):
         super(PackStreamHydrator, self).__init__()
+        from neo4j.types.graph import Graph
+        from neo4j.types.spatial import hydrate_point
+        from neo4j.types.temporal import hydrate_date, hydrate_time, hydrate_datetime, hydrate_duration
         self.graph = Graph()
-        self.hydration_functions = {}
-        self.hydration_functions.update(graph_hydration_functions(self.graph))
-        if protocol_version >= 2:
-            from .spatial import hydration_functions as spatial_hydration_functions
-            from .temporal import hydration_functions as temporal_hydration_functions
-            self.hydration_functions.update(spatial_hydration_functions())
-            self.hydration_functions.update(temporal_hydration_functions())
+        self.graph_hydrator = Graph.Hydrator(self.graph)
+        self.hydration_functions = {
+            b"N": self.graph_hydrator.hydrate_node,
+            b"R": self.graph_hydrator.hydrate_relationship,
+            b"r": self.graph_hydrator.hydrate_unbound_relationship,
+            b"P": self.graph_hydrator.hydrate_path,
+            b"X": hydrate_point,
+            b"Y": hydrate_point,
+            b"D": hydrate_date,
+            b"T": hydrate_time,         # time zone offset
+            b"t": hydrate_time,         # no time zone
+            b"F": hydrate_datetime,     # time zone offset
+            b"f": hydrate_datetime,     # time zone name
+            b"d": hydrate_datetime,     # no time zone
+            b"E": hydrate_duration,
+        }
 
     def hydrate(self, values):
         """ Convert PackStream values into native values.
         """
-        from neo4j.packstream import Structure
 
         def hydrate_(obj):
             if isinstance(obj, Structure):
@@ -84,13 +95,29 @@ class PackStreamHydrator(object):
 class PackStreamDehydrator(object):
 
     def __init__(self):
-        from .graph import Graph, dehydration_functions as graph_dehydration_functions
-        from .spatial import dehydration_functions as spatial_dehydration_functions
-        from .temporal import dehydration_functions as temporal_dehydration_functions
         self.dehydration_functions = {}
-        self.dehydration_functions.update(graph_dehydration_functions())
-        self.dehydration_functions.update(spatial_dehydration_functions())
-        self.dehydration_functions.update(temporal_dehydration_functions())
+        from datetime import date, time, datetime, timedelta
+        from .spatial import Point, dehydrate_point
+        from .temporal import (
+            Date, dehydrate_date,
+            Time, dehydrate_time,
+            DateTime, dehydrate_datetime,
+            Duration, dehydrate_duration,
+            dehydrate_timedelta,
+        )
+        self.dehydration_functions.update({
+            Point: dehydrate_point,
+            Date: dehydrate_date,
+            date: dehydrate_date,
+            Time: dehydrate_time,
+            time: dehydrate_time,
+            DateTime: dehydrate_datetime,
+            datetime: dehydrate_datetime,
+            Duration: dehydrate_duration,
+            timedelta: dehydrate_timedelta,
+        })
+        # Allow dehydration from any direct Point subclass
+        self.dehydration_functions.update({cls: dehydrate_point for cls in Point.__subclasses__()})
 
     def dehydrate(self, values):
         """ Convert native values into PackStream values.

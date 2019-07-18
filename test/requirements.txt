@@ -1,8 +1,0 @@
--e git://github.com/neo4j-drivers/boltkit.git#egg=boltkit
-coverage
-mock
-pytest
-pytest-benchmark
-pytest-cov
-teamcity-messages
-tox

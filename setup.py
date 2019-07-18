@@ -19,13 +19,8 @@
 # limitations under the License.
 
 
-from __future__ import print_function
-
 from os.path import dirname, join as path_join
-try:
-    from setuptools import setup, Extension
-except ImportError:
-    from distutils.core import setup, Extension
+from setuptools import find_packages, setup
 
 from neo4j.meta import package, version
 
@@ -44,16 +39,14 @@ classifiers = [
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
 ]
-packages = [
-    "neo4j",
-    "neo4j.types",
-]
+packages = find_packages(exclude=["test"])
+readme = open(path_join(dirname(__file__), "README.rst")).read()
 setup_args = {
     "name": package,
     "version": version,
     "description": "Neo4j Bolt driver for Python",
     "license": "Apache License, Version 2.0",
-    "long_description": open(path_join(dirname(__file__), "README.rst")).read(),
+    "long_description": readme,
     "author": "Neo Technology",
     "author_email": "drivers@neo4j.com",
     "keywords": "neo4j graph database",

@@ -26,7 +26,7 @@ from __future__ import division
 This module defines temporal data types.
 """
 
-from datetime import date, time, datetime, timedelta
+from datetime import time, datetime, timedelta
 
 from neotime import Duration, Date, Time, DateTime
 from pytz import FixedOffset, timezone, utc
@@ -185,34 +185,3 @@ def dehydrate_timedelta(value):
     seconds = value.seconds
     nanoseconds = 1000 * value.microseconds
     return Structure(b"E", months, days, seconds, nanoseconds)
-
-
-__hydration_functions = {
-    b"D": hydrate_date,
-    b"T": hydrate_time,         # time zone offset
-    b"t": hydrate_time,         # no time zone
-    b"F": hydrate_datetime,     # time zone offset
-    b"f": hydrate_datetime,     # time zone name
-    b"d": hydrate_datetime,     # no time zone
-    b"E": hydrate_duration,
-}
-
-# TODO: re-add built-in types
-__dehydration_functions = {
-    Date: dehydrate_date,
-    date: dehydrate_date,
-    Time: dehydrate_time,
-    time: dehydrate_time,
-    DateTime: dehydrate_datetime,
-    datetime: dehydrate_datetime,
-    Duration: dehydrate_duration,
-    timedelta: dehydrate_timedelta,
-}
-
-
-def hydration_functions():
-    return __hydration_functions
-
-
-def dehydration_functions():
-    return __dehydration_functions
