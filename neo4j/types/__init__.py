@@ -26,9 +26,9 @@ into concrete values through the PackStreamHydrant.
 """
 
 
+from collections.abc import Mapping, Sequence
 from functools import reduce
 from operator import xor as xor_operator
-from typing import Mapping, Sequence
 
 
 INT64_MIN = -(2 ** 63)
@@ -56,7 +56,7 @@ class PackStreamHydrator(object):
     def hydrate(self, values):
         """ Convert PackStream values into native values.
         """
-        from neobolt.types import Structure
+        from neo4j.bolt.types import Structure
 
         def hydrate_(obj):
             if isinstance(obj, Structure):

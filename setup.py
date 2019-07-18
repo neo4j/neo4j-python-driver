@@ -30,8 +30,8 @@ except ImportError:
 from neo4j.meta import package, version
 
 install_requires = [
-    "neobolt~=4.0.0a1",
     "neotime~=1.7.4",
+    "pytz",
 ]
 classifiers = [
     "Intended Audience :: Developers",
@@ -39,10 +39,10 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Database",
     "Topic :: Software Development",
-    "Programming Language :: Python :: 3.4",
     "Programming Language :: Python :: 3.5",
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
 ]
 packages = [
     "neo4j",

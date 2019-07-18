@@ -31,7 +31,7 @@ from datetime import date, time, datetime, timedelta
 from neotime import Duration, Date, Time, DateTime
 from pytz import FixedOffset, timezone, utc
 
-from neobolt.types import Structure
+from neo4j.bolt.types import Structure
 
 
 UNIX_EPOCH_DATE = Date(1970, 1, 1)

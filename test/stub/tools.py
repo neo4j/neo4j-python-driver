@@ -46,7 +46,7 @@ class StubServer(Thread):
         self.script = path_join(dirname(__file__), "scripts", script)
 
     def run(self):
-        check_call(["boltstub", str(self.port), self.script])
+        check_call(["bolt", "stub", "-t", "3", "-l", ":{}".format(self.port), self.script])
 
 
 class StubCluster(object):

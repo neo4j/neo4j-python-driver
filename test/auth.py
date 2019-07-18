@@ -21,7 +21,7 @@
 
 from sys import argv
 
-from neobolt.util import Watcher
+from neo4j.bolt.util import Watcher
 
 from neo4j import GraphDatabase, basic_auth
 

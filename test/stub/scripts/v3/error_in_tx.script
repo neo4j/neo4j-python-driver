@@ -1,0 +1,18 @@
+!: BOLT 3
+!: AUTO HELLO
+!: AUTO GOODBYE
+!: AUTO RESET
+
+C: BEGIN {}
+S: SUCCESS {}
+
+C: RUN "X" {} {}
+   PULL_ALL
+S: FAILURE {"code": "Neo.ClientError.Statement.SyntaxError", "message": "X"}
+   IGNORED {}
+
+C: RESET
+S: SUCCESS {}
+
+C: ROLLBACK
+S: SUCCESS {}

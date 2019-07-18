@@ -1,4 +1,4 @@
-boltkit>=1.2.0
+-e git://github.com/neo4j-drivers/boltkit.git#egg=boltkit
 coverage
 mock
 pytest

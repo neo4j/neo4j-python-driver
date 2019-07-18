@@ -1,0 +1,7 @@
+!: BOLT 3
+!: AUTO HELLO
+!: AUTO GOODBYE
+!: AUTO RESET
+
+C: RUN "RETURN $x" {"x": 1} {}
+S: <EXIT>

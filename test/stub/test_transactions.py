@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from neobolt.exceptions import ServiceUnavailable
+from neo4j.bolt.exceptions import ServiceUnavailable
 
 from neo4j import GraphDatabase
 
@@ -33,7 +33,7 @@ class TransactionTestCase(StubTestCase):
         tx.run("CREATE (n {name:'Bob'})").data()
 
     def test_connection_error_on_explicit_commit(self):
-        with StubCluster({9001: "connection_error_on_commit.script"}):
+        with StubCluster({9001: "v3/connection_error_on_commit.script"}):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False, max_retry_time=0) as driver:
                 with driver.session() as session:
@@ -43,7 +43,7 @@ class TransactionTestCase(StubTestCase):
                         tx.commit()
 
     def test_connection_error_on_commit(self):
-        with StubCluster({9001: "connection_error_on_commit.script"}):
+        with StubCluster({9001: "v3/connection_error_on_commit.script"}):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False, max_retry_time=0) as driver:
                 with driver.session() as session:

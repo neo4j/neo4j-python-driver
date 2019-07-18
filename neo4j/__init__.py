@@ -176,9 +176,9 @@ class DirectDriver(Driver):
     uri_schemes = ("bolt",)
 
     def __new__(cls, uri, **config):
-        from neobolt.addressing import SocketAddress
-        from neobolt.direct import ConnectionPool, DEFAULT_PORT, connect
-        from neobolt.security import make_ssl_context
+        from neo4j.bolt.addressing import SocketAddress
+        from neo4j.bolt.direct import ConnectionPool, DEFAULT_PORT, connect
+        from neo4j.bolt.security import make_ssl_context
         cls._check_uri(uri)
         if SocketAddress.parse_routing_context(uri):
             raise ValueError("Parameters are not supported with scheme 'bolt'. Given URI: '%s'." % uri)
@@ -225,10 +225,10 @@ class RoutingDriver(Driver):
     uri_schemes = ("neo4j", "bolt+routing")
 
     def __new__(cls, uri, **config):
-        from neobolt.addressing import SocketAddress
-        from neobolt.direct import DEFAULT_PORT, connect
-        from neobolt.routing import RoutingConnectionPool
-        from neobolt.security import make_ssl_context
+        from neo4j.bolt.addressing import SocketAddress
+        from neo4j.bolt.direct import DEFAULT_PORT, connect
+        from neo4j.bolt.routing import RoutingConnectionPool
+        from neo4j.bolt.security import make_ssl_context
         cls._check_uri(uri)
         instance = object.__new__(cls)
         instance.initial_address = initial_address = SocketAddress.from_uri(uri, DEFAULT_PORT)
@@ -277,7 +277,7 @@ def basic_auth(user, password, realm=None):
     :param realm: specifies the authentication provider
     :return: auth token for use with :meth:`GraphDatabase.driver`
     """
-    from neobolt.direct import AuthToken
+    from neo4j.bolt.direct import AuthToken
     return AuthToken("basic", user, password, realm)
 
 
@@ -287,7 +287,7 @@ def kerberos_auth(base64_encoded_ticket):
     :param base64_encoded_ticket: a base64 encoded service ticket
     :return: an authentication token that can be used to connect to Neo4j
     """
-    from neobolt.direct import AuthToken
+    from neo4j.bolt.direct import AuthToken
     return AuthToken("kerberos", "", base64_encoded_ticket)
 
 
@@ -301,7 +301,7 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
     :param parameters: parameters passed along to the authentication provider
     :return: auth token for use with :meth:`GraphDatabase.driver`
     """
-    from neobolt.direct import AuthToken
+    from neo4j.bolt.direct import AuthToken
     return AuthToken(scheme, principal, credentials, realm, **parameters)
 
 
@@ -336,7 +336,7 @@ class Workspace(object):
         self._connection_access_mode = access_mode
 
     def _disconnect(self, sync):
-        from neobolt.exceptions import ConnectionExpired, ServiceUnavailable
+        from neo4j.bolt.exceptions import ConnectionExpired, ServiceUnavailable
         if self._connection:
             if sync:
                 try:

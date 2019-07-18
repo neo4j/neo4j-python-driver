@@ -1,0 +1,14 @@
+!: BOLT 3
+!: AUTO HELLO
+!: AUTO GOODBYE
+!: AUTO RESET
+
+C: BEGIN {"bookmarks": ["bookmark:0", "bookmark:1"]}
+S: SUCCESS {}
+C: COMMIT
+S: SUCCESS {"bookmark": "bookmark:2"}
+
+C: BEGIN {"bookmarks": ["bookmark:2"]}
+S: SUCCESS {}
+C: COMMIT
+S: SUCCESS {"bookmark": "bookmark:3"}

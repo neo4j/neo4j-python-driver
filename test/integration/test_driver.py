@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from neobolt.direct import DEFAULT_PORT
+from neo4j.bolt.direct import DEFAULT_PORT
 
 from neo4j import GraphDatabase, Driver
 from neo4j.exceptions import ServiceUnavailable
@@ -31,10 +31,10 @@ class DriverTestCase(IntegrationTestCase):
 
     def test_must_use_valid_url_scheme(self):
         with self.assertRaises(ValueError):
-            GraphDatabase.driver("x://xxx", auth=self.auth_token)
+            GraphDatabase.driver("x://xxx", auth=self.auth)
 
     def test_connections_are_reused(self):
-        with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
+        with GraphDatabase.driver(self.bolt_uri, auth=self.auth) as driver:
             session_1 = driver.session()
             connection_1 = session_1._connection
             session_1.close()
@@ -46,7 +46,7 @@ class DriverTestCase(IntegrationTestCase):
     def test_fail_nicely_when_using_http_port(self):
         uri = "bolt://localhost:7474"
         with self.assertRaises(ServiceUnavailable):
-            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False):
+            with GraphDatabase.driver(uri, auth=self.auth, encrypted=False):
                 pass
 
     def test_custom_resolver(self):
@@ -56,7 +56,7 @@ class DriverTestCase(IntegrationTestCase):
             yield "99.99.99.99", self.bolt_port     # this should be rejected as unable to connect
             yield "127.0.0.1", self.bolt_port       # this should succeed
 
-        with Driver("bolt://*", auth=self.auth_token, resolver=my_resolver) as driver:
+        with Driver("bolt://*", auth=self.auth, resolver=my_resolver) as driver:
             with driver.session() as session:
                 summary = session.run("RETURN 1").summary()
                 self.assertEqual(summary.server.address, ("127.0.0.1", 7687))
