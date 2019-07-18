@@ -25,9 +25,9 @@ from unittest import SkipTest
 from pytz import FixedOffset, timezone, utc
 
 from neo4j.exceptions import CypherTypeError
-from neo4j.types.graph import Node, Relationship, Path
-from neo4j.types.spatial import CartesianPoint, WGS84Point
-from neo4j.types.temporal import Duration, Date, Time, DateTime
+from neo4j.graph import Node, Relationship
+from neo4j.spatial import CartesianPoint, WGS84Point
+from neo4j.temporal import Duration, Date, Time, DateTime
 
 from tests.integration.tools import DirectIntegrationTestCase
 

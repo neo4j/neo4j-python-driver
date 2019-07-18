@@ -366,4 +366,6 @@ class WorkspaceError(Exception):
     pass
 
 
-from neo4j.types import *
+from neo4j.graph import *
+from neo4j.spatial import *
+from neo4j.temporal import *

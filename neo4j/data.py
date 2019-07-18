@@ -18,35 +18,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-This package contains classes for modelling the standard set of data types
-available within a Neo4j graph database. Most non-primitive types are
-represented by PackStream structures on the wire before being converted
-into concrete values through the PackStreamHydrant.
-"""
-
 
 from collections.abc import Mapping, Sequence
+from datetime import date, time, datetime, timedelta
 from functools import reduce
 from operator import xor as xor_operator
 
-from neo4j.packstream import Structure
-
-
-INT64_MIN = -(2 ** 63)
-INT64_MAX = (2 ** 63) - 1
+from neo4j.graph import Graph
+from neo4j.packstream import INT64_MIN, INT64_MAX, Structure
+from neo4j.spatial import (
+    Point, hydrate_point, dehydrate_point,
+)
+from neo4j.temporal import (
+    Date, hydrate_date, dehydrate_date,
+    Time, hydrate_time, dehydrate_time,
+    DateTime, hydrate_datetime, dehydrate_datetime,
+    Duration, hydrate_duration, dehydrate_duration, dehydrate_timedelta,
+)
 
 
 map_type = type(map(str, range(0)))
 
 
-class PackStreamHydrator(object):
+class Hydrator(object):
 
     def __init__(self):
-        super(PackStreamHydrator, self).__init__()
-        from neo4j.types.graph import Graph
-        from neo4j.types.spatial import hydrate_point
-        from neo4j.types.temporal import hydrate_date, hydrate_time, hydrate_datetime, hydrate_duration
+        super(Hydrator, self).__init__()
         self.graph = Graph()
         self.graph_hydrator = Graph.Hydrator(self.graph)
         self.hydration_functions = {
@@ -74,7 +71,8 @@ class PackStreamHydrator(object):
                 try:
                     f = self.hydration_functions[obj.tag]
                 except KeyError:
-                    # If we don't recognise the structure type, just return it as-is
+                    # If we don't recognise the structure
+                    # type, just return it as-is
                     return obj
                 else:
                     return f(*map(hydrate_, obj.fields))
@@ -92,19 +90,10 @@ class PackStreamHydrator(object):
             yield Record(zip(keys, self.hydrate(values)))
 
 
-class PackStreamDehydrator(object):
+class Dehydrator(object):
 
     def __init__(self):
         self.dehydration_functions = {}
-        from datetime import date, time, datetime, timedelta
-        from .spatial import Point, dehydrate_point
-        from .temporal import (
-            Date, dehydrate_date,
-            Time, dehydrate_time,
-            DateTime, dehydrate_datetime,
-            Duration, dehydrate_duration,
-            dehydrate_timedelta,
-        )
         self.dehydration_functions.update({
             Point: dehydrate_point,
             Date: dehydrate_date,
@@ -137,18 +126,21 @@ class PackStreamDehydrator(object):
             elif isinstance(obj, int):
                 if INT64_MIN <= obj <= INT64_MAX:
                     return obj
-                raise ValueError("Integer out of bounds (64-bit signed integer values only)")
+                raise ValueError("Integer out of bounds (64-bit signed "
+                                 "integer values only)")
             elif isinstance(obj, float):
                 return obj
             elif isinstance(obj, str):
                 return obj
-            elif isinstance(obj, (bytes, bytearray)):  # order is important here - bytes must be checked after string
+            elif isinstance(obj, (bytes, bytearray)):
+                # order is important here - bytes must be checked after str
                 return obj
             elif isinstance(obj, (list, map_type)):
                 return list(map(dehydrate_, obj))
             elif isinstance(obj, dict):
                 if any(not isinstance(key, str) for key in obj.keys()):
-                    raise TypeError("Non-string dictionary keys are not supported")
+                    raise TypeError("Non-string dictionary keys are "
+                                    "not supported")
                 return {key: dehydrate_(value) for key, value in obj.items()}
             else:
                 raise TypeError(obj)

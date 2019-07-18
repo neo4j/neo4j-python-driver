@@ -25,7 +25,7 @@ from uuid import uuid4
 from neo4j import READ_ACCESS, WRITE_ACCESS
 from neo4j.blocking import Statement, SessionError, TransactionError, unit_of_work
 from neo4j.exceptions import CypherError, CypherSyntaxError, TransientError, ClientError
-from neo4j.types.graph import Node, Relationship
+from neo4j.graph import Node, Relationship
 
 from tests.integration.tools import DirectIntegrationTestCase
 

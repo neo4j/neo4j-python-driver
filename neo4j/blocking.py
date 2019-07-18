@@ -34,7 +34,7 @@ from neo4j.bolt.exceptions import (
     ServiceUnavailable,
     TransientError,
 )
-from neo4j.types import PackStreamHydrator, PackStreamDehydrator
+from neo4j.data import Hydrator, Dehydrator
 
 
 INITIAL_RETRY_DELAY = 1.0
@@ -220,7 +220,7 @@ class Session(object):
         def fail(_):
             self._close_transaction()
 
-        hydrant = PackStreamHydrator()
+        hydrant = Hydrator()
         result_metadata = {
             "statement": statement_text,
             "parameters": parameters,
@@ -630,7 +630,7 @@ class Statement(object):
 def fix_parameters(parameters):
     if not parameters:
         return {}
-    dehydrator = PackStreamDehydrator()
+    dehydrator = Dehydrator()
     try:
         dehydrated, = dehydrator.dehydrate([parameters])
     except TypeError as error:
