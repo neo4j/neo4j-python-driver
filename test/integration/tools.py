@@ -22,6 +22,7 @@
 from os import makedirs, remove
 from os.path import basename, dirname, join as path_join, realpath, isfile, expanduser
 import platform
+from threading import RLock
 from unittest import TestCase, SkipTest
 from shutil import copyfile
 from sys import exit, stderr
@@ -30,8 +31,7 @@ try:
 except ImportError:
     from urllib import urlretrieve
 
-from boltkit.config import update as update_config
-from boltkit.controller import _install, WindowsController, UnixController
+from boltkit.server import Neo4jService
 
 from neo4j import GraphDatabase
 from neo4j.exceptions import AuthError
@@ -96,19 +96,14 @@ class IntegrationTestCase(TestCase):
 
     user = NEO4J_USER or "neo4j"
     password = NEO4J_PASSWORD or "password"
-    auth_token = (user, password)
+    auth = (user, password)
 
-    controller = None
-    dist_path = path_join(dirname(__file__), "dist")
-    run_path = path_join(dirname(__file__), "run")
-
-    server_package = NEO4J_SERVER_PACKAGE
-    local_server_package = path_join(dist_path, basename(server_package)) if server_package else None
-    neoctrl_args = NEOCTRL_ARGS
+    service = None
+    service_lock = RLock()
 
     @classmethod
     def server_version_info(cls):
-        with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth_token) as driver:
+        with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth) as driver:
             with driver.session() as session:
                 full_version = session.run("RETURN 1").summary().server.agent
                 return ServerVersion.from_str(full_version)
@@ -119,13 +114,13 @@ class IntegrationTestCase(TestCase):
 
     @classmethod
     def protocol_version(cls):
-        with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth_token) as driver:
+        with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth) as driver:
             with driver.session() as session:
                 return session.run("RETURN 1").summary().protocol_version
 
     @classmethod
     def edition(cls):
-        with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth_token) as driver:
+        with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth) as driver:
             with driver.session() as session:
                 return (session.run("CALL dbms.components")
                         .single().value("edition"))
@@ -145,65 +140,28 @@ class IntegrationTestCase(TestCase):
             raise SkipTest("Temporal types require Bolt protocol v2 or above")
 
     @classmethod
-    def delete_known_hosts_file(cls):
-        known_hosts = path_join(expanduser("~"), ".neo4j", "known_hosts")
-        if isfile(known_hosts):
-            remove(known_hosts)
+    def start_service(cls):
+        with cls.service_lock:
+            assert cls.service is None
+            cls.service = Neo4jService(auth=cls.auth)
+            cls.service.start(timeout=300)
+            address = cls.service.addresses[0]
+            cls.bolt_uri = "bolt://{}:{}".format(address[0], address[1])
 
     @classmethod
-    def _unpack(cls, package):
-        try:
-            makedirs(cls.run_path)
-        except OSError:
-            pass
-        controller_class = WindowsController if platform.system() == "Windows" else UnixController
-        home = realpath(controller_class.extract(package, cls.run_path))
-        return home
-
-    @classmethod
-    def _start_server(cls, home):
-        controller_class = WindowsController if platform.system() == "Windows" else UnixController
-        cls.controller = controller_class(home, 1)
-        update_config(cls.controller.home, {"dbms.connectors.default_listen_address": "::"})
-        if NEO4J_USER is None:
-            cls.controller.create_user(cls.user, cls.password)
-            cls.controller.set_user_role(cls.user, "admin")
-        cls.controller.start(timeout=90)
-
-    @classmethod
-    def _stop_server(cls):
-        if cls.controller is not None:
-            cls.controller.stop()
-            if NEO4J_USER is None:
-                pass  # TODO: delete user
+    def stop_service(cls):
+        with cls.service_lock:
+            if cls.service:
+                cls.service.stop(timeout=300)
+                cls.service = None
 
     @classmethod
     def setUpClass(cls):
-        if is_listening(cls.bolt_address):
-            print("Using existing server listening on port {}\n".format(cls.bolt_port))
-            with GraphDatabase.driver(cls.bolt_uri, auth=cls.auth_token) as driver:
-                try:
-                    with driver.session():
-                        pass
-                except AuthError as error:
-                    raise RuntimeError("Failed to authenticate (%s)" % error)
-        elif cls.server_package is not None:
-            print("Using server from package {}\n".format(cls.server_package))
-            package = copy_dist(cls.server_package, cls.local_server_package)
-            home = cls._unpack(package)
-            cls._start_server(home)
-        elif cls.neoctrl_args is not None:
-            print("Using boltkit to install server 'neoctrl-install {}'\n".format(cls.neoctrl_args))
-            edition = "enterprise" if "-e" in cls.neoctrl_args else "community"
-            version = cls.neoctrl_args.split()[-1]
-            home = _install(edition, version, cls.run_path)
-            cls._start_server(home)
-        else:
-            raise SkipTest("No Neo4j server available for %s" % cls.__name__)
+        cls.start_service()
 
     @classmethod
     def tearDownClass(cls):
-        cls._stop_server()
+        cls.stop_service()
 
 
 class DirectIntegrationTestCase(IntegrationTestCase):
@@ -212,7 +170,7 @@ class DirectIntegrationTestCase(IntegrationTestCase):
 
     def setUp(self):
         from neo4j import GraphDatabase
-        self.driver = GraphDatabase.driver(self.bolt_uri, auth=self.auth_token)
+        self.driver = GraphDatabase.driver(self.bolt_uri, auth=self.auth)
 
     def tearDown(self):
         self.driver.close()
@@ -224,7 +182,7 @@ class RoutingIntegrationTestCase(IntegrationTestCase):
 
     def setUp(self):
         from neo4j import GraphDatabase
-        self.driver = GraphDatabase.driver(self.bolt_routing_uri, auth=self.auth_token)
+        self.driver = GraphDatabase.driver(self.bolt_routing_uri, auth=self.auth)
 
     def tearDown(self):
         self.driver.close()

@@ -30,11 +30,11 @@ from test.integration.tools import IntegrationTestCase
 class SecurityTestCase(IntegrationTestCase):
 
     def test_insecure_by_default(self):
-        with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
+        with GraphDatabase.driver(self.bolt_uri, auth=self.auth) as driver:
             self.assertFalse(driver.encrypted)
 
     def test_insecure_session_uses_normal_socket(self):
-        with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token,
+        with GraphDatabase.driver(self.bolt_uri, auth=self.auth,
                                   encrypted=False) as driver:
             with driver.session() as session:
                 result = session.run("RETURN 1")
@@ -45,7 +45,7 @@ class SecurityTestCase(IntegrationTestCase):
 
     def test_custom_ca_not_implemented(self):
         with self.assertRaises(NotImplementedError):
-            _ = GraphDatabase.driver(self.bolt_uri, auth=self.auth_token,
+            _ = GraphDatabase.driver(self.bolt_uri, auth=self.auth,
                                      encrypted=True,
                                      trust=TRUST_CUSTOM_CA_SIGNED_CERTIFICATES)
 

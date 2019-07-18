@@ -33,7 +33,7 @@ class ReadmeTestCase(IntegrationTestCase):
 
         from neo4j import GraphDatabase
 
-        driver = GraphDatabase.driver(self.bolt_uri, auth=self.auth_token)
+        driver = GraphDatabase.driver(self.bolt_uri, auth=self.auth)
 
         def print_friends(tx, name):
             for record in tx.run("MATCH (a:Person)-[:KNOWS]->(friend) "

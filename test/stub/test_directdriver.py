@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from neobolt.exceptions import ServiceUnavailable
+from neo4j.bolt.exceptions import ServiceUnavailable
 
 from neo4j import GraphDatabase, DirectDriver
 
@@ -29,13 +29,13 @@ from test.stub.tools import StubTestCase, StubCluster
 class DirectDriverTestCase(StubTestCase):
 
     def test_bolt_uri_constructs_direct_driver(self):
-        with StubCluster({9001: "empty.script"}):
+        with StubCluster({9001: "v3/empty.script"}):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 assert isinstance(driver, DirectDriver)
 
     def test_direct_disconnect_on_run(self):
-        with StubCluster({9001: "disconnect_on_run.script"}):
+        with StubCluster({9001: "v3/disconnect_on_run.script"}):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with self.assertRaises(ServiceUnavailable):
@@ -43,7 +43,7 @@ class DirectDriverTestCase(StubTestCase):
                         session.run("RETURN $x", {"x": 1}).consume()
 
     def test_direct_disconnect_on_pull_all(self):
-        with StubCluster({9001: "disconnect_on_pull_all.script"}):
+        with StubCluster({9001: "v3/disconnect_on_pull_all.script"}):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with self.assertRaises(ServiceUnavailable):
@@ -56,7 +56,7 @@ class DirectDriverTestCase(StubTestCase):
                 GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False)
 
     def test_direct_session_close_after_server_close(self):
-        with StubCluster({9001: "disconnect_after_init.script"}):
+        with StubCluster({9001: "v3/disconnect_after_init.script"}):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False, max_retry_time=0) as driver:
                 with driver.session() as session:

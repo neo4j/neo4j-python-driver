@@ -34,6 +34,6 @@ class ConfigConnectionPoolExample:
     def close(self):
         self._driver.close()
 
-    def can_connect(driver):
-        result = driver.session().run("RETURN 1")
+    def can_connect(self):
+        result = self._driver.session().run("RETURN 1")
         return result.single()[0] == 1

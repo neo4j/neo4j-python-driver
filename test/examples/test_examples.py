@@ -176,13 +176,13 @@ class ExamplesTest(IntegrationTestCase):
 
     def read(self, statement):
         from neo4j import GraphDatabase
-        with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
+        with GraphDatabase.driver(self.bolt_uri, auth=self.auth) as driver:
             with driver.session() as session:
                 return session.read_transaction(lambda tx: tx.run(statement))
 
     def write(self, statement):
         from neo4j import GraphDatabase
-        with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
+        with GraphDatabase.driver(self.bolt_uri, auth=self.auth) as driver:
             with driver.session() as session:
                 return session.write_transaction(lambda tx: tx.run(statement))
 
@@ -191,7 +191,7 @@ class ExamplesTest(IntegrationTestCase):
         
     def person_count(self, name):
         from neo4j import GraphDatabase
-        with GraphDatabase.driver(self.bolt_uri, auth=self.auth_token) as driver:
+        with GraphDatabase.driver(self.bolt_uri, auth=self.auth) as driver:
             with driver.session() as session:
                 record_list = list(session.run("MATCH (a:Person {name: $name}) RETURN count(a)", {"name": name}))
                 return len(record_list)
@@ -203,6 +203,6 @@ class ServiceUnavailableTest(IntegrationTestCase):
         from test.examples.service_unavailable_example import ServiceUnavailableExample
 
         example = ServiceUnavailableExample(self.bolt_uri, self.user, self.password)
-        self._stop_server()
+        self.stop_service()
 
         self.assertFalse(example.add_item())

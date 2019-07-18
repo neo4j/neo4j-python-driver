@@ -1,0 +1,13 @@
+!: BOLT 3
+!: AUTO HELLO
+!: AUTO GOODBYE
+!: AUTO RESET
+!: AUTO DISCARD_ALL
+!: AUTO BEGIN {}
+!: AUTO COMMIT
+!: AUTO ROLLBACK
+
+C: RUN "CREATE (n {name:'Bob'})" {} {}
+C: PULL_ALL
+S: FAILURE {"code": "Neo.ClientError.Cluster.NotALeader", "message": "Leader switched has happened"}
+S: IGNORED

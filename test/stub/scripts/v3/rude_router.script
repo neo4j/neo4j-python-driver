@@ -1,0 +1,9 @@
+!: BOLT 3
+!: AUTO HELLO
+!: AUTO GOODBYE
+!: AUTO RESET
+
+C: RUN "CALL dbms.cluster.routing.getRoutingTable({context})" {"context": {}} {}
+   PULL_ALL
+S: <EXIT>
+

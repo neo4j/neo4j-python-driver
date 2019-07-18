@@ -24,4 +24,4 @@ This module contains the core driver exceptions.
 """
 
 
-from neobolt.exceptions import *
+from neo4j.bolt.exceptions import *

@@ -62,7 +62,7 @@ class Workspace(object):
         self._connection_access_mode = access_mode
 
     def _disconnect(self, sync):
-        from neobolt.exceptions import ConnectionExpired, ServiceUnavailable
+        from neo4j.bolt.exceptions import ConnectionExpired, ServiceUnavailable
         if self._connection:
             if sync:
                 try:
@@ -166,7 +166,7 @@ class Puller(Thread):
 
 def main():
     from neo4j import Driver
-    # from neobolt.diagnostics import watch
+    # from neo4j.bolt.diagnostics import watch
     # watch("neobolt")
     with Driver("bolt://", auth=("neo4j", "password")) as dx:
         p = dx.pipeline(flush_every=1024)
