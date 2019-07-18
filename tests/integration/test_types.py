@@ -29,7 +29,7 @@ from neo4j.types.graph import Node, Relationship, Path
 from neo4j.types.spatial import CartesianPoint, WGS84Point
 from neo4j.types.temporal import Duration, Date, Time, DateTime
 
-from test.integration.tools import DirectIntegrationTestCase
+from tests.integration.tools import DirectIntegrationTestCase
 
 
 def run_and_rollback(tx, statement, **parameters):

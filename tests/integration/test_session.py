@@ -27,7 +27,7 @@ from neo4j.blocking import Statement, SessionError, TransactionError, unit_of_wo
 from neo4j.exceptions import CypherError, CypherSyntaxError, TransientError, ClientError
 from neo4j.types.graph import Node, Relationship
 
-from test.integration.tools import DirectIntegrationTestCase
+from tests.integration.tools import DirectIntegrationTestCase
 
 
 class AutoCommitTransactionTestCase(DirectIntegrationTestCase):

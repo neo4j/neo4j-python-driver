@@ -39,7 +39,7 @@ classifiers = [
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
 ]
-packages = find_packages(exclude=["test"])
+packages = find_packages(exclude=["tests"])
 readme = open(path_join(dirname(__file__), "README.rst")).read()
 setup_args = {
     "name": package,

@@ -22,7 +22,7 @@
 from neo4j import GraphDatabase
 from neo4j.exceptions import CypherError, TransientError
 
-from test.stub.tools import StubTestCase, StubCluster
+from tests.stub.tools import StubTestCase, StubCluster
 
 
 class AccessLevelTestCase(StubTestCase):

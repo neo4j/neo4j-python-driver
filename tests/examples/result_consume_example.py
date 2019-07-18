@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from test.examples.base_application import BaseApplication
+from tests.examples.base_application import BaseApplication
 
 # tag::result-consume-import[]
 # end::result-consume-import[]

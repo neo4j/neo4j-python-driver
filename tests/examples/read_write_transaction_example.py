@@ -18,25 +18,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from tests.examples.base_application import BaseApplication
 
-from test.examples.base_application import BaseApplication
-
-# tag::autocommit-transaction-import[]
-from neo4j.blocking import Statement
-# end::autocommit-transaction-import[]
+# tag::read-write-transaction-import[]
+# end::read-write-transaction-import[]
 
 
-class AutocommitTransactionExample(BaseApplication):
+class ReadWriteTransactionExample(BaseApplication):
     def __init__(self, uri, user, password):
-        super(AutocommitTransactionExample, self).__init__(uri, user, password)
+        super(ReadWriteTransactionExample, self).__init__(uri, user, password)
 
-    # tag::autocommit-transaction[]
+    # tag::read-write-transaction[]
     def add_person(self, name):
         with self._driver.session() as session:
-            session.run("CREATE (a:Person {name: $name})", name=name)
+            session.write_transaction(self.create_person_node, name)
+            return session.read_transaction(self.match_person_node, name)
 
-    # Alternative implementation, with timeout
-    def add_person_within_half_a_second(self, name):
-        with self._driver.session() as session:
-            session.run(Statement("CREATE (a:Person {name: $name})", timeout=0.5), name=name)
-    # end::autocommit-transaction[]
+    @staticmethod
+    def create_person_node(tx, name):
+        tx.run("CREATE (a:Person {name: $name})", name=name)
+        return None
+
+    @staticmethod
+    def match_person_node(tx, name):
+        result = tx.run("MATCH (a:Person {name: $name}) RETURN count(a)", name=name)
+        return result.single()[0]
+    # end::read-write-transaction[]

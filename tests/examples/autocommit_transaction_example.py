@@ -18,28 +18,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from test.examples.base_application import BaseApplication
 
-# tag::cypher-error-import[]
-from neo4j.bolt.exceptions import ClientError
-# end::cypher-error-import[]
+from tests.examples.base_application import BaseApplication
+
+# tag::autocommit-transaction-import[]
+from neo4j.blocking import Statement
+# end::autocommit-transaction-import[]
 
 
-class CypherErrorExample(BaseApplication):
+class AutocommitTransactionExample(BaseApplication):
     def __init__(self, uri, user, password):
-        super(CypherErrorExample, self).__init__(uri, user, password)
+        super(AutocommitTransactionExample, self).__init__(uri, user, password)
 
-    # tag::cypher-error[]
-    def get_employee_number(self, name):
+    # tag::autocommit-transaction[]
+    def add_person(self, name):
         with self._driver.session() as session:
-            return session.read_transaction(self.select_employee, name)
+            session.run("CREATE (a:Person {name: $name})", name=name)
 
-    @staticmethod
-    def select_employee(tx, name):
-        try:
-            result = tx.run("SELECT * FROM Employees WHERE name = $name", name=name)
-            return result.single()["employee_number"]
-        except ClientError as error:
-            print(error.message)
-            return -1
-    # end::cypher-error[]
+    # Alternative implementation, with timeout
+    def add_person_within_half_a_second(self, name):
+        with self._driver.session() as session:
+            session.run(Statement("CREATE (a:Person {name: $name})", timeout=0.5), name=name)
+    # end::autocommit-transaction[]

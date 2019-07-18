@@ -36,7 +36,7 @@ from boltkit.server import Neo4jService
 from neo4j import GraphDatabase
 from neo4j.exceptions import AuthError
 
-from test.env import NEO4J_SERVER_PACKAGE, NEO4J_USER, NEO4J_PASSWORD, NEOCTRL_ARGS
+from tests.env import NEO4J_SERVER_PACKAGE, NEO4J_USER, NEO4J_PASSWORD, NEOCTRL_ARGS
 
 
 def copy_dist(source, target):

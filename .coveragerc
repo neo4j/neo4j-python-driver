@@ -2,7 +2,7 @@
 branch = True
 omit =
     .*/*
-    test/*
+    tests/*
     neo4j/meta.py
     *neobolt*
 

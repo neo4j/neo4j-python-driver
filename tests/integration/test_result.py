@@ -23,7 +23,7 @@ import pytest
 
 from neo4j.exceptions import CypherError
 
-from test.integration.tools import DirectIntegrationTestCase
+from tests.integration.tools import DirectIntegrationTestCase
 
 
 class ResultConsumptionTestCase(DirectIntegrationTestCase):

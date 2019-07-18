@@ -22,7 +22,7 @@
 from __future__ import print_function
 
 
-from test.integration.tools import IntegrationTestCase
+from tests.integration.tools import IntegrationTestCase
 
 
 class ReadmeTestCase(IntegrationTestCase):

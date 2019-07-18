@@ -26,7 +26,7 @@ from neo4j.exceptions import ClientError, TransientError
 from neo4j import GraphDatabase, READ_ACCESS, WRITE_ACCESS, RoutingDriver
 from neo4j.blocking import SessionExpired
 
-from test.stub.tools import StubTestCase, StubCluster
+from tests.stub.tools import StubTestCase, StubCluster
 
 
 class RoutingDriverTestCase(StubTestCase):

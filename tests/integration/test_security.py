@@ -24,7 +24,7 @@ from socket import socket
 from neo4j import GraphDatabase, TRUST_CUSTOM_CA_SIGNED_CERTIFICATES
 from neo4j.exceptions import AuthError
 
-from test.integration.tools import IntegrationTestCase
+from tests.integration.tools import IntegrationTestCase
 
 
 class SecurityTestCase(IntegrationTestCase):

@@ -23,7 +23,7 @@ from neo4j.bolt.exceptions import ServiceUnavailable
 
 from neo4j import GraphDatabase
 
-from test.stub.tools import StubTestCase, StubCluster
+from tests.stub.tools import StubTestCase, StubCluster
 
 
 class TransactionTestCase(StubTestCase):

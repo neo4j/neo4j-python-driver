@@ -21,7 +21,7 @@
 
 from neo4j import GraphDatabase, READ_ACCESS
 
-from test.stub.tools import StubTestCase, StubCluster
+from tests.stub.tools import StubTestCase, StubCluster
 
 
 class BookmarkingTestCase(StubTestCase):

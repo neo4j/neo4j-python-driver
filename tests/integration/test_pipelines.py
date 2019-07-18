@@ -26,7 +26,7 @@ from neo4j.pipelining import PullOrderException
 from neo4j.types.graph import Node, Relationship, Path
 from neo4j.packstream import Structure
 
-from test.integration.tools import DirectIntegrationTestCase
+from tests.integration.tools import DirectIntegrationTestCase
 
 
 class PipelineBasicsTestCase(DirectIntegrationTestCase):

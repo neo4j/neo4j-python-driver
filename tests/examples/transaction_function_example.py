@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from test.examples.base_application import BaseApplication
+from tests.examples.base_application import BaseApplication
 
 # tag::transaction-function-import[]
 from neo4j.blocking import unit_of_work

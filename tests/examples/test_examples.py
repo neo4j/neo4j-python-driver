@@ -24,7 +24,7 @@ from io import StringIO
 import sys
 from unittest import TestCase
 
-from test.integration.tools import IntegrationTestCase
+from tests.integration.tools import IntegrationTestCase
 
 
 # Python2 doesn't have contextlib.redirect_stdout()
@@ -45,7 +45,7 @@ class ExamplesTest(IntegrationTestCase):
         self.clean()
 
     def test_autocommit_transaction_example(self):
-        from test.examples.autocommit_transaction_example import AutocommitTransactionExample
+        from tests.examples.autocommit_transaction_example import AutocommitTransactionExample
 
         example = AutocommitTransactionExample(self.bolt_uri, self.user, self.password)
         example.add_person('Alice')
@@ -53,48 +53,48 @@ class ExamplesTest(IntegrationTestCase):
         self.assertTrue(self.person_count('Alice') > 0)
 
     def test_config_connection_pool_example(self):
-        from test.examples.config_connection_pool_example import ConfigConnectionPoolExample
+        from tests.examples.config_connection_pool_example import ConfigConnectionPoolExample
         example = ConfigConnectionPoolExample(self.bolt_uri, self.user, self.password)
         self.assertTrue(example.can_connect())
 
     def test_connection_timeout_example(self):
-        from test.examples.config_connection_timeout_example import ConfigConnectionTimeoutExample
+        from tests.examples.config_connection_timeout_example import ConfigConnectionTimeoutExample
         example = ConfigConnectionTimeoutExample(self.bolt_uri, self.user, self.password)
         self.assertTrue(example.can_connect())
 
     def test_load_balancing_strategy_example(self):
-        from test.examples.config_load_balancing_strategy_example import ConfigLoadBalancingStrategyExample
+        from tests.examples.config_load_balancing_strategy_example import ConfigLoadBalancingStrategyExample
         example = ConfigLoadBalancingStrategyExample(self.bolt_uri, self.user, self.password)
         self.assertTrue(example.can_connect())
 
     def test_max_retry_time_example(self):
-        from test.examples.config_max_retry_time_example import ConfigMaxRetryTimeExample
+        from tests.examples.config_max_retry_time_example import ConfigMaxRetryTimeExample
         example = ConfigMaxRetryTimeExample(self.bolt_uri, self.user, self.password)
         self.assertTrue(example.can_connect())
 
     def test_basic_auth_example(self):
-        from test.examples.auth_example import BasicAuthExample
+        from tests.examples.auth_example import BasicAuthExample
 
         example = BasicAuthExample(self.bolt_uri, self.user, self.password)
 
         self.assertTrue(example.can_connect())
 
     def test_custom_auth_example(self):
-        from test.examples.custom_auth_example import CustomAuthExample
+        from tests.examples.custom_auth_example import CustomAuthExample
 
         example = CustomAuthExample(self.bolt_uri, self.user, self.password, None, "basic", **{"key":"value"})
 
         self.assertTrue(example.can_connect())
 
     def test_config_unencrypted_example(self):
-        from test.examples.config_unencrypted_example import ConfigUnencryptedExample
+        from tests.examples.config_unencrypted_example import ConfigUnencryptedExample
 
         example = ConfigUnencryptedExample(self.bolt_uri, self.user, self.password)
 
         self.assertIsInstance(example, ConfigUnencryptedExample)
 
     def test_cypher_error_example(self):
-        from test.examples.cypher_error_example import CypherErrorExample
+        from tests.examples.cypher_error_example import CypherErrorExample
 
         f = StringIO()
         with stdout_redirector(f):
@@ -110,7 +110,7 @@ class ExamplesTest(IntegrationTestCase):
    ^"""))
 
     def test_driver_lifecycle_example(self):
-        from test.examples.driver_lifecycle_example import DriverLifecycleExample
+        from tests.examples.driver_lifecycle_example import DriverLifecycleExample
 
         example = DriverLifecycleExample(self.bolt_uri, self.user, self.password)
         example.close()
@@ -118,7 +118,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertIsInstance(example, DriverLifecycleExample)
 
     def test_hello_world_example(self):
-        from test.examples.hello_world_example import HelloWorldExample
+        from tests.examples.hello_world_example import HelloWorldExample
 
         f = StringIO()
         with stdout_redirector(f):
@@ -129,7 +129,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertTrue(f.getvalue().startswith("hello, world, from node"))
         
     def test_read_write_transaction_example(self):
-        from test.examples.read_write_transaction_example import ReadWriteTransactionExample
+        from tests.examples.read_write_transaction_example import ReadWriteTransactionExample
 
         example = ReadWriteTransactionExample(self.bolt_uri, self.user, self.password)
         node_count = example.add_person('Alice')
@@ -137,7 +137,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertTrue(node_count > 0)
 
     def test_result_consume_example(self):
-        from test.examples.result_consume_example import ResultConsumeExample
+        from tests.examples.result_consume_example import ResultConsumeExample
 
         self.write("CREATE (a:Person {name: 'Alice'})")
         self.write("CREATE (a:Person {name: 'Bob'})")
@@ -147,7 +147,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertEqual(['Alice', 'Bob'], people)
 
     def test_result_retain_example(self):
-        from test.examples.result_retain_example import ResultRetainExample
+        from tests.examples.result_retain_example import ResultRetainExample
 
         self.write("CREATE (a:Person {name: 'Alice'})")
         self.write("CREATE (a:Person {name: 'Bob'})")
@@ -158,7 +158,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertEqual(employee_count, 2)
 
     def test_session_example(self):
-        from test.examples.session_example import SessionExample
+        from tests.examples.session_example import SessionExample
 
         example = SessionExample(self.bolt_uri, self.user, self.password)
         example.add_person("Alice")
@@ -167,7 +167,7 @@ class ExamplesTest(IntegrationTestCase):
         self.assertEqual(self.person_count("Alice"), 1)
 
     def test_transaction_function_example(self):
-        from test.examples.transaction_function_example import TransactionFunctionExample
+        from tests.examples.transaction_function_example import TransactionFunctionExample
 
         example = TransactionFunctionExample(self.bolt_uri, self.user, self.password)
         example.add_person("Alice")
@@ -200,7 +200,7 @@ class ExamplesTest(IntegrationTestCase):
 class ServiceUnavailableTest(IntegrationTestCase):
 
     def test_service_unavailable_example(self):
-        from test.examples.service_unavailable_example import ServiceUnavailableExample
+        from tests.examples.service_unavailable_example import ServiceUnavailableExample
 
         example = ServiceUnavailableExample(self.bolt_uri, self.user, self.password)
         self.stop_service()

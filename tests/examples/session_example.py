@@ -18,29 +18,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from test.examples.base_application import BaseApplication
+from tests.examples.base_application import BaseApplication
 
-# tag::read-write-transaction-import[]
-# end::read-write-transaction-import[]
+# tag::session-import[]
+# end::session-import[]
 
 
-class ReadWriteTransactionExample(BaseApplication):
+class SessionExample(BaseApplication):
     def __init__(self, uri, user, password):
-        super(ReadWriteTransactionExample, self).__init__(uri, user, password)
+        super(SessionExample, self).__init__(uri, user, password)
 
-    # tag::read-write-transaction[]
+    # tag::session[]
     def add_person(self, name):
         with self._driver.session() as session:
-            session.write_transaction(self.create_person_node, name)
-            return session.read_transaction(self.match_person_node, name)
-
-    @staticmethod
-    def create_person_node(tx, name):
-        tx.run("CREATE (a:Person {name: $name})", name=name)
-        return None
-
-    @staticmethod
-    def match_person_node(tx, name):
-        result = tx.run("MATCH (a:Person {name: $name}) RETURN count(a)", name=name)
-        return result.single()[0]
-    # end::read-write-transaction[]
+            session.run("CREATE (a:Person {name: $name})", name=name)
+    # end::session[]

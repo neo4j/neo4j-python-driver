@@ -24,7 +24,7 @@ from neo4j.bolt.direct import DEFAULT_PORT
 from neo4j import GraphDatabase, Driver
 from neo4j.exceptions import ServiceUnavailable
 
-from test.integration.tools import IntegrationTestCase
+from tests.integration.tools import IntegrationTestCase
 
 
 class DriverTestCase(IntegrationTestCase):
