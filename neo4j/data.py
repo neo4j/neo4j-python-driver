@@ -29,7 +29,7 @@ from neo4j.packstream import INT64_MIN, INT64_MAX, Structure
 from neo4j.spatial import (
     Point, hydrate_point, dehydrate_point,
 )
-from neo4j.temporal import (
+from neo4j.time import (
     Date, hydrate_date, dehydrate_date,
     Time, hydrate_time, dehydrate_time,
     DateTime, hydrate_datetime, dehydrate_datetime,

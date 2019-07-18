@@ -31,6 +31,8 @@ from neo4j.packstream import Structure
 
 __all__ = [
     "Point",
+    "CartesianPoint",
+    "WGS84Point",
     "point_type",
     "hydrate_point",
     "dehydrate_point",
