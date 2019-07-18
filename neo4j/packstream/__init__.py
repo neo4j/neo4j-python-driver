@@ -26,5 +26,5 @@ __all__ = [
 ]
 
 
-from neo4j.bolt.packstream.packer import Packer
-from neo4j.bolt.packstream.unpacker import Unpacker, UnpackableBuffer
+from neo4j.packstream.packer import Packer
+from neo4j.packstream.unpacker import Unpacker, UnpackableBuffer
