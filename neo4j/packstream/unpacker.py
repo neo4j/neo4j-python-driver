@@ -22,8 +22,6 @@
 from codecs import decode
 from struct import unpack as struct_unpack
 
-from neo4j.bolt.types import Structure
-
 
 EndOfStream = object()
 
@@ -105,6 +103,8 @@ class Unpacker(object):
         return self._unpack()
 
     def _unpack(self):
+        from neo4j.packstream.structure import Structure
+
         marker = self.read_u8()
 
         if marker == -1:

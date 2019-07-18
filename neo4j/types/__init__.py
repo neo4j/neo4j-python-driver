@@ -56,7 +56,7 @@ class PackStreamHydrator(object):
     def hydrate(self, values):
         """ Convert PackStream values into native values.
         """
-        from neo4j.bolt.types import Structure
+        from neo4j.packstream import Structure
 
         def hydrate_(obj):
             if isinstance(obj, Structure):

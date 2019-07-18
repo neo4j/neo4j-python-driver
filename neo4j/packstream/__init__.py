@@ -21,10 +21,12 @@
 
 __all__ = [
     "Packer",
+    "Structure",
     "Unpacker",
     "UnpackableBuffer",
 ]
 
 
 from neo4j.packstream.packer import Packer
+from neo4j.packstream.structure import Structure
 from neo4j.packstream.unpacker import Unpacker, UnpackableBuffer

@@ -24,7 +24,7 @@ This module defines spatial data types.
 """
 
 
-from neo4j.bolt.types import Structure
+from neo4j.packstream import Structure
 
 
 __all__ = [

@@ -21,8 +21,6 @@
 
 from struct import pack as struct_pack
 
-from neo4j.bolt.types import Structure
-
 
 NULL_ = b"\xC0"
 FALSE = b"\xC2"
@@ -56,6 +54,8 @@ class Packer(object):
         return self._pack(value)
 
     def _pack(self, value):
+        from neo4j.packstream import Structure
+
         write = self._write
 
         # None
