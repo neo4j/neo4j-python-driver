@@ -19,8 +19,6 @@
 # limitations under the License.
 
 
-from __future__ import unicode_literals
-
 import logging
 from argparse import ArgumentParser
 from json import loads as json_loads

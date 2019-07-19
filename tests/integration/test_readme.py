@@ -19,9 +19,6 @@
 # limitations under the License.
 
 
-from __future__ import print_function
-
-
 from tests.integration.tools import IntegrationTestCase
 
 

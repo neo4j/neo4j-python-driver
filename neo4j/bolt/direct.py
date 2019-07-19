@@ -25,8 +25,6 @@ Bolt. It is not intended to be used directly by driver users. Instead,
 the `session` module provides the main user-facing abstractions.
 """
 
-from __future__ import division
-
 
 __all__ = [
     "DEFAULT_PORT",

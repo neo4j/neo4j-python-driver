@@ -19,8 +19,6 @@
 # limitations under the License.
 
 
-from __future__ import division
-
 from datetime import time
 from unittest import TestCase
 

@@ -19,9 +19,6 @@
 # limitations under the License.
 
 
-from __future__ import print_function
-
-
 def main():
     from neo4j.time import Clock, DateTime, UnixEpoch
     clock = Clock()

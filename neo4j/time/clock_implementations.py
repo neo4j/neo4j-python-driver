@@ -19,8 +19,6 @@
 # limitations under the License.
 
 
-from __future__ import division, print_function
-
 from ctypes import CDLL, Structure, c_longlong, c_long, byref
 from platform import uname
 

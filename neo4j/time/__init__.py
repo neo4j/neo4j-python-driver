@@ -23,8 +23,6 @@
 a number of utility functions.
 """
 
-from __future__ import division, print_function
-
 from datetime import timedelta, date, time, datetime
 from functools import total_ordering
 from re import compile as re_compile
