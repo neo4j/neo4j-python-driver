@@ -21,10 +21,10 @@
 
 from datetime import time, datetime, timedelta
 
-from neo4j.time import Duration, Date, Time, DateTime
 from pytz import FixedOffset, timezone, utc
 
-from neo4j.packstream import Structure
+from neo4j.data import Structure
+from neo4j.time import Duration, Date, Time, DateTime
 
 
 UNIX_EPOCH_DATE = Date(1970, 1, 1)

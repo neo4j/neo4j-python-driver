@@ -25,7 +25,7 @@ from unittest import SkipTest
 from neo4j.exceptions import CypherError, CypherSyntaxError
 from neo4j.graph import Node, Relationship, Path
 from neo4j.pipelining import PullOrderException
-from neo4j.packstream import Structure
+from neo4j.data import Structure
 
 from tests.integration.tools import DirectIntegrationTestCase
 

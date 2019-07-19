@@ -21,9 +21,9 @@
 
 from unittest import TestCase
 
-from neo4j.data import Hydrator
+from neo4j.data.hydration import DataHydrator
 from neo4j.graph import Node, Path, Graph
-from neo4j.packstream import Structure
+from neo4j.data import Structure
 
 
 class NodeTestCase(TestCase):
@@ -160,7 +160,7 @@ class PathTestCase(TestCase):
 class HydrationTestCase(TestCase):
 
     def setUp(self):
-        self.hydrant = Hydrator()
+        self.hydrant = DataHydrator()
 
     def test_can_hydrate_node_structure(self):
         struct = Structure(b'N', 123, ["Person"], {"name": "Alice"})

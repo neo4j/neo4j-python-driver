@@ -53,7 +53,7 @@ from neo4j.bolt.exceptions import ClientError, ProtocolError, SecurityError, \
     ForbiddenOnReadOnlyDatabaseError
 from neo4j.bolt.meta import get_user_agent
 from neo4j.bolt.security import make_ssl_context
-from neo4j.packstream import Packer, UnpackableBuffer, Unpacker
+from neo4j.data.packing import Packer, UnpackableBuffer, Unpacker
 
 
 DEFAULT_PORT = 7687

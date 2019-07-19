@@ -26,7 +26,7 @@ This module defines spatial data types.
 
 from threading import Lock
 
-from neo4j.packstream import Structure
+from neo4j.data import Structure
 
 
 __all__ = [

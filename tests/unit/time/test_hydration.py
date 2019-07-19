@@ -21,14 +21,14 @@
 
 from unittest import TestCase
 
-from neo4j.data import Hydrator
-from neo4j.packstream import Structure
+from neo4j.data import Structure
+from neo4j.data.hydration import DataHydrator
 
 
 class TemporalHydrationTestCase(TestCase):
 
     def setUp(self):
-        self.hydrant = Hydrator()
+        self.hydrant = DataHydrator()
 
     def test_can_hydrate_date_time_structure(self):
         struct = Structure(b'd', 1539344261, 474716862)
