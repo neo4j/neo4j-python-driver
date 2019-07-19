@@ -40,7 +40,7 @@ __all__ = [
 
 
 from logging import getLogger
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 
 from neo4j.config import *
@@ -177,19 +177,18 @@ class DirectDriver(Driver):
     uri_schemes = ("bolt",)
 
     def __new__(cls, uri, **config):
-        from neo4j.addressing import SocketAddress
+        from neo4j.addressing import Address
         from neo4j.bolt.direct import ConnectionPool, DEFAULT_PORT, connect
         from neo4j.bolt.security import make_ssl_context
         cls._check_uri(uri)
-        if SocketAddress.parse_routing_context(uri):
-            raise ValueError("Parameters are not supported with scheme 'bolt'. Given URI: '%s'." % uri)
         instance = object.__new__(cls)
         # We keep the address containing the host name or IP address exactly
         # as-is from the original URI. This means that every new connection
         # will carry out DNS resolution, leading to the possibility that
         # the connection pool may contain multiple IP address keys, one for
         # an old address and one for a new address.
-        instance.address = SocketAddress.from_uri(uri, DEFAULT_PORT)
+        parsed = urlparse(uri)
+        instance.address = Address.parse(parsed.netloc, default_port=DEFAULT_PORT)
         if config.get("encrypted") is None:
             config["encrypted"] = False
         instance._ssl_context = make_ssl_context(**config)
@@ -225,19 +224,38 @@ class RoutingDriver(Driver):
 
     uri_schemes = ("neo4j", "bolt+routing")
 
+    @classmethod
+    def parse_routing_context(cls, uri):
+        query = urlparse(uri).query
+        if not query:
+            return {}
+
+        context = {}
+        parameters = parse_qs(query, True)
+        for key in parameters:
+            value_list = parameters[key]
+            if len(value_list) != 1:
+                raise ValueError("Duplicated query parameters with key '%s', value '%s' found in URL '%s'" % (key, value_list, uri))
+            value = value_list[0]
+            if not value:
+                raise ValueError("Invalid parameters:'%s=%s' in URI '%s'." % (key, value, uri))
+            context[key] = value
+        return context
+
     def __new__(cls, uri, **config):
-        from neo4j.addressing import SocketAddress
+        from neo4j.addressing import Address
         from neo4j.bolt.direct import DEFAULT_PORT, connect
         from neo4j.bolt.routing import RoutingConnectionPool
         from neo4j.bolt.security import make_ssl_context
         cls._check_uri(uri)
         instance = object.__new__(cls)
-        instance.initial_address = initial_address = SocketAddress.from_uri(uri, DEFAULT_PORT)
+        parsed = urlparse(uri)
+        instance.initial_address = initial_address = Address.parse(parsed.netloc, default_port=DEFAULT_PORT)
         if config.get("encrypted") is None:
             config["encrypted"] = False
         instance._ssl_context = make_ssl_context(**config)
         instance.encrypted = instance._ssl_context is not None
-        routing_context = SocketAddress.parse_routing_context(uri)
+        routing_context = cls.parse_routing_context(uri)
 
         def connector(address, **kwargs):
             return connect(address, **dict(config, **kwargs))

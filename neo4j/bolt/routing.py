@@ -26,7 +26,7 @@ from sys import maxsize
 from threading import Lock
 from time import perf_counter
 
-from neo4j.addressing import SocketAddress
+from neo4j.addressing import Address
 from neo4j.bolt.direct import AbstractConnectionPool, DEFAULT_PORT
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 
@@ -117,7 +117,7 @@ class RoutingTable:
                 role = server["role"]
                 addresses = []
                 for address in server["addresses"]:
-                    addresses.append(SocketAddress.parse(address, DEFAULT_PORT))
+                    addresses.append(Address.parse(address, default_port=DEFAULT_PORT))
                 if role == "ROUTE":
                     routers.extend(addresses)
                 elif role == "READ":

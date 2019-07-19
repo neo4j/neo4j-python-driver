@@ -46,7 +46,7 @@ from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock, Condition
 from time import perf_counter
 
-from neo4j.addressing import SocketAddress, Resolver
+from neo4j.addressing import Address, AddressList
 from neo4j.bolt.security import make_ssl_context
 from neo4j.data.packing import Packer, UnpackableBuffer, Unpacker
 from neo4j.exceptions import ClientError, ProtocolError, SecurityError, \
@@ -344,7 +344,7 @@ class Connection:
         self.protocol_version = protocol_version
         self.unresolved_address = unresolved_address
         self.socket = sock
-        self.server = ServerInfo(SocketAddress.from_socket(sock), protocol_version)
+        self.server = ServerInfo(Address(sock.getpeername()), protocol_version)
         self.outbox = Outbox()
         self.inbox = Inbox(BufferedSocket(self.socket, 32768), on_error=self._set_defunct)
         self.packer = Packer(self.outbox)
@@ -1066,11 +1066,10 @@ def connect(address, **config):
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
     log.debug("[#0000]  C: <RESOLVE> %s", address)
-    resolver = Resolver(custom_resolver=config.get("resolver"))
-    resolver.addresses.append(address)
-    resolver.custom_resolve()
-    resolver.dns_resolve()
-    for resolved_address in resolver.addresses:
+    address_list = AddressList([address])
+    address_list.custom_resolve(config.get("resolver"))
+    address_list.dns_resolve()
+    for resolved_address in address_list:
         s = None
         try:
             host = address[0]

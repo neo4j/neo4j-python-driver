@@ -19,128 +19,161 @@
 # limitations under the License.
 
 
-from collections import namedtuple
-from socket import getaddrinfo, gaierror, SOCK_STREAM, IPPROTO_TCP
-from urllib.parse import urlparse, parse_qs
+from socket import (
+    getaddrinfo,
+    getservbyname,
+    SOCK_STREAM,
+    AF_INET,
+    AF_INET6,
+)
 
 
-VALID_IPv4_SEGMENTS = [str(i).encode("latin1") for i in range(0x100)]
-VALID_IPv6_SEGMENT_CHARS = b"0123456789abcdef"
-
-
-def is_ipv4_address(string):
-    if not isinstance(string, bytes):
-        string = str(string).encode("latin1")
-    segments = string.split(b".")
-    return len(segments) == 4 and all(segment in VALID_IPv4_SEGMENTS for segment in segments)
-
-
-def is_ipv6_address(string):
-    if not isinstance(string, bytes):
-        string = str(string).encode("latin1")
-    segments = string.lower().split(b":")
-    return 3 <= len(segments) <= 8 and all(all(c in VALID_IPv6_SEGMENT_CHARS for c in segment) for segment in segments)
-
-
-def is_ip_address(string):
-    return is_ipv4_address(string) or is_ipv6_address(string)
-
-
-IPv4SocketAddress = namedtuple("Address", ["host", "port"])
-IPv6SocketAddress = namedtuple("Address", ["host", "port", "flow_info", "scope_id"])
-
-
-class SocketAddress:
+class Address(tuple):
 
     @classmethod
     def from_socket(cls, socket):
         address = socket.getpeername()
-        if len(address) == 2:
-            return IPv4SocketAddress(*address)
-        elif len(address) == 4:
-            return IPv6SocketAddress(*address)
+        return cls(address)
+
+    @classmethod
+    def parse(cls, s, default_host=None, default_port=None):
+        if isinstance(s, str):
+            if s.startswith("["):
+                # IPv6
+                host, _, port = s[1:].rpartition("]")
+                port = port.lstrip(":")
+                try:
+                    port = int(port)
+                except (TypeError, ValueError):
+                    pass
+                return cls((host or default_host or "localhost",
+                            port or default_port or 0, 0, 0))
+            else:
+                # IPv4
+                host, _, port = s.partition(":")
+                try:
+                    port = int(port)
+                except (TypeError, ValueError):
+                    pass
+                return cls((host or default_host or "localhost",
+                            port or default_port or 0))
         else:
-            raise ValueError("Unsupported address {!r}".format(address))
+            raise TypeError("Address.parse requires a string argument")
 
-    @classmethod
-    def from_uri(cls, uri, default_port=0):
-        parsed = urlparse(uri)
-        if parsed.netloc.startswith("["):
-            return IPv6SocketAddress(parsed.hostname, parsed.port or default_port, 0, 0)
+    def __new__(cls, iterable):
+        n_parts = len(iterable)
+        if n_parts == 2:
+            inst = tuple.__new__(cls, iterable)
+            inst.family = AF_INET
+        elif n_parts == 4:
+            inst = tuple.__new__(cls, iterable)
+            inst.family = AF_INET6
         else:
-            return IPv4SocketAddress(parsed.hostname, parsed.port or default_port)
+            raise ValueError("Addresses must consist of either "
+                             "two parts (IPv4) or four parts (IPv6)")
+        return inst
 
-    @classmethod
-    def parse(cls, string, default_port=0):
-        """ Parse a string address, such as 'localhost:1234' or
-        '[::1]:7687'.
-        """
-        return cls.from_uri("//{}".format(string), default_port)
+    def __str__(self):
+        if self.family == AF_INET6:
+            return "[{}]:{}".format(*self)
+        else:
+            return "{}:{}".format(*self)
 
-    @classmethod
-    def parse_routing_context(cls, uri):
-        query = urlparse(uri).query
-        if not query:
-            return {}
+    def __repr__(self):
+        return "{}({!r})".format(self.__class__.__name__, tuple(self))
 
-        context = {}
-        parameters = parse_qs(query, True)
-        for key in parameters:
-            value_list = parameters[key]
-            if len(value_list) != 1:
-                raise ValueError("Duplicated query parameters with key '%s', value '%s' found in URL '%s'" % (key, value_list, uri))
-            value = value_list[0]
-            if not value:
-                raise ValueError("Invalid parameters:'%s=%s' in URI '%s'." % (key, value, uri))
-            context[key] = value
-        return context
+    @property
+    def host(self):
+        return self[0]
+
+    @property
+    def port(self):
+        return self[1]
+
+    @property
+    def port_number(self):
+        try:
+            return getservbyname(self[1])
+        except (OSError, TypeError):
+            # OSError: service/proto not found
+            # TypeError: getservbyname() argument 1 must be str, not X
+            try:
+                return int(self[1])
+            except (TypeError, ValueError) as e:
+                raise type(e)("Unknown port value %r" % self[1])
 
 
-class Resolver:
-    """ A Resolver instance stores a list of addresses, each in a tuple, and
-    provides methods to perform resolution on these, thereby replacing them
-    with the resolved values.
+class AddressList(list):
+    """ A list of socket addresses, each as a tuple of the format expected by
+    the built-in `socket.connect` method.
     """
 
-    def __init__(self, custom_resolver=None):
-        self.addresses = []
-        self.custom_resolver = custom_resolver
-
-    def custom_resolve(self):
-        """ If a custom resolver is defined, perform custom resolution on
-        the contained addresses.
-
-        :return:
+    @classmethod
+    def parse(cls, s, default_host=None, default_port=None):
+        """ Parse a string containing one or more socket addresses, each
+        separated by whitespace.
         """
-        if not callable(self.custom_resolver):
-            return
-        new_addresses = []
-        for address in self.addresses:
-            for new_address in self.custom_resolver(address):
-                new_addresses.append(new_address)
-        self.addresses = new_addresses
+        if isinstance(s, str):
+            return cls([Address.parse(a, default_host, default_port)
+                        for a in s.split()])
+        else:
+            raise TypeError("AddressList.parse requires a string argument")
 
-    def dns_resolve(self):
-        """ Perform DNS resolution on the contained addresses.
+    def __init__(self, iterable=None):
+        items = list(iterable or ())
+        for item in items:
+            if not isinstance(item, tuple):
+                raise TypeError("Object {!r} is not a valid address "
+                                "(tuple expected)".format(item))
+        super().__init__(items)
 
-        :return:
+    def __str__(self):
+        return " ".join(str(Address(_)) for _ in self)
+
+    def __repr__(self):
+        return "{}({!r})".format(self.__class__.__name__, list(self))
+
+    def dns_resolve(self, family=0):
+        """ Resolve all addresses into one or more resolved address tuples
+        using DNS. Each host name will resolve into one or more IP addresses,
+        limited by the given address `family` (if any). Each port value
+        (either integer or string) will resolve into an integer port value
+        (e.g. 'http' will resolve to 80).
+
+            >>> a = AddressList([("localhost", "http")])
+            >>> a.dns_resolve()
+            >>> a
+            AddressList([('::1', 80, 0, 0), ('127.0.0.1', 80)])
+
         """
-        new_addresses = []
-        for address in self.addresses:
+        resolved = []
+        for address in iter(self):
+            host = address[0]
+            port = address[1]
             try:
-                info = getaddrinfo(address[0], address[1], 0, SOCK_STREAM, IPPROTO_TCP)
-            except gaierror:
-                raise AddressError("Cannot resolve address {!r}".format(address))
+                info = getaddrinfo(host, port, family, SOCK_STREAM)
+            except OSError:
+                raise ValueError("Cannot resolve address {!r}".format(address))
             else:
-                for _, _, _, _, address in info:
+                for _, _, _, _, addr in info:
                     if len(address) == 4 and address[3] != 0:
                         # skip any IPv6 addresses with a non-zero scope id
                         # as these appear to cause problems on some platforms
                         continue
-                    new_addresses.append(address)
-        self.addresses = new_addresses
+                    if addr not in resolved:
+                        resolved.append(addr)
+        self[:] = resolved
 
+    def custom_resolve(self, resolver):
+        """ Perform custom resolution on the contained addresses using a
+        resolver function.
 
-class AddressError(Exception):
-    """ Raised when a network address is invalid.
-    """
+        :return:
+        """
+        if not callable(resolver):
+            return
+        new_addresses = []
+        for address in iter(self):
+            for new_address in resolver(address):
+                new_addresses.append(new_address)
+        self[:] = new_addresses
