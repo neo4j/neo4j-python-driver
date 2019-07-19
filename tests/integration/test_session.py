@@ -62,8 +62,6 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
         assert count == 1
 
     def test_autocommit_transactions_use_bookmarks(self):
-        if self.protocol_version() < 3:
-            raise SkipTest("Test requires Bolt v3")
         bookmarks = []
         # Generate an initial bookmark
         with self.driver.session() as session:
@@ -163,15 +161,11 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
                 _ = session.run("")
 
     def test_statement_object(self):
-        if self.protocol_version() < 3:
-            raise SkipTest("Test requires Bolt v3")
         with self.driver.session() as session:
             value = session.run(Statement("RETURN $x"), x=1).single().value()
             self.assertEqual(value, 1)
 
     def test_autocommit_transactions_should_support_metadata(self):
-        if self.protocol_version() < 3:
-            raise SkipTest("Test requires Bolt v3")
         metadata_in = {"foo": "bar"}
         with self.driver.session() as session:
             try:
@@ -186,8 +180,6 @@ class AutoCommitTransactionTestCase(DirectIntegrationTestCase):
                 self.assertEqual(metadata_in, metadata_out)
 
     def test_autocommit_transactions_should_support_timeout(self):
-        if self.protocol_version() < 3:
-            raise SkipTest("Test requires Bolt v3")
         with self.driver.session() as s1:
             s1.run("CREATE (a:Node)").consume()
             with self.driver.session() as s2:
@@ -280,16 +272,10 @@ class SummaryTestCase(DirectIntegrationTestCase):
             assert position
 
     def test_contains_time_information(self):
-        if not self.at_least_server_version(3, 1):
-            raise SkipTest("Execution times are not supported before server 3.1")
         with self.driver.session() as session:
             summary = session.run("UNWIND range(1,1000) AS n RETURN n AS number").consume()
-            if self.protocol_version() >= 3:
-                self.assertIsInstance(summary.t_first, int)
-                self.assertIsInstance(summary.t_last, int)
-            else:
-                self.assertIsInstance(summary.result_available_after, int)
-                self.assertIsInstance(summary.result_consumed_after, int)
+            self.assertIsInstance(summary.t_first, int)
+            self.assertIsInstance(summary.t_last, int)
 
 
 class ResetTestCase(DirectIntegrationTestCase):
@@ -410,8 +396,6 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
                     tx.run(Statement("RETURN 1", timeout=0.25))
 
     def test_transaction_metadata(self):
-        if self.protocol_version() < 3:
-            raise SkipTest("Test requires Bolt v3")
         with self.driver.session() as session:
             metadata_in = {"foo": "bar"}
             with session.begin_transaction(metadata=metadata_in) as tx:
@@ -427,8 +411,6 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
                     self.assertEqual(metadata_in, metadata_out)
 
     def test_transaction_timeout(self):
-        if self.protocol_version() < 3:
-            raise SkipTest("Test requires Bolt v3")
         with self.driver.session() as s1:
             s1.run("CREATE (a:Node)").consume()
             with self.driver.session() as s2:
@@ -450,17 +432,12 @@ class ExplicitTransactionTestCase(DirectIntegrationTestCase):
 class BookmarkingTestCase(DirectIntegrationTestCase):
 
     def test_can_obtain_bookmark_after_commit(self):
-        if not self.at_least_server_version(3, 1):
-            raise SkipTest("Bookmarking is not supported before server 3.1")
         with self.driver.session() as session:
             with session.begin_transaction() as tx:
                 tx.run("RETURN 1")
             assert session.last_bookmark() is not None
 
     def test_can_pass_bookmark_into_next_transaction(self):
-        if not self.at_least_server_version(3, 1):
-            raise SkipTest("Bookmarking is not supported before server 3.1")
-
         unique_id = uuid4().hex
 
         with self.driver.session(access_mode=WRITE_ACCESS) as session:
@@ -482,9 +459,6 @@ class BookmarkingTestCase(DirectIntegrationTestCase):
                 assert thing["uuid"] == unique_id
 
     def test_bookmark_should_be_none_after_rollback(self):
-        if not self.at_least_server_version(3, 1):
-            raise SkipTest("Bookmarking is not supported before server 3.1")
-
         with self.driver.session(access_mode=WRITE_ACCESS) as session:
             with session.begin_transaction() as tx:
                 tx.run("CREATE (a)")
@@ -584,7 +558,7 @@ class TransactionFunctionTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, 1)
 
     def test_read_with_arg_and_metadata(self):
-        if self.edition() != "enterprise" or self.protocol_version() < 3:
+        if self.edition() != "enterprise":
             raise SkipTest("Transaction metadata and timeout only supported "
                            "in Neo4j EE 3.5+")
 
@@ -615,7 +589,7 @@ class TransactionFunctionTestCase(DirectIntegrationTestCase):
             self.assertEqual(value, 1)
 
     def test_write_with_arg_and_metadata(self):
-        if self.edition() != "enterprise" or self.protocol_version() < 3:
+        if self.edition() != "enterprise":
             raise SkipTest("Transaction metadata and timeout only supported "
                            "in Neo4j EE 3.5+")
 

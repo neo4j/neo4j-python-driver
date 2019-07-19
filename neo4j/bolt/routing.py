@@ -29,7 +29,6 @@ from time import perf_counter
 from neo4j.addressing import SocketAddress
 from neo4j.bolt.direct import AbstractConnectionPool, DEFAULT_PORT
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
-from neo4j.versioning import Version
 
 
 READ_ACCESS = "READ"
@@ -248,14 +247,9 @@ class RoutingConnectionPool(AbstractConnectionPool):
         try:
             with self.acquire_direct(address) as cx:
                 _, _, server_version = (cx.server.agent or "").partition("/")
-                # TODO 2.0: remove old routing procedure
-                if server_version and Version.parse(server_version) >= Version((3, 2)):
-                    log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
-                    cx.run("CALL dbms.cluster.routing.getRoutingTable({context})",
-                           {"context": self.routing_context}, on_success=metadata.update, on_failure=fail)
-                else:
-                    log.debug("[#%04X]  C: <ROUTING> query={}", cx.local_port)
-                    cx.run("CALL dbms.cluster.routing.getServers", {}, on_success=metadata.update, on_failure=fail)
+                log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
+                cx.run("CALL dbms.cluster.routing.getRoutingTable({context})",
+                       {"context": self.routing_context}, on_success=metadata.update, on_failure=fail)
                 cx.pull_all(on_success=metadata.update, on_records=records.extend)
                 cx.send_all()
                 cx.fetch_all()
