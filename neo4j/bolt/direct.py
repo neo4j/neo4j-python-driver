@@ -32,7 +32,6 @@ __all__ = [
     "Connection",
     "ConnectionPool",
     "ServerInfo",
-    "connect",
 ]
 
 
@@ -48,7 +47,7 @@ from time import perf_counter
 
 from neo4j.addressing import Address, AddressList
 from neo4j.bolt.security import make_ssl_context
-from neo4j.data.packing import Packer, UnpackableBuffer, Unpacker
+from neo4j.packstream import Packer, UnpackableBuffer, Unpacker
 from neo4j.exceptions import ClientError, ProtocolError, SecurityError, \
     ServiceUnavailable, AuthError, CypherError, IncompleteCommitError, \
     ConnectionExpired, DatabaseUnavailableError, NotALeaderError, \
@@ -72,23 +71,6 @@ DEFAULT_CONNECTION_ACQUISITION_TIMEOUT = 60  # 1m
 
 # Set up logger
 log = getLogger("neobolt")
-
-
-class AuthToken:
-    """ Container for auth information
-    """
-
-    #: By default we should not send any realm
-    realm = None
-
-    def __init__(self, scheme, principal, credentials, realm=None, **parameters):
-        self.scheme = scheme
-        self.principal = principal
-        self.credentials = credentials
-        if realm:
-            self.realm = realm
-        if parameters:
-            self.parameters = parameters
 
 
 class ServerInfo:
@@ -340,6 +322,16 @@ class Connection:
     # TODO: separate errors for connector API
     Error = ServiceUnavailable
 
+    @classmethod
+    def open(cls, address, **config):
+        """ Open a new Bolt connection to a given server address.
+
+        :param address:
+        :param config:
+        :return:
+        """
+        return connect(address, **config)
+
     def __init__(self, protocol_version, unresolved_address, sock, **config):
         self.protocol_version = protocol_version
         self.unresolved_address = unresolved_address
@@ -365,7 +357,8 @@ class Connection:
         if not auth:
             self.auth_dict = {}
         elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
-            self.auth_dict = vars(AuthToken("basic", *auth))
+            from neo4j import Auth
+            self.auth_dict = vars(Auth("basic", *auth))
         else:
             try:
                 self.auth_dict = vars(auth)

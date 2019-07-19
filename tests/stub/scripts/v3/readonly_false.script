@@ -1,0 +1,10 @@
+!: BOLT 3
+!: AUTO HELLO
+!: AUTO GOODBYE
+!: AUTO RESET
+
+C: RUN "RETURN 1" {} {}
+   PULL_ALL
+S: SUCCESS {"fields": ["1"]}
+   RECORD [1]
+   SUCCESS {}

@@ -21,9 +21,9 @@
 
 from unittest import TestCase
 
-from neo4j.data.hydration import DataHydrator
+from neo4j.data import DataHydrator
 from neo4j.graph import Node, Path, Graph
-from neo4j.data import Structure
+from neo4j.packstream import Structure
 
 
 class NodeTestCase(TestCase):

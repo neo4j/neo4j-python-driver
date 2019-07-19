@@ -41,9 +41,11 @@ MIN_YEAR = 1
 MAX_YEAR = 9999
 
 
-DATE_ISO_PATTERN = re_compile(r'^(\d{4})-(\d{2})-(\d{2})$')
-TIME_ISO_PATTERN = re_compile(r'^(\d{2})(:(\d{2})(:((\d{2})(\.\d*)?))?)?(([+-])(\d{2}):(\d{2})(:((\d{2})(\.\d*)?))?)?$')
-DURATION_ISO_PATTERN = re_compile(r'^P((\d+)Y)?((\d+)M)?((\d+)D)?(T((\d+)H)?((\d+)M)?((\d+(\.\d+)?)?S)?)?$')
+DATE_ISO_PATTERN = re_compile(r"^(\d{4})-(\d{2})-(\d{2})$")
+TIME_ISO_PATTERN = re_compile(r"^(\d{2})(:(\d{2})(:((\d{2})"
+                              r"(\.\d*)?))?)?(([+-])(\d{2}):(\d{2})(:((\d{2})(\.\d*)?))?)?$")
+DURATION_ISO_PATTERN = re_compile(r"^P((\d+)Y)?((\d+)M)?((\d+)D)?"
+                                  r"(T((\d+)H)?((\d+)M)?((\d+(\.\d+)?)?S)?)?$")
 
 
 def _is_leap_year(year):
@@ -158,7 +160,8 @@ class ClockTime(tuple):
         if isinstance(other, Duration):
             if other.months or other.days:
                 raise ValueError("Cannot add Duration with months or days")
-            return ClockTime(self.seconds + other.seconds, self.nanoseconds + int(other.subseconds * 1000000000))
+            return ClockTime(self.seconds + other.seconds, self.nanoseconds +
+                             int(other.subseconds * 1000000000))
         return NotImplemented
 
     def __sub__(self, other):

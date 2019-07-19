@@ -1,0 +1,4 @@
+!: HANDSHAKE 00 00 01 00
+
+S: <SLEEP> 1
+S: <EXIT>

@@ -19,29 +19,24 @@
 # limitations under the License.
 
 
-from tests.integration.tools import IntegrationTestCase
+def test_should_run_readme(uri, auth):
+    names = set()
+    print = names.add
 
+    from neo4j import GraphDatabase
 
-class ReadmeTestCase(IntegrationTestCase):
+    driver = GraphDatabase.driver(uri, auth=auth)
 
-    def test_should_run_readme(self):
-        names = set()
-        print = names.add
+    def print_friends(tx, name):
+        for record in tx.run("MATCH (a:Person)-[:KNOWS]->(friend) "
+                             "WHERE a.name = {name} "
+                             "RETURN friend.name", name=name):
+            print(record["friend.name"])
 
-        from neo4j import GraphDatabase
+    with driver.session() as session:
+        session.run("MATCH (a) DETACH DELETE a")
+        session.run("CREATE (a:Person {name:'Alice'})-[:KNOWS]->({name:'Bob'})")
+        session.read_transaction(print_friends, "Alice")
 
-        driver = GraphDatabase.driver(self.bolt_uri, auth=self.auth)
-
-        def print_friends(tx, name):
-            for record in tx.run("MATCH (a:Person)-[:KNOWS]->(friend) "
-                                 "WHERE a.name = {name} "
-                                 "RETURN friend.name", name=name):
-                print(record["friend.name"])
-
-        with driver.session() as session:
-            session.run("MATCH (a) DETACH DELETE a")
-            session.run("CREATE (a:Person {name:'Alice'})-[:KNOWS]->({name:'Bob'})")
-            session.read_transaction(print_friends, "Alice")
-
-        assert len(names) == 1
-        assert "Bob" in names
+    assert len(names) == 1
+    assert "Bob" in names

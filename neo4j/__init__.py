@@ -36,26 +36,88 @@ __all__ = [
     "basic_auth",
     "custom_auth",
     "kerberos_auth",
+    "Agent",
+    "Auth",
+    "AuthToken",
+    "Security",
 ]
 
-
-from logging import getLogger
 from urllib.parse import urlparse, parse_qs
 
-
-from neo4j.config import *
+from neo4j._agent import *
+from neo4j.addressing import Address
+from neo4j.api import *
+from neo4j.bolt.direct import Connection, ConnectionPool, DEFAULT_PORT
+from neo4j.bolt.routing import RoutingConnectionPool
+from neo4j.bolt.security import make_ssl_context
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 from neo4j.meta import experimental, version as __version__
+
+
+# Auth
+TRUST_ON_FIRST_USE = 0  # Deprecated
+TRUST_SIGNED_CERTIFICATES = 1  # Deprecated
+TRUST_ALL_CERTIFICATES = 2
+TRUST_CUSTOM_CA_SIGNED_CERTIFICATES = 3
+TRUST_SYSTEM_CA_SIGNED_CERTIFICATES = 4
+TRUST_DEFAULT = TRUST_ALL_CERTIFICATES
+
+
+# Connection Pool Management
+INFINITE = -1
+DEFAULT_MAX_CONNECTION_LIFETIME = 3600  # 1h
+DEFAULT_MAX_CONNECTION_POOL_SIZE = 100
+DEFAULT_CONNECTION_TIMEOUT = 5.0  # 5s
+
+
+# Connection Settings
+DEFAULT_CONNECTION_ACQUISITION_TIMEOUT = 60  # 1m
+
+
+# Routing settings
+DEFAULT_MAX_RETRY_TIME = 30.0  # 30s
+
+
+LOAD_BALANCING_STRATEGY_LEAST_CONNECTED = 0
+LOAD_BALANCING_STRATEGY_ROUND_ROBIN = 1
+DEFAULT_LOAD_BALANCING_STRATEGY = LOAD_BALANCING_STRATEGY_LEAST_CONNECTED
 
 
 READ_ACCESS = "READ"
 WRITE_ACCESS = "WRITE"
 
 
+default_config = {
+    "auth": None,
+    "encrypted": None,
+    "trust": TRUST_DEFAULT,
+    "der_encoded_server_certificate": None,
+
+    "user_agent": None,
+
+    # Connection pool management
+    "max_connection_lifetime": DEFAULT_MAX_CONNECTION_LIFETIME,
+    "max_connection_pool_size": DEFAULT_MAX_CONNECTION_POOL_SIZE,
+    "connection_acquisition_timeout": DEFAULT_CONNECTION_ACQUISITION_TIMEOUT,
+
+    # Connection settings:
+    "connection_timeout": DEFAULT_CONNECTION_TIMEOUT,
+    "keep_alive": True,
+
+    # Routing settings:
+    "max_retry_time": DEFAULT_MAX_RETRY_TIME,
+    "load_balancing_strategy": DEFAULT_LOAD_BALANCING_STRATEGY,
+}
+
+
 log = getLogger("neo4j")
 
 
-class GraphDatabase:
+# For backwards compatibility
+AuthToken = Auth
+
+
+class Neo4j:
     """ Accessor for :class:`.Driver` construction.
     """
 
@@ -68,12 +130,15 @@ class GraphDatabase:
         return Driver(uri, **config)
 
 
+GraphDatabase = Neo4j
+
+
 class Driver:
     """ Base class for all types of :class:`.Driver`, instances of which are
     used as the primary access point to Neo4j.
 
     :param uri: URI for a graph database service
-    :param config: configuration and authentication details (valid keys are listed below)
+    :param config: configuration and authentication details
     """
 
     #: Overridden by subclasses to specify the URI scheme owned by that
@@ -105,6 +170,7 @@ class Driver:
         parsed = urlparse(uri)
         parsed_scheme = parsed.scheme
         for subclass in Driver.__subclasses__():
+            assert issubclass(subclass, Driver)
             if parsed_scheme in subclass.uri_schemes:
                 return subclass(uri, **config)
         raise ValueError("URI scheme %r not supported" % parsed.scheme)
@@ -177,9 +243,6 @@ class DirectDriver(Driver):
     uri_schemes = ("bolt",)
 
     def __new__(cls, uri, **config):
-        from neo4j.addressing import Address
-        from neo4j.bolt.direct import ConnectionPool, DEFAULT_PORT, connect
-        from neo4j.bolt.security import make_ssl_context
         cls._check_uri(uri)
         instance = object.__new__(cls)
         # We keep the address containing the host name or IP address exactly
@@ -188,19 +251,21 @@ class DirectDriver(Driver):
         # the connection pool may contain multiple IP address keys, one for
         # an old address and one for a new address.
         parsed = urlparse(uri)
-        instance.address = Address.parse(parsed.netloc, default_port=DEFAULT_PORT)
+        instance.address = Address.parse(parsed.netloc,
+                                         default_port=DEFAULT_PORT)
         if config.get("encrypted") is None:
             config["encrypted"] = False
         instance._ssl_context = make_ssl_context(**config)
         instance.encrypted = instance._ssl_context is not None
 
         def connector(address, **kwargs):
-            return connect(address, **dict(config, **kwargs))
+            return Connection.open(address, **dict(config, **kwargs))
 
         pool = ConnectionPool(connector, instance.address, **config)
         pool.release(pool.acquire())
         instance._pool = pool
-        instance._max_retry_time = config.get("max_retry_time", default_config["max_retry_time"])
+        instance._max_retry_time = config.get("max_retry_time",
+                                              default_config["max_retry_time"])
         return instance
 
     def session(self, **parameters):
@@ -209,6 +274,14 @@ class DirectDriver(Driver):
             parameters["max_retry_time"] = self._max_retry_time
         from neo4j.blocking import Session
         return Session(self._pool.acquire, **parameters)
+
+    def async_session(self, **parameters):
+        raise NotImplementedError("Asynchronous sessions are not implemented "
+                                  "for the %s class" % type(self).__name__)
+
+    def rx_session(self, **parameters):
+        raise NotImplementedError("Reactive sessions are not implemented "
+                                  "for the %s class" % type(self).__name__)
 
     def pipeline(self, **parameters):
         from neo4j.pipelining import Pipeline
@@ -235,22 +308,23 @@ class RoutingDriver(Driver):
         for key in parameters:
             value_list = parameters[key]
             if len(value_list) != 1:
-                raise ValueError("Duplicated query parameters with key '%s', value '%s' found in URL '%s'" % (key, value_list, uri))
+                raise ValueError("Duplicated query parameters with key '%s', "
+                                 "value '%s' found in URL '%s'" % (key,
+                                                                   value_list,
+                                                                   uri))
             value = value_list[0]
             if not value:
-                raise ValueError("Invalid parameters:'%s=%s' in URI '%s'." % (key, value, uri))
+                raise ValueError("Invalid parameters:'%s=%s' in URI "
+                                 "'%s'." % (key, value, uri))
             context[key] = value
         return context
 
     def __new__(cls, uri, **config):
-        from neo4j.addressing import Address
-        from neo4j.bolt.direct import DEFAULT_PORT, connect
-        from neo4j.bolt.routing import RoutingConnectionPool
-        from neo4j.bolt.security import make_ssl_context
         cls._check_uri(uri)
         instance = object.__new__(cls)
         parsed = urlparse(uri)
-        instance.initial_address = initial_address = Address.parse(parsed.netloc, default_port=DEFAULT_PORT)
+        instance.initial_address = initial_address = \
+            Address.parse(parsed.netloc, default_port=DEFAULT_PORT)
         if config.get("encrypted") is None:
             config["encrypted"] = False
         instance._ssl_context = make_ssl_context(**config)
@@ -258,17 +332,19 @@ class RoutingDriver(Driver):
         routing_context = cls.parse_routing_context(uri)
 
         def connector(address, **kwargs):
-            return connect(address, **dict(config, **kwargs))
+            return Connection.open(address, **dict(config, **kwargs))
 
-        pool = RoutingConnectionPool(connector, initial_address, routing_context, initial_address, **config)
+        pool = RoutingConnectionPool(connector, initial_address,
+                                     routing_context, initial_address, **config)
         try:
             pool.update_routing_table()
-        except:
+        except Exception:
             pool.close()
             raise
         else:
             instance._pool = pool
-            instance._max_retry_time = config.get("max_retry_time", default_config["max_retry_time"])
+            instance._max_retry_time = \
+                config.get("max_retry_time", default_config["max_retry_time"])
             return instance
 
     def session(self, **parameters):
@@ -278,13 +354,25 @@ class RoutingDriver(Driver):
         from neo4j.blocking import Session
         return Session(self._pool.acquire, **parameters)
 
+    def async_session(self, **parameters):
+        raise NotImplementedError("Asynchronous sessions are not implemented "
+                                  "for the %s class" % type(self).__name__)
+
+    def rx_session(self, **parameters):
+        raise NotImplementedError("Reactive sessions are not implemented "
+                                  "for the %s class" % type(self).__name__)
+
+    def pipeline(self, **parameters):
+        raise NotImplementedError("Pipelines are not implemented "
+                                  "for the %s class" % type(self).__name__)
+
 
 class DriverError(Exception):
     """ Raised when an error occurs while using a driver.
     """
 
-    def __init__(self, driver, *args, **kwargs):
-        super(DriverError, self).__init__(*args, **kwargs)
+    def __init__(self, driver, *args):
+        super(DriverError, self).__init__(*args)
         self.driver = driver
 
 
@@ -296,8 +384,7 @@ def basic_auth(user, password, realm=None):
     :param realm: specifies the authentication provider
     :return: auth token for use with :meth:`GraphDatabase.driver`
     """
-    from neo4j.bolt.direct import AuthToken
-    return AuthToken("basic", user, password, realm)
+    return Auth("basic", user, password, realm)
 
 
 def kerberos_auth(base64_encoded_ticket):
@@ -306,8 +393,7 @@ def kerberos_auth(base64_encoded_ticket):
     :param base64_encoded_ticket: a base64 encoded service ticket
     :return: an authentication token that can be used to connect to Neo4j
     """
-    from neo4j.bolt.direct import AuthToken
-    return AuthToken("kerberos", "", base64_encoded_ticket)
+    return Auth("kerberos", "", base64_encoded_ticket)
 
 
 def custom_auth(principal, credentials, realm, scheme, **parameters):
@@ -320,8 +406,7 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
     :param parameters: parameters passed along to the authentication provider
     :return: auth token for use with :meth:`GraphDatabase.driver`
     """
-    from neo4j.bolt.direct import AuthToken
-    return AuthToken(scheme, principal, credentials, realm, **parameters)
+    return Auth(scheme, principal, credentials, realm, **parameters)
 
 
 class Workspace:
@@ -335,7 +420,7 @@ class Workspace:
     def __del__(self):
         try:
             self.close()
-        except:
+        except OSError:
             pass
 
     def __enter__(self):
@@ -358,7 +443,8 @@ class Workspace:
         if self._connection:
             if sync:
                 try:
-                    self._connection.sync()
+                    self._connection.send_all()
+                    self._connection.fetch_all()
                 except (WorkspaceError, ConnectionExpired, ServiceUnavailable):
                     pass
             if self._connection:
