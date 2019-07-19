@@ -27,7 +27,7 @@ from pytz import FixedOffset, timezone, utc
 from neo4j.exceptions import CypherTypeError
 from neo4j.graph import Node, Relationship
 from neo4j.spatial import CartesianPoint, WGS84Point
-from neo4j.time import Duration, Date, Time, DateTime
+from neo4j.time import Date, Time, DateTime, Duration
 
 from tests.integration.tools import DirectIntegrationTestCase
 

@@ -364,8 +364,3 @@ class Workspace(object):
 class WorkspaceError(Exception):
 
     pass
-
-
-from neo4j.graph import *
-from neo4j.spatial import *
-from neo4j.time import *

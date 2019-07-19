@@ -25,7 +25,6 @@ from setuptools import find_packages, setup
 from neo4j.meta import package, version
 
 install_requires = [
-    "neotime~=1.7.4",
     "pytz",
 ]
 classifiers = [

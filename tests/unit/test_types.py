@@ -22,8 +22,8 @@
 from unittest import TestCase
 
 from neo4j.data import Hydrator
-from neo4j import Structure
 from neo4j.graph import Node, Path, Graph
+from neo4j.packstream import Structure
 
 
 class NodeTestCase(TestCase):
@@ -194,19 +194,3 @@ class HydrationTestCase(TestCase):
         self.assertEqual(alice.labels, {"Person"})
         self.assertEqual(set(alice.keys()), {"name"})
         self.assertEqual(alice.get("name"), "Alice")
-
-
-class TemporalHydrationTestCase(TestCase):
-
-    def setUp(self):
-        self.hydrant = Hydrator()
-
-    def test_can_hydrate_date_time_structure(self):
-        struct = Structure(b'd', 1539344261, 474716862)
-        dt, = self.hydrant.hydrate([struct])
-        self.assertEqual(dt.year, 2018)
-        self.assertEqual(dt.month, 10)
-        self.assertEqual(dt.day, 12)
-        self.assertEqual(dt.hour, 11)
-        self.assertEqual(dt.minute, 37)
-        self.assertEqual(dt.second, 41.474716862)
