@@ -21,7 +21,7 @@
 from tests.examples.base_application import BaseApplication
 
 # tag::cypher-error-import[]
-from neo4j.bolt.exceptions import ClientError
+from neo4j.exceptions import ClientError
 # end::cypher-error-import[]
 
 

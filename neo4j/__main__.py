@@ -25,9 +25,8 @@ from getpass import getpass
 from json import loads as json_loads
 from sys import stdout, stderr
 
-from neo4j.bolt.diagnostics import Watcher
-
 from neo4j import GraphDatabase
+from neo4j.debug import Watcher
 from neo4j.exceptions import CypherError
 
 

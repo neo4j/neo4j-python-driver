@@ -19,12 +19,10 @@
 # limitations under the License.
 
 
-from neo4j.bolt.exceptions import ServiceUnavailable
-from neo4j.bolt.routing import RoutingProtocolError
-
-from neo4j.exceptions import ClientError, TransientError
 from neo4j import GraphDatabase, READ_ACCESS, WRITE_ACCESS, RoutingDriver
 from neo4j.blocking import SessionExpired
+from neo4j.bolt.routing import RoutingProtocolError
+from neo4j.exceptions import ServiceUnavailable, ClientError, TransientError
 
 from tests.stub.tools import StubTestCase, StubCluster
 

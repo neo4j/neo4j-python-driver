@@ -27,7 +27,7 @@ from warnings import warn
 
 from neo4j import READ_ACCESS, WRITE_ACCESS
 from neo4j.config import default_config
-from neo4j.bolt.exceptions import (
+from neo4j.exceptions import (
     ConnectionExpired,
     CypherError,
     IncompleteCommitError,
@@ -196,8 +196,6 @@ class Session(object):
         :param kwparameters: additional keyword parameters
         :returns: :class:`.StatementResult` object
         """
-        from neo4j.bolt.exceptions import ConnectionExpired
-
         self._assert_open()
         if not statement:
             raise ValueError("Cannot run an empty statement")
@@ -272,7 +270,6 @@ class Session(object):
     def send(self):
         """ Send all outstanding requests.
         """
-        from neo4j.bolt.exceptions import ConnectionExpired
         if self._connection:
             try:
                 self._connection.send_all()
@@ -284,7 +281,6 @@ class Session(object):
 
         :returns: number of records fetched
         """
-        from neo4j.bolt.exceptions import ConnectionExpired
         if self._connection:
             try:
                 detail_count, _ = self._connection.fetch_message()
@@ -299,7 +295,6 @@ class Session(object):
 
         :returns: number of records fetched
         """
-        from neo4j.bolt.exceptions import ConnectionExpired
         if self._connection:
             try:
                 self._connection.send_all()
@@ -418,7 +413,6 @@ class Session(object):
                 self._transaction = None
 
     def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):
-        from neo4j.bolt.exceptions import ConnectionExpired, TransientError, ServiceUnavailable
 
         if not callable(unit_of_work):
             raise TypeError("Unit of work is not callable")
@@ -583,7 +577,6 @@ class Transaction(object):
 
         :raise TransactionError: if already closed
         """
-        from neo4j.bolt.exceptions import CypherError
         self._assert_open()
         try:
             self.sync()

@@ -43,8 +43,9 @@ from logging import getLogger
 from urllib.parse import urlparse
 
 
-from .config import *
-from .meta import experimental, version as __version__
+from neo4j.config import *
+from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
+from neo4j.meta import experimental, version as __version__
 
 
 READ_ACCESS = "READ"
@@ -176,7 +177,7 @@ class DirectDriver(Driver):
     uri_schemes = ("bolt",)
 
     def __new__(cls, uri, **config):
-        from neo4j.bolt.addressing import SocketAddress
+        from neo4j.addressing import SocketAddress
         from neo4j.bolt.direct import ConnectionPool, DEFAULT_PORT, connect
         from neo4j.bolt.security import make_ssl_context
         cls._check_uri(uri)
@@ -225,7 +226,7 @@ class RoutingDriver(Driver):
     uri_schemes = ("neo4j", "bolt+routing")
 
     def __new__(cls, uri, **config):
-        from neo4j.bolt.addressing import SocketAddress
+        from neo4j.addressing import SocketAddress
         from neo4j.bolt.direct import DEFAULT_PORT, connect
         from neo4j.bolt.routing import RoutingConnectionPool
         from neo4j.bolt.security import make_ssl_context
@@ -336,7 +337,6 @@ class Workspace(object):
         self._connection_access_mode = access_mode
 
     def _disconnect(self, sync):
-        from neo4j.bolt.exceptions import ConnectionExpired, ServiceUnavailable
         if self._connection:
             if sync:
                 try:

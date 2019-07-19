@@ -24,6 +24,7 @@ from threading import Thread, Lock
 from time import sleep
 
 from neo4j import Workspace
+from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 
 
 class WorkspaceError(Exception):
@@ -62,7 +63,6 @@ class Workspace(object):
         self._connection_access_mode = access_mode
 
     def _disconnect(self, sync):
-        from neo4j.bolt.exceptions import ConnectionExpired, ServiceUnavailable
         if self._connection:
             if sync:
                 try:

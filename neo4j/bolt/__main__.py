@@ -24,10 +24,10 @@ from argparse import ArgumentParser
 from json import loads as json_loads
 from sys import stdout, stderr
 
-from neo4j.bolt.addressing import SocketAddress
-from neo4j.bolt.diagnostics import Watcher
+from neo4j.addressing import SocketAddress
+from neo4j.debug import Watcher
 from neo4j.bolt.direct import connect, DEFAULT_PORT
-from neo4j.bolt.exceptions import CypherError
+from neo4j.exceptions import CypherError
 
 
 def main():

@@ -46,14 +46,14 @@ from struct import pack as struct_pack, unpack as struct_unpack
 from threading import RLock, Condition
 from time import perf_counter
 
-from neo4j.bolt.addressing import SocketAddress, Resolver
-from neo4j.bolt.exceptions import ClientError, ProtocolError, SecurityError, \
+from neo4j.addressing import SocketAddress, Resolver
+from neo4j.bolt.security import make_ssl_context
+from neo4j.data.packing import Packer, UnpackableBuffer, Unpacker
+from neo4j.exceptions import ClientError, ProtocolError, SecurityError, \
     ServiceUnavailable, AuthError, CypherError, IncompleteCommitError, \
     ConnectionExpired, DatabaseUnavailableError, NotALeaderError, \
     ForbiddenOnReadOnlyDatabaseError
-from neo4j.bolt.meta import get_user_agent
-from neo4j.bolt.security import make_ssl_context
-from neo4j.data.packing import Packer, UnpackableBuffer, Unpacker
+from neo4j.meta import get_user_agent
 
 
 DEFAULT_PORT = 7687
@@ -353,11 +353,12 @@ class Connection(object):
         self._max_connection_lifetime = config.get("max_connection_lifetime", DEFAULT_MAX_CONNECTION_LIFETIME)
         self._creation_timestamp = perf_counter()
 
-        # Determine the user agent and ensure it is a Unicode value
-        user_agent = config.get("user_agent", get_user_agent())
-        if isinstance(user_agent, bytes):
-            user_agent = user_agent.decode("UTF-8")
-        self.user_agent = user_agent
+        # Determine the user agent
+        user_agent = config.get("user_agent")
+        if user_agent:
+            self.user_agent = user_agent
+        else:
+            self.user_agent = get_user_agent()
 
         # Determine auth details
         auth = config.get("auth")

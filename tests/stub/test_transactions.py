@@ -19,9 +19,8 @@
 # limitations under the License.
 
 
-from neo4j.bolt.exceptions import ServiceUnavailable
-
 from neo4j import GraphDatabase
+from neo4j.exceptions import ServiceUnavailable
 
 from tests.stub.tools import StubTestCase, StubCluster
 

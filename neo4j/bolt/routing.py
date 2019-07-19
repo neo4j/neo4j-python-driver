@@ -26,10 +26,10 @@ from sys import maxsize
 from threading import Lock
 from time import perf_counter
 
-from neo4j.bolt.addressing import SocketAddress
+from neo4j.addressing import SocketAddress
 from neo4j.bolt.direct import AbstractConnectionPool, DEFAULT_PORT
-from neo4j.bolt.exceptions import ConnectionExpired, ServiceUnavailable
-from neo4j.bolt.versioning import Version
+from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
+from neo4j.versioning import Version
 
 
 READ_ACCESS = "READ"

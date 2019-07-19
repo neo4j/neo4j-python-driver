@@ -47,9 +47,6 @@ LOAD_BALANCING_STRATEGY_LEAST_CONNECTED = 0
 LOAD_BALANCING_STRATEGY_ROUND_ROBIN = 1
 DEFAULT_LOAD_BALANCING_STRATEGY = LOAD_BALANCING_STRATEGY_LEAST_CONNECTED
 
-# Client name
-DEFAULT_USER_AGENT = "neo4j-python/{} Python/{}.{}.{}-{}-{} ({})".format(
-    *((version,) + tuple(version_info) + (platform,)))
 
 default_config = {
     "auth": None,  # provide your own authentication token such as {"username", "password"}
@@ -57,7 +54,7 @@ default_config = {
     "trust": TRUST_DEFAULT,
     "der_encoded_server_certificate": None,
 
-    "user_agent": DEFAULT_USER_AGENT,
+    "user_agent": None,
 
     # Connection pool management
     "max_connection_lifetime": DEFAULT_MAX_CONNECTION_LIFETIME,
