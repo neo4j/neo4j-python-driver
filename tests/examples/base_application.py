@@ -21,7 +21,7 @@
 from neo4j import GraphDatabase
 
 
-class BaseApplication(object):
+class BaseApplication:
     def __init__(self, uri, user, password):
         self._driver = GraphDatabase.driver(uri, auth=(user, password), max_retry_time=0)
 

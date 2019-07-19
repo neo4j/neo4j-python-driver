@@ -24,7 +24,7 @@ from functools import reduce
 from operator import xor as xor_operator
 
 
-class Structure(object):
+class Structure:
 
     def __init__(self, tag, *fields):
         self.tag = tag

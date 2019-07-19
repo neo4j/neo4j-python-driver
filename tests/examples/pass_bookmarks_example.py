@@ -24,7 +24,7 @@ from neo4j import GraphDatabase
 
 
 # tag::pass-bookmarks[]
-class BookmarksExample(object):
+class BookmarksExample:
 
     def __init__(self, uri, user, password):
         self._driver = GraphDatabase.driver(uri, auth=(user, password))

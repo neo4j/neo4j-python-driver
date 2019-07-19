@@ -49,7 +49,7 @@ class StubServer(Thread):
         check_call(["bolt", "stub", "-t", "3", "-l", ":{}".format(self.port), self.script])
 
 
-class StubCluster(object):
+class StubCluster:
 
     def __init__(self, servers):
         self.servers = {port: StubServer(port, script) for port, script in dict(servers).items()}

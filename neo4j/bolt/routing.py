@@ -97,7 +97,7 @@ class OrderedSet(MutableSet):
         e.update(OrderedDict.fromkeys(elements))
 
 
-class RoutingTable(object):
+class RoutingTable:
 
     timer = perf_counter
 
@@ -173,7 +173,7 @@ class RoutingTable(object):
         return set(self.routers) | set(self.writers) | set(self.readers)
 
 
-class LeastConnectedLoadBalancingStrategy(object):
+class LeastConnectedLoadBalancingStrategy:
 
     def __init__(self, connection_pool):
         self._readers_offset = 0

@@ -48,7 +48,7 @@ INT64_MAX = 2 ** 63
 EndOfStream = object()
 
 
-class Packer(object):
+class Packer:
 
     def __init__(self, stream):
         self.stream = stream
@@ -347,7 +347,7 @@ class Packer(object):
         self._write(b"\xDF")
 
 
-class Unpacker(object):
+class Unpacker:
 
     def __init__(self, unpackable):
         self.unpackable = unpackable
@@ -550,7 +550,7 @@ class Unpacker(object):
             raise ValueError("Expected structure, found marker %02X" % marker)
 
 
-class UnpackableBuffer(object):
+class UnpackableBuffer:
 
     initial_capacity = 8192
 

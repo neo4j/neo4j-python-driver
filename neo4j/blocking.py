@@ -50,7 +50,7 @@ STATEMENT_TYPE_SCHEMA_WRITE = "s"
 log = getLogger("neo4j")
 
 
-class Session(object):
+class Session:
     """ A :class:`.Session` is a logical context for transactional units
     of work. Connections are drawn from the :class:`.Driver` connection
     pool as required.
@@ -473,7 +473,7 @@ class Session(object):
             raise SessionError("Session closed")
 
 
-class Transaction(object):
+class Transaction:
     """ Container for multiple Cypher queries to be executed within
     a single context. Transactions can be used within a :py:const:`with`
     block where the value of :attr:`.success` will determine whether
@@ -603,7 +603,7 @@ class Transaction(object):
             raise TransactionError("Transaction closed")
 
 
-class Statement(object):
+class Statement:
 
     def __init__(self, text, metadata=None, timeout=None):
         self.text = text
@@ -633,7 +633,7 @@ def fix_parameters(parameters):
         return dehydrated
 
 
-class StatementResult(object):
+class StatementResult:
     """ A handler for the result of Cypher statement execution. Instances
     of this class are typically constructed and returned by
     :meth:`.Session.run` and :meth:`.Transaction.run`.
@@ -803,7 +803,7 @@ class BoltStatementResult(StatementResult):
         return [record.data(*items) for record in self.records()]
 
 
-class BoltStatementResultSummary(object):
+class BoltStatementResultSummary:
     """ A summary of execution returned with a :class:`.StatementResult` object.
     """
 
@@ -869,7 +869,7 @@ class BoltStatementResultSummary(object):
                                                    notification["description"], notification["severity"], position))
 
 
-class SummaryCounters(object):
+class SummaryCounters:
     """ Set of statistics from a Cypher statement execution.
     """
 

@@ -55,7 +55,7 @@ WRITE_ACCESS = "WRITE"
 log = getLogger("neo4j")
 
 
-class GraphDatabase(object):
+class GraphDatabase:
     """ Accessor for :class:`.Driver` construction.
     """
 
@@ -68,7 +68,7 @@ class GraphDatabase(object):
         return Driver(uri, **config)
 
 
-class Driver(object):
+class Driver:
     """ Base class for all types of :class:`.Driver`, instances of which are
     used as the primary access point to Neo4j.
 
@@ -306,7 +306,7 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
     return AuthToken(scheme, principal, credentials, realm, **parameters)
 
 
-class Workspace(object):
+class Workspace:
 
     def __init__(self, acquirer, **parameters):
         self._acquirer = acquirer

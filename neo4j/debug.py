@@ -43,7 +43,7 @@ class ColourFormatter(Formatter):
             return s
 
 
-class Watcher(object):
+class Watcher:
     """ Log watcher for monitoring driver and protocol activity.
     """
 

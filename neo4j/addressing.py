@@ -50,7 +50,7 @@ IPv4SocketAddress = namedtuple("Address", ["host", "port"])
 IPv6SocketAddress = namedtuple("Address", ["host", "port", "flow_info", "scope_id"])
 
 
-class SocketAddress(object):
+class SocketAddress:
 
     @classmethod
     def from_socket(cls, socket):
@@ -96,7 +96,7 @@ class SocketAddress(object):
         return context
 
 
-class Resolver(object):
+class Resolver:
     """ A Resolver instance stores a list of addresses, each in a tuple, and
     provides methods to perform resolution on these, thereby replacing them
     with the resolved values.

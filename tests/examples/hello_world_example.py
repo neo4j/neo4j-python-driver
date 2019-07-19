@@ -24,7 +24,7 @@ from neo4j import GraphDatabase
 
 
 # tag::hello-world[]
-class HelloWorldExample(object):
+class HelloWorldExample:
 
     def __init__(self, uri, user, password):
         self._driver = GraphDatabase.driver(uri, auth=(user, password))

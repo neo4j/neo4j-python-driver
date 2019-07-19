@@ -74,7 +74,7 @@ DEFAULT_CONNECTION_ACQUISITION_TIMEOUT = 60  # 1m
 log = getLogger("neobolt")
 
 
-class AuthToken(object):
+class AuthToken:
     """ Container for auth information
     """
 
@@ -91,7 +91,7 @@ class AuthToken(object):
             self.parameters = parameters
 
 
-class ServerInfo(object):
+class ServerInfo:
 
     address = None
 
@@ -117,7 +117,7 @@ class ServerInfo(object):
         return tuple(value)
 
 
-class Outbox(object):
+class Outbox:
 
     def __init__(self, capacity=8192, max_chunk_size=16384):
         self._max_chunk_size = max_chunk_size
@@ -169,7 +169,7 @@ class Outbox(object):
             return memoryview(self._data[:end])
 
 
-class BufferedSocket(object):
+class BufferedSocket:
     """ Wrapper for a regular socket, with an added a dynamically-resizing
     receive buffer to reduce the number of calls to recv.
 
@@ -259,7 +259,7 @@ class BufferedSocket(object):
         return n_bytes
 
 
-class Inbox(object):
+class Inbox:
 
     def __init__(self, s, on_error):
         super(Inbox, self).__init__()
@@ -311,7 +311,7 @@ class Inbox(object):
             self.on_error(error)
 
 
-class Connection(object):
+class Connection:
     """ Server connection for Bolt protocol v1.
 
     A :class:`.Connection` should be constructed following a
@@ -667,7 +667,7 @@ class Connection(object):
         return self._defunct
 
 
-class AbstractConnectionPool(object):
+class AbstractConnectionPool:
     """ A collection of connections to one or more server addresses.
     """
 
@@ -828,7 +828,7 @@ class ConnectionPool(AbstractConnectionPool):
         return self.acquire_direct(self.address)
 
 
-class Response(object):
+class Response:
     """ Subscriber object for a full response (zero or
     more detail messages followed by one summary message).
     """

@@ -184,7 +184,7 @@ class ClockTime(tuple):
         return self[1]
 
 
-class Clock(object):
+class Clock:
     """ Accessor for time values. This class is fulfilled by implementations
     that subclass :class:`.Clock`. These implementations are contained within
     the ``neotime.clock_implementations`` module, and are not intended to be

@@ -37,7 +37,7 @@ from neo4j.time.hydration import (
 map_type = type(map(str, range(0)))
 
 
-class DataHydrator(object):
+class DataHydrator:
 
     def __init__(self):
         super(DataHydrator, self).__init__()
@@ -87,7 +87,7 @@ class DataHydrator(object):
             yield Record(zip(keys, self.hydrate(values)))
 
 
-class DataDehydrator(object):
+class DataDehydrator:
 
     def __init__(self):
         self.dehydration_functions = {}

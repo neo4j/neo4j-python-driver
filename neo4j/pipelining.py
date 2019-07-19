@@ -32,7 +32,7 @@ class WorkspaceError(Exception):
     pass
 
 
-class Workspace(object):
+class Workspace:
 
     def __init__(self, acquirer, **parameters):
         self._acquirer = acquirer

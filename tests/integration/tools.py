@@ -65,7 +65,7 @@ def is_listening(address):
         return True
 
 
-class ServerVersion(object):
+class ServerVersion:
     def __init__(self, product, version_tuple, tags_tuple):
         self.product = product
         self.version_tuple = version_tuple

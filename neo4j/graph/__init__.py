@@ -34,7 +34,7 @@ __all__ = [
 ]
 
 
-class Graph(object):
+class Graph:
     """ Local, self-contained graph object that acts as a container for
     :class:`.Node` and :class:`.Relationship` instances.
     """
@@ -68,7 +68,7 @@ class Graph(object):
             cls = self._relationship_types[name] = type(str(name), (Relationship,), {})
         return cls
 
-    class Hydrator(object):
+    class Hydrator:
 
         def __init__(self, graph):
             self.graph = graph
@@ -261,7 +261,7 @@ class Relationship(Entity):
         return type(self).__name__
 
 
-class Path(object):
+class Path:
     """ Self-contained graph path.
     """
 
