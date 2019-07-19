@@ -28,13 +28,6 @@ from functools import total_ordering
 from re import compile as re_compile
 from time import gmtime, mktime, struct_time
 
-
-try:
-    from six import with_metaclass
-except ImportError:
-    def with_metaclass(*_):
-        return object
-
 from neo4j.time.arithmetic import (nano_add, nano_sub, nano_mul, nano_div,
                                    nano_mod, nano_divmod,
                                    symmetric_divmod, round_half_to_even)
@@ -203,7 +196,7 @@ class Clock(object):
         >>> clock = Clock()
         >>> type(clock)                                         # doctest: +SKIP
         neotime.clock_implementations.LibCClock
-    >>> clock.local_time()                                      # doctest: +SKIP
+        >>> clock.local_time()                                  # doctest: +SKIP
         ClockTime(seconds=1525265942, nanoseconds=506844026)
 
     """
@@ -457,7 +450,7 @@ Duration.min = Duration(months=MIN_INT64, days=MIN_INT64, seconds=MIN_INT64, sub
 Duration.max = Duration(months=MAX_INT64, days=MAX_INT64, seconds=MAX_INT64, subseconds=+0.999999999)
 
 
-class Date(with_metaclass(DateType, object)):
+class Date(metaclass=DateType):
     """
 
     0xxxxxxx xxxxxxxx           -- Date(1970-01-01..2059-09-18) -- 719163..
@@ -854,7 +847,7 @@ Date.resolution = Duration(days=1)
 ZeroDate = object.__new__(Date)
 
 
-class Time(with_metaclass(TimeType, object)):
+class Time(metaclass=TimeType):
     """ Time of day.
     """
 
@@ -1150,7 +1143,7 @@ Midday = Time(12, 0, 0)
 
 
 @total_ordering
-class DateTime(with_metaclass(DateTimeType, object)):
+class DateTime(metaclass=DateTimeType):
     """ Regular construction of a :class:`.DateTime` object requires at
     least the `year`, `month` and `day` arguments to be supplied. The
     optional `hour`, `minute` and `second` arguments default to zero and
