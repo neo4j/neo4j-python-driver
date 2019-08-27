@@ -1,7 +1,6 @@
 !: BOLT 3
 !: AUTO HELLO
 !: AUTO GOODBYE
-!: AUTO RESET
 
 C: BEGIN {}
 S: SUCCESS {}
@@ -12,7 +11,4 @@ S: FAILURE {"code": "Neo.TransientError.Transaction.LockClientStopped", "message
    IGNORED {}
 
 C: RESET
-S: SUCCESS {}
-
-C: ROLLBACK
 S: SUCCESS {}

@@ -46,9 +46,13 @@ class StubServer(Thread):
         super(StubServer, self).__init__()
         self.port = port
         self.script = path_join(dirname(__file__), "scripts", script)
+        self.exception = None
 
     def run(self):
-        check_call(["bolt", "stub", "-t", "10", "-l", ":{}".format(self.port), self.script])
+        try:
+            check_call(["bolt", "stub", "-v", "-t", "10", "-l", ":{}".format(self.port), self.script])
+        except Exception as e:
+            self.exception = e
 
 
 class StubCluster:
@@ -68,8 +72,10 @@ class StubCluster:
         sleep(0.5)
 
     def wait(self):
-        for port, server in self.servers.items():
+        for _, server in self.servers.items():
             server.join()
+            if server.exception:
+                raise server.exception
 
 
 @fixture

@@ -171,7 +171,7 @@ class AccessLevelTestCase(StubTestCase):
 
     def test_no_retry_read_on_user_canceled_tx(self):
         with StubCluster({9001: "v3/router.script",
-                          9004: "v3/user_canceled_tx.script.script"}):
+                          9004: "v3/user_canceled_tx.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
@@ -182,7 +182,7 @@ class AccessLevelTestCase(StubTestCase):
                         _ = session.read_transaction(unit_of_work)
 
     def test_no_retry_write_on_user_canceled_tx(self):
-        with StubCluster({9001: "v3/router.script", 9006: "v3/user_canceled_tx.script.script"}):
+        with StubCluster({9001: "v3/router.script", 9006: "v3/user_canceled_tx.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
                 with driver.session() as session:
