@@ -24,7 +24,7 @@ from neo4j.blocking import SessionExpired
 from neo4j.bolt.routing import RoutingProtocolError
 from neo4j.exceptions import ServiceUnavailable, ClientError, TransientError
 
-from tests.stub.tools import StubTestCase, StubCluster
+from tests.stub.conftest import StubTestCase, StubCluster
 
 
 class RoutingDriverTestCase(StubTestCase):

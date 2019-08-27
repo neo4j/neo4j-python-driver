@@ -33,11 +33,15 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Database",
     "Topic :: Software Development",
-    "Programming Language :: Python :: 3.5",
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
 ]
+entry_points = {
+    "console_scripts": [
+        "pybolt = neo4j.bolt.__main__:main",
+    ],
+}
 packages = find_packages(exclude=["tests"])
 readme = open(path_join(dirname(__file__), "README.rst")).read()
 setup_args = {
@@ -53,6 +57,7 @@ setup_args = {
     "install_requires": install_requires,
     "classifiers": classifiers,
     "packages": packages,
+    "entry_points": entry_points,
 }
 
 setup(**setup_args)

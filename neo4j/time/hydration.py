@@ -23,7 +23,7 @@ from datetime import time, datetime, timedelta
 
 from pytz import FixedOffset, timezone, utc
 
-from neo4j.data import Structure
+from neo4j.packstream import Structure
 from neo4j.time import Duration, Date, Time, DateTime
 
 

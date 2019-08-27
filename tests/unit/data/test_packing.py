@@ -26,8 +26,9 @@ from math import pi
 from unittest import TestCase
 from uuid import uuid4
 
-from neo4j.data import Structure
-from neo4j.data.packing import Packer, UnpackableBuffer, Unpacker
+from pytest import raises
+
+from neo4j.packstream import Packer, UnpackableBuffer, Unpacker, Structure
 
 
 class PackStreamTestCase(TestCase):
@@ -110,6 +111,14 @@ class PackStreamTestCase(TestCase):
             expected = b"\xCB" + struct.pack(">q", z)
             self.assert_packable(z, expected)
 
+    def test_integer_positive_overflow(self):
+        with raises(OverflowError):
+            self.packb(2 ** 63 + 1)
+
+    def test_integer_negative_overflow(self):
+        with raises(OverflowError):
+            self.packb(-(2 ** 63) - 1)
+
     def test_zero_float64(self):
         zero = 0.0
         expected = b"\xC1" + struct.pack(">d", zero)
@@ -133,6 +142,9 @@ class PackStreamTestCase(TestCase):
             self.assert_packable(r, expected)
 
     def test_empty_bytes(self):
+        self.assert_packable(b"", b"\xCC\x00")
+
+    def test_empty_bytearray(self):
         self.assert_packable(bytearray(), b"\xCC\x00")
 
     def test_bytes_8(self):
@@ -146,11 +158,18 @@ class PackStreamTestCase(TestCase):
         b = bytearray(80000)
         self.assert_packable(b, b"\xCE\x00\x01\x38\x80" + b)
 
+    def test_bytearray_size_overflow(self):
+        stream_out = BytesIO()
+        packer = Packer(stream_out)
+        with raises(OverflowError):
+            packer.pack_bytes_header(2 ** 32)
+
     def test_empty_string(self):
         self.assert_packable(u"", b"\x80")
 
-    def test_tiny_string(self):
-        self.assert_packable(u"hello", b"\x85hello")
+    def test_tiny_strings(self):
+        for size in range(0x10):
+            self.assert_packable(u"A" * size, bytes(bytearray([0x80 + size]) + (b"A" * size)))
 
     def test_string_8(self):
         t = u"A" * 40
@@ -172,11 +191,19 @@ class PackStreamTestCase(TestCase):
         b = t.encode("utf-8")
         self.assert_packable(t, bytes(bytearray([0x80 + len(b)])) + b)
 
+    def test_string_size_overflow(self):
+        stream_out = BytesIO()
+        packer = Packer(stream_out)
+        with raises(OverflowError):
+            packer.pack_string_header(2 ** 32)
+
     def test_empty_list(self):
         self.assert_packable([], b"\x90")
 
-    def test_tiny_list(self):
-        self.assert_packable([1, 2, 3], b"\x93\x01\x02\x03")
+    def test_tiny_lists(self):
+        for size in range(0x10):
+            data_out = bytearray([0x90 + size]) + bytearray([1] * size)
+            self.assert_packable([1] * size, bytes(data_out))
 
     def test_list_8(self):
         l = [1] * 40
@@ -216,12 +243,23 @@ class PackStreamTestCase(TestCase):
             raise AssertionError("Unpacked value %r is not equal to expected %r" %
                                  (unpacked, unpacked_value))
 
+    def test_list_size_overflow(self):
+        stream_out = BytesIO()
+        packer = Packer(stream_out)
+        with raises(OverflowError):
+            packer.pack_list_header(2 ** 32)
+
     def test_empty_map(self):
         self.assert_packable({}, b"\xA0")
 
-    def test_tiny_map(self):
-        d = OrderedDict([(u"A", 1), (u"B", 2)])
-        self.assert_packable(d, b"\xA2\x81A\x01\x81B\x02")
+    def test_tiny_maps(self):
+        for size in range(0x10):
+            data_in = OrderedDict()
+            data_out = bytearray([0xA0 + size])
+            for el in range(1, size + 1):
+                data_in[chr(64 + el)] = el
+                data_out += bytearray([0x81, 64 + el, el])
+            self.assert_packable(data_in, bytes(data_out))
 
     def test_map_8(self):
         d = OrderedDict([(u"A%s" % i, 1) for i in range(40)])
@@ -262,6 +300,12 @@ class PackStreamTestCase(TestCase):
             raise AssertionError("Unpacked value %r is not equal to expected %r" %
                                  (unpacked, unpacked_value))
 
+    def test_map_size_overflow(self):
+        stream_out = BytesIO()
+        packer = Packer(stream_out)
+        with raises(OverflowError):
+            packer.pack_map_header(2 ** 32)
+
     def test_illegal_signature(self):
         with self.assertRaises(ValueError):
             self.assert_packable(Structure(b"XXX"), b"\xB0XXX")
@@ -269,8 +313,17 @@ class PackStreamTestCase(TestCase):
     def test_empty_struct(self):
         self.assert_packable(Structure(b"X"), b"\xB0X")
 
-    def test_tiny_struct(self):
-        self.assert_packable(Structure(b"Z", u"A", 1), b"\xB2Z\x81A\x01")
+    def test_tiny_structs(self):
+        for size in range(0x10):
+            fields = [1] * size
+            data_in = Structure(b"A", *fields)
+            data_out = bytearray([0xB0 + size, 0x41] + fields)
+            self.assert_packable(data_in, bytes(data_out))
+
+    def test_struct_size_overflow(self):
+        with raises(OverflowError):
+            fields = [1] * 16
+            self.packb(Structure(b"X", *fields))
 
     def test_illegal_uuid(self):
         with self.assertRaises(ValueError):

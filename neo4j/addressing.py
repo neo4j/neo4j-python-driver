@@ -37,47 +37,51 @@ class Address(tuple):
 
     @classmethod
     def parse(cls, s, default_host=None, default_port=None):
-        if isinstance(s, str):
-            if s.startswith("["):
-                # IPv6
-                host, _, port = s[1:].rpartition("]")
-                port = port.lstrip(":")
-                try:
-                    port = int(port)
-                except (TypeError, ValueError):
-                    pass
-                return cls((host or default_host or "localhost",
-                            port or default_port or 0, 0, 0))
-            else:
-                # IPv4
-                host, _, port = s.partition(":")
-                try:
-                    port = int(port)
-                except (TypeError, ValueError):
-                    pass
-                return cls((host or default_host or "localhost",
-                            port or default_port or 0))
-        else:
+        if not isinstance(s, str):
             raise TypeError("Address.parse requires a string argument")
+        if s.startswith("["):
+            # IPv6
+            host, _, port = s[1:].rpartition("]")
+            port = port.lstrip(":")
+            try:
+                port = int(port)
+            except (TypeError, ValueError):
+                pass
+            return cls((host or default_host or "localhost",
+                        port or default_port or 0, 0, 0))
+        else:
+            # IPv4
+            host, _, port = s.partition(":")
+            try:
+                port = int(port)
+            except (TypeError, ValueError):
+                pass
+            return cls((host or default_host or "localhost",
+                        port or default_port or 0))
+
+    @classmethod
+    def parse_list(cls, s, default_host=None, default_port=None):
+        """ Parse a string containing one or more socket addresses, each
+        separated by whitespace.
+        """
+        if not isinstance(s, str):
+            raise TypeError("Address.parse_list requires a string argument")
+        return [Address.parse(a, default_host, default_port) for a in s.split()]
 
     def __new__(cls, iterable):
         n_parts = len(iterable)
+        inst = tuple.__new__(cls, iterable)
         if n_parts == 2:
-            inst = tuple.__new__(cls, iterable)
-            inst.family = AF_INET
+            inst.__class__ = IPv4Address
         elif n_parts == 4:
-            inst = tuple.__new__(cls, iterable)
-            inst.family = AF_INET6
+            inst.__class__ = IPv6Address
         else:
             raise ValueError("Addresses must consist of either "
                              "two parts (IPv4) or four parts (IPv6)")
         return inst
 
-    def __str__(self):
-        if self.family == AF_INET6:
-            return "[{}]:{}".format(*self)
-        else:
-            return "{}:{}".format(*self)
+    #: Address family (AF_INET or AF_INET6)
+    family = None
 
     def __repr__(self):
         return "{}({!r})".format(self.__class__.__name__, tuple(self))
@@ -89,6 +93,23 @@ class Address(tuple):
     @property
     def port(self):
         return self[1]
+
+    def resolve(self, family=0):
+        # TODO: custom resolver argument
+        try:
+            info = getaddrinfo(self.host, self.port, family, SOCK_STREAM)
+        except OSError:
+            raise ValueError("Cannot resolve address {}".format(self))
+        else:
+            resolved = []
+            for fam, _, _, _, addr in info:
+                if fam == AF_INET6 and addr[3] != 0:
+                    # skip any IPv6 addresses with a non-zero scope id
+                    # as these appear to cause problems on some platforms
+                    continue
+                if addr not in resolved:
+                    resolved.append(Address(addr))
+            return resolved
 
     @property
     def port_number(self):
@@ -103,6 +124,23 @@ class Address(tuple):
                 raise type(e)("Unknown port value %r" % self[1])
 
 
+class IPv4Address(Address):
+
+    family = AF_INET
+
+    def __str__(self):
+        return "{}:{}".format(*self)
+
+
+class IPv6Address(Address):
+
+    family = AF_INET6
+
+    def __str__(self):
+        return "[{}]:{}".format(*self)
+
+
+# TODO: deprecate
 class AddressList(list):
     """ A list of socket addresses, each as a tuple of the format expected by
     the built-in `socket.connect` method.
@@ -120,12 +158,7 @@ class AddressList(list):
             raise TypeError("AddressList.parse requires a string argument")
 
     def __init__(self, iterable=None):
-        items = list(iterable or ())
-        for item in items:
-            if not isinstance(item, tuple):
-                raise TypeError("Object {!r} is not a valid address "
-                                "(tuple expected)".format(item))
-        super().__init__(items)
+        super().__init__(map(Address, iterable or ()))
 
     def __str__(self):
         return " ".join(str(Address(_)) for _ in self)

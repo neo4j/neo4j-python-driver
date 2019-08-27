@@ -25,8 +25,8 @@ from random import random
 from time import perf_counter, sleep
 from warnings import warn
 
-from neo4j import READ_ACCESS, WRITE_ACCESS
-from neo4j.config import default_config
+from neo4j import READ_ACCESS, WRITE_ACCESS, default_config
+from neo4j.data import DataHydrator, DataDehydrator
 from neo4j.exceptions import (
     ConnectionExpired,
     CypherError,
@@ -34,7 +34,6 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     TransientError,
 )
-from neo4j.data.hydration import DataHydrator, DataDehydrator
 
 
 INITIAL_RETRY_DELAY = 1.0

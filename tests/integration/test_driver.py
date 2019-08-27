@@ -19,44 +19,58 @@
 # limitations under the License.
 
 
-from neo4j.bolt.direct import DEFAULT_PORT
+from pytest import raises
 
-from neo4j import GraphDatabase, Driver
-from neo4j.exceptions import ServiceUnavailable
-
-from tests.integration.tools import IntegrationTestCase
+from neo4j import Driver, TRUST_CUSTOM_CA_SIGNED_CERTIFICATES
+from neo4j.exceptions import ServiceUnavailable, AuthError
 
 
-class DriverTestCase(IntegrationTestCase):
+def test_normal_use_case(driver):
+    session = driver.session()
+    value = session.run("RETURN 1").single().value()
+    assert value == 1
 
-    def test_must_use_valid_url_scheme(self):
-        with self.assertRaises(ValueError):
-            GraphDatabase.driver("x://xxx", auth=self.auth)
 
-    def test_connections_are_reused(self):
-        with GraphDatabase.driver(self.bolt_uri, auth=self.auth) as driver:
-            session_1 = driver.session()
-            connection_1 = session_1._connection
-            session_1.close()
-            session_2 = driver.session()
-            connection_2 = session_2._connection
-            session_2.close()
-            assert connection_1 is connection_2
+def test_invalid_url_scheme(service):
+    address = service.addresses[0]
+    uri = "x://{}:{}".format(address[0], address[1])
+    with raises(ValueError):
+        _ = Driver(uri, auth=service.auth)
 
-    def test_fail_nicely_when_using_http_port(self):
-        uri = "bolt://localhost:7474"
-        with self.assertRaises(ServiceUnavailable):
-            with GraphDatabase.driver(uri, auth=self.auth, encrypted=False):
-                pass
 
-    def test_custom_resolver(self):
+def test_fail_nicely_when_using_http_port(service):
+    address = service.addresses[0]
+    uri = "bolt://{}:7474".format(address[0])
+    with raises(ServiceUnavailable):
+        _ = Driver(uri, auth=service.auth, encrypted=False)
 
-        def my_resolver(socket_address):
-            self.assertEqual(socket_address, ("*", DEFAULT_PORT))
-            yield "99.99.99.99", self.bolt_port     # this should be rejected as unable to connect
-            yield "127.0.0.1", self.bolt_port       # this should succeed
 
-        with Driver("bolt://*", auth=self.auth, resolver=my_resolver) as driver:
+def test_custom_resolver(service):
+    _, port = service.addresses[0]
+
+    def my_resolver(socket_address):
+        assert socket_address == ("*", 7687)
+        yield "99.99.99.99", port     # should be rejected as unable to connect
+        yield "127.0.0.1", port       # should succeed
+
+    with Driver("bolt://*", auth=service.auth, resolver=my_resolver) as driver:
+        with driver.session() as session:
+            summary = session.run("RETURN 1").summary()
+            assert summary.server.address == ("127.0.0.1", 7687)
+
+
+def test_insecure_by_default(driver):
+    assert not driver.encrypted
+
+
+def test_custom_ca_not_implemented(uri, auth):
+    with raises(NotImplementedError):
+        _ = Driver(uri, auth=auth, encrypted=True,
+                   trust=TRUST_CUSTOM_CA_SIGNED_CERTIFICATES)
+
+
+def test_should_fail_on_incorrect_password(uri):
+    with raises(AuthError):
+        with Driver(uri, auth=("neo4j", "wrong-password")) as driver:
             with driver.session() as session:
-                summary = session.run("RETURN 1").summary()
-                self.assertEqual(summary.server.address, ("127.0.0.1", 7687))
+                _ = session.run("RETURN 1")

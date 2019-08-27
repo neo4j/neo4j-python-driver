@@ -22,7 +22,7 @@
 from collections import OrderedDict
 from unittest import TestCase
 
-from neo4j.bolt.direct import connect
+from neo4j.bolt.direct import Connection
 from neo4j.bolt.routing import READ_ACCESS, WRITE_ACCESS, OrderedSet, \
     RoutingTable, RoutingConnectionPool, RoutingProtocolError, \
     LeastConnectedLoadBalancingStrategy
@@ -53,7 +53,7 @@ INVALID_ROUTING_RECORD = {
 
 
 def connector(address, error_handler):
-    return connect(address, error_handler=error_handler, auth=("neotest", "neotest"))
+    return Connection.open(address, error_handler=error_handler, auth=("neotest", "neotest"))
 
 
 class OrderedSetTestCase(TestCase):
