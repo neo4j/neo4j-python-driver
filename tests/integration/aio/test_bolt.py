@@ -21,9 +21,8 @@
 
 from pytest import fixture, mark, raises
 
-from neo4j.api import Security
-from neo4j.bolt import Bolt
-from neo4j.bolt.error import BoltConnectionError, BoltTransactionError, ClientError
+from neo4j.aio.bolt import Bolt
+from neo4j.aio.bolt.error import BoltConnectionError, BoltTransactionError, ClientError
 
 
 @fixture

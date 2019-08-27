@@ -26,7 +26,7 @@ from os.path import basename
 from sys import argv
 
 from neo4j.addressing import Address
-from neo4j.bolt import Bolt
+from neo4j.aio.bolt import Bolt
 from neo4j.debug import watch
 
 

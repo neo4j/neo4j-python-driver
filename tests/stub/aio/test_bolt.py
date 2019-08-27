@@ -24,8 +24,8 @@ from asyncio import IncompleteReadError
 from boltkit.server.stub import BoltStubService
 from pytest import mark, raises
 
-from neo4j.bolt import Bolt
-from neo4j.bolt.error import BoltConnectionError, BoltConnectionLost, BoltHandshakeError
+from neo4j.aio.bolt import Bolt
+from neo4j.aio.bolt.error import BoltConnectionError, BoltConnectionLost, BoltHandshakeError
 
 
 @mark.asyncio

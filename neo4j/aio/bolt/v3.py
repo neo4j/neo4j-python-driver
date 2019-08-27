@@ -25,8 +25,8 @@ from logging import getLogger
 from warnings import warn
 
 from neo4j.api import Bookmark, Version
-from neo4j.bolt import Bolt, Addressable
-from neo4j.bolt.error import BoltError, BoltConnectionLost, BoltTransactionError, BoltFailure
+from neo4j.aio.bolt import Bolt, Addressable
+from neo4j.aio.bolt.error import BoltError, BoltConnectionLost, BoltTransactionError, BoltFailure
 from neo4j.data import Record
 from neo4j.packstream import PackStream, Structure
 
