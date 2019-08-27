@@ -20,7 +20,9 @@
 
 
 from collections import deque
+from inspect import iscoroutinefunction
 from logging import getLogger
+from warnings import warn
 
 from neo4j.api import Bookmark, Version
 from neo4j.bolt import Bolt, Addressable
@@ -187,6 +189,24 @@ class Result:
         header = await self.get_header()
         return header.metadata.get("fields", ())
 
+    async def single(self):
+        """ Obtain the next and only remaining record from this result.
+
+        A warning is generated if more than one record is available but
+        the first of these is still returned.
+
+        :return: the next :class:`.Record` or :const:`None` if no
+            records remain
+        :warn: if more than one record is available
+        """
+        records = [record async for record in self]
+        size = len(records)
+        if size == 0:
+            return None
+        if size != 1:
+            warn("Expected a result with a single record, but this result contains %d" % size)
+        return records[0]
+
 
 class Transaction:
 
@@ -252,17 +272,28 @@ class Transaction:
     def failure(self):
         return self._failure
 
-    async def run(self, cypher, parameters=None):
+    async def run(self, cypher, parameters=None, discard=False):
         self._assert_open()
         head = self._courier.write_run(cypher, dict(parameters or {}),
                                        self._extras if self._autocommit else {})
-        body = self._courier.write_pull_all()
+        if discard:
+            body = self._courier.write_discard_all()
+        else:
+            body = self._courier.write_pull_all()
         if self._autocommit:
             try:
                 await self._courier.send()
             finally:
                 self._closed = True
         return Result(self, head, body)
+
+    async def evaluate(self, cypher, parameters=None, key=0, default=None):
+        """ Run Cypher and return a single value (by default the first
+        value) from the first and only record.
+        """
+        result = await self.run(cypher, parameters)
+        record = await result.single()
+        return record.value(key, default)
 
     async def commit(self):
         self._assert_open()
@@ -356,8 +387,7 @@ class Courier(Addressable, object):
         log.debug("[#%04X] C: ROLLBACK", self.connection_id)
         return self._write(Structure(b"\x13"))
 
-    def write_discard_all(self):  # pragma: no cover
-        # This message is never sent by this implementation
+    def write_discard_all(self):
         log.debug("[#%04X] C: DISCARD_ALL", self.connection_id)
         return self._write(Structure(b"\x2F"))
 
@@ -483,45 +513,31 @@ class Bolt3(Bolt):
             raise BoltTransactionError("A transaction is already in progress on "
                                        "this connection", self.remote_address)
 
-    async def run(self, cypher, parameters=None, readonly=False, bookmarks=None,
-                  metadata=None, timeout=None):
+    async def run(self, cypher, parameters=None, discard=False, readonly=False,
+                  bookmarks=None, timeout=None, metadata=None):
         self._assert_ready()
         self._tx = Transaction(self._courier, readonly=readonly, bookmarks=bookmarks,
                                timeout=timeout, metadata=metadata)
-        return await self._tx.run(cypher, parameters)
+        return await self._tx.run(cypher, parameters, discard=discard)
 
     async def begin(self, readonly=False, bookmarks=None,
-                    metadata=None, timeout=None):
+                    timeout=None, metadata=None):
         self._assert_ready()
         self._tx = await Transaction.begin(self._courier, readonly=readonly, bookmarks=bookmarks,
                                            timeout=timeout, metadata=metadata)
         return self._tx
 
-    async def run_tx(self, work, readonly=False, bookmarks=None,
-                     metadata=None, timeout=None):
-        # TODO
-        #
-        pass
-        #
-        # try:
-        #     self._open_transaction(access_mode, metadata, timeout)
-        #     tx = self._transaction
-        #     try:
-        #         value = work(tx, *args, **kwargs)
-        #     except Exception:
-        #         tx.success = False
-        #         raise
-        #     else:
-        #         if tx.success is None:
-        #             tx.success = True
-        #     finally:
-        #         tx.close()
-        # except (ServiceUnavailable, SessionExpired, ConnectionExpired) as error:
-        #     errors.append(error)
-        # except TransientError as error:
-        #     if is_retriable_transient_error(error):
-        #         errors.append(error)
-        #     else:
-        #         raise
-        # else:
-        #     return value
+    async def run_tx(self, f, args=None, kwargs=None, readonly=False,
+                     bookmarks=None, timeout=None, metadata=None):
+        tx = await self.begin(readonly=readonly, bookmarks=bookmarks,
+                              timeout=None, metadata=metadata)
+        if not iscoroutinefunction(f):
+            raise TypeError("Transaction function must be awaitable")
+        try:
+            value = await f(tx, *(args or ()), **(kwargs or {}))
+        except Exception:
+            await tx.rollback()
+            raise
+        else:
+            await tx.commit()
+            return value

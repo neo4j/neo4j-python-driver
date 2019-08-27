@@ -303,33 +303,34 @@ class Bolt(Addressable, object):
         finally:
             self.__closed = True
 
-    async def run(self, cypher, parameters=None, readonly=False, bookmarks=None,
-                  metadata=None, timeout=None):
+    async def run(self, cypher, parameters=None, discard=False, readonly=False,
+                  bookmarks=None, timeout=None, metadata=None):
         """ Run an auto-commit transaction.
 
         :param cypher:
         :param parameters:
+        :param discard:
         :param readonly:
         :param bookmarks:
-        :param metadata:
         :param timeout:
+        :param metadata:
         :raise BoltTransactionError: if a transaction cannot be carried
             out at this time
         """
 
     async def begin(self, readonly=False, bookmarks=None,
-                    metadata=None, timeout=None):
+                    timeout=None, metadata=None):
         """ Begin an explicit transaction.
 
         :param readonly:
         :param bookmarks:
-        :param metadata:
         :param timeout:
+        :param metadata:
         :return:
         """
 
-    async def run_tx(self, work, readonly=False, bookmarks=None,
-                     metadata=None, timeout=None):
+    async def run_tx(self, f, args=None, kwargs=None, readonly=False,
+                     bookmarks=None, timeout=None, metadata=None):
         """ Run a transaction function and return the return value from
         that function.
         """

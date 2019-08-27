@@ -19,11 +19,18 @@
 # limitations under the License.
 
 
-from pytest import mark, raises
+from pytest import fixture, mark, raises
 
 from neo4j.api import Security
 from neo4j.bolt import Bolt
 from neo4j.bolt.error import BoltConnectionError, BoltTransactionError, ClientError
+
+
+@fixture
+async def bolt(address, auth):
+    bolt = await Bolt.open(address, auth=auth)
+    yield bolt
+    await bolt.close()
 
 
 @mark.asyncio
@@ -117,6 +124,16 @@ async def test_autocommit_transaction(address, auth):
         values.append(record[0])
     await bolt.close()
     assert values == [2, 3, 5]
+
+
+@mark.asyncio
+async def test_discarded_autocommit_transaction(address, auth):
+    bolt = await Bolt.open(address, auth=auth)
+    values = []
+    async for record in await bolt.run("UNWIND [2, 3, 5] AS n RETURN n", discard=True):
+        values.append(record[0])
+    await bolt.close()
+    assert values == []
 
 
 @mark.asyncio
@@ -262,3 +279,39 @@ async def test_cypher_error_in_explicit_transaction(address, auth):
     ok = await result2.consume()
     assert not ok
     await bolt.close()
+
+
+@mark.asyncio
+async def test_clean_transaction_function(bolt):
+
+    async def work(tx):
+        product = 1
+        async for record in await tx.run("UNWIND [2, 3, 5] AS n RETURN n"):
+            product *= record[0]
+        return product
+
+    value = await bolt.run_tx(work)
+    assert value == 30
+
+
+@mark.asyncio
+async def test_dirty_transaction_function(bolt):
+    await bolt.run("MATCH (_) DETACH DELETE _", discard=True)
+
+    created = []
+
+    async def create_nodes(tx):
+        node_id = await tx.evaluate("CREATE (a) RETURN id(a)")
+        created.append(node_id)
+        raise RuntimeError("This should trigger a rollback")
+
+    async def count_nodes(tx):
+        return await tx.evaluate("MATCH (a) WHERE id(a) = {x} "
+                                 "RETURN count(a)", {"x": created[0]})
+
+    with raises(RuntimeError):
+        _ = await bolt.run_tx(create_nodes)
+
+    assert len(created) == 1
+    matched = await bolt.run_tx(count_nodes)
+    assert matched == 0
