@@ -25,7 +25,7 @@ from boltkit.server.stub import BoltStubService
 from pytest import mark, raises
 
 from neo4j.aio.bolt import Bolt
-from neo4j.aio.bolt.error import BoltConnectionError, BoltConnectionBroken, BoltHandshakeError
+from neo4j.errors import BoltConnectionError, BoltConnectionBroken, BoltHandshakeError
 
 
 @mark.asyncio

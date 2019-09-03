@@ -27,6 +27,7 @@ from threading import Lock
 from time import perf_counter
 
 from neo4j.addressing import Address
+from neo4j.errors import BoltRoutingError
 from neo4j.bolt.direct import AbstractConnectionPool, DEFAULT_PORT
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 
@@ -106,7 +107,7 @@ class RoutingTable:
         return a new RoutingTable instance.
         """
         if len(records) != 1:
-            raise RoutingProtocolError("Expected exactly one record")
+            raise ValueError("Expected exactly one record")
         record = records[0]
         routers = []
         readers = []
@@ -126,7 +127,7 @@ class RoutingTable:
                     writers.extend(addresses)
             ttl = record["ttl"]
         except (KeyError, TypeError):
-            raise RoutingProtocolError("Cannot parse routing info")
+            raise ValueError("Cannot parse routing info")
         else:
             return cls(routers, readers, writers, ttl)
 
@@ -240,9 +241,9 @@ class RoutingConnectionPool(AbstractConnectionPool):
 
         def fail(md):
             if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
-                raise RoutingProtocolError("Server {!r} does not support routing".format(address))
+                raise BoltRoutingError("Server does not support routing", address)
             else:
-                raise RoutingProtocolError("Routing support broken on server {!r}".format(address))
+                raise BoltRoutingError("Routing support broken on server", address)
 
         try:
             with self.acquire_direct(address) as cx:
@@ -256,7 +257,7 @@ class RoutingConnectionPool(AbstractConnectionPool):
                 routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
                 log.debug("[#%04X]  S: <ROUTING> info=%r", cx.local_port, routing_info)
             return routing_info
-        except RoutingProtocolError as error:
+        except BoltRoutingError as error:
             raise ServiceUnavailable(*error.args)
         except ServiceUnavailable:
             self.deactivate(address)
@@ -276,7 +277,10 @@ class RoutingConnectionPool(AbstractConnectionPool):
             return None
 
         # Parse routing info and count the number of each type of server
-        new_routing_table = RoutingTable.parse_routing_info(new_routing_info)
+        try:
+            new_routing_table = RoutingTable.parse_routing_info(new_routing_info)
+        except ValueError as err:
+            raise BoltRoutingError("Invalid routing table", address) from err
         num_routers = len(new_routing_table.routers)
         num_readers = len(new_routing_table.readers)
         num_writers = len(new_routing_table.writers)
@@ -288,11 +292,11 @@ class RoutingConnectionPool(AbstractConnectionPool):
 
         # No routers
         if num_routers == 0:
-            raise RoutingProtocolError("No routing servers returned from server %r" % (address,))
+            raise BoltRoutingError("No routing servers returned from server", address)
 
         # No readers
         if num_readers == 0:
-            raise RoutingProtocolError("No read servers returned from server %r" % (address,))
+            raise BoltRoutingError("No read servers returned from server", address)
 
         # At least one of each is fine, so return this table
         return new_routing_table
@@ -415,8 +419,3 @@ class RoutingConnectionPool(AbstractConnectionPool):
         log.debug("[#0000]  C: <ROUTING> Removing writer %r", address)
         self.routing_table.writers.discard(address)
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
-
-
-class RoutingProtocolError(Exception):
-    """ Raised when a fault occurs with the routing protocol.
-    """

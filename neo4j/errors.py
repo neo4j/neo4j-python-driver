@@ -96,6 +96,12 @@ class BoltTransactionError(BoltError):
     # TODO: pass the transaction object in as an argument
 
 
+class BoltRoutingError(BoltError):
+    """ Raised when an unexpected scenario occurs with the Bolt routing
+    protocol layer.
+    """
+
+
 class BoltFailure(BoltError):
     """ Holds a Cypher failure.
     """

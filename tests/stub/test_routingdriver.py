@@ -20,8 +20,8 @@
 
 
 from neo4j import GraphDatabase, READ_ACCESS, WRITE_ACCESS, RoutingDriver
+from neo4j.errors import BoltRoutingError
 from neo4j.blocking import SessionExpired
-from neo4j.routing import RoutingProtocolError
 from neo4j.exceptions import ServiceUnavailable, ClientError, TransientError
 
 from tests.stub.conftest import StubTestCase, StubCluster
@@ -45,7 +45,7 @@ class RoutingDriverTestCase(StubTestCase):
     def test_cannot_discover_servers_on_silent_router(self):
         with StubCluster({9001: "v3/silent_router.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
-            with self.assertRaises(RoutingProtocolError):
+            with self.assertRaises(BoltRoutingError):
                 with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False):
                     pass
 
@@ -215,7 +215,7 @@ class RoutingDriverTestCase(StubTestCase):
     def test_should_error_when_missing_reader(self):
         with StubCluster({9001: "v3/router_no_readers.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
-            with self.assertRaises(RoutingProtocolError):
+            with self.assertRaises(BoltRoutingError):
                 GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False)
 
     def test_forgets_address_on_not_a_leader_error(self):

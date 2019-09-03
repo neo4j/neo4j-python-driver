@@ -26,7 +26,7 @@ from warnings import warn
 
 from neo4j.api import Bookmark, Version
 from neo4j.aio.bolt import Bolt, Addressable
-from neo4j.aio.bolt.error import (
+from neo4j.errors import (
     BoltError,
     BoltFailure,
     BoltConnectionBroken,
