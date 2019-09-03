@@ -26,7 +26,13 @@ from warnings import warn
 
 from neo4j.api import Bookmark, Version
 from neo4j.aio.bolt import Bolt, Addressable
-from neo4j.aio.bolt.error import BoltError, BoltConnectionLost, BoltTransactionError, BoltFailure
+from neo4j.aio.bolt.error import (
+    BoltError,
+    BoltFailure,
+    BoltConnectionBroken,
+    BoltConnectionClosed,
+    BoltTransactionError,
+)
 from neo4j.data import Record
 from neo4j.packstream import PackStream, Structure
 
@@ -346,9 +352,18 @@ class Transaction:
 class Courier(Addressable, object):
 
     def __init__(self, reader, writer):
-        self.stream = PackStream(reader, writer)
-        self.responses = deque()
-        Addressable._set_transport(self, writer.transport)
+        self._stream = PackStream(reader, writer)
+        self._requests_to_send = 0
+        self._responses = deque()
+        Addressable.set_transport(self, writer.transport)
+
+    @property
+    def requests_to_send(self):
+        return self._requests_to_send
+
+    @property
+    def responses_to_fetch(self):
+        return len(self._responses)
 
     @property
     def connection_id(self):
@@ -396,14 +411,16 @@ class Courier(Addressable, object):
         return self._write(Structure(b"\x3F"))
 
     def _write(self, message):
-        self.stream.write_message(message)
+        self._stream.write_message(message)
+        self._requests_to_send += 1
         response = Response(self)
-        self.responses.append(response)
+        self._responses.append(response)
         return response
 
     async def send(self):
         log.debug("[#%04X] C: <SEND>", self.connection_id)
-        await self.stream.drain()
+        await self._stream.drain()
+        self._requests_to_send = 0
 
     async def fetch(self, stop=lambda: None):
         """ Fetch zero or more messages, stopping when no more pending
@@ -412,14 +429,13 @@ class Courier(Addressable, object):
         exception will be raised).
 
         :param stop:
-        :param result:
         """
-        while self.responses and not stop():
+        while self.responses_to_fetch and not stop():
             fetched = await self._read()
             if isinstance(fetched, list):
-                self.responses[0].put_record(fetched)
+                self._responses[0].put_record(fetched)
             else:
-                response = self.responses.popleft()
+                response = self._responses.popleft()
                 response.put_summary(fetched)
                 if isinstance(fetched, Summary) and not fetched.success:
                     code = fetched.metadata.get("code")
@@ -427,7 +443,7 @@ class Courier(Addressable, object):
                     raise BoltFailure(message, self.remote_address, code, response)
 
     async def _read(self):
-        message = await self.stream.read_message()
+        message = await self._stream.read_message()
         if not isinstance(message, Structure):
             # TODO: log, signal defunct and close
             raise BoltError("Received illegal message "
@@ -492,13 +508,13 @@ class Bolt3(Bolt):
     async def close(self):
         if self.closed:
             return
-        self._courier.write_goodbye()
-        try:
-            await self._courier.send()
-        except BoltConnectionLost:
-            pass
-        finally:
-            await super().close()
+        if not self.broken:
+            self._courier.write_goodbye()
+            try:
+                await self._courier.send()
+            except BoltConnectionBroken:
+                pass
+        await super().close()
 
     @property
     def ready(self):
@@ -507,11 +523,27 @@ class Bolt3(Bolt):
         """
         return not self._tx or self._tx.closed
 
+    def _assert_open(self):
+        if self.closed:
+            raise BoltConnectionClosed("Connection has been closed", self.remote_address)
+        if self.broken:
+            raise BoltConnectionBroken("Connection is broken", self.remote_address)
+
     def _assert_ready(self):
+        self._assert_open()
         if not self.ready:
             # TODO: add transaction identifier
             raise BoltTransactionError("A transaction is already in progress on "
                                        "this connection", self.remote_address)
+
+    async def reset(self, force=False):
+        self._assert_open()
+        if force or not self.ready:
+            self._courier.write_reset()
+        if self._courier.requests_to_send:
+            await self._courier.send()
+        if self._courier.responses_to_fetch:
+            await self._courier.fetch()
 
     async def run(self, cypher, parameters=None, discard=False, readonly=False,
                   bookmarks=None, timeout=None, metadata=None):
@@ -529,6 +561,7 @@ class Bolt3(Bolt):
 
     async def run_tx(self, f, args=None, kwargs=None, readonly=False,
                      bookmarks=None, timeout=None, metadata=None):
+        self._assert_open()
         tx = await self.begin(readonly=readonly, bookmarks=bookmarks,
                               timeout=None, metadata=metadata)
         if not iscoroutinefunction(f):

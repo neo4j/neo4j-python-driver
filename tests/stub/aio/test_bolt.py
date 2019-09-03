@@ -25,7 +25,7 @@ from boltkit.server.stub import BoltStubService
 from pytest import mark, raises
 
 from neo4j.aio.bolt import Bolt
-from neo4j.aio.bolt.error import BoltConnectionError, BoltConnectionLost, BoltHandshakeError
+from neo4j.aio.bolt.error import BoltConnectionError, BoltConnectionBroken, BoltHandshakeError
 
 
 @mark.asyncio
@@ -88,7 +88,7 @@ async def test_unusable_value_on_handshake(script):
 @mark.asyncio
 async def test_incomplete_read_on_handshake(script):
     async with BoltStubService.load(script("v3", "incomplete_read_on_handshake.script")) as stub:
-        with raises(BoltConnectionLost) as e:
+        with raises(BoltConnectionBroken) as e:
             await Bolt.open(stub.addresses[0], auth=stub.auth)
         assert isinstance(e.value.__cause__, IncompleteReadError)
 
@@ -114,7 +114,7 @@ async def test_unsupported_old_protocol_version(script):
 @mark.asyncio
 async def test_incomplete_read_on_init(script):
     async with BoltStubService.load(script("v3", "incomplete_read_on_init.script")) as stub:
-        with raises(BoltConnectionLost) as e:
+        with raises(BoltConnectionBroken) as e:
             await Bolt.open(stub.addresses[0], auth=stub.auth)
         assert isinstance(e.value.__cause__, IncompleteReadError)
 
@@ -184,4 +184,3 @@ async def test_bad_timeout_value(script):
         with raises(TypeError):
             await bolt.run("RETURN 1", timeout=object())
         await bolt.close()
-        

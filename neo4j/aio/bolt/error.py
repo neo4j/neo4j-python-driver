@@ -65,8 +65,17 @@ class BoltSecurityError(BoltConnectionError):
         return "[{}] {}".format(self.__cause__.__class__.__name__, super().__str__())
 
 
-class BoltConnectionLost(BoltConnectionError):
-    """ Raised when an established connection is lost.
+class BoltConnectionBroken(BoltConnectionError):
+    """ Raised when an established connection is lost or when an
+    attempt is made to use a connection that has previously broken.
+    """
+
+    # TODO: add details of outstanding commits (if any), plus maybe other requests outstanding
+
+
+class BoltConnectionClosed(BoltConnectionError):
+    """ Raised when an attempt is made to use a connection that has
+    been closed locally.
     """
 
 

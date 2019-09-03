@@ -19,9 +19,11 @@
 # limitations under the License.
 
 
+from asyncio import sleep, wait, wait_for, TimeoutError
+
 from pytest import fixture, mark, raises
 
-from neo4j.aio.bolt import Bolt
+from neo4j.aio.bolt import Bolt, BoltPool
 from neo4j.aio.bolt.error import BoltConnectionError, BoltTransactionError, ClientError
 
 
@@ -30,6 +32,18 @@ async def bolt(address, auth):
     bolt = await Bolt.open(address, auth=auth)
     yield bolt
     await bolt.close()
+
+
+@fixture
+def opener(auth):
+    return Bolt.opener(auth=auth)
+
+
+@fixture
+def bolt_pool(opener, address):
+    pool = BoltPool(opener, address)
+    yield pool
+    await pool.close()
 
 
 @mark.asyncio
@@ -314,3 +328,54 @@ async def test_dirty_transaction_function(bolt):
     assert len(created) == 1
     matched = await bolt.run_tx(count_nodes)
     assert matched == 0
+
+
+@mark.asyncio
+async def test_pool_exhaustion(opener, address):
+    pool = BoltPool(opener, address, max_size=3)
+    first = await pool.acquire()
+    second = await pool.acquire()
+    third = await pool.acquire()
+    assert isinstance(first, Bolt)
+    assert isinstance(second, Bolt)
+    assert isinstance(third, Bolt)
+    with raises(TimeoutError):
+        _ = await wait_for(pool.acquire(), timeout=1)
+
+
+@mark.asyncio
+async def test_pool_reuse(opener, address):
+    pool = BoltPool(opener, address, max_size=3)
+    first = await pool.acquire()
+    second = await pool.acquire()
+    third = await pool.acquire()
+    assert first is not second and second is not third and first is not third
+    await pool.release(second)
+    fourth = await pool.acquire()
+    assert fourth is second
+
+
+@mark.asyncio
+async def test_pool_release_notifies_acquire(opener, address):
+    pool = BoltPool(opener, address, max_size=1)
+    first = await pool.acquire()
+
+    async def delayed_release():
+        await sleep(1)
+        await pool.release(first)
+
+    done, pending = await wait([
+        delayed_release(),
+        pool.acquire(),
+    ])
+    assert len(done) == 2
+    assert len(pending) == 0
+    assert pool.size == 1
+    for future in done:
+        result = future.result()
+        assert result is None or result is first
+
+
+@mark.asyncio
+async def test_default_pool_open_and_close(bolt_pool, address):
+    assert bolt_pool.address == address

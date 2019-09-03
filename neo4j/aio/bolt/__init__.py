@@ -20,27 +20,31 @@
 
 
 from asyncio import (
-    get_event_loop,
+    IncompleteReadError,
+    Semaphore,
     StreamReader,
     StreamReaderProtocol,
     StreamWriter,
-    IncompleteReadError,
+    get_event_loop,
+    wait,
 )
+from collections import deque
 from logging import getLogger
 from os import strerror
 from ssl import SSLError
 from sys import platform, version_info
-
+from time import perf_counter
 
 from neo4j.addressing import Address
-from neo4j.api import Security, Version
+from neo4j.aio.bolt._mixins import Addressable, Breakable
 from neo4j.aio.bolt.error import (
     BoltError,
     BoltConnectionError,
     BoltSecurityError,
-    BoltConnectionLost,
+    BoltConnectionBroken,
     BoltHandshakeError,
 )
+from neo4j.api import Security, Version
 from neo4j.meta import version as neo4j_version
 
 
@@ -48,25 +52,6 @@ log = getLogger("neo4j")
 
 
 MAGIC = b"\x60\x60\xB0\x17"
-
-
-class Addressable:
-    """ Mixin for providing access to local and remote address
-    properties via an asyncio.Transport object.
-    """
-
-    __transport = None
-
-    def _set_transport(self, transport):
-        self.__transport = transport
-
-    @property
-    def local_address(self):
-        return Address(self.__transport.get_extra_info("sockname"))
-
-    @property
-    def remote_address(self):
-        return Address(self.__transport.get_extra_info("peername"))
 
 
 class Bolt(Addressable, object):
@@ -78,6 +63,12 @@ class Bolt(Addressable, object):
     #: by that subclass. As an instance attribute, this represents the
     #: version of the protocol in use.
     protocol_version = ()
+
+    # Record of the time at which this connection was opened.
+    __t_opened = None
+
+    # Handle to the StreamReader object.
+    __reader = None
 
     # Handle to the StreamWriter object, which can be used on close.
     __writer = None
@@ -127,7 +118,20 @@ class Bolt(Addressable, object):
                 if version == protocol_version}
 
     @classmethod
-    async def open(cls, address, auth=None, security=False, protocol_version=None, loop=None):
+    def opener(cls, auth=None, security=False, protocol_version=None, loop=None):
+        """ Create and return an opener function for a given set of
+        configuration parameters. This is useful when multiple servers share
+        the same configuration details, such as within a connection pool.
+        """
+
+        async def f(address):
+            return await Bolt.open(address, auth=auth, security=security,
+                                   protocol_version=protocol_version, loop=loop)
+
+        return f
+
+    @classmethod
+    async def open(cls, address, *, auth=None, security=False, protocol_version=None, loop=None):
         """ Open a socket connection and perform protocol version
         negotiation, in order to construct and return a Bolt client
         instance for a supported Bolt protocol version.
@@ -152,7 +156,8 @@ class Bolt(Addressable, object):
         """
 
         # Connect
-        reader, writer, security = await cls._connect(Address(address), security, loop)
+        address = Address(address)
+        reader, writer, security = await cls._connect(address, security, loop)
 
         try:
 
@@ -209,14 +214,14 @@ class Bolt(Addressable, object):
             protocol = StreamReaderProtocol(reader, loop=loop)
             transport, _ = await loop.create_connection(lambda: protocol, **connection_args)
             writer = BoltStreamWriter(transport, protocol, reader, loop)
-        except SSLError as error:
+        except SSLError as err:
             log.debug("[#%04X] S: <REJECT> %s (%d %s)", 0, address,
-                      error.errno, strerror(error.errno))
-            raise BoltSecurityError("Failed to establish a secure connection", address) from error
-        except OSError as error:
+                      err.errno, strerror(err.errno))
+            raise BoltSecurityError("Failed to establish a secure connection", address) from err
+        except OSError as err:
             log.debug("[#%04X] S: <REJECT> %s (%d %s)", 0, address,
-                      error.errno, strerror(error.errno))
-            raise BoltConnectionError("Failed to establish a connection", address) from error
+                      err.errno, strerror(err.errno))
+            raise BoltConnectionError("Failed to establish a connection", address) from err
         else:
             local_address = Address(transport.get_extra_info("sockname"))
             remote_address = Address(transport.get_extra_info("peername"))
@@ -255,10 +260,10 @@ class Bolt(Addressable, object):
         log.debug("[#%04X] S: <HANDSHAKE> %r", local_address.port_number, response_data)
         try:
             agreed_version = Version.from_bytes(response_data)
-        except ValueError as error:
+        except ValueError as err:
             writer.close()
             raise BoltHandshakeError("Unexpected handshake response %r" % response_data,
-                                     remote_address, request_data, response_data) from error
+                                     remote_address, request_data, response_data) from err
         try:
             subclass = handlers[agreed_version]
         except KeyError:
@@ -270,8 +275,10 @@ class Bolt(Addressable, object):
 
     def __new__(cls, reader, writer):
         obj = super().__new__(cls)
+        obj.__t_opened = perf_counter()
+        obj.__reader = reader
         obj.__writer = writer
-        Addressable._set_transport(obj, writer.transport)
+        Addressable.set_transport(obj, writer.transport)
         return obj
 
     def __repr__(self):
@@ -285,7 +292,22 @@ class Bolt(Addressable, object):
         """
 
     @property
+    def age(self):
+        """ The age of this connection in seconds.
+        """
+        return perf_counter() - self.__t_opened
+
+    @property
+    def broken(self):
+        """ Flag to indicate whether this connection has been broken
+        by the network or remote peer.
+        """
+        return self.__reader.broken or self.__writer.broken
+
+    @property
     def closed(self):
+        """ Flag to indicate whether this connection has been closed
+        locally."""
         return self.__closed
 
     async def close(self):
@@ -293,15 +315,24 @@ class Bolt(Addressable, object):
         """
         if self.closed:
             return
-        log.debug("[#%04X] S: <HANGUP>", self.local_address.port_number)
-        self.__writer.write_eof()
-        self.__writer.close()
-        try:
-            await self.__writer.wait_closed()
-        except BoltConnectionLost:
-            pass
-        finally:
-            self.__closed = True
+        if not self.broken:
+            log.debug("[#%04X] S: <HANGUP>", self.local_address.port_number)
+            self.__writer.write_eof()
+            self.__writer.close()
+            try:
+                await self.__writer.wait_closed()
+            except BoltConnectionBroken:
+                pass
+        self.__closed = True
+
+    async def reset(self, force=False):
+        """ Reset the connection to a clean state.
+
+        By default, a RESET message will only be sent if required, i.e.
+        if the connection is not already in a clean state. If forced,
+        this check will be overridden and a RESET will be sent
+        regardless.
+        """
 
     async def run(self, cypher, parameters=None, discard=False, readonly=False,
                   bookmarks=None, timeout=None, metadata=None):
@@ -336,14 +367,12 @@ class Bolt(Addressable, object):
         """
 
 
-class BoltStreamReader(Addressable, StreamReader):
+class BoltStreamReader(Addressable, Breakable, StreamReader):
     """ Wrapper for asyncio.streams.StreamReader
     """
 
-    defunct = False
-
     def set_transport(self, transport):
-        Addressable._set_transport(self, transport)
+        Addressable.set_transport(self, transport)
         StreamReader.set_transport(self, transport)
 
     async def readuntil(self, separator=b'\n'):  # pragma: no cover
@@ -355,32 +384,33 @@ class BoltStreamReader(Addressable, StreamReader):
     async def readexactly(self, n):
         try:
             return await super().readexactly(n)
-        except IncompleteReadError as error:
+        except IncompleteReadError as err:
             message = ("Network read incomplete (received {} of {} "
-                       "bytes)".format(len(error.partial), error.expected))
-            log.debug("[#%04X] S: <CLOSE>", self.local_address.port_number, message)
-            raise BoltConnectionLost(message, self.remote_address) from error
-        except OSError as error:
-            log.debug("[#%04X] S: <CLOSE> %d %s", error.errno, strerror(error.errno))
-            raise BoltConnectionLost("Network read failed", self.remote_address) from error
+                       "bytes)".format(len(err.partial), err.expected))
+            log.debug("[#%04X] S: <CLOSE>", self.local_address.port_number)
+            Breakable.set_broken(self)
+            raise BoltConnectionBroken(message, self.remote_address) from err
+        except OSError as err:
+            log.debug("[#%04X] S: <CLOSE> %d %s", err.errno, strerror(err.errno))
+            Breakable.set_broken(self)
+            raise BoltConnectionBroken("Network read failed", self.remote_address) from err
 
 
-class BoltStreamWriter(Addressable, StreamWriter):
+class BoltStreamWriter(Addressable, Breakable, StreamWriter):
     """ Wrapper for asyncio.streams.StreamWriter
     """
 
-    defunct = False
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        Addressable._set_transport(self, self.transport)
+        Addressable.set_transport(self, self.transport)
 
     async def drain(self):
         try:
             await super().drain()
-        except OSError as error:
-            log.debug("[#%04X] S: <CLOSE> (%s)", self.local_address.port_number, error)
-            raise BoltConnectionLost("Network write failed", self.remote_address) from error
+        except OSError as err:
+            log.debug("[#%04X] S: <CLOSE> (%s)", self.local_address.port_number, err)
+            Breakable.set_broken(self)
+            raise BoltConnectionBroken("Network write failed", self.remote_address) from err
 
     async def wait_closed(self):
         try:
@@ -400,3 +430,151 @@ class BoltStreamWriter(Addressable, StreamWriter):
                     await sleep(0.1)
             except AttributeError:
                 pass
+
+
+class BoltPool:
+    """ A pool of connections to a single address.
+
+    :param opener: a function to which an address can be passed that
+        returns an open and ready Bolt connection
+    :param address: the remote address for which this pool operates
+    :param max_size: the maximum permitted number of simultaneous
+        connections that may be owned by this pool, both in-use and
+        free
+    :param max_age: the maximum permitted age, in seconds, for
+        connections to be retained in this pool
+    """
+
+    def __init__(self, opener, address, max_size=1, max_age=None):
+        self._opener = opener
+        self._address = address
+        self._max_size = max_size
+        self._max_age = max_age
+        self._in_use_list = deque()
+        self._free_list = deque()
+        self._slots = Semaphore(self._max_size)
+
+    def __contains__(self, cx):
+        return cx in self._in_use_list or cx in self._free_list
+
+    def __len__(self):
+        return self.size
+
+    @property
+    def address(self):
+        """ The remote address for which this pool operates.
+        """
+        return self._address
+
+    @property
+    def max_size(self):
+        """ The maximum permitted number of simultaneous connections
+        that may be owned by this pool, both in-use and free.
+        """
+        return self._max_size
+
+    @property
+    def max_age(self):
+        """ The maximum permitted age, in seconds, for connections to
+        be retained in this pool.
+        """
+        return self._max_age
+
+    @property
+    def in_use(self):
+        """ The number of connections in this pool that are currently
+        in use.
+        """
+        return len(self._in_use_list)
+
+    @property
+    def free(self):
+        """ The number of free connections available in this connection
+        pool.
+        """
+        return len(self._free_list)
+
+    @property
+    def size(self):
+        """ The number of connections (both in-use and free) currently
+        owned by this connection pool.
+        """
+        return self.in_use + self.free
+
+    async def acquire(self):
+        """ Acquire a connection from the pool.
+
+        In the simplest case, this will return an existing open
+        connection, if one is free. If not, and the pool is not full,
+        a new connection will be created. If the pool is full and no
+        free connections are available, this will block until a
+        connection is released, or until the acquire call is cancelled.
+        """
+        cx = None
+        while cx is None or cx.broken or cx.closed:
+            try:
+                # Plan A: select a free connection from the pool
+                cx = self._free_list.popleft()
+            except IndexError:
+                if self.size < self.max_size:
+                    # Plan B: if the pool isn't full, open a new connection
+                    cx = await self._opener(self.address)
+                else:
+                    # Plan C: wait for an in-use connection to become available
+                    await self._slots.acquire()
+            else:
+                expired = self.max_age is not None and cx.age > self.max_age
+                if expired:
+                    await cx.close()
+                else:
+                    await cx.reset(force=True)
+        self._in_use_list.append(cx)
+        return cx
+
+    async def release(self, cx):
+        """ Release a Bolt connection back into the pool.
+
+        :param cx: the connection to release
+        :raise ValueError: if the connection is not currently in use,
+            or if it does not belong to this pool
+        """
+        if cx in self._in_use_list:
+            self._in_use_list.remove(cx)
+            await cx.reset()
+            self._free_list.append(cx)
+            self._slots.release()
+        elif cx in self._free_list:
+            raise ValueError("Connection is not in use")
+        else:
+            raise ValueError("Connection does not belong to this pool")
+
+    async def prune(self):
+        """ Close all free connections.
+        """
+        await self.__close(self._free_list)
+
+    async def close(self):
+        """ Close all connections.
+
+        This does not permanently disable the connection pool, merely
+        ensures all open connections are shut down, including those in
+        use. It is perfectly acceptable to re-acquire connections after
+        pool closure, which will have the implicit affect of reopening
+        the pool.
+        """
+        await self.prune()
+        await self.__close(self._in_use_list)
+
+    @classmethod
+    async def __close(cls, connections):
+        """ Close all connections in the given list.
+        """
+        closers = deque()
+        while True:
+            try:
+                cx = connections.popleft()
+            except IndexError:
+                break
+            else:
+                closers.append(cx.close())
+        await wait(closers)
