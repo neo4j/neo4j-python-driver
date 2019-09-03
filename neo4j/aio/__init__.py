@@ -23,7 +23,7 @@ from asyncio import run
 
 from neo4j.addressing import Address
 from neo4j.aio.bolt import Bolt, BoltPool
-from neo4j.bolt.routing import RoutingTable
+from neo4j.routing import RoutingTable
 
 
 class Neo4jPool:

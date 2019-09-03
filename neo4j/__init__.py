@@ -48,7 +48,7 @@ from neo4j._agent import *
 from neo4j.addressing import Address
 from neo4j.api import *
 from neo4j.bolt.direct import Connection, ConnectionPool, DEFAULT_PORT
-from neo4j.bolt.routing import RoutingConnectionPool
+from neo4j.routing import RoutingConnectionPool
 from neo4j.bolt.security import make_ssl_context
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 from neo4j.meta import experimental, version as __version__
