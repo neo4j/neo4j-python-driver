@@ -27,7 +27,7 @@ from asyncio import (
     StreamWriter,
     get_event_loop,
     wait,
-)
+    Event)
 from collections import deque
 from logging import getLogger
 from os import strerror
@@ -445,14 +445,26 @@ class BoltPool:
         connections to be retained in this pool
     """
 
+    @classmethod
+    async def open(cls, opener, address, max_size=1, max_age=None):
+        """ Create a new connection pool, ensuring the first connection
+        has been opened.
+        """
+        pool = cls(opener, address, max_size=max_size, max_age=max_age)
+        cx = await pool.acquire()
+        await pool.release(cx)
+        return pool
+
     def __init__(self, opener, address, max_size=1, max_age=None):
+        if max_size < 1:
+            raise ValueError("Pool must permit at least one connection")
         self._opener = opener
         self._address = address
         self._max_size = max_size
         self._max_age = max_age
         self._in_use_list = deque()
         self._free_list = deque()
-        self._slots = Semaphore(self._max_size)
+        self._wait_list = deque()
 
     def __contains__(self, cx):
         return cx in self._in_use_list or cx in self._free_list
@@ -501,7 +513,20 @@ class BoltPool:
         """
         return self.in_use + self.free
 
-    async def acquire(self):
+    async def _sanitize(self, cx, force_reset):
+        """ Attempt to clean up a connection, such that it can be
+        reused.
+        """
+        if cx.broken or cx.closed:
+            return None
+        expired = self.max_age is not None and cx.age > self.max_age
+        if expired:
+            await cx.close()
+            return None
+        await cx.reset(force=force_reset)
+        return cx
+
+    async def acquire(self, force_reset=False):
         """ Acquire a connection from the pool.
 
         In the simplest case, this will return an existing open
@@ -509,6 +534,11 @@ class BoltPool:
         a new connection will be created. If the pool is full and no
         free connections are available, this will block until a
         connection is released, or until the acquire call is cancelled.
+
+        :param force_reset: if true, the connection will be forcibly
+            reset before being returned; if false, this will only occur
+            if the connection is not already in a clean state
+        :return: a Bolt connection object
         """
         cx = None
         while cx is None or cx.broken or cx.closed:
@@ -520,29 +550,39 @@ class BoltPool:
                     # Plan B: if the pool isn't full, open a new connection
                     cx = await self._opener(self.address)
                 else:
-                    # Plan C: wait for an in-use connection to become available
-                    await self._slots.acquire()
+                    # Plan C: wait for a release to occur, then try again
+                    release_event = Event()
+                    self._wait_list.append(release_event)
+                    await release_event.wait()
             else:
-                expired = self.max_age is not None and cx.age > self.max_age
-                if expired:
-                    await cx.close()
-                else:
-                    await cx.reset(force=True)
+                cx = await self._sanitize(cx, force_reset=force_reset)
         self._in_use_list.append(cx)
         return cx
 
-    async def release(self, cx):
+    async def release(self, cx, force_reset=False):
         """ Release a Bolt connection back into the pool.
 
         :param cx: the connection to release
+        :param force_reset: if true, the connection will be forcibly
+            reset before being released back into the pool; if false,
+            this will only occur if the connection is not already in a
+            clean state
         :raise ValueError: if the connection is not currently in use,
             or if it does not belong to this pool
         """
         if cx in self._in_use_list:
             self._in_use_list.remove(cx)
-            await cx.reset()
-            self._free_list.append(cx)
-            self._slots.release()
+            cx = await self._sanitize(cx, force_reset=force_reset)
+            if cx:
+                self._free_list.append(cx)
+                # Wake up the next paused acquire call on the
+                # wait list, if any.
+                try:
+                    release_event = self._wait_list.popleft()
+                except IndexError:
+                    pass
+                else:
+                    release_event.set()
         elif cx in self._free_list:
             raise ValueError("Connection is not in use")
         else:

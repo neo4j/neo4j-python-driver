@@ -28,19 +28,24 @@ from neo4j.routing import RoutingTable
 
 class Neo4jPool:
 
-    def __init__(self, opener, addresses=None):
-        self._pools = [BoltPool(opener, address) for address in addresses or ()]
+    # async def open(self, ...):
+    #     # TODO: get initial routing table and construct
 
-    async def acquire(self):
+    def __init__(self, opener, router_addresses=None):
+        self._routing_table = RoutingTable(router_addresses)
+        self._pools = {address: BoltPool(opener, address)
+                       for address in router_addresses or ()}
+
+    async def acquire(self, force_reset=False):
         candidates = {}
-        for pool in self._pools:
+        for address, pool in self._pools.items():
             candidates[pool.in_use] = pool
-        return await candidates[min(candidates.keys())].acquire()
+        return await candidates[min(candidates.keys())].acquire(force_reset=force_reset)
 
-    def release(self, cx):
-        for pool in self._pools:
+    async def release(self, cx, force_reset=False):
+        for address, pool in self._pools.items():
             if cx in pool:
-                pool.release(cx)
+                await pool.release(cx, force_reset=force_reset)
 
 
 class Neo4j:

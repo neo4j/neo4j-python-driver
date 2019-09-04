@@ -379,3 +379,80 @@ async def test_pool_release_notifies_acquire(opener, address):
 @mark.asyncio
 async def test_default_pool_open_and_close(bolt_pool, address):
     assert bolt_pool.address == address
+
+
+@mark.asyncio
+async def test_closing_pool_with_free_connections(opener, address):
+    pool = BoltPool(opener, address, max_size=3)
+    first = await pool.acquire()
+    second = await pool.acquire()
+    third = await pool.acquire()
+    await pool.release(first)
+    await pool.release(second)
+    await pool.release(third)
+    await pool.close()
+    assert first.closed
+    assert second.closed
+    assert third.closed
+
+
+@mark.asyncio
+async def test_closing_pool_with_in_use_connections(opener, address):
+    pool = BoltPool(opener, address, max_size=3)
+    first = await pool.acquire()
+    second = await pool.acquire()
+    third = await pool.acquire()
+    await pool.close()
+    assert first.closed
+    assert second.closed
+    assert third.closed
+
+
+@mark.asyncio
+async def test_expired_connections_are_not_returned_to_pool(opener, address):
+    pool = BoltPool(opener, address, max_size=1, max_age=0.25)
+    assert pool.free == 0
+    assert pool.in_use == 0
+    cx = await pool.acquire()
+    assert pool.free == 0
+    assert pool.in_use == 1
+    await sleep(0.5)
+    await pool.release(cx)
+    assert pool.free == 0
+    assert pool.in_use == 0
+    assert cx.closed
+
+
+@mark.asyncio
+async def test_closed_connections_are_not_returned_to_pool(opener, address):
+    pool = BoltPool(opener, address, max_size=1)
+    assert pool.free == 0
+    assert pool.in_use == 0
+    cx = await pool.acquire()
+    assert pool.free == 0
+    assert pool.in_use == 1
+    await cx.close()
+    await pool.release(cx)
+    assert pool.free == 0
+    assert pool.in_use == 0
+
+
+@mark.asyncio
+async def test_cannot_release_already_released_connection(bolt_pool):
+    cx = await bolt_pool.acquire()
+    await bolt_pool.release(cx)
+    with raises(ValueError):
+        await bolt_pool.release(cx)
+
+
+@mark.asyncio
+async def test_cannot_release_unowned_connection(bolt_pool, address, auth):
+    cx = await Bolt.open(address, auth=auth)
+    with raises(ValueError):
+        await bolt_pool.release(cx)
+
+
+@mark.asyncio
+async def test_cannot_create_pool_of_size_zero(address, auth):
+    with raises(ValueError):
+        _ = BoltPool(opener, address, max_size=0)

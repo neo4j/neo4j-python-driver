@@ -48,7 +48,6 @@ from neo4j._agent import *
 from neo4j.addressing import Address
 from neo4j.api import *
 from neo4j.bolt.direct import Connection, ConnectionPool, DEFAULT_PORT
-from neo4j.routing import RoutingConnectionPool
 from neo4j.bolt.security import make_ssl_context
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 from neo4j.meta import experimental, version as __version__
@@ -101,7 +100,6 @@ default_config = {
 
     # Routing settings:
     "max_retry_time": DEFAULT_MAX_RETRY_TIME,
-    "load_balancing_strategy": DEFAULT_LOAD_BALANCING_STRATEGY,
 }
 
 
@@ -329,6 +327,7 @@ class RoutingDriver(Driver):
         def connector(address, **kwargs):
             return Connection.open(address, **dict(config, **kwargs))
 
+        from neo4j.bolt.routing import RoutingConnectionPool
         pool = RoutingConnectionPool(connector, initial_address,
                                      routing_context, initial_address, **config)
         try:

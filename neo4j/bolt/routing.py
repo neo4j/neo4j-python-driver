@@ -23,6 +23,7 @@ from logging import getLogger
 from sys import maxsize
 from threading import Lock
 
+from neo4j import READ_ACCESS, WRITE_ACCESS
 from neo4j.errors import BoltRoutingError
 from neo4j.bolt.direct import AbstractConnectionPool
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
