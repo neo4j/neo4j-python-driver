@@ -105,7 +105,7 @@ class Bolt(Addressable, object):
 
         # Carry out subclass imports locally to avoid circular
         # dependency issues.
-        from neo4j.aio.v3 import Bolt3
+        from neo4j.aio.bolt3 import Bolt3
 
         handlers = {bolt.protocol_version: bolt for bolt in [
             # This list can be updated as protocol
@@ -685,7 +685,7 @@ class Neo4jPool:
         return obj
 
     def __init__(self, opener, *addresses, routing_context=None, max_size_per_host=100):
-        from neo4j.aio.v3 import RoutingTable   # TODO: make this non-Bolt-version-specific
+        from neo4j.aio.bolt3 import RoutingTable   # TODO: make this non-Bolt-version-specific
         self._pools = {}
         self._missing_writer = False
         self._refresh_lock = Lock()
