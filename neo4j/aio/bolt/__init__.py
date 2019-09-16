@@ -21,13 +21,12 @@
 
 from asyncio import (
     IncompleteReadError,
-    Semaphore,
     StreamReader,
     StreamReaderProtocol,
     StreamWriter,
     get_event_loop,
     wait,
-    Event)
+)
 from collections import deque
 from logging import getLogger
 from os import strerror
@@ -37,6 +36,7 @@ from time import perf_counter
 
 from neo4j.addressing import Address
 from neo4j.aio.bolt._mixins import Addressable, Breakable
+from neo4j.aio._collections import WaitingList
 from neo4j.errors import (
     BoltError,
     BoltConnectionError,
@@ -366,6 +366,16 @@ class Bolt(Addressable, object):
         that function.
         """
 
+    async def get_routing_table(self, context=None):
+        """ Fetch a new routing table.
+
+        :param context: the routing context to use for this call
+        :return: a new RoutingTable instance or None if the given router is
+                 currently unable to provide routing information
+        :raise ServiceUnavailable: if no writers are available
+        :raise ProtocolError: if the routing information received is unusable
+        """
+
 
 class BoltStreamReader(Addressable, Breakable, StreamReader):
     """ Wrapper for asyncio.streams.StreamReader
@@ -446,25 +456,33 @@ class BoltPool:
     """
 
     @classmethod
-    async def open(cls, opener, address, max_size=1, max_age=None):
-        """ Create a new connection pool, ensuring the first connection
-        has been opened.
+    async def open(cls, opener, address, size=1, max_size=1, max_age=None):
+        """ Create a new connection pool, with an option to seed one
+        or more initial connections.
         """
         pool = cls(opener, address, max_size=max_size, max_age=max_age)
-        cx = await pool.acquire()
-        await pool.release(cx)
+        seeds = [await pool.acquire() for _ in range(size)]
+        for seed in seeds:
+            await pool.release(seed)
         return pool
 
     def __init__(self, opener, address, max_size=1, max_age=None):
-        if max_size < 1:
-            raise ValueError("Pool must permit at least one connection")
         self._opener = opener
-        self._address = address
+        self._address = Address(address)
         self._max_size = max_size
         self._max_age = max_age
         self._in_use_list = deque()
         self._free_list = deque()
-        self._wait_list = deque()
+        self._waiting_list = WaitingList()
+
+    def __repr__(self):
+        return "<{} addr'{}' [{}{}{}]>".format(
+            self.__class__.__name__,
+            self.address,
+            "|" * len(self._in_use_list),
+            "." * len(self._free_list),
+            " " * (self.max_size - self.size),
+        )
 
     def __contains__(self, cx):
         return cx in self._in_use_list or cx in self._free_list
@@ -485,6 +503,16 @@ class BoltPool:
         """
         return self._max_size
 
+    @max_size.setter
+    def max_size(self, value):
+        old_value = self._max_size
+        self._max_size = value
+        if value > old_value:
+            # The maximum size has grown, so new slots have become
+            # available. Notify any waiting acquirers of this extra
+            # capacity.
+            self._waiting_list.notify()
+
     @property
     def max_age(self):
         """ The maximum permitted age, in seconds, for connections to
@@ -500,22 +528,24 @@ class BoltPool:
         return len(self._in_use_list)
 
     @property
-    def free(self):
-        """ The number of free connections available in this connection
-        pool.
-        """
-        return len(self._free_list)
-
-    @property
     def size(self):
-        """ The number of connections (both in-use and free) currently
-        owned by this connection pool.
+        """ The total number of connections (both in-use and free)
+        currently owned by this connection pool.
         """
-        return self.in_use + self.free
+        return len(self._in_use_list) + len(self._free_list)
 
-    async def _sanitize(self, cx, force_reset):
+    async def _sanitize(self, cx, *, force_reset):
         """ Attempt to clean up a connection, such that it can be
         reused.
+
+        If the connection is broken or closed, it can be discarded.
+        Otherwise, the age of the connection is checked against the
+        maximum age permitted by this pool, consequently closing it
+        on expiry.
+
+        Should the connection be neither broken, closed nor expired,
+        it will be reset (optionally forcibly so) and the connection
+        object will be returned, indicating success.
         """
         if cx.broken or cx.closed:
             return None
@@ -526,7 +556,7 @@ class BoltPool:
         await cx.reset(force=force_reset)
         return cx
 
-    async def acquire(self, force_reset=False):
+    async def acquire(self, *, force_reset=False):
         """ Acquire a connection from the pool.
 
         In the simplest case, this will return an existing open
@@ -547,20 +577,22 @@ class BoltPool:
                 cx = self._free_list.popleft()
             except IndexError:
                 if self.size < self.max_size:
-                    # Plan B: if the pool isn't full, open a new connection
+                    # Plan B: if the pool isn't full, open
+                    # a new connection
                     cx = await self._opener(self.address)
                 else:
-                    # Plan C: wait for a release to occur, then try again
-                    release_event = Event()
-                    self._wait_list.append(release_event)
-                    await release_event.wait()
+                    # Plan C: wait for more capacity to become
+                    # available, then try again
+                    await self._waiting_list.join()
             else:
                 cx = await self._sanitize(cx, force_reset=force_reset)
         self._in_use_list.append(cx)
         return cx
 
-    async def release(self, cx, force_reset=False):
-        """ Release a Bolt connection back into the pool.
+    async def release(self, cx, *, force_reset=False):
+        """ Release a Bolt connection, putting it back into the pool
+        if the connection is healthy and the pool is not already at
+        capacity.
 
         :param cx: the connection to release
         :param force_reset: if true, the connection will be forcibly
@@ -572,17 +604,22 @@ class BoltPool:
         """
         if cx in self._in_use_list:
             self._in_use_list.remove(cx)
-            cx = await self._sanitize(cx, force_reset=force_reset)
-            if cx:
-                self._free_list.append(cx)
-                # Wake up the next paused acquire call on the
-                # wait list, if any.
-                try:
-                    release_event = self._wait_list.popleft()
-                except IndexError:
-                    pass
-                else:
-                    release_event.set()
+            if self.size < self.max_size:
+                # If there is spare capacity in the pool, attempt to
+                # sanitize the connection and return it to the pool.
+                cx = await self._sanitize(cx, force_reset=force_reset)
+                if cx:
+                    # Carry on only if sanitation succeeded.
+                    if self.size < self.max_size:
+                        # Check again if there is still capacity.
+                        self._free_list.append(cx)
+                        self._waiting_list.notify()
+                    else:
+                        # Otherwise, close the connection.
+                        await cx.close()
+            else:
+                # If the pool is full, simply close the connection.
+                await cx.close()
         elif cx in self._free_list:
             raise ValueError("Connection is not in use")
         else:
@@ -594,13 +631,24 @@ class BoltPool:
         await self.__close(self._free_list)
 
     async def close(self):
-        """ Close all connections.
+        """ Close all connections immediately.
 
-        This does not permanently disable the connection pool, merely
-        ensures all open connections are shut down, including those in
-        use. It is perfectly acceptable to re-acquire connections after
-        pool closure, which will have the implicit affect of reopening
-        the pool.
+        This does not permanently disable the connection pool, it
+        merely shuts down all open connections, including those in
+        use. Depending on the applications, it may be perfectly
+        acceptable to re-acquire connections after pool closure,
+        which will have the implicit affect of reopening the pool.
+
+        To close gracefully, allowing work in progress to continue
+        until connections are released, use the following sequence
+        instead:
+
+            pool.max_size = 0
+            pool.prune()
+
+        This will force all future connection acquisitions onto the
+        waiting list, and released connections will be closed instead
+        of being returned to the pool.
         """
         await self.prune()
         await self.__close(self._in_use_list)
