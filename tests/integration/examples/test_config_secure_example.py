@@ -30,7 +30,7 @@ class ConfigSecureExample(DriverSetupExample):
 
     # tag::config-secure[]
     def __init__(self, uri, auth):
-        self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=False)
+        self.driver = GraphDatabase.driver(uri, auth=auth)
     # end::config-secure[]
 
 

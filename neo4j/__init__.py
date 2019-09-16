@@ -49,7 +49,6 @@ from neo4j._agent import *
 from neo4j.addressing import Address
 from neo4j.api import *
 from neo4j.bio.direct import Connection, ConnectionPool
-from neo4j.bio.security import make_ssl_context
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 from neo4j.meta import experimental, version as __version__
 
@@ -87,7 +86,6 @@ WRITE_ACCESS = "WRITE"
 
 default_config = {
     "auth": None,
-    "encrypted": None,
     "trust": TRUST_DEFAULT,
     "der_encoded_server_certificate": None,
 
@@ -239,7 +237,7 @@ class DirectDriver(Driver):
 
     uri_schemes = ("bolt",)
 
-    def __new__(cls, uri, **config):
+    def __new__(cls, uri, *, security=None, **config):
         cls._check_uri(uri)
         instance = object.__new__(cls)
         # We keep the address containing the host name or IP address exactly
@@ -250,10 +248,7 @@ class DirectDriver(Driver):
         parsed = urlparse(uri)
         instance.address = Address.parse(parsed.netloc,
                                          default_port=DEFAULT_PORT)
-        if config.get("encrypted") is None:
-            config["encrypted"] = False
-        instance._ssl_context = make_ssl_context(**config)
-        instance.encrypted = instance._ssl_context is not None
+        instance.encrypted = bool(security)
 
         def connector(address, **kwargs):
             return Connection.open(address, **dict(config, **kwargs))
@@ -316,16 +311,13 @@ class RoutingDriver(Driver):
             context[key] = value
         return context
 
-    def __new__(cls, uri, **config):
+    def __new__(cls, uri, *, security=None, **config):
         cls._check_uri(uri)
         instance = object.__new__(cls)
         parsed = urlparse(uri)
         instance.initial_address = initial_address = \
             Address.parse(parsed.netloc, default_port=DEFAULT_PORT)
-        if config.get("encrypted") is None:
-            config["encrypted"] = False
-        instance._ssl_context = make_ssl_context(**config)
-        instance.encrypted = instance._ssl_context is not None
+        instance.encrypted = bool(security)
         routing_context = cls.parse_routing_context(uri)
 
         def connector(address, **kwargs):

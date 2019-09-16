@@ -24,6 +24,7 @@ This module contains the low-level functionality required for speaking
 Bolt. It is not intended to be used directly by driver users. Instead,
 the `session` module provides the main user-facing abstractions.
 """
+from neo4j import Security
 
 
 __all__ = [
@@ -45,7 +46,6 @@ from threading import RLock, Condition
 from time import perf_counter
 
 from neo4j.addressing import Address, AddressList
-from neo4j.bio.security import make_ssl_context
 from neo4j.packstream import Packer, UnpackableBuffer, Unpacker
 from neo4j.exceptions import ClientError, ProtocolError, SecurityError, \
     ServiceUnavailable, AuthError, CypherError, IncompleteCommitError, \
@@ -1047,11 +1047,20 @@ def _handshake(s, resolved_address, der_encoded_server_certificate, **config):
                             "{}".format(agreed_version))
 
 
-def connect(address, **config):
+def connect(address, *, security=None, **config):
     """ Connect and perform a handshake and return a valid Connection object,
     assuming a protocol version can be agreed.
     """
-    ssl_context = make_ssl_context(**config)
+    if security is None:
+        security = config.get("encrypted")
+    if security is True:
+        security = Security.default()
+    if isinstance(security, Security):
+        ssl_context = security.to_ssl_context()
+    elif security:
+        raise TypeError("Unsupported security configuration {!r}".format(security))
+    else:
+        ssl_context = None
     last_error = None
     # Establish a connection to the host and port specified
     # Catches refused connections see:

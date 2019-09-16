@@ -42,7 +42,7 @@ def test_fail_nicely_when_using_http_port(service):
     address = service.addresses[0]
     uri = "bolt://{}:7474".format(address[0])
     with raises(ServiceUnavailable):
-        _ = Driver(uri, auth=service.auth, encrypted=False)
+        _ = Driver(uri, auth=service.auth)
 
 
 def test_custom_resolver(service):
@@ -59,14 +59,13 @@ def test_custom_resolver(service):
             assert summary.server.address == ("127.0.0.1", 7687)
 
 
+def test_encrypted_arg_can_still_be_used(uri, auth):
+    with Driver(uri, auth=auth, encrypted=False) as driver:
+        assert not driver.encrypted
+
+
 def test_insecure_by_default(driver):
     assert not driver.encrypted
-
-
-def test_custom_ca_not_implemented(uri, auth):
-    with raises(NotImplementedError):
-        _ = Driver(uri, auth=auth, encrypted=True,
-                   trust=TRUST_CUSTOM_CA_SIGNED_CERTIFICATES)
 
 
 def test_should_fail_on_incorrect_password(uri):

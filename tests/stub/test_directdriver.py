@@ -31,13 +31,13 @@ class DirectDriverTestCase(StubTestCase):
     def test_bolt_uri_constructs_direct_driver(self):
         with StubCluster({9001: "v3/empty.script"}):
             uri = "bolt://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
                 assert isinstance(driver, DirectDriver)
 
     def test_direct_disconnect_on_run(self):
         with StubCluster({9001: "v3/disconnect_on_run.script"}):
             uri = "bolt://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
                 with self.assertRaises(ServiceUnavailable):
                     with driver.session() as session:
                         session.run("RETURN $x", {"x": 1}).consume()
@@ -45,7 +45,7 @@ class DirectDriverTestCase(StubTestCase):
     def test_direct_disconnect_on_pull_all(self):
         with StubCluster({9001: "v3/disconnect_on_pull_all.script"}):
             uri = "bolt://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False) as driver:
+            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
                 with self.assertRaises(ServiceUnavailable):
                     with driver.session() as session:
                         session.run("RETURN $x", {"x": 1}).consume()
@@ -53,7 +53,7 @@ class DirectDriverTestCase(StubTestCase):
     def test_direct_session_close_after_server_close(self):
         with StubCluster({9001: "v3/disconnect_after_init.script"}):
             uri = "bolt://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False, max_retry_time=0,
+            with GraphDatabase.driver(uri, auth=self.auth_token, max_retry_time=0,
                                       user_agent="test") as driver:
                 with driver.session() as session:
                     with self.assertRaises(ServiceUnavailable):

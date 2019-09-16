@@ -34,7 +34,7 @@ class TransactionTestCase(StubTestCase):
     def test_connection_error_on_explicit_commit(self):
         with StubCluster({9001: "v3/connection_error_on_commit.script"}):
             uri = "bolt://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False, max_retry_time=0) as driver:
+            with GraphDatabase.driver(uri, auth=self.auth_token, max_retry_time=0) as driver:
                 with driver.session() as session:
                     tx = session.begin_transaction()
                     tx.run("CREATE (n {name:'Bob'})").data()
@@ -44,7 +44,7 @@ class TransactionTestCase(StubTestCase):
     def test_connection_error_on_commit(self):
         with StubCluster({9001: "v3/connection_error_on_commit.script"}):
             uri = "bolt://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False, max_retry_time=0) as driver:
+            with GraphDatabase.driver(uri, auth=self.auth_token, max_retry_time=0) as driver:
                 with driver.session() as session:
                     with self.assertRaises(ServiceUnavailable):
                         session.write_transaction(self.create_bob)
