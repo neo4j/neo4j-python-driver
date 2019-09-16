@@ -24,9 +24,8 @@ from collections.abc import MutableSet
 from logging import getLogger
 from time import perf_counter
 
-from neo4j import READ_ACCESS, WRITE_ACCESS
+from neo4j import READ_ACCESS, WRITE_ACCESS, DEFAULT_PORT
 from neo4j.addressing import Address
-from neo4j.bolt.direct import DEFAULT_PORT
 
 
 log = getLogger("neobolt")

@@ -53,7 +53,7 @@ def test_can_run_simple_statement(driver):
 def test_can_run_simple_statement_with_params(driver):
     pipeline = driver.pipeline(flush_every=0)
     count = 0
-    pipeline.push("RETURN {x} AS n", {"x": {"abc": ["d", "e", "f"]}})
+    pipeline.push("RETURN $x AS n", {"x": {"abc": ["d", "e", "f"]}})
     for record in pipeline.pull():
         assert record[0] == {"abc": ["d", "e", "f"]}
         # TODO: why does pipeline result not look like a regular result?
@@ -102,7 +102,7 @@ def test_doesnt_fail_on_bad_syntax_somewhere(driver):
 def test_fails_on_missing_parameter(driver):
     pipeline = driver.pipeline(flush_every=0)
     with raises(CypherError):
-        pipeline.push("RETURN {x}")
+        pipeline.push("RETURN $x")
         next(pipeline.pull())
 
 

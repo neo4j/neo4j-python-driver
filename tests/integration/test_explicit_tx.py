@@ -39,13 +39,13 @@ def test_can_commit_transaction(session):
     assert isinstance(node_id, int)
 
     # Update a property
-    tx.run("MATCH (a) WHERE id(a) = {n} "
-           "SET a.foo = {foo}", {"n": node_id, "foo": "bar"})
+    tx.run("MATCH (a) WHERE id(a) = $n "
+           "SET a.foo = $foo", {"n": node_id, "foo": "bar"})
 
     tx.commit()
 
     # Check the property value
-    result = session.run("MATCH (a) WHERE id(a) = {n} "
+    result = session.run("MATCH (a) WHERE id(a) = $n "
                          "RETURN a.foo", {"n": node_id})
     record = next(iter(result))
     value = record[0]
@@ -62,13 +62,13 @@ def test_can_rollback_transaction(session):
     assert isinstance(node_id, int)
 
     # Update a property
-    tx.run("MATCH (a) WHERE id(a) = {n} "
-           "SET a.foo = {foo}", {"n": node_id, "foo": "bar"})
+    tx.run("MATCH (a) WHERE id(a) = $n "
+           "SET a.foo = $foo", {"n": node_id, "foo": "bar"})
 
     tx.rollback()
 
     # Check the property value
-    result = session.run("MATCH (a) WHERE id(a) = {n} "
+    result = session.run("MATCH (a) WHERE id(a) = $n "
                          "RETURN a.foo", {"n": node_id})
     assert len(list(result)) == 0
 
@@ -82,13 +82,13 @@ def test_can_commit_transaction_using_with_block(session):
         assert isinstance(node_id, int)
 
         # Update a property
-        tx.run("MATCH (a) WHERE id(a) = {n} "
-               "SET a.foo = {foo}", {"n": node_id, "foo": "bar"})
+        tx.run("MATCH (a) WHERE id(a) = $n "
+               "SET a.foo = $foo", {"n": node_id, "foo": "bar"})
 
         tx.success = True
 
     # Check the property value
-    result = session.run("MATCH (a) WHERE id(a) = {n} "
+    result = session.run("MATCH (a) WHERE id(a) = $n "
                          "RETURN a.foo", {"n": node_id})
     record = next(iter(result))
     value = record[0]
@@ -104,13 +104,13 @@ def test_can_rollback_transaction_using_with_block(session):
         assert isinstance(node_id, int)
 
         # Update a property
-        tx.run("MATCH (a) WHERE id(a) = {n} "
-               "SET a.foo = {foo}", {"n": node_id, "foo": "bar"})
+        tx.run("MATCH (a) WHERE id(a) = $n "
+               "SET a.foo = $foo", {"n": node_id, "foo": "bar"})
 
         tx.success = False
 
     # Check the property value
-    result = session.run("MATCH (a) WHERE id(a) = {n} "
+    result = session.run("MATCH (a) WHERE id(a) = $n "
                          "RETURN a.foo", {"n": node_id})
     assert len(list(result)) == 0
 

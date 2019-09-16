@@ -25,7 +25,7 @@ from threading import Lock
 
 from neo4j import READ_ACCESS, WRITE_ACCESS
 from neo4j.errors import BoltRoutingError
-from neo4j.bolt.direct import AbstractConnectionPool
+from neo4j.bio.direct import AbstractConnectionPool
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 from neo4j.routing import RoutingTable
 

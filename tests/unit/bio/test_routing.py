@@ -23,8 +23,8 @@ from collections import OrderedDict
 from unittest import TestCase
 
 from neo4j import READ_ACCESS, WRITE_ACCESS
-from neo4j.bolt.direct import Connection
-from neo4j.bolt.routing import RoutingConnectionPool, LeastConnectedLoadBalancingStrategy
+from neo4j.bio.direct import Connection
+from neo4j.bio.routing import RoutingConnectionPool, LeastConnectedLoadBalancingStrategy
 from neo4j.routing import OrderedSet, RoutingTable
 
 

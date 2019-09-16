@@ -29,7 +29,7 @@ def test_should_run_readme(uri, auth):
 
     def print_friends(tx, name):
         for record in tx.run("MATCH (a:Person)-[:KNOWS]->(friend) "
-                             "WHERE a.name = {name} "
+                             "WHERE a.name = $name "
                              "RETURN friend.name", name=name):
             print(record["friend.name"])
 

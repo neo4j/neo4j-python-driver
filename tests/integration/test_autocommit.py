@@ -46,7 +46,7 @@ def test_can_run_simple_statement(session):
 
 def test_can_run_simple_statement_with_params(session):
     count = 0
-    for record in session.run("RETURN {x} AS n",
+    for record in session.run("RETURN $x AS n",
                               {"x": {"abc": ["d", "e", "f"]}}):
         assert record[0] == {"abc": ["d", "e", "f"]}
         assert record["n"] == {"abc": ["d", "e", "f"]}

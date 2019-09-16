@@ -23,7 +23,7 @@ from asyncio import sleep, wait, wait_for, TimeoutError
 
 from pytest import fixture, mark, raises
 
-from neo4j.aio.bolt import Bolt, BoltPool
+from neo4j.aio import Bolt, BoltPool
 from neo4j.errors import BoltConnectionError, BoltTransactionError, ClientError
 
 
@@ -319,7 +319,7 @@ async def test_dirty_transaction_function(bolt):
         raise RuntimeError("This should trigger a rollback")
 
     async def count_nodes(tx):
-        return await tx.evaluate("MATCH (a) WHERE id(a) = {x} "
+        return await tx.evaluate("MATCH (a) WHERE id(a) = $x "
                                  "RETURN count(a)", {"x": created[0]})
 
     with raises(RuntimeError):

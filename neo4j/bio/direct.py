@@ -27,7 +27,6 @@ the `session` module provides the main user-facing abstractions.
 
 
 __all__ = [
-    "DEFAULT_PORT",
     "AbstractConnectionPool",
     "Connection",
     "ConnectionPool",
@@ -46,7 +45,7 @@ from threading import RLock, Condition
 from time import perf_counter
 
 from neo4j.addressing import Address, AddressList
-from neo4j.bolt.security import make_ssl_context
+from neo4j.bio.security import make_ssl_context
 from neo4j.packstream import Packer, UnpackableBuffer, Unpacker
 from neo4j.exceptions import ClientError, ProtocolError, SecurityError, \
     ServiceUnavailable, AuthError, CypherError, IncompleteCommitError, \
@@ -55,7 +54,6 @@ from neo4j.exceptions import ClientError, ProtocolError, SecurityError, \
 from neo4j.meta import get_user_agent
 
 
-DEFAULT_PORT = 7687
 MAGIC_PREAMBLE = 0x6060B017
 
 # Connection Pool Management
