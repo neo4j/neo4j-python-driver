@@ -27,7 +27,7 @@ from os import strerror
 
 
 class BoltError(Exception):
-    """ Base class for all Bolt errors.
+    """ Base class for all Bolt protocol errors.
     """
 
     def __init__(self, message, address):
@@ -97,14 +97,16 @@ class BoltTransactionError(BoltError):
 
 
 class BoltRoutingError(BoltError):
-    """ Raised when an unexpected scenario occurs with the Bolt routing
-    protocol layer.
+    """ Raised when a fault occurs with obtaining a routing table.
     """
 
 
 class BoltFailure(BoltError):
     """ Holds a Cypher failure.
     """
+
+    #:
+    code = None
 
     #:
     classification = None
@@ -120,19 +122,27 @@ class BoltFailure(BoltError):
     #: or subclasses.
     transient = False
 
-    def __new__(cls, message, address, code, response):
-        # TODO: custom overrides for specific codes (as per Hugo's suggestion)
-        code_parts = code.split(".")
-        classification = code_parts[1]
+    @classmethod
+    def _find_subclass(cls, predicate, default=None):
         if hasattr(cls, "__subclasses__"):
             for subclass in cls.__subclasses__():
-                if subclass.__name__ == classification:
-                    return subclass(message, address, code, response)
-        return super().__new__(cls, message, address)
+                if predicate(subclass):
+                    return subclass
+        return default
+
+    def __new__(cls, message, address, code, response):
+        code_parts = code.split(".")
+        classification = code_parts[1]
+        c1 = cls._find_subclass(lambda k: k.__name__ == classification, cls)
+        assert issubclass(c1, cls)
+        c2 = c1._find_subclass(lambda k: k.code == code, c1)
+        assert issubclass(c2, c1)
+        return super().__new__(c2, message, address)
 
     def __init__(self, message, address, code, response):
         super().__init__(message, address)
-        code_parts = code.split(".")
+        self.code = code
+        code_parts = self.code.split(".")
         self.classification = code_parts[1]
         self.category = code_parts[2]
         self.title = code_parts[3]
@@ -165,6 +175,20 @@ class ClientError(BoltFailure):
     transient = False
 
 
+class NotALeader(ClientError):
+    """
+    """
+
+    code = "Neo.ClientError.Cluster.NotALeader"
+
+
+class ForbiddenOnReadOnlyDatabase(ClientError):
+    """
+    """
+
+    code = "Neo.ClientError.General.ForbiddenOnReadOnlyDatabase"
+
+
 class DatabaseError(BoltFailure):
     """
     """
@@ -177,3 +201,20 @@ class TransientError(BoltFailure):
     """
 
     transient = True
+
+
+class Neo4jError(Exception):
+    """ Base class for all Neo4j service exceptions.
+    """
+
+
+class Neo4jAvailabilityError(Neo4jError):
+    """ Raised when a Neo4j service is partially or completely
+    unavailable.
+    """
+
+
+class Neo4jCompatibilityError(Neo4jError):
+    """ Raised when expected functionality is not supported or
+    available.
+    """

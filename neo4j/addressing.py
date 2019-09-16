@@ -69,6 +69,8 @@ class Address(tuple):
         return [Address.parse(a, default_host, default_port) for a in s.split()]
 
     def __new__(cls, iterable):
+        if type(iterable) is cls:
+            return cls
         n_parts = len(iterable)
         inst = tuple.__new__(cls, iterable)
         if n_parts == 2:
