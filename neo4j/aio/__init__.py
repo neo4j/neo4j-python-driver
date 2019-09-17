@@ -584,7 +584,7 @@ class BoltPool:
                 if self.size < self.max_size:
                     # Plan B: if the pool isn't full, open
                     # a new connection
-                    cx = await self._opener(self.address, self._loop)
+                    cx = await self._opener(self.address, loop=self._loop)
                 else:
                     # Plan C: wait for more capacity to become
                     # available, then try again

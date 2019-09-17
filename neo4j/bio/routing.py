@@ -27,7 +27,7 @@ from neo4j import READ_ACCESS, WRITE_ACCESS
 from neo4j.errors import BoltRoutingError
 from neo4j.bio.direct import AbstractConnectionPool
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
-from neo4j.routing import RoutingTable
+from neo4j.aio.bolt3 import RoutingTable
 
 
 log = getLogger("neobolt")
@@ -135,12 +135,14 @@ class RoutingConnectionPool(AbstractConnectionPool):
         new_routing_info = self.fetch_routing_info(address)
         if new_routing_info is None:
             return None
+        elif not new_routing_info:
+            raise BoltRoutingError("Invalid routing table", address)
+        else:
+            servers = new_routing_info[0]["servers"]
+            ttl = new_routing_info[0]["ttl"]
+            new_routing_table = RoutingTable.parse_routing_info(servers, ttl)
 
         # Parse routing info and count the number of each type of server
-        try:
-            new_routing_table = RoutingTable.parse_routing_info(new_routing_info)
-        except ValueError as err:
-            raise BoltRoutingError("Invalid routing table", address) from err
         num_routers = len(new_routing_table.routers)
         num_readers = len(new_routing_table.readers)
         num_writers = len(new_routing_table.writers)
@@ -221,13 +223,13 @@ class RoutingConnectionPool(AbstractConnectionPool):
 
         :return: `True` if an update was required, `False` otherwise.
         """
-        if self.routing_table.is_fresh(access_mode):
+        if self.routing_table.is_fresh(readonly=(access_mode == READ_ACCESS)):
             return False
         with self.refresh_lock:
-            if self.routing_table.is_fresh(access_mode):
+            if self.routing_table.is_fresh(readonly=(access_mode == READ_ACCESS)):
                 if access_mode == READ_ACCESS:
                     # if reader is fresh but writers is not fresh, then we are reading in absence of writer
-                    self.missing_writer = not self.routing_table.is_fresh(WRITE_ACCESS)
+                    self.missing_writer = not self.routing_table.is_fresh(readonly=False)
                 return False
             self.update_routing_table()
             self.update_connection_pool()

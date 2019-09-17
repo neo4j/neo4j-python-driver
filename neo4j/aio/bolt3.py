@@ -410,7 +410,7 @@ class RoutingTable:
         if readonly:
             has_server_for_mode = bool(self.readers)
         else:
-            has_server_for_mode = bool(self.readers) and bool(self.writers)
+            has_server_for_mode = bool(self.writers)
         log.debug("[#0000]  C: <ROUTING> Table expired=%r", expired)
         log.debug("[#0000]  C: <ROUTING> Table routers=%r", self.routers)
         log.debug("[#0000]  C: <ROUTING> Table has_server_for_mode=%r", has_server_for_mode)
