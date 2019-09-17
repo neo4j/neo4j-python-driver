@@ -122,13 +122,13 @@ class Bolt(Addressable, object):
                 if version == protocol_version}
 
     @classmethod
-    def opener(cls, auth=None, security=False, protocol_version=None, loop=None):
+    def opener(cls, auth=None, security=False, protocol_version=None):
         """ Create and return an opener function for a given set of
         configuration parameters. This is useful when multiple servers share
         the same configuration details, such as within a connection pool.
         """
 
-        async def f(address):
+        async def f(address, *, loop=None):
             return await Bolt.open(address, auth=auth, security=security,
                                    protocol_version=protocol_version, loop=loop)
 
@@ -460,21 +460,22 @@ class BoltPool:
     """
 
     @classmethod
-    async def open(cls, opener, address, size=1, max_size=1, max_age=None):
+    async def open(cls, opener, address, size=1, max_size=1, max_age=None, loop=None):
         """ Create a new connection pool, with an option to seed one
         or more initial connections.
         """
-        pool = cls(opener, address, max_size=max_size, max_age=max_age)
+        pool = cls(opener, address, max_size=max_size, max_age=max_age, loop=loop)
         seeds = [await pool.acquire() for _ in range(size)]
         for seed in seeds:
             await pool.release(seed)
         return pool
 
-    def __init__(self, opener, address, max_size=1, max_age=None):
+    def __init__(self, opener, address, max_size=1, max_age=None, loop=None):
         self._opener = opener
         self._address = Address(address)
         self._max_size = max_size
         self._max_age = max_age
+        self._loop = loop
         self._in_use_list = deque()
         self._free_list = deque()
         self._waiting_list = WaitingList()
@@ -583,7 +584,7 @@ class BoltPool:
                 if self.size < self.max_size:
                     # Plan B: if the pool isn't full, open
                     # a new connection
-                    cx = await self._opener(self.address)
+                    cx = await self._opener(self.address, self._loop)
                 else:
                     # Plan C: wait for more capacity to become
                     # available, then try again
@@ -678,13 +679,14 @@ class Neo4jPool:
     """
 
     @classmethod
-    async def open(cls, opener, *addresses, routing_context=None, max_size_per_host=100):
+    async def open(cls, opener, *addresses, routing_context=None, max_size_per_host=100, loop=None):
         # TODO: get initial routing table and construct
-        obj = cls(opener, *addresses, routing_context=routing_context, max_size_per_host=max_size_per_host)
+        obj = cls(opener, *addresses, routing_context=routing_context,
+                  max_size_per_host=max_size_per_host, loop=loop)
         await obj._ensure_routing_table_is_fresh()
         return obj
 
-    def __init__(self, opener, *addresses, routing_context=None, max_size_per_host=100):
+    def __init__(self, opener, *addresses, routing_context=None, max_size_per_host=100, loop=None):
         from neo4j.aio.bolt3 import RoutingTable   # TODO: make this non-Bolt-version-specific
         self._pools = {}
         self._missing_writer = False
@@ -692,6 +694,7 @@ class Neo4jPool:
         self._opener = opener
         self._routing_context = routing_context
         self._max_size_per_host = max_size_per_host
+        self._loop = loop
         self._initial_routers = addresses
         self._routing_table = RoutingTable(addresses)
         self._activate_new_pools_in(self._routing_table)
@@ -703,7 +706,8 @@ class Neo4jPool:
         for address in routing_table.servers():
             if address not in self._pools:
                 self._pools[address] = BoltPool(self._opener, address,
-                                                max_size=self._max_size_per_host)
+                                                max_size=self._max_size_per_host,
+                                                loop=self._loop)
 
     async def _deactivate_pools_not_in(self, routing_table):
         """ Deactivate any pools that aren't represented in the given
@@ -918,14 +922,11 @@ class Neo4j:
 
     @classmethod
     async def open(cls, *addresses, auth=None, security=False, protocol_version=None, loop=None):
-        opener = Bolt.opener(auth=auth,
-                             security=security,
-                             protocol_version=protocol_version,
-                             loop=loop)
+        opener = Bolt.opener(auth=auth, security=security, protocol_version=protocol_version)
         router_addresses = Address.parse_list(" ".join(addresses), default_port=7687)
-        return cls(opener, router_addresses)
+        return cls(opener, router_addresses, loop=loop)
 
-    def __init__(self, opener, router_addresses):
+    def __init__(self, opener, router_addresses, loop=None):
         self._routers = Neo4jPool(opener, router_addresses or self.default_router_addresses)
         self._writers = Neo4jPool(opener)
         self._readers = Neo4jPool(opener)
