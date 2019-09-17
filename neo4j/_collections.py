@@ -72,7 +72,7 @@ class OrderedSet(MutableSet):
         e.update(OrderedDict.fromkeys(elements))
 
 
-class WaitingList:
+class AsyncWaitingList:
 
     def __init__(self):
         self._wait_list = deque()

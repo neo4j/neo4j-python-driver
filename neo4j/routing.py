@@ -19,64 +19,15 @@
 # limitations under the License.
 
 
-from collections import OrderedDict
-from collections.abc import MutableSet
 from logging import getLogger
 from time import perf_counter
 
 from neo4j import READ_ACCESS, WRITE_ACCESS, DEFAULT_PORT
+from neo4j._collections import OrderedSet
 from neo4j.addressing import Address
 
 
 log = getLogger("neobolt")
-
-
-class OrderedSet(MutableSet):
-
-    def __init__(self, elements=()):
-        self._elements = OrderedDict.fromkeys(elements)
-        self._current = None
-
-    def __repr__(self):
-        return "{%s}" % ", ".join(map(repr, self._elements))
-
-    def __contains__(self, element):
-        return element in self._elements
-
-    def __iter__(self):
-        return iter(self._elements)
-
-    def __len__(self):
-        return len(self._elements)
-
-    def __getitem__(self, index):
-        return list(self._elements.keys())[index]
-
-    def add(self, element):
-        self._elements[element] = None
-
-    def clear(self):
-        self._elements.clear()
-
-    def discard(self, element):
-        try:
-            del self._elements[element]
-        except KeyError:
-            pass
-
-    def remove(self, element):
-        try:
-            del self._elements[element]
-        except KeyError:
-            raise ValueError(element)
-
-    def update(self, elements=()):
-        self._elements.update(OrderedDict.fromkeys(elements))
-
-    def replace(self, elements=()):
-        e = self._elements
-        e.clear()
-        e.update(OrderedDict.fromkeys(elements))
 
 
 class RoutingTable:

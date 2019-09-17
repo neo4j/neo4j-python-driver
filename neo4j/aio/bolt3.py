@@ -28,7 +28,7 @@ from warnings import warn
 from neo4j import DEFAULT_PORT
 from neo4j.addressing import Address
 from neo4j.aio import Bolt
-from neo4j.aio._collections import OrderedSet
+from neo4j._collections import OrderedSet
 from neo4j.aio._mixins import Addressable
 from neo4j.api import Bookmark, Version
 from neo4j.data import Record

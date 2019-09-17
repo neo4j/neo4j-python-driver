@@ -38,7 +38,7 @@ from sys import platform, version_info
 from time import perf_counter
 
 from neo4j.addressing import Address
-from neo4j.aio._collections import WaitingList
+from neo4j._collections import AsyncWaitingList
 from neo4j.aio._mixins import Addressable, Breakable
 from neo4j.errors import (
     BoltError,
@@ -478,7 +478,7 @@ class BoltPool:
         self._loop = loop
         self._in_use_list = deque()
         self._free_list = deque()
-        self._waiting_list = WaitingList()
+        self._waiting_list = AsyncWaitingList()
 
     def __repr__(self):
         return "<{} addr'{}' [{}{}{}]>".format(
