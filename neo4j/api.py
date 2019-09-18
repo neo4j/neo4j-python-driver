@@ -77,6 +77,32 @@ class Security:
         return ssl_context
 
 
+class ServerInfo:
+
+    address = None
+
+    def __init__(self, address, protocol_version):
+        self.address = address
+        self.protocol_version = protocol_version
+        self.metadata = {}
+
+    @property
+    def agent(self):
+        return self.metadata.get("server")
+
+    def version_info(self):
+        if not self.agent:
+            return None
+        _, _, value = self.agent.partition("/")
+        value = value.replace("-", ".").split(".")
+        for i, v in enumerate(value):
+            try:
+                value[i] = int(v)
+            except ValueError:
+                pass
+        return tuple(value)
+
+
 class Version(tuple):
 
     def __new__(cls, *v):

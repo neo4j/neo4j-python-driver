@@ -31,7 +31,6 @@ __all__ = [
     "AbstractConnectionPool",
     "Connection",
     "ConnectionPool",
-    "ServerInfo",
 ]
 
 
@@ -46,6 +45,7 @@ from threading import RLock, Condition
 from time import perf_counter
 
 from neo4j.addressing import Address, AddressList
+from neo4j.api import ServerInfo
 from neo4j.packstream import Packer, UnpackableBuffer, Unpacker
 from neo4j.exceptions import ClientError, ProtocolError, SecurityError, \
     ServiceUnavailable, AuthError, CypherError, IncompleteCommitError, \
@@ -69,32 +69,6 @@ DEFAULT_CONNECTION_ACQUISITION_TIMEOUT = 60  # 1m
 
 # Set up logger
 log = getLogger("neobolt")
-
-
-class ServerInfo:
-
-    address = None
-
-    def __init__(self, address, protocol_version):
-        self.address = address
-        self.protocol_version = protocol_version
-        self.metadata = {}
-
-    @property
-    def agent(self):
-        return self.metadata.get("server")
-
-    def version_info(self):
-        if not self.agent:
-            return None
-        _, _, value = self.agent.partition("/")
-        value = value.replace("-", ".").split(".")
-        for i, v in enumerate(value):
-            try:
-                value[i] = int(v)
-            except ValueError:
-                pass
-        return tuple(value)
 
 
 class Outbox:
