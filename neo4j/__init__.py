@@ -48,7 +48,6 @@ from urllib.parse import urlparse, parse_qs
 from neo4j._agent import *
 from neo4j.addressing import Address
 from neo4j.api import *
-from neo4j.bio.direct import Connection, ConnectionPool
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 from neo4j.meta import experimental, version as __version__
 
@@ -238,6 +237,7 @@ class DirectDriver(Driver):
     uri_schemes = ("bolt",)
 
     def __new__(cls, uri, *, security=None, **config):
+        from neo4j.bio.direct import Connection, ConnectionPool
         cls._check_uri(uri)
         instance = object.__new__(cls)
         # We keep the address containing the host name or IP address exactly
@@ -312,6 +312,7 @@ class RoutingDriver(Driver):
         return context
 
     def __new__(cls, uri, *, security=None, **config):
+        from neo4j.bio.direct import Connection, RoutingConnectionPool
         cls._check_uri(uri)
         instance = object.__new__(cls)
         parsed = urlparse(uri)
@@ -323,7 +324,6 @@ class RoutingDriver(Driver):
         def connector(address, **kwargs):
             return Connection.open(address, **dict(config, **kwargs))
 
-        from neo4j.bio.routing import RoutingConnectionPool
         pool = RoutingConnectionPool(connector, initial_address,
                                      routing_context, initial_address, **config)
         try:

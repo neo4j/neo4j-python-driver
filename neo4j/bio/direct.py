@@ -24,29 +24,32 @@ This module contains the low-level functionality required for speaking
 Bolt. It is not intended to be used directly by driver users. Instead,
 the `session` module provides the main user-facing abstractions.
 """
-from neo4j import Security
 
 
 __all__ = [
     "AbstractConnectionPool",
     "Connection",
     "ConnectionPool",
+    "RoutingConnectionPool",
 ]
 
 
 from collections import deque
 from logging import getLogger
+from random import choice
 from select import select
 from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, \
     timeout as SocketTimeout, AF_INET, AF_INET6
 from ssl import HAS_SNI, SSLSocket, SSLError
 from struct import pack as struct_pack, unpack as struct_unpack
-from threading import RLock, Condition
+from threading import Lock, RLock, Condition
 from time import perf_counter
 
 from neo4j.addressing import Address, AddressList
-from neo4j.api import ServerInfo
+from neo4j.aio.bolt3 import RoutingTable
+from neo4j.api import Security, ServerInfo
 from neo4j.packstream import Packer, UnpackableBuffer, Unpacker
+from neo4j.errors import BoltRoutingError, Neo4jAvailabilityError
 from neo4j.exceptions import ClientError, ProtocolError, SecurityError, \
     ServiceUnavailable, AuthError, CypherError, IncompleteCommitError, \
     ConnectionExpired, DatabaseUnavailableError, NotALeaderError, \
@@ -791,6 +794,226 @@ class ConnectionPool(AbstractConnectionPool):
 
     def acquire(self, access_mode=None):
         return self.acquire_direct(self.address)
+
+
+class RoutingConnectionPool(AbstractConnectionPool):
+    """ Connection pool with routing table.
+    """
+
+    def __init__(self, connector, initial_address, routing_context, *routers, **config):
+        super(RoutingConnectionPool, self).__init__(connector, **config)
+        self.initial_address = initial_address
+        self.routing_context = routing_context
+        self.routing_table = RoutingTable(routers)
+        self.missing_writer = False
+        self.refresh_lock = Lock()
+
+    def fetch_routing_info(self, address):
+        """ Fetch raw routing info from a given router address.
+
+        :param address: router address
+        :return: list of routing records or
+                 None if no connection could be established
+        :raise ServiceUnavailable: if the server does not support routing or
+                                   if routing support is broken
+        """
+        metadata = {}
+        records = []
+
+        def fail(md):
+            if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
+                raise BoltRoutingError("Server does not support routing", address)
+            else:
+                raise BoltRoutingError("Routing support broken on server", address)
+
+        try:
+            with self.acquire_direct(address) as cx:
+                _, _, server_version = (cx.server.agent or "").partition("/")
+                log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
+                cx.run("CALL dbms.cluster.routing.getRoutingTable({context})",
+                       {"context": self.routing_context}, on_success=metadata.update, on_failure=fail)
+                cx.pull_all(on_success=metadata.update, on_records=records.extend)
+                cx.send_all()
+                cx.fetch_all()
+                routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
+                log.debug("[#%04X]  S: <ROUTING> info=%r", cx.local_port, routing_info)
+            return routing_info
+        except BoltRoutingError as error:
+            raise ServiceUnavailable(*error.args)
+        except ServiceUnavailable:
+            self.deactivate(address)
+            return None
+
+    def fetch_routing_table(self, address):
+        """ Fetch a routing table from a given router address.
+
+        :param address: router address
+        :return: a new RoutingTable instance or None if the given router is
+                 currently unable to provide routing information
+        :raise ServiceUnavailable: if no writers are available
+        :raise ProtocolError: if the routing information received is unusable
+        """
+        new_routing_info = self.fetch_routing_info(address)
+        if new_routing_info is None:
+            return None
+        elif not new_routing_info:
+            raise BoltRoutingError("Invalid routing table", address)
+        else:
+            servers = new_routing_info[0]["servers"]
+            ttl = new_routing_info[0]["ttl"]
+            new_routing_table = RoutingTable.parse_routing_info(servers, ttl)
+
+        # Parse routing info and count the number of each type of server
+        num_routers = len(new_routing_table.routers)
+        num_readers = len(new_routing_table.readers)
+        num_writers = len(new_routing_table.writers)
+
+        # No writers are available. This likely indicates a temporary state,
+        # such as leader switching, so we should not signal an error.
+        # When no writers available, then we flag we are reading in absence of writer
+        self.missing_writer = (num_writers == 0)
+
+        # No routers
+        if num_routers == 0:
+            raise BoltRoutingError("No routing servers returned from server", address)
+
+        # No readers
+        if num_readers == 0:
+            raise BoltRoutingError("No read servers returned from server", address)
+
+        # At least one of each is fine, so return this table
+        return new_routing_table
+
+    def update_routing_table_from(self, *routers):
+        """ Try to update routing tables with the given routers.
+
+        :return: True if the routing table is successfully updated,
+        otherwise False
+        """
+        log.debug("Attempting to update routing table from "
+                  "{}".format(", ".join(map(repr, routers))))
+        for router in routers:
+            new_routing_table = self.fetch_routing_table(router)
+            if new_routing_table is not None:
+                self.routing_table.update(new_routing_table)
+                log.debug("Successfully updated routing table from "
+                          "{!r} ({!r})".format(router, self.routing_table))
+                return True
+        return False
+
+    def update_routing_table(self):
+        """ Update the routing table from the first router able to provide
+        valid routing information.
+        """
+        # copied because it can be modified
+        existing_routers = list(self.routing_table.routers)
+
+        has_tried_initial_routers = False
+        if self.missing_writer:
+            has_tried_initial_routers = True
+            if self.update_routing_table_from(self.initial_address):
+                return
+
+        if self.update_routing_table_from(*existing_routers):
+            return
+
+        if not has_tried_initial_routers and self.initial_address not in existing_routers:
+            if self.update_routing_table_from(self.initial_address):
+                return
+
+        # None of the routers have been successful, so just fail
+        log.error("Unable to retrieve routing information")
+        raise ServiceUnavailable("Unable to retrieve routing information")
+
+    def update_connection_pool(self):
+        servers = self.routing_table.servers()
+        for address in list(self.connections):
+            if address not in servers:
+                super(RoutingConnectionPool, self).deactivate(address)
+
+    def ensure_routing_table_is_fresh(self, access_mode):
+        """ Update the routing table if stale.
+
+        This method performs two freshness checks, before and after acquiring
+        the refresh lock. If the routing table is already fresh on entry, the
+        method exits immediately; otherwise, the refresh lock is acquired and
+        the second freshness check that follows determines whether an update
+        is still required.
+
+        This method is thread-safe.
+
+        :return: `True` if an update was required, `False` otherwise.
+        """
+        from neo4j import READ_ACCESS
+        if self.routing_table.is_fresh(readonly=(access_mode == READ_ACCESS)):
+            return False
+        with self.refresh_lock:
+            if self.routing_table.is_fresh(readonly=(access_mode == READ_ACCESS)):
+                if access_mode == READ_ACCESS:
+                    # if reader is fresh but writers is not fresh, then we are reading in absence of writer
+                    self.missing_writer = not self.routing_table.is_fresh(readonly=False)
+                return False
+            self.update_routing_table()
+            self.update_connection_pool()
+            return True
+
+    def _select_address(self, access_mode=None):
+        from neo4j import READ_ACCESS
+        """ Selects the address with the fewest in-use connections.
+        """
+        self.ensure_routing_table_is_fresh(access_mode)
+        if access_mode == READ_ACCESS:
+            addresses = self.routing_table.readers
+        else:
+            addresses = self.routing_table.writers
+        addresses_by_usage = {}
+        for address in addresses:
+            addresses_by_usage.setdefault(self.in_use_connection_count(address), []).append(address)
+        if not addresses_by_usage:
+            raise Neo4jAvailabilityError("No {} service currently available".format(
+                "read" if access_mode == READ_ACCESS else "write"))
+        return choice(addresses_by_usage[min(addresses_by_usage)])
+
+    def acquire(self, access_mode=None):
+        from neo4j import READ_ACCESS, WRITE_ACCESS
+        if access_mode is None:
+            access_mode = WRITE_ACCESS
+        if access_mode not in (READ_ACCESS, WRITE_ACCESS):
+            raise ValueError("Unsupported access mode {}".format(access_mode))
+        while True:
+            try:
+                address = self._select_address(access_mode)
+            except Neo4jAvailabilityError as err:
+                raise ConnectionExpired("Failed to obtain connection "
+                                        "towards '%s' server." % access_mode) from err
+            try:
+                connection = self.acquire_direct(address)  # should always be a resolved address
+                connection.Error = ConnectionExpired
+            except ServiceUnavailable:
+                self.deactivate(address)
+            else:
+                return connection
+
+    def deactivate(self, address):
+        """ Deactivate an address from the connection pool,
+        if present, remove from the routing table and also closing
+        all idle connections to that address.
+        """
+        log.debug("[#0000]  C: <ROUTING> Deactivating address %r", address)
+        # We use `discard` instead of `remove` here since the former
+        # will not fail if the address has already been removed.
+        self.routing_table.routers.discard(address)
+        self.routing_table.readers.discard(address)
+        self.routing_table.writers.discard(address)
+        log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
+        super(RoutingConnectionPool, self).deactivate(address)
+
+    def remove_writer(self, address):
+        """ Remove a writer address from the routing table, if present.
+        """
+        log.debug("[#0000]  C: <ROUTING> Removing writer %r", address)
+        self.routing_table.writers.discard(address)
+        log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
 
 
 class Response:

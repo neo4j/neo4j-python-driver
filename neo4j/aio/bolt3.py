@@ -25,7 +25,6 @@ from logging import getLogger
 from time import perf_counter
 from warnings import warn
 
-from neo4j import DEFAULT_PORT
 from neo4j.addressing import Address
 from neo4j.aio import Bolt
 from neo4j._collections import OrderedSet
@@ -362,6 +361,7 @@ class RoutingTable:
         """ Parse the records returned from the procedure call and
         return a new RoutingTable instance.
         """
+        from neo4j import DEFAULT_PORT
         routers = []
         readers = []
         writers = []
