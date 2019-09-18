@@ -259,21 +259,23 @@ class RoutingDriverTestCase(StubTestCase):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
-                    with self.assertRaises(SessionExpired):
-                        _ = session.run("RETURN 1")
 
                     pool = driver._pool
                     table = pool.routing_table
+                    table.readers.remove(('127.0.0.1', 9005))
+
+                    with self.assertRaises(SessionExpired):
+                        _ = session.run("RETURN 1")
 
                     # address should have connections in the pool but be inactive, it has failed
                     assert ('127.0.0.1', 9004) in pool.connections
                     conns = pool.connections[('127.0.0.1', 9004)]
                     conn = conns[0]
-                    assert conn._closed == True
-                    assert conn.in_use == True
+                    assert conn._closed is True
+                    assert conn.in_use is True
                     assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
                     # reader 127.0.0.1:9004 should've been forgotten because of an error
-                    assert table.readers == {('127.0.0.1', 9005)}
+                    assert not table.readers
                     assert table.writers == {('127.0.0.1', 9006)}
 
                 assert conn.in_use == False
@@ -283,6 +285,11 @@ class RoutingDriverTestCase(StubTestCase):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
                 with driver.session(access_mode=READ_ACCESS) as session:
+
+                    pool = driver._pool
+                    table = pool.routing_table
+                    table.readers.remove(('127.0.0.1', 9005))
+
                     with self.assertRaises(TransientError) as raised:
                         _ = session.run("RETURN 1")
                     assert raised.exception.title == "DatabaseUnavailable"
@@ -294,5 +301,5 @@ class RoutingDriverTestCase(StubTestCase):
                     assert ('127.0.0.1', 9004) not in pool.connections
                     assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
                     # reader 127.0.0.1:9004 should've been forgotten because of an raised
-                    assert table.readers == {('127.0.0.1', 9005)}
+                    assert not table.readers
                     assert table.writers == {('127.0.0.1', 9006)}

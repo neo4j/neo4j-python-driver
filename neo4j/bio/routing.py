@@ -20,58 +20,18 @@
 
 
 from logging import getLogger
+from random import choice
 from sys import maxsize
 from threading import Lock
 
 from neo4j import READ_ACCESS, WRITE_ACCESS
-from neo4j.errors import BoltRoutingError
+from neo4j.errors import BoltRoutingError, Neo4jAvailabilityError
 from neo4j.bio.direct import AbstractConnectionPool
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 from neo4j.aio.bolt3 import RoutingTable
 
 
-log = getLogger("neobolt")
-
-
-class LeastConnectedLoadBalancingStrategy:
-
-    def __init__(self, connection_pool):
-        self._readers_offset = 0
-        self._writers_offset = 0
-        self._connection_pool = connection_pool
-
-    def select_reader(self, known_readers):
-        address = self._select(self._readers_offset, known_readers)
-        self._readers_offset += 1
-        return address
-
-    def select_writer(self, known_writers):
-        address = self._select(self._writers_offset, known_writers)
-        self._writers_offset += 1
-        return address
-
-    def _select(self, offset, addresses):
-        if not addresses:
-            return None
-        num_addresses = len(addresses)
-        start_index = offset % num_addresses
-        index = start_index
-
-        least_connected_address = None
-        least_in_use_connections = maxsize
-
-        while True:
-            address = addresses[index]
-            index = (index + 1) % num_addresses
-
-            in_use_connections = self._connection_pool.in_use_connection_count(address)
-
-            if in_use_connections < least_in_use_connections:
-                least_connected_address = address
-                least_in_use_connections = in_use_connections
-
-            if index == start_index:
-                return least_connected_address
+log = getLogger("neo4j")
 
 
 class RoutingConnectionPool(AbstractConnectionPool):
@@ -85,7 +45,6 @@ class RoutingConnectionPool(AbstractConnectionPool):
         self.routing_table = RoutingTable(routers)
         self.missing_writer = False
         self.refresh_lock = Lock()
-        self.load_balancing_strategy = LeastConnectedLoadBalancingStrategy(connection_pool=self)
 
     def fetch_routing_info(self, address):
         """ Fetch raw routing info from a given router address.
@@ -235,23 +194,33 @@ class RoutingConnectionPool(AbstractConnectionPool):
             self.update_connection_pool()
             return True
 
+    def _select_address(self, access_mode=None):
+        """ Selects the address with the fewest in-use connections.
+        """
+        self.ensure_routing_table_is_fresh(access_mode)
+        if access_mode == READ_ACCESS:
+            addresses = self.routing_table.readers
+        else:
+            addresses = self.routing_table.writers
+        addresses_by_usage = {}
+        for address in addresses:
+            addresses_by_usage.setdefault(self.in_use_connection_count(address), []).append(address)
+        if not addresses_by_usage:
+            raise Neo4jAvailabilityError("No {} service currently available".format(
+                "read" if access_mode == READ_ACCESS else "write"))
+        return choice(addresses_by_usage[min(addresses_by_usage)])
+
     def acquire(self, access_mode=None):
         if access_mode is None:
             access_mode = WRITE_ACCESS
-        if access_mode == READ_ACCESS:
-            server_list = self.routing_table.readers
-            server_selector = self.load_balancing_strategy.select_reader
-        elif access_mode == WRITE_ACCESS:
-            server_list = self.routing_table.writers
-            server_selector = self.load_balancing_strategy.select_writer
-        else:
+        if access_mode not in (READ_ACCESS, WRITE_ACCESS):
             raise ValueError("Unsupported access mode {}".format(access_mode))
-
-        self.ensure_routing_table_is_fresh(access_mode)
         while True:
-            address = server_selector(server_list)
-            if address is None:
-                break
+            try:
+                address = self._select_address(access_mode)
+            except Neo4jAvailabilityError as err:
+                raise ConnectionExpired("Failed to obtain connection "
+                                        "towards '%s' server." % access_mode) from err
             try:
                 connection = self.acquire_direct(address)  # should always be a resolved address
                 connection.Error = ConnectionExpired
@@ -259,7 +228,6 @@ class RoutingConnectionPool(AbstractConnectionPool):
                 self.deactivate(address)
             else:
                 return connection
-        raise ConnectionExpired("Failed to obtain connection towards '%s' server." % access_mode)
 
     def deactivate(self, address):
         """ Deactivate an address from the connection pool,
