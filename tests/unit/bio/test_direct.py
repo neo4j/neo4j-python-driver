@@ -22,7 +22,7 @@
 from unittest import TestCase
 from threading import Thread, Event
 
-from neo4j.bio.direct import Connection, ConnectionPool
+from neo4j.bio import Connection, ConnectionPool
 from neo4j.exceptions import ClientError, ServiceUnavailable
 
 

@@ -237,7 +237,7 @@ class DirectDriver(Driver):
     uri_schemes = ("bolt",)
 
     def __new__(cls, uri, *, security=None, **config):
-        from neo4j.bio.direct import Connection, ConnectionPool
+        from neo4j.bio import Connection, ConnectionPool
         cls._check_uri(uri)
         instance = object.__new__(cls)
         # We keep the address containing the host name or IP address exactly
@@ -312,7 +312,7 @@ class RoutingDriver(Driver):
         return context
 
     def __new__(cls, uri, *, security=None, **config):
-        from neo4j.bio.direct import Connection, RoutingConnectionPool
+        from neo4j.bio import Connection, RoutingConnectionPool
         cls._check_uri(uri)
         instance = object.__new__(cls)
         parsed = urlparse(uri)

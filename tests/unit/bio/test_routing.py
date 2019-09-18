@@ -22,7 +22,7 @@
 from collections import OrderedDict
 from unittest import TestCase
 
-from neo4j.bio.direct import Connection, RoutingConnectionPool
+from neo4j.bio import Connection, RoutingConnectionPool
 from neo4j.aio.bolt3 import OrderedSet, RoutingTable
 
 
