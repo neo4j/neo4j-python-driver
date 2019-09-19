@@ -19,11 +19,11 @@
 # limitations under the License.
 
 
-from collections import OrderedDict
 from unittest import TestCase
 
 from neo4j.bio import Connection, RoutingConnectionPool
-from neo4j.aio.bolt3 import OrderedSet, RoutingTable
+from neo4j.aio.bolt3 import RoutingTable
+from neo4j._collections import OrderedSet
 
 
 VALID_ROUTING_RECORD = {
