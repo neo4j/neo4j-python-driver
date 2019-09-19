@@ -74,11 +74,12 @@ class OrderedSet(MutableSet):
 
 class AsyncWaitingList:
 
-    def __init__(self):
+    def __init__(self, *, loop=None):
+        self._loop = loop
         self._wait_list = deque()
 
     async def join(self):
-        event = Event()
+        event = Event(loop=self._loop)
         self._wait_list.append(event)
         await event.wait()
 

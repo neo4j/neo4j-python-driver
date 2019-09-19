@@ -35,6 +35,7 @@ from os import strerror
 from random import choice
 from ssl import SSLError
 from sys import platform, version_info
+from threading import RLock
 from time import perf_counter
 
 from neo4j.addressing import Address
@@ -478,19 +479,22 @@ class BoltPool:
         self._loop = loop
         self._in_use_list = deque()
         self._free_list = deque()
-        self._waiting_list = AsyncWaitingList()
+        self._lock = RLock()
+        self._waiting_list = AsyncWaitingList(loop=self._loop)
 
     def __repr__(self):
-        return "<{} addr'{}' [{}{}{}]>".format(
-            self.__class__.__name__,
-            self.address,
-            "|" * len(self._in_use_list),
-            "." * len(self._free_list),
-            " " * (self.max_size - self.size),
-        )
+        with self._lock:
+            return "<{} addr'{}' [{}{}{}]>".format(
+                self.__class__.__name__,
+                self.address,
+                "|" * len(self._in_use_list),
+                "." * len(self._free_list),
+                " " * (self.max_size - self.size),
+            )
 
     def __contains__(self, cx):
-        return cx in self._in_use_list or cx in self._free_list
+        with self._lock:
+            return cx in self._in_use_list or cx in self._free_list
 
     def __len__(self):
         return self.size
@@ -530,14 +534,16 @@ class BoltPool:
         """ The number of connections in this pool that are currently
         in use.
         """
-        return len(self._in_use_list)
+        with self._lock:
+            return len(self._in_use_list)
 
     @property
     def size(self):
         """ The total number of connections (both in-use and free)
         currently owned by this connection pool.
         """
-        return len(self._in_use_list) + len(self._free_list)
+        with self._lock:
+            return len(self._in_use_list) + len(self._free_list)
 
     async def _sanitize(self, cx, *, force_reset):
         """ Attempt to clean up a connection, such that it can be
@@ -575,24 +581,25 @@ class BoltPool:
             if the connection is not already in a clean state
         :return: a Bolt connection object
         """
-        cx = None
-        while cx is None or cx.broken or cx.closed:
-            try:
-                # Plan A: select a free connection from the pool
-                cx = self._free_list.popleft()
-            except IndexError:
-                if self.size < self.max_size:
-                    # Plan B: if the pool isn't full, open
-                    # a new connection
-                    cx = await self._opener(self.address, loop=self._loop)
+        with self._lock:
+            cx = None
+            while cx is None or cx.broken or cx.closed:
+                try:
+                    # Plan A: select a free connection from the pool
+                    cx = self._free_list.popleft()
+                except IndexError:
+                    if self.size < self.max_size:
+                        # Plan B: if the pool isn't full, open
+                        # a new connection
+                        cx = await self._opener(self.address, loop=self._loop)
+                    else:
+                        # Plan C: wait for more capacity to become
+                        # available, then try again
+                        await self._waiting_list.join()
                 else:
-                    # Plan C: wait for more capacity to become
-                    # available, then try again
-                    await self._waiting_list.join()
-            else:
-                cx = await self._sanitize(cx, force_reset=force_reset)
-        self._in_use_list.append(cx)
-        return cx
+                    cx = await self._sanitize(cx, force_reset=force_reset)
+            self._in_use_list.append(cx)
+            return cx
 
     async def release(self, cx, *, force_reset=False):
         """ Release a Bolt connection, putting it back into the pool
@@ -607,33 +614,35 @@ class BoltPool:
         :raise ValueError: if the connection is not currently in use,
             or if it does not belong to this pool
         """
-        if cx in self._in_use_list:
-            self._in_use_list.remove(cx)
-            if self.size < self.max_size:
-                # If there is spare capacity in the pool, attempt to
-                # sanitize the connection and return it to the pool.
-                cx = await self._sanitize(cx, force_reset=force_reset)
-                if cx:
-                    # Carry on only if sanitation succeeded.
-                    if self.size < self.max_size:
-                        # Check again if there is still capacity.
-                        self._free_list.append(cx)
-                        self._waiting_list.notify()
-                    else:
-                        # Otherwise, close the connection.
-                        await cx.close()
+        with self._lock:
+            if cx in self._in_use_list:
+                self._in_use_list.remove(cx)
+                if self.size < self.max_size:
+                    # If there is spare capacity in the pool, attempt to
+                    # sanitize the connection and return it to the pool.
+                    cx = await self._sanitize(cx, force_reset=force_reset)
+                    if cx:
+                        # Carry on only if sanitation succeeded.
+                        if self.size < self.max_size:
+                            # Check again if there is still capacity.
+                            self._free_list.append(cx)
+                            self._waiting_list.notify()
+                        else:
+                            # Otherwise, close the connection.
+                            await cx.close()
+                else:
+                    # If the pool is full, simply close the connection.
+                    await cx.close()
+            elif cx in self._free_list:
+                raise ValueError("Connection is not in use")
             else:
-                # If the pool is full, simply close the connection.
-                await cx.close()
-        elif cx in self._free_list:
-            raise ValueError("Connection is not in use")
-        else:
-            raise ValueError("Connection does not belong to this pool")
+                raise ValueError("Connection does not belong to this pool")
 
     async def prune(self):
         """ Close all free connections.
         """
-        await self.__close(self._free_list)
+        with self._lock:
+            await self.__close(self._free_list)
 
     async def close(self):
         """ Close all connections immediately.
@@ -655,23 +664,24 @@ class BoltPool:
         waiting list, and released connections will be closed instead
         of being returned to the pool.
         """
-        await self.prune()
-        await self.__close(self._in_use_list)
+        with self._lock:
+            await self.prune()
+            await self.__close(self._in_use_list)
 
-    @classmethod
-    async def __close(cls, connections):
+    async def __close(self, connections):
         """ Close all connections in the given list.
         """
-        closers = deque()
-        while True:
-            try:
-                cx = connections.popleft()
-            except IndexError:
-                break
-            else:
-                closers.append(cx.close())
-        if closers:
-            await wait(closers)
+        with self._lock:
+            closers = deque()
+            while True:
+                try:
+                    cx = connections.popleft()
+                except IndexError:
+                    break
+                else:
+                    closers.append(cx.close())
+            if closers:
+                await wait(closers)
 
 
 class Neo4jPool:
