@@ -37,7 +37,6 @@ __all__ = [
     "basic_auth",
     "custom_auth",
     "kerberos_auth",
-    "Agent",
     "Auth",
     "AuthToken",
     "Security",
