@@ -21,9 +21,8 @@
 
 from unittest import TestCase
 
-from neo4j.bio import Connection, RoutingConnectionPool
-from neo4j.aio.bolt3 import RoutingTable
-from neo4j._collections import OrderedSet
+from neo4j.io import Bolt, Neo4jPool
+from neo4j.routing import OrderedSet, RoutingTable
 
 
 VALID_ROUTING_RECORD = {
@@ -47,7 +46,7 @@ VALID_ROUTING_RECORD_WITH_EXTRA_ROLE = {
 
 
 def connector(address, error_handler):
-    return Connection.open(address, error_handler=error_handler, auth=("neotest", "neotest"))
+    return Bolt.open(address, error_handler=error_handler, auth=("neotest", "neotest"))
 
 
 class OrderedSetTestCase(TestCase):
@@ -225,5 +224,5 @@ class RoutingConnectionPoolConstructionTestCase(TestCase):
     def test_should_populate_initial_router(self):
         initial_router = ("127.0.0.1", 9001)
         router = ("127.0.0.1", 9002)
-        with RoutingConnectionPool(connector, initial_router, {}, router) as pool:
+        with Neo4jPool(connector, initial_router, {}, router) as pool:
             assert pool.routing_table.routers == {("127.0.0.1", 9002)}

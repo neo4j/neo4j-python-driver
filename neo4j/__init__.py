@@ -42,6 +42,7 @@ __all__ = [
     "Security",
 ]
 
+from logging import getLogger
 from urllib.parse import urlparse, parse_qs
 
 from neo4j.addressing import Address
@@ -235,7 +236,7 @@ class DirectDriver(Driver):
     uri_schemes = ("bolt",)
 
     def __new__(cls, uri, *, security=None, **config):
-        from neo4j.bio import Connection, ConnectionPool
+        from neo4j.io import Bolt, BoltPool
         cls._check_uri(uri)
         instance = object.__new__(cls)
         # We keep the address containing the host name or IP address exactly
@@ -249,9 +250,9 @@ class DirectDriver(Driver):
         instance.encrypted = bool(security)
 
         def connector(address, **kwargs):
-            return Connection.open(address, **dict(config, **kwargs))
+            return Bolt.open(address, **dict(config, **kwargs))
 
-        pool = ConnectionPool(connector, instance.address, **config)
+        pool = BoltPool(connector, instance.address, **config)
         pool.release(pool.acquire())
         instance._pool = pool
         instance._max_retry_time = config.get("max_retry_time",
@@ -310,7 +311,7 @@ class RoutingDriver(Driver):
         return context
 
     def __new__(cls, uri, *, security=None, **config):
-        from neo4j.bio import Connection, RoutingConnectionPool
+        from neo4j.io import Bolt, Neo4jPool
         cls._check_uri(uri)
         instance = object.__new__(cls)
         parsed = urlparse(uri)
@@ -320,10 +321,10 @@ class RoutingDriver(Driver):
         routing_context = cls.parse_routing_context(uri)
 
         def connector(address, **kwargs):
-            return Connection.open(address, **dict(config, **kwargs))
+            return Bolt.open(address, **dict(config, **kwargs))
 
-        pool = RoutingConnectionPool(connector, initial_address,
-                                     routing_context, initial_address, **config)
+        pool = Neo4jPool(connector, initial_address,
+                         routing_context, initial_address, **config)
         try:
             pool.update_routing_table()
         except Exception:

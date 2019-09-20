@@ -37,7 +37,7 @@ from sys import platform, version_info
 from time import perf_counter
 
 from neo4j.addressing import Address
-from neo4j._collections import AsyncWaitingList
+from neo4j.aio._collections import WaitingList
 from neo4j.aio._mixins import Addressable, Breakable
 from neo4j.errors import (
     BoltError,
@@ -49,6 +49,7 @@ from neo4j.errors import (
 )
 from neo4j.api import Security, Version
 from neo4j.meta import version as neo4j_version
+from neo4j.routing import RoutingTable
 
 
 log = getLogger(__name__)
@@ -478,7 +479,7 @@ class BoltPool:
         self._loop = loop
         self._in_use_list = deque()
         self._free_list = deque()
-        self._waiting_list = AsyncWaitingList(loop=self._loop)
+        self._waiting_list = WaitingList(loop=self._loop)
 
     def __repr__(self):
         return "<{} addr'{}' [{}{}{}]>".format(
@@ -689,7 +690,6 @@ class Neo4jPool:
         return obj
 
     def __init__(self, opener, *addresses, routing_context=None, max_size_per_host=100, loop=None):
-        from neo4j.aio.bolt3 import RoutingTable   # TODO: make this non-Bolt-version-specific
         if loop is None:
             self._loop = get_event_loop()
         else:

@@ -27,10 +27,9 @@ the `session` module provides the main user-facing abstractions.
 
 
 __all__ = [
-    "AbstractConnectionPool",
-    "Connection",
-    "ConnectionPool",
-    "RoutingConnectionPool",
+    "Bolt",
+    "BoltPool",
+    "Neo4jPool",
 ]
 
 
@@ -42,233 +41,37 @@ from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, \
     timeout as SocketTimeout, AF_INET, AF_INET6
 from ssl import HAS_SNI, SSLSocket, SSLError
 from struct import pack as struct_pack, unpack as struct_unpack
-from threading import Lock, RLock, Condition
+from threading import Lock
 from time import perf_counter
 
 from neo4j.addressing import Address, AddressList
-from neo4j.aio.bolt3 import RoutingTable
 from neo4j.api import Security, ServerInfo
-from neo4j.packstream import Packer, UnpackableBuffer, Unpacker
+from neo4j.io.bolt3 import Outbox, BufferedSocket, Inbox, Response, InitResponse, CommitResponse
+from neo4j.io._pooling import AbstractConnectionPool
 from neo4j.errors import BoltRoutingError, Neo4jAvailabilityError
-from neo4j.exceptions import ClientError, ProtocolError, SecurityError, \
-    ServiceUnavailable, AuthError, CypherError, IncompleteCommitError, \
+from neo4j.exceptions import ProtocolError, SecurityError, \
+    ServiceUnavailable, AuthError, IncompleteCommitError, \
     ConnectionExpired, DatabaseUnavailableError, NotALeaderError, \
     ForbiddenOnReadOnlyDatabaseError
 from neo4j.meta import get_user_agent
+from neo4j.packstream import Packer, Unpacker
+from neo4j.routing import RoutingTable
 
 
 MAGIC_PREAMBLE = 0x6060B017
 
-# Connection Pool Management
 DEFAULT_MAX_CONNECTION_LIFETIME = 3600  # 1h
-DEFAULT_MAX_CONNECTION_POOL_SIZE = 100
-DEFAULT_CONNECTION_TIMEOUT = 5.0  # 5s
 
 DEFAULT_KEEP_ALIVE = True
 
-# Connection Settings
-DEFAULT_CONNECTION_ACQUISITION_TIMEOUT = 60  # 1m
+DEFAULT_CONNECTION_TIMEOUT = 5.0  # 5s
 
 
 # Set up logger
 log = getLogger("neo4j")
 
 
-class Outbox:
-
-    def __init__(self, capacity=8192, max_chunk_size=16384):
-        self._max_chunk_size = max_chunk_size
-        self._header = 0
-        self._start = 2
-        self._end = 2
-        self._data = bytearray(capacity)
-
-    def max_chunk_size(self):
-        return self._max_chunk_size
-
-    def clear(self):
-        self._header = 0
-        self._start = 2
-        self._end = 2
-        self._data[0:2] = b"\x00\x00"
-
-    def write(self, b):
-        to_write = len(b)
-        max_chunk_size = self._max_chunk_size
-        pos = 0
-        while to_write > 0:
-            chunk_size = self._end - self._start
-            remaining = max_chunk_size - chunk_size
-            if remaining == 0 or remaining < to_write <= max_chunk_size:
-                self.chunk()
-            else:
-                wrote = min(to_write, remaining)
-                new_end = self._end + wrote
-                self._data[self._end:new_end] = b[pos:pos+wrote]
-                self._end = new_end
-                pos += wrote
-                new_chunk_size = self._end - self._start
-                self._data[self._header:(self._header + 2)] = struct_pack(">H", new_chunk_size)
-                to_write -= wrote
-
-    def chunk(self):
-        self._header = self._end
-        self._start = self._header + 2
-        self._end = self._start
-        self._data[self._header:self._start] = b"\x00\x00"
-
-    def view(self):
-        end = self._end
-        chunk_size = end - self._start
-        if chunk_size == 0:
-            return memoryview(self._data[:self._header])
-        else:
-            return memoryview(self._data[:end])
-
-
-class BufferedSocket:
-    """ Wrapper for a regular socket, with an added a dynamically-resizing
-    receive buffer to reduce the number of calls to recv.
-
-    NOTE: not all socket methods are implemented yet
-    """
-
-    def __init__(self, socket_, initial_capacity=0):
-        self.socket = socket_
-        self.buffer = bytearray(initial_capacity)
-        self.r_pos = 0
-        self.w_pos = 0
-
-    def _fill_buffer(self, min_bytes):
-        """ Fill the buffer with at least `min_bytes` bytes, requesting more if
-        the buffer has space. Internally, this method attempts to do as little
-        allocation as possible and make as few calls to socket.recv as
-        possible.
-        """
-        # First, we need to calculate how much spare space exists between the
-        # write cursor and the end of the buffer.
-        space_at_end = len(self.buffer) - self.w_pos
-        if min_bytes <= space_at_end:
-            # If there's at least enough here for the minimum number of bytes
-            # we need, then do nothing
-            #
-            pass
-        elif min_bytes <= space_at_end + self.r_pos:
-            # If the buffer contains enough space, but it's split between the
-            # end of the buffer and recyclable space at the start of the
-            # buffer, then recycle that space by pushing the remaining data
-            # towards the front.
-            #
-            # print("Recycling {} bytes".format(self.r_pos))
-            size = self.w_pos - self.r_pos
-            view = memoryview(self.buffer)
-            self.buffer[0:size] = view[self.r_pos:self.w_pos]
-            self.r_pos = 0
-            self.w_pos = size
-        else:
-            # Otherwise, there's just not enough space whichever way you shake
-            # it. So, rebuild the buffer from scratch, taking the unread data
-            # and appending empty space big enough to hold the minimum number
-            # of bytes we're looking for.
-            #
-            # print("Rebuilding buffer from {} bytes ({} used) to "
-            #       "{} bytes".format(len(self.buffer),
-            #                         self.w_pos - self.r_pos,
-            #                         self.w_pos - self.r_pos + min_bytes))
-            self.buffer = (self.buffer[self.r_pos:self.w_pos] +
-                           bytearray(min_bytes))
-            self.w_pos -= self.r_pos
-            self.r_pos = 0
-        min_end = self.w_pos + min_bytes
-        end = len(self.buffer)
-        view = memoryview(self.buffer)
-        self.socket.setblocking(0)
-        while self.w_pos < min_end:
-            ready_to_read, _, _ = select([self.socket], [], [])
-            subview = view[self.w_pos:end]
-            n = self.socket.recv_into(subview, end - self.w_pos)
-            if n == 0:
-                raise OSError("No data")
-            self.w_pos += n
-
-    def recv_into(self, buffer, n_bytes=0, flags=0):
-        """ Intercepts a regular socket.recv_into call, taking data from the
-        internal buffer, if available. If not enough data exists in the buffer,
-        more will be retrieved first.
-
-        Unlike the lower-level call, this method will never return 0, instead
-        raising an OSError if no data is returned on the underlying socket.
-
-        :param buffer:
-        :param n_bytes:
-        :param flags:
-        :raises OSError:
-        :return:
-        """
-        available = self.w_pos - self.r_pos
-        required = n_bytes - available
-        if required > 0:
-            self._fill_buffer(required)
-        view = memoryview(self.buffer)
-        end = self.r_pos + n_bytes
-        buffer[:] = view[self.r_pos:end]
-        self.r_pos = end
-        return n_bytes
-
-
-class Inbox:
-
-    def __init__(self, s, on_error):
-        super(Inbox, self).__init__()
-        self.on_error = on_error
-        self._messages = self._yield_messages(s)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return next(self._messages)
-
-    @classmethod
-    def _load_chunks(cls, sock, buffer):
-        chunk_size = 0
-        while True:
-            if chunk_size == 0:
-                buffer.receive(sock, 2)
-            chunk_size = buffer.pop_u16()
-            if chunk_size > 0:
-                buffer.receive(sock, chunk_size + 2)
-            yield chunk_size
-
-    def _yield_messages(self, sock):
-        try:
-            buffer = UnpackableBuffer()
-            chunk_loader = self._load_chunks(sock, buffer)
-            unpacker = Unpacker(buffer)
-            details = []
-            while True:
-                unpacker.reset()
-                details[:] = ()
-                chunk_size = -1
-                while chunk_size != 0:
-                    chunk_size = next(chunk_loader)
-                summary_signature = None
-                summary_metadata = None
-                size, signature = unpacker.unpack_structure_header()
-                if size > 1:
-                    raise ProtocolError("Expected one field")
-                if signature == b"\x71":
-                    data = unpacker.unpack()
-                    details.append(data)
-                else:
-                    summary_signature = signature
-                    summary_metadata = unpacker.unpack_map()
-                yield details, summary_signature, summary_metadata
-        except OSError as error:
-            self.on_error(error)
-
-
-class Connection:
+class Bolt:
     """ Server connection for Bolt protocol v1.
 
     A :class:`.Connection` should be constructed following a
@@ -635,173 +438,22 @@ class Connection:
         return self._defunct
 
 
-class AbstractConnectionPool:
-    """ A collection of connections to one or more server addresses.
-    """
-
-    _closed = False
-
-    def __init__(self, connector, **config):
-        self.connector = connector
-        self.connections = {}
-        self.lock = RLock()
-        self.cond = Condition(self.lock)
-        self._max_connection_pool_size = config.get("max_connection_pool_size", DEFAULT_MAX_CONNECTION_POOL_SIZE)
-        self._connection_acquisition_timeout = config.get("connection_acquisition_timeout", DEFAULT_CONNECTION_ACQUISITION_TIMEOUT)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-
-    def acquire_direct(self, address):
-        """ Acquire a connection to a given address from the pool.
-        The address supplied should always be an IP address, not
-        a host name.
-
-        This method is thread safe.
-        """
-        if self.closed():
-            raise ServiceUnavailable("Connection pool closed")
-        with self.lock:
-            try:
-                connections = self.connections[address]
-            except KeyError:
-                connections = self.connections[address] = deque()
-
-            connection_acquisition_start_timestamp = perf_counter()
-            while True:
-                # try to find a free connection in pool
-                for connection in list(connections):
-                    if connection.closed() or connection.defunct() or connection.timedout():
-                        connections.remove(connection)
-                        continue
-                    if not connection.in_use:
-                        connection.in_use = True
-                        return connection
-                # all connections in pool are in-use
-                infinite_connection_pool = (self._max_connection_pool_size < 0 or
-                                            self._max_connection_pool_size == float("inf"))
-                can_create_new_connection = infinite_connection_pool or len(connections) < self._max_connection_pool_size
-                if can_create_new_connection:
-                    try:
-                        connection = self.connector(address)
-                    except ServiceUnavailable:
-                        self.remove(address)
-                        raise
-                    else:
-                        connection.pool = self
-                        connection.in_use = True
-                        connections.append(connection)
-                        return connection
-
-                # failed to obtain a connection from pool because the pool is full and no free connection in the pool
-                span_timeout = self._connection_acquisition_timeout - (perf_counter() - connection_acquisition_start_timestamp)
-                if span_timeout > 0:
-                    self.cond.wait(span_timeout)
-                    # if timed out, then we throw error. This time computation is needed, as with python 2.7, we cannot
-                    # tell if the condition is notified or timed out when we come to this line
-                    if self._connection_acquisition_timeout <= (perf_counter() - connection_acquisition_start_timestamp):
-                        raise ClientError("Failed to obtain a connection from pool within {!r}s".format(
-                            self._connection_acquisition_timeout))
-                else:
-                    raise ClientError("Failed to obtain a connection from pool within {!r}s".format(self._connection_acquisition_timeout))
-
-    def acquire(self, access_mode=None):
-        """ Acquire a connection to a server that can satisfy a set of parameters.
-
-        :param access_mode:
-        """
-
-    def release(self, connection):
-        """ Release a connection back into the pool.
-        This method is thread safe.
-        """
-        with self.lock:
-            connection.in_use = False
-            self.cond.notify_all()
-
-    def in_use_connection_count(self, address):
-        """ Count the number of connections currently in use to a given
-        address.
-        """
-        try:
-            connections = self.connections[address]
-        except KeyError:
-            return 0
-        else:
-            return sum(1 if connection.in_use else 0 for connection in connections)
-
-    def deactivate(self, address):
-        """ Deactivate an address from the connection pool, if present, closing
-        all idle connection to that address
-        """
-        with self.lock:
-            try:
-                connections = self.connections[address]
-            except KeyError: # already removed from the connection pool
-                return
-            for conn in list(connections):
-                if not conn.in_use:
-                    connections.remove(conn)
-                    try:
-                        conn.close()
-                    except IOError:
-                        pass
-            if not connections:
-                self.remove(address)
-
-    def remove(self, address):
-        """ Remove an address from the connection pool, if present, closing
-        all connections to that address.
-        """
-        with self.lock:
-            for connection in self.connections.pop(address, ()):
-                try:
-                    connection.close()
-                except IOError:
-                    pass
-
-    def close(self):
-        """ Close all connections and empty the pool.
-        This method is thread safe.
-        """
-        if self._closed:
-            return
-        try:
-            with self.lock:
-                if not self._closed:
-                    self._closed = True
-                    for address in list(self.connections):
-                        self.remove(address)
-        except TypeError as e:
-            pass
-
-    def closed(self):
-        """ Return :const:`True` if this pool is closed, :const:`False`
-        otherwise.
-        """
-        with self.lock:
-            return self._closed
-
-
-class ConnectionPool(AbstractConnectionPool):
+class BoltPool(AbstractConnectionPool):
 
     def __init__(self, connector, address, **config):
-        super(ConnectionPool, self).__init__(connector, **config)
+        super(BoltPool, self).__init__(connector, **config)
         self.address = address
 
     def acquire(self, access_mode=None):
         return self.acquire_direct(self.address)
 
 
-class RoutingConnectionPool(AbstractConnectionPool):
+class Neo4jPool(AbstractConnectionPool):
     """ Connection pool with routing table.
     """
 
     def __init__(self, connector, initial_address, routing_context, *routers, **config):
-        super(RoutingConnectionPool, self).__init__(connector, **config)
+        super(Neo4jPool, self).__init__(connector, **config)
         self.initial_address = initial_address
         self.routing_context = routing_context
         self.routing_table = RoutingTable(routers)
@@ -929,7 +581,7 @@ class RoutingConnectionPool(AbstractConnectionPool):
         servers = self.routing_table.servers()
         for address in list(self.connections):
             if address not in servers:
-                super(RoutingConnectionPool, self).deactivate(address)
+                super(Neo4jPool, self).deactivate(address)
 
     def ensure_routing_table_is_fresh(self, access_mode):
         """ Update the routing table if stale.
@@ -1006,7 +658,7 @@ class RoutingConnectionPool(AbstractConnectionPool):
         self.routing_table.readers.discard(address)
         self.routing_table.writers.discard(address)
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
-        super(RoutingConnectionPool, self).deactivate(address)
+        super(Neo4jPool, self).deactivate(address)
 
     def remove_writer(self, address):
         """ Remove a writer address from the routing table, if present.
@@ -1014,72 +666,6 @@ class RoutingConnectionPool(AbstractConnectionPool):
         log.debug("[#0000]  C: <ROUTING> Removing writer %r", address)
         self.routing_table.writers.discard(address)
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
-
-
-class Response:
-    """ Subscriber object for a full response (zero or
-    more detail messages followed by one summary message).
-    """
-
-    def __init__(self, connection, **handlers):
-        self.connection = connection
-        self.handlers = handlers
-        self.complete = False
-
-    def on_records(self, records):
-        """ Called when one or more RECORD messages have been received.
-        """
-        handler = self.handlers.get("on_records")
-        if callable(handler):
-            handler(records)
-
-    def on_success(self, metadata):
-        """ Called when a SUCCESS message has been received.
-        """
-        handler = self.handlers.get("on_success")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
-
-    def on_failure(self, metadata):
-        """ Called when a FAILURE message has been received.
-        """
-        self.connection.reset()
-        handler = self.handlers.get("on_failure")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
-        raise CypherError.hydrate(**metadata)
-
-    def on_ignored(self, metadata=None):
-        """ Called when an IGNORED message has been received.
-        """
-        handler = self.handlers.get("on_ignored")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
-
-
-class InitResponse(Response):
-
-    def on_failure(self, metadata):
-        code = metadata.get("code")
-        message = metadata.get("message", "Connection initialisation failed")
-        if code == "Neo.ClientError.Security.Unauthorized":
-            raise AuthError(message)
-        else:
-            raise ServiceUnavailable(message)
-
-
-class CommitResponse(Response):
-
-    pass
 
 
 # TODO: remove in 2.0
@@ -1226,7 +812,7 @@ def _handshake(s, resolved_address, der_encoded_server_certificate, **config):
         s.shutdown(SHUT_RDWR)
         s.close()
     elif agreed_version in (3,):
-        connection = Connection(
+        connection = Bolt(
             agreed_version, resolved_address, s,
             der_encoded_server_certificate=der_encoded_server_certificate,
             **config)

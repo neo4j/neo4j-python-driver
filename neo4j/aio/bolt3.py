@@ -22,12 +22,9 @@
 from collections import deque
 from inspect import iscoroutinefunction
 from logging import getLogger
-from time import perf_counter
 from warnings import warn
 
-from neo4j.addressing import Address
 from neo4j.aio import Bolt
-from neo4j._collections import OrderedSet
 from neo4j.aio._mixins import Addressable
 from neo4j.api import Bookmark, Version
 from neo4j.data import Record
@@ -40,6 +37,7 @@ from neo4j.errors import (
     BoltRoutingError,
 )
 from neo4j.packstream import PackStream, Structure
+from neo4j.routing import RoutingTable
 
 
 log = getLogger("neo4j")
@@ -352,83 +350,6 @@ class Transaction:
         if self.closed:
             raise BoltTransactionError("Transaction is already "
                                        "closed", self._courier.remote_address)
-
-
-class RoutingTable:
-
-    @classmethod
-    def parse_routing_info(cls, servers, ttl):
-        """ Parse the records returned from the procedure call and
-        return a new RoutingTable instance.
-        """
-        from neo4j import DEFAULT_PORT
-        routers = []
-        readers = []
-        writers = []
-        try:
-            for server in servers:
-                role = server["role"]
-                addresses = []
-                for address in server["addresses"]:
-                    addresses.append(Address.parse(address, default_port=DEFAULT_PORT))
-                if role == "ROUTE":
-                    routers.extend(addresses)
-                elif role == "READ":
-                    readers.extend(addresses)
-                elif role == "WRITE":
-                    writers.extend(addresses)
-        except (KeyError, TypeError):
-            raise ValueError("Cannot parse routing info")
-        else:
-            return cls(routers, readers, writers, ttl)
-
-    def __init__(self, routers=(), readers=(), writers=(), ttl=0):
-        self.routers = OrderedSet(routers)
-        self.readers = OrderedSet(readers)
-        self.writers = OrderedSet(writers)
-        self.last_updated_time = perf_counter()
-        self.ttl = ttl
-
-    def __repr__(self):
-        return "RoutingTable(routers=%r, readers=%r, writers=%r, last_updated_time=%r, ttl=%r)" % (
-            self.routers,
-            self.readers,
-            self.writers,
-            self.last_updated_time,
-            self.ttl,
-        )
-
-    def __contains__(self, address):
-        return address in self.routers or address in self.readers or address in self.writers
-
-    def is_fresh(self, readonly=False):
-        """ Indicator for whether routing information is still usable.
-        """
-        assert isinstance(readonly, bool)
-        log.debug("[#0000]  C: <ROUTING> Checking table freshness (readonly=%r)", readonly)
-        expired = self.last_updated_time + self.ttl <= perf_counter()
-        if readonly:
-            has_server_for_mode = bool(self.readers)
-        else:
-            has_server_for_mode = bool(self.writers)
-        log.debug("[#0000]  C: <ROUTING> Table expired=%r", expired)
-        log.debug("[#0000]  C: <ROUTING> Table routers=%r", self.routers)
-        log.debug("[#0000]  C: <ROUTING> Table has_server_for_mode=%r", has_server_for_mode)
-        return not expired and self.routers and has_server_for_mode
-
-    def update(self, new_routing_table):
-        """ Update the current routing table with new routing information
-        from a replacement table.
-        """
-        self.routers.replace(new_routing_table.routers)
-        self.readers.replace(new_routing_table.readers)
-        self.writers.replace(new_routing_table.writers)
-        self.last_updated_time = perf_counter()
-        self.ttl = new_routing_table.ttl
-        log.debug("[#0000]  S: <ROUTING> table=%r", self)
-
-    def servers(self):
-        return set(self.routers) | set(self.writers) | set(self.readers)
 
 
 class Courier(Addressable, object):
