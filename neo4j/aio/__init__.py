@@ -26,7 +26,6 @@ from asyncio import (
     StreamReaderProtocol,
     StreamWriter,
     get_event_loop,
-    run,
     wait,
 )
 from collections import deque
@@ -35,7 +34,6 @@ from os import strerror
 from random import choice
 from ssl import SSLError
 from sys import platform, version_info
-from threading import RLock
 from time import perf_counter
 
 from neo4j.addressing import Address
@@ -162,6 +160,8 @@ class Bolt(Addressable, object):
 
         # Connect
         address = Address(address)
+        if loop is None:
+            loop = get_event_loop()
         reader, writer, security = await cls._connect(address, security, loop)
 
         try:
@@ -195,8 +195,7 @@ class Bolt(Addressable, object):
             established
         """
         assert isinstance(address, Address)
-        if loop is None:
-            loop = get_event_loop()
+        assert loop is not None
         connection_args = {
             "host": address.host,
             "port": address.port,
@@ -479,22 +478,19 @@ class BoltPool:
         self._loop = loop
         self._in_use_list = deque()
         self._free_list = deque()
-        self._lock = RLock()
         self._waiting_list = AsyncWaitingList(loop=self._loop)
 
     def __repr__(self):
-        with self._lock:
-            return "<{} addr'{}' [{}{}{}]>".format(
-                self.__class__.__name__,
-                self.address,
-                "|" * len(self._in_use_list),
-                "." * len(self._free_list),
-                " " * (self.max_size - self.size),
-            )
+        return "<{} addr'{}' [{}{}{}]>".format(
+            self.__class__.__name__,
+            self.address,
+            "|" * len(self._in_use_list),
+            "." * len(self._free_list),
+            " " * (self.max_size - self.size),
+        )
 
     def __contains__(self, cx):
-        with self._lock:
-            return cx in self._in_use_list or cx in self._free_list
+        return cx in self._in_use_list or cx in self._free_list
 
     def __len__(self):
         return self.size
@@ -534,16 +530,14 @@ class BoltPool:
         """ The number of connections in this pool that are currently
         in use.
         """
-        with self._lock:
-            return len(self._in_use_list)
+        return len(self._in_use_list)
 
     @property
     def size(self):
         """ The total number of connections (both in-use and free)
         currently owned by this connection pool.
         """
-        with self._lock:
-            return len(self._in_use_list) + len(self._free_list)
+        return len(self._in_use_list) + len(self._free_list)
 
     async def _sanitize(self, cx, *, force_reset):
         """ Attempt to clean up a connection, such that it can be
@@ -581,25 +575,26 @@ class BoltPool:
             if the connection is not already in a clean state
         :return: a Bolt connection object
         """
-        with self._lock:
-            cx = None
-            while cx is None or cx.broken or cx.closed:
-                try:
-                    # Plan A: select a free connection from the pool
-                    cx = self._free_list.popleft()
-                except IndexError:
-                    if self.size < self.max_size:
-                        # Plan B: if the pool isn't full, open
-                        # a new connection
-                        cx = await self._opener(self.address, loop=self._loop)
-                    else:
-                        # Plan C: wait for more capacity to become
-                        # available, then try again
-                        await self._waiting_list.join()
+        log.debug("Acquiring connection from pool %r", self)
+        cx = None
+        while cx is None or cx.broken or cx.closed:
+            try:
+                # Plan A: select a free connection from the pool
+                cx = self._free_list.popleft()
+            except IndexError:
+                if self.size < self.max_size:
+                    # Plan B: if the pool isn't full, open
+                    # a new connection
+                    cx = await self._opener(self.address, loop=self._loop)
                 else:
-                    cx = await self._sanitize(cx, force_reset=force_reset)
-            self._in_use_list.append(cx)
-            return cx
+                    # Plan C: wait for more capacity to become
+                    # available, then try again
+                    log.debug("Joining waiting list")
+                    await self._waiting_list.join()
+            else:
+                cx = await self._sanitize(cx, force_reset=force_reset)
+        self._in_use_list.append(cx)
+        return cx
 
     async def release(self, cx, *, force_reset=False):
         """ Release a Bolt connection, putting it back into the pool
@@ -614,35 +609,34 @@ class BoltPool:
         :raise ValueError: if the connection is not currently in use,
             or if it does not belong to this pool
         """
-        with self._lock:
-            if cx in self._in_use_list:
-                self._in_use_list.remove(cx)
-                if self.size < self.max_size:
-                    # If there is spare capacity in the pool, attempt to
-                    # sanitize the connection and return it to the pool.
-                    cx = await self._sanitize(cx, force_reset=force_reset)
-                    if cx:
-                        # Carry on only if sanitation succeeded.
-                        if self.size < self.max_size:
-                            # Check again if there is still capacity.
-                            self._free_list.append(cx)
-                            self._waiting_list.notify()
-                        else:
-                            # Otherwise, close the connection.
-                            await cx.close()
-                else:
-                    # If the pool is full, simply close the connection.
-                    await cx.close()
-            elif cx in self._free_list:
-                raise ValueError("Connection is not in use")
+        log.debug("Releasing connection %r", cx)
+        if cx in self._in_use_list:
+            self._in_use_list.remove(cx)
+            if self.size < self.max_size:
+                # If there is spare capacity in the pool, attempt to
+                # sanitize the connection and return it to the pool.
+                cx = await self._sanitize(cx, force_reset=force_reset)
+                if cx:
+                    # Carry on only if sanitation succeeded.
+                    if self.size < self.max_size:
+                        # Check again if there is still capacity.
+                        self._free_list.append(cx)
+                        self._waiting_list.notify()
+                    else:
+                        # Otherwise, close the connection.
+                        await cx.close()
             else:
-                raise ValueError("Connection does not belong to this pool")
+                # If the pool is full, simply close the connection.
+                await cx.close()
+        elif cx in self._free_list:
+            raise ValueError("Connection is not in use")
+        else:
+            raise ValueError("Connection does not belong to this pool")
 
     async def prune(self):
         """ Close all free connections.
         """
-        with self._lock:
-            await self.__close(self._free_list)
+        await self.__close(self._free_list)
 
     async def close(self):
         """ Close all connections immediately.
@@ -664,24 +658,22 @@ class BoltPool:
         waiting list, and released connections will be closed instead
         of being returned to the pool.
         """
-        with self._lock:
-            await self.prune()
-            await self.__close(self._in_use_list)
+        await self.prune()
+        await self.__close(self._in_use_list)
 
     async def __close(self, connections):
         """ Close all connections in the given list.
         """
-        with self._lock:
-            closers = deque()
-            while True:
-                try:
-                    cx = connections.popleft()
-                except IndexError:
-                    break
-                else:
-                    closers.append(cx.close())
-            if closers:
-                await wait(closers)
+        closers = deque()
+        while True:
+            try:
+                cx = connections.popleft()
+            except IndexError:
+                break
+            else:
+                closers.append(cx.close())
+        if closers:
+            await wait(closers, loop=self._loop)
 
 
 class Neo4jPool:
@@ -698,13 +690,16 @@ class Neo4jPool:
 
     def __init__(self, opener, *addresses, routing_context=None, max_size_per_host=100, loop=None):
         from neo4j.aio.bolt3 import RoutingTable   # TODO: make this non-Bolt-version-specific
+        if loop is None:
+            self._loop = get_event_loop()
+        else:
+            self._loop = loop
         self._pools = {}
         self._missing_writer = False
-        self._refresh_lock = Lock()
+        self._refresh_lock = Lock(loop=self._loop)
         self._opener = opener
         self._routing_context = routing_context
         self._max_size_per_host = max_size_per_host
-        self._loop = loop
         self._initial_routers = addresses
         self._routing_table = RoutingTable(addresses)
         self._activate_new_pools_in(self._routing_table)
@@ -834,7 +829,7 @@ class Neo4jPool:
                                          "available".format("read" if readonly else "write"))
         return choice(pools_by_usage[min(pools_by_usage)])
 
-    async def acquire(self, readonly=False, force_reset=False):
+    async def acquire(self, *, readonly=False, force_reset=False):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
         :param readonly: true if a readonly connection is required,
@@ -869,7 +864,7 @@ class Neo4jPool:
                     cx.set_failure_handler(ForbiddenOnReadOnlyDatabase, handler)
                 return cx
 
-    async def release(self, connection, force_reset=False):
+    async def release(self, connection, *, force_reset=False):
         """ Release a connection back into the pool.
         This method is thread safe.
         """
@@ -930,39 +925,40 @@ class Neo4j:
     # The default router address list to use if no addresses are specified.
     default_router_addresses = Address.parse_list(":7687 :17601 :17687")
 
-    @classmethod
-    async def open(cls, *addresses, auth=None, security=False, protocol_version=None, loop=None):
-        opener = Bolt.opener(auth=auth, security=security, protocol_version=protocol_version)
-        router_addresses = Address.parse_list(" ".join(addresses), default_port=7687)
-        return cls(opener, router_addresses, loop=loop)
-
-    def __init__(self, opener, router_addresses, loop=None):
-        self._routers = Neo4jPool(opener, router_addresses or self.default_router_addresses)
-        self._writers = Neo4jPool(opener)
-        self._readers = Neo4jPool(opener)
-        self._routing_table = None
-
-    @property
-    def routing_table(self):
-        return self._routing_table
-
-    async def update_routing_table(self):
-        cx = await self._routers.acquire()
-        try:
-            result = await cx.run("CALL dbms.cluster.routing.getRoutingTable({context})", {"context": {}})
-            record = await result.single()
-            self._routing_table = RoutingTable.parse_routing_info([record])  # TODO: handle ValueError?
-            return self._routing_table
-        finally:
-            self._routers.release(cx)
-
-
-async def main():
-    from neo4j.debug import watch; watch("neo4j")
-    neo4j = await Neo4j.open(":17601 :17602 :17603", auth=("neo4j", "password"))
-    await neo4j.update_routing_table()
-    print(neo4j.routing_table)
+    # TODO
+    # @classmethod
+    # async def open(cls, *addresses, auth=None, security=False, protocol_version=None, loop=None):
+    #     opener = Bolt.opener(auth=auth, security=security, protocol_version=protocol_version)
+    #     router_addresses = Address.parse_list(" ".join(addresses), default_port=7687)
+    #     return cls(opener, router_addresses, loop=loop)
+    #
+    # def __init__(self, opener, router_addresses, loop=None):
+    #     self._routers = Neo4jPool(opener, router_addresses or self.default_router_addresses)
+    #     self._writers = Neo4jPool(opener)
+    #     self._readers = Neo4jPool(opener)
+    #     self._routing_table = None
+    #
+    # @property
+    # def routing_table(self):
+    #     return self._routing_table
+    #
+    # async def update_routing_table(self):
+    #     cx = await self._routers.acquire()
+    #     try:
+    #         result = await cx.run("CALL dbms.cluster.routing.getRoutingTable({context})", {"context": {}})
+    #         record = await result.single()
+    #         self._routing_table = RoutingTable.parse_routing_info([record])  # TODO: handle ValueError?
+    #         return self._routing_table
+    #     finally:
+    #         self._routers.release(cx)
 
 
-if __name__ == "__main__":
-    run(main())
+# async def main():
+#     from neo4j.debug import watch; watch("neo4j")
+#     neo4j = await Neo4j.open(":17601 :17602 :17603", auth=("neo4j", "password"))
+#     await neo4j.update_routing_table()
+#     print(neo4j.routing_table)
+#
+#
+# if __name__ == "__main__":
+#     run(main())

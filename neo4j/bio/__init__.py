@@ -71,7 +71,7 @@ DEFAULT_CONNECTION_ACQUISITION_TIMEOUT = 60  # 1m
 
 
 # Set up logger
-log = getLogger("neobolt")
+log = getLogger("neo4j")
 
 
 class Outbox:

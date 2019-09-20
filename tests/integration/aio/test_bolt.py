@@ -21,29 +21,10 @@
 
 from asyncio import sleep, wait, wait_for, TimeoutError
 
-from pytest import fixture, mark, raises
+from pytest import mark, raises
 
 from neo4j.aio import Bolt, BoltPool
 from neo4j.errors import BoltConnectionError, BoltTransactionError, ClientError
-
-
-@fixture
-async def bolt(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    yield bolt
-    await bolt.close()
-
-
-@fixture
-def opener(auth):
-    return Bolt.opener(auth=auth)
-
-
-@fixture
-async def bolt_pool(opener, address):
-    pool = BoltPool(opener, address)
-    yield pool
-    await pool.close()
 
 
 @mark.asyncio
