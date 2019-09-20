@@ -45,7 +45,6 @@ __all__ = [
 
 from urllib.parse import urlparse, parse_qs
 
-from neo4j._agent import *
 from neo4j.addressing import Address
 from neo4j.api import *
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
