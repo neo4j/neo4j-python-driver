@@ -23,7 +23,7 @@ from unittest import SkipTest
 
 from pytest import raises
 
-from neo4j.blocking import Statement, SessionError
+from neo4j.work.blocking import Statement, SessionError
 from neo4j.exceptions import CypherError, ClientError, TransientError
 from neo4j.graph import Node, Relationship
 

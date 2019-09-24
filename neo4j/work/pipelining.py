@@ -23,7 +23,7 @@ from collections import deque
 from threading import Thread, Lock
 from time import sleep
 
-from neo4j import Workspace
+from neo4j.work import Workspace
 
 
 class Pipeline(Workspace):

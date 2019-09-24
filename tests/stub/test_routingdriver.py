@@ -21,7 +21,7 @@
 
 from neo4j import GraphDatabase, READ_ACCESS, WRITE_ACCESS, Neo4jDriver
 from neo4j.errors import BoltRoutingError
-from neo4j.blocking import SessionExpired
+from neo4j.work.blocking import SessionExpired
 from neo4j.exceptions import ServiceUnavailable, ClientError, TransientError
 
 from tests.stub.conftest import StubTestCase, StubCluster

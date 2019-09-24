@@ -27,8 +27,6 @@ __all__ = [
     "Driver",
     "BoltDriver",
     "Neo4jDriver",
-    "Workspace",
-    "WorkspaceError",
     "DriverError",
     "Auth",
     "AuthToken",
@@ -325,7 +323,7 @@ class BoltDriver(Direct, Driver):
         self._assert_open()
         if "max_retry_time" not in parameters:
             parameters["max_retry_time"] = self._max_retry_time
-        from neo4j.blocking import Session
+        from neo4j.work.blocking import Session
         return Session(self._pool.acquire, **parameters)
 
     def rx_session(self, **parameters):
@@ -333,7 +331,7 @@ class BoltDriver(Direct, Driver):
                                   "for the %s class" % type(self).__name__)
 
     def pipeline(self, **parameters):
-        from neo4j.pipelining import Pipeline
+        from neo4j.work.pipelining import Pipeline
         return Pipeline(self._pool.acquire, **parameters)
 
 
@@ -378,7 +376,7 @@ class Neo4jDriver(Routing, Driver):
         self._assert_open()
         if "max_retry_time" not in parameters:
             parameters["max_retry_time"] = self._max_retry_time
-        from neo4j.blocking import Session
+        from neo4j.work.blocking import Session
         return Session(self._pool.acquire, **parameters)
 
     def rx_session(self, **parameters):
@@ -407,64 +405,3 @@ class DriverError(Exception):
     def __init__(self, driver, *args):
         super(DriverError, self).__init__(*args)
         self.driver = driver
-
-
-class Workspace:
-
-    def __init__(self, acquirer, **parameters):
-        self._acquirer = acquirer
-        self._parameters = parameters
-        self._connection = None
-        self._closed = False
-
-    def __del__(self):
-        try:
-            self.close()
-        except OSError:
-            pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-
-    def _connect(self, access_mode=None):
-        if access_mode is None:
-            access_mode = self._parameters.get("access_mode", "WRITE")
-        if self._connection:
-            if access_mode == self._connection_access_mode:
-                return
-            self._disconnect(sync=True)
-        self._connection = self._acquirer(access_mode)
-        self._connection_access_mode = access_mode
-
-    def _disconnect(self, sync):
-        if self._connection:
-            if sync:
-                try:
-                    self._connection.send_all()
-                    self._connection.fetch_all()
-                except (WorkspaceError, ConnectionExpired, ServiceUnavailable):
-                    pass
-            if self._connection:
-                self._connection.in_use = False
-                self._connection = None
-            self._connection_access_mode = None
-
-    def close(self):
-        try:
-            self._disconnect(sync=True)
-        finally:
-            self._closed = True
-
-    def closed(self):
-        """ Indicator for whether or not this session has been closed.
-        :returns: :const:`True` if closed, :const:`False` otherwise.
-        """
-        return self._closed
-
-
-class WorkspaceError(Exception):
-
-    pass

@@ -20,7 +20,7 @@
 
 
 # tag::transaction-function-import[]
-from neo4j.blocking import unit_of_work
+from neo4j.work.blocking import unit_of_work
 # end::transaction-function-import[]
 
 
