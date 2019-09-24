@@ -23,20 +23,13 @@ __all__ = [
     "__version__",
     "READ_ACCESS",
     "WRITE_ACCESS",
-    "DEFAULT_PORT",
-    "TRUST_ALL_CERTIFICATES",
-    "TRUST_CUSTOM_CA_SIGNED_CERTIFICATES",
-    "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",
     "GraphDatabase",
     "Driver",
-    "DirectDriver",
-    "RoutingDriver",
+    "BoltDriver",
+    "Neo4jDriver",
     "Workspace",
     "WorkspaceError",
     "DriverError",
-    "basic_auth",
-    "custom_auth",
-    "kerberos_auth",
     "Auth",
     "AuthToken",
     "Security",
@@ -47,83 +40,119 @@ from urllib.parse import urlparse, parse_qs
 
 from neo4j.addressing import Address
 from neo4j.api import *
+from neo4j.meta import get_user_agent
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 from neo4j.meta import experimental, version as __version__
-
-
-DEFAULT_PORT = 7687
-
-
-# Auth
-TRUST_ON_FIRST_USE = 0  # Deprecated
-TRUST_SIGNED_CERTIFICATES = 1  # Deprecated
-TRUST_ALL_CERTIFICATES = 2
-TRUST_CUSTOM_CA_SIGNED_CERTIFICATES = 3
-TRUST_SYSTEM_CA_SIGNED_CERTIFICATES = 4
-TRUST_DEFAULT = TRUST_ALL_CERTIFICATES
-
-
-# Connection Pool Management
-INFINITE = -1
-DEFAULT_MAX_CONNECTION_LIFETIME = 3600  # 1h
-DEFAULT_MAX_CONNECTION_POOL_SIZE = 100
-DEFAULT_CONNECTION_TIMEOUT = 5.0  # 5s
-
-
-# Connection Settings
-DEFAULT_CONNECTION_ACQUISITION_TIMEOUT = 60  # 1m
-
-
-# Routing settings
-DEFAULT_MAX_RETRY_TIME = 30.0  # 30s
 
 
 READ_ACCESS = "READ"
 WRITE_ACCESS = "WRITE"
 
 
-default_config = {
-    "auth": None,
-    "trust": TRUST_DEFAULT,
-    "der_encoded_server_certificate": None,
-
-    "user_agent": None,
-
-    # Connection pool management
-    "max_connection_lifetime": DEFAULT_MAX_CONNECTION_LIFETIME,
-    "max_connection_pool_size": DEFAULT_MAX_CONNECTION_POOL_SIZE,
-    "connection_acquisition_timeout": DEFAULT_CONNECTION_ACQUISITION_TIMEOUT,
-
-    # Connection settings:
-    "connection_timeout": DEFAULT_CONNECTION_TIMEOUT,
-    "keep_alive": True,
-
-    # Routing settings:
-    "max_retry_time": DEFAULT_MAX_RETRY_TIME,
-}
-
-
 log = getLogger("neo4j")
 
 
-# For backwards compatibility
-AuthToken = Auth
-
-
-class Neo4j:
+class GraphDatabase:
     """ Accessor for :class:`.Driver` construction.
     """
 
     @classmethod
-    def driver(cls, uri, **config):
-        """ Create a :class:`.Driver` object. Calling this method provides
-        identical functionality to constructing a :class:`.Driver` or
-        :class:`.Driver` subclass instance directly.
+    def driver(cls, uri, *, auth=None, connection_timeout=None,
+               connection_acquisition_timeout=None, **config):
+        """ Create a Neo4j driver that uses socket I/O and thread-based
+        concurrency.
+
+        :param uri:
+        :param auth:
+        :param connection_timeout:
+        :param connection_acquisition_timeout:
+        :param config: connection configuration settings
         """
-        return Driver(uri, **config)
+        parsed = urlparse(uri)
+        if parsed.scheme == "bolt":
+            return cls.bolt_driver(parsed.netloc, auth=auth, connection_timeout=connection_timeout,
+                                   connection_acquisition_timeout=connection_acquisition_timeout,
+                                   **config)
+        elif parsed.scheme == "neo4j" or parsed.scheme == "bolt+routing":
+            rc = cls._parse_routing_context(parsed.query)
+            return cls.neo4j_driver(parsed.netloc, auth=auth, routing_context=rc,
+                                    connection_timeout=connection_timeout,
+                                    connection_acquisition_timeout=connection_acquisition_timeout,
+                                    **config)
+        else:
+            raise ValueError("Unknown URI scheme {!r}".format(parsed.scheme))
 
+    @classmethod
+    async def async_driver(cls, uri, *, auth=None, loop=None, **config):
+        """ Create a Neo4j driver that uses async I/O and task-based
+        concurrency.
+        """
+        parsed = urlparse(uri)
+        if parsed.scheme == "bolt":
+            return await cls.async_bolt_driver(parsed.netloc, auth=auth, loop=loop, **config)
+        elif parsed.scheme == "neo4j" or parsed.scheme == "bolt+routing":
+            rc = cls._parse_routing_context(parsed.query)
+            return await cls.async_neo4j_driver(parsed.netloc, auth=auth, routing_context=rc,
+                                                loop=loop, **config)
+        else:
+            raise ValueError("Unknown URI scheme {!r}".format(parsed.scheme))
 
-GraphDatabase = Neo4j
+    @classmethod
+    def bolt_driver(cls, target, *, auth=None, connection_timeout=None,
+                    connection_acquisition_timeout=None, **config):
+        """ Create a driver for direct Bolt server access that uses
+        socket I/O and thread-based concurrency.
+        """
+        return BoltDriver.open(target, auth=auth, connection_timeout=connection_timeout,
+                               connection_acquisition_timeout=connection_acquisition_timeout,
+                               **config)
+
+    @classmethod
+    async def async_bolt_driver(cls, target, *, auth=None, loop=None, **config):
+        """ Create a driver for direct Bolt server access that uses
+        async I/O and task-based concurrency.
+        """
+        return await AsyncBoltDriver.open(target, auth=auth, loop=loop, **config)
+
+    @classmethod
+    def neo4j_driver(cls, *targets, auth=None, routing_context=None, connection_timeout=None,
+                     connection_acquisition_timeout=None, **config):
+        """ Create a driver for routing-capable Neo4j service access
+        that uses socket I/O and thread-based concurrency.
+        """
+        return Neo4jDriver.open(*targets, auth=auth, routing_context=routing_context,
+                                connection_timeout=connection_timeout,
+                                connection_acquisition_timeout=connection_acquisition_timeout,
+                                **config)
+
+    @classmethod
+    async def async_neo4j_driver(cls, *targets, auth=None, loop=None, **config):
+        """ Create a driver for routing-capable Neo4j service access
+        that uses async I/O and task-based concurrency.
+        """
+        return await AsyncNeo4jDriver.open(*targets, auth=auth, loop=loop, **config)
+
+    @classmethod
+    def _parse_routing_context(cls, query):
+        """ Parse the query portion of a URI to generate a routing
+        context dictionary.
+        """
+        if not query:
+            return {}
+
+        context = {}
+        parameters = parse_qs(query, True)
+        for key in parameters:
+            value_list = parameters[key]
+            if len(value_list) != 1:
+                raise ValueError("Duplicated query parameters with key '%s', "
+                                 "value '%s' found in query string '%s'" % (key, value_list, query))
+            value = value_list[0]
+            if not value:
+                raise ValueError("Invalid parameters:'%s=%s' in query string "
+                                 "'%s'." % (key, value, query))
+            context[key] = value
+        return context
 
 
 class Driver:
@@ -143,30 +172,6 @@ class Driver:
 
     #: Indicator of driver closure.
     _closed = False
-
-    @classmethod
-    def _check_uri(cls, uri):
-        """ Check whether a URI is compatible with a :class:`.Driver`
-        subclass. When called from a subclass, execution simply passes
-        through if the URI scheme is valid for that class. If invalid,
-        a `ValueError` is raised.
-
-        :param uri: URI to check for compatibility
-        :raise: `ValueError` if URI scheme is incompatible
-        """
-        parsed = urlparse(uri)
-        if parsed.scheme not in cls.uri_schemes:
-            raise ValueError("%s objects require the one of the URI "
-                             "schemes %r" % (cls.__name__, cls.uri_schemes))
-
-    def __new__(cls, uri, **config):
-        parsed = urlparse(uri)
-        parsed_scheme = parsed.scheme
-        for subclass in Driver.__subclasses__():
-            assert issubclass(subclass, Driver)
-            if parsed_scheme in subclass.uri_schemes:
-                return subclass(uri, **config)
-        raise ValueError("URI scheme %r not supported" % parsed.scheme)
 
     def __del__(self):
         self.close()
@@ -190,10 +195,6 @@ class Driver:
         :returns: new :class:`.Session` object
         """
         raise NotImplementedError("Blocking sessions are not implemented "
-                                  "for the %s class" % type(self).__name__)
-
-    def async_session(self, **parameters):
-        raise NotImplementedError("Asynchronous sessions are not implemented "
                                   "for the %s class" % type(self).__name__)
 
     def rx_session(self, **parameters):
@@ -224,40 +225,101 @@ class Driver:
         return self._closed
 
 
-class DirectDriver(Driver):
-    """ A :class:`.DirectDriver` is created from a ``bolt`` URI and addresses
+class AsyncDriver:
+
+    @classmethod
+    async def open(cls, uri, **config):
+        raise NotImplementedError
+
+    def session(self, **parameters):
+        raise NotImplementedError
+
+    def rx_session(self, **parameters):
+        raise NotImplementedError
+
+    @experimental("The pipeline API is experimental and may be removed or "
+                  "changed in a future release")
+    def pipeline(self, **parameters):
+        raise NotImplementedError
+
+    def close(self):
+        raise NotImplementedError
+
+    def closed(self):
+        raise NotImplementedError
+
+
+class Direct:
+
+    default_host = "localhost"
+    default_port = 7687
+
+    default_target = ":"
+
+    @classmethod
+    def parse_target(cls, target):
+        """ Parse a target string to produce an address.
+        """
+        if not target:
+            target = cls.default_target
+        address = Address.parse(target, default_host=cls.default_host,
+                                default_port=cls.default_port)
+        return address
+
+
+class Routing:
+
+    default_host = "localhost"
+    default_port = 7687
+
+    default_targets = ": :17601 :17687"
+
+    @classmethod
+    def parse_targets(cls, *targets):
+        """ Parse a sequence of target strings to produce an address
+        list.
+        """
+        targets = " ".join(targets)
+        if not targets:
+            targets = cls.default_targets
+        addresses = Address.parse_list(targets, default_host=cls.default_host,
+                                       default_port=cls.default_port)
+        return addresses
+
+
+class BoltDriver(Direct, Driver):
+    """ A :class:`.BoltDriver` is created from a ``bolt`` URI and addresses
     a single database machine. This may be a standalone server or could be a
     specific member of a cluster.
 
-    Connections established by a :class:`.DirectDriver` are always made to the
+    Connections established by a :class:`.BoltDriver` are always made to the
     exact host and port detailed in the URI.
     """
 
-    uri_schemes = ("bolt",)
+    @classmethod
+    def open(cls, target, *, auth=None, connection_timeout=None,
+             connection_acquisition_timeout=None, **config):
+        address = cls.parse_target(target)
+        return cls(address, auth=auth, connection_timeout=connection_timeout,
+                   connection_acquisition_timeout=connection_acquisition_timeout, **config)
 
-    def __new__(cls, uri, *, security=None, **config):
+    def __init__(self, address, *, auth=None, connection_timeout=None,
+                 connection_acquisition_timeout=None, **config):
         from neo4j.io import Bolt, BoltPool
-        cls._check_uri(uri)
-        instance = object.__new__(cls)
-        # We keep the address containing the host name or IP address exactly
-        # as-is from the original URI. This means that every new connection
-        # will carry out DNS resolution, leading to the possibility that
-        # the connection pool may contain multiple IP address keys, one for
-        # an old address and one for a new address.
-        parsed = urlparse(uri)
-        instance.address = Address.parse(parsed.netloc,
-                                         default_port=DEFAULT_PORT)
-        instance.encrypted = bool(security)
+        self.address = address
+        self.config = Config(**config)
+        self.encrypted = bool(self.config.secure)
+        self._max_retry_time = self.config.max_retry_time
+        self._connection_acquisition_timeout = connection_acquisition_timeout
 
-        def connector(address, **kwargs):
-            return Bolt.open(address, **dict(config, **kwargs))
+        def connector(addr):
+            return Bolt.open(addr, auth=auth, connection_timeout=connection_timeout, **self.config)
 
-        pool = BoltPool(connector, instance.address, **config)
+        pool = BoltPool(connector, address,
+                        connection_acquisition_timeout=connection_acquisition_timeout,
+                        **self.config)
         pool.release(pool.acquire())
-        instance._pool = pool
-        instance._max_retry_time = config.get("max_retry_time",
-                                              default_config["max_retry_time"])
-        return instance
+        self._pool = pool
 
     def session(self, **parameters):
         self._assert_open()
@@ -265,10 +327,6 @@ class DirectDriver(Driver):
             parameters["max_retry_time"] = self._max_retry_time
         from neo4j.blocking import Session
         return Session(self._pool.acquire, **parameters)
-
-    def async_session(self, **parameters):
-        raise NotImplementedError("Asynchronous sessions are not implemented "
-                                  "for the %s class" % type(self).__name__)
 
     def rx_session(self, **parameters):
         raise NotImplementedError("Reactive sessions are not implemented "
@@ -279,62 +337,42 @@ class DirectDriver(Driver):
         return Pipeline(self._pool.acquire, **parameters)
 
 
-class RoutingDriver(Driver):
-    """ A :class:`.RoutingDriver` is created from a ``neo4j`` URI. The
+class Neo4jDriver(Routing, Driver):
+    """ A :class:`.Neo4jDriver` is created from a ``neo4j`` URI. The
     routing behaviour works in tandem with Neo4j's `Causal Clustering
     <https://neo4j.com/docs/operations-manual/current/clustering/>`_ feature
     by directing read and write behaviour to appropriate cluster members.
     """
 
-    uri_schemes = ("neo4j", "bolt+routing")
-
     @classmethod
-    def parse_routing_context(cls, uri):
-        query = urlparse(uri).query
-        if not query:
-            return {}
+    def open(cls, *targets, auth=None, routing_context=None, connection_timeout=None,
+             connection_acquisition_timeout=None, **config):
+        addresses = cls.parse_targets(*targets)
+        return cls(*addresses, auth=auth, routing_context=routing_context,
+                   connection_timeout=connection_timeout,
+                   connection_acquisition_timeout=connection_acquisition_timeout, **config)
 
-        context = {}
-        parameters = parse_qs(query, True)
-        for key in parameters:
-            value_list = parameters[key]
-            if len(value_list) != 1:
-                raise ValueError("Duplicated query parameters with key '%s', "
-                                 "value '%s' found in URL '%s'" % (key,
-                                                                   value_list,
-                                                                   uri))
-            value = value_list[0]
-            if not value:
-                raise ValueError("Invalid parameters:'%s=%s' in URI "
-                                 "'%s'." % (key, value, uri))
-            context[key] = value
-        return context
-
-    def __new__(cls, uri, *, security=None, **config):
+    def __init__(self, *addresses, auth=None, routing_context=None,
+                 connection_timeout=None, connection_acquisition_timeout=None, **config):
         from neo4j.io import Bolt, Neo4jPool
-        cls._check_uri(uri)
-        instance = object.__new__(cls)
-        parsed = urlparse(uri)
-        instance.initial_address = initial_address = \
-            Address.parse(parsed.netloc, default_port=DEFAULT_PORT)
-        instance.encrypted = bool(security)
-        routing_context = cls.parse_routing_context(uri)
+        self.addresses = addresses
+        self.config = Config(**config)
+        self.encrypted = bool(self.config.secure)
+        self._max_retry_time = self.config.max_retry_time
 
-        def connector(address, **kwargs):
-            return Bolt.open(address, **dict(config, **kwargs))
+        def connector(addr):
+            return Bolt.open(addr, auth=auth, connection_timeout=connection_timeout, **self.config)
 
-        pool = Neo4jPool(connector, initial_address,
-                         routing_context, initial_address, **config)
+        # TODO: pass in all addresses
+        pool = Neo4jPool(connector, addresses[0], routing_context, *addresses,
+                         connection_acquisition_timeout=connection_acquisition_timeout, **config)
         try:
             pool.update_routing_table()
         except Exception:
             pool.close()
             raise
         else:
-            instance._pool = pool
-            instance._max_retry_time = \
-                config.get("max_retry_time", default_config["max_retry_time"])
-            return instance
+            self._pool = pool
 
     def session(self, **parameters):
         self._assert_open()
@@ -342,10 +380,6 @@ class RoutingDriver(Driver):
             parameters["max_retry_time"] = self._max_retry_time
         from neo4j.blocking import Session
         return Session(self._pool.acquire, **parameters)
-
-    def async_session(self, **parameters):
-        raise NotImplementedError("Asynchronous sessions are not implemented "
-                                  "for the %s class" % type(self).__name__)
 
     def rx_session(self, **parameters):
         raise NotImplementedError("Reactive sessions are not implemented "
@@ -356,6 +390,16 @@ class RoutingDriver(Driver):
                                   "for the %s class" % type(self).__name__)
 
 
+class AsyncBoltDriver(Direct, AsyncDriver):
+
+    pass
+
+
+class AsyncNeo4jDriver(Routing, AsyncDriver):
+
+    pass
+
+
 class DriverError(Exception):
     """ Raised when an error occurs while using a driver.
     """
@@ -363,39 +407,6 @@ class DriverError(Exception):
     def __init__(self, driver, *args):
         super(DriverError, self).__init__(*args)
         self.driver = driver
-
-
-def basic_auth(user, password, realm=None):
-    """ Generate a basic auth token for a given user and password.
-
-    :param user: user name
-    :param password: current password
-    :param realm: specifies the authentication provider
-    :return: auth token for use with :meth:`GraphDatabase.driver`
-    """
-    return Auth("basic", user, password, realm)
-
-
-def kerberos_auth(base64_encoded_ticket):
-    """ Generate a kerberos auth token with the base64 encoded ticket
-
-    :param base64_encoded_ticket: a base64 encoded service ticket
-    :return: an authentication token that can be used to connect to Neo4j
-    """
-    return Auth("kerberos", "", base64_encoded_ticket)
-
-
-def custom_auth(principal, credentials, realm, scheme, **parameters):
-    """ Generate a basic auth token for a given user and password.
-
-    :param principal: specifies who is being authenticated
-    :param credentials: authenticates the principal
-    :param realm: specifies the authentication provider
-    :param scheme: specifies the type of authentication
-    :param parameters: parameters passed along to the authentication provider
-    :return: auth token for use with :meth:`GraphDatabase.driver`
-    """
-    return Auth(scheme, principal, credentials, realm, **parameters)
 
 
 class Workspace:

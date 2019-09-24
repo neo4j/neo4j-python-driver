@@ -41,8 +41,10 @@ class AbstractConnectionPool:
         self.connections = {}
         self.lock = RLock()
         self.cond = Condition(self.lock)
-        self._max_connection_pool_size = config.get("max_connection_pool_size", DEFAULT_MAX_CONNECTION_POOL_SIZE)
-        self._connection_acquisition_timeout = config.get("connection_acquisition_timeout", DEFAULT_CONNECTION_ACQUISITION_TIMEOUT)
+        self._max_connection_pool_size = config.get("max_connection_pool_size",
+                                                    DEFAULT_MAX_CONNECTION_POOL_SIZE)
+        self._connection_acquisition_timeout = config.get("connection_acquisition_timeout",
+                                                          DEFAULT_CONNECTION_ACQUISITION_TIMEOUT)
 
     def __enter__(self):
         return self

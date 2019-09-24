@@ -35,9 +35,9 @@ Bolt Direct
 URI scheme:
     ``bolt``
 Driver subclass:
-    :class:`.DirectDriver`
+    :class:`.BoltDriver`
 
-.. autoclass:: neo4j.DirectDriver
+.. autoclass:: neo4j.BoltDriver
 
 
 Bolt Routing
@@ -46,9 +46,9 @@ Bolt Routing
 URI scheme:
     ``neo4j``
 Driver subclass:
-    :class:`.RoutingDriver`
+    :class:`.Neo4jDriver`
 
-.. autoclass:: neo4j.RoutingDriver
+.. autoclass:: neo4j.Neo4jDriver
 
 
 Configuration
@@ -91,11 +91,6 @@ This setting does not have any effect if ``encrypted`` is set to :py:const:`Fals
    Trust server certificates that can be verified against the system
    certificate authority. This option is primarily intended for use with
    full certificates.
-
-``der_encoded_server_certificate``
-----------------------------------
-
-The server certificate in DER format, if required.
 
 ``user_agent``
 --------------

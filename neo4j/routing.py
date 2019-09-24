@@ -85,7 +85,6 @@ class RoutingTable:
         """ Parse the records returned from the procedure call and
         return a new RoutingTable instance.
         """
-        from neo4j import DEFAULT_PORT
         routers = []
         readers = []
         writers = []
@@ -94,7 +93,7 @@ class RoutingTable:
                 role = server["role"]
                 addresses = []
                 for address in server["addresses"]:
-                    addresses.append(Address.parse(address, default_port=DEFAULT_PORT))
+                    addresses.append(Address.parse(address, default_port=7687))
                 if role == "ROUTE":
                     routers.extend(addresses)
                 elif role == "READ":

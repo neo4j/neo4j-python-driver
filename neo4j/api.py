@@ -21,6 +21,10 @@
 
 """ Base classes and helpers.
 """
+from typing import Mapping
+from warnings import warn
+
+from neo4j.meta import get_user_agent
 
 
 class Auth:
@@ -38,6 +42,43 @@ class Auth:
             self.realm = realm
         if parameters:
             self.parameters = parameters
+
+
+# For backwards compatibility
+AuthToken = Auth
+
+
+def basic_auth(user, password, realm=None):
+    """ Generate a basic auth token for a given user and password.
+
+    :param user: user name
+    :param password: current password
+    :param realm: specifies the authentication provider
+    :return: auth token for use with :meth:`GraphDatabase.driver`
+    """
+    return Auth("basic", user, password, realm)
+
+
+def kerberos_auth(base64_encoded_ticket):
+    """ Generate a kerberos auth token with the base64 encoded ticket
+
+    :param base64_encoded_ticket: a base64 encoded service ticket
+    :return: an authentication token that can be used to connect to Neo4j
+    """
+    return Auth("kerberos", "", base64_encoded_ticket)
+
+
+def custom_auth(principal, credentials, realm, scheme, **parameters):
+    """ Generate a basic auth token for a given user and password.
+
+    :param principal: specifies who is being authenticated
+    :param credentials: authenticates the principal
+    :param realm: specifies the authentication provider
+    :param scheme: specifies the type of authentication
+    :param parameters: parameters passed along to the authentication provider
+    :return: auth token for use with :meth:`GraphDatabase.driver`
+    """
+    return Auth(scheme, principal, credentials, realm, **parameters)
 
 
 class Bookmark:
@@ -132,3 +173,89 @@ class Version(tuple):
         if b[0] != 0 or b[1] != 0:
             raise ValueError("First two bytes must contain zero")
         return Version(b[-1], b[-2])
+
+
+class Config(Mapping):
+
+    #:
+    keep_alive = True
+
+    #:
+    max_connection_lifetime = 3600  # 1h
+
+    #:
+    max_connection_pool_size = 100
+
+    #:
+    max_retry_time = 30.0  # 30s
+
+    #:
+    protocol_version = None
+
+    #:
+    resolver = None
+
+    #:
+    secure = False
+
+    #:
+    user_agent = get_user_agent()
+
+    #:
+    verify_cert = True
+
+    def __init__(self, **config):
+        if "encrypted" in config:
+            # This block exists only for backward compatibility
+            warn("The 'encrypted' config key is deprecated, please use 'secure' instead")
+            if "secure" in config:
+                raise ValueError("Cannot specify both 'secure' and 'encrypted' in configuration")
+            config["secure"] = config.pop("encrypted")
+        for key in self:
+            try:
+                value = config.pop(key)
+            except KeyError:
+                pass
+            else:
+                setattr(self, key, value)
+        if config:
+            raise ValueError("Unrecognised config %s" % ", ".join(map(repr, config.keys())))
+
+    def __repr__(self):
+        attrs = []
+        for key in self:
+            attrs.append(" %s=%r" % (key, getattr(self, key)))
+        return "<%s%s>" % (self.__class__.__name__, "".join(attrs))
+
+    def __getitem__(self, key):
+        try:
+            return getattr(self, key)
+        except AttributeError:
+            raise KeyError(key)
+
+    def __len__(self):
+        return len(self.keys())
+
+    def __iter__(self):
+        return iter(self.keys())
+
+    def keys(self):
+        methods = {"get", "keys", "values", "items", "get_ssl_context"}
+        keys = []
+        for key in sorted(dir(self.__class__)):
+            if not key.startswith("_") and key not in methods:
+                keys.append(key)
+        return keys
+
+    def get_ssl_context(self):
+        if not self.secure:
+            return None
+        # See https://docs.python.org/3.7/library/ssl.html#protocol-versions
+        from ssl import SSLContext, PROTOCOL_TLS_CLIENT, OP_NO_TLSv1, OP_NO_TLSv1_1, CERT_REQUIRED
+        ssl_context = SSLContext(PROTOCOL_TLS_CLIENT)
+        ssl_context.options |= OP_NO_TLSv1
+        ssl_context.options |= OP_NO_TLSv1_1
+        if self.verify_cert:
+            ssl_context.verify_mode = CERT_REQUIRED
+        ssl_context.set_default_verify_paths()
+        return ssl_context

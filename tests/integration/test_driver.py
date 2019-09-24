@@ -21,7 +21,7 @@
 
 from pytest import raises
 
-from neo4j import Driver, TRUST_CUSTOM_CA_SIGNED_CERTIFICATES
+from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable, AuthError
 
 
@@ -35,14 +35,14 @@ def test_invalid_url_scheme(service):
     address = service.addresses[0]
     uri = "x://{}:{}".format(address[0], address[1])
     with raises(ValueError):
-        _ = Driver(uri, auth=service.auth)
+        _ = GraphDatabase.driver(uri, auth=service.auth)
 
 
 def test_fail_nicely_when_using_http_port(service):
     address = service.addresses[0]
     uri = "bolt://{}:7474".format(address[0])
     with raises(ServiceUnavailable):
-        _ = Driver(uri, auth=service.auth)
+        _ = GraphDatabase.driver(uri, auth=service.auth)
 
 
 def test_custom_resolver(service):
@@ -53,14 +53,14 @@ def test_custom_resolver(service):
         yield "99.99.99.99", port     # should be rejected as unable to connect
         yield "127.0.0.1", port       # should succeed
 
-    with Driver("bolt://*", auth=service.auth, resolver=my_resolver) as driver:
+    with GraphDatabase.driver("bolt://*", auth=service.auth, resolver=my_resolver) as driver:
         with driver.session() as session:
             summary = session.run("RETURN 1").summary()
             assert summary.server.address == ("127.0.0.1", 7687)
 
 
 def test_encrypted_arg_can_still_be_used(uri, auth):
-    with Driver(uri, auth=auth, encrypted=False) as driver:
+    with GraphDatabase.driver(uri, auth=auth, encrypted=False) as driver:
         assert not driver.encrypted
 
 
@@ -70,6 +70,6 @@ def test_insecure_by_default(driver):
 
 def test_should_fail_on_incorrect_password(uri):
     with raises(AuthError):
-        with Driver(uri, auth=("neo4j", "wrong-password")) as driver:
+        with GraphDatabase.driver(uri, auth=("neo4j", "wrong-password")) as driver:
             with driver.session() as session:
                 _ = session.run("RETURN 1")

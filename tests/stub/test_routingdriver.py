@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from neo4j import GraphDatabase, READ_ACCESS, WRITE_ACCESS, RoutingDriver
+from neo4j import GraphDatabase, READ_ACCESS, WRITE_ACCESS, Neo4jDriver
 from neo4j.errors import BoltRoutingError
 from neo4j.blocking import SessionExpired
 from neo4j.exceptions import ServiceUnavailable, ClientError, TransientError
@@ -27,13 +27,13 @@ from neo4j.exceptions import ServiceUnavailable, ClientError, TransientError
 from tests.stub.conftest import StubTestCase, StubCluster
 
 
-class RoutingDriverTestCase(StubTestCase):
+class Neo4jDriverTestCase(StubTestCase):
 
-    def test_bolt_plus_routing_uri_constructs_routing_driver(self):
+    def test_bolt_plus_routing_uri_constructs_neo4j_driver(self):
         with StubCluster({9001: "v3/router.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                assert isinstance(driver, RoutingDriver)
+                assert isinstance(driver, Neo4jDriver)
 
     def test_cannot_discover_servers_on_non_router(self):
         with StubCluster({9001: "v3/non_router.script"}):

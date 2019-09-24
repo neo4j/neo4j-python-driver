@@ -21,7 +21,7 @@
 
 from unittest import TestCase
 
-from neo4j import RoutingDriver
+from neo4j import GraphDatabase
 from neo4j.addressing import Address
 
 
@@ -39,27 +39,19 @@ class RoutingTableParseAddressTestCase(TestCase):
         parsed = Address.parse("localhost:7687")
         self.assertEqual(parsed, ("localhost", 7687))
 
-    def verify_routing_context(self, expected, uri):
-        context = RoutingDriver.parse_routing_context(uri)
+    def verify_routing_context(self, expected, query):
+        context = GraphDatabase._parse_routing_context(query)
         self.assertEqual(context, expected)
 
-    def test_parse_empty_routing_context(self):
-        self.verify_routing_context({}, "neo4j://127.0.0.1/cat?")
-        self.verify_routing_context({}, "neo4j://127.0.0.1/cat")
-        self.verify_routing_context({}, "neo4j://127.0.0.1/?")
-        self.verify_routing_context({}, "neo4j://127.0.0.1/")
-        self.verify_routing_context({}, "neo4j://127.0.0.1?")
-        self.verify_routing_context({}, "neo4j://127.0.0.1")
-
     def test_parse_routing_context(self):
-        self.verify_routing_context({"name": "molly", "color": "white"}, "neo4j://127.0.0.1/cat?name=molly&color=white")
-        self.verify_routing_context({"name": "molly", "color": "white"}, "neo4j://127.0.0.1/?name=molly&color=white")
-        self.verify_routing_context({"name": "molly", "color": "white"}, "neo4j://127.0.0.1?name=molly&color=white")
+        self.verify_routing_context({"name": "molly", "color": "white"}, "name=molly&color=white")
+        self.verify_routing_context({"name": "molly", "color": "white"}, "name=molly&color=white")
+        self.verify_routing_context({"name": "molly", "color": "white"}, "name=molly&color=white")
 
     def test_should_error_when_value_missing(self):
         with self.assertRaises(ValueError):
-            RoutingDriver.parse_routing_context("neo4j://127.0.0.1/?name=&color=white")
+            GraphDatabase._parse_routing_context("name=&color=white")
 
     def test_should_error_when_key_duplicate(self):
         with self.assertRaises(ValueError):
-            RoutingDriver.parse_routing_context("neo4j://127.0.0.1/?name=molly&name=white")
+            GraphDatabase._parse_routing_context("name=molly&name=white")

@@ -101,16 +101,20 @@ class Bolt:
     Error = ServiceUnavailable
 
     @classmethod
-    def open(cls, address, **config):
+    def open(cls, address, *, auth=None, connection_timeout=None, **config):
         """ Open a new Bolt connection to a given server address.
 
         :param address:
+        :param auth:
+        :param connection_timeout:
         :param config:
         :return:
         """
-        return connect(address, **config)
+        return connect(address, auth=auth, connection_timeout=connection_timeout, **config)
 
-    def __init__(self, protocol_version, unresolved_address, sock, **config):
+    def __init__(self, unresolved_address, sock, *, auth=None, protocol_version=None, **config):
+        from neo4j import Config
+        self.config = Config(**config)
         self.protocol_version = protocol_version
         self.unresolved_address = unresolved_address
         self.socket = sock
@@ -120,18 +124,17 @@ class Bolt:
         self.packer = Packer(self.outbox)
         self.unpacker = Unpacker(self.inbox)
         self.responses = deque()
-        self._max_connection_lifetime = config.get("max_connection_lifetime", DEFAULT_MAX_CONNECTION_LIFETIME)
+        self._max_connection_lifetime = self.config.max_connection_lifetime
         self._creation_timestamp = perf_counter()
 
         # Determine the user agent
-        user_agent = config.get("user_agent")
+        user_agent = self.config.user_agent
         if user_agent:
             self.user_agent = user_agent
         else:
             self.user_agent = get_user_agent()
 
         # Determine auth details
-        auth = config.get("auth")
         if not auth:
             self.auth_dict = {}
         elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
@@ -152,12 +155,13 @@ class Bolt:
             if credentials is None:
                 raise AuthError("Password cannot be None")
 
-        # Pick up the server certificate, if any
-        self.der_encoded_server_certificate = config.get("der_encoded_server_certificate")
-
     @property
     def secure(self):
         return isinstance(self.socket, SSLSocket)
+
+    @property
+    def der_encoded_server_certificate(self):
+        return self.socket.getpeercert(binary_form=True)
 
     @property
     def local_port(self):
@@ -697,7 +701,7 @@ def last_bookmark(bookmarks):
     return last
 
 
-def _connect(resolved_address, **config):
+def _connect(resolved_address, connection_timeout=None, **config):
     """
 
     :param resolved_address:
@@ -714,8 +718,10 @@ def _connect(resolved_address, **config):
             raise ValueError("Unsupported address "
                              "{!r}".format(resolved_address))
         t = s.gettimeout()
-        s.settimeout(config.get("connection_timeout",
-                                DEFAULT_CONNECTION_TIMEOUT))
+        if connection_timeout is None:
+            s.settimeout(DEFAULT_CONNECTION_TIMEOUT)
+        else:
+            s.settimeout(connection_timeout)
         log.debug("[#0000]  C: <OPEN> %s", resolved_address)
         s.connect(resolved_address)
         s.settimeout(t)
@@ -759,12 +765,10 @@ def _secure(s, host, ssl_context):
                 s.close()
                 raise ProtocolError("When using a secure socket, the server "
                                     "should always provide a certificate")
-    else:
-        der_encoded_server_certificate = None
-    return s, der_encoded_server_certificate
+    return s
 
 
-def _handshake(s, resolved_address, der_encoded_server_certificate, **config):
+def _handshake(s, resolved_address, auth, **config):
     """
 
     :param s:
@@ -812,10 +816,8 @@ def _handshake(s, resolved_address, der_encoded_server_certificate, **config):
         s.shutdown(SHUT_RDWR)
         s.close()
     elif agreed_version in (3,):
-        connection = Bolt(
-            agreed_version, resolved_address, s,
-            der_encoded_server_certificate=der_encoded_server_certificate,
-            **config)
+        config["protocol_version"] = agreed_version
+        connection = Bolt(resolved_address, s, auth=auth, **config)
         connection.hello()
         return connection
     elif agreed_version == 0x48545450:
@@ -830,20 +832,12 @@ def _handshake(s, resolved_address, der_encoded_server_certificate, **config):
                             "{}".format(agreed_version))
 
 
-def connect(address, *, security=None, **config):
+def connect(address, *, auth=None, connection_timeout=None, **config):
     """ Connect and perform a handshake and return a valid Connection object,
     assuming a protocol version can be agreed.
     """
-    if security is None:
-        security = config.get("encrypted")
-    if security is True:
-        security = Security.default()
-    if isinstance(security, Security):
-        ssl_context = security.to_ssl_context()
-    elif security:
-        raise TypeError("Unsupported security configuration {!r}".format(security))
-    else:
-        ssl_context = None
+    from neo4j import Config
+    config = Config(**config)
     last_error = None
     # Establish a connection to the host and port specified
     # Catches refused connections see:
@@ -856,10 +850,9 @@ def connect(address, *, security=None, **config):
         s = None
         try:
             host = address[0]
-            s = _connect(resolved_address, **config)
-            s, der_encoded_server_certificate = _secure(s, host, ssl_context)
-            connection = _handshake(s, address, der_encoded_server_certificate,
-                                    **config)
+            s = _connect(resolved_address, connection_timeout=connection_timeout, **config)
+            s = _secure(s, host, config.get_ssl_context())
+            connection = _handshake(s, address, auth=auth, **config)
         except Exception as error:
             if s:
                 s.close()

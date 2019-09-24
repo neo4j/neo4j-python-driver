@@ -22,7 +22,7 @@ from threading import RLock
 from boltkit.server import Neo4jService
 from pytest import fixture
 
-from neo4j import Driver
+from neo4j import GraphDatabase
 
 
 NEO4J_RELEASES = getenv("NEO4J_RELEASES", "snapshot 3.5").split()
@@ -73,7 +73,7 @@ def auth():
 
 @fixture(scope="session")
 def driver(uri, auth):
-    driver = Driver(uri, auth=auth)
+    driver = GraphDatabase.driver(uri, auth=auth)
     try:
         yield driver
     finally:

@@ -25,7 +25,7 @@ from random import random
 from time import perf_counter, sleep
 from warnings import warn
 
-from neo4j import READ_ACCESS, WRITE_ACCESS, default_config
+from neo4j import READ_ACCESS, WRITE_ACCESS, Config
 from neo4j.data import DataHydrator, DataDehydrator
 from neo4j.exceptions import (
     ConnectionExpired,
@@ -101,7 +101,7 @@ class Session:
     _bookmark_out = None
 
     # Default maximum time to keep retrying failed transactions.
-    _max_retry_time = default_config["max_retry_time"]
+    _max_retry_time = Config.max_retry_time
 
     _closed = False
 

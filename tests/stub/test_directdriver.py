@@ -21,18 +21,18 @@
 
 from neo4j.exceptions import ServiceUnavailable
 
-from neo4j import GraphDatabase, DirectDriver
+from neo4j import GraphDatabase, BoltDriver
 
 from tests.stub.conftest import StubTestCase, StubCluster
 
 
-class DirectDriverTestCase(StubTestCase):
+class BoltDriverTestCase(StubTestCase):
 
-    def test_bolt_uri_constructs_direct_driver(self):
+    def test_bolt_uri_constructs_bolt_driver(self):
         with StubCluster({9001: "v3/empty.script"}):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                assert isinstance(driver, DirectDriver)
+                assert isinstance(driver, BoltDriver)
 
     def test_direct_disconnect_on_run(self):
         with StubCluster({9001: "v3/disconnect_on_run.script"}):
