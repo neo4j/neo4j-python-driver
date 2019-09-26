@@ -26,15 +26,15 @@ from time import perf_counter
 from neo4j.exceptions import ClientError, ServiceUnavailable
 
 
-DEFAULT_MAX_CONNECTION_POOL_SIZE = 100
-DEFAULT_CONNECTION_ACQUISITION_TIMEOUT = 60  # 1m
-
-
 class AbstractConnectionPool:
     """ A collection of connections to one or more server addresses.
     """
 
     _closed = False
+
+    _default_acquire_timeout = 60  # seconds
+
+    _default_max_size = 100
 
     def __init__(self, connector, **config):
         self.connector = connector
@@ -42,9 +42,7 @@ class AbstractConnectionPool:
         self.lock = RLock()
         self.cond = Condition(self.lock)
         self._max_connection_pool_size = config.get("max_connection_pool_size",
-                                                    DEFAULT_MAX_CONNECTION_POOL_SIZE)
-        self._connection_acquisition_timeout = config.get("connection_acquisition_timeout",
-                                                          DEFAULT_CONNECTION_ACQUISITION_TIMEOUT)
+                                                    self._default_max_size)
 
     def __enter__(self):
         return self
@@ -52,13 +50,17 @@ class AbstractConnectionPool:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def acquire_direct(self, address):
+    def _acquire(self, address, timeout):
         """ Acquire a connection to a given address from the pool.
         The address supplied should always be an IP address, not
         a host name.
 
         This method is thread safe.
         """
+        t0 = perf_counter()
+        if timeout is None:
+            timeout = self._default_acquire_timeout
+
         if self.closed():
             raise ServiceUnavailable("Connection pool closed")
         with self.lock:
@@ -67,7 +69,10 @@ class AbstractConnectionPool:
             except KeyError:
                 connections = self.connections[address] = deque()
 
-            connection_acquisition_start_timestamp = perf_counter()
+            def time_remaining():
+                t = timeout - (perf_counter() - t0)
+                return t if t > 0 else 0
+
             while True:
                 # try to find a free connection in pool
                 for connection in list(connections):
@@ -83,7 +88,7 @@ class AbstractConnectionPool:
                 can_create_new_connection = infinite_connection_pool or len(connections) < self._max_connection_pool_size
                 if can_create_new_connection:
                     try:
-                        connection = self.connector(address)
+                        connection = self.connector(address, timeout=time_remaining())
                     except ServiceUnavailable:
                         self.remove(address)
                         raise
@@ -93,22 +98,26 @@ class AbstractConnectionPool:
                         connections.append(connection)
                         return connection
 
-                # failed to obtain a connection from pool because the pool is full and no free connection in the pool
-                span_timeout = self._connection_acquisition_timeout - (perf_counter() - connection_acquisition_start_timestamp)
-                if span_timeout > 0:
-                    self.cond.wait(span_timeout)
-                    # if timed out, then we throw error. This time computation is needed, as with python 2.7, we cannot
-                    # tell if the condition is notified or timed out when we come to this line
-                    if self._connection_acquisition_timeout <= (perf_counter() - connection_acquisition_start_timestamp):
-                        raise ClientError("Failed to obtain a connection from pool within {!r}s".format(
-                            self._connection_acquisition_timeout))
+                # failed to obtain a connection from pool because the
+                # pool is full and no free connection in the pool
+                if time_remaining():
+                    self.cond.wait(time_remaining())
+                    # if timed out, then we throw error. This time
+                    # computation is needed, as with python 2.7, we
+                    # cannot tell if the condition is notified or
+                    # timed out when we come to this line
+                    if not time_remaining():
+                        raise ClientError("Failed to obtain a connection from pool "
+                                          "within {!r}s".format(timeout))
                 else:
-                    raise ClientError("Failed to obtain a connection from pool within {!r}s".format(self._connection_acquisition_timeout))
+                    raise ClientError("Failed to obtain a connection from pool "
+                                      "within {!r}s".format(timeout))
 
-    def acquire(self, access_mode=None):
+    def acquire(self, access_mode=None, timeout=None):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
         :param access_mode:
+        :param timeout:
         """
 
     def release(self, connection):

@@ -204,13 +204,21 @@ class Config(Mapping):
     #:
     verify_cert = True
 
+    @classmethod
+    def _handle_deprecated(cls, config, old, new):
+        """ Handles configuration keys that are deprecated but left in
+        for backward compatibility.
+        """
+        if old in config:
+            warn("The '{}' config key is deprecated, please use '{}' instead".format(old, new))
+            if new in config:
+                raise ValueError("Cannot specify both '{}' and '{}' in "
+                                 "configuration".format(new, old))
+            config[new] = config.pop(old)
+
     def __init__(self, **config):
-        if "encrypted" in config:
-            # This block exists only for backward compatibility
-            warn("The 'encrypted' config key is deprecated, please use 'secure' instead")
-            if "secure" in config:
-                raise ValueError("Cannot specify both 'secure' and 'encrypted' in configuration")
-            config["secure"] = config.pop("encrypted")
+        self._handle_deprecated(config, "encrypted", "secure")
+        self._handle_deprecated(config, "connection_acquisition_timeout", "acquire_timeout")
         for key in self:
             try:
                 value = config.pop(key)

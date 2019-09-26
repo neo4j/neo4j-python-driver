@@ -33,7 +33,7 @@ class ConfigConnectionPoolExample(DriverSetupExample):
         self.driver = GraphDatabase.driver(uri, auth=auth,
                                            max_connection_lifetime=30 * 60,
                                            max_connection_pool_size=50,
-                                           connection_acquisition_timeout=2 * 60)
+                                           acquire_timeout=2 * 60)
     # end::config-connection-pool[]
 
 

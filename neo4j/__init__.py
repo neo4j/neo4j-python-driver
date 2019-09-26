@@ -55,28 +55,23 @@ class GraphDatabase:
     """
 
     @classmethod
-    def driver(cls, uri, *, auth=None, connection_timeout=None,
-               connection_acquisition_timeout=None, **config):
+    def driver(cls, uri, *, auth=None, acquire_timeout=None, **config):
         """ Create a Neo4j driver that uses socket I/O and thread-based
         concurrency.
 
         :param uri:
         :param auth:
-        :param connection_timeout:
-        :param connection_acquisition_timeout:
+        :param acquire_timeout:
         :param config: connection configuration settings
         """
         parsed = urlparse(uri)
         if parsed.scheme == "bolt":
-            return cls.bolt_driver(parsed.netloc, auth=auth, connection_timeout=connection_timeout,
-                                   connection_acquisition_timeout=connection_acquisition_timeout,
+            return cls.bolt_driver(parsed.netloc, auth=auth, acquire_timeout=acquire_timeout,
                                    **config)
         elif parsed.scheme == "neo4j" or parsed.scheme == "bolt+routing":
             rc = cls._parse_routing_context(parsed.query)
             return cls.neo4j_driver(parsed.netloc, auth=auth, routing_context=rc,
-                                    connection_timeout=connection_timeout,
-                                    connection_acquisition_timeout=connection_acquisition_timeout,
-                                    **config)
+                                    acquire_timeout=acquire_timeout, **config)
         else:
             raise ValueError("Unknown URI scheme {!r}".format(parsed.scheme))
 
@@ -96,14 +91,11 @@ class GraphDatabase:
             raise ValueError("Unknown URI scheme {!r}".format(parsed.scheme))
 
     @classmethod
-    def bolt_driver(cls, target, *, auth=None, connection_timeout=None,
-                    connection_acquisition_timeout=None, **config):
+    def bolt_driver(cls, target, *, auth=None, acquire_timeout=None, **config):
         """ Create a driver for direct Bolt server access that uses
         socket I/O and thread-based concurrency.
         """
-        return BoltDriver.open(target, auth=auth, connection_timeout=connection_timeout,
-                               connection_acquisition_timeout=connection_acquisition_timeout,
-                               **config)
+        return BoltDriver.open(target, auth=auth, acquire_timeout=acquire_timeout, **config)
 
     @classmethod
     async def async_bolt_driver(cls, target, *, auth=None, loop=None, **config):
@@ -113,15 +105,13 @@ class GraphDatabase:
         return await AsyncBoltDriver.open(target, auth=auth, loop=loop, **config)
 
     @classmethod
-    def neo4j_driver(cls, *targets, auth=None, routing_context=None, connection_timeout=None,
-                     connection_acquisition_timeout=None, **config):
+    def neo4j_driver(cls, *targets, auth=None, routing_context=None, acquire_timeout=None,
+                     **config):
         """ Create a driver for routing-capable Neo4j service access
         that uses socket I/O and thread-based concurrency.
         """
         return Neo4jDriver.open(*targets, auth=auth, routing_context=routing_context,
-                                connection_timeout=connection_timeout,
-                                connection_acquisition_timeout=connection_acquisition_timeout,
-                                **config)
+                                acquire_timeout=acquire_timeout, **config)
 
     @classmethod
     async def async_neo4j_driver(cls, *targets, auth=None, loop=None, **config):
@@ -295,34 +285,33 @@ class BoltDriver(Direct, Driver):
     """
 
     @classmethod
-    def open(cls, target, *, auth=None, connection_timeout=None,
-             connection_acquisition_timeout=None, **config):
+    def open(cls, target, *, auth=None, acquire_timeout=None, **config):
         address = cls.parse_target(target)
-        return cls(address, auth=auth, connection_timeout=connection_timeout,
-                   connection_acquisition_timeout=connection_acquisition_timeout, **config)
+        return cls(address, auth=auth, acquire_timeout=acquire_timeout, **config)
 
-    def __init__(self, address, *, auth=None, connection_timeout=None,
-                 connection_acquisition_timeout=None, **config):
+    def __init__(self, address, *, auth=None, acquire_timeout=None, **config):
         from neo4j.io import Bolt, BoltPool
         self.address = address
         self.config = Config(**config)
-        self.encrypted = bool(self.config.secure)
-        self._max_retry_time = self.config.max_retry_time
-        self._connection_acquisition_timeout = connection_acquisition_timeout
+        self.acquire_timeout = acquire_timeout
 
-        def connector(addr):
-            return Bolt.open(addr, auth=auth, connection_timeout=connection_timeout, **self.config)
+        def connector(addr, timeout):
+            return Bolt.open(addr, auth=auth, timeout=timeout, **self.config)
 
-        pool = BoltPool(connector, address,
-                        connection_acquisition_timeout=connection_acquisition_timeout,
-                        **self.config)
+        pool = BoltPool(connector, address, acquire_timeout=acquire_timeout, **self.config)
         pool.release(pool.acquire())
         self._pool = pool
 
+    @property
+    def secure(self):
+        return bool(self.config.secure)
+
     def session(self, **parameters):
         self._assert_open()
+        if "acquire_timeout" not in parameters:
+            parameters["acquire_timeout"] = self.acquire_timeout
         if "max_retry_time" not in parameters:
-            parameters["max_retry_time"] = self._max_retry_time
+            parameters["max_retry_time"] = self.config.max_retry_time
         from neo4j.work.blocking import Session
         return Session(self._pool.acquire, **parameters)
 
@@ -343,27 +332,24 @@ class Neo4jDriver(Routing, Driver):
     """
 
     @classmethod
-    def open(cls, *targets, auth=None, routing_context=None, connection_timeout=None,
-             connection_acquisition_timeout=None, **config):
+    def open(cls, *targets, auth=None, routing_context=None, acquire_timeout=None, **config):
         addresses = cls.parse_targets(*targets)
         return cls(*addresses, auth=auth, routing_context=routing_context,
-                   connection_timeout=connection_timeout,
-                   connection_acquisition_timeout=connection_acquisition_timeout, **config)
+                   acquire_timeout=acquire_timeout, **config)
 
-    def __init__(self, *addresses, auth=None, routing_context=None,
-                 connection_timeout=None, connection_acquisition_timeout=None, **config):
+    def __init__(self, *addresses, auth=None, routing_context=None, acquire_timeout=None, **config):
         from neo4j.io import Bolt, Neo4jPool
         self.addresses = addresses
         self.config = Config(**config)
-        self.encrypted = bool(self.config.secure)
         self._max_retry_time = self.config.max_retry_time
+        self.acquire_timeout = acquire_timeout
 
-        def connector(addr):
-            return Bolt.open(addr, auth=auth, connection_timeout=connection_timeout, **self.config)
+        def connector(addr, timeout):
+            return Bolt.open(addr, auth=auth, timeout=timeout, **self.config)
 
         # TODO: pass in all addresses
         pool = Neo4jPool(connector, addresses[0], routing_context, *addresses,
-                         connection_acquisition_timeout=connection_acquisition_timeout, **config)
+                         acquire_timeout=acquire_timeout, **config)
         try:
             pool.update_routing_table()
         except Exception:
@@ -372,10 +358,16 @@ class Neo4jDriver(Routing, Driver):
         else:
             self._pool = pool
 
+    @property
+    def secure(self):
+        return bool(self.config.secure)
+
     def session(self, **parameters):
         self._assert_open()
+        if "acquire_timeout" not in parameters:
+            parameters["acquire_timeout"] = self.acquire_timeout
         if "max_retry_time" not in parameters:
-            parameters["max_retry_time"] = self._max_retry_time
+            parameters["max_retry_time"] = self.config.max_retry_time
         from neo4j.work.blocking import Session
         return Session(self._pool.acquire, **parameters)
 

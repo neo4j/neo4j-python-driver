@@ -101,16 +101,16 @@ class Bolt:
     Error = ServiceUnavailable
 
     @classmethod
-    def open(cls, address, *, auth=None, connection_timeout=None, **config):
+    def open(cls, address, *, auth=None, timeout=None, **config):
         """ Open a new Bolt connection to a given server address.
 
         :param address:
         :param auth:
-        :param connection_timeout:
+        :param timeout:
         :param config:
         :return:
         """
-        return connect(address, auth=auth, connection_timeout=connection_timeout, **config)
+        return connect(address, auth=auth, timeout=timeout, **config)
 
     def __init__(self, unresolved_address, sock, *, auth=None, protocol_version=None, **config):
         from neo4j import Config
@@ -448,8 +448,8 @@ class BoltPool(AbstractConnectionPool):
         super(BoltPool, self).__init__(connector, **config)
         self.address = address
 
-    def acquire(self, access_mode=None):
-        return self.acquire_direct(self.address)
+    def acquire(self, access_mode=None, timeout=None):
+        return self._acquire(self.address, timeout)
 
 
 class Neo4jPool(AbstractConnectionPool):
@@ -483,7 +483,7 @@ class Neo4jPool(AbstractConnectionPool):
                 raise BoltRoutingError("Routing support broken on server", address)
 
         try:
-            with self.acquire_direct(address) as cx:
+            with self._acquire(address, timeout=300) as cx:  # TODO: remove magic timeout number
                 _, _, server_version = (cx.server.agent or "").partition("/")
                 log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
                 cx.run("CALL dbms.cluster.routing.getRoutingTable({context})",
@@ -630,7 +630,7 @@ class Neo4jPool(AbstractConnectionPool):
                 "read" if access_mode == READ_ACCESS else "write"))
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
-    def acquire(self, access_mode=None):
+    def acquire(self, access_mode=None, timeout=None):
         from neo4j import READ_ACCESS, WRITE_ACCESS
         if access_mode is None:
             access_mode = WRITE_ACCESS
@@ -643,7 +643,7 @@ class Neo4jPool(AbstractConnectionPool):
                 raise ConnectionExpired("Failed to obtain connection "
                                         "towards '%s' server." % access_mode) from err
             try:
-                connection = self.acquire_direct(address)  # should always be a resolved address
+                connection = self._acquire(address, timeout=timeout)  # should always be a resolved address
                 connection.Error = ConnectionExpired
             except ServiceUnavailable:
                 self.deactivate(address)
@@ -701,7 +701,7 @@ def last_bookmark(bookmarks):
     return last
 
 
-def _connect(resolved_address, connection_timeout=None, **config):
+def _connect(resolved_address, timeout=None, **config):
     """
 
     :param resolved_address:
@@ -718,10 +718,10 @@ def _connect(resolved_address, connection_timeout=None, **config):
             raise ValueError("Unsupported address "
                              "{!r}".format(resolved_address))
         t = s.gettimeout()
-        if connection_timeout is None:
+        if timeout is None:
             s.settimeout(DEFAULT_CONNECTION_TIMEOUT)
         else:
-            s.settimeout(connection_timeout)
+            s.settimeout(timeout)
         log.debug("[#0000]  C: <OPEN> %s", resolved_address)
         s.connect(resolved_address)
         s.settimeout(t)
@@ -832,7 +832,7 @@ def _handshake(s, resolved_address, auth, **config):
                             "{}".format(agreed_version))
 
 
-def connect(address, *, auth=None, connection_timeout=None, **config):
+def connect(address, *, auth=None, timeout=None, **config):
     """ Connect and perform a handshake and return a valid Connection object,
     assuming a protocol version can be agreed.
     """
@@ -850,7 +850,7 @@ def connect(address, *, auth=None, connection_timeout=None, **config):
         s = None
         try:
             host = address[0]
-            s = _connect(resolved_address, connection_timeout=connection_timeout, **config)
+            s = _connect(resolved_address, timeout=timeout, **config)
             s = _secure(s, host, config.get_ssl_context())
             connection = _handshake(s, address, auth=auth, **config)
         except Exception as error:

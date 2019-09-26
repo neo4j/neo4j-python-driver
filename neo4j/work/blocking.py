@@ -105,8 +105,9 @@ class Session:
 
     _closed = False
 
-    def __init__(self, acquirer, **parameters):
+    def __init__(self, acquirer, *, acquire_timeout=None, **parameters):
         self._acquirer = acquirer
+        self._acquire_timeout = acquire_timeout
         self._default_access_mode = parameters.get("access_mode")
         for key, value in parameters.items():
             if key == "bookmark":
@@ -140,7 +141,7 @@ class Session:
             self._connection.send_all()
             self._connection.fetch_all()
             self._disconnect()
-        self._connection = self._acquirer(access_mode)
+        self._connection = self._acquirer(access_mode, timeout=self._acquire_timeout)
 
     def _disconnect(self):
         if self._connection:

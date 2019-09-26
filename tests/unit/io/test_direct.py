@@ -71,19 +71,19 @@ def connector(address, **kwargs):
 
 class ConnectionTestCase(TestCase):
 
-    def test_conn_timedout(self):
+    def test_conn_timed_out(self):
         address = ("127.0.0.1", 7687)
         connection = Bolt(address, FakeSocket(address), protocol_version=1,
                           max_connection_lifetime=0)
         self.assertEqual(connection.timedout(), True)
 
-    def test_conn_not_timedout_if_not_enabled(self):
+    def test_conn_not_timed_out_if_not_enabled(self):
         address = ("127.0.0.1", 7687)
         connection = Bolt(address, FakeSocket(address), protocol_version=1,
                           max_connection_lifetime=-1)
         self.assertEqual(connection.timedout(), False)
 
-    def test_conn_not_timedout(self):
+    def test_conn_not_timed_out(self):
         address = ("127.0.0.1", 7687)
         connection = Bolt(address, FakeSocket(address), protocol_version=1,
                           max_connection_lifetime=999999999)
@@ -112,14 +112,14 @@ class ConnectionPoolTestCase(TestCase):
 
     def test_can_acquire(self):
         address = ("127.0.0.1", 7687)
-        connection = self.pool.acquire_direct(address)
+        connection = self.pool._acquire(address, timeout=3)
         assert connection.address == address
         self.assert_pool_size(address, 1, 0)
 
     def test_can_acquire_twice(self):
         address = ("127.0.0.1", 7687)
-        connection_1 = self.pool.acquire_direct(address)
-        connection_2 = self.pool.acquire_direct(address)
+        connection_1 = self.pool._acquire(address, timeout=3)
+        connection_2 = self.pool._acquire(address, timeout=3)
         assert connection_1.address == address
         assert connection_2.address == address
         assert connection_1 is not connection_2
@@ -128,8 +128,8 @@ class ConnectionPoolTestCase(TestCase):
     def test_can_acquire_two_addresses(self):
         address_1 = ("127.0.0.1", 7687)
         address_2 = ("127.0.0.1", 7474)
-        connection_1 = self.pool.acquire_direct(address_1)
-        connection_2 = self.pool.acquire_direct(address_2)
+        connection_1 = self.pool._acquire(address_1, timeout=3)
+        connection_2 = self.pool._acquire(address_2, timeout=3)
         assert connection_1.address == address_1
         assert connection_2.address == address_2
         self.assert_pool_size(address_1, 1, 0)
@@ -137,14 +137,14 @@ class ConnectionPoolTestCase(TestCase):
 
     def test_can_acquire_and_release(self):
         address = ("127.0.0.1", 7687)
-        connection = self.pool.acquire_direct(address)
+        connection = self.pool._acquire(address, timeout=3)
         self.assert_pool_size(address, 1, 0)
         self.pool.release(connection)
         self.assert_pool_size(address, 0, 1)
 
     def test_releasing_twice(self):
         address = ("127.0.0.1", 7687)
-        connection = self.pool.acquire_direct(address)
+        connection = self.pool._acquire(address, timeout=3)
         self.pool.release(connection)
         self.assert_pool_size(address, 0, 1)
         self.pool.release(connection)
@@ -154,29 +154,29 @@ class ConnectionPoolTestCase(TestCase):
         with BoltPool(lambda a: QuickConnection(FakeSocket(a)), ()) as pool:
             pool.close()
             with self.assertRaises(ServiceUnavailable):
-                _ = pool.acquire_direct("X")
+                _ = pool._acquire("X", timeout=3)
 
     def test_in_use_count(self):
         address = ("127.0.0.1", 7687)
         self.assertEqual(self.pool.in_use_connection_count(address), 0)
-        connection = self.pool.acquire_direct(address)
+        connection = self.pool._acquire(address, timeout=3)
         self.assertEqual(self.pool.in_use_connection_count(address), 1)
         self.pool.release(connection)
         self.assertEqual(self.pool.in_use_connection_count(address), 0)
 
     def test_max_conn_pool_size(self):
         with BoltPool(connector, (), max_connection_pool_size=1,
-                      connection_acquisition_timeout=0) as pool:
+                      acquire_timeout=0) as pool:
             address = ("127.0.0.1", 7687)
-            pool.acquire_direct(address)
+            pool._acquire(address, timeout=3)
             self.assertEqual(pool.in_use_connection_count(address), 1)
             with self.assertRaises(ClientError):
-                pool.acquire_direct(address)
+                pool._acquire(address, timeout=3)
             self.assertEqual(pool.in_use_connection_count(address), 1)
 
     def test_multithread(self):
         with BoltPool(connector, (), max_connection_pool_size=5,
-                      connection_acquisition_timeout=10) as pool:
+                      acquire_timeout=10) as pool:
             address = ("127.0.0.1", 7687)
             releasing_event = Event()
 
@@ -200,6 +200,6 @@ class ConnectionPoolTestCase(TestCase):
 
 
 def acquire_release_conn(pool, address, releasing_event):
-    conn = pool.acquire_direct(address)
+    conn = pool._acquire(address, timeout=3)
     releasing_event.wait()
     pool.release(conn)

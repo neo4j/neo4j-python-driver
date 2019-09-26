@@ -61,11 +61,11 @@ def test_custom_resolver(service):
 
 def test_encrypted_arg_can_still_be_used(uri, auth):
     with GraphDatabase.driver(uri, auth=auth, encrypted=False) as driver:
-        assert not driver.encrypted
+        assert not driver.secure
 
 
 def test_insecure_by_default(driver):
-    assert not driver.encrypted
+    assert not driver.secure
 
 
 def test_should_fail_on_incorrect_password(uri):
