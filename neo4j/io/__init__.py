@@ -45,7 +45,7 @@ from threading import Lock
 from time import perf_counter
 
 from neo4j.addressing import Address, AddressList
-from neo4j.api import Security, ServerInfo
+from neo4j.api import ServerInfo
 from neo4j.io.bolt3 import Outbox, BufferedSocket, Inbox, Response, InitResponse, CommitResponse
 from neo4j.io._pooling import AbstractConnectionPool
 from neo4j.errors import BoltRoutingError, Neo4jAvailabilityError
