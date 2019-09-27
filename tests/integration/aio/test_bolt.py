@@ -57,14 +57,14 @@ async def test_bad_connectivity(address, auth):
 
 @mark.asyncio
 async def test_security_none(address, auth):
-    bolt = await Bolt.open(address, auth=auth, security=None)
+    bolt = await Bolt.open(address, auth=auth, secure=None)
     assert not bolt.security
     await bolt.close()
 
 
 @mark.asyncio
 async def test_security_false(address, auth):
-    bolt = await Bolt.open(address, auth=auth, security=False)
+    bolt = await Bolt.open(address, auth=auth, secure=False)
     assert not bolt.security
     await bolt.close()
 
@@ -72,7 +72,7 @@ async def test_security_false(address, auth):
 # TODO: re-enable when we have a way of testing against full certs
 # @mark.asyncio
 # async def test_security_true(address, auth):
-#     bolt = await Bolt.open(address, auth=auth, security=True)
+#     bolt = await Bolt.open(address, auth=auth, secure=True)
 #     assert bolt.security
 #     assert bolt.security == Security.default()
 #     await bolt.close()
@@ -81,7 +81,7 @@ async def test_security_false(address, auth):
 # TODO: re-enable when we have a way of testing against full certs
 # @mark.asyncio
 # async def test_security_custom(address, auth):
-#     bolt = await Bolt.open(address, auth=auth, security=Security())
+#     bolt = await Bolt.open(address, auth=auth, secure=...)
 #     assert bolt.security
 #     assert bolt.security == Security()
 #     await bolt.close()

@@ -30,7 +30,6 @@ __all__ = [
     "DriverError",
     "Auth",
     "AuthToken",
-    "Security",
 ]
 
 from logging import getLogger

@@ -47,7 +47,7 @@ from neo4j.errors import (
     BoltHandshakeError,
     Neo4jAvailabilityError,
 )
-from neo4j.api import Security, Version
+from neo4j.api import Config, Version
 from neo4j.meta import version as neo4j_version
 from neo4j.routing import RoutingTable
 
@@ -59,9 +59,6 @@ MAGIC = b"\x60\x60\xB0\x17"
 
 
 class Bolt(Addressable, object):
-
-    #: Security configuration for this connection.
-    security = None
 
     #: As a class attribute, this denotes the version of Bolt handled
     #: by that subclass. As an instance attribute, this represents the
@@ -122,20 +119,19 @@ class Bolt(Addressable, object):
                 if version == protocol_version}
 
     @classmethod
-    def opener(cls, auth=None, security=False, protocol_version=None):
+    def opener(cls, auth=None, **config):
         """ Create and return an opener function for a given set of
         configuration parameters. This is useful when multiple servers share
         the same configuration details, such as within a connection pool.
         """
 
         async def f(address, *, loop=None):
-            return await Bolt.open(address, auth=auth, security=security,
-                                   protocol_version=protocol_version, loop=loop)
+            return await Bolt.open(address, auth=auth, loop=loop, **config)
 
         return f
 
     @classmethod
-    async def open(cls, address, *, auth=None, security=False, protocol_version=None, loop=None):
+    async def open(cls, address, *, auth=None, loop=None, **config):
         """ Open a socket connection and perform protocol version
         negotiation, in order to construct and return a Bolt client
         instance for a supported Bolt protocol version.
@@ -143,9 +139,8 @@ class Bolt(Addressable, object):
         :param address: tuples of host and port, such as
                         ("127.0.0.1", 7687)
         :param auth:
-        :param security:
-        :param protocol_version:
         :param loop:
+        :param config:
         :return: instance of a Bolt subclass
         :raise BoltConnectionError: if a connection could not be
             established
@@ -159,23 +154,25 @@ class Bolt(Addressable, object):
             with unsupported values
         """
 
-        # Connect
+        # Args
         address = Address(address)
         if loop is None:
             loop = get_event_loop()
-        reader, writer, security = await cls._connect(address, security, loop)
+        config = Config(**config)
+
+        # Connect
+        reader, writer = await cls._connect(address, loop, config)
 
         try:
 
             # Handshake
-            subclass = await cls._handshake(reader, writer, protocol_version)
+            subclass = await cls._handshake(reader, writer, config.protocol_version)
 
             # Instantiation
-            inst = subclass(reader, writer)
-            inst.security = security
-            assert hasattr(inst, "__ainit__")
-            await inst.__ainit__(auth)
-            return inst
+            obj = subclass(reader, writer)
+            assert hasattr(obj, "__ainit__")
+            await obj.__ainit__(auth)
+            return obj
 
         except BoltError:
             writer.write_eof()
@@ -183,13 +180,13 @@ class Bolt(Addressable, object):
             raise
 
     @classmethod
-    async def _connect(cls, address, security, loop):
+    async def _connect(cls, address, loop, config):
         """ Attempt to establish a TCP connection to the address
         provided.
 
         :param address:
-        :param security:
         :param loop:
+        :param config:
         :return: a 3-tuple of reader, writer and security settings for
             the new connection
         :raise BoltConnectionError: if a connection could not be
@@ -197,22 +194,17 @@ class Bolt(Addressable, object):
         """
         assert isinstance(address, Address)
         assert loop is not None
+        assert isinstance(config, Config)
         connection_args = {
             "host": address.host,
             "port": address.port,
             "family": address.family,
             # TODO: other args
         }
-        if security is True:
-            security = Security.default()
-        if isinstance(security, Security):
-            ssl_context = security.to_ssl_context()
+        ssl_context = config.get_ssl_context()
+        if ssl_context:
             connection_args["ssl"] = ssl_context
             connection_args["server_hostname"] = address.host
-        elif security:
-            raise TypeError("Unsupported security configuration {!r}".format(security))
-        else:
-            security = None
         log.debug("[#0000] C: <DIAL> %s", address)
         try:
             reader = BoltStreamReader(loop=loop)
@@ -232,7 +224,7 @@ class Bolt(Addressable, object):
             remote_address = Address(transport.get_extra_info("peername"))
             log.debug("[#%04X] S: <ACCEPT> %s -> %s",
                       local_address.port_number, local_address, remote_address)
-            return reader, writer, security
+            return reader, writer
 
     @classmethod
     async def _handshake(cls, reader, writer, protocol_version):
