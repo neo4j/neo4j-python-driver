@@ -294,10 +294,10 @@ class BoltDriver(Direct, Driver):
         self.config = Config(**config)
         self.acquire_timeout = acquire_timeout
 
-        def connector(addr, timeout):
+        def opener(addr, timeout):
             return Bolt.open(addr, auth=auth, timeout=timeout, **self.config)
 
-        pool = BoltPool(connector, address, acquire_timeout=acquire_timeout, **self.config)
+        pool = BoltPool(opener, address, acquire_timeout=acquire_timeout, **self.config)
         pool.release(pool.acquire())
         self._pool = pool
 
@@ -343,11 +343,11 @@ class Neo4jDriver(Routing, Driver):
         self._max_retry_time = self.config.max_retry_time
         self.acquire_timeout = acquire_timeout
 
-        def connector(addr, timeout):
+        def opener(addr, timeout):
             return Bolt.open(addr, auth=auth, timeout=timeout, **self.config)
 
         # TODO: pass in all addresses
-        pool = Neo4jPool(connector, addresses[0], routing_context, *addresses,
+        pool = Neo4jPool(opener, addresses[0], routing_context, *addresses,
                          acquire_timeout=acquire_timeout, **config)
         try:
             pool.update_routing_table()

@@ -45,7 +45,7 @@ VALID_ROUTING_RECORD_WITH_EXTRA_ROLE = {
 }
 
 
-def connector(address, error_handler):
+def opener(address, error_handler):
     return Bolt.open(address, error_handler=error_handler, auth=("neotest", "neotest"))
 
 
@@ -224,5 +224,5 @@ class RoutingConnectionPoolConstructionTestCase(TestCase):
     def test_should_populate_initial_router(self):
         initial_router = ("127.0.0.1", 9001)
         router = ("127.0.0.1", 9002)
-        with Neo4jPool(connector, initial_router, {}, router) as pool:
+        with Neo4jPool(opener, initial_router, {}, router) as pool:
             assert pool.routing_table.routers == {("127.0.0.1", 9002)}

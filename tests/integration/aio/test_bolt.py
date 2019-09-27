@@ -58,14 +58,14 @@ async def test_bad_connectivity(address, auth):
 @mark.asyncio
 async def test_security_none(address, auth):
     bolt = await Bolt.open(address, auth=auth, secure=None)
-    assert not bolt.security
+    assert not bolt.secure
     await bolt.close()
 
 
 @mark.asyncio
 async def test_security_false(address, auth):
     bolt = await Bolt.open(address, auth=auth, secure=False)
-    assert not bolt.security
+    assert not bolt.secure
     await bolt.close()
 
 

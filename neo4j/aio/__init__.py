@@ -60,6 +60,10 @@ MAGIC = b"\x60\x60\xB0\x17"
 
 class Bolt(Addressable, object):
 
+    #: True if this instance uses secure communication, false
+    #: otherwise.
+    secure = None
+
     #: As a class attribute, this denotes the version of Bolt handled
     #: by that subclass. As an instance attribute, this represents the
     #: version of the protocol in use.
@@ -170,6 +174,7 @@ class Bolt(Addressable, object):
 
             # Instantiation
             obj = subclass(reader, writer)
+            obj.secure = bool(config.secure)
             assert hasattr(obj, "__ainit__")
             await obj.__ainit__(auth)
             return obj

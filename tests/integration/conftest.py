@@ -104,23 +104,6 @@ def cypher_eval(session):
     return f
 
 
-# @fixture()
-# def make_unique_id():
-#     return lambda: "_" + uuid4().hex
-
-
-# @fixture(scope="function", autouse=True)
-# def check_bolt_connections_released(connector):
-#     """ Called after each individual test to ensure all connections in the
-#     pool have been correctly released.
-#     """
-#     yield
-#     if "bolt" in connector.scheme:
-#         address = connector.connection_data["host"], connector.connection_data["port"]
-#         # print(connector.pool.in_use_connection_count(address), "/", len(connector.pool.connections.get(address, [])))
-#         assert connector.pool.in_use_connection_count(address) == 0
-
-
 def pytest_sessionfinish(session, exitstatus):
     """ Called after the entire session to ensure Neo4j is shut down.
     """

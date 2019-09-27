@@ -36,8 +36,8 @@ class AbstractConnectionPool:
 
     _default_max_size = 100
 
-    def __init__(self, connector, **config):
-        self.connector = connector
+    def __init__(self, opener, **config):
+        self.opener = opener
         self.connections = {}
         self.lock = RLock()
         self.cond = Condition(self.lock)
@@ -88,7 +88,7 @@ class AbstractConnectionPool:
                 can_create_new_connection = infinite_connection_pool or len(connections) < self._max_connection_pool_size
                 if can_create_new_connection:
                     try:
-                        connection = self.connector(address, timeout=time_remaining())
+                        connection = self.opener(address, timeout=time_remaining())
                     except ServiceUnavailable:
                         self.remove(address)
                         raise

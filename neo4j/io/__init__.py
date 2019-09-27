@@ -444,8 +444,8 @@ class Bolt:
 
 class BoltPool(AbstractConnectionPool):
 
-    def __init__(self, connector, address, **config):
-        super(BoltPool, self).__init__(connector, **config)
+    def __init__(self, opener, address, **config):
+        super(BoltPool, self).__init__(opener, **config)
         self.address = address
 
     def acquire(self, access_mode=None, timeout=None):
@@ -456,8 +456,8 @@ class Neo4jPool(AbstractConnectionPool):
     """ Connection pool with routing table.
     """
 
-    def __init__(self, connector, initial_address, routing_context, *routers, **config):
-        super(Neo4jPool, self).__init__(connector, **config)
+    def __init__(self, opener, initial_address, routing_context, *routers, **config):
+        super(Neo4jPool, self).__init__(opener, **config)
         self.initial_address = initial_address
         self.routing_context = routing_context
         self.routing_table = RoutingTable(routers)
