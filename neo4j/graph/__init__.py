@@ -25,6 +25,16 @@ Graph data types
 
 from collections.abc import Mapping
 
+from neo4j.spatial import (
+    Point,
+)
+
+from neo4j.time import (
+    Date,
+    Time,
+    DateTime,
+    Duration,
+)
 
 __all__ = [
     "Graph",
@@ -32,6 +42,44 @@ __all__ = [
     "Relationship",
     "Path",
 ]
+
+def _convert_data(value):
+    if isinstance(value, DateTime) or isinstance(value, Date) or isinstance(value, Time):
+        return value.to_native()
+    elif isinstance(value, Point) or isinstance(value, Duration):
+        return value.to_dict()
+
+    return value
+
+
+def _data(obj):
+    """ Convert value types in properties into more native representations.
+    """
+    data = None
+
+    # Can properties contain Graph types ?
+
+    if isinstance(obj, dict):
+        data = {}
+
+        for key, value in obj.items():
+            if isinstance(value, dict) or isinstance(value, list):
+                data[key] = _data(value)
+            else:
+                data[key] = _convert_data(value)
+
+    elif isinstance(obj, list):
+        data = []
+
+        for value in obj:
+            if isinstance(value, dict) or isinstance(value, list):
+                data.append(_data(value))
+            else:
+                data.append(_convert_data(value))
+    else:
+        data = _convert_data(obj)
+
+    return data
 
 
 class Graph:
@@ -186,6 +234,9 @@ class Entity(Mapping):
         """
         return self._properties.items()
 
+    def data(self):
+        raise NotImplementedError()
+
 
 class EntitySetView(Mapping):
     """ View of a set of :class:`.Entity` instances within a :class:`.Graph`.
@@ -202,6 +253,9 @@ class EntitySetView(Mapping):
 
     def __iter__(self):
         return iter(self._entity_dict.values())
+
+    def data(self):
+        raise NotImplementedError()
 
 
 class Node(Entity):
@@ -220,6 +274,25 @@ class Node(Entity):
         """ The set of labels attached to this node.
         """
         return self._labels
+
+    def data(self):
+        """
+        A representation of this Node.
+        Returns: ``dict`` a with the following keys:
+
+        'id' -
+        'labels' - list of labels, note that the order returned is sorted by the name.
+        'properties' - dictionary of properites. The property value will be converted if temporal or spatial types.
+
+        temporal types will be converted with .to_native to represent datetime types, this is a lossy convertion.
+        spatial types will be converted to a dictionary.
+        """
+
+        return {
+            "id": self.id,
+            "labels": sorted(self.labels),
+            "properties": _data(dict(self)),
+        }
 
 
 class Relationship(Entity):
@@ -259,6 +332,26 @@ class Relationship(Entity):
         This is functionally equivalent to ``type(relationship).__name__``.
         """
         return type(self).__name__
+
+    def data(self):
+        """
+        A representation of this Relationship.
+        Returns: ``dict`` a with the following keys:
+
+        'id' -
+        'type' -
+        'start_node_id' -
+        'end_node_id' -
+        'properties' -
+        """
+
+        return {
+            "id": self.id,
+            "type": self.type,
+            "start_node_id": self.start_node.id,
+            "end_node_id": self.end_node.id,
+            "properties": _data(dict(self)),
+        }
 
 
 class Path:
@@ -333,3 +426,22 @@ class Path:
         """ The sequence of :class:`.Relationship` objects in this path.
         """
         return self._relationships
+
+    def data(self):
+        """
+        Returns: ``dict`` a with the following keys:
+        'node_id_index': {:class:`.Node`.id: int, ...}: This mapps the first occurence of the 'Node.id' in the 'nodes' list.
+        'nodes': [:class:`.Node`.data(), ...],
+        'relationships': [:class:`.Relationship`.data(), ...]}
+        """
+        data = {"relationships": [], "nodes": [], "node_id_index": {}}
+
+        for relationship in self.relationships:
+            data["relationships"].append(relationship.data())
+
+        for ix, node in enumerate(self.nodes):
+            data["nodes"].append(node.data())
+            if node.id not in data["node_id_index"]:
+                data["node_id_index"][node.id] = ix
+
+        return data

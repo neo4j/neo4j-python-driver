@@ -333,3 +333,10 @@ class DurationTestCase(TestCase):
                          Duration.from_iso_format("P1Y2M3D"))
         self.assertEqual(Duration(years=1, months=2, days=3, hours=12, minutes=34, seconds=56.789),
                          Duration.from_iso_format("P1Y2M3DT12H34M56.789S"))
+
+    def test_to_dict(self):
+        self.assertEqual(
+            Duration(years=1, months=2, days=3, hours=4, minutes=5, seconds=6.789).to_dict(),
+            {'days': 3, 'months': 14, 'seconds': 14706, 'subseconds': 0.789}
+        )
+

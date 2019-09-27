@@ -20,7 +20,7 @@
 
 
 from abc import ABCMeta
-from collections import Mapping
+from collections.abc import Mapping
 from warnings import warn
 
 from neo4j.meta import get_user_agent

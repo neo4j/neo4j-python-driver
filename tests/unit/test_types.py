@@ -165,6 +165,8 @@ class HydrationTestCase(TestCase):
     def test_can_hydrate_node_structure(self):
         struct = Structure(b'N', 123, ["Person"], {"name": "Alice"})
         alice, = self.hydrant.hydrate([struct])
+
+        self.assertTrue(isinstance(alice, Node))
         self.assertEqual(alice.id, 123)
         self.assertEqual(alice.labels, {"Person"})
         self.assertEqual(set(alice.keys()), {"name"})

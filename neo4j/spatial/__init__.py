@@ -28,6 +28,7 @@ from threading import Lock
 
 from neo4j.packstream import Structure
 
+import inspect
 
 __all__ = [
     "Point",
@@ -69,6 +70,32 @@ class Point(tuple):
 
     def __hash__(self):
         return hash(type(self)) ^ hash(tuple(self))
+
+    def to_dict(self):
+        """ Output examples of different Point objects:
+
+        {"srid": 7203, "x": 1.23, "y": 4.56}
+        {"srid": 9157, "x": 1.23, "y": 4.56, "z": 7.89}
+        {"srid": 4326, "longitude": 1.23, "latitude": 4.56}
+        {"srid": 4979, "longitude": 1.23, "latitude": 4.56, "height": 7.89}
+        """
+        # TODO: Implement this method with a meta class implementation.
+        #       Cant use vars() on the points created with the point_type method either.
+        properties = []
+
+        for name, value in inspect.getmembers(self):
+            if not name.startswith("__") and name not in ("count", "index", "srid", "to_dict"):
+                properties.append(name)
+
+        # Check for aliases
+
+        aliases = set(properties) - {"x", "y", "z"}
+
+        if aliases:
+            properties = sorted(list(aliases))
+
+        properties.append("srid")
+        return {name: getattr(self, name) for name in properties}
 
 
 def point_type(name, fields, srid_map):

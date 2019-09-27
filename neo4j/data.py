@@ -23,12 +23,33 @@ from collections.abc import Mapping, Sequence
 from datetime import date, time, datetime, timedelta
 from functools import reduce
 from operator import xor as xor_operator
-
 from neo4j.conf import iter_items
-from neo4j.graph import Graph
-from neo4j.packstream import INT64_MIN, INT64_MAX, Structure
-from neo4j.spatial import Point, hydrate_point, dehydrate_point
-from neo4j.time import Date, Time, DateTime, Duration
+
+from neo4j.graph import (
+    Graph,
+    Node,
+    Relationship,
+    Path,
+)
+
+from neo4j.packstream import (
+    INT64_MIN,
+    INT64_MAX,
+    Structure,
+)
+
+from neo4j.spatial import (
+    Point,
+    hydrate_point, dehydrate_point,
+)
+
+from neo4j.time import (
+    Date,
+    Time,
+    DateTime,
+    Duration,
+)
+
 from neo4j.time.hydration import (
     hydrate_date, dehydrate_date,
     hydrate_time, dehydrate_time,
@@ -38,6 +59,46 @@ from neo4j.time.hydration import (
 
 
 map_type = type(map(str, range(0)))
+
+
+def _convert_data(value):
+    if isinstance(value, DateTime) or isinstance(value, Date) or isinstance(value, Time):
+        return value.to_native()
+    elif isinstance(value, Point) or isinstance(value, Duration):
+        return value.to_dict()
+
+    return value
+
+
+def to_data(obj):
+    """ Convert value types into more native representations.
+        This is a lossy operation!
+    """
+    data = None
+
+    if isinstance(obj, Node) or isinstance(obj, Relationship) or isinstance(obj, Path):
+        return obj.data()
+    elif isinstance(obj, dict):
+        data = {}
+
+        for key, value in obj.items():
+            if isinstance(value, dict) or isinstance(value, list):
+                data[key] = to_data(value)
+            else:
+                data[key] = _convert_data(value)
+
+    elif isinstance(obj, list):
+        data = []
+
+        for value in obj:
+            if isinstance(value, dict) or isinstance(value, list):
+                data.append(to_data(value))
+            else:
+                data.append(_convert_data(value))
+    else:
+        data = _convert_data(obj)
+
+    return data
 
 
 class Record(tuple, Mapping):
@@ -220,9 +281,16 @@ class Record(tuple, Mapping):
                 except KeyError:
                     d[key] = None
                 else:
-                    d[self.__keys[i]] = self[i]
+                    d[self.__keys[i]] = to_data(self[i])
+
             return d
-        return dict(self)
+
+        data = dict(self)
+
+        for key, value in data.items():
+            data[key] = to_data(value)
+
+        return data
 
 
 class DataHydrator:

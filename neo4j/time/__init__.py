@@ -448,6 +448,21 @@ class Duration(tuple):
         hours, minutes = symmetric_divmod(minutes, 60)
         return hours, minutes, float(seconds) + self[3]
 
+    def to_dict(self):
+        return {
+            #"years": self[0],
+            "months": self[0],
+            #"weeks": self[2],
+            "days": self[1],
+            #"hours": self[4],
+            #"minutes": self[5],
+            "seconds": self[2],
+            "subseconds": self[3],
+            #"milliseconds": self[8],
+            #"microseconds": self[9],
+            #"nanoseconds": self[10],
+        }
+
 
 Duration.min = Duration(months=MIN_INT64, days=MIN_INT64, seconds=MIN_INT64, subseconds=-0.999999999)
 Duration.max = Duration(months=MAX_INT64, days=MAX_INT64, seconds=MAX_INT64, subseconds=+0.999999999)

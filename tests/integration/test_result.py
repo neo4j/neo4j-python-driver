@@ -17,12 +17,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 from pytest import raises, warns
 
 from neo4j.exceptions import CypherError
-
+import datetime
 
 def test_can_consume_result_immediately(session):
 
@@ -313,6 +311,17 @@ def test_single_keyed_values(session):
     assert result.single().values("z", "x") == [3, 1]
 
 
+def test_node_labels(session):
+
+    result = session.run(
+        "CREATE (n:Test:Node {tstamp: datetime()}) RETURN n",
+    )
+
+    row_0 = result.single()
+
+    assert row_0["n"].labels == {"Test", "Node"}
+
+
 def test_single_data(session):
     result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
     assert result.single().data() == {"x": 1, "y": 2, "z": 3}
@@ -326,3 +335,117 @@ def test_single_indexed_data(session):
 def test_single_keyed_data(session):
     result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
     assert result.single().data("z", "x") == {"x": 1, "z": 3}
+
+
+def test_single_data_result(session):
+    result = session.run("CREATE p=(a)-[ab:X]->(b:Test)-[bc:X]->(c:Test:Node) RETURN a, b, c, ab, bc, p")
+    row_0 = result.single()
+    assert row_0.keys() == ["a", "b", "c", "ab", "bc", "p"]
+    a, b, c, ab, bc, p = row_0
+    assert p.data() == {"node_id_index": {a.id:0, b.id:1, c.id:2},"nodes": [a.data(), b.data(), c.data()], "relationships": [ab.data(), bc.data()]}
+
+    assert row_0.data() == {"a": a.data(), "b": b.data(), "c": c.data(), "ab": ab.data(), "bc": bc.data(), "p": p.data()}
+
+    with raises(TypeError):
+        assert row_0.data(["a", "b"]) == {"a": a.data(), "b": b.data()}
+
+    with raises(TypeError):
+        assert row_0.data([0, 1]) == {"a": a.data(), "b": b.data()}
+
+    assert row_0.data("a", "b") == {"a": a.data(), "b": b.data()}
+    assert row_0.data(0, 1) == {"a": a.data(), "b": b.data()}
+
+    assert row_0.data("a", "b", "void") == {"a": a.data(), "b": b.data(), "void": None}
+
+    with raises(IndexError):
+        assert row_0.data(0, 1, 10) == {"a": a.data(), "b": b.data(), 10: None}
+
+
+def test_multiple_data_result(session):
+
+    result = session.run("CREATE p=(a)-[ab:X]->(b:Test)-[bc:X]->(c:Test:Node) RETURN a, b, c, ab, bc, p")
+    rows = list(result)
+    a, b, c, ab, bc, p = rows[0]
+
+    assert result.data() == []  #Consumes the remaining result
+
+    result = session.run(
+        "MATCH p=(a)-[ab:X]->(b:Test)-[bc:X]->(c:Test:Node) WHERE ID(a) = $a AND ID(b) = $b AND ID(c) = $c RETURN a, b, c, ab, bc, p",
+        a=a.id,
+        b=b.id,
+        c=c.id,
+    )
+
+    assert result.data() == [rows[0].data(),]
+
+    result = session.run(
+        "MATCH p=(a)-[ab:X]->(b:Test)-[bc:X]->(c:Test:Node) WHERE ID(a) = $a AND ID(b) = $b AND ID(c) = $c RETURN a, b, c, ab, bc, p",
+        a=a.id,
+        b=b.id,
+        c=c.id,
+    )
+
+    assert result.data("a", "b") == [rows[0].data("a", "b"),]
+
+
+def test_temporal_data_result(session):
+
+    result = session.run("RETURN date() AS a")
+    row_0 = result.single()
+    assert isinstance(row_0.data()["a"], datetime.date)
+
+    result = session.run("RETURN time() AS a")
+    row_0 = result.single()
+    assert isinstance(row_0.data()["a"], datetime.time)
+
+    result = session.run("RETURN localtime() AS a")
+    row_0 = result.single()
+    assert isinstance(row_0.data()["a"], datetime.time)
+
+    result = session.run("RETURN datetime() AS a")
+    row_0 = result.single()
+    assert isinstance(row_0.data()["a"], datetime.datetime)
+
+    result = session.run("RETURN localdatetime() AS a")
+    row_0 = result.single()
+    assert isinstance(row_0.data()["a"], datetime.datetime)
+
+    #result = session.run("RETURN duration("P3Y6M4DT12H30M5S") AS a")
+    #row_0 = result.single()
+    #assert isinstance(row_0.data()["a"], datetime.timedelta)
+
+    # Test Node with temporal defaults
+    # TODO: Duration
+
+    result = session.run(
+        "CREATE (a:Test:Node {date: date(), time: time(), localTime: localtime(), dateTime: datetime(), localDateTime: localdatetime()}) RETURN a",
+    )
+
+    row_0 = result.single()
+
+    assert row_0.keys() == ["a",]
+
+    a = row_0["a"]
+
+    assert row_0.data() == {"a": a.data()}
+
+    assert a.data() == {
+        "id": a.id,
+        "labels": ["Node", "Test"],
+        "properties": {
+            "date": a["date"].to_native(),
+            "time": a["time"].to_native(),
+            "localTime": a["localTime"].to_native(),
+            "dateTime": a["dateTime"].to_native(),
+            "localDateTime": a["localDateTime"].to_native(),
+        },
+    }
+
+    result = session.run(
+        "MATCH (a) WHERE ID(a) = $a RETURN a, ID(a) AS node_id",
+        a=a.id,
+    )
+
+    assert result.data("a") == [row_0.data(),]
+
+

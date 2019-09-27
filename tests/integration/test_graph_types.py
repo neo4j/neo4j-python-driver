@@ -29,6 +29,8 @@ def test_node(cypher_eval):
     assert set(a.labels) == {"Person"}
     assert dict(a) == {"name": "Alice"}
 
+    assert a.data() == {"id": a.id, "labels": ["Person",], "properties": {"name": "Alice"}}
+
 
 def test_relationship(cypher_eval):
     a, b, r = cypher_eval("CREATE (a)-[r:KNOWS {since:1999}]->(b) "
@@ -38,6 +40,10 @@ def test_relationship(cypher_eval):
     assert dict(r) == {"since": 1999}
     assert r.start_node == a
     assert r.end_node == b
+
+    assert a.data() == {"id": a.id, "labels": [], "properties": {}}
+    assert b.data() == {"id": b.id, "labels": [], "properties": {}}
+    assert r.data() == {"id": r.id, "type": "KNOWS", "properties": {"since": 1999}, "start_node_id": a.id, "end_node_id": b.id}
 
 
 def test_path(cypher_eval):
@@ -49,3 +55,21 @@ def test_path(cypher_eval):
     assert p.relationships == (ab, bc)
     assert p.start_node == a
     assert p.end_node == c
+
+    assert p.data() == {"node_id_index": {a.id:0, b.id:1, c.id:2}, "nodes": [a.data(), b.data(), c.data()], "relationships": [ab.data(), bc.data()]}
+
+
+def test_circular_path(cypher_eval):
+    a, b, c, d, ab, bc, cd, db, p = cypher_eval(
+        "CREATE p=(a)-[ab:X]->(b)-[bc:X]->(c)-[cd:X]->(d)-[db:Z]->(b) "
+        "RETURN [a, b, c, d, ab, bc, cd, db, p]"
+    )
+
+    assert isinstance(p, Path)
+    assert len(p) == 4
+    assert p.nodes == (a, b, c, d, b)
+    assert p.relationships == (ab, bc, cd, db)
+    assert p.start_node == a
+    assert p.end_node == b
+
+    assert p.data() == {"node_id_index": {a.id:0, b.id:1, c.id:2, d.id:3}, "nodes": [a.data(), b.data(), c.data(), d.data(), b.data()], "relationships": [ab.data(), bc.data(), cd.data(), db.data()]}
