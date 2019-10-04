@@ -19,6 +19,8 @@
 # limitations under the License.
 
 
+from pytest import mark
+
 from neobolt.exceptions import ServiceUnavailable
 from neobolt.routing import LeastConnectedLoadBalancingStrategy, RoundRobinLoadBalancingStrategy, \
     LOAD_BALANCING_STRATEGY_ROUND_ROBIN, RoutingProtocolError
@@ -245,6 +247,7 @@ class RoutingDriverTestCase(StubTestCase):
             with GraphDatabase.driver(uri, auth=self.auth_token, encrypted=False, load_balancing_strategy=-1):
                 pass
 
+    @mark.skip
     def test_forgets_address_on_not_a_leader_error(self):
         with StubCluster({9001: "router.script", 9006: "not_a_leader.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
@@ -263,6 +266,7 @@ class RoutingDriverTestCase(StubTestCase):
                     # writer 127.0.0.1:9006 should've been forgotten because of an error
                     assert len(table.writers) == 0
 
+    @mark.skip
     def test_forgets_address_on_forbidden_on_read_only_database_error(self):
         with StubCluster({9001: "router.script", 9006: "forbidden_on_read_only_database.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
@@ -281,6 +285,7 @@ class RoutingDriverTestCase(StubTestCase):
                     # writer 127.0.0.1:9006 should've been forgotten because of an error
                     assert len(table.writers) == 0
 
+    @mark.skip
     def test_forgets_address_on_service_unavailable_error(self):
         with StubCluster({9001: "router.script", 9004: "rude_reader.script"}):
             uri = "bolt+routing://127.0.0.1:9001"
@@ -305,6 +310,7 @@ class RoutingDriverTestCase(StubTestCase):
 
                 assert conn.in_use == False
 
+    @mark.skip
     def test_forgets_address_on_database_unavailable_error(self):
         with StubCluster({9001: "router.script", 9004: "database_unavailable.script"}):
             uri = "bolt+routing://127.0.0.1:9001"

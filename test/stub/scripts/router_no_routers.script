@@ -1,7 +1,7 @@
 !: AUTO INIT
 !: AUTO RESET
 
-C: RUN "CALL dbms.cluster.routing.getRoutingTable({context})" {"context": {}}
+C: RUN "CALL dbms.cluster.routing.getRoutingTable($context)" {"context": {}}
    PULL_ALL
 S: SUCCESS {"fields": ["ttl", "servers"]}
    RECORD [300, [{"role":"ROUTE","addresses":[]},{"role":"READ","addresses":["127.0.0.1:9004","127.0.0.1:9005"]},{"role":"WRITE","addresses":["127.0.0.1:9006"]}]]
