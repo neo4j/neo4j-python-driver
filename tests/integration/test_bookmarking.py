@@ -42,7 +42,7 @@ def test_can_pass_bookmark_into_next_transaction(driver):
 
     assert bookmark is not None
 
-    with driver.session(access_mode=READ_ACCESS, bookmark=bookmark) as session:
+    with driver.session(access_mode=READ_ACCESS, bookmarks=[bookmark]) as session:
         with session.begin_transaction() as tx:
             result = tx.run("MATCH (a:Thing {uuid:$uuid}) RETURN a", uuid=unique_id)
             record_list = list(result)

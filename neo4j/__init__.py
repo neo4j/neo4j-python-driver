@@ -37,6 +37,7 @@ from urllib.parse import urlparse, parse_qs
 
 from neo4j.addressing import Address
 from neo4j.api import *
+from neo4j.config import Config, PoolConfig, SessionConfig
 from neo4j.meta import get_user_agent
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 from neo4j.meta import experimental, version as __version__
@@ -142,6 +143,58 @@ class GraphDatabase:
         return context
 
 
+class Direct:
+
+    default_host = "localhost"
+    default_port = 7687
+
+    default_target = ":"
+
+    def __init__(self, address):
+        self._address = address
+
+    @property
+    def address(self):
+        return self._address
+
+    @classmethod
+    def parse_target(cls, target):
+        """ Parse a target string to produce an address.
+        """
+        if not target:
+            target = cls.default_target
+        address = Address.parse(target, default_host=cls.default_host,
+                                default_port=cls.default_port)
+        return address
+
+
+class Routing:
+
+    default_host = "localhost"
+    default_port = 7687
+
+    default_targets = ": :17601 :17687"
+
+    def __init__(self, initial_addresses):
+        self._initial_addresses = initial_addresses
+
+    @property
+    def initial_addresses(self):
+        return self._initial_addresses
+
+    @classmethod
+    def parse_targets(cls, *targets):
+        """ Parse a sequence of target strings to produce an address
+        list.
+        """
+        targets = " ".join(targets)
+        if not targets:
+            targets = cls.default_targets
+        addresses = Address.parse_list(targets, default_host=cls.default_host,
+                                       default_port=cls.default_port)
+        return addresses
+
+
 class Driver:
     """ Base class for all types of :class:`.Driver`, instances of which are
     used as the primary access point to Neo4j.
@@ -150,15 +203,14 @@ class Driver:
     :param config: configuration and authentication details
     """
 
-    #: Overridden by subclasses to specify the URI scheme owned by that
-    #: class.
-    uri_schemes = ()
-
     #: Connection pool
     _pool = None
 
     #: Indicator of driver closure.
     _closed = False
+
+    def __init__(self, pool):
+        self._pool = pool
 
     def __del__(self):
         self.close()
@@ -172,6 +224,10 @@ class Driver:
     def _assert_open(self):
         if self.closed():
             raise DriverError("Driver closed")
+
+    @property
+    def secure(self):
+        return bool(self._pool.config.secure)
 
     def session(self, **parameters):
         """ Create a new :class:`.Session` object based on this
@@ -218,6 +274,9 @@ class AsyncDriver:
     async def open(cls, uri, **config):
         raise NotImplementedError
 
+    def __init__(self, pool):
+        self._pool = pool
+
     def session(self, **parameters):
         raise NotImplementedError
 
@@ -236,44 +295,6 @@ class AsyncDriver:
         raise NotImplementedError
 
 
-class Direct:
-
-    default_host = "localhost"
-    default_port = 7687
-
-    default_target = ":"
-
-    @classmethod
-    def parse_target(cls, target):
-        """ Parse a target string to produce an address.
-        """
-        if not target:
-            target = cls.default_target
-        address = Address.parse(target, default_host=cls.default_host,
-                                default_port=cls.default_port)
-        return address
-
-
-class Routing:
-
-    default_host = "localhost"
-    default_port = 7687
-
-    default_targets = ": :17601 :17687"
-
-    @classmethod
-    def parse_targets(cls, *targets):
-        """ Parse a sequence of target strings to produce an address
-        list.
-        """
-        targets = " ".join(targets)
-        if not targets:
-            targets = cls.default_targets
-        addresses = Address.parse_list(targets, default_host=cls.default_host,
-                                       default_port=cls.default_port)
-        return addresses
-
-
 class BoltDriver(Direct, Driver):
     """ A :class:`.BoltDriver` is created from a ``bolt`` URI and addresses
     a single database machine. This may be a standalone server or could be a
@@ -284,33 +305,25 @@ class BoltDriver(Direct, Driver):
     """
 
     @classmethod
-    def open(cls, target, *, auth=None, acquire_timeout=None, **config):
+    def open(cls, target, *, auth=None, **config):
+        from neo4j.io import BoltPool
         address = cls.parse_target(target)
-        return cls(address, auth=auth, acquire_timeout=acquire_timeout, **config)
+        pool_config, session_config = Config.consume(config, PoolConfig, SessionConfig)
+        pool = BoltPool.open(address, auth=auth, **pool_config)
+        pool.release(pool.acquire(timeout=session_config.acquire_timeout))
+        return cls(pool, session_config)
 
-    def __init__(self, address, *, auth=None, acquire_timeout=None, **config):
-        from neo4j.io import Bolt, BoltPool
-        self.address = address
-        self.config = Config(**config)
-        self.acquire_timeout = acquire_timeout
-
-        def opener(addr, timeout):
-            return Bolt.open(addr, auth=auth, timeout=timeout, **self.config)
-
-        pool = BoltPool(opener, address, acquire_timeout=acquire_timeout, **self.config)
-        pool.release(pool.acquire())
-        self._pool = pool
-
-    @property
-    def secure(self):
-        return bool(self.config.secure)
+    def __init__(self, pool, session_config):
+        Direct.__init__(self, pool.address)
+        Driver.__init__(self, pool)
+        self._session_config = session_config
 
     def session(self, **parameters):
         self._assert_open()
         if "acquire_timeout" not in parameters:
-            parameters["acquire_timeout"] = self.acquire_timeout
+            parameters["acquire_timeout"] = self._session_config.acquire_timeout
         if "max_retry_time" not in parameters:
-            parameters["max_retry_time"] = self.config.max_retry_time
+            parameters["max_retry_time"] = self._session_config.max_retry_time
         from neo4j.work.blocking import Session
         return Session(self._pool.acquire, **parameters)
 
@@ -331,57 +344,51 @@ class Neo4jDriver(Routing, Driver):
     """
 
     @classmethod
-    def open(cls, *targets, auth=None, routing_context=None, acquire_timeout=None, **config):
+    def open(cls, *targets, auth=None, routing_context=None, **config):
+        from neo4j.io import Neo4jPool
         addresses = cls.parse_targets(*targets)
-        return cls(*addresses, auth=auth, routing_context=routing_context,
-                   acquire_timeout=acquire_timeout, **config)
-
-    def __init__(self, *addresses, auth=None, routing_context=None, acquire_timeout=None, **config):
-        from neo4j.io import Bolt, Neo4jPool
-        self.addresses = addresses
-        self.config = Config(**config)
-        self._max_retry_time = self.config.max_retry_time
-        self.acquire_timeout = acquire_timeout
-
-        def opener(addr, timeout):
-            return Bolt.open(addr, auth=auth, timeout=timeout, **self.config)
-
-        # TODO: pass in all addresses
-        pool = Neo4jPool(opener, addresses[0], routing_context, *addresses,
-                         acquire_timeout=acquire_timeout, **config)
+        pool_config, session_config = Config.consume(config, PoolConfig, SessionConfig)
+        pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, **pool_config)
         try:
             pool.update_routing_table()
         except Exception:
             pool.close()
             raise
         else:
-            self._pool = pool
+            return cls(pool, session_config)
 
-    @property
-    def secure(self):
-        return bool(self.config.secure)
+    def __init__(self, pool, session_config):
+        Routing.__init__(self, pool.routing_table.initial_routers)
+        Driver.__init__(self, pool)
+        self._session_config = session_config
 
     def session(self, **parameters):
         self._assert_open()
         if "acquire_timeout" not in parameters:
-            parameters["acquire_timeout"] = self.acquire_timeout
+            parameters["acquire_timeout"] = self._session_config.acquire_timeout
         if "max_retry_time" not in parameters:
-            parameters["max_retry_time"] = self.config.max_retry_time
+            parameters["max_retry_time"] = self._session_config.max_retry_time
         from neo4j.work.blocking import Session
         return Session(self._pool.acquire, **parameters)
-
-    def rx_session(self, **parameters):
-        raise NotImplementedError("Reactive sessions are not implemented "
-                                  "for the %s class" % type(self).__name__)
-
-    def pipeline(self, **parameters):
-        raise NotImplementedError("Pipelines are not implemented "
-                                  "for the %s class" % type(self).__name__)
 
 
 class AsyncBoltDriver(Direct, AsyncDriver):
 
-    pass
+    @classmethod
+    async def open(cls, target, *, auth=None, loop=None, **config):
+        from neo4j.aio import Bolt, BoltPool
+        address = cls.parse_target(target)
+        pool_config, session_config = Config.consume(config, PoolConfig, SessionConfig)
+
+        def opener(addr):
+            return Bolt.open(addr, auth=auth, **config)
+
+        pool = await BoltPool.open(opener, address, **pool_config, loop=loop)
+        return cls(pool)
+
+    def __init__(self, pool):
+        Direct.__init__(self, pool.address)
+        AsyncDriver.__init__(self, pool)
 
 
 class AsyncNeo4jDriver(Routing, AsyncDriver):

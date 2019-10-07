@@ -106,6 +106,7 @@ class RoutingTable:
             return cls(routers, readers, writers, ttl)
 
     def __init__(self, routers=(), readers=(), writers=(), ttl=0):
+        self.initial_routers = OrderedSet(routers)
         self.routers = OrderedSet(routers)
         self.readers = OrderedSet(readers)
         self.writers = OrderedSet(writers)

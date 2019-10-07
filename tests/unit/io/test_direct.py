@@ -22,7 +22,8 @@
 from unittest import TestCase
 from threading import Thread, Event
 
-from neo4j.io import Bolt, BoltPool
+from neo4j import PoolConfig
+from neo4j.io import Bolt, BoltPool, IOPool
 from neo4j.exceptions import ClientError, ServiceUnavailable
 
 
@@ -65,35 +66,45 @@ class QuickConnection:
         return False
 
 
-def opener(address, **kwargs):
-    return QuickConnection(FakeSocket(address))
+class FakeBoltPool(IOPool):
+
+    def __init__(self, address, *, auth=None, **config):
+        self.config = PoolConfig.pop_from(config)
+        if config:
+            raise ValueError("Unexpected config keys: %s" % ", ".join(config.keys()))
+
+        def opener(addr, timeout):
+            return QuickConnection(FakeSocket(addr))
+
+        super().__init__(opener, self.config)
+        self.address = address
+
+    def acquire(self, access_mode=None, timeout=None):
+        return self._acquire(self.address, timeout)
 
 
 class ConnectionTestCase(TestCase):
 
     def test_conn_timed_out(self):
         address = ("127.0.0.1", 7687)
-        connection = Bolt(address, FakeSocket(address), protocol_version=1,
-                          max_connection_lifetime=0)
+        connection = Bolt(address, FakeSocket(address), protocol_version=1, max_age=0)
         self.assertEqual(connection.timedout(), True)
 
     def test_conn_not_timed_out_if_not_enabled(self):
         address = ("127.0.0.1", 7687)
-        connection = Bolt(address, FakeSocket(address), protocol_version=1,
-                          max_connection_lifetime=-1)
+        connection = Bolt(address, FakeSocket(address), protocol_version=1, max_age=-1)
         self.assertEqual(connection.timedout(), False)
 
     def test_conn_not_timed_out(self):
         address = ("127.0.0.1", 7687)
-        connection = Bolt(address, FakeSocket(address), protocol_version=1,
-                          max_connection_lifetime=999999999)
+        connection = Bolt(address, FakeSocket(address), protocol_version=1, max_age=999999999)
         self.assertEqual(connection.timedout(), False)
 
 
 class ConnectionPoolTestCase(TestCase):
 
     def setUp(self):
-        self.pool = BoltPool(opener, ("127.0.0.1", 7687))
+        self.pool = FakeBoltPool(("127.0.0.1", 7687))
 
     def tearDown(self):
         self.pool.close()
@@ -151,7 +162,7 @@ class ConnectionPoolTestCase(TestCase):
         self.assert_pool_size(address, 0, 1)
 
     def test_cannot_acquire_after_close(self):
-        with BoltPool(lambda a: QuickConnection(FakeSocket(a)), ()) as pool:
+        with FakeBoltPool(()) as pool:
             pool.close()
             with self.assertRaises(ServiceUnavailable):
                 _ = pool._acquire("X", timeout=3)
@@ -165,18 +176,16 @@ class ConnectionPoolTestCase(TestCase):
         self.assertEqual(self.pool.in_use_connection_count(address), 0)
 
     def test_max_conn_pool_size(self):
-        with BoltPool(opener, (), max_connection_pool_size=1,
-                      acquire_timeout=0) as pool:
+        with FakeBoltPool((), max_size=1) as pool:
             address = ("127.0.0.1", 7687)
-            pool._acquire(address, timeout=3)
+            pool._acquire(address, timeout=0)
             self.assertEqual(pool.in_use_connection_count(address), 1)
             with self.assertRaises(ClientError):
-                pool._acquire(address, timeout=3)
+                pool._acquire(address, timeout=0)
             self.assertEqual(pool.in_use_connection_count(address), 1)
 
     def test_multithread(self):
-        with BoltPool(opener, (), max_connection_pool_size=5,
-                      acquire_timeout=10) as pool:
+        with FakeBoltPool((), max_size=5) as pool:
             address = ("127.0.0.1", 7687)
             releasing_event = Event()
 

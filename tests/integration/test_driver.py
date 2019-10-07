@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from pytest import raises
+from pytest import raises, warns
 
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable, AuthError
@@ -60,8 +60,9 @@ def test_custom_resolver(service):
 
 
 def test_encrypted_arg_can_still_be_used(uri, auth):
-    with GraphDatabase.driver(uri, auth=auth, encrypted=False) as driver:
-        assert not driver.secure
+    with warns(UserWarning):
+        with GraphDatabase.driver(uri, auth=auth, encrypted=False) as driver:
+            assert not driver.secure
 
 
 def test_insecure_by_default(driver):

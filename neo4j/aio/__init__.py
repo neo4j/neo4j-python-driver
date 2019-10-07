@@ -47,7 +47,9 @@ from neo4j.errors import (
     BoltHandshakeError,
     Neo4jAvailabilityError,
 )
-from neo4j.api import Config, Version
+from neo4j.api import Version
+from neo4j import PoolConfig
+from neo4j.config import Config
 from neo4j.meta import version as neo4j_version
 from neo4j.routing import RoutingTable
 
@@ -162,7 +164,7 @@ class Bolt(Addressable, object):
         address = Address(address)
         if loop is None:
             loop = get_event_loop()
-        config = Config(**config)
+        config = PoolConfig.pop_from(config)
 
         # Connect
         reader, writer = await cls._connect(address, loop, config)
@@ -458,7 +460,7 @@ class BoltPool:
     """
 
     @classmethod
-    async def open(cls, opener, address, size=1, max_size=1, max_age=None, loop=None):
+    async def open(cls, opener, address, *, size=1, max_size=1, max_age=None, loop=None):
         """ Create a new connection pool, with an option to seed one
         or more initial connections.
         """
@@ -468,7 +470,7 @@ class BoltPool:
             await pool.release(seed)
         return pool
 
-    def __init__(self, opener, address, max_size=1, max_age=None, loop=None):
+    def __init__(self, opener, address, *, max_size=1, max_age=None, loop=None):
         self._opener = opener
         self._address = Address(address)
         self._max_size = max_size

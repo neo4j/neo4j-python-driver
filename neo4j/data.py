@@ -24,6 +24,7 @@ from datetime import date, time, datetime, timedelta
 from functools import reduce
 from operator import xor as xor_operator
 
+from neo4j.config import iter_items
 from neo4j.graph import Graph
 from neo4j.packstream import INT64_MIN, INT64_MAX, Structure
 from neo4j.spatial import Point, hydrate_point, dehydrate_point
@@ -37,21 +38,6 @@ from neo4j.time.hydration import (
 
 
 map_type = type(map(str, range(0)))
-
-
-def iter_items(iterable):
-    """ Iterate through all items (key-value pairs) within an iterable
-    dictionary-like object. If the object has a `keys` method, this is
-    used along with `__getitem__` to yield each pair in turn. If no
-    `keys` method exists, each iterable element is assumed to be a
-    2-tuple of key and value.
-    """
-    if hasattr(iterable, "keys"):
-        for key in iterable.keys():
-            yield key, iterable[key]
-    else:
-        for key, value in iterable:
-            yield key, value
 
 
 class Record(tuple, Mapping):

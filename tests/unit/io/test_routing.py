@@ -218,11 +218,3 @@ class RoutingTableUpdateTestCase(TestCase):
     def test_update_should_replace_ttl(self):
         self.table.update(self.new_table)
         assert self.table.ttl == 300
-
-
-class RoutingConnectionPoolConstructionTestCase(TestCase):
-    def test_should_populate_initial_router(self):
-        initial_router = ("127.0.0.1", 9001)
-        router = ("127.0.0.1", 9002)
-        with Neo4jPool(opener, initial_router, {}, router) as pool:
-            assert pool.routing_table.routers == {("127.0.0.1", 9002)}
