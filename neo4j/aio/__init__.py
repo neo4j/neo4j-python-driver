@@ -49,7 +49,7 @@ from neo4j.errors import (
 )
 from neo4j.api import Version
 from neo4j import PoolConfig
-from neo4j.config import Config
+from neo4j.conf import Config
 from neo4j.meta import version as neo4j_version
 from neo4j.routing import RoutingTable
 

@@ -37,7 +37,7 @@ from urllib.parse import urlparse, parse_qs
 
 from neo4j.addressing import Address
 from neo4j.api import *
-from neo4j.config import Config, PoolConfig, SessionConfig
+from neo4j.conf import Config, PoolConfig, SessionConfig
 from neo4j.meta import get_user_agent
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 from neo4j.meta import experimental, version as __version__

@@ -25,7 +25,8 @@ from random import random
 from time import perf_counter, sleep
 from warnings import warn
 
-from neo4j import READ_ACCESS, WRITE_ACCESS, SessionConfig
+from neo4j import READ_ACCESS, WRITE_ACCESS
+from neo4j.conf import SessionConfig
 from neo4j.data import DataHydrator, DataDehydrator
 from neo4j.exceptions import (
     ConnectionExpired,
@@ -124,7 +125,7 @@ class Session:
     def __del__(self):
         try:
             self.close()
-        except:
+        except OSError:
             pass
 
     def __enter__(self):

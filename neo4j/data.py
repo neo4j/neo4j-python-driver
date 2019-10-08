@@ -24,7 +24,7 @@ from datetime import date, time, datetime, timedelta
 from functools import reduce
 from operator import xor as xor_operator
 
-from neo4j.config import iter_items
+from neo4j.conf import iter_items
 from neo4j.graph import Graph
 from neo4j.packstream import INT64_MIN, INT64_MAX, Structure
 from neo4j.spatial import Point, hydrate_point, dehydrate_point

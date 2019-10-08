@@ -46,7 +46,7 @@ from time import perf_counter
 
 from neo4j.addressing import Address, AddressList
 from neo4j.api import ServerInfo
-from neo4j.config import Config, PoolConfig
+from neo4j.conf import Config, PoolConfig
 from neo4j.io.bolt3 import Outbox, BufferedSocket, Inbox, Response, InitResponse, CommitResponse
 from neo4j.errors import BoltRoutingError, Neo4jAvailabilityError
 from neo4j.exceptions import ProtocolError, SecurityError, \
