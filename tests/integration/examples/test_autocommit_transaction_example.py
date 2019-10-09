@@ -20,7 +20,7 @@
 
 
 # tag::autocommit-transaction-import[]
-from neo4j.work.blocking import Statement
+from neo4j.work.simple import Statement
 # end::autocommit-transaction-import[]
 
 

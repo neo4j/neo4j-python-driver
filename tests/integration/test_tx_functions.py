@@ -24,7 +24,7 @@ from uuid import uuid4
 
 from pytest import raises
 
-from neo4j.work.blocking import unit_of_work
+from neo4j.work.simple import unit_of_work
 from neo4j.exceptions import ClientError
 
 

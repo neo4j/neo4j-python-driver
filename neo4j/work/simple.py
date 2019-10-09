@@ -28,6 +28,7 @@ from warnings import warn
 from neo4j import READ_ACCESS, WRITE_ACCESS
 from neo4j.conf import SessionConfig
 from neo4j.data import DataHydrator, DataDehydrator
+from neo4j.errors import Neo4jError
 from neo4j.exceptions import (
     ConnectionExpired,
     CypherError,
@@ -101,26 +102,16 @@ class Session:
     # The bookmark returned from the last commit.
     _bookmark_out = None
 
-    # Default maximum time to keep retrying failed transactions.
-    _max_retry_time = SessionConfig.max_retry_time
-
     _closed = False
 
-    def __init__(self, acquirer, *, acquire_timeout=None, **parameters):
-        self._acquirer = acquirer
-        self._acquire_timeout = acquire_timeout
-        self._default_access_mode = parameters.get("access_mode")
-        for key, value in parameters.items():
-            if key == "bookmark":
-                if value:
-                    self._bookmarks_in = tuple([value])
-            elif key == "bookmarks":
-                if value:
-                    self._bookmarks_in = tuple(value)
-            elif key == "max_retry_time":
-                self._max_retry_time = value
-            else:
-                pass  # for compatibility
+    def __init__(self, pool, config):
+        if pool.closed():
+            # TODO: subclass this error
+            raise Neo4jError("Driver connection pool closed")
+        assert isinstance(config, SessionConfig)
+        self._pool = pool
+        self._config = config
+        self._bookmarks_in = tuple(config.bookmarks)
 
     def __del__(self):
         try:
@@ -136,13 +127,13 @@ class Session:
 
     def _connect(self, access_mode=None):
         if access_mode is None:
-            access_mode = self._default_access_mode
+            access_mode = self._config.default_access_mode
         if self._connection:
             log.warning("FIXME: should always disconnect before connect")
             self._connection.send_all()
             self._connection.fetch_all()
             self._disconnect()
-        self._connection = self._acquirer(access_mode, timeout=self._acquire_timeout)
+        self._connection = self._pool.acquire(access_mode, timeout=self._config.acquire_timeout)
 
     def _disconnect(self):
         if self._connection:
@@ -450,7 +441,7 @@ class Session:
             else:
                 return result
             t1 = perf_counter()
-            if t1 - t0 > self._max_retry_time:
+            if t1 - t0 > self._config.max_retry_time:
                 break
             delay = next(retry_delay)
             log.warning("Transaction failed and will be retried in {}s "

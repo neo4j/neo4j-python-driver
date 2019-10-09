@@ -69,7 +69,7 @@ class QuickConnection:
 class FakeBoltPool(IOPool):
 
     def __init__(self, address, *, auth=None, **config):
-        self.config = PoolConfig.pop_from(config)
+        self.config = PoolConfig._consume(config)
         if config:
             raise ValueError("Unexpected config keys: %s" % ", ".join(config.keys()))
 

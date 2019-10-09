@@ -110,11 +110,11 @@ class Bolt:
         :param config:
         :return:
         """
-        config = PoolConfig.pop_from(config)
+        config = PoolConfig._consume(config)
         return connect(address, auth=auth, timeout=timeout, config=config)
 
     def __init__(self, unresolved_address, sock, *, auth=None, protocol_version=None, **config):
-        self.config = PoolConfig.pop_from(config)
+        self.config = PoolConfig._consume(config)
         self.protocol_version = protocol_version
         self.unresolved_address = unresolved_address
         self.socket = sock
@@ -614,7 +614,7 @@ class BoltPool(IOPool):
 
     @classmethod
     def open(cls, address, *, auth=None, **config):
-        pool_config, = Config.consume(config, PoolConfig)
+        pool_config = PoolConfig.consume(config)
 
         def opener(addr, timeout):
             return Bolt.open(addr, auth=auth, timeout=timeout, **pool_config)
@@ -636,7 +636,7 @@ class Neo4jPool(IOPool):
 
     @classmethod
     def open(cls, *addresses, auth=None, routing_context=None, **config):
-        pool_config, = Config.consume(config, PoolConfig)
+        pool_config = PoolConfig.consume(config)
 
         def opener(addr, timeout):
             return Bolt.open(addr, auth=auth, timeout=timeout, **pool_config)

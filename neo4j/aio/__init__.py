@@ -164,7 +164,7 @@ class Bolt(Addressable, object):
         address = Address(address)
         if loop is None:
             loop = get_event_loop()
-        config = PoolConfig.pop_from(config)
+        config = PoolConfig._consume(config)
 
         # Connect
         reader, writer = await cls._connect(address, loop, config)

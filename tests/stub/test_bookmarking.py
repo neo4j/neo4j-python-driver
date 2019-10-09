@@ -37,7 +37,7 @@ class BookmarkingTestCase(StubTestCase):
         with StubCluster({9001: "v3/router.script"}):
             uri = "bolt+routing://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(bookmark="X") as session:
+                with driver.session(bookmarks=["X"]) as session:
                     assert session.next_bookmarks() == ("X",)
 
     def test_should_be_able_to_set_multiple_bookmarks(self):
@@ -63,7 +63,7 @@ class BookmarkingTestCase(StubTestCase):
         with StubCluster({9001: "v3/router.script", 9004: "v3/bookmark_chain_with_autocommit.script"}):
             uri = "bolt+routing://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(access_mode=READ_ACCESS, bookmark="bookmark:1") as session:
+                with driver.session(access_mode=READ_ACCESS, bookmarks=["bookmark:1"]) as session:
                     with session.begin_transaction():
                         pass
                     assert session.last_bookmark() == "bookmark:2"

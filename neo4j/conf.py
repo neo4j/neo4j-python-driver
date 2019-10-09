@@ -80,19 +80,24 @@ class Config(Mapping, metaclass=ConfigType):
     """ Base class for all configuration containers.
     """
 
-    @classmethod
-    def consume(cls, config, *config_classes):
+    @staticmethod
+    def consume_chain(data, *config_classes):
         values = []
         for config_class in config_classes:
             if not issubclass(config_class, Config):
                 raise TypeError("%r is not a Config subclass" % config_class)
-            values.append(config_class.pop_from(config))
-        if config:
-            raise ValueError("Unexpected config keys: %s" % ", ".join(config.keys()))
+            values.append(config_class._consume(data))
+        if data:
+            raise ValueError("Unexpected config keys: %s" % ", ".join(data.keys()))
         return values
 
     @classmethod
-    def pop_from(cls, data):
+    def consume(cls, data):
+        config, = cls.consume_chain(data, cls)
+        return config
+
+    @classmethod
+    def _consume(cls, data):
         config = {}
         if data:
             for key in list(cls.keys()) + list(cls._deprecated_keys()):
@@ -204,6 +209,7 @@ class SessionConfig(Config):
 
     #:
     default_access_mode = "WRITE"
+    access_mode = DeprecatedAlias("default_access_mode")
 
     #:
     max_retry_time = 30.0  # seconds

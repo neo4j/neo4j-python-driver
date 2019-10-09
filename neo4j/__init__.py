@@ -210,6 +210,7 @@ class Driver:
     _closed = False
 
     def __init__(self, pool):
+        assert pool is not None
         self._pool = pool
 
     def __del__(self):
@@ -221,19 +222,15 @@ class Driver:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _assert_open(self):
-        if self.closed():
-            raise DriverError("Driver closed")
-
     @property
     def secure(self):
         return bool(self._pool.config.secure)
 
-    def session(self, **parameters):
+    def session(self, **config):
         """ Create a new :class:`.Session` object based on this
         :class:`.Driver`.
 
-        :param parameters: custom session parameters (see
+        :param config: custom session parameters (see
                            :class:`.Session` for details)
         :returns: new :class:`.Session` object
         """
@@ -256,16 +253,13 @@ class Driver:
     def close(self):
         """ Shut down, closing any open connections in the pool.
         """
-        if not self._closed:
-            self._closed = True
-            if self._pool is not None:
-                self._pool.close()
-                self._pool = None
+        if not self.closed():
+            self._pool.close()
 
     def closed(self):
         """ Return :const:`True` if closed, :const:`False` otherwise.
         """
-        return self._closed
+        return self._pool.closed()
 
 
 class AsyncDriver:
@@ -308,7 +302,7 @@ class BoltDriver(Direct, Driver):
     def open(cls, target, *, auth=None, **config):
         from neo4j.io import BoltPool
         address = cls.parse_target(target)
-        pool_config, session_config = Config.consume(config, PoolConfig, SessionConfig)
+        pool_config, session_config = Config.consume_chain(config, PoolConfig, SessionConfig)
         pool = BoltPool.open(address, auth=auth, **pool_config)
         pool.release(pool.acquire(timeout=session_config.acquire_timeout))
         return cls(pool, session_config)
@@ -318,14 +312,10 @@ class BoltDriver(Direct, Driver):
         Driver.__init__(self, pool)
         self._session_config = session_config
 
-    def session(self, **parameters):
-        self._assert_open()
-        if "acquire_timeout" not in parameters:
-            parameters["acquire_timeout"] = self._session_config.acquire_timeout
-        if "max_retry_time" not in parameters:
-            parameters["max_retry_time"] = self._session_config.max_retry_time
-        from neo4j.work.blocking import Session
-        return Session(self._pool.acquire, **parameters)
+    def session(self, **config):
+        from neo4j.work.simple import Session
+        session_config = SessionConfig(self._session_config, SessionConfig.consume(config))
+        return Session(self._pool, session_config)
 
     def rx_session(self, **parameters):
         raise NotImplementedError("Reactive sessions are not implemented "
@@ -347,7 +337,7 @@ class Neo4jDriver(Routing, Driver):
     def open(cls, *targets, auth=None, routing_context=None, **config):
         from neo4j.io import Neo4jPool
         addresses = cls.parse_targets(*targets)
-        pool_config, session_config = Config.consume(config, PoolConfig, SessionConfig)
+        pool_config, session_config = Config.consume_chain(config, PoolConfig, SessionConfig)
         pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, **pool_config)
         try:
             pool.update_routing_table()
@@ -362,14 +352,10 @@ class Neo4jDriver(Routing, Driver):
         Driver.__init__(self, pool)
         self._session_config = session_config
 
-    def session(self, **parameters):
-        self._assert_open()
-        if "acquire_timeout" not in parameters:
-            parameters["acquire_timeout"] = self._session_config.acquire_timeout
-        if "max_retry_time" not in parameters:
-            parameters["max_retry_time"] = self._session_config.max_retry_time
-        from neo4j.work.blocking import Session
-        return Session(self._pool.acquire, **parameters)
+    def session(self, **config):
+        from neo4j.work.simple import Session
+        session_config = SessionConfig(self._session_config, SessionConfig.consume(config))
+        return Session(self._pool, session_config)
 
 
 class AsyncBoltDriver(Direct, AsyncDriver):
@@ -378,17 +364,18 @@ class AsyncBoltDriver(Direct, AsyncDriver):
     async def open(cls, target, *, auth=None, loop=None, **config):
         from neo4j.aio import Bolt, BoltPool
         address = cls.parse_target(target)
-        pool_config, session_config = Config.consume(config, PoolConfig, SessionConfig)
+        pool_config, session_config = Config.consume_chain(config, PoolConfig, SessionConfig)
 
         def opener(addr):
-            return Bolt.open(addr, auth=auth, **config)
+            return Bolt.open(addr, auth=auth, **pool_config)
 
         pool = await BoltPool.open(opener, address, **pool_config, loop=loop)
-        return cls(pool)
+        return cls(pool, session_config)
 
-    def __init__(self, pool):
+    def __init__(self, pool, session_config):
         Direct.__init__(self, pool.address)
         AsyncDriver.__init__(self, pool)
+        self._session_config = session_config
 
 
 class AsyncNeo4jDriver(Routing, AsyncDriver):

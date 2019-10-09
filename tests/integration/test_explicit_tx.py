@@ -24,7 +24,7 @@ from uuid import uuid4
 
 from pytest import raises
 
-from neo4j.work.blocking import Statement, SessionError, TransactionError
+from neo4j.work.simple import Statement, SessionError, TransactionError
 from neo4j.exceptions import CypherSyntaxError, ClientError, TransientError
 
 
