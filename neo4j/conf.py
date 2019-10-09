@@ -213,3 +213,12 @@ class SessionConfig(Config):
 
     #:
     max_retry_time = 30.0  # seconds
+
+    #:
+    initial_retry_delay = 1.0  # seconds
+
+    #:
+    retry_delay_multiplier = 2.0  # seconds
+
+    #:
+    retry_delay_jitter_factor = 0.2  # seconds

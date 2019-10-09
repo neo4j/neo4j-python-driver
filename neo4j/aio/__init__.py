@@ -48,8 +48,7 @@ from neo4j.errors import (
     Neo4jAvailabilityError,
 )
 from neo4j.api import Version
-from neo4j import PoolConfig
-from neo4j.conf import Config
+from neo4j.conf import Config, PoolConfig
 from neo4j.meta import version as neo4j_version
 from neo4j.routing import RoutingTable
 
@@ -164,7 +163,7 @@ class Bolt(Addressable, object):
         address = Address(address)
         if loop is None:
             loop = get_event_loop()
-        config = PoolConfig._consume(config)
+        config = PoolConfig.consume(config)
 
         # Connect
         reader, writer = await cls._connect(address, loop, config)

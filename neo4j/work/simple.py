@@ -37,11 +37,6 @@ from neo4j.exceptions import (
     TransientError,
 )
 
-
-INITIAL_RETRY_DELAY = 1.0
-RETRY_DELAY_MULTIPLIER = 2.0
-RETRY_DELAY_JITTER_FACTOR = 0.2
-
 STATEMENT_TYPE_READ_ONLY = "r"
 STATEMENT_TYPE_READ_WRITE = "rw"
 STATEMENT_TYPE_WRITE_ONLY = "w"
@@ -412,9 +407,9 @@ class Session:
         metadata = getattr(unit_of_work, "metadata", None)
         timeout = getattr(unit_of_work, "timeout", None)
 
-        retry_delay = retry_delay_generator(INITIAL_RETRY_DELAY,
-                                            RETRY_DELAY_MULTIPLIER,
-                                            RETRY_DELAY_JITTER_FACTOR)
+        retry_delay = retry_delay_generator(self._config.initial_retry_delay,
+                                            self._config.retry_delay_multiplier,
+                                            self._config.retry_delay_jitter_factor)
         errors = []
         t0 = perf_counter()
         while True:

@@ -24,8 +24,9 @@ from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 
 class Workspace:
 
-    def __init__(self, acquirer, **parameters):
-        self._acquirer = acquirer
+    def __init__(self, pool, **parameters):
+        self._pool = pool
+        self._acquirer = self._pool.acquire
         self._parameters = parameters
         self._connection = None
         self._closed = False

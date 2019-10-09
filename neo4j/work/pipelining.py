@@ -28,8 +28,8 @@ from neo4j.work import Workspace
 
 class Pipeline(Workspace):
 
-    def __init__(self, acquirer, **parameters):
-        super(Pipeline, self).__init__(acquirer, **parameters)
+    def __init__(self, pool, **parameters):
+        super(Pipeline, self).__init__(pool, **parameters)
         self._connect()
         self._flush_every = parameters.get("flush_every", 8192)
         self._data = deque()
