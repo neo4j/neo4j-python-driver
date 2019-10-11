@@ -40,42 +40,23 @@ class StubTestCase(TestCase):
     auth_token = (user, password)
 
 
-class StubServer(Thread):
-
-    def __init__(self, port, script):
-        super(StubServer, self).__init__()
-        self.port = port
-        self.script = path_join(dirname(__file__), "scripts", script)
-        self.exception = None
-
-    def run(self):
-        try:
-            check_call(["bolt", "stub", "-v", "-t", "10", "-l", ":{}".format(self.port), self.script])
-        except Exception as e:
-            self.exception = e
-
-
 class StubCluster:
 
-    def __init__(self, servers):
-        self.servers = {port: StubServer(port, script) for port, script in dict(servers).items()}
+    def __init__(self, *servers):
+        scripts = [path_join(dirname(__file__), "scripts", server)
+                   for server in servers]
+
+        def run():
+            check_call(["bolt", "stub", "-v", "-t", "10", "-l", ":9001"] + scripts)
+
+        self.thread = Thread(target=run)
 
     def __enter__(self):
-        self.start()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.wait()
-
-    def start(self):
-        for port, server in self.servers.items():
-            server.start()
+        self.thread.start()
         sleep(0.5)
 
-    def wait(self):
-        for _, server in self.servers.items():
-            server.join()
-            if server.exception:
-                raise server.exception
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.thread.join(3)
 
 
 @fixture

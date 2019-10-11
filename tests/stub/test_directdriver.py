@@ -29,13 +29,13 @@ from tests.stub.conftest import StubTestCase, StubCluster
 class BoltDriverTestCase(StubTestCase):
 
     def test_bolt_uri_constructs_bolt_driver(self):
-        with StubCluster({9001: "v3/empty.script"}):
+        with StubCluster("v3/empty.script"):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
                 assert isinstance(driver, BoltDriver)
 
     def test_direct_disconnect_on_run(self):
-        with StubCluster({9001: "v3/disconnect_on_run.script"}):
+        with StubCluster("v3/disconnect_on_run.script"):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
                 with self.assertRaises(ServiceUnavailable):
@@ -43,7 +43,7 @@ class BoltDriverTestCase(StubTestCase):
                         session.run("RETURN $x", {"x": 1}).consume()
 
     def test_direct_disconnect_on_pull_all(self):
-        with StubCluster({9001: "v3/disconnect_on_pull_all.script"}):
+        with StubCluster("v3/disconnect_on_pull_all.script"):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
                 with self.assertRaises(ServiceUnavailable):
@@ -51,10 +51,10 @@ class BoltDriverTestCase(StubTestCase):
                         session.run("RETURN $x", {"x": 1}).consume()
 
     def test_direct_session_close_after_server_close(self):
-        with StubCluster({9001: "v3/disconnect_after_init.script"}):
+        with StubCluster("v3/disconnect_after_init.script"):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, max_retry_time=0,
-                                      user_agent="test") as driver:
+                                      acquire_timeout=3, user_agent="test") as driver:
                 with driver.session() as session:
                     with self.assertRaises(ServiceUnavailable):
                         session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))

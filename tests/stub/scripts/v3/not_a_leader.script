@@ -6,6 +6,7 @@
 !: AUTO BEGIN {}
 !: AUTO COMMIT
 !: AUTO ROLLBACK
+!: PORT 9006
 
 C: RUN "CREATE (n {name:'Bob'})" {} {}
 C: PULL_ALL

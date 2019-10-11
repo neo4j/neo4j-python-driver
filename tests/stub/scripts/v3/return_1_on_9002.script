@@ -2,7 +2,10 @@
 !: AUTO HELLO
 !: AUTO GOODBYE
 !: AUTO RESET
-!: PORT 9001
+!: PORT 9002
 
 C: RUN "RETURN $x" {"x": 1} {}
-S: <EXIT>
+   PULL_ALL
+S: SUCCESS {"fields": ["x"]}
+   RECORD [1]
+   SUCCESS {}

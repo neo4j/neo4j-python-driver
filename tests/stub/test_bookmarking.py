@@ -27,31 +27,33 @@ from tests.stub.conftest import StubTestCase, StubCluster
 class BookmarkingTestCase(StubTestCase):
 
     def test_should_be_no_bookmark_in_new_session(self):
-        with StubCluster({9001: "v3/router.script"}):
+        with StubCluster("v3/router.script"):
             uri = "bolt+routing://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
                 with driver.session() as session:
                     assert session.last_bookmark() is None
 
     def test_should_be_able_to_set_bookmark(self):
-        with StubCluster({9001: "v3/router.script"}):
+        with StubCluster("v3/router.script"):
             uri = "bolt+routing://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
                 with driver.session(bookmarks=["X"]) as session:
                     assert session.next_bookmarks() == ("X",)
 
     def test_should_be_able_to_set_multiple_bookmarks(self):
-        with StubCluster({9001: "v3/router.script"}):
+        with StubCluster("v3/router.script"):
             uri = "bolt+routing://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
                 with driver.session(bookmarks=[":1", ":2"]) as session:
                     assert session.next_bookmarks() == (":1", ":2")
 
     def test_should_automatically_chain_bookmarks(self):
-        with StubCluster({9001: "v3/router.script", 9004: "v3/bookmark_chain.script"}):
+        with StubCluster("v3/router.script",
+                         "v3/bookmark_chain.script"):
             uri = "bolt+routing://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(access_mode=READ_ACCESS, bookmarks=["bookmark:0", "bookmark:1"]) as session:
+                with driver.session(default_access_mode=READ_ACCESS,
+                                    bookmarks=["bookmark:0", "bookmark:1"]) as session:
                     with session.begin_transaction():
                         pass
                     assert session.last_bookmark() == "bookmark:2"
@@ -60,10 +62,12 @@ class BookmarkingTestCase(StubTestCase):
                     assert session.last_bookmark() == "bookmark:3"
 
     def test_autocommit_transaction_included_in_chain(self):
-        with StubCluster({9001: "v3/router.script", 9004: "v3/bookmark_chain_with_autocommit.script"}):
+        with StubCluster("v3/router.script",
+                         "v3/bookmark_chain_with_autocommit.script"):
             uri = "bolt+routing://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(access_mode=READ_ACCESS, bookmarks=["bookmark:1"]) as session:
+                with driver.session(default_access_mode=READ_ACCESS,
+                                    bookmarks=["bookmark:1"]) as session:
                     with session.begin_transaction():
                         pass
                     assert session.last_bookmark() == "bookmark:2"

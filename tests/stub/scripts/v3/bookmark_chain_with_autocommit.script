@@ -2,6 +2,7 @@
 !: AUTO HELLO
 !: AUTO GOODBYE
 !: AUTO RESET
+!: PORT 9004
 
 C: BEGIN {"bookmarks": ["bookmark:1"]}
 S: SUCCESS {}

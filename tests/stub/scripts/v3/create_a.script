@@ -2,6 +2,7 @@
 !: AUTO HELLO
 !: AUTO GOODBYE
 !: AUTO RESET
+!: PORT 9006
 
 C: RUN "CREATE (a $x)" {"x": {"name": "Alice"}} {}
    PULL_ALL
