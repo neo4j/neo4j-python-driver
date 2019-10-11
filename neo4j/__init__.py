@@ -27,7 +27,6 @@ __all__ = [
     "Driver",
     "BoltDriver",
     "Neo4jDriver",
-    "DriverError",
     "Auth",
     "AuthToken",
 ]
@@ -205,9 +204,6 @@ class Driver:
     #: Connection pool
     _pool = None
 
-    #: Indicator of driver closure.
-    _closed = False
-
     def __init__(self, pool):
         assert pool is not None
         self._pool = pool
@@ -236,13 +232,9 @@ class Driver:
         raise NotImplementedError("Blocking sessions are not implemented "
                                   "for the %s class" % type(self).__name__)
 
-    def rx_session(self, **parameters):
-        raise NotImplementedError("Reactive sessions are not implemented "
-                                  "for the %s class" % type(self).__name__)
-
     @experimental("The pipeline API is experimental and may be removed or "
                   "changed in a future release")
-    def pipeline(self, **parameters):
+    def pipeline(self, **config):
         """ Create a new :class:`.Pipeline` objects based on this
         :class:`.Driver`.
         """
@@ -252,13 +244,7 @@ class Driver:
     def close(self):
         """ Shut down, closing any open connections in the pool.
         """
-        if not self.closed():
-            self._pool.close()
-
-    def closed(self):
-        """ Return :const:`True` if closed, :const:`False` otherwise.
-        """
-        return self._pool.closed()
+        self._pool.close()
 
 
 class AsyncDriver:
@@ -270,22 +256,11 @@ class AsyncDriver:
     def __init__(self, pool):
         self._pool = pool
 
-    def session(self, **parameters):
+    def session(self, **config):
         raise NotImplementedError
 
-    def rx_session(self, **parameters):
-        raise NotImplementedError
-
-    @experimental("The pipeline API is experimental and may be removed or "
-                  "changed in a future release")
-    def pipeline(self, **parameters):
-        raise NotImplementedError
-
-    def close(self):
-        raise NotImplementedError
-
-    def closed(self):
-        raise NotImplementedError
+    async def close(self):
+        await self._pool.close()
 
 
 class BoltDriver(Direct, Driver):
@@ -303,7 +278,6 @@ class BoltDriver(Direct, Driver):
         address = cls.parse_target(target)
         pool_config, session_config = Config.consume_chain(config, PoolConfig, SessionConfig)
         pool = BoltPool.open(address, auth=auth, **pool_config)
-        pool.release(pool.acquire(timeout=session_config.acquire_timeout))
         return cls(pool, session_config)
 
     def __init__(self, pool, session_config):
@@ -316,20 +290,17 @@ class BoltDriver(Direct, Driver):
         session_config = SessionConfig(self._session_config, SessionConfig.consume(config))
         return Session(self._pool, session_config)
 
-    def rx_session(self, **parameters):
-        raise NotImplementedError("Reactive sessions are not implemented "
-                                  "for the %s class" % type(self).__name__)
-
-    def pipeline(self, **parameters):
+    def pipeline(self, **config):
         from neo4j.work.pipelining import Pipeline
-        return Pipeline(self._pool, **parameters)
+        return Pipeline(self._pool, **config)
 
 
 class Neo4jDriver(Routing, Driver):
     """ A :class:`.Neo4jDriver` is created from a ``neo4j`` URI. The
     routing behaviour works in tandem with Neo4j's `Causal Clustering
-    <https://neo4j.com/docs/operations-manual/current/clustering/>`_ feature
-    by directing read and write behaviour to appropriate cluster members.
+    <https://neo4j.com/docs/operations-manual/current/clustering/>`_
+    feature by directing read and write behaviour to appropriate
+    cluster members.
     """
 
     @classmethod
@@ -338,13 +309,7 @@ class Neo4jDriver(Routing, Driver):
         addresses = cls.parse_targets(*targets)
         pool_config, session_config = Config.consume_chain(config, PoolConfig, SessionConfig)
         pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, **pool_config)
-        try:
-            pool.update_routing_table()
-        except Exception:
-            pool.close()
-            raise
-        else:
-            return cls(pool, session_config)
+        return cls(pool, session_config)
 
     def __init__(self, pool, session_config):
         Routing.__init__(self, pool.routing_table.initial_routers)
@@ -356,19 +321,19 @@ class Neo4jDriver(Routing, Driver):
         session_config = SessionConfig(self._session_config, SessionConfig.consume(config))
         return Session(self._pool, session_config)
 
+    def pipeline(self, **config):
+        from neo4j.work.pipelining import Pipeline
+        return Pipeline(self._pool, **config)
+
 
 class AsyncBoltDriver(Direct, AsyncDriver):
 
     @classmethod
     async def open(cls, target, *, auth=None, loop=None, **config):
-        from neo4j.aio import Bolt, BoltPool
+        from neo4j.aio import BoltPool
         address = cls.parse_target(target)
         pool_config, session_config = Config.consume_chain(config, PoolConfig, SessionConfig)
-
-        def opener(addr):
-            return Bolt.open(addr, auth=auth, **pool_config)
-
-        pool = await BoltPool.open(opener, address, **pool_config, loop=loop)
+        pool = await BoltPool.open(address, auth=auth, loop=loop, **pool_config)
         return cls(pool, session_config)
 
     def __init__(self, pool, session_config):
@@ -376,16 +341,25 @@ class AsyncBoltDriver(Direct, AsyncDriver):
         AsyncDriver.__init__(self, pool)
         self._session_config = session_config
 
+    def session(self, **config):
+        raise NotImplementedError  # TODO: reactive session
+
 
 class AsyncNeo4jDriver(Routing, AsyncDriver):
 
-    pass
+    @classmethod
+    async def open(cls, *targets, auth=None, routing_context=None, loop=None, **config):
+        from neo4j.aio import Neo4jPool
+        addresses = cls.parse_targets(*targets)
+        pool_config, session_config = Config.consume_chain(config, PoolConfig, SessionConfig)
+        pool = await Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context,
+                                    loop=loop, **pool_config)
+        return cls(pool, session_config)
 
+    def __init__(self, pool, session_config):
+        Routing.__init__(self, pool.routing_table.initial_routers)
+        AsyncDriver.__init__(self, pool)
+        self._session_config = session_config
 
-class DriverError(Exception):
-    """ Raised when an error occurs while using a driver.
-    """
-
-    def __init__(self, driver, *args):
-        super(DriverError, self).__init__(*args)
-        self.driver = driver
+    def session(self, **config):
+        raise NotImplementedError  # TODO: reactive session

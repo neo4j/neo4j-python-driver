@@ -163,7 +163,7 @@ class PoolConfig(Config):
     max_age = 3600  # 1h
     max_connection_lifetime = DeprecatedAlias("max_age")
 
-    #:
+    #: Maximum number of connections per host
     max_size = 100
     max_connection_pool_size = DeprecatedAlias("max_size")
 

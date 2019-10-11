@@ -23,6 +23,7 @@ from asyncio import sleep, wait, wait_for, TimeoutError
 
 from pytest import mark, raises
 
+from neo4j import PoolConfig
 from neo4j.aio import Bolt, BoltPool
 from neo4j.errors import BoltConnectionError, BoltTransactionError, ClientError
 
@@ -312,8 +313,8 @@ async def test_dirty_transaction_function(bolt):
 
 
 @mark.asyncio
-async def test_pool_exhaustion(opener, address):
-    pool = BoltPool(opener, address, max_size=3)
+async def test_pool_exhaustion(address, auth):
+    pool = await BoltPool.open(address, auth=auth, max_size=3)
     first = await pool.acquire()
     second = await pool.acquire()
     third = await pool.acquire()
@@ -325,8 +326,8 @@ async def test_pool_exhaustion(opener, address):
 
 
 @mark.asyncio
-async def test_pool_reuse(opener, address):
-    pool = BoltPool(opener, address, max_size=3)
+async def test_pool_reuse(address, auth):
+    pool = await BoltPool.open(address, auth=auth, max_size=3)
     first = await pool.acquire()
     second = await pool.acquire()
     third = await pool.acquire()
@@ -337,8 +338,8 @@ async def test_pool_reuse(opener, address):
 
 
 @mark.asyncio
-async def test_pool_release_notifies_acquire(opener, address):
-    pool = BoltPool(opener, address, max_size=1)
+async def test_pool_release_notifies_acquire(address, auth):
+    pool = await BoltPool.open(address, auth=auth, max_size=1)
     first = await pool.acquire()
 
     async def delayed_release():
@@ -363,8 +364,8 @@ async def test_default_pool_open_and_close(bolt_pool, address):
 
 
 @mark.asyncio
-async def test_closing_pool_with_free_connections(opener, address):
-    pool = BoltPool(opener, address, max_size=3)
+async def test_closing_pool_with_free_connections(address, auth):
+    pool = await BoltPool.open(address, auth=auth, max_size=3)
     first = await pool.acquire()
     second = await pool.acquire()
     third = await pool.acquire()
@@ -378,8 +379,8 @@ async def test_closing_pool_with_free_connections(opener, address):
 
 
 @mark.asyncio
-async def test_closing_pool_with_in_use_connections(opener, address):
-    pool = BoltPool(opener, address, max_size=3)
+async def test_closing_pool_with_in_use_connections(address, auth):
+    pool = await BoltPool.open(address, auth=auth, max_size=3)
     first = await pool.acquire()
     second = await pool.acquire()
     third = await pool.acquire()
@@ -390,9 +391,9 @@ async def test_closing_pool_with_in_use_connections(opener, address):
 
 
 @mark.asyncio
-async def test_expired_connections_are_not_returned_to_pool(opener, address):
-    pool = BoltPool(opener, address, max_size=1, max_age=0.25)
-    assert pool.size == 0
+async def test_expired_connections_are_not_returned_to_pool(address, auth):
+    pool = await BoltPool.open(address, auth=auth, max_size=1, max_age=0.25)
+    assert pool.size == PoolConfig.init_size
     assert pool.in_use == 0
     cx = await pool.acquire()
     assert pool.size == 1
@@ -405,9 +406,9 @@ async def test_expired_connections_are_not_returned_to_pool(opener, address):
 
 
 @mark.asyncio
-async def test_closed_connections_are_not_returned_to_pool(opener, address):
-    pool = BoltPool(opener, address, max_size=1)
-    assert pool.size == 0
+async def test_closed_connections_are_not_returned_to_pool(address, auth):
+    pool = await BoltPool.open(address, auth=auth, max_size=1)
+    assert pool.size == PoolConfig.init_size
     assert pool.in_use == 0
     cx = await pool.acquire()
     assert pool.size == 1

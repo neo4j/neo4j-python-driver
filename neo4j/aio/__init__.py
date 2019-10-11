@@ -445,6 +445,18 @@ class BoltStreamWriter(Addressable, Breakable, StreamWriter):
                 pass
 
 
+class Pool:
+
+    def acquire(self, *, force_reset=False, timeout=None):
+        raise NotImplementedError
+
+    def release(self, *connections, force_reset=False):
+        raise NotImplementedError
+
+    def close(self, *, force=False):
+        raise NotImplementedError
+
+
 class BoltPool:
     """ A pool of connections to a single address.
 
@@ -459,22 +471,30 @@ class BoltPool:
     """
 
     @classmethod
-    async def open(cls, opener, address, *, size=1, max_size=1, max_age=None, loop=None):
+    async def open(cls, address, *, auth=None, loop=None, **config):
         """ Create a new connection pool, with an option to seed one
         or more initial connections.
         """
-        pool = cls(opener, address, max_size=max_size, max_age=max_age, loop=loop)
-        seeds = [await pool.acquire() for _ in range(size)]
+        pool_config = PoolConfig.consume(config)
+
+        def opener(addr):
+            return Bolt.open(addr, auth=auth, loop=loop, **pool_config)
+
+        pool = cls(loop, opener, pool_config, address)
+        seeds = [await pool.acquire() for _ in range(pool_config.init_size)]
         for seed in seeds:
             await pool.release(seed)
         return pool
 
-    def __init__(self, opener, address, *, max_size=1, max_age=None, loop=None):
+    def __init__(self, loop, opener, config, address):
+        if loop is None:
+            self._loop = get_event_loop()
+        else:
+            self._loop = loop
         self._opener = opener
         self._address = Address(address)
-        self._max_size = max_size
-        self._max_age = max_age
-        self._loop = loop
+        self._max_size = config.max_size
+        self._max_age = config.max_age
         self._in_use_list = deque()
         self._free_list = deque()
         self._waiting_list = WaitingList(loop=self._loop)
@@ -584,7 +604,7 @@ class BoltPool:
                 if self.size < self.max_size:
                     # Plan B: if the pool isn't full, open
                     # a new connection
-                    cx = await self._opener(self.address, loop=self._loop)
+                    cx = await self._opener(self.address)
                 else:
                     # Plan C: wait for more capacity to become
                     # available, then try again
@@ -680,24 +700,29 @@ class Neo4jPool:
     """
 
     @classmethod
-    async def open(cls, opener, *addresses, routing_context=None, max_size_per_host=100, loop=None):
+    async def open(cls, *addresses, auth=None, routing_context=None, loop=None, **config):
+        pool_config = PoolConfig.consume(config)
+
+        def opener(addr):
+            return Bolt.open(addr, auth=auth, **pool_config)
+
+        obj = cls(loop, opener, config, addresses, routing_context)
         # TODO: get initial routing table and construct
-        obj = cls(opener, *addresses, routing_context=routing_context,
-                  max_size_per_host=max_size_per_host, loop=loop)
         await obj._ensure_routing_table_is_fresh()
         return obj
 
-    def __init__(self, opener, *addresses, routing_context=None, max_size_per_host=100, loop=None):
+    def __init__(self, loop, opener, config, addresses, routing_context):
         if loop is None:
             self._loop = get_event_loop()
         else:
             self._loop = loop
+        self._opener = opener
+        self._config = config
         self._pools = {}
         self._missing_writer = False
         self._refresh_lock = Lock(loop=self._loop)
-        self._opener = opener
         self._routing_context = routing_context
-        self._max_size_per_host = max_size_per_host
+        self._max_size_per_host = config.max_size
         self._initial_routers = addresses
         self._routing_table = RoutingTable(addresses)
         self._activate_new_pools_in(self._routing_table)
@@ -708,9 +733,7 @@ class Neo4jPool:
         """
         for address in routing_table.servers():
             if address not in self._pools:
-                self._pools[address] = BoltPool(self._opener, address,
-                                                max_size=self._max_size_per_host,
-                                                loop=self._loop)
+                self._pools[address] = BoltPool(self._loop, self._opener, self._config, address)
 
     async def _deactivate_pools_not_in(self, routing_table):
         """ Deactivate any pools that aren't represented in the given

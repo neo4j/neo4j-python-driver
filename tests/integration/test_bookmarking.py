@@ -35,14 +35,14 @@ def test_can_obtain_bookmark_after_commit(driver):
 def test_can_pass_bookmark_into_next_transaction(driver):
     unique_id = uuid4().hex
 
-    with driver.session(access_mode=WRITE_ACCESS) as session:
+    with driver.session(default_access_mode=WRITE_ACCESS) as session:
         with session.begin_transaction() as tx:
             tx.run("CREATE (a:Thing {uuid:$uuid})", uuid=unique_id)
         bookmark = session.last_bookmark()
 
     assert bookmark is not None
 
-    with driver.session(access_mode=READ_ACCESS, bookmarks=[bookmark]) as session:
+    with driver.session(default_access_mode=READ_ACCESS, bookmarks=[bookmark]) as session:
         with session.begin_transaction() as tx:
             result = tx.run("MATCH (a:Thing {uuid:$uuid}) RETURN a", uuid=unique_id)
             record_list = list(result)
@@ -55,11 +55,11 @@ def test_can_pass_bookmark_into_next_transaction(driver):
 
 
 def test_bookmark_should_be_none_after_rollback(driver):
-    with driver.session(access_mode=WRITE_ACCESS) as session:
+    with driver.session(default_access_mode=WRITE_ACCESS) as session:
         with session.begin_transaction() as tx:
             tx.run("CREATE (a)")
     assert session.last_bookmark() is not None
-    with driver.session(access_mode=WRITE_ACCESS) as session:
+    with driver.session(default_access_mode=WRITE_ACCESS) as session:
         with session.begin_transaction() as tx:
             tx.run("CREATE (a)")
             tx.success = False

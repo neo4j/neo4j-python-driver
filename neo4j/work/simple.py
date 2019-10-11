@@ -28,7 +28,6 @@ from warnings import warn
 from neo4j import READ_ACCESS, WRITE_ACCESS
 from neo4j.conf import SessionConfig
 from neo4j.data import DataHydrator, DataDehydrator
-from neo4j.errors import Neo4jError
 from neo4j.exceptions import (
     ConnectionExpired,
     CypherError,
@@ -36,6 +35,8 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     TransientError,
 )
+from neo4j.work import Workspace
+
 
 STATEMENT_TYPE_READ_ONLY = "r"
 STATEMENT_TYPE_READ_WRITE = "rw"
@@ -46,7 +47,7 @@ STATEMENT_TYPE_SCHEMA_WRITE = "s"
 log = getLogger("neo4j")
 
 
-class Session:
+class Session(Workspace):
     """ A :class:`.Session` is a logical context for transactional units
     of work. Connections are drawn from the :class:`.Driver` connection
     pool as required.
@@ -62,22 +63,8 @@ class Session:
             result = session.run("MATCH (a:Person) RETURN a.name")
             # do something with the result...
 
-    :param acquirer: callback function for acquiring new connections
-                     with a given access mode
-    :param access_mode: default access mode (read or write) for
-                        transactions in this session
-    :param parameters: custom session parameters, including:
-
-        `bookmark`
-            A single bookmark after which this session should begin.
-            (Deprecated, use `bookmarks` instead)
-
-        `bookmarks`
-            A collection of bookmarks after which this session should begin.
-
-        `max_retry_time`
-            The maximum time after which to stop attempting retries of failed
-            transactions.
+    :param pool: connection pool instance
+    :param config: session config instance
 
     """
 
@@ -100,11 +87,8 @@ class Session:
     _closed = False
 
     def __init__(self, pool, config):
-        if pool.closed():
-            # TODO: subclass this error
-            raise Neo4jError("Driver connection pool closed")
+        super().__init__(pool)
         assert isinstance(config, SessionConfig)
-        self._pool = pool
         self._config = config
         self._bookmarks_in = tuple(config.bookmarks)
 
@@ -130,7 +114,7 @@ class Session:
             self._disconnect()
         self._connection = self._pool.acquire(access_mode, timeout=self._config.acquire_timeout)
 
-    def _disconnect(self):
+    def _disconnect(self, sync=None):  # TODO: remove sync arg
         if self._connection:
             self._connection.in_use = False
             self._connection = None

@@ -446,8 +446,6 @@ class IOPool:
     """ A collection of connections to one or more server addresses.
     """
 
-    _closed = False
-
     _default_acquire_timeout = 60  # seconds
 
     _default_max_size = 100
@@ -479,8 +477,6 @@ class IOPool:
         if timeout is None:
             timeout = self._default_acquire_timeout
 
-        if self.closed():
-            raise ServiceUnavailable("Connection pool closed")
         with self.lock:
             try:
                 connections = self.connections[address]
@@ -538,12 +534,13 @@ class IOPool:
         :param timeout:
         """
 
-    def release(self, connection):
+    def release(self, *connections):
         """ Release a connection back into the pool.
         This method is thread safe.
         """
         with self.lock:
-            connection.in_use = False
+            for connection in connections:
+                connection.in_use = False
             self.cond.notify_all()
 
     def in_use_connection_count(self, address):
@@ -591,23 +588,12 @@ class IOPool:
         """ Close all connections and empty the pool.
         This method is thread safe.
         """
-        if self._closed:
-            return
         try:
             with self.lock:
-                if not self._closed:
-                    self._closed = True
-                    for address in list(self.connections):
-                        self.remove(address)
-        except TypeError as e:
+                for address in list(self.connections):
+                    self.remove(address)
+        except TypeError:
             pass
-
-    def closed(self):
-        """ Return :const:`True` if this pool is closed, :const:`False`
-        otherwise.
-        """
-        with self.lock:
-            return self._closed
 
 
 class BoltPool(IOPool):
@@ -620,6 +606,8 @@ class BoltPool(IOPool):
             return Bolt.open(addr, auth=auth, timeout=timeout, **pool_config)
 
         pool = cls(opener, pool_config, address)
+        seeds = [pool.acquire() for _ in range(pool_config.init_size)]
+        pool.release(*seeds)
         return pool
 
     def __init__(self, opener, config, address):
@@ -642,7 +630,13 @@ class Neo4jPool(IOPool):
             return Bolt.open(addr, auth=auth, timeout=timeout, **pool_config)
 
         pool = cls(opener, pool_config, addresses, routing_context)
-        return pool
+        try:
+            pool.update_routing_table()
+        except Exception:
+            pool.close()
+            raise
+        else:
+            return pool
 
     def __init__(self, opener, config, addresses, routing_context):
         super(Neo4jPool, self).__init__(opener, config)

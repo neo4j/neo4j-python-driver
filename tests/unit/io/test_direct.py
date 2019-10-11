@@ -161,12 +161,6 @@ class ConnectionPoolTestCase(TestCase):
         self.pool.release(connection)
         self.assert_pool_size(address, 0, 1)
 
-    def test_cannot_acquire_after_close(self):
-        with FakeBoltPool(()) as pool:
-            pool.close()
-            with self.assertRaises(ServiceUnavailable):
-                _ = pool._acquire("X", timeout=3)
-
     def test_in_use_count(self):
         address = ("127.0.0.1", 7687)
         self.assertEqual(self.pool.in_use_connection_count(address), 0)

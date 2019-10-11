@@ -32,12 +32,7 @@ async def bolt(address, auth):
 
 
 @fixture
-def opener(auth):
-    return Bolt.opener(auth=auth)
-
-
-@fixture
-async def bolt_pool(opener, address):
-    pool = BoltPool(opener, address)
+async def bolt_pool(address, auth):
+    pool = await BoltPool.open(address, auth=auth)
     yield pool
     await pool.close()
