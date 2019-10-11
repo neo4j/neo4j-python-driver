@@ -56,16 +56,16 @@ def test_can_run_simple_statement_with_params(session):
     assert count == 1
 
 
-def test_autocommit_transactions_use_bookmarks(driver):
+def test_autocommit_transactions_use_bookmarks(bolt_driver):
     bookmarks = []
     # Generate an initial bookmark
-    with driver.session() as session:
+    with bolt_driver.session() as session:
         session.run("CREATE ()").consume()
         bookmark = session.last_bookmark()
         assert bookmark is not None
         bookmarks.append(bookmark)
     # Propagate into another session
-    with driver.session(bookmarks=bookmarks) as session:
+    with bolt_driver.session(bookmarks=bookmarks) as session:
         assert list(session.next_bookmarks()) == bookmarks
         session.run("CREATE ()").consume()
         bookmark = session.last_bookmark()
@@ -179,10 +179,10 @@ def test_autocommit_transactions_should_support_metadata(session):
         assert metadata_in == metadata_out
 
 
-def test_autocommit_transactions_should_support_timeout(driver):
-    with driver.session() as s1:
+def test_autocommit_transactions_should_support_timeout(bolt_driver):
+    with bolt_driver.session() as s1:
         s1.run("CREATE (a:Node)").consume()
-        with driver.session() as s2:
+        with bolt_driver.session() as s2:
             tx1 = s1.begin_transaction()
             tx1.run("MATCH (a:Node) SET a.property = 1").consume()
             with raises(TransientError):
@@ -215,14 +215,14 @@ def test_automatic_reset_after_failure(session):
         assert False, "A Cypher error should have occurred"
 
 
-def test_session_error(driver):
-    session = driver.session()
+def test_session_error(bolt_driver):
+    session = bolt_driver.session()
     session.close()
     with raises(SessionError):
         session.run("RETURN 1")
 
 
-def test_large_values(driver):
+def test_large_values(bolt_driver):
     for i in range(1, 7):
-        with driver.session() as session:
+        with bolt_driver.session() as session:
             session.run("RETURN '{}'".format("A" * 2 ** 20))

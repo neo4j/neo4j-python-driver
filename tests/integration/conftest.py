@@ -62,8 +62,13 @@ def address(service):
 
 
 @fixture(scope="session")
-def uri(service, address):
-    return "bolt://{}:{}".format(address[0], address[1])
+def target(address):
+    return "{}:{}".format(address[0], address[1])
+
+
+@fixture(scope="session")
+def uri(service, target):
+    return "bolt://" + target
 
 
 @fixture(scope="session")
@@ -72,8 +77,17 @@ def auth():
 
 
 @fixture(scope="session")
-def driver(uri, auth):
-    driver = GraphDatabase.driver(uri, auth=auth)
+def bolt_driver(target, auth):
+    driver = GraphDatabase.bolt_driver(target, auth=auth)
+    try:
+        yield driver
+    finally:
+        driver.close()
+
+
+@fixture(scope="session")
+async def async_bolt_driver(target, auth):
+    driver = await GraphDatabase.async_bolt_driver(target, auth=auth)
     try:
         yield driver
     finally:
@@ -81,8 +95,8 @@ def driver(uri, auth):
 
 
 @fixture()
-def session(driver):
-    session = driver.session()
+def session(bolt_driver):
+    session = bolt_driver.session()
     try:
         yield session
     finally:

@@ -46,9 +46,9 @@ class CypherErrorExample:
     # end::cypher-error[]
 
 
-def test(driver):
+def test(bolt_driver):
     s = StringIO()
     with redirect_stdout(s):
-        example = CypherErrorExample(driver)
+        example = CypherErrorExample(bolt_driver)
         example.get_employee_number('Alice')
         assert s.getvalue().startswith("Invalid input")

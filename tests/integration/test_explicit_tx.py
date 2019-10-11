@@ -145,10 +145,10 @@ def test_transaction_metadata(session):
             assert metadata_in == metadata_out
 
 
-def test_transaction_timeout(driver):
-    with driver.session() as s1:
+def test_transaction_timeout(bolt_driver):
+    with bolt_driver.session() as s1:
         s1.run("CREATE (a:Node)").consume()
-        with driver.session() as s2:
+        with bolt_driver.session() as s2:
             tx1 = s1.begin_transaction()
             tx1.run("MATCH (a:Node) SET a.property = 1").consume()
             tx2 = s2.begin_transaction(timeout=0.25)
@@ -156,8 +156,8 @@ def test_transaction_timeout(driver):
                 tx2.run("MATCH (a:Node) SET a.property = 2").consume()
 
 
-def test_exit_after_explicit_close_should_be_silent(driver):
-    with driver.session() as s:
+def test_exit_after_explicit_close_should_be_silent(bolt_driver):
+    with bolt_driver.session() as s:
         with s.begin_transaction() as tx:
             assert not tx.closed()
             tx.close()
@@ -190,8 +190,8 @@ def test_errors_on_run_transaction(session):
     tx.rollback()
 
 
-def test_session_error(driver):
-    session = driver.session()
+def test_session_error(bolt_driver):
+    session = bolt_driver.session()
     session.close()
     with raises(SessionError):
         session.begin_transaction()

@@ -53,8 +53,8 @@ class ResultRetainExample:
     # end::result-retain[]
 
 
-def test(driver):
-    eg = ResultRetainExample(driver)
+def test(bolt_driver):
+    eg = ResultRetainExample(bolt_driver)
     with eg.driver.session() as session:
         session.run("MATCH (_) DETACH DELETE _")
         session.run("CREATE (a:Person {name: 'Alice'})")

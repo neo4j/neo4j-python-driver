@@ -25,8 +25,8 @@ from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable, AuthError
 
 
-def test_normal_use_case(driver):
-    session = driver.session()
+def test_normal_use_case(bolt_driver):
+    session = bolt_driver.session()
     value = session.run("RETURN 1").single().value()
     assert value == 1
 
@@ -65,8 +65,8 @@ def test_encrypted_arg_can_still_be_used(uri, auth):
             assert not driver.secure
 
 
-def test_insecure_by_default(driver):
-    assert not driver.secure
+def test_insecure_by_default(bolt_driver):
+    assert not bolt_driver.secure
 
 
 def test_should_fail_on_incorrect_password(uri):

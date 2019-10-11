@@ -30,8 +30,8 @@ from neo4j.graph import Node, Relationship, Path
 from neo4j.work.pipelining import PullOrderException
 
 
-def test_can_run_simple_statement(driver):
-    pipeline = driver.pipeline(flush_every=0)
+def test_can_run_simple_statement(bolt_driver):
+    pipeline = bolt_driver.pipeline(flush_every=0)
     pipeline.push("RETURN 1 AS n")
     for record in pipeline.pull():
         assert len(record) == 1
@@ -50,8 +50,8 @@ def test_can_run_simple_statement(driver):
     pipeline.close()
 
 
-def test_can_run_simple_statement_with_params(driver):
-    pipeline = driver.pipeline(flush_every=0)
+def test_can_run_simple_statement_with_params(bolt_driver):
+    pipeline = bolt_driver.pipeline(flush_every=0)
     count = 0
     pipeline.push("RETURN $x AS n", {"x": {"abc": ["d", "e", "f"]}})
     for record in pipeline.pull():
@@ -65,8 +65,8 @@ def test_can_run_simple_statement_with_params(driver):
     assert count == 1
 
 
-def test_can_run_write_statement_with_no_return(driver):
-    pipeline = driver.pipeline(flush_every=0)
+def test_can_run_write_statement_with_no_return(bolt_driver):
+    pipeline = bolt_driver.pipeline(flush_every=0)
     count = 0
     test_uid = str(uuid4())
     pipeline.push("CREATE (a:Person {uid:$test_uid})", dict(test_uid=test_uid))
@@ -83,15 +83,15 @@ def test_can_run_write_statement_with_no_return(driver):
     assert count == 1
 
 
-def test_fails_on_bad_syntax(driver):
-    pipeline = driver.pipeline(flush_every=0)
+def test_fails_on_bad_syntax(bolt_driver):
+    pipeline = bolt_driver.pipeline(flush_every=0)
     with raises(CypherError):
         pipeline.push("X")
         next(pipeline.pull())
 
 
-def test_doesnt_fail_on_bad_syntax_somewhere(driver):
-    pipeline = driver.pipeline(flush_every=0)
+def test_doesnt_fail_on_bad_syntax_somewhere(bolt_driver):
+    pipeline = bolt_driver.pipeline(flush_every=0)
     pipeline.push("RETURN 1 AS n")
     pipeline.push("X")
     assert next(pipeline.pull())[0] == 1
@@ -99,15 +99,15 @@ def test_doesnt_fail_on_bad_syntax_somewhere(driver):
         next(pipeline.pull())
 
 
-def test_fails_on_missing_parameter(driver):
-    pipeline = driver.pipeline(flush_every=0)
+def test_fails_on_missing_parameter(bolt_driver):
+    pipeline = bolt_driver.pipeline(flush_every=0)
     with raises(CypherError):
         pipeline.push("RETURN $x")
         next(pipeline.pull())
 
 
-def test_can_run_simple_statement_from_bytes_string(driver):
-    pipeline = driver.pipeline(flush_every=0)
+def test_can_run_simple_statement_from_bytes_string(bolt_driver):
+    pipeline = bolt_driver.pipeline(flush_every=0)
     count = 0
     raise SkipTest("FIXME: why can't pipeline handle bytes string?")
     pipeline.push(b"RETURN 1 AS n")
@@ -121,8 +121,8 @@ def test_can_run_simple_statement_from_bytes_string(driver):
     assert count == 1
 
 
-def test_can_run_statement_that_returns_multiple_records(driver):
-    pipeline = driver.pipeline(flush_every=0)
+def test_can_run_statement_that_returns_multiple_records(bolt_driver):
+    pipeline = bolt_driver.pipeline(flush_every=0)
     count = 0
     pipeline.push("unwind(range(1, 10)) AS z RETURN z")
     for record in pipeline.pull():
@@ -132,8 +132,8 @@ def test_can_run_statement_that_returns_multiple_records(driver):
     assert count == 10
 
 
-def test_can_return_node(driver):
-    with driver.pipeline(flush_every=0) as pipeline:
+def test_can_return_node(bolt_driver):
+    with bolt_driver.pipeline(flush_every=0) as pipeline:
         pipeline.push("CREATE (a:Person {name:'Alice'}) RETURN a")
         record_list = list(pipeline.pull())
         assert len(record_list) == 1
@@ -146,8 +146,8 @@ def test_can_return_node(driver):
             assert dict(alice) == {"name": "Alice"}
 
 
-def test_can_return_relationship(driver):
-    with driver.pipeline(flush_every=0) as pipeline:
+def test_can_return_relationship(bolt_driver):
+    with bolt_driver.pipeline(flush_every=0) as pipeline:
         pipeline.push("CREATE ()-[r:KNOWS {since:1999}]->() RETURN r")
         record_list = list(pipeline.pull())
         assert len(record_list) == 1
@@ -160,8 +160,8 @@ def test_can_return_relationship(driver):
             assert dict(rel) == {"since": 1999}
 
 
-def test_can_return_path(driver):
-    with driver.pipeline(flush_every=0) as pipeline:
+def test_can_return_path(bolt_driver):
+    with bolt_driver.pipeline(flush_every=0) as pipeline:
         test_uid = str(uuid4())
         pipeline.push(
             "MERGE p=(alice:Person {name:'Alice', test_uid: $test_uid})"
@@ -184,23 +184,23 @@ def test_can_return_path(driver):
             assert len(path.relationships) == 1
 
 
-def test_can_handle_cypher_error(driver):
-    with driver.pipeline(flush_every=0) as pipeline:
+def test_can_handle_cypher_error(bolt_driver):
+    with bolt_driver.pipeline(flush_every=0) as pipeline:
         pipeline.push("X")
         with raises(CypherError):
             next(pipeline.pull())
 
 
-def test_should_not_allow_empty_statements(driver):
-    with driver.pipeline(flush_every=0) as pipeline:
+def test_should_not_allow_empty_statements(bolt_driver):
+    with bolt_driver.pipeline(flush_every=0) as pipeline:
         pipeline.push("")
         with raises(CypherSyntaxError):
             next(pipeline.pull())
 
 
-def test_can_queue_multiple_statements(driver):
+def test_can_queue_multiple_statements(bolt_driver):
     count = 0
-    with driver.pipeline(flush_every=0) as pipeline:
+    with bolt_driver.pipeline(flush_every=0) as pipeline:
         pipeline.push("unwind(range(1, 10)) AS z RETURN z")
         pipeline.push("unwind(range(11, 20)) AS z RETURN z")
         pipeline.push("unwind(range(21, 30)) AS z RETURN z")
@@ -211,9 +211,9 @@ def test_can_queue_multiple_statements(driver):
     assert count == 30
 
 
-def test_pull_order_exception(driver):
+def test_pull_order_exception(bolt_driver):
     """If you try and pull when you haven't finished iterating the previous result you get an error"""
-    pipeline = driver.pipeline(flush_every=0)
+    pipeline = bolt_driver.pipeline(flush_every=0)
     with raises(PullOrderException):
         pipeline.push("unwind(range(1, 10)) AS z RETURN z")
         pipeline.push("unwind(range(11, 20)) AS z RETURN z")
@@ -221,10 +221,10 @@ def test_pull_order_exception(driver):
         generator_two = pipeline.pull()
 
 
-def test_pipeline_can_read_own_writes(driver):
+def test_pipeline_can_read_own_writes(bolt_driver):
     """I am not sure that we _should_ guarantee this"""
     count = 0
-    with driver.pipeline(flush_every=0) as pipeline:
+    with bolt_driver.pipeline(flush_every=0) as pipeline:
         test_uid = str(uuid4())
         pipeline.push(
             "CREATE (a:Person {name:'Alice', test_uid: $test_uid})",
@@ -289,8 +289,8 @@ def test_pipeline_can_read_own_writes(driver):
     assert count == 3
 
 
-def test_automatic_reset_after_failure(driver):
-    with driver.pipeline(flush_every=0) as pipeline:
+def test_automatic_reset_after_failure(bolt_driver):
+    with bolt_driver.pipeline(flush_every=0) as pipeline:
         try:
             pipeline.push("X")
             next(pipeline.pull())

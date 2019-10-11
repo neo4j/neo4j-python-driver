@@ -46,8 +46,8 @@ class ReadWriteTransactionExample:
     # end::read-write-transaction[]
 
 
-def test(driver):
-    eg = ReadWriteTransactionExample(driver)
+def test(bolt_driver):
+    eg = ReadWriteTransactionExample(bolt_driver)
     with eg.driver.session() as session:
         session.run("MATCH (_) DETACH DELETE _")
     n = eg.add_person("Alice")

@@ -57,21 +57,21 @@ def test_can_consume_result_after_rollback(session):
     assert [record[0] for record in result] == [1, 2, 3]
 
 
-def test_can_consume_result_after_session_close(driver):
-    with driver.session() as session:
+def test_can_consume_result_after_session_close(bolt_driver):
+    with bolt_driver.session() as session:
         tx = session.begin_transaction()
         result = tx.run("UNWIND range(1, 3) AS n RETURN n")
         tx.commit()
     assert [record[0] for record in result] == [1, 2, 3]
 
 
-def test_can_consume_result_after_session_reuse(driver):
-    session = driver.session()
+def test_can_consume_result_after_session_reuse(bolt_driver):
+    session = bolt_driver.session()
     tx = session.begin_transaction()
     result_a = tx.run("UNWIND range(1, 3) AS n RETURN n")
     tx.commit()
     session.close()
-    session = driver.session()
+    session = bolt_driver.session()
     tx = session.begin_transaction()
     result_b = tx.run("UNWIND range(4, 6) AS n RETURN n")
     tx.commit()
@@ -80,23 +80,23 @@ def test_can_consume_result_after_session_reuse(driver):
     assert [record[0] for record in result_b] == [4, 5, 6]
 
 
-def test_can_consume_results_after_harsh_session_death(driver):
-    session = driver.session()
+def test_can_consume_results_after_harsh_session_death(bolt_driver):
+    session = bolt_driver.session()
     result_a = session.run("UNWIND range(1, 3) AS n RETURN n")
     del session
-    session = driver.session()
+    session = bolt_driver.session()
     result_b = session.run("UNWIND range(4, 6) AS n RETURN n")
     del session
     assert [record[0] for record in result_a] == [1, 2, 3]
     assert [record[0] for record in result_b] == [4, 5, 6]
 
 
-def test_can_consume_result_after_session_with_error(driver):
-    session = driver.session()
+def test_can_consume_result_after_session_with_error(bolt_driver):
+    session = bolt_driver.session()
     with raises(CypherError):
         session.run("X").consume()
     session.close()
-    session = driver.session()
+    session = bolt_driver.session()
     tx = session.begin_transaction()
     result = tx.run("UNWIND range(1, 3) AS n RETURN n")
     tx.commit()

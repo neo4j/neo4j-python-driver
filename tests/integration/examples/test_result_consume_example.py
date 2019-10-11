@@ -40,8 +40,8 @@ class ResultConsumeExample:
     # end::result-consume[]
 
 
-def test(driver):
-    eg = ResultConsumeExample(driver)
+def test(bolt_driver):
+    eg = ResultConsumeExample(bolt_driver)
     with eg.driver.session() as session:
         session.run("MATCH (_) DETACH DELETE _")
         session.run("CREATE (a:Person {name: 'Alice'})")
