@@ -28,9 +28,9 @@ from neo4j import GraphDatabase
 NEO4J_RELEASES = getenv("NEO4J_RELEASES", "snapshot 3.5").split()
 NEO4J_HOST = "localhost"
 NEO4J_PORTS = {
-    "bolt": 7687,
-    "http": 7474,
-    "https": 7473,
+    "bolt": 17601,
+    "http": 17401,
+    "https": 17301,
 }
 NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "password"
@@ -48,7 +48,7 @@ def service(request):
         watch("neo4j")
     with NEO4J_LOCK:
         assert NEO4J_SERVICE is None
-        NEO4J_SERVICE = Neo4jService(auth=NEO4J_AUTH, image=request.param)
+        NEO4J_SERVICE = Neo4jService(auth=NEO4J_AUTH, image=request.param, n_cores=3, n_replicas=2)
         NEO4J_SERVICE.start(timeout=300)
         yield NEO4J_SERVICE
         if NEO4J_SERVICE is not None:

@@ -154,6 +154,9 @@ class PoolConfig(Config):
     """
 
     #:
+    connect_timeout = 30.0  # seconds
+
+    #:
     init_size = 1
 
     #:

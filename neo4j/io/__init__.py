@@ -110,11 +110,11 @@ class Bolt:
         :param config:
         :return:
         """
-        config = PoolConfig._consume(config)
+        config = PoolConfig.consume(config)
         return connect(address, auth=auth, timeout=timeout, config=config)
 
     def __init__(self, unresolved_address, sock, *, auth=None, protocol_version=None, **config):
-        self.config = PoolConfig._consume(config)
+        self.config = PoolConfig.consume(config)
         self.protocol_version = protocol_version
         self.unresolved_address = unresolved_address
         self.socket = sock
@@ -497,12 +497,13 @@ class IOPool:
                         connection.in_use = True
                         return connection
                 # all connections in pool are in-use
-                infinite_connection_pool = (self._max_connection_pool_size < 0 or
-                                            self._max_connection_pool_size == float("inf"))
-                can_create_new_connection = infinite_connection_pool or len(connections) < self._max_connection_pool_size
+                infinite_pool_size = (self._max_connection_pool_size < 0 or
+                                      self._max_connection_pool_size == float("inf"))
+                can_create_new_connection = infinite_pool_size or len(connections) < self._max_connection_pool_size
                 if can_create_new_connection:
+                    timeout = min(self.config.connect_timeout, time_remaining())
                     try:
-                        connection = self.opener(address, timeout=time_remaining())
+                        connection = self.opener(address, timeout)
                     except ServiceUnavailable:
                         self.remove(address)
                         raise

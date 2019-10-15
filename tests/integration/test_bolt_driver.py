@@ -39,8 +39,9 @@ def test_invalid_url_scheme(service):
 
 
 def test_fail_nicely_when_using_http_port(service):
+    from tests.integration.conftest import NEO4J_PORTS
     address = service.addresses[0]
-    uri = "bolt://{}:7474".format(address[0])
+    uri = "bolt://{}:{}".format(address[0], NEO4J_PORTS["http"])
     with raises(ServiceUnavailable):
         _ = GraphDatabase.driver(uri, auth=service.auth)
 
@@ -53,10 +54,12 @@ def test_custom_resolver(service):
         yield "99.99.99.99", port     # should be rejected as unable to connect
         yield "127.0.0.1", port       # should succeed
 
-    with GraphDatabase.driver("bolt://*", auth=service.auth, resolver=my_resolver) as driver:
+    with GraphDatabase.driver("bolt://*", auth=service.auth,
+                              connect_timeout=3,  # enables rapid timeout
+                              resolver=my_resolver) as driver:
         with driver.session() as session:
             summary = session.run("RETURN 1").summary()
-            assert summary.server.address == ("127.0.0.1", 7687)
+            assert summary.server.address == ("127.0.0.1", port)
 
 
 def test_encrypted_arg_can_still_be_used(uri, auth):
