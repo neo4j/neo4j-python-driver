@@ -52,6 +52,12 @@ class ConfigType(ABCMeta):
     def __new__(mcs, name, bases, attributes):
         fields = []
         deprecated_aliases = {}
+
+        for base in bases:
+            if type(base) is mcs:
+                fields += base.keys()
+                deprecated_aliases.update(base._deprecated_aliases())
+
         for k, v in attributes.items():
             if isinstance(v, DeprecatedAlias):
                 deprecated_aliases[k] = v.new
@@ -61,15 +67,19 @@ class ConfigType(ABCMeta):
         def keys(_):
             return fields
 
-        def deprecated_keys(_):
+        def _deprecated_aliases(_):
+            return deprecated_aliases
+
+        def _deprecated_keys(_):
             return list(deprecated_aliases)
 
-        def get_new(_, key):
+        def _get_new(_, key):
             return deprecated_aliases.get(key)
 
         attributes.setdefault("keys", classmethod(keys))
-        attributes.setdefault("_deprecated_keys", classmethod(deprecated_keys))
-        attributes.setdefault("_get_new", classmethod(get_new))
+        attributes.setdefault("_deprecated_aliases", classmethod(_deprecated_aliases))
+        attributes.setdefault("_deprecated_keys", classmethod(_deprecated_keys))
+        attributes.setdefault("_get_new", classmethod(_get_new))
 
         return super(ConfigType, mcs).__new__(mcs, name, bases,
                                               {k: v for k, v in attributes.items()
@@ -200,28 +210,3 @@ class PoolConfig(Config):
         return ssl_context
 
 
-class SessionConfig(Config):
-    """ Session configuration.
-    """
-
-    #:
-    acquire_timeout = 30.0  # seconds
-
-    #:
-    bookmarks = ()
-
-    #:
-    default_access_mode = "WRITE"
-    access_mode = DeprecatedAlias("default_access_mode")
-
-    #:
-    max_retry_time = 30.0  # seconds
-
-    #:
-    initial_retry_delay = 1.0  # seconds
-
-    #:
-    retry_delay_multiplier = 2.0  # seconds
-
-    #:
-    retry_delay_jitter_factor = 0.2  # seconds

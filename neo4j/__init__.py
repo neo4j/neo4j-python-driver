@@ -36,7 +36,7 @@ from urllib.parse import urlparse, parse_qs
 
 from neo4j.addressing import Address
 from neo4j.api import *
-from neo4j.conf import Config, PoolConfig, SessionConfig
+from neo4j.conf import Config, PoolConfig
 from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
 from neo4j.meta import experimental, get_user_agent, version as __version__
 
@@ -222,24 +222,20 @@ class Driver:
         return bool(self._pool.config.secure)
 
     def session(self, **config):
-        """ Create a new :class:`.Session` object based on this
-        :class:`.Driver`.
+        """ Create a simple session.
 
-        :param config: custom session parameters (see
-                           :class:`.Session` for details)
+        :param config: session configuration
+                       (see :class:`.SessionConfig` for details)
         :returns: new :class:`.Session` object
         """
-        raise NotImplementedError("Blocking sessions are not implemented "
-                                  "for the %s class" % type(self).__name__)
+        raise NotImplementedError
 
     @experimental("The pipeline API is experimental and may be removed or "
                   "changed in a future release")
     def pipeline(self, **config):
-        """ Create a new :class:`.Pipeline` objects based on this
-        :class:`.Driver`.
+        """ Create a pipeline.
         """
-        raise NotImplementedError("Pipelines are not implemented "
-                                  "for the %s class" % type(self).__name__)
+        raise NotImplementedError
 
     def close(self):
         """ Shut down, closing any open connections in the pool.
@@ -263,6 +259,12 @@ class AsyncDriver:
         await self.close()
 
     async def session(self, **config):
+        """ Create a reactive session.
+
+        :param config: session configuration
+                       (see :class:`.RxSessionConfig` for details)
+        :returns: new :class:`.RxSession` object
+        """
         raise NotImplementedError
 
     async def close(self):
@@ -281,8 +283,9 @@ class BoltDriver(Direct, Driver):
     @classmethod
     def open(cls, target, *, auth=None, **config):
         from neo4j.io import BoltPool
+        from neo4j.work import WorkspaceConfig
         address = cls.parse_target(target)
-        pool_config, session_config = Config.consume_chain(config, PoolConfig, SessionConfig)
+        pool_config, session_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         pool = BoltPool.open(address, auth=auth, **pool_config)
         return cls(pool, session_config)
 
@@ -292,7 +295,7 @@ class BoltDriver(Direct, Driver):
         self._session_config = session_config
 
     def session(self, **config):
-        from neo4j.work.simple import Session
+        from neo4j.work.simple import Session, SessionConfig
         session_config = SessionConfig(self._session_config, SessionConfig.consume(config))
         return Session(self._pool, session_config)
 
@@ -312,8 +315,9 @@ class Neo4jDriver(Routing, Driver):
     @classmethod
     def open(cls, *targets, auth=None, routing_context=None, **config):
         from neo4j.io import Neo4jPool
+        from neo4j.work import WorkspaceConfig
         addresses = cls.parse_targets(*targets)
-        pool_config, session_config = Config.consume_chain(config, PoolConfig, SessionConfig)
+        pool_config, session_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, **pool_config)
         return cls(pool, session_config)
 
@@ -323,7 +327,7 @@ class Neo4jDriver(Routing, Driver):
         self._session_config = session_config
 
     def session(self, **config):
-        from neo4j.work.simple import Session
+        from neo4j.work.simple import Session, SessionConfig
         session_config = SessionConfig(self._session_config, SessionConfig.consume(config))
         return Session(self._pool, session_config)
 
@@ -337,8 +341,9 @@ class AsyncBoltDriver(Direct, AsyncDriver):
     @classmethod
     async def open(cls, target, *, auth=None, loop=None, **config):
         from neo4j.aio import BoltPool
+        from neo4j.work import WorkspaceConfig
         address = cls.parse_target(target)
-        pool_config, session_config = Config.consume_chain(config, PoolConfig, SessionConfig)
+        pool_config, session_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         pool = await BoltPool.open(address, auth=auth, loop=loop, **pool_config)
         return cls(pool, session_config)
 
@@ -347,8 +352,10 @@ class AsyncBoltDriver(Direct, AsyncDriver):
         AsyncDriver.__init__(self, pool)
         self._session_config = session_config
 
-    def session(self, **config):
-        raise NotImplementedError  # TODO: reactive session
+    async def session(self, **config):
+        from neo4j.work.reactive import RxSession, RxSessionConfig
+        session_config = RxSessionConfig(self._session_config, RxSessionConfig.consume(config))
+        return RxSession(self._pool, session_config)
 
 
 class AsyncNeo4jDriver(Routing, AsyncDriver):
@@ -356,8 +363,9 @@ class AsyncNeo4jDriver(Routing, AsyncDriver):
     @classmethod
     async def open(cls, *targets, auth=None, routing_context=None, loop=None, **config):
         from neo4j.aio import Neo4jPool
+        from neo4j.work import WorkspaceConfig
         addresses = cls.parse_targets(*targets)
-        pool_config, session_config = Config.consume_chain(config, PoolConfig, SessionConfig)
+        pool_config, session_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         pool = await Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context,
                                     loop=loop, **pool_config)
         return cls(pool, session_config)
@@ -367,5 +375,7 @@ class AsyncNeo4jDriver(Routing, AsyncDriver):
         AsyncDriver.__init__(self, pool)
         self._session_config = session_config
 
-    def session(self, **config):
-        raise NotImplementedError  # TODO: reactive session
+    async def session(self, **config):
+        from neo4j.work.reactive import RxSession, RxSessionConfig
+        session_config = RxSessionConfig(self._session_config, RxSessionConfig.consume(config))
+        return RxSession(self._pool, session_config)

@@ -46,13 +46,12 @@ def test_neo4j_uri(neo4j_uri, auth):
             assert value == 1
 
 
-# TODO: not yet implemented
-# @mark.asyncio
-# async def test_async_bolt_uri(bolt_uri, auth):
-#     async with await GraphDatabase.async_driver(bolt_uri, auth=auth) as driver:
-#         async with await driver.session() as session:
-#             value = session.run("RETURN 1").single().value()
-#             assert value == 1
+@mark.asyncio
+async def test_async_bolt_uri(bolt_uri, auth):
+    async with await GraphDatabase.async_driver(bolt_uri, auth=auth) as driver:
+        async with await driver.session() as session:
+            value = session.run("RETURN 1").single().value()
+            assert value == 1
 
 
 def test_normal_use_case(bolt_driver):
