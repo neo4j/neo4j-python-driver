@@ -256,7 +256,13 @@ class AsyncDriver:
     def __init__(self, pool):
         self._pool = pool
 
-    def session(self, **config):
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
+
+    async def session(self, **config):
         raise NotImplementedError
 
     async def close(self):
