@@ -25,6 +25,27 @@ from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable, AuthError
 
 
+def test_bolt_uri(bolt_uri, auth):
+    with GraphDatabase.driver(bolt_uri, auth=auth) as driver:
+        with driver.session() as session:
+            value = session.run("RETURN 1").single().value()
+            assert value == 1
+
+
+def test_readonly_bolt_uri(readonly_bolt_uri, auth):
+    with GraphDatabase.driver(readonly_bolt_uri, auth=auth) as driver:
+        with driver.session() as session:
+            value = session.run("RETURN 1").single().value()
+            assert value == 1
+
+
+def test_neo4j_uri(neo4j_uri, auth):
+    with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
+        with driver.session() as session:
+            value = session.run("RETURN 1").single().value()
+            assert value == 1
+
+
 def test_normal_use_case(bolt_driver):
     session = bolt_driver.session()
     value = session.run("RETURN 1").single().value()

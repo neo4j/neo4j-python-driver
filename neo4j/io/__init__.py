@@ -672,7 +672,7 @@ class Neo4jPool(IOPool):
             with self._acquire(address, timeout=300) as cx:  # TODO: remove magic timeout number
                 _, _, server_version = (cx.server.agent or "").partition("/")
                 log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
-                cx.run("CALL dbms.cluster.routing.getRoutingTable({context})",
+                cx.run("CALL dbms.cluster.routing.getRoutingTable($context)",
                        {"context": self.routing_context}, on_success=metadata.update, on_failure=fail)
                 cx.pull_all(on_success=metadata.update, on_records=records.extend)
                 cx.send_all()

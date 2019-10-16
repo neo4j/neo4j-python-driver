@@ -25,7 +25,7 @@ from pytest import fixture
 from neo4j import GraphDatabase
 
 
-NEO4J_RELEASES = getenv("NEO4J_RELEASES", "snapshot 3.5").split()
+NEO4J_RELEASES = getenv("NEO4J_RELEASES", "snapshot-enterprise 3.5-enterprise").split()
 NEO4J_HOST = "localhost"
 NEO4J_PORTS = {
     "bolt": 17601,
@@ -45,7 +45,7 @@ def service(request):
     global NEO4J_SERVICE
     if NEO4J_DEBUG:
         from neo4j.debug import watch
-        watch("neo4j")
+        watch("neo4j", "boltkit")
     with NEO4J_LOCK:
         assert NEO4J_SERVICE is None
         NEO4J_SERVICE = Neo4jService(auth=NEO4J_AUTH, image=request.param, n_cores=3, n_replicas=2)
@@ -57,8 +57,47 @@ def service(request):
 
 
 @fixture(scope="session")
-def address(service):
-    return service.addresses[0]
+def addresses(service):
+    try:
+        machines = service.cores()
+    except AttributeError:
+        machines = list(service.machines.values())
+    return [machine.address for machine in machines]
+
+
+@fixture(scope="session")
+def readonly_addresses(service):
+    try:
+        machines = service.replicas()
+    except AttributeError:
+        machines = []
+    return [machine.address for machine in machines]
+
+
+@fixture(scope="session")
+def address(addresses):
+    try:
+        return addresses[0]
+    except IndexError:
+        return None
+
+
+@fixture(scope="session")
+def readonly_address(readonly_addresses):
+    try:
+        return readonly_addresses[0]
+    except IndexError:
+        return None
+
+
+@fixture(scope="session")
+def targets(addresses):
+    return " ".join("{}:{}".format(address[0], address[1]) for address in addresses)
+
+
+@fixture(scope="session")
+def readonly_targets(addresses):
+    return " ".join("{}:{}".format(address[0], address[1]) for address in readonly_addresses)
 
 
 @fixture(scope="session")
@@ -67,8 +106,28 @@ def target(address):
 
 
 @fixture(scope="session")
+def readonly_target(readonly_address):
+    return "{}:{}".format(readonly_address[0], readonly_address[1])
+
+
+@fixture(scope="session")
 def uri(service, target):
     return "bolt://" + target
+
+
+@fixture(scope="session")
+def bolt_uri(service, target):
+    return "bolt://" + target
+
+
+@fixture(scope="session")
+def readonly_bolt_uri(service, readonly_target):
+    return "bolt://" + readonly_target
+
+
+@fixture(scope="session")
+def neo4j_uri(service, target):
+    return "neo4j://" + target
 
 
 @fixture(scope="session")

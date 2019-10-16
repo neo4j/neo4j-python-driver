@@ -966,7 +966,7 @@ class Neo4j:
     # async def update_routing_table(self):
     #     cx = await self._routers.acquire()
     #     try:
-    #         result = await cx.run("CALL dbms.cluster.routing.getRoutingTable({context})", {"context": {}})
+    #         result = await cx.run("CALL dbms.cluster.routing.getRoutingTable($context)", {"context": {}})
     #         record = await result.single()
     #         self._routing_table = RoutingTable.parse_routing_info([record])  # TODO: handle ValueError?
     #         return self._routing_table

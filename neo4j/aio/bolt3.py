@@ -584,7 +584,7 @@ class Bolt3(Bolt):
 
     async def get_routing_table(self, context=None):
         try:
-            result = await self.run("CALL dbms.cluster.routing.getRoutingTable({context})",
+            result = await self.run("CALL dbms.cluster.routing.getRoutingTable($context)",
                                     {"context": dict(context or {})})
             record = await result.single()
             if not record:
