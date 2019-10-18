@@ -56,10 +56,10 @@ class ResultRetainExample:
 def test(bolt_driver):
     eg = ResultRetainExample(bolt_driver)
     with eg.driver.session() as session:
-        session.run("MATCH (_) DETACH DELETE _")
-        session.run("CREATE (a:Person {name: 'Alice'})")
-        session.run("CREATE (a:Person {name: 'Bob'})")
-        eg.add_employees('Acme')
+        session.run("MATCH (_) DETACH DELETE _").data()
+        session.run("CREATE (a:Person {name: 'Alice'})").data()
+        session.run("CREATE (a:Person {name: 'Bob'})").data()
+        assert eg.add_employees('Acme') == 2
         n = session.run("MATCH (emp:Person)-[:WORKS_FOR]->(com:Company) "
                         "WHERE com.name = 'Acme' RETURN count(emp)").single().value()
         assert n == 2
