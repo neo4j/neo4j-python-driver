@@ -145,10 +145,10 @@ def test_transaction_metadata(session):
             assert metadata_in == metadata_out
 
 
-def test_transaction_timeout(bolt_driver):
-    with bolt_driver.session() as s1:
+def test_transaction_timeout(driver):
+    with driver.session() as s1:
         s1.run("CREATE (a:Node)").consume()
-        with bolt_driver.session() as s2:
+        with driver.session() as s2:
             tx1 = s1.begin_transaction()
             tx1.run("MATCH (a:Node) SET a.property = 1").consume()
             tx2 = s2.begin_transaction(timeout=0.25)

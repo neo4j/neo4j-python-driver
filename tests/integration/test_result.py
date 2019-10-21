@@ -126,10 +126,11 @@ def test_peek_can_look_one_ahead(session):
     assert list(record.values()) == [1]
 
 
-def test_peek_fails_if_nothing_remains(session):
-    result = session.run("CREATE ()")
-    upcoming = result.peek()
-    assert upcoming is None
+def test_peek_fails_if_nothing_remains(neo4j_driver):
+    with neo4j_driver.session() as session:
+        result = session.run("CREATE ()")
+        upcoming = result.peek()
+        assert upcoming is None
 
 
 def test_peek_does_not_advance_cursor(session):
@@ -231,9 +232,10 @@ def test_multiple_keyed_data(session):
                                      {"x": 3, "z": 9}]
 
 
-def test_value_with_no_keys_and_no_records(session):
-    result = session.run("CREATE ()")
-    assert result.value() == []
+def test_value_with_no_keys_and_no_records(neo4j_driver):
+    with neo4j_driver.session() as session:
+        result = session.run("CREATE ()")
+        assert result.value() == []
 
 
 def test_values_with_one_key_and_no_records(session):

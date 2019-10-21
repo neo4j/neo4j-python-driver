@@ -41,8 +41,8 @@ class AutocommitTransactionExample:
     # end::autocommit-transaction[]
 
 
-def test(bolt_driver):
-    eg = AutocommitTransactionExample(bolt_driver)
+def test(driver):
+    eg = AutocommitTransactionExample(driver)
     with eg.driver.session() as session:
         session.run("MATCH (_) DETACH DELETE _")
         eg.add_person("Alice")

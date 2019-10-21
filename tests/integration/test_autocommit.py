@@ -56,16 +56,16 @@ def test_can_run_simple_statement_with_params(session):
     assert count == 1
 
 
-def test_autocommit_transactions_use_bookmarks(bolt_driver):
+def test_autocommit_transactions_use_bookmarks(neo4j_driver):
     bookmarks = []
     # Generate an initial bookmark
-    with bolt_driver.session() as session:
+    with neo4j_driver.session() as session:
         session.run("CREATE ()").consume()
         bookmark = session.last_bookmark()
         assert bookmark is not None
         bookmarks.append(bookmark)
     # Propagate into another session
-    with bolt_driver.session(bookmarks=bookmarks) as session:
+    with neo4j_driver.session(bookmarks=bookmarks) as session:
         assert list(session.next_bookmarks()) == bookmarks
         session.run("CREATE ()").consume()
         bookmark = session.last_bookmark()
@@ -98,26 +98,28 @@ def test_can_use_with_to_auto_close_session(session):
         assert record[0] == 1
 
 
-def test_can_return_node(session):
-    record_list = list(session.run("CREATE (a:Person {name:'Alice'}) "
-                                   "RETURN a"))
-    assert len(record_list) == 1
-    for record in record_list:
-        alice = record[0]
-        assert isinstance(alice, Node)
-        assert alice.labels == {"Person"}
-        assert dict(alice) == {"name": "Alice"}
+def test_can_return_node(neo4j_driver):
+    with neo4j_driver.session() as session:
+        record_list = list(session.run("CREATE (a:Person {name:'Alice'}) "
+                                       "RETURN a"))
+        assert len(record_list) == 1
+        for record in record_list:
+            alice = record[0]
+            assert isinstance(alice, Node)
+            assert alice.labels == {"Person"}
+            assert dict(alice) == {"name": "Alice"}
 
 
-def test_can_return_relationship(session):
-    record_list = list(session.run("CREATE ()-[r:KNOWS {since:1999}]->() "
-                                   "RETURN r"))
-    assert len(record_list) == 1
-    for record in record_list:
-        rel = record[0]
-        assert isinstance(rel, Relationship)
-        assert rel.type == "KNOWS"
-        assert dict(rel) == {"since": 1999}
+def test_can_return_relationship(neo4j_driver):
+    with neo4j_driver.session() as session:
+        record_list = list(session.run("CREATE ()-[r:KNOWS {since:1999}]->() "
+                                       "RETURN r"))
+        assert len(record_list) == 1
+        for record in record_list:
+            rel = record[0]
+            assert isinstance(rel, Relationship)
+            assert rel.type == "KNOWS"
+            assert dict(rel) == {"since": 1999}
 
 
 # TODO: re-enable after server bug is fixed
@@ -179,10 +181,10 @@ def test_autocommit_transactions_should_support_metadata(session):
         assert metadata_in == metadata_out
 
 
-def test_autocommit_transactions_should_support_timeout(bolt_driver):
-    with bolt_driver.session() as s1:
+def test_autocommit_transactions_should_support_timeout(neo4j_driver):
+    with neo4j_driver.session() as s1:
         s1.run("CREATE (a:Node)").consume()
-        with bolt_driver.session() as s2:
+        with neo4j_driver.session() as s2:
             tx1 = s1.begin_transaction()
             tx1.run("MATCH (a:Node) SET a.property = 1").consume()
             with raises(TransientError):

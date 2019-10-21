@@ -87,9 +87,8 @@ class Session(Workspace):
     _closed = False
 
     def __init__(self, pool, config):
-        super().__init__(pool)
+        super().__init__(pool, config)
         assert isinstance(config, SessionConfig)
-        self._config = config
         self._bookmarks_in = tuple(config.bookmarks)
 
     def __del__(self):
@@ -104,7 +103,7 @@ class Session(Workspace):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _connect(self, access_mode=None):
+    def _connect(self, access_mode):
         if access_mode is None:
             access_mode = self._config.default_access_mode
         if self._connection:
@@ -144,7 +143,7 @@ class Session(Workspace):
         """
         return self._closed
 
-    def run(self, statement, parameters=None, **kwparameters):
+    def run(self, cypher, parameters=None, **kwparameters):
         """ Run a Cypher statement within an auto-commit transaction.
 
         The statement is sent and the result header received
@@ -162,28 +161,28 @@ class Session(Workspace):
 
         For more usage details, see :meth:`.Transaction.run`.
 
-        :param statement: template Cypher statement
+        :param cypher: Cypher statement
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
         :returns: :class:`.StatementResult` object
         """
         self._assert_open()
-        if not statement:
+        if not cypher:
             raise ValueError("Cannot run an empty statement")
-        if not isinstance(statement, (str, Statement)):
+        if not isinstance(cypher, (str, Statement)):
             raise TypeError("Statement must be a string or a Statement instance")
 
         if not self._connection:
-            self._connect()
+            self._connect(self._config.default_access_mode)
         cx = self._connection
         protocol_version = cx.protocol_version
         server = cx.server
 
         has_transaction = self.has_transaction()
 
-        statement_text = str(statement)
-        statement_metadata = getattr(statement, "metadata", None)
-        statement_timeout = getattr(statement, "timeout", None)
+        statement_text = str(cypher)
+        statement_metadata = getattr(cypher, "metadata", None)
+        statement_timeout = getattr(cypher, "timeout", None)
         parameters = fix_parameters(dict(parameters or {}, **kwparameters))
 
         def fail(_):
@@ -1029,9 +1028,6 @@ def is_retriable_transient_error(error):
 class SessionConfig(WorkspaceConfig):
     """ Session configuration.
     """
-
-    #:
-    acquire_timeout = 30.0  # seconds
 
     #:
     bookmarks = ()

@@ -40,11 +40,11 @@ class ResultConsumeExample:
     # end::result-consume[]
 
 
-def test(bolt_driver):
-    eg = ResultConsumeExample(bolt_driver)
+def test(driver):
+    eg = ResultConsumeExample(driver)
     with eg.driver.session() as session:
-        session.run("MATCH (_) DETACH DELETE _")
-        session.run("CREATE (a:Person {name: 'Alice'})")
-        session.run("CREATE (a:Person {name: 'Bob'})")
+        session.run("MATCH (_) DETACH DELETE _").data()
+        session.run("CREATE (a:Person {name: 'Alice'})").data()
+        session.run("CREATE (a:Person {name: 'Bob'})").data()
     people = list(eg.get_people())
     assert people == ['Alice', 'Bob']

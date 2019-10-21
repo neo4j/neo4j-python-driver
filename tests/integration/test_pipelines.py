@@ -65,8 +65,8 @@ def test_can_run_simple_statement_with_params(bolt_driver):
     assert count == 1
 
 
-def test_can_run_write_statement_with_no_return(bolt_driver):
-    pipeline = bolt_driver.pipeline(flush_every=0)
+def test_can_run_write_statement_with_no_return(driver):
+    pipeline = driver.pipeline(flush_every=0)
     count = 0
     test_uid = str(uuid4())
     pipeline.push("CREATE (a:Person {uid:$test_uid})", dict(test_uid=test_uid))
@@ -132,8 +132,8 @@ def test_can_run_statement_that_returns_multiple_records(bolt_driver):
     assert count == 10
 
 
-def test_can_return_node(bolt_driver):
-    with bolt_driver.pipeline(flush_every=0) as pipeline:
+def test_can_return_node(neo4j_driver):
+    with neo4j_driver.pipeline(flush_every=0) as pipeline:
         pipeline.push("CREATE (a:Person {name:'Alice'}) RETURN a")
         record_list = list(pipeline.pull())
         assert len(record_list) == 1
@@ -146,8 +146,8 @@ def test_can_return_node(bolt_driver):
             assert dict(alice) == {"name": "Alice"}
 
 
-def test_can_return_relationship(bolt_driver):
-    with bolt_driver.pipeline(flush_every=0) as pipeline:
+def test_can_return_relationship(neo4j_driver):
+    with neo4j_driver.pipeline(flush_every=0) as pipeline:
         pipeline.push("CREATE ()-[r:KNOWS {since:1999}]->() RETURN r")
         record_list = list(pipeline.pull())
         assert len(record_list) == 1
@@ -160,8 +160,8 @@ def test_can_return_relationship(bolt_driver):
             assert dict(rel) == {"since": 1999}
 
 
-def test_can_return_path(bolt_driver):
-    with bolt_driver.pipeline(flush_every=0) as pipeline:
+def test_can_return_path(neo4j_driver):
+    with neo4j_driver.pipeline(flush_every=0) as pipeline:
         test_uid = str(uuid4())
         pipeline.push(
             "MERGE p=(alice:Person {name:'Alice', test_uid: $test_uid})"
@@ -221,10 +221,10 @@ def test_pull_order_exception(bolt_driver):
         generator_two = pipeline.pull()
 
 
-def test_pipeline_can_read_own_writes(bolt_driver):
+def test_pipeline_can_read_own_writes(neo4j_driver):
     """I am not sure that we _should_ guarantee this"""
     count = 0
-    with bolt_driver.pipeline(flush_every=0) as pipeline:
+    with neo4j_driver.pipeline(flush_every=0) as pipeline:
         test_uid = str(uuid4())
         pipeline.push(
             "CREATE (a:Person {name:'Alice', test_uid: $test_uid})",

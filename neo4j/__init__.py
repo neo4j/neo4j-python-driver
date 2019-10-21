@@ -285,23 +285,27 @@ class BoltDriver(Direct, Driver):
         from neo4j.io import BoltPool
         from neo4j.work import WorkspaceConfig
         address = cls.parse_target(target)
-        pool_config, session_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
+        pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig,
+                                                                     WorkspaceConfig)
         pool = BoltPool.open(address, auth=auth, **pool_config)
-        return cls(pool, session_config)
+        return cls(pool, default_workspace_config)
 
-    def __init__(self, pool, session_config):
+    def __init__(self, pool, default_workspace_config):
         Direct.__init__(self, pool.address)
         Driver.__init__(self, pool)
-        self._session_config = session_config
+        self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
         from neo4j.work.simple import Session, SessionConfig
-        session_config = SessionConfig(self._session_config, SessionConfig.consume(config))
+        session_config = SessionConfig(self._default_workspace_config,
+                                       SessionConfig.consume(config))
         return Session(self._pool, session_config)
 
     def pipeline(self, **config):
-        from neo4j.work.pipelining import Pipeline
-        return Pipeline(self._pool, **config)
+        from neo4j.work.pipelining import Pipeline, PipelineConfig
+        pipeline_config = PipelineConfig(self._default_workspace_config,
+                                         PipelineConfig.consume(config))
+        return Pipeline(self._pool, pipeline_config)
 
 
 class Neo4jDriver(Routing, Driver):
@@ -317,23 +321,27 @@ class Neo4jDriver(Routing, Driver):
         from neo4j.io import Neo4jPool
         from neo4j.work import WorkspaceConfig
         addresses = cls.parse_targets(*targets)
-        pool_config, session_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
+        pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig,
+                                                                     WorkspaceConfig)
         pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, **pool_config)
-        return cls(pool, session_config)
+        return cls(pool, default_workspace_config)
 
-    def __init__(self, pool, session_config):
+    def __init__(self, pool, default_workspace_config):
         Routing.__init__(self, pool.routing_table.initial_routers)
         Driver.__init__(self, pool)
-        self._session_config = session_config
+        self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
         from neo4j.work.simple import Session, SessionConfig
-        session_config = SessionConfig(self._session_config, SessionConfig.consume(config))
+        session_config = SessionConfig(self._default_workspace_config,
+                                       SessionConfig.consume(config))
         return Session(self._pool, session_config)
 
     def pipeline(self, **config):
-        from neo4j.work.pipelining import Pipeline
-        return Pipeline(self._pool, **config)
+        from neo4j.work.pipelining import Pipeline, PipelineConfig
+        pipeline_config = PipelineConfig(self._default_workspace_config,
+                                         PipelineConfig.consume(config))
+        return Pipeline(self._pool, pipeline_config)
 
 
 class AsyncBoltDriver(Direct, AsyncDriver):
@@ -343,19 +351,21 @@ class AsyncBoltDriver(Direct, AsyncDriver):
         from neo4j.aio import BoltPool
         from neo4j.work import WorkspaceConfig
         address = cls.parse_target(target)
-        pool_config, session_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
+        pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig,
+                                                                     WorkspaceConfig)
         pool = await BoltPool.open(address, auth=auth, loop=loop, **pool_config)
-        return cls(pool, session_config)
+        return cls(pool, default_workspace_config)
 
-    def __init__(self, pool, session_config):
+    def __init__(self, pool, default_workspace_config):
         Direct.__init__(self, pool.address)
         AsyncDriver.__init__(self, pool)
-        self._session_config = session_config
+        self._default_workspace_config = default_workspace_config
 
     async def session(self, **config):
-        from neo4j.work.reactive import RxSession, RxSessionConfig
-        session_config = RxSessionConfig(self._session_config, RxSessionConfig.consume(config))
-        return RxSession(self._pool, session_config)
+        from neo4j.work.aio import AsyncSession, AsyncSessionConfig
+        session_config = AsyncSessionConfig(self._default_workspace_config,
+                                            AsyncSessionConfig.consume(config))
+        return AsyncSession(self._pool, session_config)
 
 
 class AsyncNeo4jDriver(Routing, AsyncDriver):
@@ -365,17 +375,19 @@ class AsyncNeo4jDriver(Routing, AsyncDriver):
         from neo4j.aio import Neo4jPool
         from neo4j.work import WorkspaceConfig
         addresses = cls.parse_targets(*targets)
-        pool_config, session_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
+        pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig,
+                                                                     WorkspaceConfig)
         pool = await Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context,
                                     loop=loop, **pool_config)
-        return cls(pool, session_config)
+        return cls(pool, default_workspace_config)
 
-    def __init__(self, pool, session_config):
+    def __init__(self, pool, default_workspace_config):
         Routing.__init__(self, pool.routing_table.initial_routers)
         AsyncDriver.__init__(self, pool)
-        self._session_config = session_config
+        self._default_workspace_config = default_workspace_config
 
     async def session(self, **config):
-        from neo4j.work.reactive import RxSession, RxSessionConfig
-        session_config = RxSessionConfig(self._session_config, RxSessionConfig.consume(config))
-        return RxSession(self._pool, session_config)
+        from neo4j.work.aio import AsyncSession, AsyncSessionConfig
+        session_config = AsyncSessionConfig(self._default_workspace_config,
+                                            AsyncSessionConfig.consume(config))
+        return AsyncSession(self._pool, session_config)

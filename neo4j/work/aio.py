@@ -20,10 +20,10 @@
 
 
 from neo4j.conf import DeprecatedAlias
-from neo4j.work import Workspace, WorkspaceConfig
+from neo4j.work import AsyncWorkspace, WorkspaceConfig
 
 
-class RxSessionConfig(WorkspaceConfig):
+class AsyncSessionConfig(WorkspaceConfig):
 
     #:
     acquire_timeout = 30.0  # seconds
@@ -36,7 +36,7 @@ class RxSessionConfig(WorkspaceConfig):
     access_mode = DeprecatedAlias("default_access_mode")
 
 
-class RxSession(Workspace):
+class AsyncSession(AsyncWorkspace):
 
     # The set of bookmarks after which the next
     # :class:`.Transaction` should be carried out.
@@ -46,8 +46,9 @@ class RxSession(Workspace):
     _bookmark_out = None
 
     def __init__(self, pool, config):
-        super().__init__(pool)
-        assert isinstance(config, RxSessionConfig)
-        self._config = config
+        super().__init__(pool, config)
+        assert isinstance(config, AsyncSessionConfig)
         self._bookmarks_in = tuple(config.bookmarks)
-        raise NotImplementedError  # TODO
+
+    async def run(self, cypher, parameters=None, **kwparameters):
+        raise NotImplementedError

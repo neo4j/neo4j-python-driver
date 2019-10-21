@@ -23,15 +23,22 @@ from collections import deque
 from threading import Thread, Lock
 from time import sleep
 
-from neo4j.work import Workspace
+from neo4j.work import Workspace, WorkspaceConfig
+
+
+class PipelineConfig(WorkspaceConfig):
+
+    #:
+    flush_every = 8192  # bytes
 
 
 class Pipeline(Workspace):
 
-    def __init__(self, pool, **parameters):
-        super(Pipeline, self).__init__(pool, **parameters)
-        self._connect()
-        self._flush_every = parameters.get("flush_every", 8192)
+    def __init__(self, pool, config):
+        assert isinstance(config, PipelineConfig)
+        super(Pipeline, self).__init__(pool, config)
+        self._connect("WRITE")
+        self._flush_every = config.flush_every
         self._data = deque()
         self._pull_lock = Lock()
 

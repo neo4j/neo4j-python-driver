@@ -101,6 +101,20 @@ class Bolt:
     Error = ServiceUnavailable
 
     @classmethod
+    def ping(cls, address, *, timeout=None, **config):
+        """ Attempt to establish a Bolt connection, returning the
+        agreed Bolt protocol version if successful.
+        """
+        config = PoolConfig.consume(config)
+        try:
+            s, protocol_version = connect(address, timeout=timeout, config=config)
+        except ServiceUnavailable:
+            return None
+        else:
+            s.close()
+            return protocol_version
+
+    @classmethod
     def open(cls, address, *, auth=None, timeout=None, **config):
         """ Open a new Bolt connection to a given server address.
 
@@ -111,7 +125,10 @@ class Bolt:
         :return:
         """
         config = PoolConfig.consume(config)
-        return connect(address, auth=auth, timeout=timeout, config=config)
+        s, config.protocol_version = connect(address, timeout=timeout, config=config)
+        connection = Bolt(address, s, auth=auth, **config)
+        connection.hello()
+        return connection
 
     def __init__(self, unresolved_address, sock, *, auth=None, protocol_version=None, **config):
         self.config = PoolConfig.consume(config)
@@ -369,7 +386,7 @@ class Bolt:
                 raise
             except (NotALeaderError, ForbiddenOnReadOnlyDatabaseError):
                 if self.pool:
-                    self.pool.remove_writer(self.unresolved_address),
+                    self.pool.on_write_failure(self.unresolved_address),
                 raise
         else:
             raise ProtocolError("Unexpected response message with "
@@ -562,7 +579,7 @@ class IOPool:
         with self.lock:
             try:
                 connections = self.connections[address]
-            except KeyError: # already removed from the connection pool
+            except KeyError:  # already removed from the connection pool
                 return
             for conn in list(connections):
                 if not conn.in_use:
@@ -573,6 +590,9 @@ class IOPool:
                         pass
             if not connections:
                 self.remove(address)
+
+    def on_write_failure(self, address):
+        raise Neo4jAvailabilityError("No write service available for pool {}".format(self))
 
     def remove(self, address):
         """ Remove an address from the connection pool, if present, closing
@@ -615,6 +635,9 @@ class BoltPool(IOPool):
         super(BoltPool, self).__init__(opener, config)
         self.address = address
 
+    def __repr__(self):
+        return "<{} address={!r}>".format(self.__class__.__name__, self.address)
+
     def acquire(self, access_mode=None, timeout=None):
         return self._acquire(self.address, timeout)
 
@@ -645,6 +668,10 @@ class Neo4jPool(IOPool):
         self.routing_context = routing_context
         self.missing_writer = False
         self.refresh_lock = Lock()
+
+    def __repr__(self):
+        return "<{} addresses={!r}>".format(self.__class__.__name__,
+                                            self.routing_table.initial_routers)
 
     @property
     def initial_address(self):
@@ -850,7 +877,7 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
         super(Neo4jPool, self).deactivate(address)
 
-    def remove_writer(self, address):
+    def on_write_failure(self, address):
         """ Remove a writer address from the routing table, if present.
         """
         log.debug("[#0000]  C: <ROUTING> Removing writer %r", address)
@@ -954,7 +981,7 @@ def _secure(s, host, ssl_context):
     return s
 
 
-def _handshake(s, resolved_address, auth, **config):
+def _handshake(s, resolved_address):
     """
 
     :param s:
@@ -995,22 +1022,19 @@ def _handshake(s, resolved_address, auth, **config):
         raise ProtocolError("Expected four byte Bolt handshake response "
                             "from %r, received %r instead; check for "
                             "incorrect port number" % (resolved_address, data))
-    agreed_version, = struct_unpack(">I", data)
-    log.debug("[#%04X]  S: <HANDSHAKE> 0x%08X", local_port, agreed_version)
-    if agreed_version == 0:
-        log.debug("[#%04X]  C: <CLOSE>", local_port)
-        s.shutdown(SHUT_RDWR)
-        s.close()
-    elif agreed_version in (3,):
-        config["protocol_version"] = agreed_version
-        connection = Bolt(resolved_address, s, auth=auth, **config)
-        connection.hello()
-        return connection
-    elif agreed_version == 0x48545450:
+    elif data == b"HTTP":
         log.debug("[#%04X]  S: <CLOSE>", local_port)
         s.close()
         raise ServiceUnavailable("Cannot to connect to Bolt service on {!r} "
                                  "(looks like HTTP)".format(resolved_address))
+    agreed_version = data[-1], data[-2]
+    log.debug("[#%04X]  S: <HANDSHAKE> 0x%08X", local_port, agreed_version)
+    if agreed_version == (0, 0):
+        log.debug("[#%04X]  C: <CLOSE>", local_port)
+        s.shutdown(SHUT_RDWR)
+        s.close()
+    elif agreed_version in ((3, 0),):
+        return s, agreed_version
     else:
         log.debug("[#%04X]  S: <CLOSE>", local_port)
         s.close()
@@ -1018,7 +1042,7 @@ def _handshake(s, resolved_address, auth, **config):
                             "{}".format(agreed_version))
 
 
-def connect(address, *, auth=None, timeout=None, config):
+def connect(address, *, timeout=None, config):
     """ Connect and perform a handshake and return a valid Connection object,
     assuming a protocol version can be agreed.
     """
@@ -1036,13 +1060,11 @@ def connect(address, *, auth=None, timeout=None, config):
             host = address[0]
             s = _connect(resolved_address, timeout=timeout, **config)
             s = _secure(s, host, config.get_ssl_context())
-            connection = _handshake(s, address, auth=auth, **config)
+            return _handshake(s, address)
         except Exception as error:
             if s:
                 s.close()
             last_error = error
-        else:
-            return connection
     if last_error is None:
         raise ServiceUnavailable("Failed to resolve addresses for %s" % address)
     else:

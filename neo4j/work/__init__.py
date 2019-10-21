@@ -28,6 +28,9 @@ class WorkspaceConfig(Config):
     """
 
     #:
+    acquire_timeout = 30.0  # seconds
+
+    #:
     max_retry_time = 30.0  # seconds
 
     #:
@@ -42,11 +45,12 @@ class WorkspaceConfig(Config):
 
 class Workspace:
 
-    def __init__(self, pool, **parameters):
+    def __init__(self, pool, config):
+        assert isinstance(config, WorkspaceConfig)
         self._pool = pool
-        self._acquirer = self._pool.acquire
-        self._parameters = parameters
+        self._config = config
         self._connection = None
+        self._connection_access_mode = None
         self._closed = False
 
     def __del__(self):
@@ -61,14 +65,12 @@ class Workspace:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _connect(self, access_mode=None):
-        if access_mode is None:
-            access_mode = self._parameters.get("access_mode", "WRITE")
+    def _connect(self, access_mode):
         if self._connection:
             if access_mode == self._connection_access_mode:
                 return
             self._disconnect(sync=True)
-        self._connection = self._acquirer(access_mode)
+        self._connection = self._pool.acquire(access_mode)
         self._connection_access_mode = access_mode
 
     def _disconnect(self, sync):
@@ -95,6 +97,21 @@ class Workspace:
         :returns: :const:`True` if closed, :const:`False` otherwise.
         """
         return self._closed
+
+
+class AsyncWorkspace(Workspace):
+
+    def __init__(self, pool, config):
+        super().__init__(pool, config)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
+
+    async def close(self):
+        super().close()
 
 
 class WorkspaceError(Exception):
