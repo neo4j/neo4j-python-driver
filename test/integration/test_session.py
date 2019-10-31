@@ -277,12 +277,15 @@ class SummaryTestCase(DirectIntegrationTestCase):
             raise SkipTest("Execution times are not supported before server 3.1")
         with self.driver.session() as session:
             summary = session.run("UNWIND range(1,1000) AS n RETURN n AS number").consume()
-            if self.protocol_version() >= 3:
-                self.assertIsInstance(summary.t_first, int)
-                self.assertIsInstance(summary.t_last, int)
-            else:
-                self.assertIsInstance(summary.result_available_after, int)
-                self.assertIsInstance(summary.result_consumed_after, int)
+
+            self.assertIsInstance(summary.result_available_after, int)
+            self.assertIsInstance(summary.result_consumed_after, int)
+
+            with self.assertRaises(AttributeError) as ex:
+                summary.t_first
+
+            with self.assertRaises(AttributeError) as ex:
+                summary.t_last
 
 
 class ResetTestCase(DirectIntegrationTestCase):
