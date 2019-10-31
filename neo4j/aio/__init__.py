@@ -19,6 +19,29 @@
 # limitations under the License.
 
 
+"""
+:mod:`.neo4j.aio` -- Asynchronous Bolt protocol I/O
+===================================================
+
+The :mod:`.neo4j.aio` module contains classes for working with the Bolt
+protocol via Python's asynchronous I/O capabilities.
+
+Three classes are provided:
+
+- :class:`.Bolt` - single connection to a server
+- :class:`.BoltPool` - pool of connections to a server
+- :class:`.Neo4jPool` - pool of connections to a cluster of servers
+
+"""
+
+
+__all__ = [
+    "Bolt",
+    "BoltPool",
+    "Neo4jPool",
+]
+
+
 from asyncio import (
     IncompleteReadError,
     Lock,
@@ -48,7 +71,7 @@ from neo4j.errors import (
     Neo4jAvailabilityError,
 )
 from neo4j.api import Version
-from neo4j.conf import Config, PoolConfig
+from neo4j.conf import PoolConfig
 from neo4j.meta import version as neo4j_version
 from neo4j.routing import RoutingTable
 
@@ -60,6 +83,16 @@ MAGIC = b"\x60\x60\xB0\x17"
 
 
 class Bolt(Addressable, object):
+    """ Connection to a Bolt-enabled server.
+
+        >>> bolt = await Bolt.open(("localhost", 7687), auth=("neo4j", "password"))
+        >>> result = await bolt.run("RETURN 'hello, world' AS greeting")
+        >>> record = await result.single()
+        >>> record["greeting"]
+        'hello, world'
+        >>> await bolt.close()
+
+    """
 
     #: True if this instance uses secure communication, false
     #: otherwise.
@@ -107,12 +140,13 @@ class Bolt(Addressable, object):
 
         # Carry out subclass imports locally to avoid circular
         # dependency issues.
-        from neo4j.aio.bolt3 import Bolt3
+        from neo4j.aio._bolt3 import Bolt3
 
         handlers = {bolt.protocol_version: bolt for bolt in [
             # This list can be updated as protocol
             # versions are added and removed.
             Bolt3,
+            # TODO: Bolt4
         ]}
 
         if protocol_version is None:
@@ -122,18 +156,6 @@ class Bolt(Addressable, object):
         return {version: handler
                 for version, handler in handlers.items()
                 if version == protocol_version}
-
-    @classmethod
-    def opener(cls, auth=None, **config):
-        """ Create and return an opener function for a given set of
-        configuration parameters. This is useful when multiple servers share
-        the same configuration details, such as within a connection pool.
-        """
-
-        async def f(address, *, loop=None):
-            return await Bolt.open(address, auth=auth, loop=loop, **config)
-
-        return f
 
     @classmethod
     async def open(cls, address, *, auth=None, loop=None, **config):
@@ -200,7 +222,7 @@ class Bolt(Addressable, object):
         """
         assert isinstance(address, Address)
         assert loop is not None
-        assert isinstance(config, Config)
+        assert isinstance(config, PoolConfig)
         connection_args = {
             "host": address.host,
             "port": address.port,
@@ -443,18 +465,6 @@ class BoltStreamWriter(Addressable, Breakable, StreamWriter):
                     await sleep(0.1)
             except AttributeError:
                 pass
-
-
-class Pool:
-
-    def acquire(self, *, force_reset=False, timeout=None):
-        raise NotImplementedError
-
-    def release(self, *connections, force_reset=False):
-        raise NotImplementedError
-
-    def close(self, *, force=False):
-        raise NotImplementedError
 
 
 class BoltPool:
@@ -707,7 +717,6 @@ class Neo4jPool:
             return Bolt.open(addr, auth=auth, **pool_config)
 
         obj = cls(loop, opener, config, addresses, routing_context)
-        # TODO: get initial routing table and construct
         await obj._ensure_routing_table_is_fresh()
         return obj
 
@@ -939,47 +948,3 @@ class Neo4jPool:
             else:
                 pool.max_size = 0
                 await pool.prune()
-
-
-class Neo4j:
-
-    # The default router address list to use if no addresses are specified.
-    default_router_addresses = Address.parse_list(":7687 :17601 :17687")
-
-    # TODO
-    # @classmethod
-    # async def open(cls, *addresses, auth=None, security=False, protocol_version=None, loop=None):
-    #     opener = Bolt.opener(auth=auth, security=security, protocol_version=protocol_version)
-    #     router_addresses = Address.parse_list(" ".join(addresses), default_port=7687)
-    #     return cls(opener, router_addresses, loop=loop)
-    #
-    # def __init__(self, opener, router_addresses, loop=None):
-    #     self._routers = Neo4jPool(opener, router_addresses or self.default_router_addresses)
-    #     self._writers = Neo4jPool(opener)
-    #     self._readers = Neo4jPool(opener)
-    #     self._routing_table = None
-    #
-    # @property
-    # def routing_table(self):
-    #     return self._routing_table
-    #
-    # async def update_routing_table(self):
-    #     cx = await self._routers.acquire()
-    #     try:
-    #         result = await cx.run("CALL dbms.cluster.routing.getRoutingTable($context)", {"context": {}})
-    #         record = await result.single()
-    #         self._routing_table = RoutingTable.parse_routing_info([record])  # TODO: handle ValueError?
-    #         return self._routing_table
-    #     finally:
-    #         self._routers.release(cx)
-
-
-# async def main():
-#     from neo4j.debug import watch; watch("neo4j")
-#     neo4j = await Neo4j.open(":17601 :17602 :17603", auth=("neo4j", "password"))
-#     await neo4j.update_routing_table()
-#     print(neo4j.routing_table)
-#
-#
-# if __name__ == "__main__":
-#     run(main())

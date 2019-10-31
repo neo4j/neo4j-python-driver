@@ -53,14 +53,7 @@ API Documentation
 .. toctree::
    :maxdepth: 1
 
-   driver
-   transactions
-   results
-   types/core
-   types/graph
-   types/spatial
-   types/temporal
-   errors
+   aio
 
 
 Other Information
