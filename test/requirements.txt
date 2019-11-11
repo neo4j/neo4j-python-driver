@@ -1,3 +1,4 @@
+more-itertools<=5.0.0 ; python_version=="2.7"
 boltkit==1.2.0
 coverage
 mock
