@@ -26,12 +26,21 @@
 class ResultConsumeExample:
 
     def __init__(self, driver):
-        self.driver = driver
+        self.session = driver.session()
+
+    def close(self):
+        self.session.close()
+
+    def delete_all(self):
+        self.session.run("MATCH (_) DETACH DELETE _").consume()
+
+    def add_person(self, name):
+        return self.session.run("CREATE (a:Person {name: $name}) "
+                                "RETURN a", name=name).single().value()
 
     # tag::result-consume[]
     def get_people(self):
-        with self.driver.session() as session:
-            return session.read_transaction(self.match_person_nodes)
+        return self.session.read_transaction(self.match_person_nodes)
 
     @staticmethod
     def match_person_nodes(tx):
@@ -42,9 +51,9 @@ class ResultConsumeExample:
 
 def test(driver):
     eg = ResultConsumeExample(driver)
-    with eg.driver.session() as session:
-        session.run("MATCH (_) DETACH DELETE _").data()
-        session.run("CREATE (a:Person {name: 'Alice'})").data()
-        session.run("CREATE (a:Person {name: 'Bob'})").data()
+    eg.delete_all()
+    eg.add_person("Alice")
+    eg.add_person("Bob")
     people = list(eg.get_people())
     assert people == ['Alice', 'Bob']
+    eg.close()

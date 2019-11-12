@@ -26,18 +26,28 @@
 class ResultRetainExample:
 
     def __init__(self, driver):
-        self.driver = driver
+        self.session = driver.session()
+
+    def close(self):
+        self.session.close()
+
+    def delete_all(self):
+        self.session.run("MATCH (_) DETACH DELETE _").consume()
+
+    def add_person(self, name):
+        return self.session.run("CREATE (a:Person {name: $name}) "
+                                "RETURN a", name=name).single().value()
 
     # tag::result-retain[]
     def add_employees(self, company_name):
-        with self.driver.session() as session:
-            employees = 0
-            persons = session.read_transaction(self.match_person_nodes)
+        employees = 0
+        persons = self.session.read_transaction(self.match_person_nodes)
 
-            for person in persons:
-                employees += session.write_transaction(self.add_employee_to_company, person, company_name)
+        for person in persons:
+            employees += self.session.write_transaction(self.add_employee_to_company,
+                                                        person, company_name)
 
-            return employees
+        return employees
 
     @staticmethod
     def add_employee_to_company(tx, person, company_name):
@@ -52,14 +62,17 @@ class ResultRetainExample:
         return list(tx.run("MATCH (a:Person) RETURN a.name AS name"))
     # end::result-retain[]
 
+    def count_employees(self, company_name):
+        return self.session.run("MATCH (emp:Person)-[:WORKS_FOR]->(com:Company) "
+                                "WHERE com.name = $company_name "
+                                "RETURN count(emp)", company_name=company_name).single().value()
+
 
 def test(driver):
     eg = ResultRetainExample(driver)
-    with eg.driver.session() as session:
-        session.run("MATCH (_) DETACH DELETE _").data()
-        session.run("CREATE (a:Person {name: 'Alice'})").data()
-        session.run("CREATE (a:Person {name: 'Bob'})").data()
-        assert eg.add_employees('Acme') == 2
-        n = session.run("MATCH (emp:Person)-[:WORKS_FOR]->(com:Company) "
-                        "WHERE com.name = 'Acme' RETURN count(emp)").single().value()
-        assert n == 2
+    eg.delete_all()
+    eg.add_person("Alice")
+    eg.add_person("Bob")
+    assert eg.add_employees("Acme") == 2
+    assert eg.count_employees("Acme") == 2
+    eg.close()
