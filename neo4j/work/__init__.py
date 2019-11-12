@@ -51,7 +51,6 @@ class Workspace:
         self._config = config
         self._connection = None
         self._connection_access_mode = None
-        self._closed = False
 
     def __del__(self):
         try:
@@ -87,16 +86,7 @@ class Workspace:
             self._connection_access_mode = None
 
     def close(self):
-        try:
-            self._disconnect(sync=True)
-        finally:
-            self._closed = True
-
-    def closed(self):
-        """ Indicator for whether or not this session has been closed.
-        :returns: :const:`True` if closed, :const:`False` otherwise.
-        """
-        return self._closed
+        self._disconnect(sync=True)
 
 
 class AsyncWorkspace(Workspace):

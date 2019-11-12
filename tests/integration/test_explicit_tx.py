@@ -24,7 +24,7 @@ from uuid import uuid4
 
 from pytest import raises
 
-from neo4j.work.simple import Statement, SessionError, TransactionError
+from neo4j.work.simple import Statement, TransactionError
 from neo4j.exceptions import CypherSyntaxError, ClientError, TransientError
 
 
@@ -188,13 +188,6 @@ def test_errors_on_run_transaction(session):
     with raises(TypeError):
         tx.run("CREATE (a:Thing {uuid:$uuid})", uuid=uuid4())
     tx.rollback()
-
-
-def test_session_error(bolt_driver):
-    session = bolt_driver.session()
-    session.close()
-    with raises(SessionError):
-        session.begin_transaction()
 
 
 def test_error_on_using_closed_transaction(session):

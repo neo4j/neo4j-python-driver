@@ -23,7 +23,7 @@ from unittest import SkipTest
 
 from pytest import raises
 
-from neo4j.work.simple import Statement, SessionError
+from neo4j.work.simple import Statement
 from neo4j.exceptions import CypherError, ClientError, TransientError
 from neo4j.graph import Node, Relationship
 
@@ -215,13 +215,6 @@ def test_automatic_reset_after_failure(session):
         assert record[0] == 1
     else:
         assert False, "A Cypher error should have occurred"
-
-
-def test_session_error(bolt_driver):
-    session = bolt_driver.session()
-    session.close()
-    with raises(SessionError):
-        session.run("RETURN 1")
 
 
 def test_large_values(bolt_driver):

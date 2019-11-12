@@ -79,8 +79,6 @@ class Session(Workspace):
     # The bookmark returned from the last commit.
     _bookmark_out = None
 
-    _closed = False
-
     def __init__(self, pool, config):
         super().__init__(pool, config)
         assert isinstance(config, SessionConfig)
@@ -125,18 +123,10 @@ class Session(Workspace):
                 self._connection.send_all()
                 self._connection.fetch_all()
             except (ConnectionExpired, CypherError, TransactionError,
-                    ServiceUnavailable, SessionError):
+                    ServiceUnavailable, SessionExpired):
                 pass
             finally:
                 self._disconnect()
-        self._closed = True
-
-    def closed(self):
-        """ Indicator for whether or not this session has been closed.
-
-        :returns: :const:`True` if closed, :const:`False` otherwise.
-        """
-        return self._closed
 
     def run(self, cypher, parameters=None, **kwparameters):
         """ Run a Cypher statement within an auto-commit transaction.
@@ -161,7 +151,6 @@ class Session(Workspace):
         :param kwparameters: additional keyword parameters
         :returns: :class:`.StatementResult` object
         """
-        self._assert_open()
         if not cypher:
             raise ValueError("Cannot run an empty statement")
         if not isinstance(cypher, (str, Statement)):
@@ -322,7 +311,6 @@ class Session(Workspace):
         :returns: new :class:`.Transaction` instance.
         :raise: :class:`.TransactionError` if a transaction is already open
         """
-        self._assert_open()
         if self.has_transaction():
             raise TransactionError("Explicit transaction already open")
 
@@ -340,7 +328,6 @@ class Session(Workspace):
         :returns: the bookmark returned from the server, if any
         :raise: :class:`.TransactionError` if no transaction is currently open
         """
-        self._assert_open()
         if not self._transaction:
             raise TransactionError("No transaction to commit")
         metadata = {}
@@ -363,7 +350,6 @@ class Session(Workspace):
 
         :raise: :class:`.TransactionError` if no transaction is currently open
         """
-        self._assert_open()
         if not self._transaction:
             raise TransactionError("No transaction to rollback")
         cx = self._connection
@@ -426,16 +412,10 @@ class Session(Workspace):
             raise ServiceUnavailable("Transaction failed")
 
     def read_transaction(self, unit_of_work, *args, **kwargs):
-        self._assert_open()
         return self._run_transaction(READ_ACCESS, unit_of_work, *args, **kwargs)
 
     def write_transaction(self, unit_of_work, *args, **kwargs):
-        self._assert_open()
         return self._run_transaction(WRITE_ACCESS, unit_of_work, *args, **kwargs)
-
-    def _assert_open(self):
-        if self._closed:
-            raise SessionError("Session closed")
 
 
 class Transaction:
@@ -611,7 +591,7 @@ class StatementResult:
         """ Indicator for whether or not this result is still attached to
         an open :class:`.Session`.
         """
-        return self._session and not self._session.closed()
+        return self._session
 
     def detach(self, sync=True):
         """ Detach this result from its parent session by fetching the
@@ -755,16 +735,7 @@ class BoltStatementResult(StatementResult):
         return [record.data(*items) for record in self.records()]
 
 
-class SessionError(Exception):
-    """ Raised when an error occurs while using a session.
-    """
-
-    def __init__(self, session, *args, **kwargs):
-        super(SessionError, self).__init__(*args, **kwargs)
-        self.session = session
-
-
-class SessionExpired(SessionError):
+class SessionExpired(Exception):
     """ Raised when no a session is no longer able to fulfil
     the purpose described by its original parameters.
     """
