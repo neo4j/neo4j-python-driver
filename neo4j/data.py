@@ -277,6 +277,19 @@ class DataHydrator:
 
 class DataDehydrator:
 
+    @classmethod
+    def fix_parameters(cls, parameters):
+        if not parameters:
+            return {}
+        dehydrator = cls()
+        try:
+            dehydrated, = dehydrator.dehydrate([parameters])
+        except TypeError as error:
+            value = error.args[0]
+            raise TypeError("Parameters of type {} are not supported".format(type(value).__name__))
+        else:
+            return dehydrated
+
     def __init__(self):
         self.dehydration_functions = {}
         self.dehydration_functions.update({
