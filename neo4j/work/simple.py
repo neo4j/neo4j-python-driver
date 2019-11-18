@@ -565,7 +565,7 @@ class Statement:
         return str(self.text)
 
 
-class StatementResult:
+class BoltStatementResult:
     """ A handler for the result of Cypher statement execution. Instances
     of this class are typically constructed and returned by
     :meth:`.Session.run` and :meth:`.Transaction.run`.
@@ -700,14 +700,6 @@ class StatementResult:
         """
         self.detach()
         return self._hydrant.graph
-
-
-class BoltStatementResult(StatementResult):
-    """ A handler for the result of Cypher statement execution.
-    """
-
-    def __init__(self, session, hydrant, metadata):
-        super(BoltStatementResult, self).__init__(session, hydrant, metadata)
 
     def value(self, item=0, default=None):
         """ Return the remainder of the result as a list of values.
