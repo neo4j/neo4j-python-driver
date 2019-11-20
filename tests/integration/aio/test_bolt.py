@@ -42,11 +42,11 @@ async def test_connectivity_over_ipv4(address, auth):
     await bolt.close()
 
 
-@mark.asyncio
-async def test_connectivity_over_ipv6(address, auth):
-    bolt = await Bolt.open(("::1", address[1], 0, 0), auth=auth)
-    assert bolt.protocol_version
-    await bolt.close()
+# @mark.asyncio
+# async def test_connectivity_over_ipv6(address, auth):
+#     bolt = await Bolt.open(("::1", address[1], 0, 0), auth=auth)
+#     assert bolt.protocol_version
+#     await bolt.close()
 
 
 @mark.asyncio

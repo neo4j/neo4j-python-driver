@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from pytest import mark, raises, warns
+from pytest import mark, raises, warns, skip
 
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable, AuthError
@@ -32,18 +32,22 @@ def test_bolt_uri(bolt_uri, auth):
             assert value == 1
 
 
-def test_readonly_bolt_uri(readonly_bolt_uri, auth):
-    with GraphDatabase.driver(readonly_bolt_uri, auth=auth) as driver:
-        with driver.session() as session:
-            value = session.run("RETURN 1").single().value()
-            assert value == 1
+# def test_readonly_bolt_uri(readonly_bolt_uri, auth):
+#     with GraphDatabase.driver(readonly_bolt_uri, auth=auth) as driver:
+#         with driver.session() as session:
+#             value = session.run("RETURN 1").single().value()
+#             assert value == 1
 
 
 def test_neo4j_uri(neo4j_uri, auth):
-    with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
-        with driver.session() as session:
-            value = session.run("RETURN 1").single().value()
-            assert value == 1
+    try:
+        with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
+            with driver.session() as session:
+                value = session.run("RETURN 1").single().value()
+                assert value == 1
+    except ServiceUnavailable as error:
+        if error.args[0] == "Server does not support routing":
+            skip(error.args[0])
 
 
 # TODO
@@ -94,9 +98,9 @@ def test_custom_resolver(service):
             assert summary.server.address == ("127.0.0.1", port)
 
 
-def test_encrypted_arg_can_still_be_used(uri, auth):
+def test_encrypted_arg_can_still_be_used(bolt_uri, auth):
     with warns(UserWarning):
-        with GraphDatabase.driver(uri, auth=auth, encrypted=False) as driver:
+        with GraphDatabase.driver(bolt_uri, auth=auth, encrypted=False) as driver:
             assert not driver.secure
 
 
@@ -104,8 +108,8 @@ def test_insecure_by_default(bolt_driver):
     assert not bolt_driver.secure
 
 
-def test_should_fail_on_incorrect_password(uri):
+def test_should_fail_on_incorrect_password(bolt_uri):
     with raises(AuthError):
-        with GraphDatabase.driver(uri, auth=("neo4j", "wrong-password")) as driver:
+        with GraphDatabase.driver(bolt_uri, auth=("neo4j", "wrong-password")) as driver:
             with driver.session() as session:
                 _ = session.run("RETURN 1")

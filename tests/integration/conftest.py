@@ -20,11 +20,11 @@ from math import ceil
 from os import getenv
 from threading import RLock
 
-from boltkit.server import Neo4jService, Neo4jClusterService
-from pytest import fixture
+from pytest import fixture, skip
 
 from neo4j import GraphDatabase
 from neo4j.addressing import AddressList
+from neo4j.exceptions import ServiceUnavailable
 from neo4j.io import Bolt
 
 
@@ -43,6 +43,69 @@ NEO4J_AUTH = (NEO4J_USER, NEO4J_PASSWORD)
 NEO4J_LOCK = RLock()
 NEO4J_SERVICE = None
 NEO4J_DEBUG = getenv("NEO4J_DEBUG", "")
+
+
+# TODO: re-enable when Docker is feasible
+# from boltkit.server import Neo4jService, Neo4jClusterService
+
+from os.path import dirname, join
+
+class Machine(object):
+
+    def __init__(self, address):
+        self.address = address
+
+class Neo4jService(object):
+
+    run = d = join(dirname(__file__), ".run")
+
+    edition = "enterprise"
+
+    def __init__(self, name=None, image=None, auth=None,
+                 n_cores=None, n_replicas=None,
+                 bolt_port=None, http_port=None, debug_port=None,
+                 debug_suspend=None, dir_spec=None, config=None):
+        from boltkit.obsolete.controller import _install, create_controller
+        assert image.endswith("-enterprise")
+        release = image[:-11]
+        if release == "snapshot":
+            release = "4.0"
+        self.home = _install("enterprise", release, self.run, verbose=1)
+        # self.home = _install("enterprise", "4.0.0-beta03mr03", ".")
+        self.auth = NEO4J_AUTH
+        self.controller = create_controller(self.home)
+        self.controller.set_initial_password(NEO4J_PASSWORD)
+        self.info = None
+
+    def start(self, timeout=None):
+        self.info = self.controller.start(timeout=timeout)
+
+    def stop(self, timeout=None):
+        from shutil import rmtree
+        self.controller.stop()
+        rmtree(self.home)
+
+    def machines(self):
+        from urllib.parse import urlparse
+        parsed = self.info.bolt_uri
+        return [Machine((parsed.hostname, parsed.port or 7687))]
+
+    @property
+    def addresses(self):
+        return [machine.address for machine in self.machines()]
+
+    def cores(self):
+        return self.machines()
+
+
+class Neo4jClusterService(Neo4jService):
+
+    @classmethod
+    def _port_range(cls, base_port, count):
+        if base_port is None:
+            return [None] * count
+        else:
+            return range(base_port, base_port + count)
 
 
 def _ping_range(port_range):
@@ -135,13 +198,13 @@ def addresses(service):
     return [machine.address for machine in machines]
 
 
-@fixture(scope="session")
-def readonly_addresses(service):
-    try:
-        machines = service.replicas()
-    except AttributeError:
-        machines = []
-    return [machine.address for machine in machines]
+# @fixture(scope="session")
+# def readonly_addresses(service):
+#     try:
+#         machines = service.replicas()
+#     except AttributeError:
+#         machines = []
+#     return [machine.address for machine in machines]
 
 
 @fixture(scope="session")
@@ -152,12 +215,12 @@ def address(addresses):
         return None
 
 
-@fixture(scope="session")
-def readonly_address(readonly_addresses):
-    try:
-        return readonly_addresses[0]
-    except IndexError:
-        return None
+# @fixture(scope="session")
+# def readonly_address(readonly_addresses):
+#     try:
+#         return readonly_addresses[0]
+#     except IndexError:
+#         return None
 
 
 @fixture(scope="session")
@@ -165,9 +228,9 @@ def targets(addresses):
     return " ".join("{}:{}".format(address[0], address[1]) for address in addresses)
 
 
-@fixture(scope="session")
-def readonly_targets(addresses):
-    return " ".join("{}:{}".format(address[0], address[1]) for address in readonly_addresses)
+# @fixture(scope="session")
+# def readonly_targets(addresses):
+#     return " ".join("{}:{}".format(address[0], address[1]) for address in readonly_addresses)
 
 
 @fixture(scope="session")
@@ -175,12 +238,12 @@ def target(address):
     return "{}:{}".format(address[0], address[1])
 
 
-@fixture(scope="session")
-def readonly_target(readonly_address):
-    if readonly_address:
-        return "{}:{}".format(readonly_address[0], readonly_address[1])
-    else:
-        return None
+# @fixture(scope="session")
+# def readonly_target(readonly_address):
+#     if readonly_address:
+#         return "{}:{}".format(readonly_address[0], readonly_address[1])
+#     else:
+#         return None
 
 
 @fixture(scope="session")
@@ -194,16 +257,16 @@ def neo4j_uri(service, target):
 
 
 @fixture(scope="session")
-def uri(neo4j_uri):
-    return neo4j_uri
+def uri(bolt_uri):
+    return bolt_uri
 
 
-@fixture(scope="session")
-def readonly_bolt_uri(service, readonly_target):
-    if readonly_target:
-        return "bolt://" + readonly_target
-    else:
-        return None
+# @fixture(scope="session")
+# def readonly_bolt_uri(service, readonly_target):
+#     if readonly_target:
+#         return "bolt://" + readonly_target
+#     else:
+#         return None
 
 
 @fixture(scope="session")
@@ -231,11 +294,18 @@ async def async_bolt_driver(target, auth):
 
 @fixture(scope="session")
 def neo4j_driver(target, auth):
-    driver = GraphDatabase.neo4j_driver(target, auth=auth)
     try:
-        yield driver
-    finally:
-        driver.close()
+        driver = GraphDatabase.neo4j_driver(target, auth=auth)
+    except ServiceUnavailable as error:
+        if error.args[0] == "Server does not support routing":
+            skip(error.args[0])
+        else:
+            raise
+    else:
+        try:
+            yield driver
+        finally:
+            driver.close()
 
 
 @fixture(scope="session")
@@ -258,16 +328,23 @@ async def async_driver(async_neo4j_driver):
 
 
 @fixture()
-def session(neo4j_driver):
-    session = neo4j_driver.session()
+def session(bolt_driver):
+    session = bolt_driver.session()
     try:
         yield session
     finally:
         session.close()
 
 
+@fixture()
+def protocol_version(session):
+    result = session.run("RETURN 1")
+    yield session._connection.protocol_version
+    result.consume()
+
+
 @fixture
-def cypher_eval(neo4j_driver):
+def cypher_eval(bolt_driver):
 
     def run_and_rollback(tx, cypher, **parameters):
         result = tx.run(cypher, **parameters)
@@ -276,7 +353,7 @@ def cypher_eval(neo4j_driver):
         return value
 
     def f(cypher, **parameters):
-        with neo4j_driver.session() as session:
+        with bolt_driver.session() as session:
             return session.write_transaction(run_and_rollback, cypher, **parameters)
 
     return f
