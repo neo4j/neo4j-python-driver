@@ -18,6 +18,7 @@
 
 from math import ceil
 from os import getenv
+from os.path import dirname, join
 from threading import RLock
 
 from pytest import fixture, skip
@@ -48,12 +49,12 @@ NEO4J_DEBUG = getenv("NEO4J_DEBUG", "")
 # TODO: re-enable when Docker is feasible
 # from boltkit.server import Neo4jService, Neo4jClusterService
 
-from os.path import dirname, join
 
 class Machine(object):
 
     def __init__(self, address):
         self.address = address
+
 
 class Neo4jService(object):
 
@@ -65,13 +66,12 @@ class Neo4jService(object):
                  n_cores=None, n_replicas=None,
                  bolt_port=None, http_port=None, debug_port=None,
                  debug_suspend=None, dir_spec=None, config=None):
-        from boltkit.obsolete.controller import _install, create_controller
+        from boltkit.legacy.controller import _install, create_controller
         assert image.endswith("-enterprise")
         release = image[:-11]
         if release == "snapshot":
             release = "4.0"
         self.home = _install("enterprise", release, self.run, verbose=1)
-        # self.home = _install("enterprise", "4.0.0-beta03mr03", ".")
         self.auth = NEO4J_AUTH
         self.controller = create_controller(self.home)
         self.controller.set_initial_password(NEO4J_PASSWORD)
@@ -86,7 +86,6 @@ class Neo4jService(object):
         rmtree(self.home)
 
     def machines(self):
-        from urllib.parse import urlparse
         parsed = self.info.bolt_uri
         return [Machine((parsed.hostname, parsed.port or 7687))]
 
