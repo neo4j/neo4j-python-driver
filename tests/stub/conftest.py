@@ -25,6 +25,7 @@ from threading import Thread
 from time import sleep
 from unittest import TestCase
 
+from boltkit.server.stub import BoltStubService
 from pytest import fixture
 
 
@@ -40,23 +41,70 @@ class StubTestCase(TestCase):
     auth_token = (user, password)
 
 
-class StubCluster:
+class StubServer(Thread):
+
+    def __init__(self, port, script):
+        super(StubServer, self).__init__()
+        self.port = port
+        self.script = path_join(dirname(__file__), "scripts", script)
+
+    def run(self):
+        check_call(["boltstub", str(self.port), self.script])
+
+
+class LegacyStubServer(Thread):
+
+    def __init__(self, port, script):
+        super(LegacyStubServer, self).__init__()
+        self.port = port
+        self.script = path_join(dirname(__file__), "scripts", script)
+
+    def run(self):
+        # check_call(["boltstub", str(self.port), self.script])
+        check_call(["python", "-m", "boltkit.legacy.stub", "-v", str(self.port), self.script])
+
+
+class LegacyStubCluster(object):
+
+    def __init__(self, servers):
+        self.servers = {port: LegacyStubServer(port, script) for port, script in dict(servers).items()}
+
+    def __enter__(self):
+        self.start()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.wait()
+
+    def start(self):
+        for port, server in self.servers.items():
+            server.start()
+        sleep(0.5)
+
+    def wait(self):
+        for port, server in self.servers.items():
+            server.join()
+
+
+class StubCluster(LegacyStubCluster):
 
     def __init__(self, *servers):
         scripts = [path_join(dirname(__file__), "scripts", server)
                    for server in servers]
+        bss = BoltStubService.load(*scripts)
+        servers2 = {port: script.filename for port, script in bss.scripts.items()}
+        super().__init__(servers2)
 
-        def run():
-            check_call(["bolt", "stub", "-v", "-t", "10", "-l", ":9001"] + scripts)
+        # def run():
+        #     check_call(["bolt", "stub", "-v", "-t", "10", "-l", ":9001"] + scripts)
 
-        self.thread = Thread(target=run)
+        # self.thread = Thread(target=run)
 
-    def __enter__(self):
-        self.thread.start()
-        sleep(0.5)
+    # def __enter__(self):
+    #     self.thread.start()
+    #     sleep(0.5)
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.thread.join(3)
+    # def __exit__(self, exc_type, exc_value, traceback):
+    #     self.thread.join(3)
 
 
 @fixture
