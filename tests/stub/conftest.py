@@ -85,12 +85,18 @@ class LegacyStubCluster(object):
             server.join()
 
 
+class LegacyBoltStubService(BoltStubService):
+
+    default_base_port = 9001
+
+
 class StubCluster(LegacyStubCluster):
 
     def __init__(self, *servers):
         scripts = [path_join(dirname(__file__), "scripts", server)
                    for server in servers]
-        bss = BoltStubService.load(*scripts)
+
+        bss = LegacyBoltStubService.load(*scripts)
         servers2 = {port: script.filename for port, script in bss.scripts.items()}
         super().__init__(servers2)
 
