@@ -79,14 +79,31 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
 
 class Bookmark:
 
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, *values):
+        """
+        :param values: ASCII string values
+        """
+        if values:
+            bookmarks = []
+            for ix in values:
+                try:
+                    if ix:
+                        ix.encode("ascii")
+                        bookmarks.append(ix)
+                except UnicodeEncodeError as e:
+                    raise ValueError("The value {} is not ASCII".format(ix))
+            self.values = frozenset(bookmarks)
+        else:
+            self.values = frozenset()
 
     def __repr__(self):
-        return "<Bookmark value=%r>" % self.value
+        """
+        :return: repr string with sorted values
+        """
+        return "<Bookmark values={{{}}}>".format(", ".join(["'{}'".format(ix) for ix in sorted(self.values)]))
 
     def __bool__(self):
-        return bool(self.value)
+        return bool(self.values)
 
 
 class Security:

@@ -22,8 +22,11 @@
 from unittest import TestCase
 from uuid import uuid4
 
+import pytest
+
 from neo4j.work.simple import DataDehydrator
 
+import neo4j.api
 
 def dehydrated_value(value):
     return DataDehydrator.fix_parameters({"_": value})["_"]
@@ -79,3 +82,31 @@ class ValueDehydrationTestCase(TestCase):
             dehydrated_value(object())
         with self.assertRaises(TypeError):
             dehydrated_value(uuid4())
+
+
+def test_bookmark_class():
+    bookmark = neo4j.api.Bookmark(None)
+    assert bookmark.values == frozenset()
+    assert bool(bookmark) == False
+
+    bookmark = neo4j.api.Bookmark("")
+    assert bookmark.values == frozenset()
+    assert bool(bookmark) == False
+
+    assert repr(bookmark) == "<Bookmark values={}>"
+
+    bookmark = neo4j.api.Bookmark("test1")
+    assert bookmark.values == frozenset(["test1",])
+    assert bool(bookmark) == True
+
+    bookmark = neo4j.api.Bookmark("test1", "test2", None, "")
+    assert bookmark.values == frozenset(["test1", "test2"])
+    assert bool(bookmark) == True
+
+    assert repr(bookmark) == "<Bookmark values={'test1', 'test2'}>"
+
+    not_ascii = "♥O◘♦♥O◘♦"
+
+    with pytest.raises(ValueError) as e:
+        bookmark = neo4j.api.Bookmark(not_ascii)
+
