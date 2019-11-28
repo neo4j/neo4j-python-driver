@@ -18,6 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
 
 def test_can_obtain_summary_after_consuming_result(session):
     result = session.run("CREATE (n) RETURN n")
@@ -89,5 +90,22 @@ def test_can_obtain_notification_info(session):
 
 def test_contains_time_information(session):
     summary = session.run("UNWIND range(1,1000) AS n RETURN n AS number").consume()
-    assert isinstance(summary.t_first, int)
-    assert isinstance(summary.t_last, int)
+
+    assert isinstance(summary.result_available_after, int)
+    assert isinstance(summary.result_consumed_after, int)
+
+    with pytest.raises(AttributeError) as ex:
+        assert isinstance(summary.t_first, int)
+
+    with pytest.raises(AttributeError) as ex:
+        assert isinstance(summary.t_last, int)
+
+
+def test_protocol_version_information(session):
+    summary = session.run("UNWIND range(1,100) AS n RETURN n AS number").consume()
+
+    assert isinstance(summary.protocol_version, tuple)
+    assert isinstance(summary.protocol_version[0], int)
+    assert isinstance(summary.protocol_version[1], int)
+
+
