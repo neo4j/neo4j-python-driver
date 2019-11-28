@@ -21,6 +21,11 @@
 
 from collections import namedtuple
 
+BOLT_VERSION_1 = 1
+BOLT_VERSION_2 = 2
+BOLT_VERSION_3 = 3
+BOLT_VERSION_4 = 4
+
 
 class BoltStatementResultSummary:
     """ A summary of execution returned with a :class:`.StatementResult` object.
@@ -50,10 +55,10 @@ class BoltStatementResultSummary:
     #: A :class:`.ProfiledPlan` instance
     profile = None
 
-    #: The time it took for the server to have the result available.
+    #: The time it took for the server to have the result available. (milliseconds)
     result_available_after = None
 
-    #: The time it took for the server to consume the result.
+    #: The time it took for the server to consume the result. (milliseconds)
     result_consumed_after = None
 
     #: Notifications provide extra information for a user executing a statement.
@@ -70,10 +75,12 @@ class BoltStatementResultSummary:
         self.parameters = metadata.get("parameters")
         self.statement_type = metadata.get("type")
         self.counters = SummaryCounters(metadata.get("stats", {}))
-        self.result_available_after = metadata.get("result_available_after")
-        self.result_consumed_after = metadata.get("result_consumed_after")
-        self.t_first = metadata.get("t_first")
-        self.t_last = metadata.get("t_last")
+        if self.protocol_version[0] < BOLT_VERSION_3:
+            self.result_available_after = metadata.get("result_available_after")
+            self.result_consumed_after = metadata.get("result_consumed_after")
+        else:
+            self.result_available_after = metadata.get("t_first")
+            self.result_consumed_after = metadata.get("t_last")
         if "plan" in metadata:
             self.plan = _make_plan(metadata["plan"])
         if "profile" in metadata:
