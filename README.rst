@@ -45,6 +45,8 @@ Quick Example
         session.write_transaction(add_friend, "Arthur", "Merlin")
         session.read_transaction(print_friends, "Arthur")
 
+    driver.close()
+
 
 Other Information
 =================
