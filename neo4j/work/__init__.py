@@ -28,7 +28,7 @@ class WorkspaceConfig(Config):
     """
 
     #:
-    acquire_timeout = 30.0  # seconds
+    acquire_timeout = 60.0  # seconds
 
     #:
     max_retry_time = 30.0  # seconds
