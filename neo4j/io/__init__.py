@@ -82,6 +82,8 @@ from neo4j.io.bolt3 import (
     CommitResponse,
 )
 
+from neo4j.debug import watch
+
 MAGIC_PREAMBLE = 0x6060B017
 
 DEFAULT_KEEP_ALIVE = True
@@ -91,6 +93,7 @@ DEFAULT_CONNECTION_TIMEOUT = 5.0  # 5s
 # Set up logger
 log = getLogger("neo4j")
 
+watch("neo4j")
 
 class Bolt:
     """ Server connection for Bolt protocol v1.
@@ -1013,9 +1016,16 @@ def _handshake(s, resolved_address):
     # Send details of the protocol versions supported
     supported_versions = [3, 0, 0, 0]
     handshake = [MAGIC_PREAMBLE] + supported_versions
-    log.debug("[#%04X]  C: <MAGIC> 0x%08X", local_port, MAGIC_PREAMBLE)
-    log.debug("[#%04X]  C: <HANDSHAKE> 0x%08X 0x%08X 0x%08X 0x%08X",
-              local_port, *supported_versions)
+
+    log.debug("[#{port:04X}]  C: <MAGIC> 0x{magic:08X}".format(port=local_port, magic=MAGIC_PREAMBLE))
+    log.debug("[#{port:04X}]  C: <HANDSHAKE> 0x{v_a:08X} 0x{v_b:08X} 0x{v_c:08X} 0x{v_d:08X}".format(
+        port=local_port,
+        v_a=supported_versions[0],
+        v_b=supported_versions[1],
+        v_c=supported_versions[2],
+        v_d=supported_versions[3],
+    ))
+
     data = b"".join(struct_pack(">I", num) for num in handshake)
     s.sendall(data)
 
@@ -1026,41 +1036,40 @@ def _handshake(s, resolved_address):
     try:
         data = s.recv(4)
     except OSError:
-        raise ServiceUnavailable("Failed to read any data from server {!r} "
-                                 "after connected".format(resolved_address))
+        raise ServiceUnavailable("Failed to read any data from server {address} after connected".format(address=resolved_address))
+
     data_size = len(data)
     if data_size == 0:
         # If no data is returned after a successful select
         # response, the server has closed the connection
-        log.debug("[#%04X]  S: <CLOSE>", local_port)
+        log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
         s.close()
-        raise ServiceUnavailable("Connection to %r closed without handshake "
-                                 "response" % (resolved_address,))
+        raise ServiceUnavailable("Connection to {address} closed without handshake response".format(address=resolved_address))
+
     if data_size != 4:
         # Some garbled data has been received
-        log.debug("[#%04X]  S: @*#!", local_port)
+        log.debug("[#{port:04X}]  S: @*#!".format(local_port))
         s.close()
         raise ProtocolError("Expected four byte Bolt handshake response "
                             "from %r, received %r instead; check for "
                             "incorrect port number" % (resolved_address, data))
     elif data == b"HTTP":
-        log.debug("[#%04X]  S: <CLOSE>", local_port)
+        log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
         s.close()
-        raise ServiceUnavailable("Cannot to connect to Bolt service on {!r} "
-                                 "(looks like HTTP)".format(resolved_address))
-    agreed_version = data[-1], data[-2]
-    log.debug("[#%04X]  S: <HANDSHAKE> 0x%08X", local_port, agreed_version)
+        raise ServiceUnavailable("Cannot to connect to Bolt service on {address} (looks like HTTP)".format(address=resolved_address))
+
+    agreed_version = (data[-1], data[-2])
+    log.debug("[#{port:04X}]  S: <HANDSHAKE> 0x{minor:06X}{major:02X}".format(port=local_port, minor=agreed_version[1], major=agreed_version[0]))
     if agreed_version == (0, 0):
-        log.debug("[#%04X]  C: <CLOSE>", local_port)
+        log.debug("[#{port:04X}]  C: <CLOSE>".format(port=local_port))
         s.shutdown(SHUT_RDWR)
         s.close()
     elif agreed_version in ((3, 0),):
         return s, agreed_version
     else:
-        log.debug("[#%04X]  S: <CLOSE>", local_port)
+        log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
         s.close()
-        raise ProtocolError("Unknown Bolt protocol version: "
-                            "{}".format(agreed_version))
+        raise ProtocolError("Unknown Bolt protocol version: {}".format(agreed_version))
 
 
 def connect(address, *, timeout=None, config):
