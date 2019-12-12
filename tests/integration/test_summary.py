@@ -20,6 +20,7 @@
 
 import pytest
 
+
 def test_can_obtain_summary_after_consuming_result(session):
     result = session.run("CREATE (n) RETURN n")
     summary = result.summary()
@@ -94,10 +95,10 @@ def test_contains_time_information(session):
     assert isinstance(summary.result_available_after, int)
     assert isinstance(summary.result_consumed_after, int)
 
-    with pytest.raises(AttributeError) as ex:
+    with pytest.raises(AttributeError):
         assert isinstance(summary.t_first, int)
 
-    with pytest.raises(AttributeError) as ex:
+    with pytest.raises(AttributeError):
         assert isinstance(summary.t_last, int)
 
 
@@ -107,5 +108,3 @@ def test_protocol_version_information(session):
     assert isinstance(summary.protocol_version, tuple)
     assert isinstance(summary.protocol_version[0], int)
     assert isinstance(summary.protocol_version[1], int)
-
-

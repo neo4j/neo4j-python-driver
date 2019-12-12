@@ -90,7 +90,7 @@ class Bookmark:
                     if ix:
                         ix.encode("ascii")
                         bookmarks.append(ix)
-                except UnicodeEncodeError as e:
+                except UnicodeEncodeError:
                     raise ValueError("The value {} is not ASCII".format(ix))
             self.values = frozenset(bookmarks)
         else:

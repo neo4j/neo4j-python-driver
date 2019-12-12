@@ -5,3 +5,4 @@ pytest-asyncio
 pytest-benchmark
 pytest-cov
 teamcity-messages
+flake8

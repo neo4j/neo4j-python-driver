@@ -19,7 +19,11 @@
 # limitations under the License.
 
 
-from datetime import time, datetime, timedelta
+from datetime import (
+    time,
+    datetime,
+    # timedelta,
+)
 
 from pytz import FixedOffset, timezone, utc
 
@@ -80,8 +84,7 @@ def dehydrate_time(value):
     if isinstance(value, Time):
         nanoseconds = int(value.ticks * 1000000000)
     elif isinstance(value, time):
-        nanoseconds = (3600000000000 * value.hour + 60000000000 * value.minute +
-                       1000000000 * value.second + 1000 * value.microsecond)
+        nanoseconds = (3600000000000 * value.hour) + (60000000000 * value.minute) + (1000000000 * value.second) + (1000 * value.microsecond)
     else:
         raise TypeError("Value must be a neo4j.time.Time or a datetime.time")
     if value.tzinfo:

@@ -208,5 +208,3 @@ class PoolConfig(Config):
             ssl_context.verify_mode = CERT_REQUIRED
         ssl_context.set_default_verify_paths()
         return ssl_context
-
-

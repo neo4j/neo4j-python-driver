@@ -284,7 +284,7 @@ class Neo4jDriverTestCase(StubTestCase):
                     assert not table.readers
                     assert table.writers == {('127.0.0.1', 9006)}
 
-                assert conn.in_use == False
+                assert conn.in_use is False
 
     def test_forgets_address_on_database_unavailable_error(self):
         with StubCluster("v3/router.script", "v3/database_unavailable.script"):

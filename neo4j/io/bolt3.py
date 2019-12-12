@@ -56,7 +56,7 @@ class Outbox:
             else:
                 wrote = min(to_write, remaining)
                 new_end = self._end + wrote
-                self._data[self._end:new_end] = b[pos:pos+wrote]
+                self._data[self._end:new_end] = b[pos:pos + wrote]
                 self._end = new_end
                 pos += wrote
                 new_chunk_size = self._end - self._start

@@ -23,8 +23,15 @@ from unittest import TestCase
 from threading import Thread, Event
 
 from neo4j import PoolConfig
-from neo4j.io import Bolt, BoltPool, IOPool
-from neo4j.exceptions import ClientError, ServiceUnavailable
+from neo4j.io import (
+    Bolt,
+    # BoltPool,
+    IOPool,
+)
+from neo4j.exceptions import (
+    ClientError,
+    # ServiceUnavailable,
+)
 
 
 class FakeSocket:

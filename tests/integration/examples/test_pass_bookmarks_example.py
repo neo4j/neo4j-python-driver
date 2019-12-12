@@ -59,7 +59,7 @@ class BookmarksExample:
     def print_friendships(cls, tx):
         result = tx.run("MATCH (a)-[:KNOWS]->(b) RETURN a.name, b.name")
         for record in result:
-            print("{} knows {}".format(record["a.name"] ,record["b.name"]))
+            print("{} knows {}".format(record["a.name"], record["b.name"]))
 
     def main(self):
         saved_bookmarks = []  # To collect the session bookmarks

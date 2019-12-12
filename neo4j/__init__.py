@@ -35,10 +35,27 @@ from logging import getLogger
 from urllib.parse import urlparse, parse_qs
 
 from neo4j.addressing import Address
-from neo4j.api import *
+from neo4j.api import (  # noqa: F401
+    AuthToken,
+    Auth,
+    basic_auth,
+    kerberos_auth,
+    custom_auth,
+    Bookmark,
+    Security,
+    ServerInfo,
+    Version,
+)
 from neo4j.conf import Config, PoolConfig
-from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
-from neo4j.meta import experimental, get_user_agent, version as __version__
+from neo4j.exceptions import (  # noqa: F401
+    ConnectionExpired,
+    ServiceUnavailable,
+)
+from neo4j.meta import (  # noqa: F401
+    experimental,
+    get_user_agent,
+    version as __version__,
+)
 
 
 READ_ACCESS = "READ"

@@ -28,9 +28,17 @@ from functools import total_ordering
 from re import compile as re_compile
 from time import gmtime, mktime, struct_time
 
-from neo4j.time.arithmetic import (nano_add, nano_sub, nano_mul, nano_div,
-                                   nano_mod, nano_divmod,
-                                   symmetric_divmod, round_half_to_even)
+from neo4j.time.arithmetic import (
+    nano_add,
+    nano_sub,
+    nano_mul,
+    nano_div,
+    # nano_mod,
+    nano_divmod,
+    symmetric_divmod,
+    round_half_to_even,
+)
+
 from neo4j.time.metaclasses import DateType, TimeType, DateTimeType
 
 
@@ -160,8 +168,7 @@ class ClockTime(tuple):
         if isinstance(other, Duration):
             if other.months or other.days:
                 raise ValueError("Cannot add Duration with months or days")
-            return ClockTime(self.seconds + other.seconds, self.nanoseconds +
-                             int(other.subseconds * 1000000000))
+            return ClockTime(self.seconds + other.seconds, self.nanoseconds + int(other.subseconds * 1000000000))
         return NotImplemented
 
     def __sub__(self, other):
@@ -209,7 +216,7 @@ class Clock:
     def __new__(cls):
         if cls.__implementations is None:
             # Find an available clock with the best precision
-            import neo4j.time.clock_implementations
+            # import neo4j.time.clock_implementations
             cls.__implementations = sorted((clock for clock in Clock.__subclasses__() if clock.available()),
                                            key=lambda clock: clock.precision(), reverse=True)
         if not cls.__implementations:

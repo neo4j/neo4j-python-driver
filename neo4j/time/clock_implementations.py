@@ -93,7 +93,7 @@ class PEP564Clock(Clock):
     @classmethod
     def available(cls):
         try:
-            from time import time_ns
+            from time import time_ns # noqa F401
         except ImportError:
             return False
         else:

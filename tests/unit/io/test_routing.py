@@ -21,7 +21,10 @@
 
 from unittest import TestCase
 
-from neo4j.io import Bolt, Neo4jPool
+from neo4j.io import (
+    Bolt,
+    # Neo4jPool,
+)
 from neo4j.routing import OrderedSet, RoutingTable
 
 

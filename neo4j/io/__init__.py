@@ -40,13 +40,19 @@ from select import select
 from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, \
     timeout as SocketTimeout, AF_INET, AF_INET6
 from ssl import HAS_SNI, SSLSocket, SSLError
-from struct import pack as struct_pack, unpack as struct_unpack
+from struct import (
+    pack as struct_pack,
+    # unpack as struct_unpack,
+)
 from threading import Lock, RLock, Condition
 from time import perf_counter
 
 from neo4j.addressing import Address, AddressList
 from neo4j.api import ServerInfo
-from neo4j.conf import Config, PoolConfig
+from neo4j.conf import (
+    # Config,
+    PoolConfig,
+)
 from neo4j.io.bolt3 import Outbox, BufferedSocket, Inbox, Response, InitResponse, CommitResponse
 from neo4j.errors import BoltRoutingError, Neo4jAvailabilityError
 from neo4j.exceptions import ProtocolError, SecurityError, \
@@ -202,7 +208,7 @@ class Bolt:
     def __del__(self):
         try:
             self.close()
-        except:
+        except Exception:
             pass
 
     def __enter__(self):
@@ -395,7 +401,7 @@ class Bolt:
         return len(details), 1
 
     def _set_defunct(self, error=None):
-        message = ("Failed to read from defunct connection " 
+        message = ("Failed to read from defunct connection "
                    "{!r} ({!r})".format(self.unresolved_address,
                                         self.server.address))
         log.error(message)
@@ -442,7 +448,7 @@ class Bolt:
                 self._append(b"\x02", ())
                 try:
                     self._send_all()
-                except:
+                except Exception:
                     pass
             log.debug("[#%04X]  C: <CLOSE>", self.local_port)
             try:

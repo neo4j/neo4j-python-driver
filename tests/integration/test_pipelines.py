@@ -217,8 +217,8 @@ def test_pull_order_exception(bolt_driver):
     with raises(PullOrderException):
         pipeline.push("unwind(range(1, 10)) AS z RETURN z")
         pipeline.push("unwind(range(11, 20)) AS z RETURN z")
-        generator_one = pipeline.pull()
-        generator_two = pipeline.pull()
+        generator_one = pipeline.pull()  # noqa: F841
+        generator_two = pipeline.pull()  # noqa: F841
 
 
 def test_pipeline_can_read_own_writes(neo4j_driver):
@@ -247,11 +247,11 @@ def test_pipeline_can_read_own_writes(neo4j_driver):
 
         # create Alice
         # n.b. we have to consume the result
-        assert next(pipeline.pull(), True) == True
+        assert next(pipeline.pull(), True) is True
 
         # merge "knows Bob"
         # n.b. we have to consume the result
-        assert next(pipeline.pull(), True) == True
+        assert next(pipeline.pull(), True) is True
 
         # get people
         for result in pipeline.pull():

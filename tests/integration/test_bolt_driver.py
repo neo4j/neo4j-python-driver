@@ -19,7 +19,12 @@
 # limitations under the License.
 
 
-from pytest import mark, raises, warns, skip
+from pytest import (
+    # mark,
+    raises,
+    warns,
+    skip,
+)
 
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable, AuthError

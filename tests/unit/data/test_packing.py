@@ -206,16 +206,16 @@ class PackStreamTestCase(TestCase):
             self.assert_packable([1] * size, bytes(data_out))
 
     def test_list_8(self):
-        l = [1] * 40
-        self.assert_packable(l, b"\xD4\x28" + (b"\x01" * 40))
+        xlist = [1] * 40
+        self.assert_packable(xlist, b"\xD4\x28" + (b"\x01" * 40))
 
     def test_list_16(self):
-        l = [1] * 40000
-        self.assert_packable(l, b"\xD5\x9C\x40" + (b"\x01" * 40000))
+        xlist = [1] * 40000
+        self.assert_packable(xlist, b"\xD5\x9C\x40" + (b"\x01" * 40000))
 
     def test_list_32(self):
-        l = [1] * 80000
-        self.assert_packable(l, b"\xD6\x00\x01\x38\x80" + (b"\x01" * 80000))
+        xlist = [1] * 80000
+        self.assert_packable(xlist, b"\xD6\x00\x01\x38\x80" + (b"\x01" * 80000))
 
     def test_nested_lists(self):
         self.assert_packable([[[]]], b"\x91\x91\x90")
