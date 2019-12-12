@@ -37,8 +37,17 @@ from collections import deque
 from logging import getLogger
 from random import choice
 from select import select
-from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, \
-    timeout as SocketTimeout, AF_INET, AF_INET6
+
+from socket import (
+    socket,
+    SOL_SOCKET,
+    SO_KEEPALIVE,
+    SHUT_RDWR,
+    timeout as SocketTimeout,
+    AF_INET,
+    AF_INET6,
+)
+
 from ssl import HAS_SNI, SSLSocket, SSLError
 from struct import pack as struct_pack, unpack as struct_unpack
 from threading import Lock, RLock, Condition
@@ -135,6 +144,8 @@ class Bolt:
         except ServiceUnavailable:
             return None
         else:
+            log.debug("[#{port:04X}]  S: <CLOSE>".format(port=s.getpeername()[1]))
+            s.shutdown(SHUT_RDWR)
             s.close()
             return protocol_version
 
@@ -149,8 +160,19 @@ class Bolt:
         :return:
         """
         config = PoolConfig.consume(config)
-        s, config.protocol_version = connect(address, timeout=timeout, config=config)
-        connection = Bolt(address, s, auth=auth, **config)
+        # s, config.protocol_version = connect(address, timeout=timeout, config=config)
+
+        s, protocol_version = connect(address, timeout=timeout, config=config)
+        # Depending on which version was agreed load correct Bolt version
+        if protocol_version == (3, 0):
+            config.protocol_version = protocol_version
+            connection = Bolt(address, s, auth=auth, **config)
+        else:
+            log.debug("[#{port:04X}]  S: <CLOSE>".format(port=s.getpeername()[1]))
+            s.shutdown(SHUT_RDWR)
+            s.close()
+            raise ProtocolError("Driver does not support Bolt protocol version: {}".format(protocol_version))
+
         connection.hello()
         return connection
 
@@ -1060,17 +1082,17 @@ def _handshake(s, resolved_address):
 
     agreed_version = (data[-1], data[-2])
     log.debug("[#{port:04X}]  S: <HANDSHAKE> 0x{minor:06X}{major:02X}".format(port=local_port, minor=agreed_version[1], major=agreed_version[0]))
-    if agreed_version == (0, 0):
-        log.debug("[#{port:04X}]  C: <CLOSE>".format(port=local_port))
-        s.shutdown(SHUT_RDWR)
-        s.close()
-    elif agreed_version in ((3, 0),):
-        return s, agreed_version
-    else:
-        log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
-        s.close()
-        raise ProtocolError("Unknown Bolt protocol version: {}".format(agreed_version))
-
+    # if agreed_version == (0, 0):
+    #     log.debug("[#{port:04X}]  C: <CLOSE>".format(port=local_port))
+    #     s.shutdown(SHUT_RDWR)
+    #     s.close()
+    # elif agreed_version in ((3, 0),):  # TODO: Fix
+    #     return s, agreed_version
+    # else:
+    #     log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
+    #     s.close()
+    #     raise ProtocolError("Unknown Bolt protocol version: {}".format(agreed_version))
+    return s, agreed_version
 
 def connect(address, *, timeout=None, config):
     """ Connect and perform a handshake and return a valid Connection object,
