@@ -45,25 +45,48 @@ from threading import Lock, RLock, Condition
 from time import perf_counter
 
 from neo4j.addressing import Address, AddressList
-from neo4j.api import ServerInfo
-from neo4j.conf import Config, PoolConfig
-from neo4j.io.bolt3 import Outbox, BufferedSocket, Inbox, Response, InitResponse, CommitResponse
-from neo4j.errors import BoltRoutingError, Neo4jAvailabilityError
-from neo4j.exceptions import ProtocolError, SecurityError, \
-    ServiceUnavailable, AuthError, IncompleteCommitError, \
-    ConnectionExpired, DatabaseUnavailableError, NotALeaderError, \
-    ForbiddenOnReadOnlyDatabaseError, ClientError
+from neo4j.api import (
+    ServerInfo,
+    Version,
+)
+from neo4j.conf import (
+    Config,
+    PoolConfig,
+)
+from neo4j.errors import (
+    BoltRoutingError,
+    Neo4jAvailabilityError,
+)
+from neo4j.exceptions import (
+    ProtocolError,
+    SecurityError,
+    ServiceUnavailable,
+    AuthError,
+    IncompleteCommitError,
+    ConnectionExpired,
+    DatabaseUnavailableError,
+    NotALeaderError,
+    ForbiddenOnReadOnlyDatabaseError,
+    ClientError,
+)
 from neo4j.meta import get_user_agent
 from neo4j.packstream import Packer, Unpacker
 from neo4j.routing import RoutingTable
 
+from neo4j.io.bolt3 import (
+    Outbox,
+    BufferedSocket,
+    Inbox,
+    Response,
+    InitResponse,
+    CommitResponse,
+)
 
 MAGIC_PREAMBLE = 0x6060B017
 
 DEFAULT_KEEP_ALIVE = True
 
 DEFAULT_CONNECTION_TIMEOUT = 5.0  # 5s
-
 
 # Set up logger
 log = getLogger("neo4j")
