@@ -60,8 +60,6 @@ from neo4j.routing import RoutingTable
 
 MAGIC_PREAMBLE = 0x6060B017
 
-DEFAULT_MAX_CONNECTION_LIFETIME = 3600  # 1h
-
 DEFAULT_KEEP_ALIVE = True
 
 DEFAULT_CONNECTION_TIMEOUT = 5.0  # 5s
@@ -395,7 +393,7 @@ class Bolt:
         return len(details), 1
 
     def _set_defunct(self, error=None):
-        message = ("Failed to read from defunct connection " 
+        message = ("Failed to read from defunct connection "
                    "{!r} ({!r})".format(self.unresolved_address,
                                         self.server.address))
         log.error(message)
