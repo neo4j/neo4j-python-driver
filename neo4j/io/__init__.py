@@ -78,8 +78,8 @@ from neo4j.exceptions import (
     ForbiddenOnReadOnlyDatabaseError,
     ClientError,
 )
-from neo4j.meta import get_user_agent
-from neo4j.packstream import Packer, Unpacker
+
+
 from neo4j.routing import RoutingTable
 
 from neo4j.io.bolt3 import (
@@ -103,6 +103,7 @@ DEFAULT_CONNECTION_TIMEOUT = 5.0  # 5s
 log = getLogger("neo4j")
 
 watch("neo4j")
+
 
 class Bolt:
     """ Server connection for Bolt protocol v1.
@@ -166,7 +167,8 @@ class Bolt:
         # Depending on which version was agreed load correct Bolt version
         if protocol_version == (3, 0):
             config.protocol_version = protocol_version
-            connection = Bolt(address, s, auth=auth, **config)
+            from neo4j.io._bolt3_0 import Bolt3
+            connection = Bolt3(address, s, auth=auth, **config)
         else:
             log.debug("[#{port:04X}]  S: <CLOSE>".format(port=s.getpeername()[1]))
             s.shutdown(SHUT_RDWR)
@@ -176,47 +178,6 @@ class Bolt:
         connection.hello()
         return connection
 
-    def __init__(self, unresolved_address, sock, *, auth=None, protocol_version=None, **config):
-        self.config = PoolConfig.consume(config)
-        self.protocol_version = protocol_version
-        self.unresolved_address = unresolved_address
-        self.socket = sock
-        self.server = ServerInfo(Address(sock.getpeername()), protocol_version)
-        self.outbox = Outbox()
-        self.inbox = Inbox(BufferedSocket(self.socket, 32768), on_error=self._set_defunct)
-        self.packer = Packer(self.outbox)
-        self.unpacker = Unpacker(self.inbox)
-        self.responses = deque()
-        self._max_connection_lifetime = self.config.max_age
-        self._creation_timestamp = perf_counter()
-
-        # Determine the user agent
-        user_agent = self.config.user_agent
-        if user_agent:
-            self.user_agent = user_agent
-        else:
-            self.user_agent = get_user_agent()
-
-        # Determine auth details
-        if not auth:
-            self.auth_dict = {}
-        elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
-            from neo4j import Auth
-            self.auth_dict = vars(Auth("basic", *auth))
-        else:
-            try:
-                self.auth_dict = vars(auth)
-            except (KeyError, TypeError):
-                raise AuthError("Cannot determine auth details from %r" % auth)
-
-        # Check for missing password
-        try:
-            credentials = self.auth_dict["credentials"]
-        except KeyError:
-            pass
-        else:
-            if credentials is None:
-                raise AuthError("Password cannot be None")
 
     @property
     def secure(self):

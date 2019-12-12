@@ -26,6 +26,7 @@ from neo4j import PoolConfig
 from neo4j.io import Bolt, BoltPool, IOPool
 from neo4j.exceptions import ClientError, ServiceUnavailable
 
+from neo4j.io._bolt3_0 import Bolt3
 
 class FakeSocket:
     def __init__(self, address):
@@ -87,17 +88,17 @@ class ConnectionTestCase(TestCase):
 
     def test_conn_timed_out(self):
         address = ("127.0.0.1", 7687)
-        connection = Bolt(address, FakeSocket(address), protocol_version=1, max_age=0)
+        connection = Bolt3(address, FakeSocket(address), protocol_version=3, max_age=0)
         self.assertEqual(connection.timedout(), True)
 
     def test_conn_not_timed_out_if_not_enabled(self):
         address = ("127.0.0.1", 7687)
-        connection = Bolt(address, FakeSocket(address), protocol_version=1, max_age=-1)
+        connection = Bolt3(address, FakeSocket(address), protocol_version=3, max_age=-1)
         self.assertEqual(connection.timedout(), False)
 
     def test_conn_not_timed_out(self):
         address = ("127.0.0.1", 7687)
-        connection = Bolt(address, FakeSocket(address), protocol_version=1, max_age=999999999)
+        connection = Bolt3(address, FakeSocket(address), protocol_version=3, max_age=999999999)
         self.assertEqual(connection.timedout(), False)
 
 
