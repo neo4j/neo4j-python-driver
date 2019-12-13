@@ -84,7 +84,7 @@ class FakeBoltPool(IOPool):
         return self._acquire(self.address, timeout)
 
 
-class ConnectionTestCase(TestCase):
+class Bolt3ConnectionTestCase(TestCase):
 
     def test_conn_timed_out(self):
         address = ("127.0.0.1", 7687)
