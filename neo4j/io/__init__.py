@@ -54,10 +54,7 @@ from threading import Lock, RLock, Condition
 from time import perf_counter
 
 from neo4j.addressing import Address, AddressList
-from neo4j.api import (
-    ServerInfo,
-    Version,
-)
+
 from neo4j.conf import (
     Config,
     PoolConfig,
@@ -79,21 +76,9 @@ from neo4j.exceptions import (
     ClientError,
 )
 
-
 from neo4j.routing import RoutingTable
 
-# from neo4j.io.bolt3 import (
-#     Outbox,
-#     BufferedSocket,
-#     Inbox,
-#     Response,
-#     InitResponse,
-#     CommitResponse,
-# )
-
 from neo4j.debug import watch
-
-
 
 DEFAULT_KEEP_ALIVE = True
 
@@ -198,16 +183,6 @@ class Bolt:
 
     def hello(self):
         raise NotImplementedError
-        # headers = {"user_agent": self.user_agent}
-        # headers.update(self.auth_dict)
-        # logged_headers = dict(headers)
-        # if "credentials" in logged_headers:
-        #     logged_headers["credentials"] = "*******"
-        # log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
-        # self._append(b"\x01", (headers,),
-        #              response=InitResponse(self, on_success=self.server.metadata.update))
-        # self.send_all()
-        # self.fetch_all()
 
     def __del__(self):
         try:
@@ -223,216 +198,39 @@ class Bolt:
 
     def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
         raise NotImplementedError
-        # if not parameters:
-        #     parameters = {}
-        # extra = {}
-        # if mode:
-        #     extra["mode"] = mode
-        # if bookmarks:
-        #     try:
-        #         extra["bookmarks"] = list(bookmarks)
-        #     except TypeError:
-        #         raise TypeError("Bookmarks must be provided within an iterable")
-        # if metadata:
-        #     try:
-        #         extra["tx_metadata"] = dict(metadata)
-        #     except TypeError:
-        #         raise TypeError("Metadata must be coercible to a dict")
-        # if timeout:
-        #     try:
-        #         extra["tx_timeout"] = int(1000 * timeout)
-        #     except TypeError:
-        #         raise TypeError("Timeout must be specified as a number of seconds")
-        # fields = (statement, parameters, extra)
-        # log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
-        # if statement.upper() == u"COMMIT":
-        #     self._append(b"\x10", fields, CommitResponse(self, **handlers))
-        # else:
-        #     self._append(b"\x10", fields, Response(self, **handlers))
 
     def discard_all(self, **handlers):
         raise NotImplementedError
-        # log.debug("[#%04X]  C: DISCARD_ALL", self.local_port)
-        # self._append(b"\x2F", (), Response(self, **handlers))
 
     def pull_all(self, **handlers):
         raise NotImplementedError
-    #     log.debug("[#%04X]  C: PULL_ALL", self.local_port)
-    #     self._append(b"\x3F", (), Response(self, **handlers))
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
         raise NotImplementedError
-        # extra = {}
-        # if mode:
-        #     extra["mode"] = mode
-        # if bookmarks:
-        #     try:
-        #         extra["bookmarks"] = list(bookmarks)
-        #     except TypeError:
-        #         raise TypeError("Bookmarks must be provided within an iterable")
-        # if metadata:
-        #     try:
-        #         extra["tx_metadata"] = dict(metadata)
-        #     except TypeError:
-        #         raise TypeError("Metadata must be coercible to a dict")
-        # if timeout:
-        #     try:
-        #         extra["tx_timeout"] = int(1000 * timeout)
-        #     except TypeError:
-        #         raise TypeError("Timeout must be specified as a number of seconds")
-        # log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
-        # self._append(b"\x11", (extra,), Response(self, **handlers))
 
     def commit(self, **handlers):
         raise NotImplementedError
-        # log.debug("[#%04X]  C: COMMIT", self.local_port)
-        # self._append(b"\x12", (), CommitResponse(self, **handlers))
 
     def rollback(self, **handlers):
         raise NotImplementedError
-        # log.debug("[#%04X]  C: ROLLBACK", self.local_port)
-        # self._append(b"\x13", (), Response(self, **handlers))
 
     def reset(self):
         raise NotImplementedError
-        # """ Add a RESET message to the outgoing queue, send
-        # it and consume all remaining messages.
-        # """
-        #
-        # def fail(metadata):
-        #     raise ProtocolError("RESET failed %r" % metadata)
-        #
-        # log.debug("[#%04X]  C: RESET", self.local_port)
-        # self._append(b"\x0F", response=Response(self, on_failure=fail))
-        # self.send_all()
-        # self.fetch_all()
 
     def send_all(self):
         raise NotImplementedError
-        # """ Send all queued messages to the server.
-        # """
-        # if self.closed():
-        #     raise self.Error("Failed to write to closed connection "
-        #                      "{!r} ({!r})".format(self.unresolved_address,
-        #                                           self.server.address))
-        # if self.defunct():
-        #     raise self.Error("Failed to write to defunct connection "
-        #                      "{!r} ({!r})".format(self.unresolved_address,
-        #                                           self.server.address))
-        # try:
-        #     self._send_all()
-        # except (IOError, OSError) as error:
-        #     log.error("Failed to write data to connection "
-        #               "{!r} ({!r}); ({!r})".
-        #               format(self.unresolved_address,
-        #                      self.server.address,
-        #                      "; ".join(map(repr, error.args))))
-        #     if self.pool:
-        #         self.pool.deactivate(self.unresolved_address)
-        #     raise
 
     def fetch_message(self):
         raise NotImplementedError
-        # """ Receive at least one message from the server, if available.
-        #
-        # :return: 2-tuple of number of detail messages and number of summary
-        #          messages fetched
-        # """
-        # if self._closed:
-        #     raise self.Error("Failed to read from closed connection "
-        #                      "{!r} ({!r})".format(self.unresolved_address,
-        #                                           self.server.address))
-        # if self._defunct:
-        #     raise self.Error("Failed to read from defunct connection "
-        #                      "{!r} ({!r})".format(self.unresolved_address,
-        #                                           self.server.address))
-        # if not self.responses:
-        #     return 0, 0
-        #
-        # # Receive exactly one message
-        # try:
-        #     details, summary_signature, summary_metadata = next(self.inbox)
-        # except (IOError, OSError) as error:
-        #     log.error("Failed to read data from connection "
-        #               "{!r} ({!r}); ({!r})".
-        #               format(self.unresolved_address,
-        #                      self.server.address,
-        #                      "; ".join(map(repr, error.args))))
-        #     if self.pool:
-        #         self.pool.deactivate(self.unresolved_address)
-        #     raise
-        #
-        # if details:
-        #     log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # TODO
-        #     self.responses[0].on_records(details)
-        #
-        # if summary_signature is None:
-        #     return len(details), 0
-        #
-        # response = self.responses.popleft()
-        # response.complete = True
-        # if summary_signature == b"\x70":
-        #     log.debug("[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata)
-        #     response.on_success(summary_metadata or {})
-        # elif summary_signature == b"\x7E":
-        #     log.debug("[#%04X]  S: IGNORED", self.local_port)
-        #     response.on_ignored(summary_metadata or {})
-        # elif summary_signature == b"\x7F":
-        #     log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
-        #     try:
-        #         response.on_failure(summary_metadata or {})
-        #     except (ConnectionExpired, ServiceUnavailable, DatabaseUnavailableError):
-        #         if self.pool:
-        #             self.pool.deactivate(self.unresolved_address),
-        #         raise
-        #     except (NotALeaderError, ForbiddenOnReadOnlyDatabaseError):
-        #         if self.pool:
-        #             self.pool.on_write_failure(self.unresolved_address),
-        #         raise
-        # else:
-        #     raise ProtocolError("Unexpected response message with "
-        #                         "signature %02X" % summary_signature)
-        #
-        # return len(details), 1
 
     def timedout(self):
         return 0 <= self._max_connection_lifetime <= perf_counter() - self._creation_timestamp
 
     def fetch_all(self):
         raise NotImplementedError
-        # """ Fetch all outstanding messages.
-        #
-        # :return: 2-tuple of number of detail messages and number of summary
-        #          messages fetched
-        # """
-        # detail_count = summary_count = 0
-        # while self.responses:
-        #     response = self.responses[0]
-        #     while not response.complete:
-        #         detail_delta, summary_delta = self.fetch_message()
-        #         detail_count += detail_delta
-        #         summary_count += summary_delta
-        # return detail_count, summary_count
 
     def close(self):
         raise NotImplementedError
-        # """ Close the connection.
-        # """
-        # if not self._closed:
-        #     if not self._defunct:
-        #         log.debug("[#%04X]  C: GOODBYE", self.local_port)
-        #         self._append(b"\x02", ())
-        #         try:
-        #             self._send_all()
-        #         except:
-        #             pass
-        #     log.debug("[#%04X]  C: <CLOSE>", self.local_port)
-        #     try:
-        #         self.socket.close()
-        #     except IOError:
-        #         pass
-        #     finally:
-        #         self._closed = True
 
     def closed(self):
         raise NotImplementedError
@@ -869,170 +667,6 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
 
 
-# TODO: remove in 2.0
-def _last_bookmark(b0, b1):
-    """ Return the latest of two bookmarks by looking for the maximum
-    integer value following the last colon in the bookmark string.
-    """
-    n = [None, None]
-    _, _, n[0] = b0.rpartition(":")
-    _, _, n[1] = b1.rpartition(":")
-    for i in range(2):
-        try:
-            n[i] = int(n[i])
-        except ValueError:
-            raise ValueError("Invalid bookmark: {}".format(b0))
-    return b0 if n[0] > n[1] else b1
-
-
-# TODO: remove in 2.0
-def last_bookmark(bookmarks):
-    """ The bookmark returned by the last :class:`.Transaction`.
-    """
-    last = None
-    for bookmark in bookmarks:
-        if last is None:
-            last = bookmark
-        else:
-            last = _last_bookmark(last, bookmark)
-    return last
-
-
-def _connect(resolved_address, timeout=None, **config):
-    """
-
-    :param resolved_address:
-    :param config:
-    :return: socket object
-    """
-    s = None
-    try:
-        if len(resolved_address) == 2:
-            s = socket(AF_INET)
-        elif len(resolved_address) == 4:
-            s = socket(AF_INET6)
-        else:
-            raise ValueError("Unsupported address "
-                             "{!r}".format(resolved_address))
-        t = s.gettimeout()
-        if timeout is None:
-            s.settimeout(DEFAULT_CONNECTION_TIMEOUT)
-        else:
-            s.settimeout(timeout)
-        log.debug("[#0000]  C: <OPEN> %s", resolved_address)
-        s.connect(resolved_address)
-        s.settimeout(t)
-        keep_alive = 1 if config.get("keep_alive", DEFAULT_KEEP_ALIVE) else 0
-        s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
-    except SocketTimeout:
-        log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
-        log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-        s.close()
-        raise ServiceUnavailable("Timed out trying to establish connection "
-                                 "to {!r}".format(resolved_address))
-    except OSError as error:
-        log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
-                  " ".join(map(repr, error.args)))
-        log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-        s.close()
-        raise ServiceUnavailable("Failed to establish connection to {!r} "
-                                 "(reason {})".format(resolved_address, error))
-    else:
-        return s
-
-
-def _secure(s, host, ssl_context):
-    local_port = s.getsockname()[1]
-    # Secure the connection if an SSL context has been provided
-    if ssl_context:
-        log.debug("[#%04X]  C: <SECURE> %s", local_port, host)
-        try:
-            sni_host = host if HAS_SNI and host else None
-            s = ssl_context.wrap_socket(s, server_hostname=sni_host)
-        except SSLError as cause:
-            s.close()
-            error = SecurityError("Failed to establish secure connection "
-                                  "to {!r}".format(cause.args[1]))
-            error.__cause__ = cause
-            raise error
-        else:
-            # Check that the server provides a certificate
-            der_encoded_server_certificate = s.getpeercert(binary_form=True)
-            if der_encoded_server_certificate is None:
-                s.close()
-                raise ProtocolError("When using a secure socket, the server "
-                                    "should always provide a certificate")
-    return s
-
-
-def _handshake(s, resolved_address):
-    """
-
-    :param s:
-    :return:
-    """
-    local_port = s.getsockname()[1]
-
-    # Send details of the protocol versions supported
-    supported_versions = [3, 0, 0, 0]
-    handshake = [Bolt.MAGIC_PREAMBLE] + supported_versions
-
-    log.debug("[#{port:04X}]  C: <MAGIC> 0x{magic:08X}".format(port=local_port, magic=Bolt.MAGIC_PREAMBLE))
-    log.debug("[#{port:04X}]  C: <HANDSHAKE> 0x{v_a:08X} 0x{v_b:08X} 0x{v_c:08X} 0x{v_d:08X}".format(
-        port=local_port,
-        v_a=supported_versions[0],
-        v_b=supported_versions[1],
-        v_c=supported_versions[2],
-        v_d=supported_versions[3],
-    ))
-
-    data = b"".join(struct_pack(">I", num) for num in handshake)
-    s.sendall(data)
-
-    # Handle the handshake response
-    ready_to_read = False
-    while not ready_to_read:
-        ready_to_read, _, _ = select((s,), (), (), 1)
-    try:
-        data = s.recv(4)
-    except OSError:
-        raise ServiceUnavailable("Failed to read any data from server {address} after connected".format(address=resolved_address))
-
-    data_size = len(data)
-    if data_size == 0:
-        # If no data is returned after a successful select
-        # response, the server has closed the connection
-        log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
-        s.close()
-        raise ServiceUnavailable("Connection to {address} closed without handshake response".format(address=resolved_address))
-
-    if data_size != 4:
-        # Some garbled data has been received
-        log.debug("[#{port:04X}]  S: @*#!".format(local_port))
-        s.close()
-        raise ProtocolError("Expected four byte Bolt handshake response "
-                            "from %r, received %r instead; check for "
-                            "incorrect port number" % (resolved_address, data))
-    elif data == b"HTTP":
-        log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
-        s.close()
-        raise ServiceUnavailable("Cannot to connect to Bolt service on {address} (looks like HTTP)".format(address=resolved_address))
-
-    agreed_version = (data[-1], data[-2])
-    log.debug("[#{port:04X}]  S: <HANDSHAKE> 0x{minor:06X}{major:02X}".format(port=local_port, minor=agreed_version[1], major=agreed_version[0]))
-    # if agreed_version == (0, 0):
-    #     log.debug("[#{port:04X}]  C: <CLOSE>".format(port=local_port))
-    #     s.shutdown(SHUT_RDWR)
-    #     s.close()
-    # elif agreed_version in ((3, 0),):  # TODO: Fix
-    #     return s, agreed_version
-    # else:
-    #     log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
-    #     s.close()
-    #     raise ProtocolError("Unknown Bolt protocol version: {}".format(agreed_version))
-    return s, agreed_version
-
-
 def connect(address, *, timeout=None, config):
     """ Connect and perform a handshake and return a valid Connection object,
     assuming a protocol version can be agreed.
@@ -1049,9 +683,121 @@ def connect(address, *, timeout=None, config):
         s = None
         try:
             host = address[0]
-            s = _connect(resolved_address, timeout=timeout, **config)
-            s = _secure(s, host, config.get_ssl_context())
-            return _handshake(s, address)
+
+            # Connect
+            s = None
+            try:
+                if len(resolved_address) == 2:
+                    s = socket(AF_INET)
+                elif len(resolved_address) == 4:
+                    s = socket(AF_INET6)
+                else:
+                    raise ValueError("Unsupported address "
+                                     "{!r}".format(resolved_address))
+                t = s.gettimeout()
+                if timeout is None:
+                    s.settimeout(DEFAULT_CONNECTION_TIMEOUT)
+                else:
+                    s.settimeout(timeout)
+                log.debug("[#0000]  C: <OPEN> %s", resolved_address)
+                s.connect(resolved_address)
+                s.settimeout(t)
+                keep_alive = 1 if config.get("keep_alive", DEFAULT_KEEP_ALIVE) else 0
+                s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
+            except SocketTimeout:
+                log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
+                log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+                s.close()
+                raise ServiceUnavailable("Timed out trying to establish connection "
+                                         "to {!r}".format(resolved_address))
+            except OSError as error:
+                log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
+                          " ".join(map(repr, error.args)))
+                log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+                s.close()
+                raise ServiceUnavailable("Failed to establish connection to {!r} "
+                                         "(reason {})".format(resolved_address, error))
+
+            # Check Secure Connection
+            # Secure the connection if an SSL context has been provided
+
+            ssl_context = config.get_ssl_context()
+            local_port = s.getsockname()[1]
+
+            if ssl_context:
+                log.debug("[#%04X]  C: <SECURE> %s", local_port, host)
+                try:
+                    sni_host = host if HAS_SNI and host else None
+                    s = ssl_context.wrap_socket(s, server_hostname=sni_host)
+                except SSLError as cause:
+                    s.close()
+                    error = SecurityError("Failed to establish secure connection "
+                                          "to {!r}".format(cause.args[1]))
+                    error.__cause__ = cause
+                    raise error
+                else:
+                    # Check that the server provides a certificate
+                    der_encoded_server_certificate = s.getpeercert(binary_form=True)
+                    if der_encoded_server_certificate is None:
+                        s.close()
+                        raise ProtocolError("When using a secure socket, the server "
+                                            "should always provide a certificate")
+
+            local_port = s.getsockname()[1]
+
+            # Send details of the protocol versions supported
+            supported_versions = [3, 0, 0, 0]
+            handshake = [Bolt.MAGIC_PREAMBLE] + supported_versions
+
+            log.debug("[#{port:04X}]  C: <MAGIC> 0x{magic:08X}".format(port=local_port, magic=Bolt.MAGIC_PREAMBLE))
+            log.debug("[#{port:04X}]  C: <HANDSHAKE> 0x{v_a:08X} 0x{v_b:08X} 0x{v_c:08X} 0x{v_d:08X}".format(
+                port=local_port,
+                v_a=supported_versions[0],
+                v_b=supported_versions[1],
+                v_c=supported_versions[2],
+                v_d=supported_versions[3],
+            ))
+
+            data = b"".join(struct_pack(">I", num) for num in handshake)
+            s.sendall(data)
+
+            # Handle the handshake response
+            ready_to_read = False
+            while not ready_to_read:
+                ready_to_read, _, _ = select((s,), (), (), 1)
+            try:
+                data = s.recv(4)
+            except OSError:
+                raise ServiceUnavailable(
+                    "Failed to read any data from server {address} after connected".format(address=resolved_address))
+
+            data_size = len(data)
+            if data_size == 0:
+                # If no data is returned after a successful select
+                # response, the server has closed the connection
+                log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
+                s.close()
+                raise ServiceUnavailable(
+                    "Connection to {address} closed without handshake response".format(address=resolved_address))
+
+            if data_size != 4:
+                # Some garbled data has been received
+                log.debug("[#{port:04X}]  S: @*#!".format(local_port))
+                s.close()
+                raise ProtocolError("Expected four byte Bolt handshake response "
+                                    "from %r, received %r instead; check for "
+                                    "incorrect port number" % (resolved_address, data))
+            elif data == b"HTTP":
+                log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
+                s.close()
+                raise ServiceUnavailable(
+                    "Cannot to connect to Bolt service on {address} (looks like HTTP)".format(address=resolved_address))
+
+            agreed_version = (data[-1], data[-2])
+            log.debug("[#{port:04X}]  S: <HANDSHAKE> 0x{minor:06X}{major:02X}".format(port=local_port,
+                                                                                      minor=agreed_version[1],
+                                                                                      major=agreed_version[0]))
+            return s, agreed_version
         except Exception as error:
             if s:
                 s.close()
