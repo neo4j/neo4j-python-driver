@@ -368,6 +368,9 @@ class Bolt3(Bolt):
     def defunct(self):
         return self._defunct
 
+    def timedout(self):
+        return 0 <= self._max_connection_lifetime <= perf_counter() - self._creation_timestamp
+
 
 class Outbox:
 

@@ -32,7 +32,6 @@ __all__ = [
     "Neo4jPool",
 ]
 
-
 from collections import deque
 from logging import getLogger
 from random import choice
@@ -48,17 +47,29 @@ from socket import (
     AF_INET6,
 )
 
-from ssl import HAS_SNI, SSLSocket, SSLError
-from struct import pack as struct_pack, unpack as struct_unpack
-from threading import Lock, RLock, Condition
+from ssl import (
+    HAS_SNI,
+    SSLSocket,
+    SSLError,
+)
+
+from struct import (
+    pack as struct_pack,
+    unpack as struct_unpack,
+)
+
+from threading import (
+    Lock,
+    RLock,
+    Condition,
+)
+
 from time import perf_counter
 
-from neo4j.addressing import Address, AddressList
+from neo4j.addressing import AddressList
 
-from neo4j.conf import (
-    Config,
-    PoolConfig,
-)
+from neo4j.conf import PoolConfig
+
 from neo4j.errors import (
     BoltRoutingError,
     Neo4jAvailabilityError,
@@ -67,11 +78,6 @@ from neo4j.exceptions import (
     ProtocolError,
     SecurityError,
     ServiceUnavailable,
-    AuthError,
-    IncompleteCommitError,
-    DatabaseUnavailableError,
-    NotALeaderError,
-    ForbiddenOnReadOnlyDatabaseError,
     ClientError,
 )
 
@@ -117,8 +123,6 @@ class Bolt:
     #: The pool of which this connection is a member
     pool = None
 
-
-
     @classmethod
     def connect(cls, address, *, timeout=None, config):
         """ Connect and perform a handshake and return a valid Connection object,
@@ -145,8 +149,7 @@ class Bolt:
                     elif len(resolved_address) == 4:
                         s = socket(AF_INET6)
                     else:
-                        raise ValueError("Unsupported address "
-                                         "{!r}".format(resolved_address))
+                        raise ValueError("Unsupported address {address}".format(address=resolved_address))
                     t = s.gettimeout()
                     if timeout is None:
                         s.settimeout(DEFAULT_CONNECTION_TIMEOUT)
@@ -161,15 +164,13 @@ class Bolt:
                     log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
                     log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
                     s.close()
-                    raise ServiceUnavailable("Timed out trying to establish connection "
-                                             "to {!r}".format(resolved_address))
+                    raise ServiceUnavailable("Timed out trying to establish connection to {address}".format(address=resolved_address))
                 except OSError as error:
                     log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
                               " ".join(map(repr, error.args)))
                     log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
                     s.close()
-                    raise ServiceUnavailable("Failed to establish connection to {!r} "
-                                             "(reason {})".format(resolved_address, error))
+                    raise ServiceUnavailable("Failed to establish connection to {address} (reason {error})".format(address=resolved_address, error=error))
 
                 # Check Secure Connection
                 # Secure the connection if an SSL context has been provided
@@ -184,8 +185,7 @@ class Bolt:
                         s = ssl_context.wrap_socket(s, server_hostname=sni_host)
                     except SSLError as cause:
                         s.close()
-                        error = SecurityError("Failed to establish secure connection "
-                                              "to {!r}".format(cause.args[1]))
+                        error = SecurityError("Failed to establish secure connection to {address}".format(address=cause.args[1]))
                         error.__cause__ = cause
                         raise error
                     else:
@@ -239,8 +239,8 @@ class Bolt:
                     log.debug("[#{port:04X}]  S: @*#!".format(local_port))
                     s.close()
                     raise ProtocolError("Expected four byte Bolt handshake response "
-                                        "from %r, received %r instead; check for "
-                                        "incorrect port number" % (resolved_address, data))
+                                        "from {address}, received {data} instead; check for "
+                                        "incorrect port number".format(address=resolved_address, data=data))
                 elif data == b"HTTP":
                     log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
                     s.close()
@@ -258,7 +258,7 @@ class Bolt:
                     s.close()
                 last_error = error
         if last_error is None:
-            raise ServiceUnavailable("Failed to resolve addresses for %s" % address)
+            raise ServiceUnavailable("Failed to resolve addresses for {address}".format(address=address))
         else:
             raise last_error
 
@@ -301,7 +301,7 @@ class Bolt:
             log.debug("[#{port:04X}]  S: <CLOSE>".format(port=s.getpeername()[1]))
             s.shutdown(SHUT_RDWR)
             s.close()
-            raise ProtocolError("Driver does not support Bolt protocol version: {}".format(protocol_version))
+            raise ProtocolError("Driver does not support Bolt protocol version: {version}".format(version=protocol_version))
 
         connection.hello()
         return connection
@@ -364,7 +364,7 @@ class Bolt:
         raise NotImplementedError
 
     def timedout(self):
-        return 0 <= self._max_connection_lifetime <= perf_counter() - self._creation_timestamp
+        raise NotImplementedError
 
     def fetch_all(self):
         raise NotImplementedError
@@ -461,11 +461,9 @@ class IOPool:
                     # cannot tell if the condition is notified or
                     # timed out when we come to this line
                     if not time_remaining():
-                        raise ClientError("Failed to obtain a connection from pool "
-                                          "within {!r}s".format(timeout))
+                        raise ClientError("Failed to obtain a connection from pool within {seconds}s".format(seconds=timeout))
                 else:
-                    raise ClientError("Failed to obtain a connection from pool "
-                                      "within {!r}s".format(timeout))
+                    raise ClientError("Failed to obtain a connection from pool within {seconds}s".format(seconds=timeout))
 
     def acquire(self, access_mode=None, timeout=None):
         """ Acquire a connection to a server that can satisfy a set of parameters.
@@ -514,7 +512,7 @@ class IOPool:
                 self.remove(address)
 
     def on_write_failure(self, address):
-        raise Neo4jAvailabilityError("No write service available for pool {}".format(self))
+        raise Neo4jAvailabilityError("No write service available for pool {pool}".format(pool=self))
 
     def remove(self, address):
         """ Remove an address from the connection pool, if present, closing
@@ -558,7 +556,7 @@ class BoltPool(IOPool):
         self.address = address
 
     def __repr__(self):
-        return "<{} address={!r}>".format(self.__class__.__name__, self.address)
+        return "<{name} address={address}>".format(name=self.__class__.__name__, address=self.address)
 
     def acquire(self, access_mode=None, timeout=None):
         return self._acquire(self.address, timeout)
@@ -592,8 +590,7 @@ class Neo4jPool(IOPool):
         self.refresh_lock = Lock()
 
     def __repr__(self):
-        return "<{} addresses={!r}>".format(self.__class__.__name__,
-                                            self.routing_table.initial_routers)
+        return "<{name} addresses={address}>".format(name=self.__class__.__name__, address=self.routing_table.initial_routers)
 
     @property
     def initial_address(self):
@@ -620,14 +617,14 @@ class Neo4jPool(IOPool):
         try:
             with self._acquire(address, timeout=300) as cx:  # TODO: remove magic timeout number
                 _, _, server_version = (cx.server.agent or "").partition("/")
-                log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
+                log.debug("[#{port:04X}]  C: <ROUTING> query={query}".format(port=cx.local_port, query=self.routing_context or {}))
                 cx.run("CALL dbms.cluster.routing.getRoutingTable($context)",
                        {"context": self.routing_context}, on_success=metadata.update, on_failure=fail)
                 cx.pull_all(on_success=metadata.update, on_records=records.extend)
                 cx.send_all()
                 cx.fetch_all()
                 routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
-                log.debug("[#%04X]  S: <ROUTING> info=%r", cx.local_port, routing_info)
+                log.debug("[#{port:04X}]  S: <ROUTING> info={routing}".format(port=cx.local_port, routing=routing_info))
             return routing_info
         except BoltRoutingError as error:
             raise ServiceUnavailable(*error.args)
@@ -682,13 +679,13 @@ class Neo4jPool(IOPool):
         otherwise False
         """
         log.debug("Attempting to update routing table from "
-                  "{}".format(", ".join(map(repr, routers))))
+                  "{routers}".format(routers=", ".join(map(repr, routers))))
         for router in routers:
             new_routing_table = self.fetch_routing_table(router)
             if new_routing_table is not None:
                 self.routing_table.update(new_routing_table)
                 log.debug("Successfully updated routing table from "
-                          "{!r} ({!r})".format(router, self.routing_table))
+                          "{router} ({table})".format(router=router, table=self.routing_table))
                 return True
         return False
 
@@ -770,13 +767,12 @@ class Neo4jPool(IOPool):
         if access_mode is None:
             access_mode = WRITE_ACCESS
         if access_mode not in (READ_ACCESS, WRITE_ACCESS):
-            raise ValueError("Unsupported access mode {}".format(access_mode))
+            raise ValueError("Unsupported access mode {mode}".format(mode=access_mode))
         while True:
             try:
                 address = self._select_address(access_mode)
             except Neo4jAvailabilityError as err:
-                raise ServiceUnavailable("Failed to obtain connection "
-                                        "towards '%s' server." % access_mode) from err
+                raise ServiceUnavailable("Failed to obtain connection towards '{mode}' server.".format(mode=access_mode)) from err
             try:
                 connection = self._acquire(address, timeout=timeout)  # should always be a resolved address
             except ServiceUnavailable:
@@ -789,22 +785,18 @@ class Neo4jPool(IOPool):
         if present, remove from the routing table and also closing
         all idle connections to that address.
         """
-        log.debug("[#0000]  C: <ROUTING> Deactivating address %r", address)
+        log.debug("[#0000]  C: <ROUTING> Deactivating address {address}".format(address=address))
         # We use `discard` instead of `remove` here since the former
         # will not fail if the address has already been removed.
         self.routing_table.routers.discard(address)
         self.routing_table.readers.discard(address)
         self.routing_table.writers.discard(address)
-        log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
+        log.debug("[#0000]  C: <ROUTING> table={table}".format(table=self.routing_table))
         super(Neo4jPool, self).deactivate(address)
 
     def on_write_failure(self, address):
         """ Remove a writer address from the routing table, if present.
         """
-        log.debug("[#0000]  C: <ROUTING> Removing writer %r", address)
+        log.debug("[#0000]  C: <ROUTING> Removing writer {address}".format(address=address))
         self.routing_table.writers.discard(address)
-        log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
-
-
-
-
+        log.debug("[#0000]  C: <ROUTING> table={table}".format(table=self.routing_table))
