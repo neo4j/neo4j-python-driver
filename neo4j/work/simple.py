@@ -29,11 +29,12 @@ from neo4j import READ_ACCESS, WRITE_ACCESS
 from neo4j.conf import DeprecatedAlias
 from neo4j.data import DataHydrator, DataDehydrator
 from neo4j.exceptions import (
-    ConnectionExpired,
     CypherError,
     IncompleteCommitError,
     ServiceUnavailable,
     TransientError,
+    SessionExpired,
+    TransactionError,
 )
 from neo4j.work import Workspace, WorkspaceConfig
 from neo4j.work.summary import BoltStatementResultSummary
@@ -122,7 +123,7 @@ class Session(Workspace):
             try:
                 self._connection.send_all()
                 self._connection.fetch_all()
-            except (ConnectionExpired, CypherError, TransactionError,
+            except (CypherError, TransactionError,
                     ServiceUnavailable, SessionExpired):
                 pass
             finally:
@@ -216,7 +217,7 @@ class Session(Workspace):
             try:
                 self._connection.send_all()
                 self._connection.fetch_message()
-            except ConnectionExpired as error:
+            except ServiceUnavailable as error:
                 raise SessionExpired(*error.args)
 
         return result
@@ -227,7 +228,7 @@ class Session(Workspace):
         if self._connection:
             try:
                 self._connection.send_all()
-            except ConnectionExpired as error:
+            except ServiceUnavailable as error:
                 raise SessionExpired(*error.args)
 
     def fetch(self):
@@ -238,7 +239,7 @@ class Session(Workspace):
         if self._connection:
             try:
                 detail_count, _ = self._connection.fetch_message()
-            except ConnectionExpired as error:
+            except ServiceUnavailable as error:
                 raise SessionExpired(*error.args)
             else:
                 return detail_count
@@ -253,7 +254,7 @@ class Session(Workspace):
             try:
                 self._connection.send_all()
                 detail_count, _ = self._connection.fetch_all()
-            except ConnectionExpired as error:
+            except ServiceUnavailable as error:
                 raise SessionExpired(*error.args)
             else:
                 return detail_count
@@ -390,7 +391,7 @@ class Session(Workspace):
                         tx.success = True
                 finally:
                     tx.close()
-            except (ServiceUnavailable, SessionExpired, ConnectionExpired) as error:
+            except (ServiceUnavailable, SessionExpired) as error:
                 errors.append(error)
             except TransientError as error:
                 if is_retriable_transient_error(error):
@@ -727,22 +728,22 @@ class BoltStatementResult:
         return [record.data(*items) for record in self.records()]
 
 
-class SessionExpired(Exception):
-    """ Raised when no a session is no longer able to fulfil
-    the purpose described by its original parameters.
-    """
-
-    def __init__(self, session, *args, **kwargs):
-        super(SessionExpired, self).__init__(session, *args, **kwargs)
-
-
-class TransactionError(Exception):
-    """ Raised when an error occurs while using a transaction.
-    """
-
-    def __init__(self, transaction, *args, **kwargs):
-        super(TransactionError, self).__init__(*args, **kwargs)
-        self.transaction = transaction
+# class SessionExpired(Exception):
+#     """ Raised when no a session is no longer able to fulfil
+#     the purpose described by its original parameters.
+#     """
+#
+#     def __init__(self, session, *args, **kwargs):
+#         super(SessionExpired, self).__init__(session, *args, **kwargs)
+#
+#
+# class TransactionError(Exception):
+#     """ Raised when an error occurs while using a transaction.
+#     """
+#
+#     def __init__(self, transaction, *args, **kwargs):
+#         super(TransactionError, self).__init__(*args, **kwargs)
+#         self.transaction = transaction
 
 
 def unit_of_work(metadata=None, timeout=None):

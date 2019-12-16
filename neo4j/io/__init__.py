@@ -69,7 +69,6 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     AuthError,
     IncompleteCommitError,
-    ConnectionExpired,
     DatabaseUnavailableError,
     NotALeaderError,
     ForbiddenOnReadOnlyDatabaseError,
@@ -776,11 +775,10 @@ class Neo4jPool(IOPool):
             try:
                 address = self._select_address(access_mode)
             except Neo4jAvailabilityError as err:
-                raise ConnectionExpired("Failed to obtain connection "
+                raise ServiceUnavailable("Failed to obtain connection "
                                         "towards '%s' server." % access_mode) from err
             try:
                 connection = self._acquire(address, timeout=timeout)  # should always be a resolved address
-                connection.Error = ConnectionExpired
             except ServiceUnavailable:
                 self.deactivate(address)
             else:

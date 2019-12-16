@@ -19,7 +19,10 @@
 # limitations under the License.
 
 
-from neo4j.exceptions import ServiceUnavailable
+from neo4j.exceptions import (
+    ServiceUnavailable,
+    SessionExpired,
+)
 
 from neo4j import GraphDatabase, BoltDriver
 
@@ -38,7 +41,7 @@ class BoltDriverTestCase(StubTestCase):
         with StubCluster("v3/disconnect_on_run.script"):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with self.assertRaises(ServiceUnavailable):
+                with self.assertRaises(SessionExpired):
                     with driver.session() as session:
                         session.run("RETURN $x", {"x": 1}).consume()
 
@@ -46,7 +49,7 @@ class BoltDriverTestCase(StubTestCase):
         with StubCluster("v3/disconnect_on_pull_all.script"):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with self.assertRaises(ServiceUnavailable):
+                with self.assertRaises(SessionExpired):
                     with driver.session() as session:
                         session.run("RETURN $x", {"x": 1}).consume()
 

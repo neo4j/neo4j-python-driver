@@ -42,12 +42,6 @@ class IncompleteCommitError(Exception):
     """
 
 
-class ConnectionExpired(Exception):
-    """ Raised when a connection is no longer available for the
-    purpose it was originally acquired.
-    """
-
-
 class SecurityError(Exception):
     """ Raised when an action is denied due to security settings.
     """
@@ -200,3 +194,20 @@ transient_errors = {
     # DatabaseUnavailableError
     "Neo.TransientError.General.DatabaseUnavailable": DatabaseUnavailableError
 }
+
+class SessionExpired(Exception):
+    """ Raised when no a session is no longer able to fulfil
+    the purpose described by its original parameters.
+    """
+
+    def __init__(self, session, *args, **kwargs):
+        super(SessionExpired, self).__init__(session, *args, **kwargs)
+
+
+class TransactionError(Exception):
+    """ Raised when an error occurs while using a transaction.
+    """
+
+    def __init__(self, transaction, *args, **kwargs):
+        super(TransactionError, self).__init__(*args, **kwargs)
+        self.transaction = transaction

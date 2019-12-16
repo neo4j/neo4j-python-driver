@@ -32,7 +32,6 @@ from neo4j.exceptions import (
     CypherError,
     AuthError,
     IncompleteCommitError,
-    ConnectionExpired,
     DatabaseUnavailableError,
     NotALeaderError,
     ForbiddenOnReadOnlyDatabaseError,
@@ -70,10 +69,6 @@ log = logging.getLogger("neo4j")
 class Bolt3(Bolt):
 
     protocol_version = Version(3, 0)
-
-    #: Error class used for raising connection errors
-    # TODO: separate errors for connector API
-    Error = ServiceUnavailable  # This is set to ConnectionExpired in Neo4jPool
 
     def __init__(self, unresolved_address, sock, *, auth=None, protocol_version=None, **config):
         self.config = PoolConfig.consume(config)
@@ -232,8 +227,9 @@ class Bolt3(Bolt):
             raise ServiceUnavailable("ServiceUnavailable: Failed to write to closed connection "
                 "{!r} ({!r})".format(self.unresolved_address,
                 self.server.address))
+
         if self.defunct():
-            raise self.Error("Failed to write to defunct connection "
+            raise ServiceUnavailable("ServiceUnavailable: Failed to write to defunct connection "
                              "{!r} ({!r})".format(self.unresolved_address,
                                                   self.server.address))
         try:
@@ -255,11 +251,11 @@ class Bolt3(Bolt):
                  messages fetched
         """
         if self._closed:
-            raise self.Error("Failed to read from closed connection "
+            raise ServiceUnavailable("Failed to read from closed connection "
                              "{!r} ({!r})".format(self.unresolved_address,
                                                   self.server.address))
         if self._defunct:
-            raise self.Error("Failed to read from defunct connection "
+            raise ServiceUnavailable("Failed to read from defunct connection "
                              "{!r} ({!r})".format(self.unresolved_address,
                                                   self.server.address))
         if not self.responses:
@@ -297,7 +293,7 @@ class Bolt3(Bolt):
             log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
             try:
                 response.on_failure(summary_metadata or {})
-            except (ConnectionExpired, ServiceUnavailable, DatabaseUnavailableError):
+            except (ServiceUnavailable, DatabaseUnavailableError):
                 if self.pool:
                     self.pool.deactivate(self.unresolved_address),
                 raise
@@ -330,7 +326,7 @@ class Bolt3(Bolt):
         for response in self.responses:
             if isinstance(response, CommitResponse):
                 raise IncompleteCommitError(message)
-        raise self.Error(message)
+        raise ServiceUnavailable(message)
 
     def fetch_all(self):
         """ Fetch all outstanding messages.
