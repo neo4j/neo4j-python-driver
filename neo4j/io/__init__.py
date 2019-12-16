@@ -123,13 +123,156 @@ class Bolt:
     Error = ServiceUnavailable
 
     @classmethod
+    def connect(cls, address, *, timeout=None, config):
+        """ Connect and perform a handshake and return a valid Connection object,
+        assuming a protocol version can be agreed.
+        """
+        last_error = None
+        # Establish a connection to the host and port specified
+        # Catches refused connections see:
+        # https://docs.python.org/2/library/errno.html
+        log.debug("[#0000]  C: <RESOLVE> %s", address)
+        address_list = AddressList([address])
+        address_list.custom_resolve(config.get("resolver"))
+        address_list.dns_resolve()
+        for resolved_address in address_list:
+            s = None
+            try:
+                host = address[0]
+
+                # Connect
+                s = None
+                try:
+                    if len(resolved_address) == 2:
+                        s = socket(AF_INET)
+                    elif len(resolved_address) == 4:
+                        s = socket(AF_INET6)
+                    else:
+                        raise ValueError("Unsupported address "
+                                         "{!r}".format(resolved_address))
+                    t = s.gettimeout()
+                    if timeout is None:
+                        s.settimeout(DEFAULT_CONNECTION_TIMEOUT)
+                    else:
+                        s.settimeout(timeout)
+                    log.debug("[#0000]  C: <OPEN> %s", resolved_address)
+                    s.connect(resolved_address)
+                    s.settimeout(t)
+                    keep_alive = 1 if config.get("keep_alive", DEFAULT_KEEP_ALIVE) else 0
+                    s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
+                except SocketTimeout:
+                    log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
+                    log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+                    s.close()
+                    raise ServiceUnavailable("Timed out trying to establish connection "
+                                             "to {!r}".format(resolved_address))
+                except OSError as error:
+                    log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
+                              " ".join(map(repr, error.args)))
+                    log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+                    s.close()
+                    raise ServiceUnavailable("Failed to establish connection to {!r} "
+                                             "(reason {})".format(resolved_address, error))
+
+                # Check Secure Connection
+                # Secure the connection if an SSL context has been provided
+
+                ssl_context = config.get_ssl_context()
+                local_port = s.getsockname()[1]
+
+                if ssl_context:
+                    log.debug("[#%04X]  C: <SECURE> %s", local_port, host)
+                    try:
+                        sni_host = host if HAS_SNI and host else None
+                        s = ssl_context.wrap_socket(s, server_hostname=sni_host)
+                    except SSLError as cause:
+                        s.close()
+                        error = SecurityError("Failed to establish secure connection "
+                                              "to {!r}".format(cause.args[1]))
+                        error.__cause__ = cause
+                        raise error
+                    else:
+                        # Check that the server provides a certificate
+                        der_encoded_server_certificate = s.getpeercert(binary_form=True)
+                        if der_encoded_server_certificate is None:
+                            s.close()
+                            raise ProtocolError("When using a secure socket, the server "
+                                                "should always provide a certificate")
+
+                local_port = s.getsockname()[1]
+
+                # Send details of the protocol versions supported
+                supported_versions = [3, 0, 0, 0]
+                handshake = [Bolt.MAGIC_PREAMBLE] + supported_versions
+
+                log.debug("[#{port:04X}]  C: <MAGIC> 0x{magic:08X}".format(port=local_port, magic=Bolt.MAGIC_PREAMBLE))
+                log.debug("[#{port:04X}]  C: <HANDSHAKE> 0x{v_a:08X} 0x{v_b:08X} 0x{v_c:08X} 0x{v_d:08X}".format(
+                    port=local_port,
+                    v_a=supported_versions[0],
+                    v_b=supported_versions[1],
+                    v_c=supported_versions[2],
+                    v_d=supported_versions[3],
+                ))
+
+                data = b"".join(struct_pack(">I", num) for num in handshake)
+                s.sendall(data)
+
+                # Handle the handshake response
+                ready_to_read = False
+                while not ready_to_read:
+                    ready_to_read, _, _ = select((s,), (), (), 1)
+                try:
+                    data = s.recv(4)
+                except OSError:
+                    raise ServiceUnavailable(
+                        "Failed to read any data from server {address} after connected".format(
+                            address=resolved_address))
+
+                data_size = len(data)
+                if data_size == 0:
+                    # If no data is returned after a successful select
+                    # response, the server has closed the connection
+                    log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
+                    s.close()
+                    raise ServiceUnavailable(
+                        "Connection to {address} closed without handshake response".format(address=resolved_address))
+
+                if data_size != 4:
+                    # Some garbled data has been received
+                    log.debug("[#{port:04X}]  S: @*#!".format(local_port))
+                    s.close()
+                    raise ProtocolError("Expected four byte Bolt handshake response "
+                                        "from %r, received %r instead; check for "
+                                        "incorrect port number" % (resolved_address, data))
+                elif data == b"HTTP":
+                    log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
+                    s.close()
+                    raise ServiceUnavailable(
+                        "Cannot to connect to Bolt service on {address} (looks like HTTP)".format(
+                            address=resolved_address))
+
+                agreed_version = (data[-1], data[-2])
+                log.debug("[#{port:04X}]  S: <HANDSHAKE> 0x{minor:06X}{major:02X}".format(port=local_port,
+                                                                                          minor=agreed_version[1],
+                                                                                          major=agreed_version[0]))
+                return s, agreed_version
+            except Exception as error:
+                if s:
+                    s.close()
+                last_error = error
+        if last_error is None:
+            raise ServiceUnavailable("Failed to resolve addresses for %s" % address)
+        else:
+            raise last_error
+
+    @classmethod
     def ping(cls, address, *, timeout=None, **config):
         """ Attempt to establish a Bolt connection, returning the
         agreed Bolt protocol version if successful.
         """
         config = PoolConfig.consume(config)
         try:
-            s, protocol_version = connect(address, timeout=timeout, config=config)
+            s, protocol_version = Bolt.connect(address, timeout=timeout, config=config)
         except ServiceUnavailable:
             return None
         else:
@@ -151,7 +294,7 @@ class Bolt:
         config = PoolConfig.consume(config)
         # s, config.protocol_version = connect(address, timeout=timeout, config=config)
 
-        s, protocol_version = connect(address, timeout=timeout, config=config)
+        s, protocol_version = Bolt.connect(address, timeout=timeout, config=config)
         # Depending on which version was agreed load correct Bolt version
         if protocol_version == (3, 0):
             config.protocol_version = protocol_version
@@ -667,142 +810,5 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
 
 
-def connect(address, *, timeout=None, config):
-    """ Connect and perform a handshake and return a valid Connection object,
-    assuming a protocol version can be agreed.
-    """
-    last_error = None
-    # Establish a connection to the host and port specified
-    # Catches refused connections see:
-    # https://docs.python.org/2/library/errno.html
-    log.debug("[#0000]  C: <RESOLVE> %s", address)
-    address_list = AddressList([address])
-    address_list.custom_resolve(config.get("resolver"))
-    address_list.dns_resolve()
-    for resolved_address in address_list:
-        s = None
-        try:
-            host = address[0]
 
-            # Connect
-            s = None
-            try:
-                if len(resolved_address) == 2:
-                    s = socket(AF_INET)
-                elif len(resolved_address) == 4:
-                    s = socket(AF_INET6)
-                else:
-                    raise ValueError("Unsupported address "
-                                     "{!r}".format(resolved_address))
-                t = s.gettimeout()
-                if timeout is None:
-                    s.settimeout(DEFAULT_CONNECTION_TIMEOUT)
-                else:
-                    s.settimeout(timeout)
-                log.debug("[#0000]  C: <OPEN> %s", resolved_address)
-                s.connect(resolved_address)
-                s.settimeout(t)
-                keep_alive = 1 if config.get("keep_alive", DEFAULT_KEEP_ALIVE) else 0
-                s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
-            except SocketTimeout:
-                log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
-                log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-                s.close()
-                raise ServiceUnavailable("Timed out trying to establish connection "
-                                         "to {!r}".format(resolved_address))
-            except OSError as error:
-                log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
-                          " ".join(map(repr, error.args)))
-                log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-                s.close()
-                raise ServiceUnavailable("Failed to establish connection to {!r} "
-                                         "(reason {})".format(resolved_address, error))
 
-            # Check Secure Connection
-            # Secure the connection if an SSL context has been provided
-
-            ssl_context = config.get_ssl_context()
-            local_port = s.getsockname()[1]
-
-            if ssl_context:
-                log.debug("[#%04X]  C: <SECURE> %s", local_port, host)
-                try:
-                    sni_host = host if HAS_SNI and host else None
-                    s = ssl_context.wrap_socket(s, server_hostname=sni_host)
-                except SSLError as cause:
-                    s.close()
-                    error = SecurityError("Failed to establish secure connection "
-                                          "to {!r}".format(cause.args[1]))
-                    error.__cause__ = cause
-                    raise error
-                else:
-                    # Check that the server provides a certificate
-                    der_encoded_server_certificate = s.getpeercert(binary_form=True)
-                    if der_encoded_server_certificate is None:
-                        s.close()
-                        raise ProtocolError("When using a secure socket, the server "
-                                            "should always provide a certificate")
-
-            local_port = s.getsockname()[1]
-
-            # Send details of the protocol versions supported
-            supported_versions = [3, 0, 0, 0]
-            handshake = [Bolt.MAGIC_PREAMBLE] + supported_versions
-
-            log.debug("[#{port:04X}]  C: <MAGIC> 0x{magic:08X}".format(port=local_port, magic=Bolt.MAGIC_PREAMBLE))
-            log.debug("[#{port:04X}]  C: <HANDSHAKE> 0x{v_a:08X} 0x{v_b:08X} 0x{v_c:08X} 0x{v_d:08X}".format(
-                port=local_port,
-                v_a=supported_versions[0],
-                v_b=supported_versions[1],
-                v_c=supported_versions[2],
-                v_d=supported_versions[3],
-            ))
-
-            data = b"".join(struct_pack(">I", num) for num in handshake)
-            s.sendall(data)
-
-            # Handle the handshake response
-            ready_to_read = False
-            while not ready_to_read:
-                ready_to_read, _, _ = select((s,), (), (), 1)
-            try:
-                data = s.recv(4)
-            except OSError:
-                raise ServiceUnavailable(
-                    "Failed to read any data from server {address} after connected".format(address=resolved_address))
-
-            data_size = len(data)
-            if data_size == 0:
-                # If no data is returned after a successful select
-                # response, the server has closed the connection
-                log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
-                s.close()
-                raise ServiceUnavailable(
-                    "Connection to {address} closed without handshake response".format(address=resolved_address))
-
-            if data_size != 4:
-                # Some garbled data has been received
-                log.debug("[#{port:04X}]  S: @*#!".format(local_port))
-                s.close()
-                raise ProtocolError("Expected four byte Bolt handshake response "
-                                    "from %r, received %r instead; check for "
-                                    "incorrect port number" % (resolved_address, data))
-            elif data == b"HTTP":
-                log.debug("[#{port:04X}]  S: <CLOSE>".format(port=local_port))
-                s.close()
-                raise ServiceUnavailable(
-                    "Cannot to connect to Bolt service on {address} (looks like HTTP)".format(address=resolved_address))
-
-            agreed_version = (data[-1], data[-2])
-            log.debug("[#{port:04X}]  S: <HANDSHAKE> 0x{minor:06X}{major:02X}".format(port=local_port,
-                                                                                      minor=agreed_version[1],
-                                                                                      major=agreed_version[0]))
-            return s, agreed_version
-        except Exception as error:
-            if s:
-                s.close()
-            last_error = error
-    if last_error is None:
-        raise ServiceUnavailable("Failed to resolve addresses for %s" % address)
-    else:
-        raise last_error

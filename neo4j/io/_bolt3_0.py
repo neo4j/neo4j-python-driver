@@ -27,9 +27,16 @@ from time import perf_counter
 
 from neo4j.exceptions import (
     ProtocolError,
+    SecurityError,
+    ServiceUnavailable,
     CypherError,
     AuthError,
-    ServiceUnavailable,
+    IncompleteCommitError,
+    ConnectionExpired,
+    DatabaseUnavailableError,
+    NotALeaderError,
+    ForbiddenOnReadOnlyDatabaseError,
+    ClientError,
 )
 
 from neo4j.packstream import (
@@ -56,19 +63,6 @@ from neo4j.packstream import (
 from neo4j.meta import get_user_agent
 
 from neo4j import Auth
-
-from neo4j.exceptions import (
-    ProtocolError,
-    SecurityError,
-    ServiceUnavailable,
-    AuthError,
-    IncompleteCommitError,
-    ConnectionExpired,
-    DatabaseUnavailableError,
-    NotALeaderError,
-    ForbiddenOnReadOnlyDatabaseError,
-    ClientError,
-)
 
 log = logging.getLogger("neo4j")
 
