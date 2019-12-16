@@ -66,9 +66,14 @@ from neo4j import Auth
 
 log = logging.getLogger("neo4j")
 
+
 class Bolt3(Bolt):
 
     protocol_version = Version(3, 0)
+
+    #: Error class used for raising connection errors
+    # TODO: separate errors for connector API
+    Error = ServiceUnavailable  # This is set to ConnectionExpired in Neo4jPool
 
     def __init__(self, unresolved_address, sock, *, auth=None, protocol_version=None, **config):
         self.config = PoolConfig.consume(config)
@@ -224,9 +229,9 @@ class Bolt3(Bolt):
         """ Send all queued messages to the server.
         """
         if self.closed():
-            raise self.Error("Failed to write to closed connection "
-                             "{!r} ({!r})".format(self.unresolved_address,
-                                                  self.server.address))
+            raise ServiceUnavailable("ServiceUnavailable: Failed to write to closed connection "
+                "{!r} ({!r})".format(self.unresolved_address,
+                self.server.address))
         if self.defunct():
             raise self.Error("Failed to write to defunct connection "
                              "{!r} ({!r})".format(self.unresolved_address,

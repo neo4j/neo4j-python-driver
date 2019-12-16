@@ -118,9 +118,7 @@ class Bolt:
     #: The pool of which this connection is a member
     pool = None
 
-    #: Error class used for raising connection errors
-    # TODO: separate errors for connector API
-    Error = ServiceUnavailable
+
 
     @classmethod
     def connect(cls, address, *, timeout=None, config):
