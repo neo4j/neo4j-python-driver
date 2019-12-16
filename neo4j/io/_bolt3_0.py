@@ -18,6 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 
 from select import select
 from struct import pack as struct_pack
@@ -55,6 +56,21 @@ from neo4j.packstream import (
 from neo4j.meta import get_user_agent
 
 from neo4j import Auth
+
+from neo4j.exceptions import (
+    ProtocolError,
+    SecurityError,
+    ServiceUnavailable,
+    AuthError,
+    IncompleteCommitError,
+    ConnectionExpired,
+    DatabaseUnavailableError,
+    NotALeaderError,
+    ForbiddenOnReadOnlyDatabaseError,
+    ClientError,
+)
+
+log = logging.getLogger("neo4j")
 
 class Bolt3(Bolt):
 
@@ -100,6 +116,262 @@ class Bolt3(Bolt):
         else:
             if credentials is None:
                 raise AuthError("Password cannot be None")
+
+    def hello(self):
+        headers = {"user_agent": self.user_agent}
+        headers.update(self.auth_dict)
+        logged_headers = dict(headers)
+        if "credentials" in logged_headers:
+            logged_headers["credentials"] = "*******"
+        log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
+        self._append(b"\x01", (headers,),
+                     response=InitResponse(self, on_success=self.server.metadata.update))
+        self.send_all()
+        self.fetch_all()
+
+    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
+        if not parameters:
+            parameters = {}
+        extra = {}
+        if mode:
+            extra["mode"] = mode
+        if bookmarks:
+            try:
+                extra["bookmarks"] = list(bookmarks)
+            except TypeError:
+                raise TypeError("Bookmarks must be provided within an iterable")
+        if metadata:
+            try:
+                extra["tx_metadata"] = dict(metadata)
+            except TypeError:
+                raise TypeError("Metadata must be coercible to a dict")
+        if timeout:
+            try:
+                extra["tx_timeout"] = int(1000 * timeout)
+            except TypeError:
+                raise TypeError("Timeout must be specified as a number of seconds")
+        fields = (statement, parameters, extra)
+        log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
+        if statement.upper() == u"COMMIT":
+            self._append(b"\x10", fields, CommitResponse(self, **handlers))
+        else:
+            self._append(b"\x10", fields, Response(self, **handlers))
+
+    def discard_all(self, **handlers):
+        log.debug("[#%04X]  C: DISCARD_ALL", self.local_port)
+        self._append(b"\x2F", (), Response(self, **handlers))
+
+    def pull_all(self, **handlers):
+        log.debug("[#%04X]  C: PULL_ALL", self.local_port)
+        self._append(b"\x3F", (), Response(self, **handlers))
+
+    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
+        extra = {}
+        if mode:
+            extra["mode"] = mode
+        if bookmarks:
+            try:
+                extra["bookmarks"] = list(bookmarks)
+            except TypeError:
+                raise TypeError("Bookmarks must be provided within an iterable")
+        if metadata:
+            try:
+                extra["tx_metadata"] = dict(metadata)
+            except TypeError:
+                raise TypeError("Metadata must be coercible to a dict")
+        if timeout:
+            try:
+                extra["tx_timeout"] = int(1000 * timeout)
+            except TypeError:
+                raise TypeError("Timeout must be specified as a number of seconds")
+        log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
+        self._append(b"\x11", (extra,), Response(self, **handlers))
+
+    def commit(self, **handlers):
+        log.debug("[#%04X]  C: COMMIT", self.local_port)
+        self._append(b"\x12", (), CommitResponse(self, **handlers))
+
+    def rollback(self, **handlers):
+        log.debug("[#%04X]  C: ROLLBACK", self.local_port)
+        self._append(b"\x13", (), Response(self, **handlers))
+
+    def _append(self, signature, fields=(), response=None):
+        """ Add a message to the outgoing queue.
+
+        :arg signature: the signature of the message
+        :arg fields: the fields of the message as a tuple
+        :arg response: a response object to handle callbacks
+        """
+        self.packer.pack_struct(signature, fields)
+        self.outbox.chunk()
+        self.outbox.chunk()
+        self.responses.append(response)
+
+    def reset(self):
+        """ Add a RESET message to the outgoing queue, send
+        it and consume all remaining messages.
+        """
+
+        def fail(metadata):
+            raise ProtocolError("RESET failed %r" % metadata)
+
+        log.debug("[#%04X]  C: RESET", self.local_port)
+        self._append(b"\x0F", response=Response(self, on_failure=fail))
+        self.send_all()
+        self.fetch_all()
+
+    def _send_all(self):
+        data = self.outbox.view()
+        if data:
+            self.socket.sendall(data)
+            self.outbox.clear()
+
+    def send_all(self):
+        """ Send all queued messages to the server.
+        """
+        if self.closed():
+            raise self.Error("Failed to write to closed connection "
+                             "{!r} ({!r})".format(self.unresolved_address,
+                                                  self.server.address))
+        if self.defunct():
+            raise self.Error("Failed to write to defunct connection "
+                             "{!r} ({!r})".format(self.unresolved_address,
+                                                  self.server.address))
+        try:
+            self._send_all()
+        except (IOError, OSError) as error:
+            log.error("Failed to write data to connection "
+                      "{!r} ({!r}); ({!r})".
+                      format(self.unresolved_address,
+                             self.server.address,
+                             "; ".join(map(repr, error.args))))
+            if self.pool:
+                self.pool.deactivate(self.unresolved_address)
+            raise
+
+    def fetch_message(self):
+        """ Receive at least one message from the server, if available.
+
+        :return: 2-tuple of number of detail messages and number of summary
+                 messages fetched
+        """
+        if self._closed:
+            raise self.Error("Failed to read from closed connection "
+                             "{!r} ({!r})".format(self.unresolved_address,
+                                                  self.server.address))
+        if self._defunct:
+            raise self.Error("Failed to read from defunct connection "
+                             "{!r} ({!r})".format(self.unresolved_address,
+                                                  self.server.address))
+        if not self.responses:
+            return 0, 0
+
+        # Receive exactly one message
+        try:
+            details, summary_signature, summary_metadata = next(self.inbox)
+        except (IOError, OSError) as error:
+            log.error("Failed to read data from connection "
+                      "{!r} ({!r}); ({!r})".
+                      format(self.unresolved_address,
+                             self.server.address,
+                             "; ".join(map(repr, error.args))))
+            if self.pool:
+                self.pool.deactivate(self.unresolved_address)
+            raise
+
+        if details:
+            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # TODO
+            self.responses[0].on_records(details)
+
+        if summary_signature is None:
+            return len(details), 0
+
+        response = self.responses.popleft()
+        response.complete = True
+        if summary_signature == b"\x70":
+            log.debug("[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata)
+            response.on_success(summary_metadata or {})
+        elif summary_signature == b"\x7E":
+            log.debug("[#%04X]  S: IGNORED", self.local_port)
+            response.on_ignored(summary_metadata or {})
+        elif summary_signature == b"\x7F":
+            log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
+            try:
+                response.on_failure(summary_metadata or {})
+            except (ConnectionExpired, ServiceUnavailable, DatabaseUnavailableError):
+                if self.pool:
+                    self.pool.deactivate(self.unresolved_address),
+                raise
+            except (NotALeaderError, ForbiddenOnReadOnlyDatabaseError):
+                if self.pool:
+                    self.pool.on_write_failure(self.unresolved_address),
+                raise
+        else:
+            raise ProtocolError("Unexpected response message with "
+                                "signature %02X" % summary_signature)
+
+        return len(details), 1
+
+    def _set_defunct(self, error=None):
+        message = ("Failed to read from defunct connection "
+                   "{!r} ({!r})".format(self.unresolved_address,
+                                        self.server.address))
+        log.error(message)
+        # We were attempting to receive data but the connection
+        # has unexpectedly terminated. So, we need to close the
+        # connection from the client side, and remove the address
+        # from the connection pool.
+        self._defunct = True
+        self.close()
+        if self.pool:
+            self.pool.deactivate(self.unresolved_address)
+        # Iterate through the outstanding responses, and if any correspond
+        # to COMMIT requests then raise an error to signal that we are
+        # unable to confirm that the COMMIT completed successfully.
+        for response in self.responses:
+            if isinstance(response, CommitResponse):
+                raise IncompleteCommitError(message)
+        raise self.Error(message)
+
+    def fetch_all(self):
+        """ Fetch all outstanding messages.
+
+        :return: 2-tuple of number of detail messages and number of summary
+                 messages fetched
+        """
+        detail_count = summary_count = 0
+        while self.responses:
+            response = self.responses[0]
+            while not response.complete:
+                detail_delta, summary_delta = self.fetch_message()
+                detail_count += detail_delta
+                summary_count += summary_delta
+        return detail_count, summary_count
+
+    def close(self):
+        """ Close the connection.
+        """
+        if not self._closed:
+            if not self._defunct:
+                log.debug("[#%04X]  C: GOODBYE", self.local_port)
+                self._append(b"\x02", ())
+                try:
+                    self._send_all()
+                except:
+                    pass
+            log.debug("[#%04X]  C: <CLOSE>", self.local_port)
+            try:
+                self.socket.close()
+            except IOError:
+                pass
+            finally:
+                self._closed = True
+
+    def closed(self):
+        return self._closed
+
+    def defunct(self):
+        return self._defunct
 
 
 class Outbox:
