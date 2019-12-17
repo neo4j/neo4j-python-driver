@@ -295,6 +295,10 @@ class Bolt:
             config.protocol_version = protocol_version
             from neo4j.io._bolt3_0 import Bolt3
             connection = Bolt3(address, s, auth=auth, **config)
+        elif protocol_version == (4, 0):
+            config.protocol_version = protocol_version
+            from neo4j.io._bolt4_0 import Bolt4
+            connection = Bolt4(address, s, auth=auth, **config)
         else:
             log.debug("[#{port:04X}]  S: <CLOSE>".format(port=s.getpeername()[1]))
             s.shutdown(SHUT_RDWR)
