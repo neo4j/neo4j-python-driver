@@ -117,7 +117,7 @@ class Bolt3(Bolt):
         logged_headers = dict(headers)
         if "credentials" in logged_headers:
             logged_headers["credentials"] = "*******"
-        log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
+        log.debug("[#{port:04X}]  C: HELLO {headers}".format(port=self.local_port, headers=logged_headers))
         self._append(b"\x01", (headers,),
                      response=InitResponse(self, on_success=self.server.metadata.update))
         self.send_all()
@@ -145,18 +145,18 @@ class Bolt3(Bolt):
             except TypeError:
                 raise TypeError("Timeout must be specified as a number of seconds")
         fields = (statement, parameters, extra)
-        log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
+        log.debug("[#{port:04X}]  C: RUN {fields}".format(port=self.local_port, fields=" ".join(map(repr, fields))))
         if statement.upper() == u"COMMIT":
             self._append(b"\x10", fields, CommitResponse(self, **handlers))
         else:
             self._append(b"\x10", fields, Response(self, **handlers))
 
     def discard_all(self, **handlers):
-        log.debug("[#%04X]  C: DISCARD_ALL", self.local_port)
+        log.debug("[#{port:04X}]  C: DISCARD_ALL".format(port=self.local_port))
         self._append(b"\x2F", (), Response(self, **handlers))
 
     def pull_all(self, **handlers):
-        log.debug("[#%04X]  C: PULL_ALL", self.local_port)
+        log.debug("[#{port:04X}]  C: PULL_ALL".format(port=self.local_port))
         self._append(b"\x3F", (), Response(self, **handlers))
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
@@ -178,15 +178,15 @@ class Bolt3(Bolt):
                 extra["tx_timeout"] = int(1000 * timeout)
             except TypeError:
                 raise TypeError("Timeout must be specified as a number of seconds")
-        log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
+        log.debug("[#{port:04X}]  C: BEGIN {extra}".format(port=self.local_port, extra=extra))
         self._append(b"\x11", (extra,), Response(self, **handlers))
 
     def commit(self, **handlers):
-        log.debug("[#%04X]  C: COMMIT", self.local_port)
+        log.debug("[#{port:04X}]  C: COMMIT".format(port=self.local_port))
         self._append(b"\x12", (), CommitResponse(self, **handlers))
 
     def rollback(self, **handlers):
-        log.debug("[#%04X]  C: ROLLBACK", self.local_port)
+        log.debug("[#{port:04X}]  C: ROLLBACK".format(port=self.local_port))
         self._append(b"\x13", (), Response(self, **handlers))
 
     def _append(self, signature, fields=(), response=None):
@@ -209,7 +209,7 @@ class Bolt3(Bolt):
         def fail(metadata):
             raise ProtocolError("RESET failed %r" % metadata)
 
-        log.debug("[#%04X]  C: RESET", self.local_port)
+        log.debug("[#{port:04X}]  C: RESET".format(port=self.local_port))
         self._append(b"\x0F", response=Response(self, on_failure=fail))
         self.send_all()
         self.fetch_all()
@@ -224,22 +224,15 @@ class Bolt3(Bolt):
         """ Send all queued messages to the server.
         """
         if self.closed():
-            raise ServiceUnavailable("ServiceUnavailable: Failed to write to closed connection "
-                "{!r} ({!r})".format(self.unresolved_address,
-                self.server.address))
+            raise ServiceUnavailable("ServiceUnavailable: Failed to write to closed connection {address} ({server_address})".format(address=self.unresolved_address, server_address=self.server.address))
 
         if self.defunct():
-            raise ServiceUnavailable("ServiceUnavailable: Failed to write to defunct connection "
-                             "{!r} ({!r})".format(self.unresolved_address,
-                                                  self.server.address))
+            raise ServiceUnavailable("ServiceUnavailable: Failed to write to defunct connection {address} ({server_address})".format(address=self.unresolved_address, server_address=self.server.address))
+
         try:
             self._send_all()
         except (IOError, OSError) as error:
-            log.error("Failed to write data to connection "
-                      "{!r} ({!r}); ({!r})".
-                      format(self.unresolved_address,
-                             self.server.address,
-                             "; ".join(map(repr, error.args))))
+            log.error("Failed to write data to connection {address} ({server_address}); ({args})".format(address=self.unresolved_address, server_address=self.server.address, args="; ".join(map(repr, error.args))))
             if self.pool:
                 self.pool.deactivate(self.unresolved_address)
             raise
@@ -251,13 +244,11 @@ class Bolt3(Bolt):
                  messages fetched
         """
         if self._closed:
-            raise ServiceUnavailable("Failed to read from closed connection "
-                             "{!r} ({!r})".format(self.unresolved_address,
-                                                  self.server.address))
+            raise ServiceUnavailable("ServiceUnavailable: Failed to read from closed connection {address} ({server_address})".format(address=self.unresolved_address, server_address=self.server.address))
+
         if self._defunct:
-            raise ServiceUnavailable("Failed to read from defunct connection "
-                             "{!r} ({!r})".format(self.unresolved_address,
-                                                  self.server.address))
+            raise ServiceUnavailable("Failed to read from defunct connection {address} ({server_address})".format(address=self.unresolved_address, server_address=self.server.address))
+
         if not self.responses:
             return 0, 0
 
@@ -265,17 +256,13 @@ class Bolt3(Bolt):
         try:
             details, summary_signature, summary_metadata = next(self.inbox)
         except (IOError, OSError) as error:
-            log.error("Failed to read data from connection "
-                      "{!r} ({!r}); ({!r})".
-                      format(self.unresolved_address,
-                             self.server.address,
-                             "; ".join(map(repr, error.args))))
+            log.error("Failed to read data from connection {address} ({server_address}); ({args})".format(address=self.unresolved_address, server_address=self.server.address, args="; ".join(map(repr, error.args))))
             if self.pool:
                 self.pool.deactivate(self.unresolved_address)
             raise
 
         if details:
-            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # TODO
+            log.debug("[#{port:04X}]  S: RECORD * {length}".format(port=self.local_port, length=len(details)))  # TODO: Better data logging
             self.responses[0].on_records(details)
 
         if summary_signature is None:
@@ -284,13 +271,13 @@ class Bolt3(Bolt):
         response = self.responses.popleft()
         response.complete = True
         if summary_signature == b"\x70":
-            log.debug("[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata)
+            log.debug("[#{port:04X}]  S: SUCCESS {summary}".format(port=self.local_port, summary=summary_metadata))
             response.on_success(summary_metadata or {})
         elif summary_signature == b"\x7E":
-            log.debug("[#%04X]  S: IGNORED", self.local_port)
+            log.debug("[#{port:04X}]  S: IGNORED".format(port=self.local_port))
             response.on_ignored(summary_metadata or {})
         elif summary_signature == b"\x7F":
-            log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
+            log.debug("[#{port:04X}]  S: FAILURE {summary}".format(port=self.local_port, summary=summary_metadata))
             try:
                 response.on_failure(summary_metadata or {})
             except (ServiceUnavailable, DatabaseUnavailableError):
@@ -302,15 +289,12 @@ class Bolt3(Bolt):
                     self.pool.on_write_failure(self.unresolved_address),
                 raise
         else:
-            raise ProtocolError("Unexpected response message with "
-                                "signature %02X" % summary_signature)
+            raise ProtocolError("Unexpected response message with signature {summary:02X}".format(summary=summary_signature))
 
         return len(details), 1
 
     def _set_defunct(self, error=None):
-        message = ("Failed to read from defunct connection "
-                   "{!r} ({!r})".format(self.unresolved_address,
-                                        self.server.address))
+        message = ("Failed to read from defunct connection {address} ({server_address})".format(address=self.unresolved_address, server_address=self.server.address))
         log.error(message)
         # We were attempting to receive data but the connection
         # has unexpectedly terminated. So, we need to close the
@@ -348,13 +332,13 @@ class Bolt3(Bolt):
         """
         if not self._closed:
             if not self._defunct:
-                log.debug("[#%04X]  C: GOODBYE", self.local_port)
+                log.debug("[#{port:04X}]  C: GOODBYE".format(port=self.local_port))
                 self._append(b"\x02", ())
                 try:
                     self._send_all()
                 except:
                     pass
-            log.debug("[#%04X]  C: <CLOSE>", self.local_port)
+            log.debug("[#{port:04X}]  C: <CLOSE>".format(port=self.local_port))
             try:
                 self.socket.close()
             except IOError:
