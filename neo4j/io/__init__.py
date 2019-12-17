@@ -132,7 +132,7 @@ class Bolt:
         # Establish a connection to the host and port specified
         # Catches refused connections see:
         # https://docs.python.org/2/library/errno.html
-        log.debug("[#0000]  C: <RESOLVE> %s", address)
+        log.debug("[#0000]  C: <RESOLVE> {address}".format(address=address))
         address_list = AddressList([address])
         address_list.custom_resolve(config.get("resolver"))
         address_list.dns_resolve()
@@ -155,20 +155,19 @@ class Bolt:
                         s.settimeout(DEFAULT_CONNECTION_TIMEOUT)
                     else:
                         s.settimeout(timeout)
-                    log.debug("[#0000]  C: <OPEN> %s", resolved_address)
+                    log.debug("[#0000]  C: <OPEN> {address}".format(address=resolved_address))
                     s.connect(resolved_address)
                     s.settimeout(t)
                     keep_alive = 1 if config.get("keep_alive", DEFAULT_KEEP_ALIVE) else 0
                     s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
                 except SocketTimeout:
-                    log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
-                    log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+                    log.debug("[#0000]  C: <TIMEOUT> {address}".format(address=resolved_address))
+                    log.debug("[#0000]  C: <CLOSE> {address}".format(address=resolved_address))
                     s.close()
                     raise ServiceUnavailable("Timed out trying to establish connection to {address}".format(address=resolved_address))
                 except OSError as error:
-                    log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
-                              " ".join(map(repr, error.args)))
-                    log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+                    log.debug("[#0000]  C: <ERROR> {error} {args}".format(error=type(error).__name__, args=" ".join(map(repr, error.args))))
+                    log.debug("[#0000]  C: <CLOSE> {address}".format(address=resolved_address))
                     s.close()
                     raise ServiceUnavailable("Failed to establish connection to {address} (reason {error})".format(address=resolved_address, error=error))
 
@@ -179,7 +178,7 @@ class Bolt:
                 local_port = s.getsockname()[1]
 
                 if ssl_context:
-                    log.debug("[#%04X]  C: <SECURE> %s", local_port, host)
+                    log.debug("[#{port:04X}]  C: <SECURE> {host}".format(port=local_port, host=host))
                     try:
                         sni_host = host if HAS_SNI and host else None
                         s = ssl_context.wrap_socket(s, server_hostname=sni_host)
@@ -193,8 +192,7 @@ class Bolt:
                         der_encoded_server_certificate = s.getpeercert(binary_form=True)
                         if der_encoded_server_certificate is None:
                             s.close()
-                            raise ProtocolError("When using a secure socket, the server "
-                                                "should always provide a certificate")
+                            raise ProtocolError("When using a secure socket, the server should always provide a certificate")
 
                 local_port = s.getsockname()[1]
 
@@ -684,8 +682,7 @@ class Neo4jPool(IOPool):
             new_routing_table = self.fetch_routing_table(router)
             if new_routing_table is not None:
                 self.routing_table.update(new_routing_table)
-                log.debug("Successfully updated routing table from "
-                          "{router} ({table})".format(router=router, table=self.routing_table))
+                log.debug("Successfully updated routing table from {router} ({table})".format(router=router, table=self.routing_table))
                 return True
         return False
 
@@ -758,8 +755,7 @@ class Neo4jPool(IOPool):
         for address in addresses:
             addresses_by_usage.setdefault(self.in_use_connection_count(address), []).append(address)
         if not addresses_by_usage:
-            raise Neo4jAvailabilityError("No {} service currently available".format(
-                "read" if access_mode == READ_ACCESS else "write"))
+            raise Neo4jAvailabilityError("No {} service currently available".format("read" if access_mode == READ_ACCESS else "write"))
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
     def acquire(self, access_mode=None, timeout=None):
