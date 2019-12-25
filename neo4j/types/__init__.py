@@ -122,7 +122,7 @@ class PackStreamDehydrator(object):
                     return obj
                 else:
                     raise TypeError("This PackSteam channel does not support BYTES (consider upgrading to Neo4j 3.2+)")
-            elif isinstance(obj, (list, map_type)):
+            elif isinstance(obj, (list, tuple, map_type)):
                 return list(map(dehydrate_, obj))
             elif isinstance(obj, dict):
                 if any(not isinstance(key, string) for key in obj.keys()):
