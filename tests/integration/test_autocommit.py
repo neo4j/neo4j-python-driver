@@ -162,7 +162,7 @@ def test_should_not_allow_empty_statements(session):
 
 
 def test_statement_object(session):
-    value = session.run(Statement("RETURN $x"), x=1).single().value()
+    value = session.run(Statement("RETURN $x"), parameters={"x": 1}).single().value()
     assert value == 1
 
 
@@ -195,7 +195,8 @@ def test_autocommit_transactions_should_support_timeout(neo4j_driver):
 def test_regex_in_parameter(session):
     matches = session.run("UNWIND ['A', 'B', 'C', 'A B', 'B C', 'A B C', "
                           "'A BC', 'AB C'] AS t WITH t "
-                          "WHERE t =~ $re RETURN t", re=r'.*\bB\b.*').value()
+                          "WHERE t =~ $re RETURN t",
+                          parameters={"re": r'.*\bB\b.*'}).value()
     assert matches == ["B", "A B", "B C", "A B C"]
 
 

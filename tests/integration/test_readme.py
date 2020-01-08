@@ -28,9 +28,11 @@ def test_should_run_readme(uri, auth):
     driver = GraphDatabase.driver(uri, auth=auth)
 
     def print_friends(tx, name):
-        for record in tx.run("MATCH (a:Person)-[:KNOWS]->(friend) "
-                             "WHERE a.name = $name "
-                             "RETURN friend.name", name=name):
+        result = tx.run("MATCH (a:Person)-[:KNOWS]->(friend) "
+                        "WHERE a.name = $name "
+                        "RETURN friend.name",
+                        parameters={"name": name})
+        for record in result:
             print(record["friend.name"])
 
     with driver.session() as session:

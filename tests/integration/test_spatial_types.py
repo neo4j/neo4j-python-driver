@@ -28,7 +28,7 @@ def test_cartesian_point_input(cypher_eval):
     x, y = cypher_eval("CYPHER runtime=interpreted "
                        "WITH $point AS point "
                        "RETURN [point.x, point.y]",
-                       point=CartesianPoint((1.23, 4.56)))
+                       parameters={"point": CartesianPoint((1.23, 4.56))})
     assert x == 1.23
     assert y == 4.56
 
@@ -37,7 +37,7 @@ def test_cartesian_3d_point_input(cypher_eval):
     x, y, z = cypher_eval("CYPHER runtime=interpreted "
                           "WITH $point AS point "
                           "RETURN [point.x, point.y, point.z]",
-                          point=CartesianPoint((1.23, 4.56, 7.89)))
+                          parameters={"point": CartesianPoint((1.23, 4.56, 7.89))})
     assert x == 1.23
     assert y == 4.56
     assert z == 7.89
@@ -47,7 +47,7 @@ def test_wgs84_point_input(cypher_eval):
     lat, long = cypher_eval("CYPHER runtime=interpreted "
                             "WITH $point AS point "
                             "RETURN [point.latitude, point.longitude]",
-                            point=WGS84Point((1.23, 4.56)))
+                            parameters={"point": WGS84Point((1.23, 4.56))})
     assert long == 1.23
     assert lat == 4.56
 
@@ -57,7 +57,7 @@ def test_wgs84_3d_point_input(cypher_eval):
                                     "WITH $point AS point "
                                     "RETURN [point.latitude, point.longitude, "
                                     "point.height]",
-                                    point=WGS84Point((1.23, 4.56, 7.89)))
+                                    parameters={"point": WGS84Point((1.23, 4.56, 7.89))})
     assert long == 1.23
     assert lat == 4.56
     assert height == 7.89
@@ -65,7 +65,7 @@ def test_wgs84_3d_point_input(cypher_eval):
 
 def test_point_array_input(cypher_eval):
     data = [WGS84Point((1.23, 4.56)), WGS84Point((9.87, 6.54))]
-    value = cypher_eval("CREATE (a {x:$x}) RETURN a.x", x=data)
+    value = cypher_eval("CREATE (a {x:$x}) RETURN a.x", parameters={"x": data})
     assert value == data
 
 

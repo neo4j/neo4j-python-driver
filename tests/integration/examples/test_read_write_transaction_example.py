@@ -36,12 +36,12 @@ class ReadWriteTransactionExample:
 
     @staticmethod
     def create_person_node(tx, name):
-        tx.run("CREATE (a:Person {name: $name})", name=name)
+        tx.run("CREATE (a:Person {name: $name})", parameters={"name": name})
         return None
 
     @staticmethod
     def match_person_node(tx, name):
-        result = tx.run("MATCH (a:Person {name: $name}) RETURN count(a)", name=name)
+        result = tx.run("MATCH (a:Person {name: $name}) RETURN count(a)", parameters={"name": name})
         return result.single()[0]
     # end::read-write-transaction[]
 

@@ -1,0 +1,14 @@
+!: BOLT 4
+!: AUTO HELLO
+!: AUTO GOODBYE
+!: AUTO RESET
+!: PORT 9001
+
+C: RUN "UNWIND $list AS x RETURN x" {"list": [0, 1, 2, 3]} {}
+   PULL { "n": 1000 }
+S: SUCCESS {"fields": ["x"]}
+   RECORD [0]
+   RECORD [1]
+   RECORD [2]
+   RECORD [3]
+   SUCCESS {}

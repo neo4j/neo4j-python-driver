@@ -23,6 +23,8 @@ from neo4j import GraphDatabase, READ_ACCESS
 
 from tests.stub.conftest import StubTestCase, StubCluster
 
+import logging
+log = logging.getLogger("neo4j")
 
 class BookmarkingTestCase(StubTestCase):
 
@@ -62,16 +64,16 @@ class BookmarkingTestCase(StubTestCase):
                     assert session.last_bookmark() == "bookmark:3"
 
     def test_autocommit_transaction_included_in_chain(self):
-        with StubCluster("v3/router.script",
-                         "v3/bookmark_chain_with_autocommit.script"):
+        # python -m pytest tests/stub/test_bookmarking.py -s -k test_autocommit_transaction_included_in_chain
+        with StubCluster("v3/router.script", "v3/bookmark_chain_with_autocommit.script"):
             uri = "bolt+routing://localhost:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=READ_ACCESS,
-                                    bookmarks=["bookmark:1"]) as session:
+                with driver.session(default_access_mode=READ_ACCESS, bookmarks=["bookmark:1"]) as session:
                     with session.begin_transaction():
                         pass
                     assert session.last_bookmark() == "bookmark:2"
-                    session.run("RETURN 1").consume()
+                    result = session.run("RETURN 1")
+                    result.consume()
                     assert session.last_bookmark() == "bookmark:3"
                     with session.begin_transaction():
                         pass

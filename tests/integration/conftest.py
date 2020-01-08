@@ -345,15 +345,15 @@ def protocol_version(session):
 @fixture
 def cypher_eval(bolt_driver):
 
-    def run_and_rollback(tx, cypher, **parameters):
-        result = tx.run(cypher, **parameters)
+    def run_and_rollback(tx, cypher, **kwargs):
+        result = tx.run(cypher, **kwargs)
         value = result.single().value()
         tx.success = False
         return value
 
-    def f(cypher, **parameters):
+    def f(cypher, **kwargs):
         with bolt_driver.session() as session:
-            return session.write_transaction(run_and_rollback, cypher, **parameters)
+            return session.write_transaction(run_and_rollback, cypher, **kwargs)
 
     return f
 

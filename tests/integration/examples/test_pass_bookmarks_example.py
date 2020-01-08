@@ -35,7 +35,7 @@ class BookmarksExample:
     # Create a person node.
     @classmethod
     def create_person(cls, tx, name):
-        tx.run("CREATE (:Person {name: $name})", name=name)
+        tx.run("CREATE (:Person {name: $name})", parameters={"name": name})
 
     # Create an employment relationship to a pre-existing company node.
     # This relies on the person first having been created.
@@ -44,7 +44,7 @@ class BookmarksExample:
         tx.run("MATCH (person:Person {name: $person_name}) "
                "MATCH (company:Company {name: $company_name}) "
                "CREATE (person)-[:WORKS_FOR]->(company)",
-               person_name=person_name, company_name=company_name)
+               parameters={"person_name": person_name, "company_name": company_name})
 
     # Create a friendship between two people.
     @classmethod
@@ -52,7 +52,7 @@ class BookmarksExample:
         tx.run("MATCH (a:Person {name: $name_a}) "
                "MATCH (b:Person {name: $name_b}) "
                "MERGE (a)-[:KNOWS]->(b)",
-               name_a=name_a, name_b=name_b)
+               parameters={"name_a": name_a, "name_b": name_b})
 
     # Match and display all friendships.
     @classmethod

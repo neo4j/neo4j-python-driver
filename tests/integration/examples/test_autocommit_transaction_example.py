@@ -32,12 +32,12 @@ class AutocommitTransactionExample:
     # tag::autocommit-transaction[]
     def add_person(self, name):
         with self.driver.session() as session:
-            session.run("CREATE (a:Person {name: $name})", name=name)
+            session.run("CREATE (a:Person {name: $name})", parameters={"name": name})
 
     # Alternative implementation, with a one second timeout
     def add_person_within_a_second(self, name):
         with self.driver.session() as session:
-            session.run(Statement("CREATE (a:Person {name: $name})", timeout=1.0), name=name)
+            session.run(Statement("CREATE (a:Person {name: $name})", timeout=1.0), parameters={"name": name})
     # end::autocommit-transaction[]
 
 

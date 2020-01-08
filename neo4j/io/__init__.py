@@ -197,7 +197,7 @@ class Bolt:
                 local_port = s.getsockname()[1]
 
                 # Send details of the protocol versions supported
-                supported_versions = [3, 0, 0, 0]
+                supported_versions = [4, 3, 0, 0]
                 handshake = [Bolt.MAGIC_PREAMBLE] + supported_versions
 
                 log.debug("[#{port:04X}]  C: <MAGIC> 0x{magic:08X}".format(port=local_port, magic=Bolt.MAGIC_PREAMBLE))
@@ -345,6 +345,9 @@ class Bolt:
         raise NotImplementedError
 
     def pull_all(self, **handlers):
+        raise NotImplementedError
+
+    def pull(self, **handlers):
         raise NotImplementedError
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):

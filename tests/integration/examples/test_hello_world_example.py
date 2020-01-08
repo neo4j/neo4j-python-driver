@@ -45,7 +45,7 @@ class HelloWorldExample:
     def _create_and_return_greeting(tx, message):
         result = tx.run("CREATE (a:Greeting) "
                         "SET a.message = $message "
-                        "RETURN a.message + ', from node ' + id(a)", message=message)
+                        "RETURN a.message + ', from node ' + id(a)", parameters={"message": message})
         return result.single()[0]
 # end::hello-world[]
 

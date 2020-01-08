@@ -18,6 +18,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from logging import getLogger
+log = getLogger("neo4j")
 
 from collections import namedtuple
 
@@ -133,6 +135,7 @@ class SummaryCounters:
     constraints_removed = 0
 
     def __init__(self, statistics):
+        log.debug(statistics)
         for key, value in dict(statistics).items():
             key = key.replace("-", "_")
             setattr(self, key, value)

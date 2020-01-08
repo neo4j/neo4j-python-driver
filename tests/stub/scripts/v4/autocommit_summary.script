@@ -1,0 +1,11 @@
+!: BOLT 4
+!: AUTO RESET
+!: AUTO GOODBYE
+
+C: HELLO {"user_agent": "test", "scheme": "basic", "principal": "test", "credentials": "test"}
+S: SUCCESS {server”: "Neo4j/4.0.0", "connection_id": "123e4567-e89b-12d3-a456-426655440000"}
+C: RUN "CREATE (n:Tester) {name: $name} RETURN n.name AS name" {"name": "test"} {"mode": "w", "tx_timeout": 123, "db": "system"}
+S: SUCCESS {"fields": ["name"], "t_first": 1234}
+C: PULL {"n": -1}
+S: RECORD ["test"]
+   SUCCESS {"bookmark": "neo4j:bookmark:v1:tx2", "stats": {"nodes-created": 1}, "type": "w", "t_last": 5}

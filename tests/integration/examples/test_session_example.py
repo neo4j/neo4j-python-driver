@@ -31,7 +31,7 @@ class SessionExample:
     # tag::session[]
     def add_person(self, name):
         with self.driver.session() as session:
-            session.run("CREATE (a:Person {name: $name})", name=name)
+            session.run("CREATE (a:Person {name: $name})", parameters={"name": name})
     # end::session[]
 
 

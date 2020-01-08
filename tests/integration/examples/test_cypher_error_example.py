@@ -38,7 +38,7 @@ class CypherErrorExample:
     @staticmethod
     def select_employee(tx, name):
         try:
-            result = tx.run("SELECT * FROM Employees WHERE name = $name", name=name)
+            result = tx.run("SELECT * FROM Employees WHERE name = $name", parameters={"name": name})
             return result.single()["employee_number"]
         except ClientError as error:
             print(error.message)

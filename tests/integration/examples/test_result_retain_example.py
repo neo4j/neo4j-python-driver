@@ -36,7 +36,8 @@ class ResultRetainExample:
 
     def add_person(self, name):
         return self.session.run("CREATE (a:Person {name: $name}) "
-                                "RETURN a", name=name).single().value()
+                                "RETURN a",
+                                parameters={"name": name}).single().value()
 
     # tag::result-retain[]
     def add_employees(self, company_name):
@@ -54,7 +55,7 @@ class ResultRetainExample:
         tx.run("MATCH (emp:Person {name: $person_name}) "
                "MERGE (com:Company {name: $company_name}) "
                "MERGE (emp)-[:WORKS_FOR]->(com)",
-               person_name=person["name"], company_name=company_name)
+               parameters={"person_name": person["name"], "company_name": company_name})
         return 1
 
     @staticmethod
@@ -65,7 +66,8 @@ class ResultRetainExample:
     def count_employees(self, company_name):
         return self.session.run("MATCH (emp:Person)-[:WORKS_FOR]->(com:Company) "
                                 "WHERE com.name = $company_name "
-                                "RETURN count(emp)", company_name=company_name).single().value()
+                                "RETURN count(emp)",
+                                parameters={"company_name": company_name}).single().value()
 
 
 def test(driver):

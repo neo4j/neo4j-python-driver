@@ -36,7 +36,8 @@ class ResultConsumeExample:
 
     def add_person(self, name):
         return self.session.run("CREATE (a:Person {name: $name}) "
-                                "RETURN a", name=name).single().value()
+                                "RETURN a",
+                                parameters={"name": name}).single().value()
 
     # tag::result-consume[]
     def get_people(self):

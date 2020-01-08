@@ -1,0 +1,12 @@
+!: BOLT 4
+!: AUTO RESET
+!: AUTO HELLO
+!: AUTO GOODBYE
+!: PORT 9001
+
+C: RUN "MATCH (n:TEST) RETURN n.name" {} {}
+   PULL_ALL
+S: SUCCESS {"fields": ["n.name"]}
+   RECORD ["ALICE"]
+   RECORD ["BOB"]
+   SUCCESS {}

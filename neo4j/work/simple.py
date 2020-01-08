@@ -129,7 +129,7 @@ class Session(Workspace):
             finally:
                 self._disconnect()
 
-    def run(self, cypher, parameters=None, **kwparameters):
+    def run(self, cypher, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, database=None, fetch_size=-1):
         """ Run a Cypher statement within an auto-commit transaction.
 
         The statement is sent and the result header received
@@ -149,7 +149,6 @@ class Session(Workspace):
 
         :param cypher: Cypher statement
         :param parameters: dictionary of parameters
-        :param kwparameters: additional keyword parameters
         :returns: :class:`.StatementResult` object
         """
         if not cypher:
@@ -166,9 +165,11 @@ class Session(Workspace):
         has_transaction = self.has_transaction()
 
         statement_text = str(cypher)
-        statement_metadata = getattr(cypher, "metadata", None)
-        statement_timeout = getattr(cypher, "timeout", None)
-        parameters = DataDehydrator.fix_parameters(dict(parameters or {}, **kwparameters))
+
+        statement_metadata = getattr(cypher, "metadata", None) or metadata
+        statement_timeout = getattr(cypher, "timeout", None) or timeout
+
+        parameters = DataDehydrator.fix_parameters(dict(parameters or {}))
 
         def fail(_):
             self._close_transaction()
@@ -203,8 +204,16 @@ class Session(Workspace):
                 raise ValueError("Timeouts only apply at transaction level")
         else:
             run_metadata["bookmarks"] = self._bookmarks_in
+            if bookmarks:
+                bookmarks += self._bookmarks_in
+            else:
+                bookmarks = self._bookmarks_in
+        #cx.run(statement_text, parameters, **run_metadata)
 
-        cx.run(statement_text, parameters, **run_metadata)
+        cx.run(statement_text, parameters, mode=mode, bookmarks=bookmarks, metadata=statement_metadata, timeout=statement_timeout, database=database, on_success=result_metadata.update, on_failure=fail)
+
+        # PULL WITH FETCH SIZE
+
         cx.pull_all(
             on_records=lambda records: result._records.extend(
                 hydrant.hydrate_records(result.keys(), records)),
@@ -301,27 +310,27 @@ class Session(Workspace):
     def _close_transaction(self):
         self._transaction = None
 
-    def begin_transaction(self, bookmark=None, metadata=None, timeout=None):
+    def begin_transaction(self, database=None, bookmarks=None, metadata=None, timeout=None, mode=None):
         """ Create a new :class:`.Transaction` within this session.
         Calling this method with a bookmark is equivalent to
 
-        :param bookmark: a bookmark to which the server should
-                         synchronise before beginning the transaction
+        :param mode:
+        :param bookmarks: Bookmarks to which the server should synchronise before beginning the transaction
         :param metadata:
-        :param timeout:
+        :param timeout: milliseconds
         :returns: new :class:`.Transaction` instance.
         :raise: :class:`.TransactionError` if a transaction is already open
         """
         if self.has_transaction():
             raise TransactionError("Explicit transaction already open")
 
-        self._open_transaction(metadata=metadata, timeout=timeout)
+        self._open_transaction(database=database, bookmarks=None, metadata=metadata, timeout=timeout, mode=mode)
         return self._transaction
 
-    def _open_transaction(self, access_mode=None, metadata=None, timeout=None):
+    def _open_transaction(self, access_mode=None, database=None, bookmarks=None, metadata=None, timeout=None, mode=None):
         self._transaction = Transaction(self, on_close=self._close_transaction)
         self._connect(access_mode)
-        self._connection.begin(bookmarks=self._bookmarks_in, metadata=metadata, timeout=timeout)
+        self._connection.begin(bookmarks=self._bookmarks_in, tx_metadata=metadata, tx_timeout=timeout, db=database, mode=mode)
 
     def commit_transaction(self):
         """ Commit the current transaction.
@@ -465,10 +474,8 @@ class Transaction:
         arguments, or as a mixture of both. For example, the `run`
         statements below are all equivalent::
 
-            >>> statement = "CREATE (a:Person {name:{name}, age:{age}})"
-            >>> tx.run(statement, {"name": "Alice", "age": 33})
-            >>> tx.run(statement, {"name": "Alice"}, age=33)
-            >>> tx.run(statement, name="Alice", age=33)
+            >>> statement = "CREATE (a:Person {name: $name, age: $age})"
+            >>> tx.run(statement, parameters={"name": "Alice", "age": 33})
 
         Parameter values can be of any type supported by the Neo4j type
         system. In Python, this includes :class:`bool`, :class:`int`,

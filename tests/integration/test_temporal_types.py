@@ -30,7 +30,7 @@ def test_native_date_input(cypher_eval):
     from datetime import date
     result = cypher_eval("CYPHER runtime=interpreted WITH $x AS x "
                          "RETURN [x.year, x.month, x.day]",
-                         x=date(1976, 6, 13))
+                         parameters={"x": date(1976, 6, 13)})
     year, month, day = result
     assert year == 1976
     assert month == 6
@@ -40,7 +40,7 @@ def test_native_date_input(cypher_eval):
 def test_date_input(cypher_eval):
     result = cypher_eval("CYPHER runtime=interpreted WITH $x AS x "
                          "RETURN [x.year, x.month, x.day]",
-                         x=Date(1976, 6, 13))
+                         parameters={"x": Date(1976, 6, 13)})
     year, month, day = result
     assert year == 1976
     assert month == 6
@@ -49,7 +49,7 @@ def test_date_input(cypher_eval):
 
 def test_date_array_input(cypher_eval):
     data = [DateTime.now().date(), Date(1976, 6, 13)]
-    value = cypher_eval("CREATE (a {x:$x}) RETURN a.x", x=data)
+    value = cypher_eval("CREATE (a {x:$x}) RETURN a.x", parameters={"x": data})
     assert value == data
 
 
@@ -57,7 +57,7 @@ def test_native_time_input(cypher_eval):
     from datetime import time
     result = cypher_eval("CYPHER runtime=interpreted WITH $x AS x "
                          "RETURN [x.hour, x.minute, x.second, x.nanosecond]",
-                         x=time(12, 34, 56, 789012))
+                         parameters={"x": time(12, 34, 56, 789012)})
     hour, minute, second, nanosecond = result
     assert hour == 12
     assert minute == 34
@@ -68,7 +68,7 @@ def test_native_time_input(cypher_eval):
 def test_whole_second_time_input(cypher_eval):
     result = cypher_eval("CYPHER runtime=interpreted WITH $x AS x "
                          "RETURN [x.hour, x.minute, x.second]",
-                         x=Time(12, 34, 56))
+                         parameters={"x": Time(12, 34, 56)})
     hour, minute, second = result
     assert hour == 12
     assert minute == 34
@@ -78,7 +78,7 @@ def test_whole_second_time_input(cypher_eval):
 def test_nanosecond_resolution_time_input(cypher_eval):
     result = cypher_eval("CYPHER runtime=interpreted WITH $x AS x "
                          "RETURN [x.hour, x.minute, x.second, x.nanosecond]",
-                         x=Time(12, 34, 56.789012345))
+                         parameters={"x": Time(12, 34, 56.789012345)})
     hour, minute, second, nanosecond = result
     assert hour == 12
     assert minute == 34
@@ -90,7 +90,7 @@ def test_time_with_numeric_time_offset_input(cypher_eval):
     result = cypher_eval("CYPHER runtime=interpreted WITH $x AS x "
                          "RETURN [x.hour, x.minute, x.second, "
                          "        x.nanosecond, x.offset]",
-                         x=Time(12, 34, 56.789012345, tzinfo=FixedOffset(90)))
+                         parameters={"x": Time(12, 34, 56.789012345, tzinfo=FixedOffset(90))})
     hour, minute, second, nanosecond, offset = result
     assert hour == 12
     assert minute == 34
@@ -101,7 +101,7 @@ def test_time_with_numeric_time_offset_input(cypher_eval):
 
 def test_time_array_input(cypher_eval):
     data = [Time(12, 34, 56), Time(10, 0, 0)]
-    value = cypher_eval("CREATE (a {x:$x}) RETURN a.x", x=data)
+    value = cypher_eval("CREATE (a {x:$x}) RETURN a.x", parameters={"x": data})
     assert value == data
 
 
@@ -110,7 +110,7 @@ def test_native_datetime_input(cypher_eval):
     result = cypher_eval("CYPHER runtime=interpreted WITH $x AS x "
                          "RETURN [x.year, x.month, x.day, "
                          "        x.hour, x.minute, x.second, x.nanosecond]",
-                         x=datetime(1976, 6, 13, 12, 34, 56, 789012))
+                         parameters={"x": datetime(1976, 6, 13, 12, 34, 56, 789012)})
     year, month, day, hour, minute, second, nanosecond = result
     assert year == 1976
     assert month == 6
@@ -125,7 +125,7 @@ def test_whole_second_datetime_input(cypher_eval):
     result = cypher_eval("CYPHER runtime=interpreted WITH $x AS x "
                          "RETURN [x.year, x.month, x.day, "
                          "        x.hour, x.minute, x.second]",
-                         x=DateTime(1976, 6, 13, 12, 34, 56))
+                         parameters={"x": DateTime(1976, 6, 13, 12, 34, 56)})
     year, month, day, hour, minute, second = result
     assert year == 1976
     assert month == 6
@@ -139,7 +139,7 @@ def test_nanosecond_resolution_datetime_input(cypher_eval):
     result = cypher_eval("CYPHER runtime=interpreted WITH $x AS x "
                          "RETURN [x.year, x.month, x.day, "
                          "        x.hour, x.minute, x.second, x.nanosecond]",
-                         x=DateTime(1976, 6, 13, 12, 34, 56.789012345))
+                         parameters={"x": DateTime(1976, 6, 13, 12, 34, 56.789012345)})
     year, month, day, hour, minute, second, nanosecond = result
     assert year == 1976
     assert month == 6
@@ -155,8 +155,8 @@ def test_datetime_with_numeric_time_offset_input(cypher_eval):
                          "RETURN [x.year, x.month, x.day, "
                          "        x.hour, x.minute, x.second, "
                          "        x.nanosecond, x.offset]",
-                         x=DateTime(1976, 6, 13, 12, 34, 56.789012345,
-                                    tzinfo=FixedOffset(90)))
+                         parameters={"x": DateTime(1976, 6, 13, 12, 34, 56.789012345, tzinfo=FixedOffset(90))})
+
     year, month, day, hour, minute, second, nanosecond, offset = result
     assert year == 1976
     assert month == 6
@@ -175,7 +175,7 @@ def test_datetime_with_named_time_zone_input(cypher_eval):
                          "RETURN [x.year, x.month, x.day, "
                          "        x.hour, x.minute, x.second, "
                          "        x.nanosecond, x.timezone]",
-                         x=input_value)
+                         parameters={"x": input_value})
     year, month, day, hour, minute, second, nanosecond, tz = result
     assert year == input_value.year
     assert month == input_value.month
@@ -189,7 +189,7 @@ def test_datetime_with_named_time_zone_input(cypher_eval):
 
 def test_datetime_array_input(cypher_eval):
     data = [DateTime(2018, 4, 6, 13, 4, 42.516120), DateTime(1976, 6, 13)]
-    value = cypher_eval("CREATE (a {x:$x}) RETURN a.x", x=data)
+    value = cypher_eval("CREATE (a {x:$x}) RETURN a.x", parameters={"x": data})
     assert value == data
 
 
@@ -197,8 +197,8 @@ def test_duration_input(cypher_eval):
     result = cypher_eval("CYPHER runtime=interpreted WITH $x AS x "
                          "RETURN [x.months, x.days, x.seconds, "
                          "        x.microsecondsOfSecond]",
-                         x=Duration(years=1, months=2, days=3, hours=4,
-                                    minutes=5, seconds=6.789012))
+                         parameters={"x": Duration(years=1, months=2, days=3, hours=4,
+                                    minutes=5, seconds=6.789012)})
     months, days, seconds, microseconds = result
     assert months == 14
     assert days == 3
@@ -208,7 +208,7 @@ def test_duration_input(cypher_eval):
 
 def test_duration_array_input(cypher_eval):
     data = [Duration(1, 2, 3, 4, 5, 6), Duration(9, 8, 7, 6, 5, 4)]
-    value = cypher_eval("CREATE (a {x:$x}) RETURN a.x", x=data)
+    value = cypher_eval("CREATE (a {x:$x}) RETURN a.x", parameters={"x": data})
     assert value == data
 
 
@@ -217,8 +217,8 @@ def test_timedelta_input(cypher_eval):
     result = cypher_eval("CYPHER runtime=interpreted WITH $x AS x "
                          "RETURN [x.months, x.days, x.seconds, "
                          "        x.microsecondsOfSecond]",
-                         x=timedelta(days=3, hours=4, minutes=5,
-                                     seconds=6.789012))
+                         parameters={"x": timedelta(days=3, hours=4, minutes=5,
+                                     seconds=6.789012)})
     months, days, seconds, microseconds = result
     assert months == 0
     assert days == 3
@@ -229,7 +229,7 @@ def test_timedelta_input(cypher_eval):
 def test_mixed_array_input(cypher_eval):
     data = [Date(1976, 6, 13), Duration(9, 8, 7, 6, 5, 4)]
     with raises(CypherTypeError):
-        _ = cypher_eval("CREATE (a {x:$x}) RETURN a.x", x=data)
+        _ = cypher_eval("CREATE (a {x:$x}) RETURN a.x", parameters={"x": data})
 
 
 def test_date_output(cypher_eval):

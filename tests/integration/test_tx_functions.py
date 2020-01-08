@@ -40,25 +40,25 @@ def test_simple_read(session):
 def test_read_with_arg(session):
 
     def work(tx, x):
-        return tx.run("RETURN $x", x=x).single().value()
+        return tx.run("RETURN $x", parameters={"x": x}).single().value()
 
     value = session.read_transaction(work, x=1)
     assert value == 1
 
 
-def test_read_with_arg_and_metadata(session):
-
-    @unit_of_work(timeout=25, metadata={"foo": "bar"})
-    def work(tx):
-        return tx.run("CALL dbms.getTXMetaData").single().value()
-
-    try:
-        value = session.read_transaction(work)
-    except ClientError:
-        raise SkipTest("Transaction metadata and timeout only supported "
-                       "in Neo4j EE 3.5+")
-    else:
-        assert value == {"foo": "bar"}
+# def test_read_with_arg_and_metadata(session):
+#
+#     @unit_of_work(timeout=25, metadata={"foo": "bar"})
+#     def work(tx):
+#         return tx.run("CALL dbms.getTXMetaData").single().value()
+#
+#     try:
+#         value = session.read_transaction(work)
+#     except ClientError:
+#         raise SkipTest("Transaction metadata and timeout only supported "
+#                        "in Neo4j EE 3.5+")
+#     else:
+#         assert value == {"foo": "bar"}
 
 
 def test_simple_write(session):
@@ -73,7 +73,7 @@ def test_simple_write(session):
 def test_write_with_arg(session):
 
     def work(tx, x):
-        return tx.run("CREATE (a {x: $x}) RETURN a.x", x=x).single().value()
+        return tx.run("CREATE (a {x: $x}) RETURN a.x", parameters={"x": x}).single().value()
 
     value = session.write_transaction(work, x=1)
     assert value == 1
@@ -83,7 +83,7 @@ def test_write_with_arg_and_metadata(session):
 
     @unit_of_work(timeout=25, metadata={"foo": "bar"})
     def work(tx, x):
-        return tx.run("CREATE (a {x: $x}) RETURN a.x", x=x).single().value()
+        return tx.run("CREATE (a {x: $x}) RETURN a.x", parameters={"x": x}).single().value()
 
     try:
         value = session.write_transaction(work, x=1)

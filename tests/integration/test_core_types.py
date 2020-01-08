@@ -45,17 +45,17 @@ def test_float(cypher_eval):
 
 
 def test_float_nan(cypher_eval):
-    assert isnan(cypher_eval("WITH $x AS x RETURN x", x=float("NaN")))
+    assert isnan(cypher_eval("WITH $x AS x RETURN x", parameters={"x": float("NaN")}))
 
 
 def test_float_positive_infinity(cypher_eval):
     infinity = float("+Inf")
-    assert cypher_eval("WITH $x AS x RETURN x", x=infinity) == infinity
+    assert cypher_eval("WITH $x AS x RETURN x", parameters={"x": infinity}) == infinity
 
 
 def test_float_negative_infinity(cypher_eval):
     infinity = float("-Inf")
-    assert cypher_eval("WITH $x AS x RETURN x", x=infinity) == infinity
+    assert cypher_eval("WITH $x AS x RETURN x", parameters={"x": infinity}) == infinity
 
 
 def test_string(cypher_eval):
@@ -64,19 +64,19 @@ def test_string(cypher_eval):
 
 def test_bytes(cypher_eval):
     data = bytearray([0x00, 0x33, 0x66, 0x99, 0xCC, 0xFF])
-    assert cypher_eval("CREATE (a {x:$x}) RETURN a.x", x=data) == data
+    assert cypher_eval("CREATE (a {x:$x}) RETURN a.x", parameters={"x": data}) == data
 
 
 def test_list(cypher_eval):
     data = ["one", "two", "three"]
-    assert cypher_eval("WITH $x AS x RETURN x", x=data) == data
+    assert cypher_eval("WITH $x AS x RETURN x", parameters={"x": data}) == data
 
 
 def test_map(cypher_eval):
     data = {"one": "eins", "two": "zwei", "three": "drei"}
-    assert cypher_eval("WITH $x AS x RETURN x", x=data) == data
+    assert cypher_eval("WITH $x AS x RETURN x", parameters={"x": data}) == data
 
 
 def test_non_string_map_keys(session):
     with raises(TypeError):
-        _ = session.run("RETURN $x", x={1: 'eins', 2: 'zwei', 3: 'drei'})
+        _ = session.run("RETURN $x", parameters={"x": {1: 'eins', 2: 'zwei', 3: 'drei'}})

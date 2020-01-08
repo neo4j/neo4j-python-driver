@@ -33,13 +33,13 @@ def add_person(driver, name):
 
 # Simple implementation of the unit of work
 def create_person_node(tx, name):
-    return tx.run("CREATE (a:Person {name: $name}) RETURN id(a)", name=name).single().value()
+    return tx.run("CREATE (a:Person {name: $name}) RETURN id(a)", parameters={"name": name}).single().value()
 
 
 # Alternative implementation, with timeout
 @unit_of_work(timeout=0.5)
 def create_person_node_within_half_a_second(tx, name):
-    return tx.run("CREATE (a:Person {name: $name}) RETURN id(a)", name=name).single().value()
+    return tx.run("CREATE (a:Person {name: $name}) RETURN id(a)", parameters={"name": name}).single().value()
 # end::transaction-function[]
 
 

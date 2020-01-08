@@ -129,20 +129,20 @@ def test_statement_object_not_supported(session):
             tx.run(Statement("RETURN 1", timeout=0.25))
 
 
-def test_transaction_metadata(session):
-    metadata_in = {"foo": "bar"}
-    with session.begin_transaction(metadata=metadata_in) as tx:
-        try:
-            metadata_out = tx.run("CALL dbms.getTXMetaData").single().value()
-        except ClientError as e:
-            if e.code == "Neo.ClientError.Procedure.ProcedureNotFound":
-                raise SkipTest("Cannot assert correct metadata as Neo4j "
-                               "edition does not support procedure "
-                               "dbms.getTXMetaData")
-            else:
-                raise
-        else:
-            assert metadata_in == metadata_out
+# def test_transaction_metadata(session):
+#     metadata_in = {"foo": "bar"}
+#     with session.begin_transaction(metadata=metadata_in) as tx:
+#         try:
+#             metadata_out = tx.run("CALL dbms.getTXMetaData").single().value()
+#         except ClientError as e:
+#             if e.code == "Neo.ClientError.Procedure.ProcedureNotFound":
+#                 raise SkipTest("Cannot assert correct metadata as Neo4j "
+#                                "edition does not support procedure "
+#                                "dbms.getTXMetaData")
+#             else:
+#                 raise
+#         else:
+#             assert metadata_in == metadata_out
 
 
 def test_transaction_timeout(driver):

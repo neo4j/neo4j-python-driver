@@ -123,11 +123,13 @@ class Bolt4(Bolt):
         self.send_all()
         self.fetch_all()
 
-    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
+    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, database=None, **handlers):
         if not parameters:
             parameters = {}
         extra = {}
         if mode:
+            # 'r': for read access mode
+            # No mode metadata implies that it is a write access mode
             extra["mode"] = mode
         if bookmarks:
             try:
@@ -141,9 +143,14 @@ class Bolt4(Bolt):
                 raise TypeError("Metadata must be coercible to a dict")
         if timeout:
             try:
-                extra["tx_timeout"] = int(1000 * timeout)
+                extra["tx_timeout"] = int(timeout)  # milliseconds
             except TypeError:
                 raise TypeError("Timeout must be specified as a number of seconds")
+        if database:
+            try:
+                extra["db"] = str(database)
+            except TypeError:
+                raise TypeError("Database must be specified as a string")
         fields = (statement, parameters, extra)
         log.debug("[#{port:04X}]  C: RUN {fields}".format(port=self.local_port, fields=" ".join(map(repr, fields))))
         if statement.upper() == u"COMMIT":
@@ -156,10 +163,53 @@ class Bolt4(Bolt):
         self._append(b"\x2F", (), Response(self, **handlers))
 
     def pull_all(self, **handlers):
-        log.debug("[#{port:04X}]  C: PULL_ALL".format(port=self.local_port))
-        self._append(b"\x3F", (), Response(self, **handlers))
+        fields = ({"n": -1}, )
+        log.debug("[#{port:04X}]  C: PULL {{\"n\": -1}}".format(port=self.local_port))
+        self._append(b"\x3F", fields, Response(self, **handlers))
 
-    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
+        # log.debug("[#{port:04X}]  C: PULL_ALL".format(port=self.local_port))
+        # self._append(b"\x3F", (), Response(self, **handlers))
+
+    def pull(self, n, qid=None, **handlers):
+        """
+        :param n: Specifies how many records to pull from the server. n > 0 or n == -1
+        :param qid: Query ID, Specifies the result of which statement the operation should be carried out
+        (Explicit transaction only) -1 can be used to denote the last executed statement. (Optional)
+        :param handlers:
+        :return:
+        """
+        metadata = {"n": n}
+
+        if qid:
+            metadata["qid"]: qid
+
+        log.debug("[#{port:04X}]  C: PULL {metadata}".format(port=self.local_port, metadata=metadata))
+        self._append(b"\x3F", (metadata, ), Response(self, **handlers))
+
+    def begin(self, mode=None, bookmarks=None, tx_metadata=None, tx_timeout=None, db=None, **handlers):
+        """
+        :param mode: Read or Write
+        :param bookmarks: List of Bookmarks
+        :param tx_metadata: Transaction metadata
+        :param tx_timeout: Milliseconds
+        :param db: Database Name
+        :param handlers:
+        :return:
+        """
+        # BEGIN, 0x11
+
+        # BEGIN(
+        #    Map <String, Value> (metadata)
+        # )
+
+        # Metadata:
+
+        # bookmarks, List <String>
+        # tx_timeout, Integer - Set the transaction timeout with this value in milliseconds .e.g.1234
+        # tx_metadata, Map < String, Value > - Transaction metadata will be attached to this transaction and appears in transaction log.
+        # db, String - Database name for multi - database to select where the transaction takes place.No db metadata or empty string implies that it is The Default Database.
+        # mode, String - “r”: for read access mode, no mode implies that it is a write access mode
+
         extra = {}
         if mode:
             extra["mode"] = mode
@@ -168,16 +218,18 @@ class Bolt4(Bolt):
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
                 raise TypeError("Bookmarks must be provided within an iterable")
-        if metadata:
+        if tx_metadata:
             try:
-                extra["tx_metadata"] = dict(metadata)
+                extra["tx_metadata"] = dict(tx_metadata)
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
-        if timeout:
+        if tx_timeout:
             try:
-                extra["tx_timeout"] = int(1000 * timeout)
+                extra["tx_timeout"] = int(tx_timeout)
             except TypeError:
-                raise TypeError("Timeout must be specified as a number of seconds")
+                raise TypeError("Timeout must be specified as a number of milliseconds")
+        if db:
+            extra["db"] = db
         log.debug("[#{port:04X}]  C: BEGIN {extra}".format(port=self.local_port, extra=extra))
         self._append(b"\x11", (extra,), Response(self, **handlers))
 

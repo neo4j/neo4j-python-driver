@@ -20,9 +20,14 @@
 
 import pytest
 
+from logging import getLogger
+log = getLogger("neo4j")
+
 def test_can_obtain_summary_after_consuming_result(session):
+    # python -m pytest tests/integration/test_summary.py -s -k test_can_obtain_summary_after_consuming_result
     result = session.run("CREATE (n) RETURN n")
     summary = result.summary()
+    log.debug(summary)
     assert summary.statement == "CREATE (n) RETURN n"
     assert summary.parameters == {}
     assert summary.statement_type == "rw"
