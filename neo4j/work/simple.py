@@ -213,14 +213,23 @@ class Session(Workspace):
         cx.run(statement_text, parameters, mode=mode, bookmarks=bookmarks, metadata=statement_metadata, timeout=statement_timeout, database=database, on_success=result_metadata.update, on_failure=fail)
 
         # PULL WITH FETCH SIZE
-
-        cx.pull_all(
-            on_records=lambda records: result._records.extend(
-                hydrant.hydrate_records(result.keys(), records)),
-            on_success=done,
-            on_failure=fail,
-            on_summary=lambda: result.detach(sync=False),
-        )
+        if fetch_size > -1:
+            cx.pull(
+                fetch_size,
+                on_records=lambda records: result._records.extend(
+                    hydrant.hydrate_records(result.keys(), records)),
+                on_success=done,
+                on_failure=fail,
+                on_summary=lambda: result.detach(sync=False),
+            )
+        else:
+            cx.pull_all(
+                on_records=lambda records: result._records.extend(
+                    hydrant.hydrate_records(result.keys(), records)),
+                on_success=done,
+                on_failure=fail,
+                on_summary=lambda: result.detach(sync=False),
+            )
 
         if not has_transaction:
             try:

@@ -1,0 +1,24 @@
+!: BOLT 4
+!: AUTO RESET
+!: AUTO GOODBYE
+
+C: HELLO {"user_agent": "test", "scheme": "basic", "principal": "test", "credentials": "test"}
+S: SUCCESS {server”: "Neo4j/4.0.0", "connection_id": "123e4567-e89b-12d3-a456-426655440000"}
+C: BEGIN {"db": "system", "mode": "r", "tx_timeout": 123}
+S: SUCCESS {}
+C: RUN "MATCH (n:Node) RETURN n.name as name" {} {}
+S: SUCCESS {"fields": ["name"], "t_first": 1234}
+C: PULL {"n": 2}
+S: RECORD ["A"]
+   RECORD ["B"]
+   SUCCESS {"has_more": true}
+C: PULL {"n": 2}
+S: RECORD ["C"]
+   RECORD ["D"]
+   SUCCESS {"has_more": true}
+C: PULL {"n": 2}
+S: RECORD ["E"]
+   RECORD ["F"]
+   SUCCESS {"t_last": "12345", "type": "r", "stats": {}, "plan": {}, "profile": {}, "notifications": {}, "db": "system"}
+C: COMMIT
+S: SUCCESS {"bookmark": "bookmark:1:transaction"}

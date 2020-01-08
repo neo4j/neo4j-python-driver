@@ -6,7 +6,7 @@ C: HELLO {"user_agent": "test", "scheme": "basic", "principal": "test", "credent
 S: SUCCESS {server”: "Neo4j/4.0.0", "connection_id": "123e4567-e89b-12d3-a456-426655440000"}
 C: RUN "MATCH (n:Node) RETURN n.name as name" {} {"mode": "r", "tx_timeout": 123, "db": "system"}
 S: SUCCESS {"fields": ["name"], "t_first": 1234}
-C: PULL {"n": -1}
+C: PULL {"n": 1000}
 S: RECORD ["A"]
    RECORD ["B"]
    RECORD ["C"]
