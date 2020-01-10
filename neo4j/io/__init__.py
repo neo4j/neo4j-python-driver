@@ -58,21 +58,12 @@ from neo4j.packstream import Packer, Unpacker
 from neo4j.routing import RoutingTable
 
 
-MAGIC_PREAMBLE = 0x6060B017
-
-DEFAULT_MAX_CONNECTION_LIFETIME = 3600  # 1h
-
-DEFAULT_KEEP_ALIVE = True
-
-DEFAULT_CONNECTION_TIMEOUT = 5.0  # 5s
-
-
 # Set up logger
 log = getLogger("neo4j")
 
 
 class Bolt:
-    """ Server connection for Bolt protocol v1.
+    """ Server connection for Bolt protocol version 3.
 
     A :class:`.Connection` should be constructed following a
     successful Bolt handshake and takes the socket over which
@@ -80,6 +71,8 @@ class Bolt:
 
     .. note:: logs at INFO level
     """
+
+    MAGIC_PREAMBLE = 0x6060B017
 
     #: The protocol version in use on this connection
     protocol_version = 0
@@ -921,6 +914,8 @@ def _connect(resolved_address, timeout=None, **config):
     :param config:
     :return: socket object
     """
+    config = PoolConfig.consume(config)
+
     s = None
     try:
         if len(resolved_address) == 2:
@@ -932,13 +927,13 @@ def _connect(resolved_address, timeout=None, **config):
                              "{!r}".format(resolved_address))
         t = s.gettimeout()
         if timeout is None:
-            s.settimeout(DEFAULT_CONNECTION_TIMEOUT)
+            s.settimeout(config.connect_timeout)
         else:
             s.settimeout(timeout)
         log.debug("[#0000]  C: <OPEN> %s", resolved_address)
         s.connect(resolved_address)
         s.settimeout(t)
-        keep_alive = 1 if config.get("keep_alive", DEFAULT_KEEP_ALIVE) else 0
+        keep_alive = 1 if config.keep_alive else 0
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
     except SocketTimeout:
         log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
@@ -991,10 +986,9 @@ def _handshake(s, resolved_address):
 
     # Send details of the protocol versions supported
     supported_versions = [3, 0, 0, 0]
-    handshake = [MAGIC_PREAMBLE] + supported_versions
-    log.debug("[#%04X]  C: <MAGIC> 0x%08X", local_port, MAGIC_PREAMBLE)
-    log.debug("[#%04X]  C: <HANDSHAKE> 0x%08X 0x%08X 0x%08X 0x%08X",
-              local_port, *supported_versions)
+    handshake = [Bolt.MAGIC_PREAMBLE] + supported_versions
+    log.debug("[#%04X]  C: <MAGIC> 0x%08X", local_port, Bolt.MAGIC_PREAMBLE)
+    log.debug("[#%04X]  C: <HANDSHAKE> 0x%08X 0x%08X 0x%08X 0x%08X", local_port, *supported_versions)
     data = b"".join(struct_pack(">I", num) for num in handshake)
     s.sendall(data)
 
