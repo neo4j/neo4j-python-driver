@@ -1022,7 +1022,7 @@ def _handshake(s, resolved_address):
         raise ServiceUnavailable("Cannot to connect to Bolt service on {!r} "
                                  "(looks like HTTP)".format(resolved_address))
     agreed_version = data[-1], data[-2]
-    log.debug("[#%04X]  S: <HANDSHAKE> 0x%08X", local_port, agreed_version)
+    log.debug("[#%04X]  S: <HANDSHAKE> 0x%06X%02X", local_port, agreed_version[1], agreed_version[0])
     if agreed_version == (0, 0):
         log.debug("[#%04X]  C: <CLOSE>", local_port)
         s.shutdown(SHUT_RDWR)
