@@ -30,7 +30,7 @@ class ProtocolError(Exception):
 
 
 class ServiceUnavailable(Exception):
-    """ Raised when no database service is available.
+    """ Raised when no database service is available. When the driver is no longer able to establish communication with the server, even after retries.
     """
 
 
@@ -39,12 +39,6 @@ class IncompleteCommitError(Exception):
     response. For non-idempotent write transactions, this leaves the data
     in an unknown state with regard to whether the transaction completed
     successfully or not.
-    """
-
-
-class ConnectionExpired(Exception):
-    """ Raised when a connection is no longer available for the
-    purpose it was originally acquired.
     """
 
 
@@ -161,6 +155,25 @@ class AuthError(ClientError, SecurityError):
     """ Raised when authentication failure occurs.
     """
 
+
+class SessionExpired(Exception):
+    """ A SessionExpired indicates that the session can no longer satisfy the criteria under which it was acquired,
+    e.g. a server no longer accepts write requests.
+
+    A new session needs to be acquired from the driver and all actions taken on the expired session must be replayed.
+    """
+
+    def __init__(self, session, *args, **kwargs):
+        super(SessionExpired, self).__init__(session, *args, **kwargs)
+
+
+class TransactionError(Exception):
+    """ Raised when an error occurs while using a transaction.
+    """
+
+    def __init__(self, transaction, *args, **kwargs):
+        super(TransactionError, self).__init__(*args, **kwargs)
+        self.transaction = transaction
 
 client_errors = {
 

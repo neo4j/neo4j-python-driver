@@ -198,6 +198,7 @@ class DatabaseError(BoltFailure):
 
 class TransientError(BoltFailure):
     """
+    A temporary error has occurred. The application should retry the operation.
     """
 
     transient = True

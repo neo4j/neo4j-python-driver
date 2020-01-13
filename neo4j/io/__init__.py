@@ -48,15 +48,25 @@ from neo4j.addressing import Address, AddressList
 from neo4j.api import ServerInfo
 from neo4j.conf import Config, PoolConfig
 from neo4j.io._bolt3 import Outbox, BufferedSocket, Inbox, Response, InitResponse, CommitResponse
-from neo4j.errors import BoltRoutingError, Neo4jAvailabilityError
-from neo4j.exceptions import ProtocolError, SecurityError, \
-    ServiceUnavailable, AuthError, IncompleteCommitError, \
-    ConnectionExpired, DatabaseUnavailableError, NotALeaderError, \
-    ForbiddenOnReadOnlyDatabaseError, ClientError
 from neo4j.meta import get_user_agent
 from neo4j.packstream import Packer, Unpacker
 from neo4j.routing import RoutingTable
 
+from neo4j.errors import (
+    BoltRoutingError,
+    Neo4jAvailabilityError,
+)
+from neo4j.exceptions import (
+    ProtocolError,
+    SecurityError,
+    ServiceUnavailable,
+    AuthError,
+    IncompleteCommitError,
+    DatabaseUnavailableError,
+    NotALeaderError,
+    ForbiddenOnReadOnlyDatabaseError,
+    ClientError,
+)
 
 # Set up logger
 log = getLogger("neo4j")
@@ -88,10 +98,6 @@ class Bolt:
 
     #: The pool of which this connection is a member
     pool = None
-
-    #: Error class used for raising connection errors
-    # TODO: separate errors for connector API
-    Error = ServiceUnavailable
 
     @classmethod
     def ping(cls, address, *, timeout=None, **config):
@@ -305,11 +311,11 @@ class Bolt:
         """ Send all queued messages to the server.
         """
         if self.closed():
-            raise self.Error("Failed to write to closed connection "
+            raise ServiceUnavailable("Failed to write to closed connection "
                              "{!r} ({!r})".format(self.unresolved_address,
                                                   self.server.address))
         if self.defunct():
-            raise self.Error("Failed to write to defunct connection "
+            raise ServiceUnavailable("Failed to write to defunct connection "
                              "{!r} ({!r})".format(self.unresolved_address,
                                                   self.server.address))
         try:
@@ -331,11 +337,11 @@ class Bolt:
                  messages fetched
         """
         if self._closed:
-            raise self.Error("Failed to read from closed connection "
+            raise ServiceUnavailable("Failed to read from closed connection "
                              "{!r} ({!r})".format(self.unresolved_address,
                                                   self.server.address))
         if self._defunct:
-            raise self.Error("Failed to read from defunct connection "
+            raise ServiceUnavailable("Failed to read from defunct connection "
                              "{!r} ({!r})".format(self.unresolved_address,
                                                   self.server.address))
         if not self.responses:
@@ -373,7 +379,7 @@ class Bolt:
             log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
             try:
                 response.on_failure(summary_metadata or {})
-            except (ConnectionExpired, ServiceUnavailable, DatabaseUnavailableError):
+            except (ServiceUnavailable, DatabaseUnavailableError):
                 if self.pool:
                     self.pool.deactivate(self.unresolved_address),
                 raise
@@ -406,7 +412,7 @@ class Bolt:
         for response in self.responses:
             if isinstance(response, CommitResponse):
                 raise IncompleteCommitError(message)
-        raise self.Error(message)
+        raise ServiceUnavailable(message)
 
     def timedout(self):
         return 0 <= self._max_connection_lifetime <= perf_counter() - self._creation_timestamp
@@ -846,11 +852,9 @@ class Neo4jPool(IOPool):
             try:
                 address = self._select_address(access_mode)
             except Neo4jAvailabilityError as err:
-                raise ConnectionExpired("Failed to obtain connection "
-                                        "towards '%s' server." % access_mode) from err
+                raise ServiceUnavailable("Failed to obtain connection towards '%s' server." % access_mode) from err
             try:
                 connection = self._acquire(address, timeout=timeout)  # should always be a resolved address
-                connection.Error = ConnectionExpired
             except ServiceUnavailable:
                 self.deactivate(address)
             else:

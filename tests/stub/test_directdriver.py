@@ -19,8 +19,10 @@
 # limitations under the License.
 
 
-from neo4j.exceptions import ServiceUnavailable
-
+from neo4j.exceptions import (
+    ServiceUnavailable,
+    SessionExpired,
+)
 from neo4j import GraphDatabase, BoltDriver
 
 from tests.stub.conftest import StubTestCase, StubCluster
@@ -29,28 +31,32 @@ from tests.stub.conftest import StubTestCase, StubCluster
 class BoltDriverTestCase(StubTestCase):
 
     def test_bolt_uri_constructs_bolt_driver(self):
+        #  python -m pytest tests/stub/test_directdriver.py -s -k test_bolt_uri_constructs_bolt_driver
         with StubCluster("v3/empty.script"):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
                 assert isinstance(driver, BoltDriver)
 
     def test_direct_disconnect_on_run(self):
+        #  python -m pytest tests/stub/test_directdriver.py -s -k test_direct_disconnect_on_run
         with StubCluster("v3/disconnect_on_run.script"):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with self.assertRaises(ServiceUnavailable):
+                with self.assertRaises(SessionExpired):
                     with driver.session() as session:
                         session.run("RETURN $x", {"x": 1}).consume()
 
     def test_direct_disconnect_on_pull_all(self):
+        #  python -m pytest tests/stub/test_directdriver.py -s -k test_direct_disconnect_on_pull_all
         with StubCluster("v3/disconnect_on_pull_all.script"):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with self.assertRaises(ServiceUnavailable):
+                with self.assertRaises(SessionExpired):
                     with driver.session() as session:
                         session.run("RETURN $x", {"x": 1}).consume()
 
     def test_direct_session_close_after_server_close(self):
+        #  python -m pytest tests/stub/test_directdriver.py -s -k test_direct_session_close_after_server_close
         with StubCluster("v3/disconnect_after_init.script"):
             uri = "bolt://127.0.0.1:9001"
             with GraphDatabase.driver(uri, auth=self.auth_token, max_retry_time=0,

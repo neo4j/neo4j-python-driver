@@ -22,7 +22,12 @@
 from select import select
 from struct import pack as struct_pack
 
-from neo4j.exceptions import ProtocolError, CypherError, AuthError, ServiceUnavailable
+from neo4j.exceptions import (
+    ProtocolError,
+    CypherError,
+    AuthError,
+    ServiceUnavailable,
+)
 from neo4j.packstream import UnpackableBuffer, Unpacker
 
 
