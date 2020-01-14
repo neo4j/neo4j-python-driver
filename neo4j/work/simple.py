@@ -34,6 +34,8 @@ from neo4j.exceptions import (
     IncompleteCommitError,
     ServiceUnavailable,
     TransientError,
+    SessionExpired,
+    TransactionError,
 )
 from neo4j.work import Workspace, WorkspaceConfig
 from neo4j.work.summary import BoltStatementResultSummary
@@ -725,24 +727,6 @@ class BoltStatementResult:
         :returns: list of dictionaries
         """
         return [record.data(*items) for record in self.records()]
-
-
-class SessionExpired(Exception):
-    """ Raised when no a session is no longer able to fulfil
-    the purpose described by its original parameters.
-    """
-
-    def __init__(self, session, *args, **kwargs):
-        super(SessionExpired, self).__init__(session, *args, **kwargs)
-
-
-class TransactionError(Exception):
-    """ Raised when an error occurs while using a transaction.
-    """
-
-    def __init__(self, transaction, *args, **kwargs):
-        super(TransactionError, self).__init__(*args, **kwargs)
-        self.transaction = transaction
 
 
 def unit_of_work(metadata=None, timeout=None):
