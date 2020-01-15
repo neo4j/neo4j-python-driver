@@ -20,7 +20,7 @@
 
 
 from neo4j.conf import Config
-from neo4j.exceptions import ConnectionExpired, ServiceUnavailable
+from neo4j.exceptions import ServiceUnavailable
 
 
 class WorkspaceConfig(Config):
@@ -78,7 +78,7 @@ class Workspace:
                 try:
                     self._connection.send_all()
                     self._connection.fetch_all()
-                except (WorkspaceError, ConnectionExpired, ServiceUnavailable):
+                except (WorkspaceError, ServiceUnavailable):
                     pass
             if self._connection:
                 self._connection.in_use = False
