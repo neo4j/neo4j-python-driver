@@ -878,35 +878,6 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
 
 
-# TODO: remove in 2.0
-def _last_bookmark(b0, b1):
-    """ Return the latest of two bookmarks by looking for the maximum
-    integer value following the last colon in the bookmark string.
-    """
-    n = [None, None]
-    _, _, n[0] = b0.rpartition(":")
-    _, _, n[1] = b1.rpartition(":")
-    for i in range(2):
-        try:
-            n[i] = int(n[i])
-        except ValueError:
-            raise ValueError("Invalid bookmark: {}".format(b0))
-    return b0 if n[0] > n[1] else b1
-
-
-# TODO: remove in 2.0
-def last_bookmark(bookmarks):
-    """ The bookmark returned by the last :class:`.Transaction`.
-    """
-    last = None
-    for bookmark in bookmarks:
-        if last is None:
-            last = bookmark
-        else:
-            last = _last_bookmark(last, bookmark)
-    return last
-
-
 def _connect(resolved_address, timeout=None, **config):
     """
 
