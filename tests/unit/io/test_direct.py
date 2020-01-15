@@ -20,11 +20,21 @@
 
 
 from unittest import TestCase
-from threading import Thread, Event
-
+import pytest
+from threading import (
+    Thread,
+    Event,
+)
 from neo4j import PoolConfig
-from neo4j.io import Bolt, BoltPool, IOPool
-from neo4j.exceptions import ClientError, ServiceUnavailable
+from neo4j.io import (
+    Bolt,
+    BoltPool,
+    IOPool
+)
+from neo4j.exceptions import (
+    ClientError,
+    ServiceUnavailable,
+)
 
 
 class FakeSocket:
@@ -83,22 +93,23 @@ class FakeBoltPool(IOPool):
         return self._acquire(self.address, timeout)
 
 
-class ConnectionTestCase(TestCase):
+class BoltTestCase(TestCase):
 
-    def test_conn_timed_out(self):
-        address = ("127.0.0.1", 7687)
-        connection = Bolt(address, FakeSocket(address), protocol_version=1, max_age=0)
-        self.assertEqual(connection.timedout(), True)
+    def test_open(self):
+        with pytest.raises(ServiceUnavailable):
+            connection = Bolt.open(("localhost", 9999), auth=("test", "test"))
 
-    def test_conn_not_timed_out_if_not_enabled(self):
-        address = ("127.0.0.1", 7687)
-        connection = Bolt(address, FakeSocket(address), protocol_version=1, max_age=-1)
-        self.assertEqual(connection.timedout(), False)
+    def test_open_timeout(self):
+        with pytest.raises(ServiceUnavailable):
+            connection = Bolt.open(("localhost", 9999), auth=("test", "test"), timeout=1)
 
-    def test_conn_not_timed_out(self):
-        address = ("127.0.0.1", 7687)
-        connection = Bolt(address, FakeSocket(address), protocol_version=1, max_age=999999999)
-        self.assertEqual(connection.timedout(), False)
+    def test_ping(self):
+        protocol_version = Bolt.ping(("localhost", 9999))
+        assert protocol_version is None
+
+    def test_ping_timeout(self):
+        protocol_version = Bolt.ping(("localhost", 9999), timeout=1)
+        assert protocol_version is None
 
 
 class ConnectionPoolTestCase(TestCase):

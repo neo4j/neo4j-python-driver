@@ -37,17 +37,37 @@ from collections import deque
 from logging import getLogger
 from random import choice
 from select import select
-from socket import socket, SOL_SOCKET, SO_KEEPALIVE, SHUT_RDWR, \
-    timeout as SocketTimeout, AF_INET, AF_INET6
-from ssl import HAS_SNI, SSLSocket, SSLError
-from struct import pack as struct_pack, unpack as struct_unpack
-from threading import Lock, RLock, Condition
 from time import perf_counter
 
-from neo4j.addressing import Address, AddressList
-from neo4j.api import ServerInfo
-from neo4j.conf import Config, PoolConfig
-from neo4j.io._bolt3 import Outbox, BufferedSocket, Inbox, Response, InitResponse, CommitResponse
+from socket import (
+    socket,
+    SOL_SOCKET,
+    SO_KEEPALIVE,
+    SHUT_RDWR,
+    timeout as SocketTimeout,
+    AF_INET,
+    AF_INET6,
+)
+
+from ssl import (
+    HAS_SNI,
+    SSLSocket,
+    SSLError,
+)
+
+from struct import (
+    pack as struct_pack,
+    unpack as struct_unpack,
+)
+
+from threading import (
+    Lock,
+    RLock,
+    Condition,
+)
+
+from neo4j.addressing import AddressList
+from neo4j.conf import PoolConfig
 from neo4j.errors import BoltRoutingError, Neo4jAvailabilityError
 from neo4j.exceptions import (
     ProtocolError,
@@ -71,31 +91,18 @@ log = getLogger("neo4j")
 
 
 class Bolt:
-    """ Server connection for Bolt protocol version 3.
+    """ Server connection for Bolt protocol.
 
-    A :class:`.Connection` should be constructed following a
-    successful Bolt handshake and takes the socket over which
+    A :class:`.Bolt` should be constructed following a
+    successful .open()
+
+    Bolt handshake and takes the socket over which
     the handshake was carried out.
-
-    .. note:: logs at INFO level
     """
 
     MAGIC_PREAMBLE = 0x6060B017
 
-    #: The protocol version in use on this connection
-    protocol_version = 0
-
-    #: Server details for this connection
-    server = None
-
-    in_use = False
-
-    _closed = False
-
-    _defunct = False
-
-    #: The pool of which this connection is a member
-    pool = None
+    PROTOCOL_VERSION = None
 
     @classmethod
     def ping(cls, address, *, timeout=None, **config):
@@ -123,51 +130,21 @@ class Bolt:
         """
         config = PoolConfig.consume(config)
         s, config.protocol_version = connect(address, timeout=timeout, config=config)
-        connection = Bolt(address, s, auth=auth, **config)
+
+        if config.protocol_version == (3, 0):
+            from neo4j.io._bolt3 import Bolt3
+            connection = Bolt3(address, s, auth=auth, **config)
+        else:
+            log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
+            s.shutdown(SHUT_RDWR)
+            s.close()
+            raise ProtocolError("Driver does not support Bolt protocol version: 0x%06X%02X", config.protocol_version[0], config.protocol_version[1])
+
         connection.hello()
         return connection
 
-    def __init__(self, unresolved_address, sock, *, auth=None, protocol_version=None, **config):
-        self.config = PoolConfig.consume(config)
-        self.protocol_version = protocol_version
-        self.unresolved_address = unresolved_address
-        self.socket = sock
-        self.server = ServerInfo(Address(sock.getpeername()), protocol_version)
-        self.outbox = Outbox()
-        self.inbox = Inbox(BufferedSocket(self.socket, 32768), on_error=self._set_defunct)
-        self.packer = Packer(self.outbox)
-        self.unpacker = Unpacker(self.inbox)
-        self.responses = deque()
-        self._max_connection_lifetime = self.config.max_age
-        self._creation_timestamp = perf_counter()
-
-        # Determine the user agent
-        user_agent = self.config.user_agent
-        if user_agent:
-            self.user_agent = user_agent
-        else:
-            self.user_agent = get_user_agent()
-
-        # Determine auth details
-        if not auth:
-            self.auth_dict = {}
-        elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
-            from neo4j import Auth
-            self.auth_dict = vars(Auth("basic", *auth))
-        else:
-            try:
-                self.auth_dict = vars(auth)
-            except (KeyError, TypeError):
-                raise AuthError("Cannot determine auth details from %r" % auth)
-
-        # Check for missing password
-        try:
-            credentials = self.auth_dict["credentials"]
-        except KeyError:
-            pass
-        else:
-            if credentials is None:
-                raise AuthError("Password cannot be None")
+    def __init__(self, unresolved_address, sock, *, auth=None, **config):
+        raise NotImplementedError
 
     @property
     def secure(self):
@@ -185,16 +162,7 @@ class Bolt:
             return 0
 
     def hello(self):
-        headers = {"user_agent": self.user_agent}
-        headers.update(self.auth_dict)
-        logged_headers = dict(headers)
-        if "credentials" in logged_headers:
-            logged_headers["credentials"] = "*******"
-        log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
-        self._append(b"\x01", (headers,),
-                     response=InitResponse(self, on_success=self.server.metadata.update))
-        self.send_all()
-        self.fetch_all()
+        raise NotImplementedError
 
     def __del__(self):
         try:
@@ -209,124 +177,33 @@ class Bolt:
         self.close()
 
     def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
-        if not parameters:
-            parameters = {}
-        extra = {}
-        if mode:
-            extra["mode"] = mode
-        if bookmarks:
-            try:
-                extra["bookmarks"] = list(bookmarks)
-            except TypeError:
-                raise TypeError("Bookmarks must be provided within an iterable")
-        if metadata:
-            try:
-                extra["tx_metadata"] = dict(metadata)
-            except TypeError:
-                raise TypeError("Metadata must be coercible to a dict")
-        if timeout:
-            try:
-                extra["tx_timeout"] = int(1000 * timeout)
-            except TypeError:
-                raise TypeError("Timeout must be specified as a number of seconds")
-        fields = (statement, parameters, extra)
-        log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
-        if statement.upper() == u"COMMIT":
-            self._append(b"\x10", fields, CommitResponse(self, **handlers))
-        else:
-            self._append(b"\x10", fields, Response(self, **handlers))
+        raise NotImplementedError
 
     def discard_all(self, **handlers):
-        log.debug("[#%04X]  C: DISCARD_ALL", self.local_port)
-        self._append(b"\x2F", (), Response(self, **handlers))
+        raise NotImplementedError
 
     def pull_all(self, **handlers):
-        log.debug("[#%04X]  C: PULL_ALL", self.local_port)
-        self._append(b"\x3F", (), Response(self, **handlers))
+        raise NotImplementedError
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
-        extra = {}
-        if mode:
-            extra["mode"] = mode
-        if bookmarks:
-            try:
-                extra["bookmarks"] = list(bookmarks)
-            except TypeError:
-                raise TypeError("Bookmarks must be provided within an iterable")
-        if metadata:
-            try:
-                extra["tx_metadata"] = dict(metadata)
-            except TypeError:
-                raise TypeError("Metadata must be coercible to a dict")
-        if timeout:
-            try:
-                extra["tx_timeout"] = int(1000 * timeout)
-            except TypeError:
-                raise TypeError("Timeout must be specified as a number of seconds")
-        log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
-        self._append(b"\x11", (extra,), Response(self, **handlers))
+        raise NotImplementedError
 
     def commit(self, **handlers):
-        log.debug("[#%04X]  C: COMMIT", self.local_port)
-        self._append(b"\x12", (), CommitResponse(self, **handlers))
+        raise NotImplementedError
 
     def rollback(self, **handlers):
-        log.debug("[#%04X]  C: ROLLBACK", self.local_port)
-        self._append(b"\x13", (), Response(self, **handlers))
-
-    def _append(self, signature, fields=(), response=None):
-        """ Add a message to the outgoing queue.
-
-        :arg signature: the signature of the message
-        :arg fields: the fields of the message as a tuple
-        :arg response: a response object to handle callbacks
-        """
-        self.packer.pack_struct(signature, fields)
-        self.outbox.chunk()
-        self.outbox.chunk()
-        self.responses.append(response)
+        raise NotImplementedError
 
     def reset(self):
         """ Add a RESET message to the outgoing queue, send
         it and consume all remaining messages.
         """
-
-        def fail(metadata):
-            raise ProtocolError("RESET failed %r" % metadata)
-
-        log.debug("[#%04X]  C: RESET", self.local_port)
-        self._append(b"\x0F", response=Response(self, on_failure=fail))
-        self.send_all()
-        self.fetch_all()
-
-    def _send_all(self):
-        data = self.outbox.view()
-        if data:
-            self.socket.sendall(data)
-            self.outbox.clear()
+        raise NotImplementedError
 
     def send_all(self):
         """ Send all queued messages to the server.
         """
-        if self.closed():
-            raise ServiceUnavailable("Failed to write to closed connection {!r} ({!r})".format(
-                self.unresolved_address, self.server.address))
-
-        if self.defunct():
-            raise ServiceUnavailable("Failed to write to defunct connection {!r} ({!r})".format(
-                self.unresolved_address, self.server.address))
-
-        try:
-            self._send_all()
-        except (IOError, OSError) as error:
-            log.error("Failed to write data to connection "
-                      "{!r} ({!r}); ({!r})".
-                      format(self.unresolved_address,
-                             self.server.address,
-                             "; ".join(map(repr, error.args))))
-            if self.pool:
-                self.pool.deactivate(self.unresolved_address)
-            raise
+        raise NotImplementedError
 
     def fetch_message(self):
         """ Receive at least one message from the server, if available.
@@ -334,92 +211,10 @@ class Bolt:
         :return: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
-        if self._closed:
-            raise ServiceUnavailable("Failed to read from closed connection {!r} ({!r})".format(
-                self.unresolved_address, self.server.address))
-
-        if self._defunct:
-            raise ServiceUnavailable("Failed to read from defunct connection {!r} ({!r})".format(
-                self.unresolved_address, self.server.address))
-
-        if not self.responses:
-            return 0, 0
-
-        # Receive exactly one message
-        try:
-            details, summary_signature, summary_metadata = next(self.inbox)
-        except (IOError, OSError) as error:
-            log.error("Failed to read data from connection "
-                      "{!r} ({!r}); ({!r})".
-                      format(self.unresolved_address,
-                             self.server.address,
-                             "; ".join(map(repr, error.args))))
-            if self.pool:
-                self.pool.deactivate(self.unresolved_address)
-            raise
-
-        if details:
-            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # TODO
-            self.responses[0].on_records(details)
-
-        if summary_signature is None:
-            return len(details), 0
-
-        response = self.responses.popleft()
-        response.complete = True
-        if summary_signature == b"\x70":
-            log.debug("[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata)
-            response.on_success(summary_metadata or {})
-        elif summary_signature == b"\x7E":
-            log.debug("[#%04X]  S: IGNORED", self.local_port)
-            response.on_ignored(summary_metadata or {})
-        elif summary_signature == b"\x7F":
-            log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
-            try:
-                response.on_failure(summary_metadata or {})
-            except (ServiceUnavailable, DatabaseUnavailableError):
-                if self.pool:
-                    self.pool.deactivate(self.unresolved_address),
-                raise
-            except (NotALeaderError, ForbiddenOnReadOnlyDatabaseError):
-                if self.pool:
-                    self.pool.on_write_failure(self.unresolved_address),
-                raise
-        else:
-            raise ProtocolError("Unexpected response message with "
-                                "signature %02X" % summary_signature)
-
-        return len(details), 1
-
-    def _set_defunct(self, error=None):
-        direct_driver = isinstance(self.pool, BoltPool)
-
-        message = ("Failed to read from defunct connection {!r} ({!r})".format(
-            self.unresolved_address, self.server.address))
-
-        log.error(message)
-        # We were attempting to receive data but the connection
-        # has unexpectedly terminated. So, we need to close the
-        # connection from the client side, and remove the address
-        # from the connection pool.
-        self._defunct = True
-        self.close()
-        if self.pool:
-            self.pool.deactivate(self.unresolved_address)
-        # Iterate through the outstanding responses, and if any correspond
-        # to COMMIT requests then raise an error to signal that we are
-        # unable to confirm that the COMMIT completed successfully.
-        for response in self.responses:
-            if isinstance(response, CommitResponse):
-                raise IncompleteCommitError(message)
-
-        if direct_driver:
-            raise ServiceUnavailable(message)
-        else:
-            raise SessionExpired(message)
+        raise NotImplementedError
 
     def timedout(self):
-        return 0 <= self._max_connection_lifetime <= perf_counter() - self._creation_timestamp
+        raise NotImplementedError
 
     def fetch_all(self):
         """ Fetch all outstanding messages.
@@ -427,39 +222,18 @@ class Bolt:
         :return: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
-        detail_count = summary_count = 0
-        while self.responses:
-            response = self.responses[0]
-            while not response.complete:
-                detail_delta, summary_delta = self.fetch_message()
-                detail_count += detail_delta
-                summary_count += summary_delta
-        return detail_count, summary_count
+        raise NotImplementedError
 
     def close(self):
         """ Close the connection.
         """
-        if not self._closed:
-            if not self._defunct:
-                log.debug("[#%04X]  C: GOODBYE", self.local_port)
-                self._append(b"\x02", ())
-                try:
-                    self._send_all()
-                except:
-                    pass
-            log.debug("[#%04X]  C: <CLOSE>", self.local_port)
-            try:
-                self.socket.close()
-            except IOError:
-                pass
-            finally:
-                self._closed = True
+        raise NotImplementedError
 
     def closed(self):
-        return self._closed
+        raise NotImplementedError
 
     def defunct(self):
-        return self._defunct
+        raise NotImplementedError
 
 
 class IOPool:

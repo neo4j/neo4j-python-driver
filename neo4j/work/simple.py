@@ -159,7 +159,7 @@ class Session(Workspace):
         if not self._connection:
             self._connect(self._config.default_access_mode)
         cx = self._connection
-        protocol_version = cx.protocol_version
+        protocol_version = cx.PROTOCOL_VERSION
         server = cx.server
 
         has_transaction = self.has_transaction()
