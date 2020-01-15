@@ -49,14 +49,23 @@ from neo4j.api import ServerInfo
 from neo4j.conf import Config, PoolConfig
 from neo4j.io._bolt3 import Outbox, BufferedSocket, Inbox, Response, InitResponse, CommitResponse
 from neo4j.errors import BoltRoutingError, Neo4jAvailabilityError
-from neo4j.exceptions import ProtocolError, SecurityError, \
-    ServiceUnavailable, AuthError, IncompleteCommitError, \
-    ConnectionExpired, DatabaseUnavailableError, NotALeaderError, \
-    ForbiddenOnReadOnlyDatabaseError, ClientError
+from neo4j.exceptions import (
+    ProtocolError,
+    SecurityError,
+    ServiceUnavailable,
+    AuthError,
+    IncompleteCommitError,
+    ConnectionExpired,
+    DatabaseUnavailableError,
+    NotALeaderError,
+    ForbiddenOnReadOnlyDatabaseError,
+    ClientError,
+    SessionExpired,
+    TransactionError,
+)
 from neo4j.meta import get_user_agent
 from neo4j.packstream import Packer, Unpacker
 from neo4j.routing import RoutingTable
-
 
 # Set up logger
 log = getLogger("neo4j")
@@ -88,10 +97,6 @@ class Bolt:
 
     #: The pool of which this connection is a member
     pool = None
-
-    #: Error class used for raising connection errors
-    # TODO: separate errors for connector API
-    Error = ServiceUnavailable
 
     @classmethod
     def ping(cls, address, *, timeout=None, **config):
@@ -305,13 +310,13 @@ class Bolt:
         """ Send all queued messages to the server.
         """
         if self.closed():
-            raise self.Error("Failed to write to closed connection "
-                             "{!r} ({!r})".format(self.unresolved_address,
-                                                  self.server.address))
+            raise ServiceUnavailable("Failed to write to closed connection {!r} ({!r})".format(
+                self.unresolved_address, self.server.address))
+
         if self.defunct():
-            raise self.Error("Failed to write to defunct connection "
-                             "{!r} ({!r})".format(self.unresolved_address,
-                                                  self.server.address))
+            raise ServiceUnavailable("Failed to write to defunct connection {!r} ({!r})".format(
+                self.unresolved_address, self.server.address))
+
         try:
             self._send_all()
         except (IOError, OSError) as error:
@@ -331,13 +336,13 @@ class Bolt:
                  messages fetched
         """
         if self._closed:
-            raise self.Error("Failed to read from closed connection "
-                             "{!r} ({!r})".format(self.unresolved_address,
-                                                  self.server.address))
+            raise ServiceUnavailable("Failed to read from closed connection {!r} ({!r})".format(
+                self.unresolved_address, self.server.address))
+
         if self._defunct:
-            raise self.Error("Failed to read from defunct connection "
-                             "{!r} ({!r})".format(self.unresolved_address,
-                                                  self.server.address))
+            raise ServiceUnavailable("Failed to read from defunct connection {!r} ({!r})".format(
+                self.unresolved_address, self.server.address))
+
         if not self.responses:
             return 0, 0
 
@@ -388,9 +393,11 @@ class Bolt:
         return len(details), 1
 
     def _set_defunct(self, error=None):
-        message = ("Failed to read from defunct connection " 
-                   "{!r} ({!r})".format(self.unresolved_address,
-                                        self.server.address))
+        direct_driver = isinstance(self.pool, BoltPool)
+
+        message = ("Failed to read from defunct connection {!r} ({!r})".format(
+            self.unresolved_address, self.server.address))
+
         log.error(message)
         # We were attempting to receive data but the connection
         # has unexpectedly terminated. So, we need to close the
@@ -406,7 +413,11 @@ class Bolt:
         for response in self.responses:
             if isinstance(response, CommitResponse):
                 raise IncompleteCommitError(message)
-        raise self.Error(message)
+
+        if direct_driver:
+            raise ServiceUnavailable(message)
+        else:
+            raise SessionExpired(message)
 
     def timedout(self):
         return 0 <= self._max_connection_lifetime <= perf_counter() - self._creation_timestamp
@@ -846,11 +857,9 @@ class Neo4jPool(IOPool):
             try:
                 address = self._select_address(access_mode)
             except Neo4jAvailabilityError as err:
-                raise ConnectionExpired("Failed to obtain connection "
-                                        "towards '%s' server." % access_mode) from err
+                raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode) from err
             try:
                 connection = self._acquire(address, timeout=timeout)  # should always be a resolved address
-                connection.Error = ConnectionExpired
             except ServiceUnavailable:
                 self.deactivate(address)
             else:
