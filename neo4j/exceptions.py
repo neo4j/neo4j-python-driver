@@ -42,12 +42,6 @@ class IncompleteCommitError(Exception):
     """
 
 
-class ConnectionExpired(Exception):
-    """ Raised when a connection is no longer available for the
-    purpose it was originally acquired.
-    """
-
-
 class SecurityError(Exception):
     """ Raised when an action is denied due to security settings.
     """

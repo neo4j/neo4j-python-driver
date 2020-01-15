@@ -29,7 +29,6 @@ from neo4j import READ_ACCESS, WRITE_ACCESS
 from neo4j.conf import DeprecatedAlias
 from neo4j.data import DataHydrator, DataDehydrator
 from neo4j.exceptions import (
-    ConnectionExpired,
     CypherError,
     IncompleteCommitError,
     ServiceUnavailable,
@@ -124,8 +123,7 @@ class Session(Workspace):
             try:
                 self._connection.send_all()
                 self._connection.fetch_all()
-            except (ConnectionExpired, CypherError, TransactionError,
-                    ServiceUnavailable, SessionExpired):
+            except (CypherError, TransactionError, ServiceUnavailable, SessionExpired):
                 pass
             finally:
                 self._disconnect()
@@ -215,11 +213,8 @@ class Session(Workspace):
         )
 
         if not has_transaction:
-            try:
-                self._connection.send_all()
-                self._connection.fetch_message()
-            except ConnectionExpired as error:
-                raise SessionExpired(*error.args)
+            self._connection.send_all()
+            self._connection.fetch_message()
 
         return result
 
@@ -227,10 +222,7 @@ class Session(Workspace):
         """ Send all outstanding requests.
         """
         if self._connection:
-            try:
-                self._connection.send_all()
-            except ConnectionExpired as error:
-                raise SessionExpired(*error.args)
+            self._connection.send_all()
 
     def fetch(self):
         """ Attempt to fetch at least one more record.
@@ -238,12 +230,9 @@ class Session(Workspace):
         :returns: number of records fetched
         """
         if self._connection:
-            try:
-                detail_count, _ = self._connection.fetch_message()
-            except ConnectionExpired as error:
-                raise SessionExpired(*error.args)
-            else:
-                return detail_count
+            detail_count, _ = self._connection.fetch_message()
+            return detail_count
+
         return 0
 
     def sync(self):
@@ -252,13 +241,10 @@ class Session(Workspace):
         :returns: number of records fetched
         """
         if self._connection:
-            try:
-                self._connection.send_all()
-                detail_count, _ = self._connection.fetch_all()
-            except ConnectionExpired as error:
-                raise SessionExpired(*error.args)
-            else:
-                return detail_count
+            self._connection.send_all()
+            detail_count, _ = self._connection.fetch_all()
+            return detail_count
+
         return 0
 
     def detach(self, result, sync=True):
@@ -392,7 +378,7 @@ class Session(Workspace):
                         tx.success = True
                 finally:
                     tx.close()
-            except (ServiceUnavailable, SessionExpired, ConnectionExpired) as error:
+            except (ServiceUnavailable, SessionExpired) as error:
                 errors.append(error)
             except TransientError as error:
                 if is_retriable_transient_error(error):
