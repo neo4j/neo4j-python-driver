@@ -371,7 +371,7 @@ class Courier(Addressable, object):
 
     @property
     def connection_id(self):
-        return self.local_address.port_number
+        return self.local_address.port
 
     def write_hello(self, extras):
         logged_extras = dict(extras)
@@ -594,7 +594,7 @@ class Bolt3(Bolt):
             servers = record["servers"]
             ttl = record["ttl"]
             log.debug("[#%04X] S: <ROUTING> servers=%r ttl=%r",
-                      self.local_address.port_number, servers, ttl)
+                      self.local_address.port, servers, ttl)
             return RoutingTable.parse_routing_info(servers, ttl)
         except BoltFailure as error:
             if error.title == "ProcedureNotFound":

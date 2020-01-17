@@ -30,6 +30,9 @@ from socket import (
 
 class Address(tuple):
 
+    #: Address family (AF_INET or AF_INET6)
+    family = None
+
     @classmethod
     def from_socket(cls, socket):
         address = socket.getpeername()
@@ -66,12 +69,9 @@ class Address(tuple):
         """
         if not all(isinstance(s0, str) for s0 in s):
             raise TypeError("Address.parse_list requires a string argument")
-        return [Address.parse(a, default_host, default_port)
-                for a in " ".join(s).split()]
+        return [Address.parse(a, default_host, default_port) for a in " ".join(s).split()]
 
     def __new__(cls, iterable):
-        if type(iterable) is cls:
-            return cls
         n_parts = len(iterable)
         inst = tuple.__new__(cls, iterable)
         if n_parts == 2:
@@ -79,12 +79,8 @@ class Address(tuple):
         elif n_parts == 4:
             inst.__class__ = IPv6Address
         else:
-            raise ValueError("Addresses must consist of either "
-                             "two parts (IPv4) or four parts (IPv6)")
+            raise ValueError("Addresses must consist of either two parts (IPv4) or four parts (IPv6)")
         return inst
-
-    #: Address family (AF_INET or AF_INET6)
-    family = None
 
     def __repr__(self):
         return "{}({!r})".format(self.__class__.__name__, tuple(self))
@@ -141,6 +137,9 @@ class IPv6Address(Address):
 
     def __str__(self):
         return "[{}]:{}".format(*self)
+
+# Resolver Function
+# https://neo4j.com/docs/driver-manual/4.0/client-applications/#driver-resolver-function
 
 
 # TODO: deprecate
