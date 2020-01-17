@@ -106,31 +106,6 @@ class Bookmark:
         return bool(self.values)
 
 
-class Security:
-    """ Container for security details.
-    """
-
-    verify_cert = True
-
-    @classmethod
-    def default(cls):
-        return cls()
-
-    def __init__(self, verify_cert=True):
-        self.verify_cert = verify_cert
-
-    def to_ssl_context(self):
-        # See https://docs.python.org/3.7/library/ssl.html#protocol-versions
-        from ssl import SSLContext, PROTOCOL_TLS_CLIENT, OP_NO_TLSv1, OP_NO_TLSv1_1, CERT_REQUIRED
-        ssl_context = SSLContext(PROTOCOL_TLS_CLIENT)
-        ssl_context.options |= OP_NO_TLSv1
-        ssl_context.options |= OP_NO_TLSv1_1
-        if self.verify_cert:
-            ssl_context.verify_mode = CERT_REQUIRED
-        ssl_context.set_default_verify_paths()
-        return ssl_context
-
-
 class ServerInfo:
 
     address = None
