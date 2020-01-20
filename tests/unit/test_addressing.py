@@ -55,3 +55,9 @@ class RoutingTableParseAddressTestCase(TestCase):
     def test_should_error_when_key_duplicate(self):
         with self.assertRaises(ValueError):
             GraphDatabase._parse_routing_context("name=molly&name=white")
+
+
+def test_address_init_with_address_object_returns_same_instance():
+    a = Address(("localhost", 7687))
+    b = Address(a)
+    assert id(a) == id(b)

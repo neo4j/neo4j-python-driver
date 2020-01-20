@@ -70,8 +70,8 @@ class Address(tuple):
                 for a in " ".join(s).split()]
 
     def __new__(cls, iterable):
-        if type(iterable) is cls:
-            return cls
+        if isinstance(iterable, cls):
+            return iterable
         n_parts = len(iterable)
         inst = tuple.__new__(cls, iterable)
         if n_parts == 2:
