@@ -79,9 +79,6 @@ from neo4j.routing import RoutingTable
 log = getLogger(__name__)
 
 
-MAGIC = b"\x60\x60\xB0\x17"
-
-
 class Bolt(Addressable, object):
     """ Connection to a Bolt-enabled server.
 
@@ -93,6 +90,9 @@ class Bolt(Addressable, object):
         >>> await bolt.close()
 
     """
+
+    #:
+    MAGIC_PREAMBLE = b"\x60\x60\xB0\x17"
 
     #: True if this instance uses secure communication, false
     #: otherwise.
@@ -276,7 +276,7 @@ class Bolt(Addressable, object):
             raise ValueError("No protocol handlers available (requested Bolt %r)", protocol_version)
         offered_versions = sorted(handlers.keys(), reverse=True)[:4]
 
-        request_data = MAGIC + b"".join(
+        request_data = cls.MAGIC_PREAMBLE + b"".join(
             v.to_bytes() for v in offered_versions).ljust(16, b"\x00")
         log.debug("[#%04X] C: <HANDSHAKE> %r", local_address.port_number, request_data)
         writer.write(request_data)
