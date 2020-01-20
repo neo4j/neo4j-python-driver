@@ -57,7 +57,6 @@ from ssl import (
 
 from struct import (
     pack as struct_pack,
-    unpack as struct_unpack,
 )
 
 from threading import (
@@ -73,17 +72,9 @@ from neo4j.exceptions import (
     ProtocolError,
     SecurityError,
     ServiceUnavailable,
-    AuthError,
-    IncompleteCommitError,
-    DatabaseUnavailableError,
-    NotALeaderError,
-    ForbiddenOnReadOnlyDatabaseError,
     ClientError,
     SessionExpired,
-    TransactionError,
 )
-from neo4j.meta import get_user_agent
-from neo4j.packstream import Packer, Unpacker
 from neo4j.routing import RoutingTable
 
 # Set up logger
