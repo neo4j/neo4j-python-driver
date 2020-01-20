@@ -27,7 +27,6 @@ from threading import RLock
 from pytest import fixture, skip
 
 from neo4j import GraphDatabase
-from neo4j.addressing import AddressList
 from neo4j.exceptions import ServiceUnavailable
 from neo4j.io import Bolt
 
@@ -145,7 +144,7 @@ class ExistingService:
 
     @property
     def addresses(self):
-        return AddressList(machine.address for machine in self.cores())
+        return [machine.address for machine in self.cores()]
 
     @property
     def auth(self):

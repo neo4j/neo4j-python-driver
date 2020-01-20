@@ -66,7 +66,7 @@ from threading import (
     Condition,
 )
 
-from neo4j.addressing import AddressList
+from neo4j.addressing import Address
 from neo4j.conf import PoolConfig
 from neo4j.errors import BoltRoutingError, Neo4jAvailabilityError
 from neo4j.exceptions import (
@@ -798,10 +798,8 @@ def connect(address, *, timeout=None, config):
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
     log.debug("[#0000]  C: <RESOLVE> %s", address)
-    address_list = AddressList([address])
-    address_list.custom_resolve(config.get("resolver"))
-    address_list.dns_resolve()
-    for resolved_address in address_list:
+    custom_resolver = config.get("resolver")
+    for resolved_address in Address(address).resolve(resolver=custom_resolver):
         s = None
         try:
             host = address[0]

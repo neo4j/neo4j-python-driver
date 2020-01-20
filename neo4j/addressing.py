@@ -97,12 +97,19 @@ class Address(tuple):
     def port(self):
         return self[1]
 
-    def resolve(self, family=0):
-        # TODO: custom resolver argument
+    @classmethod
+    def _dns_resolve(cls, address, family=0):
+        """ Regular DNS resolver. Takes an address object and optional
+        address family for filtering.
+
+        :param address:
+        :param family:
+        :return:
+        """
         try:
-            info = getaddrinfo(self.host, self.port, family, SOCK_STREAM)
+            info = getaddrinfo(address.host, address.port, family, SOCK_STREAM)
         except OSError:
-            raise ValueError("Cannot resolve address {}".format(self))
+            raise ValueError("Cannot resolve address {}".format(address))
         else:
             resolved = []
             for fam, _, _, _, addr in info:
@@ -113,6 +120,31 @@ class Address(tuple):
                 if addr not in resolved:
                     resolved.append(Address(addr))
             return resolved
+
+    def resolve(self, family=0, resolver=None):
+        """ Carry out domain name resolution on this Address object.
+
+        If a resolver function is supplied, and is callable, this is
+        called first, with this object as its argument. This may yield
+        multiple output addresses, which are chained into a subsequent
+        regular DNS resolution call. If no resolver function is passed,
+        the DNS resolution is carried out on the original Address
+        object.
+
+        This function returns a list of resolved Address objects.
+
+        :param family: optional address family to filter resolved
+                       addresses by (e.g. AF_INET6)
+        :param resolver: optional customer resolver function to be
+                         called before regular DNS resolution
+        """
+        resolved = []
+        if resolver:
+            for address in map(Address, resolver(self)):
+                resolved.extend(self._dns_resolve(address, family))
+        else:
+            resolved.extend(self._dns_resolve(self, family))
+        return resolved
 
     @property
     def port_number(self):
@@ -141,75 +173,3 @@ class IPv6Address(Address):
 
     def __str__(self):
         return "[{}]:{}".format(*self)
-
-
-# TODO: deprecate
-class AddressList(list):
-    """ A list of socket addresses, each as a tuple of the format expected by
-    the built-in `socket.connect` method.
-    """
-
-    @classmethod
-    def parse(cls, s, default_host=None, default_port=None):
-        """ Parse a string containing one or more socket addresses, each
-        separated by whitespace.
-        """
-        if isinstance(s, str):
-            return cls([Address.parse(a, default_host, default_port)
-                        for a in s.split()])
-        else:
-            raise TypeError("AddressList.parse requires a string argument")
-
-    def __init__(self, iterable=None):
-        super().__init__(map(Address, iterable or ()))
-
-    def __str__(self):
-        return " ".join(str(Address(_)) for _ in self)
-
-    def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, list(self))
-
-    def dns_resolve(self, family=0):
-        """ Resolve all addresses into one or more resolved address tuples
-        using DNS. Each host name will resolve into one or more IP addresses,
-        limited by the given address `family` (if any). Each port value
-        (either integer or string) will resolve into an integer port value
-        (e.g. 'http' will resolve to 80).
-
-            >>> a = AddressList([("localhost", "http")])
-            >>> a.dns_resolve()
-            >>> a
-            AddressList([('::1', 80, 0, 0), ('127.0.0.1', 80)])
-
-        """
-        resolved = []
-        for address in iter(self):
-            host = address[0]
-            port = address[1]
-            try:
-                info = getaddrinfo(host, port, family, SOCK_STREAM)
-            except OSError:
-                raise ValueError("Cannot resolve address {!r}".format(address))
-            else:
-                for _, _, _, _, addr in info:
-                    if len(address) == 4 and address[3] != 0:
-                        # skip any IPv6 addresses with a non-zero scope id
-                        # as these appear to cause problems on some platforms
-                        continue
-                    if addr not in resolved:
-                        resolved.append(addr)
-        self[:] = resolved
-
-    def custom_resolve(self, resolver):
-        """ Perform custom resolution on the contained addresses using a
-        resolver function.
-
-        :return:
-        """
-        if not callable(resolver):
-            return
-        new_addresses = []
-        for address in iter(self):
-            for new_address in resolver(address):
-                new_addresses.append(new_address)
-        self[:] = new_addresses
