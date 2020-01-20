@@ -51,7 +51,6 @@ from socket import (
 
 from ssl import (
     HAS_SNI,
-    SSLSocket,
     SSLError,
 )
 
@@ -134,23 +133,17 @@ class Bolt:
         connection.hello()
         return connection
 
-    def __init__(self, unresolved_address, sock, *, auth=None, **config):
+    @property
+    def secure(self):
         raise NotImplementedError
 
     @property
-    def secure(self):
-        return isinstance(self.socket, SSLSocket)
-
-    @property
     def der_encoded_server_certificate(self):
-        return self.socket.getpeercert(binary_form=True)
+        raise NotImplementedError
 
     @property
     def local_port(self):
-        try:
-            return self.socket.getsockname()[1]
-        except IOError:
-            return 0
+        raise NotImplementedError
 
     def hello(self):
         raise NotImplementedError
@@ -158,7 +151,7 @@ class Bolt:
     def __del__(self):
         try:
             self.close()
-        except:
+        except OSError:
             pass
 
     def __enter__(self):

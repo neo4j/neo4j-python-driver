@@ -20,12 +20,11 @@
 
 from collections import deque
 from select import select
+from ssl import SSLSocket
 from struct import pack as struct_pack
 from time import perf_counter
 from neo4j.api import (
-    Bookmark,
     Version,
-    ServerInfo,
 )
 from neo4j.meta import get_user_agent
 from neo4j.exceptions import (
@@ -37,10 +36,7 @@ from neo4j.exceptions import (
     NotALeaderError,
     ForbiddenOnReadOnlyDatabaseError,
     IncompleteCommitError,
-    SecurityError,
-    ClientError,
     SessionExpired,
-    TransactionError,
 )
 from neo4j.packstream import (
     UnpackableBuffer,
@@ -118,6 +114,21 @@ class Bolt3(Bolt):
         else:
             if credentials is None:
                 raise AuthError("Password cannot be None")
+
+    @property
+    def secure(self):
+        return isinstance(self.socket, SSLSocket)
+
+    @property
+    def der_encoded_server_certificate(self):
+        return self.socket.getpeercert(binary_form=True)
+
+    @property
+    def local_port(self):
+        try:
+            return self.socket.getsockname()[1]
+        except IOError:
+            return 0
 
     def hello(self):
         headers = {"user_agent": self.user_agent}
