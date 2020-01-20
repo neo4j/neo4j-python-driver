@@ -64,3 +64,39 @@ def test_db_extra_in_run(fake_socket):
     assert fields[0] == ""
     assert fields[1] == {}
     assert fields[2] == {"db": "something"}
+
+
+def test_n_extra_in_discard(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address)
+    connection = Bolt4x0(address, socket)
+    connection.discard(n=666)
+    connection.send_all()
+    tag, fields = socket.pop_message()
+    assert tag == b"\x2F"
+    assert len(fields) == 1
+    assert fields[0] == {"n": 666, "qid": -1}
+
+
+def test_qid_extra_in_discard(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address)
+    connection = Bolt4x0(address, socket)
+    connection.discard(qid=666)
+    connection.send_all()
+    tag, fields = socket.pop_message()
+    assert tag == b"\x2F"
+    assert len(fields) == 1
+    assert fields[0] == {"n": -1, "qid": 666}
+
+
+def test_n_and_qid_extras_in_discard(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address)
+    connection = Bolt4x0(address, socket)
+    connection.discard(n=666, qid=777)
+    connection.send_all()
+    tag, fields = socket.pop_message()
+    assert tag == b"\x2F"
+    assert len(fields) == 1
+    assert fields[0] == {"n": 666, "qid": 777}

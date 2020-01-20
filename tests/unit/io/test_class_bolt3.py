@@ -54,3 +54,29 @@ def test_db_extra_not_supported_in_run(fake_socket):
     connection = Bolt3(address, fake_socket(address))
     with pytest.raises(ValueError):
         connection.run("", db="something")
+
+
+def test_simple_discard(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address)
+    connection = Bolt3(address, socket)
+    connection.discard()
+    connection.send_all()
+    tag, fields = socket.pop_message()
+    assert tag == b"\x2F"
+    assert len(fields) == 0
+
+
+def test_n_extra_not_supported_in_discard(fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = Bolt3(address, fake_socket(address))
+    with pytest.raises(ValueError):
+        connection.discard(n=666)
+
+
+def test_qid_extra_not_supported_in_discard(fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = Bolt3(address, fake_socket(address))
+    with pytest.raises(ValueError):
+        connection.discard(qid=666)
+

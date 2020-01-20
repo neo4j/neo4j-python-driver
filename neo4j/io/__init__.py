@@ -178,8 +178,14 @@ class Bolt:
         :return: :class:`neo4j.io._bolt3.Response` object
         """
 
-    def discard_all(self, **handlers):
-        raise NotImplementedError
+    def discard(self, n=-1, qid=-1, **handlers):
+        """ Appends a DISCARD message to the output stream.
+
+        :param n: number of records to discard, default = -1 (ALL)
+        :param qid: query ID to discard for, default = -1 (last query)
+        :param handlers: handler functions passed into the returned Response object
+        :return: :class:`neo4j.io._bolt3.Response` object
+        """
 
     def pull_all(self, **handlers):
         raise NotImplementedError
