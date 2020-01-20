@@ -142,12 +142,15 @@ class Bolt4x0(Bolt):
         self.send_all()
         self.fetch_all()
 
-    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
+    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None,
+            timeout=None, db=None, **handlers):
         if not parameters:
             parameters = {}
         extra = {}
         if mode:
             extra["mode"] = mode
+        if db:
+            extra["db"] = db
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)

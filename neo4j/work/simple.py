@@ -200,9 +200,12 @@ class Session(Workspace):
                 raise ValueError("Metadata can only be attached at transaction level")
             if statement_timeout:
                 raise ValueError("Timeouts only apply at transaction level")
+            # TODO: fail if explicit database name has been set
         else:
             run_metadata["bookmarks"] = self._bookmarks_in
 
+        # TODO: capture ValueError and surface as SessionError/TransactionError if
+        # TODO: explicit database selection has been made
         cx.run(statement_text, parameters, **run_metadata)
         cx.pull_all(
             on_records=lambda records: result._records.extend(

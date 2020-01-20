@@ -142,7 +142,10 @@ class Bolt3(Bolt):
         self.send_all()
         self.fetch_all()
 
-    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
+    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None,
+            timeout=None, db=None, **handlers):
+        if db is not None:
+            raise ValueError("Database selection is not supported in Bolt 3")
         if not parameters:
             parameters = {}
         extra = {}

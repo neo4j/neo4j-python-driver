@@ -40,7 +40,7 @@ def test_conn_not_timed_out(fake_socket):
     assert connection.timedout() is False
 
 
-def test_db_extra(fake_socket):
+def test_db_extra_in_begin(fake_socket):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
     connection = Bolt4x0(address, socket)
@@ -50,3 +50,17 @@ def test_db_extra(fake_socket):
     assert tag == b"\x11"
     assert len(fields) == 1
     assert fields[0] == {"db": "something"}
+
+
+def test_db_extra_in_run(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address)
+    connection = Bolt4x0(address, socket)
+    connection.run("", {}, db="something")
+    connection.send_all()
+    tag, fields = socket.pop_message()
+    assert tag == b"\x10"
+    assert len(fields) == 3
+    assert fields[0] == ""
+    assert fields[1] == {}
+    assert fields[2] == {"db": "something"}

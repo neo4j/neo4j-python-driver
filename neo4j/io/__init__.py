@@ -163,8 +163,20 @@ class Bolt:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
-        raise NotImplementedError
+    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None,
+            timeout=None, db=None, **handlers):
+        """ Appends a RUN message to the output stream.
+
+        :param statement: Cypher query string
+        :param parameters: dictionary of Cypher parameters
+        :param mode: access mode for routing - "READ" or "WRITE" (default)
+        :param bookmarks: iterable of bookmark values after which this transaction should begin
+        :param metadata: custom metadata dictionary to attach to the transaction
+        :param timeout: timeout for transaction execution (seconds)
+        :param db: name of the database against which to begin the transaction
+        :param handlers: handler functions passed into the returned Response object
+        :return: :class:`neo4j.io._bolt3.Response` object
+        """
 
     def discard_all(self, **handlers):
         raise NotImplementedError

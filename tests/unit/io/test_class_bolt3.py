@@ -42,8 +42,15 @@ def test_conn_not_timed_out(fake_socket):
     assert connection.timedout() is False
 
 
-def test_db_extra_not_supported(fake_socket):
+def test_db_extra_not_supported_in_begin(fake_socket):
     address = ("127.0.0.1", 7687)
     connection = Bolt3(address, fake_socket(address))
     with pytest.raises(ValueError):
         connection.begin(db="something")
+
+
+def test_db_extra_not_supported_in_run(fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = Bolt3(address, fake_socket(address))
+    with pytest.raises(ValueError):
+        connection.run("", db="something")
