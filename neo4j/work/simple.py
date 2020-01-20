@@ -308,6 +308,8 @@ class Session(Workspace):
     def _open_transaction(self, access_mode=None, metadata=None, timeout=None):
         self._transaction = Transaction(self, on_close=self._close_transaction)
         self._connect(access_mode)
+        # TODO: capture ValueError and surface as SessionError/TransactionError if
+        # TODO: explicit database selection has been made
         self._connection.begin(bookmarks=self._bookmarks_in, metadata=metadata, timeout=timeout)
 
     def commit_transaction(self):

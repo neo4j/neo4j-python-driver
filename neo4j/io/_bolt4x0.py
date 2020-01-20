@@ -26,6 +26,7 @@ from time import perf_counter
 from neo4j.api import (
     Version,
 )
+from neo4j.io._courier import MessageInbox
 from neo4j.meta import get_user_agent
 from neo4j.exceptions import (
     ProtocolError,
@@ -39,7 +40,6 @@ from neo4j.exceptions import (
     SessionExpired,
 )
 from neo4j.packstream import (
-    UnpackableBuffer,
     Unpacker,
     Packer,
 )
@@ -178,10 +178,13 @@ class Bolt4x0(Bolt):
         log.debug("[#%04X]  C: PULL_ALL", self.local_port)
         self._append(b"\x3F", (), Response(self, **handlers))
 
-    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
+    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
+              db=None, **handlers):
         extra = {}
         if mode:
             extra["mode"] = mode
+        if db:
+            extra["db"] = db
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
@@ -538,56 +541,16 @@ class BufferedSocket:
         return n_bytes
 
 
-class Inbox:
-
-    def __init__(self, s, on_error):
-        super(Inbox, self).__init__()
-        self.on_error = on_error
-        self._messages = self._yield_messages(s)
-
-    def __iter__(self):
-        return self
+class Inbox(MessageInbox):
 
     def __next__(self):
-        return next(self._messages)
-
-    @classmethod
-    def _load_chunks(cls, sock, buffer):
-        chunk_size = 0
-        while True:
-            if chunk_size == 0:
-                buffer.receive(sock, 2)
-            chunk_size = buffer.pop_u16()
-            if chunk_size > 0:
-                buffer.receive(sock, chunk_size + 2)
-            yield chunk_size
-
-    def _yield_messages(self, sock):
-        try:
-            buffer = UnpackableBuffer()
-            chunk_loader = self._load_chunks(sock, buffer)
-            unpacker = Unpacker(buffer)
-            details = []
-            while True:
-                unpacker.reset()
-                details[:] = ()
-                chunk_size = -1
-                while chunk_size != 0:
-                    chunk_size = next(chunk_loader)
-                summary_signature = None
-                summary_metadata = None
-                size, signature = unpacker.unpack_structure_header()
-                if size > 1:
-                    raise ProtocolError("Expected one field")
-                if signature == b"\x71":
-                    data = unpacker.unpack()
-                    details.append(data)
-                else:
-                    summary_signature = signature
-                    summary_metadata = unpacker.unpack_map()
-                yield details, summary_signature, summary_metadata
-        except OSError as error:
-            self.on_error(error)
+        tag, fields = self.pop()
+        if tag == b"\x71":
+            return fields, None, None
+        elif fields:
+            return [], tag, fields[0]
+        else:
+            return [], tag, None
 
 
 class Response:

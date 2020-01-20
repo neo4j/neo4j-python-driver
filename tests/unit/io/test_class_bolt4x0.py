@@ -19,31 +19,34 @@
 # limitations under the License.
 
 
-import pytest
-
-from neo4j.io._bolt3 import Bolt3
+from neo4j.io._bolt4x0 import Bolt4x0
 
 
 def test_conn_timed_out(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address), max_age=0)
+    connection = Bolt4x0(address, fake_socket(address), max_age=0)
     assert connection.timedout() is True
 
 
 def test_conn_not_timed_out_if_not_enabled(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address), max_age=-1)
+    connection = Bolt4x0(address, fake_socket(address), max_age=-1)
     assert connection.timedout() is False
 
 
 def test_conn_not_timed_out(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address), max_age=999999999)
+    connection = Bolt4x0(address, fake_socket(address), max_age=999999999)
     assert connection.timedout() is False
 
 
-def test_db_extra_not_supported(fake_socket):
+def test_db_extra(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address))
-    with pytest.raises(ValueError):
-        connection.begin(db="something")
+    socket = fake_socket(address)
+    connection = Bolt4x0(address, socket)
+    connection.begin(db="something")
+    connection.send_all()
+    tag, fields = socket.pop_message()
+    assert tag == b"\x11"
+    assert len(fields) == 1
+    assert fields[0] == {"db": "something"}

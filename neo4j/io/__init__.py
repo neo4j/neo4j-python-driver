@@ -172,8 +172,17 @@ class Bolt:
     def pull_all(self, **handlers):
         raise NotImplementedError
 
-    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
-        raise NotImplementedError
+    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
+        """ Appends a BEGIN message to the output stream.
+
+        :param mode: access mode for routing - "READ" or "WRITE" (default)
+        :param bookmarks: iterable of bookmark values after which this transaction should begin
+        :param metadata: custom metadata dictionary to attach to the transaction
+        :param timeout: timeout for transaction execution (seconds)
+        :param db: name of the database against which to begin the transaction
+        :param handlers: handler functions passed into the returned Response object
+        :return: :class:`neo4j.io._bolt3.Response` object
+        """
 
     def commit(self, **handlers):
         raise NotImplementedError
