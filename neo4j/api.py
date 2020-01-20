@@ -108,8 +108,6 @@ class Bookmark:
 
 class ServerInfo:
 
-    address = None
-
     def __init__(self, address, protocol_version):
         self.address = address
         self.protocol_version = protocol_version
