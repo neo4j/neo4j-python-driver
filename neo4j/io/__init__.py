@@ -175,7 +175,7 @@ class Bolt:
         :param timeout: timeout for transaction execution (seconds)
         :param db: name of the database against which to begin the transaction
         :param handlers: handler functions passed into the returned Response object
-        :return: :class:`neo4j.io._bolt3.Response` object
+        :return: Response object
         """
 
     def discard(self, n=-1, qid=-1, **handlers):
@@ -184,11 +184,17 @@ class Bolt:
         :param n: number of records to discard, default = -1 (ALL)
         :param qid: query ID to discard for, default = -1 (last query)
         :param handlers: handler functions passed into the returned Response object
-        :return: :class:`neo4j.io._bolt3.Response` object
+        :return: Response object
         """
 
-    def pull_all(self, **handlers):
-        raise NotImplementedError
+    def pull(self, n=-1, qid=-1, **handlers):
+        """ Appends a PULL message to the output stream.
+
+        :param n: number of records to pull, default = -1 (ALL)
+        :param qid: query ID to pull for, default = -1 (last query)
+        :param handlers: handler functions passed into the returned Response object
+        :return: Response object
+        """
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
         """ Appends a BEGIN message to the output stream.
@@ -199,7 +205,7 @@ class Bolt:
         :param timeout: timeout for transaction execution (seconds)
         :param db: name of the database against which to begin the transaction
         :param handlers: handler functions passed into the returned Response object
-        :return: :class:`neo4j.io._bolt3.Response` object
+        :return: Response object
         """
 
     def commit(self, **handlers):
@@ -492,7 +498,7 @@ class Neo4jPool(IOPool):
                 log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
                 cx.run("CALL dbms.cluster.routing.getRoutingTable($context)",
                        {"context": self.routing_context}, on_success=metadata.update, on_failure=fail)
-                cx.pull_all(on_success=metadata.update, on_records=records.extend)
+                cx.pull(on_success=metadata.update, on_records=records.extend)
                 cx.send_all()
                 cx.fetch_all()
                 routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]

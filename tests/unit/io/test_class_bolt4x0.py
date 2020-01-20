@@ -100,3 +100,39 @@ def test_n_and_qid_extras_in_discard(fake_socket):
     assert tag == b"\x2F"
     assert len(fields) == 1
     assert fields[0] == {"n": 666, "qid": 777}
+
+
+def test_n_extra_in_pull(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address)
+    connection = Bolt4x0(address, socket)
+    connection.pull(n=666)
+    connection.send_all()
+    tag, fields = socket.pop_message()
+    assert tag == b"\x3F"
+    assert len(fields) == 1
+    assert fields[0] == {"n": 666, "qid": -1}
+
+
+def test_qid_extra_in_pull(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address)
+    connection = Bolt4x0(address, socket)
+    connection.pull(qid=666)
+    connection.send_all()
+    tag, fields = socket.pop_message()
+    assert tag == b"\x3F"
+    assert len(fields) == 1
+    assert fields[0] == {"n": -1, "qid": 666}
+
+
+def test_n_and_qid_extras_in_pull(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address)
+    connection = Bolt4x0(address, socket)
+    connection.pull(n=666, qid=777)
+    connection.send_all()
+    tag, fields = socket.pop_message()
+    assert tag == b"\x3F"
+    assert len(fields) == 1
+    assert fields[0] == {"n": 666, "qid": 777}

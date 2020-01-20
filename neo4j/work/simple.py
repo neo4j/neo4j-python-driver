@@ -207,7 +207,7 @@ class Session(Workspace):
         # TODO: capture ValueError and surface as SessionError/TransactionError if
         # TODO: explicit database selection has been made
         cx.run(statement_text, parameters, **run_metadata)
-        cx.pull_all(
+        cx.pull(
             on_records=lambda records: result._records.extend(
                 hydrant.hydrate_records(result.keys(), records)),
             on_success=done,

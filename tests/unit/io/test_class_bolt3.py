@@ -80,3 +80,28 @@ def test_qid_extra_not_supported_in_discard(fake_socket):
     with pytest.raises(ValueError):
         connection.discard(qid=666)
 
+
+def test_simple_pull(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address)
+    connection = Bolt3(address, socket)
+    connection.pull()
+    connection.send_all()
+    tag, fields = socket.pop_message()
+    assert tag == b"\x3F"
+    assert len(fields) == 0
+
+
+def test_n_extra_not_supported_in_pull(fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = Bolt3(address, fake_socket(address))
+    with pytest.raises(ValueError):
+        connection.pull(n=666)
+
+
+def test_qid_extra_not_supported_in_pull(fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = Bolt3(address, fake_socket(address))
+    with pytest.raises(ValueError):
+        connection.pull(qid=666)
+

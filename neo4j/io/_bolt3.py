@@ -181,7 +181,11 @@ class Bolt3(Bolt):
         log.debug("[#%04X]  C: DISCARD_ALL", self.local_port)
         self._append(b"\x2F", (), Response(self, **handlers))
 
-    def pull_all(self, **handlers):
+    def pull(self, n=-1, qid=-1, **handlers):
+        if n != -1:
+            raise ValueError("Incremental pull is not supported in Bolt 3")
+        if qid != -1:
+            raise ValueError("Query selection on pull is not supported in Bolt 3")
         log.debug("[#%04X]  C: PULL_ALL", self.local_port)
         self._append(b"\x3F", (), Response(self, **handlers))
 
