@@ -21,11 +21,13 @@
 
 from unittest import SkipTest
 
+import pytest
 from pytest import raises
 
 from neo4j.work.simple import Statement
 from neo4j.exceptions import CypherError, ClientError, TransientError
 from neo4j.graph import Node, Relationship
+from neo4j.api import Version
 
 
 def test_can_run_simple_statement(session):
@@ -166,15 +168,29 @@ def test_statement_object(session):
     assert value == 1
 
 
-def test_autocommit_transactions_should_support_metadata(session):
+@pytest.mark.parametrize(
+    "test_input, neo4j_version",
+    [
+        ("CALL dbms.getTXMetaData", Version(3, 0)),
+        ("CALL tx.getMetaData", Version(4, 0)),
+    ]
+)
+def test_autocommit_transactions_should_support_metadata(session, test_input, neo4j_version):
+    # python -m pytest tests/integration/test_autocommit.py -s -r fEsxX -k test_autocommit_transactions_should_support_metadata
     metadata_in = {"foo": "bar"}
+
+    result = session.run("RETURN 1")
+    value = result.single().value()
+    summary = result.summary()
+    server_agent = summary.server.agent
+
     try:
-        statement = Statement("CALL dbms.getTXMetaData", metadata=metadata_in)
-        metadata_out = session.run(statement).single().value()
+        statement = Statement(test_input, metadata=metadata_in)
+        result = session.run(statement)
+        metadata_out = result.single().value()
     except ClientError as e:
         if e.code == "Neo.ClientError.Procedure.ProcedureNotFound":
-            raise SkipTest("Cannot assert correct metadata as Neo4j edition "
-                           "does not support procedure dbms.getTXMetaData")
+            pytest.skip("Cannot assert correct metadata as {} does not support procedure '{}' introduced in Neo4j {}".format(server_agent, test_input, neo4j_version))
         else:
             raise
     else:
