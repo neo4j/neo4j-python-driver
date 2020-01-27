@@ -60,4 +60,3 @@ Other Information
 .. _`Neo4j Quick Reference Card`: https://neo4j.com/docs/cypher-refcard/current/
 .. _`Example Project`: https://github.com/neo4j-examples/movies-python-bolt
 .. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki
-
