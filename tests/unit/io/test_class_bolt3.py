@@ -19,46 +19,89 @@
 # limitations under the License.
 
 
-from unittest import TestCase
 import pytest
 
-from neo4j.exceptions import (
-    ClientError,
-    ServiceUnavailable,
-)
 from neo4j.io._bolt3 import Bolt3
 
 
-class FakeSocket:
-    def __init__(self, address):
-        self.address = address
-
-    def setblocking(self, flag):
-        pass
-
-    def getpeername(self):
-        return self.address
-
-    def sendall(self, data):
-        return
-
-    def close(self):
-        return
-
-
-def test_conn_timed_out():
+def test_conn_timed_out(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, FakeSocket(address), max_age=0)
+    connection = Bolt3(address, fake_socket(address), max_age=0)
     assert connection.timedout() is True
 
 
-def test_conn_not_timed_out_if_not_enabled():
+def test_conn_not_timed_out_if_not_enabled(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, FakeSocket(address), max_age=-1)
+    connection = Bolt3(address, fake_socket(address), max_age=-1)
     assert connection.timedout() is False
 
 
-def test_conn_not_timed_out():
+def test_conn_not_timed_out(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, FakeSocket(address), max_age=999999999)
+    connection = Bolt3(address, fake_socket(address), max_age=999999999)
     assert connection.timedout() is False
+
+
+def test_db_extra_not_supported_in_begin(fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = Bolt3(address, fake_socket(address))
+    with pytest.raises(ValueError):
+        connection.begin(db="something")
+
+
+def test_db_extra_not_supported_in_run(fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = Bolt3(address, fake_socket(address))
+    with pytest.raises(ValueError):
+        connection.run("", db="something")
+
+
+def test_simple_discard(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address)
+    connection = Bolt3(address, socket)
+    connection.discard()
+    connection.send_all()
+    tag, fields = socket.pop_message()
+    assert tag == b"\x2F"
+    assert len(fields) == 0
+
+
+def test_n_extra_not_supported_in_discard(fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = Bolt3(address, fake_socket(address))
+    with pytest.raises(ValueError):
+        connection.discard(n=666)
+
+
+def test_qid_extra_not_supported_in_discard(fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = Bolt3(address, fake_socket(address))
+    with pytest.raises(ValueError):
+        connection.discard(qid=666)
+
+
+def test_simple_pull(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address)
+    connection = Bolt3(address, socket)
+    connection.pull()
+    connection.send_all()
+    tag, fields = socket.pop_message()
+    assert tag == b"\x3F"
+    assert len(fields) == 0
+
+
+def test_n_extra_not_supported_in_pull(fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = Bolt3(address, fake_socket(address))
+    with pytest.raises(ValueError):
+        connection.pull(n=666)
+
+
+def test_qid_extra_not_supported_in_pull(fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = Bolt3(address, fake_socket(address))
+    with pytest.raises(ValueError):
+        connection.pull(qid=666)
+

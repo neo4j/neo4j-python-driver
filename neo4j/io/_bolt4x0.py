@@ -55,9 +55,9 @@ from logging import getLogger
 log = getLogger("neo4j")
 
 
-class Bolt3(Bolt):
+class Bolt4x0(Bolt):
 
-    PROTOCOL_VERSION = Version(3, 0)
+    PROTOCOL_VERSION = Version(4, 0)
 
     #: Server details for this connection
     server = None
@@ -78,7 +78,7 @@ class Bolt3(Bolt):
         self.config = PoolConfig.consume(config)
         self.unresolved_address = unresolved_address
         self.socket = sock
-        self.server = ServerInfo(Address(sock.getpeername()), Bolt3.PROTOCOL_VERSION)
+        self.server = ServerInfo(Address(sock.getpeername()), Bolt4x0.PROTOCOL_VERSION)
         self.outbox = Outbox()
         self.inbox = Inbox(BufferedSocket(self.socket, 32768), on_error=self._set_defunct)
         self.packer = Packer(self.outbox)
@@ -144,13 +144,13 @@ class Bolt3(Bolt):
 
     def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None,
             timeout=None, db=None, **handlers):
-        if db is not None:
-            raise ValueError("Database selection is not supported in Bolt 3")
         if not parameters:
             parameters = {}
         extra = {}
         if mode:
             extra["mode"] = mode
+        if db:
+            extra["db"] = db
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
@@ -174,28 +174,26 @@ class Bolt3(Bolt):
             self._append(b"\x10", fields, Response(self, **handlers))
 
     def discard(self, n=-1, qid=-1, **handlers):
-        if n != -1:
-            raise ValueError("Incremental discard is not supported in Bolt 3")
+        extra = {"n": n}
         if qid != -1:
-            raise ValueError("Query selection on discard is not supported in Bolt 3")
-        log.debug("[#%04X]  C: DISCARD_ALL", self.local_port)
-        self._append(b"\x2F", (), Response(self, **handlers))
+            extra["qid"] = qid
+        log.debug("[#%04X]  C: DISCARD %r", self.local_port, extra)
+        self._append(b"\x2F", (extra,), Response(self, **handlers))
 
     def pull(self, n=-1, qid=-1, **handlers):
-        if n != -1:
-            raise ValueError("Incremental pull is not supported in Bolt 3")
+        extra = {"n": n}
         if qid != -1:
-            raise ValueError("Query selection on pull is not supported in Bolt 3")
-        log.debug("[#%04X]  C: PULL_ALL", self.local_port)
-        self._append(b"\x3F", (), Response(self, **handlers))
+            extra["qid"] = qid
+        log.debug("[#%04X]  C: PULL %r", self.local_port, extra)
+        self._append(b"\x3F", (extra,), Response(self, **handlers))
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
               db=None, **handlers):
-        if db is not None:
-            raise ValueError("Database selection is not supported in Bolt 3")
         extra = {}
         if mode:
             extra["mode"] = mode
+        if db:
+            extra["db"] = db
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)

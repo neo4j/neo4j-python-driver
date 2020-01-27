@@ -124,6 +124,9 @@ class Bolt:
         if config.protocol_version == (3, 0):
             from neo4j.io._bolt3 import Bolt3
             connection = Bolt3(address, s, auth=auth, **config)
+        elif config.protocol_version == (4, 0):
+            from neo4j.io._bolt4x0 import Bolt4x0
+            connection = Bolt4x0(address, s, auth=auth, **config)
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
             s.shutdown(SHUT_RDWR)
@@ -160,17 +163,50 @@ class Bolt:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
-        raise NotImplementedError
+    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None,
+            timeout=None, db=None, **handlers):
+        """ Appends a RUN message to the output stream.
 
-    def discard_all(self, **handlers):
-        raise NotImplementedError
+        :param statement: Cypher query string
+        :param parameters: dictionary of Cypher parameters
+        :param mode: access mode for routing - "READ" or "WRITE" (default)
+        :param bookmarks: iterable of bookmark values after which this transaction should begin
+        :param metadata: custom metadata dictionary to attach to the transaction
+        :param timeout: timeout for transaction execution (seconds)
+        :param db: name of the database against which to begin the transaction
+        :param handlers: handler functions passed into the returned Response object
+        :return: Response object
+        """
 
-    def pull_all(self, **handlers):
-        raise NotImplementedError
+    def discard(self, n=-1, qid=-1, **handlers):
+        """ Appends a DISCARD message to the output stream.
 
-    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, **handlers):
-        raise NotImplementedError
+        :param n: number of records to discard, default = -1 (ALL)
+        :param qid: query ID to discard for, default = -1 (last query)
+        :param handlers: handler functions passed into the returned Response object
+        :return: Response object
+        """
+
+    def pull(self, n=-1, qid=-1, **handlers):
+        """ Appends a PULL message to the output stream.
+
+        :param n: number of records to pull, default = -1 (ALL)
+        :param qid: query ID to pull for, default = -1 (last query)
+        :param handlers: handler functions passed into the returned Response object
+        :return: Response object
+        """
+
+    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
+        """ Appends a BEGIN message to the output stream.
+
+        :param mode: access mode for routing - "READ" or "WRITE" (default)
+        :param bookmarks: iterable of bookmark values after which this transaction should begin
+        :param metadata: custom metadata dictionary to attach to the transaction
+        :param timeout: timeout for transaction execution (seconds)
+        :param db: name of the database against which to begin the transaction
+        :param handlers: handler functions passed into the returned Response object
+        :return: Response object
+        """
 
     def commit(self, **handlers):
         raise NotImplementedError
@@ -462,7 +498,7 @@ class Neo4jPool(IOPool):
                 log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
                 cx.run("CALL dbms.cluster.routing.getRoutingTable($context)",
                        {"context": self.routing_context}, on_success=metadata.update, on_failure=fail)
-                cx.pull_all(on_success=metadata.update, on_records=records.extend)
+                cx.pull(on_success=metadata.update, on_records=records.extend)
                 cx.send_all()
                 cx.fetch_all()
                 routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
