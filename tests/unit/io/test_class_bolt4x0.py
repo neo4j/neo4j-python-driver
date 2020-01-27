@@ -19,8 +19,8 @@
 # limitations under the License.
 
 
+import pytest
 from neo4j.io._bolt4x0 import Bolt4x0
-
 
 def test_conn_timed_out(fake_socket):
     address = ("127.0.0.1", 7687)
@@ -75,55 +75,85 @@ def test_n_extra_in_discard(fake_socket):
     tag, fields = socket.pop_message()
     assert tag == b"\x2F"
     assert len(fields) == 1
-    assert fields[0] == {"n": 666, "qid": -1}
+    assert fields[0] == {"n": 666}
 
 
-def test_qid_extra_in_discard(fake_socket):
+@pytest.mark.parametrize(
+    "test_input, expected",
+    [
+        (666, {"n": -1, "qid": 666}),
+        (-1, {"n": -1}),
+    ]
+)
+def test_qid_extra_in_discard(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
     connection = Bolt4x0(address, socket)
-    connection.discard(qid=666)
+    connection.discard(qid=test_input)
     connection.send_all()
     tag, fields = socket.pop_message()
     assert tag == b"\x2F"
     assert len(fields) == 1
-    assert fields[0] == {"n": -1, "qid": 666}
+    assert fields[0] == expected
 
 
-def test_n_and_qid_extras_in_discard(fake_socket):
+@pytest.mark.parametrize(
+    "test_input, expected",
+    [
+        (777, {"n": 666, "qid": 777}),
+        (-1, {"n": 666}),
+    ]
+)
+def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
+    # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_n_and_qid_extras_in_discard
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
     connection = Bolt4x0(address, socket)
-    connection.discard(n=666, qid=777)
+    connection.discard(n=666, qid=test_input)
     connection.send_all()
     tag, fields = socket.pop_message()
     assert tag == b"\x2F"
     assert len(fields) == 1
-    assert fields[0] == {"n": 666, "qid": 777}
+    assert fields[0] == expected
 
 
-def test_n_extra_in_pull(fake_socket):
+@pytest.mark.parametrize(
+    "test_input, expected",
+    [
+        (666, {"n": 666}),
+        (-1, {"n": -1}),
+    ]
+)
+def test_n_extra_in_pull(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
     connection = Bolt4x0(address, socket)
-    connection.pull(n=666)
+    connection.pull(n=test_input)
     connection.send_all()
     tag, fields = socket.pop_message()
     assert tag == b"\x3F"
     assert len(fields) == 1
-    assert fields[0] == {"n": 666, "qid": -1}
+    assert fields[0] == expected
 
 
-def test_qid_extra_in_pull(fake_socket):
+@pytest.mark.parametrize(
+    "test_input, expected",
+    [
+        (777, {"n": -1, "qid": 777}),
+        (-1, {"n": -1}),
+    ]
+)
+def test_qid_extra_in_pull(fake_socket, test_input, expected):
+    # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_qid_extra_in_pull
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
     connection = Bolt4x0(address, socket)
-    connection.pull(qid=666)
+    connection.pull(qid=test_input)
     connection.send_all()
     tag, fields = socket.pop_message()
     assert tag == b"\x3F"
     assert len(fields) == 1
-    assert fields[0] == {"n": -1, "qid": 666}
+    assert fields[0] == expected
 
 
 def test_n_and_qid_extras_in_pull(fake_socket):

@@ -174,20 +174,16 @@ class Bolt4x0(Bolt):
             self._append(b"\x10", fields, Response(self, **handlers))
 
     def discard(self, n=-1, qid=-1, **handlers):
-        # TODO: find out whether qid is optional, and optimise if so
-        extra = {
-            "n": n,
-            "qid": qid,
-        }
+        extra = {"n": n}
+        if qid != -1:
+            extra["qid"] = qid
         log.debug("[#%04X]  C: DISCARD %r", self.local_port, extra)
         self._append(b"\x2F", (extra,), Response(self, **handlers))
 
     def pull(self, n=-1, qid=-1, **handlers):
-        # TODO: find out whether qid is optional, and optimise if so
-        extra = {
-            "n": n,
-            "qid": qid,
-        }
+        extra = {"n": n}
+        if qid != -1:
+            extra["qid"] = qid
         log.debug("[#%04X]  C: PULL %r", self.local_port, extra)
         self._append(b"\x3F", (extra,), Response(self, **handlers))
 
