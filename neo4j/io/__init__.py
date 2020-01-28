@@ -847,17 +847,7 @@ def _handshake(s, resolved_address):
                                  "(looks like HTTP)".format(resolved_address))
     agreed_version = data[-1], data[-2]
     log.debug("[#%04X]  S: <HANDSHAKE> 0x%06X%02X", local_port, agreed_version[1], agreed_version[0])
-    if agreed_version == (0, 0):
-        log.debug("[#%04X]  C: <CLOSE>", local_port)
-        s.shutdown(SHUT_RDWR)
-        s.close()
-    elif agreed_version in ((3, 0),):
-        return s, agreed_version
-    else:
-        log.debug("[#%04X]  S: <CLOSE>", local_port)
-        s.close()
-        raise ProtocolError("Unknown Bolt protocol version: "
-                            "{}".format(agreed_version))
+    return s, agreed_version
 
 
 def connect(address, *, timeout=None, config):
