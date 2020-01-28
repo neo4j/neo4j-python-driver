@@ -54,3 +54,10 @@ def test_class_method_get_handshake():
     # python -m pytest tests/unit/io/test_class_bolt.py -s -v -k test_class_method_get_handshake
     handshake = Bolt.get_handshake()
     assert handshake == b"\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00"
+
+
+def test_magic_preamble():
+    # python -m pytest tests/unit/io/test_class_bolt.py -s -v -k test_magic_preamble
+    preamble = 0x6060B017
+    preamble_bytes = preamble.to_bytes(4, byteorder="big")
+    assert Bolt.MAGIC_PREAMBLE == preamble_bytes

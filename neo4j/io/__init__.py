@@ -90,7 +90,7 @@ class Bolt:
     the handshake was carried out.
     """
 
-    MAGIC_PREAMBLE = 0x6060B017
+    MAGIC_PREAMBLE = b"\x60\x60\xB0\x17"
 
     PROTOCOL_VERSION = None
 
@@ -804,8 +804,8 @@ def _handshake(s, resolved_address):
 
     # Send details of the protocol versions supported
     supported_versions = [3, 0, 0, 0]
-    handshake = [Bolt.MAGIC_PREAMBLE] + supported_versions
-    log.debug("[#%04X]  C: <MAGIC> 0x%08X", local_port, Bolt.MAGIC_PREAMBLE)
+    handshake = [int.from_bytes(Bolt.MAGIC_PREAMBLE, byteorder="big")] + supported_versions
+    log.debug("[#%04X]  C: <MAGIC> 0x%08X", local_port, int.from_bytes(Bolt.MAGIC_PREAMBLE, byteorder="big"))
     log.debug("[#%04X]  C: <HANDSHAKE> 0x%08X 0x%08X 0x%08X 0x%08X", local_port, *supported_versions)
     data = b"".join(struct_pack(">I", num) for num in handshake)
     s.sendall(data)
