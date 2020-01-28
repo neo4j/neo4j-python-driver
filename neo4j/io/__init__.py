@@ -95,6 +95,42 @@ class Bolt:
     PROTOCOL_VERSION = None
 
     @classmethod
+    def protocol_handlers(cls, protocol_version=None):
+        """ Return a dictionary of available Bolt protocol handlers,
+        keyed by version tuple. If an explicit protocol version is
+        provided, the dictionary will contain either zero or one items,
+        depending on whether that version is supported. If no protocol
+        version is provided, all available versions will be returned.
+
+        :param protocol_version: tuple identifying a specific protocol
+            version (e.g. (3, 5)) or None
+        :return: dictionary of version tuple to handler class for all
+            relevant and supported protocol versions
+        :raise TypeError: if protocol version is not passed in a tuple
+        """
+
+        # Carry out subclass imports locally to avoid circular
+        # dependency issues.
+        from neo4j.io._bolt3 import Bolt3
+        from neo4j.io._bolt4x0 import Bolt4x0
+
+        handlers = {
+            Bolt3.PROTOCOL_VERSION: Bolt3,
+            Bolt4x0.PROTOCOL_VERSION: Bolt4x0
+        }
+
+        if protocol_version is None:
+            return handlers
+
+        if not isinstance(protocol_version, tuple):
+            raise TypeError("Protocol version must be specified as a tuple")
+
+        if protocol_version in handlers:
+            return {protocol_version: handlers[protocol_version]}
+
+        return {}
+
+    @classmethod
     def ping(cls, address, *, timeout=None, **config):
         """ Attempt to establish a Bolt connection, returning the
         agreed Bolt protocol version if successful.
