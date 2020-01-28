@@ -48,3 +48,9 @@ def test_class_method_protocol_handlers_with_invalid_protocol_version():
     # python -m pytest tests/unit/io/test_class_bolt.py -s -v -k test_class_method_protocol_handlers_with_invalid_protocol_version
     with pytest.raises(TypeError):
         Bolt.protocol_handlers(protocol_version=2)
+
+
+def test_class_method_get_handshake():
+    # python -m pytest tests/unit/io/test_class_bolt.py -s -v -k test_class_method_get_handshake
+    handshake = Bolt.get_handshake()
+    assert handshake == b"\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00"

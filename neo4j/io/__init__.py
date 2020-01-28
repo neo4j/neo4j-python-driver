@@ -95,6 +95,15 @@ class Bolt:
     PROTOCOL_VERSION = None
 
     @classmethod
+    def get_handshake(cls):
+        """ Return the supported Bolt versions as bytes.
+        The length is 16 bytes as specified in the Bolt version negotiation.
+        :return: bytes
+        """
+        offered_versions = sorted(cls.protocol_handlers().keys(), reverse=True)[:4]
+        return b"".join(version.to_bytes() for version in offered_versions).ljust(16, b"\x00")
+
+    @classmethod
     def protocol_handlers(cls, protocol_version=None):
         """ Return a dictionary of available Bolt protocol handlers,
         keyed by version tuple. If an explicit protocol version is
