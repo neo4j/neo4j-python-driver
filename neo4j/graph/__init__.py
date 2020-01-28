@@ -79,6 +79,14 @@ class Graph:
                 inst = self.graph._nodes[n_id]
             except KeyError:
                 inst = self.graph._nodes[n_id] = Node(self.graph, n_id, n_labels, properties)
+            else:
+                # If we have already hydrated this node as the endpoint of
+                # a relationship, it won't have any labels or properties.
+                # Therefore, we need to add the ones we have here.
+                if n_labels:
+                    inst._labels = frozenset(inst._labels & set(n_labels))
+                if properties:
+                    inst._properties.update(properties)
             return inst
 
         def hydrate_relationship(self, r_id, n0_id, n1_id, r_type, properties=None):
