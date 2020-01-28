@@ -116,3 +116,16 @@ class StubCluster(LegacyStubCluster):
 @fixture
 def script():
     return lambda *paths: path_join(dirname(__file__), "scripts", *paths)
+
+
+@fixture
+def driver_info():
+    """ Base class for test cases that integrate with a server.
+    """
+    return {
+        "uri": "bolt://localhost:7687",
+        "bolt_routing_uri": "bolt+routing://localhost:7687",
+        "user": "test",
+        "password": "test",
+        "auth_token": ("test", "test")
+    }
