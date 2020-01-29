@@ -79,10 +79,16 @@ def test_should_be_able_to_set_multiple_bookmarks(driver_info, test_script):
                 assert session.next_bookmarks() == (":1", ":2")
 
 
-def test_should_automatically_chain_bookmarks(driver_info):
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/bookmark_chain.script"),
+        ("v4x0/router.script", "v4x0/bookmark_chain.script"),
+    ]
+)
+def test_should_automatically_chain_bookmarks(driver_info, test_scripts):
     # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_should_automatically_chain_bookmarks
-    with StubCluster("v3/router.script",
-                     "v3/bookmark_chain.script"):
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS,
