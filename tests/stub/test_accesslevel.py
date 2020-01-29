@@ -36,7 +36,7 @@ from tests.stub.conftest import StubCluster
     "test_scripts",
     [
         ("v3/router.script", "v3/return_1_in_read_tx.script"),
-        ("v4x0/router.script", "v4x0/return_1_in_read_tx.script"),
+        ("v4x0/router.script", "v4x0/tx_return_1_port_9004.script"),
     ]
 )
 def test_read_transaction(driver_info, test_scripts):
