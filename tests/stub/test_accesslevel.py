@@ -84,7 +84,7 @@ def test_write_transaction(driver_info, test_scripts):
     "test_scripts",
     [
         ("v3/router.script", "v3/error_in_read_tx.script"),
-        ("v4x0/router.script", "v4x0/tx_run_with_failure_syntax_error.script"),
+        ("v4x0/router.script", "v4x0/tx_run_with_failure_syntax_error_port_9004.script"),
     ]
 )
 def test_read_transaction_with_error(driver_info, test_scripts):
