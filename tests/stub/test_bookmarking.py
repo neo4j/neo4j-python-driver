@@ -19,60 +19,72 @@
 # limitations under the License.
 
 
-from neo4j import GraphDatabase, READ_ACCESS
+from neo4j import (
+    GraphDatabase,
+    READ_ACCESS,
+)
 
-from tests.stub.conftest import StubTestCase, StubCluster
+from tests.stub.conftest import StubCluster
+
+# python -m pytest tests/stub/test_bookmarking.py -s -v
 
 
-class BookmarkingTestCase(StubTestCase):
+def test_should_be_no_bookmark_in_new_session(driver_info):
+    # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_should_be_no_bookmark_in_new_session
+    with StubCluster("v3/router.script"):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session() as session:
+                assert session.last_bookmark() is None
 
-    def test_should_be_no_bookmark_in_new_session(self):
-        with StubCluster("v3/router.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session() as session:
-                    assert session.last_bookmark() is None
 
-    def test_should_be_able_to_set_bookmark(self):
-        with StubCluster("v3/router.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(bookmarks=["X"]) as session:
-                    assert session.next_bookmarks() == ("X",)
+def test_should_be_able_to_set_bookmark(driver_info):
+    # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_should_be_able_to_set_bookmark
+    with StubCluster("v3/router.script"):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(bookmarks=["X"]) as session:
+                assert session.next_bookmarks() == ("X",)
 
-    def test_should_be_able_to_set_multiple_bookmarks(self):
-        with StubCluster("v3/router.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(bookmarks=[":1", ":2"]) as session:
-                    assert session.next_bookmarks() == (":1", ":2")
 
-    def test_should_automatically_chain_bookmarks(self):
-        with StubCluster("v3/router.script",
-                         "v3/bookmark_chain.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=READ_ACCESS,
-                                    bookmarks=["bookmark:0", "bookmark:1"]) as session:
-                    with session.begin_transaction():
-                        pass
-                    assert session.last_bookmark() == "bookmark:2"
-                    with session.begin_transaction():
-                        pass
-                    assert session.last_bookmark() == "bookmark:3"
+def test_should_be_able_to_set_multiple_bookmarks(driver_info):
+    # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_should_be_able_to_set_multiple_bookmarks
+    with StubCluster("v3/router.script"):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(bookmarks=[":1", ":2"]) as session:
+                assert session.next_bookmarks() == (":1", ":2")
 
-    def test_autocommit_transaction_included_in_chain(self):
-        with StubCluster("v3/router.script",
-                         "v3/bookmark_chain_with_autocommit.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=READ_ACCESS,
-                                    bookmarks=["bookmark:1"]) as session:
-                    with session.begin_transaction():
-                        pass
-                    assert session.last_bookmark() == "bookmark:2"
-                    session.run("RETURN 1").consume()
-                    assert session.last_bookmark() == "bookmark:3"
-                    with session.begin_transaction():
-                        pass
-                    assert session.last_bookmark() == "bookmark:4"
+
+def test_should_automatically_chain_bookmarks(driver_info):
+    # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_should_automatically_chain_bookmarks
+    with StubCluster("v3/router.script",
+                     "v3/bookmark_chain.script"):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS,
+                                bookmarks=["bookmark:0", "bookmark:1"]) as session:
+                with session.begin_transaction():
+                    pass
+                assert session.last_bookmark() == "bookmark:2"
+                with session.begin_transaction():
+                    pass
+                assert session.last_bookmark() == "bookmark:3"
+
+
+def test_autocommit_transaction_included_in_chain(driver_info):
+    # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_autocommit_transaction_included_in_chain
+    with StubCluster("v3/router.script",
+                     "v3/bookmark_chain_with_autocommit.script"):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS,
+                                bookmarks=["bookmark:1"]) as session:
+                with session.begin_transaction():
+                    pass
+                assert session.last_bookmark() == "bookmark:2"
+                session.run("RETURN 1").consume()
+                assert session.last_bookmark() == "bookmark:3"
+                with session.begin_transaction():
+                    pass
+                assert session.last_bookmark() == "bookmark:4"
