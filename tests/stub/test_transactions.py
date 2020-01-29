@@ -37,7 +37,7 @@ def create_bob(tx):
     "test_script",
     [
         "v3/connection_error_on_commit.script",
-        "v4x0/connection_error_on_commit.script",
+        "v4x0/tx_connection_error_on_commit.script",
     ]
 )
 def test_connection_error_on_explicit_commit(driver_info, test_script):
@@ -56,7 +56,7 @@ def test_connection_error_on_explicit_commit(driver_info, test_script):
     "test_script",
     [
         "v3/connection_error_on_commit.script",
-        "v4x0/connection_error_on_commit.script",
+        "v4x0/tx_connection_error_on_commit.script",
     ]
 )
 def test_connection_error_on_commit(driver_info, test_script):
