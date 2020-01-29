@@ -101,8 +101,16 @@ def test_read_transaction_with_error(driver_info, test_scripts):
                     _ = session.read_transaction(unit_of_work)
 
 
-def test_write_transaction_with_error(driver_info):
-    with StubCluster("v3/router.script", "v3/error_in_write_tx.script"):
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/error_in_write_tx.script"),
+        ("v4x0/router.script", "v4x0/tx_run_with_failure_syntax_error_port_9006.script"),
+    ]
+)
+def test_write_transaction_with_error(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_write_transaction_with_error
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
