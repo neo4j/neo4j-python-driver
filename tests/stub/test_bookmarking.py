@@ -101,10 +101,16 @@ def test_should_automatically_chain_bookmarks(driver_info, test_scripts):
                 assert session.last_bookmark() == "bookmark:3"
 
 
-def test_autocommit_transaction_included_in_chain(driver_info):
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/bookmark_chain_with_autocommit.script"),
+        ("v4x0/router.script", "v4x0/bookmark_chain_with_autocommit.script"),
+    ]
+)
+def test_autocommit_transaction_included_in_chain(driver_info, test_scripts):
     # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_autocommit_transaction_included_in_chain
-    with StubCluster("v3/router.script",
-                     "v3/bookmark_chain_with_autocommit.script"):
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS,
