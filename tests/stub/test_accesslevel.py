@@ -32,8 +32,16 @@ from tests.stub.conftest import StubCluster
 # python -m pytest tests/stub/test_accesslevel.py -s -v
 
 
-def test_read_transaction(driver_info):
-    with StubCluster("v3/router.script", "v3/return_1_in_read_tx.script"):
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/return_1_in_read_tx.script"),
+        ("v4x0/router.script", "v4x0/return_1_in_read_tx.script"),
+    ]
+)
+def test_read_transaction(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_read_transaction
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
