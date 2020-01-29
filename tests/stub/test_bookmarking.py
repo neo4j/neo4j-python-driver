@@ -19,6 +19,8 @@
 # limitations under the License.
 
 
+import pytest
+
 from neo4j import (
     GraphDatabase,
     READ_ACCESS,
@@ -29,9 +31,16 @@ from tests.stub.conftest import StubCluster
 # python -m pytest tests/stub/test_bookmarking.py -s -v
 
 
-def test_should_be_no_bookmark_in_new_session(driver_info):
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/router.script",
+        "v4x0/router.script",
+    ]
+)
+def test_should_be_no_bookmark_in_new_session(driver_info, test_script):
     # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_should_be_no_bookmark_in_new_session
-    with StubCluster("v3/router.script"):
+    with StubCluster(test_script):
         uri = "bolt+routing://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
