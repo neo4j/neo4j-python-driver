@@ -33,9 +33,16 @@ def create_bob(tx):
     tx.run("CREATE (n {name:'Bob'})").data()
 
 
-def test_connection_error_on_explicit_commit(driver_info):
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/connection_error_on_commit.script",
+        "v4x0/connection_error_on_commit.script",
+    ]
+)
+def test_connection_error_on_explicit_commit(driver_info, test_script):
     # python -m pytest tests/stub/test_transactions.py -s -v -k test_connection_error_on_explicit_commit
-    with StubCluster("v3/connection_error_on_commit.script"):
+    with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"], max_retry_time=0) as driver:
             with driver.session() as session:
