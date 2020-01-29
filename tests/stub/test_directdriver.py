@@ -50,9 +50,16 @@ def test_bolt_uri_constructs_bolt_driver(driver_info, test_script):
             assert isinstance(driver, BoltDriver)
 
 
-def test_direct_disconnect_on_run(driver_info):
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/disconnect_on_run.script",
+        "v4x0/disconnect_on_run.script",
+    ]
+)
+def test_direct_disconnect_on_run(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_disconnect_on_run
-    with StubCluster("v3/disconnect_on_run.script"):
+    with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with pytest.raises(ServiceUnavailable):
