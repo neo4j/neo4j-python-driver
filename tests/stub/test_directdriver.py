@@ -84,12 +84,34 @@ def test_direct_disconnect_on_pull_all(driver_info, test_script):
                     session.run("RETURN $x", {"x": 1}).consume()
 
 
-def test_direct_session_close_after_server_close(driver_info):
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/disconnect_after_init.script",
+        "v4x0/disconnect_after_init.script",
+    ]
+)
+def test_direct_session_close_after_server_close(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_session_close_after_server_close
-    with StubCluster("v3/disconnect_after_init.script"):
+    with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
-        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], max_retry_time=0,
-                                  acquire_timeout=3, user_agent="test") as driver:
+
+        # acquire_timeout:
+        # The maximum time to allow for a connection to be initialized.
+        # (seconds)
+
+        # Config Settings
+        #
+        # user_agent:
+        # A custom user agent string, if required. The driver will generate a user agent if none is supplied.
+        #
+        # max_retry_time:
+        # The maximum time to allow for retries to be attempted when using transaction functions.
+        # After this time, no more retries will be attempted. This setting does not terminate running queries.
+        # (seconds)
+
+        # TODO: Investigate why max_retry_time wont seem to trigger.
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], acquire_timeout=3, user_agent="test", max_retry_time=0) as driver:
             with driver.session() as session:
                 with pytest.raises(ServiceUnavailable):
                     session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
