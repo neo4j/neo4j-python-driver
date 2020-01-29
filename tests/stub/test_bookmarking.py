@@ -47,18 +47,32 @@ def test_should_be_no_bookmark_in_new_session(driver_info, test_script):
                 assert session.last_bookmark() is None
 
 
-def test_should_be_able_to_set_bookmark(driver_info):
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/router.script",
+        "v4x0/router.script",
+    ]
+)
+def test_should_be_able_to_set_bookmark(driver_info, test_script):
     # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_should_be_able_to_set_bookmark
-    with StubCluster("v3/router.script"):
+    with StubCluster(test_script):
         uri = "bolt+routing://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(bookmarks=["X"]) as session:
                 assert session.next_bookmarks() == ("X",)
 
 
-def test_should_be_able_to_set_multiple_bookmarks(driver_info):
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/router.script",
+        "v4x0/router.script",
+    ]
+)
+def test_should_be_able_to_set_multiple_bookmarks(driver_info, test_script):
     # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_should_be_able_to_set_multiple_bookmarks
-    with StubCluster("v3/router.script"):
+    with StubCluster(test_script):
         uri = "bolt+routing://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(bookmarks=[":1", ":2"]) as session:
