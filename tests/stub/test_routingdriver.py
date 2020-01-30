@@ -393,14 +393,21 @@ def test_should_error_when_missing_reader(driver_info, test_script):
             GraphDatabase.driver(uri, auth=driver_info["auth_token"])
 
 
-def test_forgets_address_on_not_a_leader_error(driver_info):
-    with StubCluster("v3/router.script",
-                     "v3/not_a_leader.script"):
+@pytest.mark.parametrize(
+    "test_scripts, test_run_args",
+    [
+        (("v3/router.script", "v3/not_a_leader.script"), ("CREATE (n {name:'Bob'})", )),
+        (("v4x0/router.script", "v4x0/run_with_failure_cluster_not_a_leader.script"), ("CREATE (n:TEST {name:'test'})", )),
+    ]
+)
+def test_forgets_address_on_not_a_leader_error(driver_info, test_scripts, test_run_args):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_forgets_address_on_not_a_leader_error
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=WRITE_ACCESS) as session:
                 with pytest.raises(ClientError):
-                    _ = session.run("CREATE (n {name:'Bob'})")
+                    _ = session.run(*test_run_args)
 
                 pool = driver._pool
                 table = pool.routing_table
