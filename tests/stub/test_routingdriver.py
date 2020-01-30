@@ -180,8 +180,16 @@ def test_routing_disconnect_on_run(driver_info, test_scripts):
                     session.run("RETURN $x", {"x": 1}).consume()
 
 
-def test_routing_disconnect_on_pull_all(driver_info):
-    with StubCluster("v3/router.script", "v3/disconnect_on_pull_all_9004.script"):
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/disconnect_on_pull_all_9004.script"),
+        ("v4x0/router.script", "v4x0/disconnect_on_pull_port_9004.script"),
+    ]
+)
+def test_routing_disconnect_on_pull_all(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_routing_disconnect_on_pull_all
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with pytest.raises(SessionExpired):
