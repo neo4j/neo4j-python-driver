@@ -73,8 +73,16 @@ def test_cannot_discover_servers_on_non_router(driver_info, test_script):
                 pass
 
 
-def test_cannot_discover_servers_on_silent_router(driver_info):
-    with StubCluster("v3/silent_router.script"):
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/silent_router.script",
+        "v4x0/routing_table_silent_router.script",
+    ]
+)
+def test_cannot_discover_servers_on_silent_router(driver_info, test_script):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_cannot_discover_servers_on_silent_router
+    with StubCluster(test_script):
         uri = "bolt+routing://127.0.0.1:9001"
         with pytest.raises(BoltRoutingError):
             with GraphDatabase.driver(uri, auth=driver_info["auth_token"]):
