@@ -359,13 +359,20 @@ def test_should_call_get_routing_table_with_context(driver_info, test_scripts, t
                 assert result.summary().server.address == ('127.0.0.1', 9002)
 
 
-def test_should_serve_read_when_missing_writer(driver_info):
-    with StubCluster("v3/router_no_writers.script",
-                     "v3/return_1_on_9005.script"):
+@pytest.mark.parametrize(
+    "test_scripts, test_run_args",
+    [
+        (("v3/router_no_writers.script", "v3/return_1_on_9005.script"), ("RETURN $x", {"x": 1})),
+        (("v4x0/router_with_no_role_write.script", "v4x0/return_1_port_9005.script"), ("RETURN 1 AS x", )),
+    ]
+)
+def test_should_serve_read_when_missing_writer(driver_info, test_scripts, test_run_args):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_serve_read_when_missing_writer
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
-                result = session.run("RETURN $x", {"x": 1})
+                result = session.run(*test_run_args)
                 for record in result:
                     assert record["x"] == 1
                 assert result.summary().server.address == ('127.0.0.1', 9005)
