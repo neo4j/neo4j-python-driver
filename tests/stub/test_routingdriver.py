@@ -264,13 +264,21 @@ def test_should_reconnect_for_new_query(driver_info, test_scripts, test_run_args
                 assert session._connection is None
 
 
-def test_should_retain_connection_if_fetching_multiple_results(driver_info):
-    with StubCluster("v3/router.script", "v3/return_1_twice.script"):
+@pytest.mark.parametrize(
+    "test_scripts, test_run_args",
+    [
+        (("v3/router.script", "v3/return_1_twice.script"), ("RETURN $x", {"x": 1})),
+        (("v4x0/router.script", "v4x0/return_1_twice_port_9004.script"), ("RETURN 1", )),
+    ]
+)
+def test_should_retain_connection_if_fetching_multiple_results(driver_info, test_scripts, test_run_args):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_retain_connection_if_fetching_multiple_results
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
-                result_1 = session.run("RETURN $x", {"x": 1})
-                result_2 = session.run("RETURN $x", {"x": 1})
+                result_1 = session.run(*test_run_args)
+                result_2 = session.run(*test_run_args)
                 assert session._connection is not None
                 result_1.consume()
                 assert session._connection is not None
