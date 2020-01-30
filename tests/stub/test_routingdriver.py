@@ -19,12 +19,25 @@
 # limitations under the License.
 
 
-from neo4j import GraphDatabase, READ_ACCESS, WRITE_ACCESS, Neo4jDriver
+from neo4j import (
+    GraphDatabase,
+    READ_ACCESS,
+    WRITE_ACCESS,
+    Neo4jDriver,
+)
+
 from neo4j.errors import BoltRoutingError
-from neo4j.work.simple import SessionExpired
-from neo4j.exceptions import ServiceUnavailable, ClientError, TransientError
+
+from neo4j.exceptions import (
+    ServiceUnavailable,
+    ClientError,
+    TransientError,
+    SessionExpired,
+)
 
 from tests.stub.conftest import StubTestCase, StubCluster
+
+# python -m pytest tests/stub/test_routingdriver.py -s -v
 
 
 class Neo4jDriverTestCase(StubTestCase):
