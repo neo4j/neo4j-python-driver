@@ -197,8 +197,16 @@ def test_routing_disconnect_on_pull_all(driver_info, test_scripts):
                     session.run("RETURN $x", {"x": 1}).consume()
 
 
-def test_should_disconnect_after_fetching_autocommit_result(driver_info):
-    with StubCluster("v3/router.script", "v3/return_1.script"):
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/return_1.script"),
+        ("v4x0/router.script", "v4x0/return_1_port_9004.script"),
+    ]
+)
+def test_should_disconnect_after_fetching_autocommit_result(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_disconnect_after_fetching_autocommit_result
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
