@@ -163,8 +163,16 @@ def test_should_be_able_to_write_as_default(driver_info, test_scripts):
                 assert result.summary().server.address == ('127.0.0.1', 9006)
 
 
-def test_routing_disconnect_on_run(driver_info):
-    with StubCluster("v3/router.script", "v3/disconnect_on_run_9004.script"):
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/disconnect_on_run_9004.script"),
+        ("v4x0/router.script", "v4x0/disconnect_on_run_port_9004.script"),
+    ]
+)
+def test_routing_disconnect_on_run(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_routing_disconnect_on_run
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with pytest.raises(SessionExpired):
