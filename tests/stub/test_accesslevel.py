@@ -126,7 +126,7 @@ def test_write_transaction_with_error(driver_info, test_scripts):
     "test_scripts",
     [
         ("v3/router.script", "v3/return_1_in_read_tx_twice.script"),
-        ("v4x0/router.script", "v4x0/tx_return_1_twice_port_9004.script"),
+        ("v4x0/router.script", "v4x0/tx_two_subsequent_return_1_port_9004.script"),
     ]
 )
 def test_two_subsequent_read_transactions(driver_info, test_scripts):
