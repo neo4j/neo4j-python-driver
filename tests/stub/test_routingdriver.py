@@ -57,8 +57,16 @@ def test_bolt_plus_routing_uri_constructs_neo4j_driver(driver_info, test_script)
             assert isinstance(driver, Neo4jDriver)
 
 
-def test_cannot_discover_servers_on_non_router(driver_info):
-    with StubCluster("v3/non_router.script"):
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/non_router.script",
+        "v4x0/routing_table_failure_not_a_router.script",
+    ]
+)
+def test_cannot_discover_servers_on_non_router(driver_info, test_script):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_cannot_discover_servers_on_non_router
+    with StubCluster(test_script):
         uri = "bolt+routing://127.0.0.1:9001"
         with pytest.raises(ServiceUnavailable):
             with GraphDatabase.driver(uri, auth=driver_info["auth_token"]):
