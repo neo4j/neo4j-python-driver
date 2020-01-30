@@ -108,8 +108,16 @@ def test_should_discover_servers_on_driver_construction(driver_info, test_script
             assert table.writers == {('127.0.0.1', 9006)}
 
 
-def test_should_be_able_to_read(driver_info):
-    with StubCluster("v3/router.script", "v3/return_1.script"):
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/return_1.script"),
+        ("v4x0/router.script", "v4x0/return_1_port_9004.script"),
+    ]
+)
+def test_should_be_able_to_read(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_be_able_to_read
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
