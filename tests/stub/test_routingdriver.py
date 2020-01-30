@@ -42,8 +42,16 @@ from tests.stub.conftest import StubCluster
 # python -m pytest tests/stub/test_routingdriver.py -s -v
 
 
-def test_bolt_plus_routing_uri_constructs_neo4j_driver(driver_info):
-    with StubCluster("v3/router.script"):
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/router.script",
+        "v4x0/router.script",
+    ]
+)
+def test_bolt_plus_routing_uri_constructs_neo4j_driver(driver_info, test_script):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_bolt_plus_routing_uri_constructs_neo4j_driver
+    with StubCluster(test_script):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             assert isinstance(driver, Neo4jDriver)
