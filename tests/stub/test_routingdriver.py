@@ -378,8 +378,16 @@ def test_should_serve_read_when_missing_writer(driver_info, test_scripts, test_r
                 assert result.summary().server.address == ('127.0.0.1', 9005)
 
 
-def test_should_error_when_missing_reader(driver_info):
-    with StubCluster("v3/router_no_readers.script"):
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/router_no_readers.script",
+        "v4x0/router_with_no_role_read.script",
+    ]
+)
+def test_should_error_when_missing_reader(driver_info, test_script):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_error_when_missing_reader
+    with StubCluster(test_script):
         uri = "bolt+routing://127.0.0.1:9001"
         with pytest.raises(BoltRoutingError):
             GraphDatabase.driver(uri, auth=driver_info["auth_token"])
