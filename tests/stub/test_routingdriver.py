@@ -286,26 +286,34 @@ def test_should_retain_connection_if_fetching_multiple_results(driver_info, test
                 assert session._connection is None
 
 
-def test_two_sessions_can_share_a_connection(driver_info):
-    with StubCluster("v3/router.script", "v3/return_1_four_times.script"):
+@pytest.mark.parametrize(
+    "test_scripts, test_run_args",
+    [
+        (("v3/router.script", "v3/return_1_four_times.script"), ("RETURN $x", {"x": 1})),
+        (("v4x0/router.script", "v4x0/return_1_four_times_port_9004.script"), ("RETURN 1", )),
+    ]
+)
+def test_two_sessions_can_share_a_connection(driver_info, test_scripts, test_run_args):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_two_sessions_can_share_a_connection
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             session_1 = driver.session(default_access_mode=READ_ACCESS)
             session_2 = driver.session(default_access_mode=READ_ACCESS)
 
-            result_1a = session_1.run("RETURN $x", {"x": 1})
+            result_1a = session_1.run(*test_run_args)
             c = session_1._connection
             result_1a.consume()
 
-            result_2a = session_2.run("RETURN $x", {"x": 1})
+            result_2a = session_2.run(*test_run_args)
             assert session_2._connection is c
             result_2a.consume()
 
-            result_1b = session_1.run("RETURN $x", {"x": 1})
+            result_1b = session_1.run(*test_run_args)
             assert session_1._connection is c
             result_1b.consume()
 
-            result_2b = session_2.run("RETURN $x", {"x": 1})
+            result_2b = session_2.run(*test_run_args)
             assert session_2._connection is c
             result_2b.consume()
 
