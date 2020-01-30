@@ -216,17 +216,25 @@ def test_should_disconnect_after_fetching_autocommit_result(driver_info, test_sc
                 assert session._connection is None
 
 
-def test_should_disconnect_after_explicit_commit(driver_info):
-    with StubCluster("v3/router.script", "v3/return_1_twice_in_read_tx.script"):
+@pytest.mark.parametrize(
+    "test_scripts, test_run_args",
+    [
+        (("v3/router.script", "v3/return_1_twice_in_read_tx.script"), ("RETURN $x", {"x": 1})),
+        (("v4x0/router.script", "v4x0/tx_return_1_twice_port_9004.script"), ("RETURN 1", )),
+    ]
+)
+def test_should_disconnect_after_explicit_commit(driver_info, test_scripts, test_run_args):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_disconnect_after_explicit_commit
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
                 with session.begin_transaction() as tx:
-                    result = tx.run("RETURN $x", {"x": 1})
+                    result = tx.run(*test_run_args)
                     assert session._connection is not None
                     result.consume()
                     assert session._connection is not None
-                    result = tx.run("RETURN $x", {"x": 1})
+                    result = tx.run(*test_run_args)
                     assert session._connection is not None
                     result.consume()
                     assert session._connection is not None
