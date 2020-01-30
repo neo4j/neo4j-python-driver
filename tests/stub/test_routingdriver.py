@@ -321,13 +321,20 @@ def test_two_sessions_can_share_a_connection(driver_info, test_scripts, test_run
             session_1.close()
 
 
-def test_should_call_get_routing_table_procedure(driver_info):
-    with StubCluster("v3/get_routing_table.script",
-                     "v3/return_1_on_9002.script"):
+@pytest.mark.parametrize(
+    "test_scripts, test_run_args",
+    [
+        (("v3/get_routing_table.script", "v3/return_1_on_9002.script"), ("RETURN $x", {"x": 1})),
+        (("v4x0/router_role_route_share_port_with_role_read_and_role_write.script", "v4x0/return_1_port_9002.script"), ("RETURN 1 AS x", )),
+    ]
+)
+def test_should_call_get_routing_table_procedure(driver_info, test_scripts, test_run_args):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_call_get_routing_table_procedure
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
-                result = session.run("RETURN $x", {"x": 1})
+                result = session.run(*test_run_args)
                 for record in result:
                     assert record["x"] == 1
                 assert result.summary().server.address == ('127.0.0.1', 9002)
