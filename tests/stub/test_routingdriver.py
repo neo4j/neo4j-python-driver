@@ -145,8 +145,16 @@ def test_should_be_able_to_write(driver_info, test_scripts):
                 assert result.summary().server.address == ('127.0.0.1', 9006)
 
 
-def test_should_be_able_to_write_as_default(driver_info):
-    with StubCluster("v3/router.script", "v3/create_a.script"):
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/create_a.script"),
+        ("v4x0/router.script", "v4x0/create_test_node_port_9006.script"),
+    ]
+)
+def test_should_be_able_to_write_as_default(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_be_able_to_write_as_default
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
