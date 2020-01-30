@@ -19,6 +19,8 @@
 # limitations under the License.
 
 
+import pytest
+
 from neo4j import (
     GraphDatabase,
     READ_ACCESS,
@@ -35,290 +37,309 @@ from neo4j.exceptions import (
     SessionExpired,
 )
 
-from tests.stub.conftest import StubTestCase, StubCluster
+from tests.stub.conftest import StubCluster
 
 # python -m pytest tests/stub/test_routingdriver.py -s -v
 
 
-class Neo4jDriverTestCase(StubTestCase):
+def test_bolt_plus_routing_uri_constructs_neo4j_driver(driver_info):
+    with StubCluster("v3/router.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            assert isinstance(driver, Neo4jDriver)
 
-    def test_bolt_plus_routing_uri_constructs_neo4j_driver(self):
-        with StubCluster("v3/router.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                assert isinstance(driver, Neo4jDriver)
 
-    def test_cannot_discover_servers_on_non_router(self):
-        with StubCluster("v3/non_router.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with self.assertRaises(ServiceUnavailable):
-                with GraphDatabase.driver(uri, auth=self.auth_token):
-                    pass
+def test_cannot_discover_servers_on_non_router(driver_info):
+    with StubCluster("v3/non_router.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with pytest.raises(ServiceUnavailable):
+            with GraphDatabase.driver(uri, auth=driver_info["auth_token"]):
+                pass
 
-    def test_cannot_discover_servers_on_silent_router(self):
-        with StubCluster("v3/silent_router.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with self.assertRaises(BoltRoutingError):
-                with GraphDatabase.driver(uri, auth=self.auth_token):
-                    pass
 
-    def test_should_discover_servers_on_driver_construction(self):
-        with StubCluster("v3/router.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                table = driver._pool.routing_table
-                assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002),
-                                         ('127.0.0.1', 9003)}
-                assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
-                assert table.writers == {('127.0.0.1', 9006)}
+def test_cannot_discover_servers_on_silent_router(driver_info):
+    with StubCluster("v3/silent_router.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with pytest.raises(BoltRoutingError):
+            with GraphDatabase.driver(uri, auth=driver_info["auth_token"]):
+                pass
 
-    def test_should_be_able_to_read(self):
-        with StubCluster("v3/router.script", "v3/return_1.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
+
+def test_should_discover_servers_on_driver_construction(driver_info):
+    with StubCluster("v3/router.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            table = driver._pool.routing_table
+            assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002),
+                                     ('127.0.0.1', 9003)}
+            assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
+            assert table.writers == {('127.0.0.1', 9006)}
+
+
+def test_should_be_able_to_read(driver_info):
+    with StubCluster("v3/router.script", "v3/return_1.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS) as session:
+                result = session.run("RETURN $x", {"x": 1})
+                for record in result:
+                    assert record["x"] == 1
+                assert result.summary().server.address == ('127.0.0.1', 9004)
+
+
+def test_should_be_able_to_write(driver_info):
+    with StubCluster("v3/router.script", "v3/create_a.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=WRITE_ACCESS) as session:
+                result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
+                assert not list(result)
+                assert result.summary().server.address == ('127.0.0.1', 9006)
+
+
+def test_should_be_able_to_write_as_default(driver_info):
+    with StubCluster("v3/router.script", "v3/create_a.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session() as session:
+                result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
+                assert not list(result)
+                assert result.summary().server.address == ('127.0.0.1', 9006)
+
+
+def test_routing_disconnect_on_run(driver_info):
+    with StubCluster("v3/router.script", "v3/disconnect_on_run_9004.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with pytest.raises(SessionExpired):
                 with driver.session(default_access_mode=READ_ACCESS) as session:
-                    result = session.run("RETURN $x", {"x": 1})
-                    for record in result:
-                        assert record["x"] == 1
-                    assert result.summary().server.address == ('127.0.0.1', 9004)
+                    session.run("RETURN $x", {"x": 1}).consume()
 
-    def test_should_be_able_to_write(self):
-        with StubCluster("v3/router.script", "v3/create_a.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=WRITE_ACCESS) as session:
-                    result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
-                    assert not list(result)
-                    assert result.summary().server.address == ('127.0.0.1', 9006)
 
-    def test_should_be_able_to_write_as_default(self):
-        with StubCluster("v3/router.script", "v3/create_a.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session() as session:
-                    result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
-                    assert not list(result)
-                    assert result.summary().server.address == ('127.0.0.1', 9006)
-
-    def test_routing_disconnect_on_run(self):
-        with StubCluster("v3/router.script", "v3/disconnect_on_run_9004.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with self.assertRaises(SessionExpired):
-                    with driver.session(default_access_mode=READ_ACCESS) as session:
-                        session.run("RETURN $x", {"x": 1}).consume()
-
-    def test_routing_disconnect_on_pull_all(self):
-        with StubCluster("v3/router.script", "v3/disconnect_on_pull_all_9004.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with self.assertRaises(SessionExpired):
-                    with driver.session(default_access_mode=READ_ACCESS) as session:
-                        session.run("RETURN $x", {"x": 1}).consume()
-
-    def test_should_disconnect_after_fetching_autocommit_result(self):
-        with StubCluster("v3/router.script", "v3/return_1.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
+def test_routing_disconnect_on_pull_all(driver_info):
+    with StubCluster("v3/router.script", "v3/disconnect_on_pull_all_9004.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with pytest.raises(SessionExpired):
                 with driver.session(default_access_mode=READ_ACCESS) as session:
-                    result = session.run("RETURN $x", {"x": 1})
+                    session.run("RETURN $x", {"x": 1}).consume()
+
+
+def test_should_disconnect_after_fetching_autocommit_result(driver_info):
+    with StubCluster("v3/router.script", "v3/return_1.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS) as session:
+                result = session.run("RETURN $x", {"x": 1})
+                assert session._connection is not None
+                result.consume()
+                assert session._connection is None
+
+
+def test_should_disconnect_after_explicit_commit(driver_info):
+    with StubCluster("v3/router.script", "v3/return_1_twice_in_read_tx.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS) as session:
+                with session.begin_transaction() as tx:
+                    result = tx.run("RETURN $x", {"x": 1})
                     assert session._connection is not None
                     result.consume()
-                    assert session._connection is None
-
-    def test_should_disconnect_after_explicit_commit(self):
-        with StubCluster("v3/router.script", "v3/return_1_twice_in_read_tx.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=READ_ACCESS) as session:
-                    with session.begin_transaction() as tx:
-                        result = tx.run("RETURN $x", {"x": 1})
-                        assert session._connection is not None
-                        result.consume()
-                        assert session._connection is not None
-                        result = tx.run("RETURN $x", {"x": 1})
-                        assert session._connection is not None
-                        result.consume()
-                        assert session._connection is not None
-                    assert session._connection is None
-
-    def test_should_reconnect_for_new_query(self):
-        with StubCluster("v3/router.script", "v3/return_1_twice.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=READ_ACCESS) as session:
-                    result_1 = session.run("RETURN $x", {"x": 1})
                     assert session._connection is not None
-                    result_1.consume()
-                    assert session._connection is None
-                    result_2 = session.run("RETURN $x", {"x": 1})
+                    result = tx.run("RETURN $x", {"x": 1})
                     assert session._connection is not None
-                    result_2.consume()
-                    assert session._connection is None
-
-    def test_should_retain_connection_if_fetching_multiple_results(self):
-        with StubCluster("v3/router.script", "v3/return_1_twice.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=READ_ACCESS) as session:
-                    result_1 = session.run("RETURN $x", {"x": 1})
-                    result_2 = session.run("RETURN $x", {"x": 1})
+                    result.consume()
                     assert session._connection is not None
-                    result_1.consume()
-                    assert session._connection is not None
-                    result_2.consume()
-                    assert session._connection is None
+                assert session._connection is None
 
-    def test_two_sessions_can_share_a_connection(self):
-        with StubCluster("v3/router.script", "v3/return_1_four_times.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                session_1 = driver.session(default_access_mode=READ_ACCESS)
-                session_2 = driver.session(default_access_mode=READ_ACCESS)
 
-                result_1a = session_1.run("RETURN $x", {"x": 1})
-                c = session_1._connection
-                result_1a.consume()
+def test_should_reconnect_for_new_query(driver_info):
+    with StubCluster("v3/router.script", "v3/return_1_twice.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS) as session:
+                result_1 = session.run("RETURN $x", {"x": 1})
+                assert session._connection is not None
+                result_1.consume()
+                assert session._connection is None
+                result_2 = session.run("RETURN $x", {"x": 1})
+                assert session._connection is not None
+                result_2.consume()
+                assert session._connection is None
 
-                result_2a = session_2.run("RETURN $x", {"x": 1})
-                assert session_2._connection is c
-                result_2a.consume()
 
-                result_1b = session_1.run("RETURN $x", {"x": 1})
-                assert session_1._connection is c
-                result_1b.consume()
+def test_should_retain_connection_if_fetching_multiple_results(driver_info):
+    with StubCluster("v3/router.script", "v3/return_1_twice.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS) as session:
+                result_1 = session.run("RETURN $x", {"x": 1})
+                result_2 = session.run("RETURN $x", {"x": 1})
+                assert session._connection is not None
+                result_1.consume()
+                assert session._connection is not None
+                result_2.consume()
+                assert session._connection is None
 
-                result_2b = session_2.run("RETURN $x", {"x": 1})
-                assert session_2._connection is c
-                result_2b.consume()
 
-                session_2.close()
-                session_1.close()
+def test_two_sessions_can_share_a_connection(driver_info):
+    with StubCluster("v3/router.script", "v3/return_1_four_times.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            session_1 = driver.session(default_access_mode=READ_ACCESS)
+            session_2 = driver.session(default_access_mode=READ_ACCESS)
 
-    def test_should_call_get_routing_table_procedure(self):
-        with StubCluster("v3/get_routing_table.script",
-                         "v3/return_1_on_9002.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=READ_ACCESS) as session:
-                    result = session.run("RETURN $x", {"x": 1})
-                    for record in result:
-                        assert record["x"] == 1
-                    assert result.summary().server.address == ('127.0.0.1', 9002)
+            result_1a = session_1.run("RETURN $x", {"x": 1})
+            c = session_1._connection
+            result_1a.consume()
 
-    def test_should_call_get_routing_table_with_context(self):
-        with StubCluster("v3/get_routing_table_with_context.script",
-                         "v3/return_1_on_9002.script"):
-            uri = "bolt+routing://127.0.0.1:9001/?name=molly&age=1"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=READ_ACCESS) as session:
-                    result = session.run("RETURN $x", {"x": 1})
-                    for record in result:
-                        assert record["x"] == 1
-                    assert result.summary().server.address == ('127.0.0.1', 9002)
+            result_2a = session_2.run("RETURN $x", {"x": 1})
+            assert session_2._connection is c
+            result_2a.consume()
 
-    def test_should_serve_read_when_missing_writer(self):
-        with StubCluster("v3/router_no_writers.script",
-                         "v3/return_1_on_9005.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=READ_ACCESS) as session:
-                    result = session.run("RETURN $x", {"x": 1})
-                    for record in result:
-                        assert record["x"] == 1
-                    assert result.summary().server.address == ('127.0.0.1', 9005)
+            result_1b = session_1.run("RETURN $x", {"x": 1})
+            assert session_1._connection is c
+            result_1b.consume()
 
-    def test_should_error_when_missing_reader(self):
-        with StubCluster("v3/router_no_readers.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with self.assertRaises(BoltRoutingError):
-                GraphDatabase.driver(uri, auth=self.auth_token)
+            result_2b = session_2.run("RETURN $x", {"x": 1})
+            assert session_2._connection is c
+            result_2b.consume()
 
-    def test_forgets_address_on_not_a_leader_error(self):
-        with StubCluster("v3/router.script",
-                         "v3/not_a_leader.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=WRITE_ACCESS) as session:
-                    with self.assertRaises(ClientError):
-                        _ = session.run("CREATE (n {name:'Bob'})")
+            session_2.close()
+            session_1.close()
 
-                    pool = driver._pool
-                    table = pool.routing_table
 
-                    # address might still have connections in the pool, failed instance just can't serve writes
-                    assert ('127.0.0.1', 9006) in pool.connections
-                    assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-                    assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
-                    # writer 127.0.0.1:9006 should've been forgotten because of an error
-                    assert len(table.writers) == 0
+def test_should_call_get_routing_table_procedure(driver_info):
+    with StubCluster("v3/get_routing_table.script",
+                     "v3/return_1_on_9002.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS) as session:
+                result = session.run("RETURN $x", {"x": 1})
+                for record in result:
+                    assert record["x"] == 1
+                assert result.summary().server.address == ('127.0.0.1', 9002)
 
-    def test_forgets_address_on_forbidden_on_read_only_database_error(self):
-        with StubCluster("v3/router.script",
-                         "v3/forbidden_on_read_only_database.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=WRITE_ACCESS) as session:
-                    with self.assertRaises(ClientError):
-                        _ = session.run("CREATE (n {name:'Bob'})")
 
-                    pool = driver._pool
-                    table = pool.routing_table
+def test_should_call_get_routing_table_with_context(driver_info):
+    with StubCluster("v3/get_routing_table_with_context.script",
+                     "v3/return_1_on_9002.script"):
+        uri = "bolt+routing://127.0.0.1:9001/?name=molly&age=1"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS) as session:
+                result = session.run("RETURN $x", {"x": 1})
+                for record in result:
+                    assert record["x"] == 1
+                assert result.summary().server.address == ('127.0.0.1', 9002)
 
-                    # address might still have connections in the pool, failed instance just can't serve writes
-                    assert ('127.0.0.1', 9006) in pool.connections
-                    assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-                    assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
-                    # writer 127.0.0.1:9006 should've been forgotten because of an error
-                    assert len(table.writers) == 0
 
-    def test_forgets_address_on_service_unavailable_error(self):
-        with StubCluster("v3/router.script",
-                         "v3/rude_reader.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=READ_ACCESS) as session:
+def test_should_serve_read_when_missing_writer(driver_info):
+    with StubCluster("v3/router_no_writers.script",
+                     "v3/return_1_on_9005.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS) as session:
+                result = session.run("RETURN $x", {"x": 1})
+                for record in result:
+                    assert record["x"] == 1
+                assert result.summary().server.address == ('127.0.0.1', 9005)
 
-                    pool = driver._pool
-                    table = pool.routing_table
-                    table.readers.remove(('127.0.0.1', 9005))
 
-                    with self.assertRaises(SessionExpired):
-                        _ = session.run("RETURN 1")
+def test_should_error_when_missing_reader(driver_info):
+    with StubCluster("v3/router_no_readers.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with pytest.raises(BoltRoutingError):
+            GraphDatabase.driver(uri, auth=driver_info["auth_token"])
 
-                    # address should have connections in the pool but be inactive, it has failed
-                    assert ('127.0.0.1', 9004) in pool.connections
-                    conns = pool.connections[('127.0.0.1', 9004)]
-                    conn = conns[0]
-                    assert conn._closed is True
-                    assert conn.in_use is True
-                    assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-                    # reader 127.0.0.1:9004 should've been forgotten because of an error
-                    assert not table.readers
-                    assert table.writers == {('127.0.0.1', 9006)}
 
-                assert conn.in_use == False
+def test_forgets_address_on_not_a_leader_error(driver_info):
+    with StubCluster("v3/router.script",
+                     "v3/not_a_leader.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=WRITE_ACCESS) as session:
+                with pytest.raises(ClientError):
+                    _ = session.run("CREATE (n {name:'Bob'})")
 
-    def test_forgets_address_on_database_unavailable_error(self):
-        with StubCluster("v3/router.script", "v3/database_unavailable.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session(default_access_mode=READ_ACCESS) as session:
+                pool = driver._pool
+                table = pool.routing_table
 
-                    pool = driver._pool
-                    table = pool.routing_table
-                    table.readers.remove(('127.0.0.1', 9005))
+                # address might still have connections in the pool, failed instance just can't serve writes
+                assert ('127.0.0.1', 9006) in pool.connections
+                assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
+                assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
+                # writer 127.0.0.1:9006 should've been forgotten because of an error
+                assert len(table.writers) == 0
 
-                    with self.assertRaises(TransientError) as raised:
-                        _ = session.run("RETURN 1")
+
+def test_forgets_address_on_forbidden_on_read_only_database_error(driver_info):
+    with StubCluster("v3/router.script",
+                     "v3/forbidden_on_read_only_database.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=WRITE_ACCESS) as session:
+                with pytest.raises(ClientError):
+                    _ = session.run("CREATE (n {name:'Bob'})")
+
+                pool = driver._pool
+                table = pool.routing_table
+
+                # address might still have connections in the pool, failed instance just can't serve writes
+                assert ('127.0.0.1', 9006) in pool.connections
+                assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
+                assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
+                # writer 127.0.0.1:9006 should've been forgotten because of an error
+                assert len(table.writers) == 0
+
+
+def test_forgets_address_on_service_unavailable_error(driver_info):
+    with StubCluster("v3/router.script",
+                     "v3/rude_reader.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS) as session:
+
+                pool = driver._pool
+                table = pool.routing_table
+                table.readers.remove(('127.0.0.1', 9005))
+
+                with pytest.raises(SessionExpired):
+                    _ = session.run("RETURN 1")
+
+                # address should have connections in the pool but be inactive, it has failed
+                assert ('127.0.0.1', 9004) in pool.connections
+                conns = pool.connections[('127.0.0.1', 9004)]
+                conn = conns[0]
+                assert conn._closed is True
+                assert conn.in_use is True
+                assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
+                # reader 127.0.0.1:9004 should've been forgotten because of an error
+                assert not table.readers
+                assert table.writers == {('127.0.0.1', 9006)}
+
+            assert conn.in_use == False
+
+
+def test_forgets_address_on_database_unavailable_error(driver_info):
+    with StubCluster("v3/router.script", "v3/database_unavailable.script"):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS) as session:
+
+                pool = driver._pool
+                table = pool.routing_table
+                table.readers.remove(('127.0.0.1', 9005))
+
+                with pytest.raises(TransientError) as raised:
+                    _ = session.run("RETURN 1")
                     assert raised.exception.title == "DatabaseUnavailable"
 
-                    pool = driver._pool
-                    table = pool.routing_table
+                pool = driver._pool
+                table = pool.routing_table
 
-                    # address should not have connections in the pool, it has failed
-                    assert ('127.0.0.1', 9004) not in pool.connections
-                    assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
-                    # reader 127.0.0.1:9004 should've been forgotten because of an raised
-                    assert not table.readers
-                    assert table.writers == {('127.0.0.1', 9006)}
+                # address should not have connections in the pool, it has failed
+                assert ('127.0.0.1', 9004) not in pool.connections
+                assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
+                # reader 127.0.0.1:9004 should've been forgotten because of an raised
+                assert not table.readers
+                assert table.writers == {('127.0.0.1', 9006)}
