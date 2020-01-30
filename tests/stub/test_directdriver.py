@@ -71,7 +71,7 @@ def test_direct_disconnect_on_run(driver_info, test_script):
     "test_script",
     [
         "v3/disconnect_on_pull_all.script",
-        "v4x0/disconnect_on_pull_all.script",
+        "v4x0/disconnect_on_pull.script",
     ]
 )
 def test_direct_disconnect_on_pull_all(driver_info, test_script):
