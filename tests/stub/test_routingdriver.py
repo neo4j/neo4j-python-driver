@@ -447,9 +447,16 @@ def test_forgets_address_on_forbidden_on_read_only_database_error(driver_info, t
                 assert len(table.writers) == 0
 
 
-def test_forgets_address_on_service_unavailable_error(driver_info):
-    with StubCluster("v3/router.script",
-                     "v3/rude_reader.script"):
+@pytest.mark.parametrize(
+    "test_scripts, test_run_args",
+    [
+        (("v3/router.script", "v3/rude_reader.script"), ("RETURN 1", )),
+        (("v4x0/router.script", "v4x0/disconnect_on_pull_port_9004.script"), ("RETURN $x", {"x": 1})),
+    ]
+)
+def test_forgets_address_on_service_unavailable_error(driver_info, test_scripts, test_run_args):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_forgets_address_on_service_unavailable_error
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
@@ -459,7 +466,7 @@ def test_forgets_address_on_service_unavailable_error(driver_info):
                 table.readers.remove(('127.0.0.1', 9005))
 
                 with pytest.raises(SessionExpired):
-                    _ = session.run("RETURN 1")
+                    _ = session.run(*test_run_args)
 
                 # address should have connections in the pool but be inactive, it has failed
                 assert ('127.0.0.1', 9004) in pool.connections
