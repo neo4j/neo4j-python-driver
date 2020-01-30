@@ -240,8 +240,16 @@ def test_write_tx_then_read_tx(driver_info, test_scripts):
                 assert value == 2
 
 
-def test_no_retry_read_on_user_canceled_tx(driver_info):
-    with StubCluster("v3/router.script", "v3/user_canceled_read.script"):
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/user_canceled_read.script"),
+        ("v4x0/router.script", "v4x0/tx_return_1_reset_port_9004.script"),
+    ]
+)
+def test_no_retry_read_on_user_canceled_tx(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_no_retry_read_on_user_canceled_tx
+    with StubCluster(*test_scripts):
         uri = "bolt+routing://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
