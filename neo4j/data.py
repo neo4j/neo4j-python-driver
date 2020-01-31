@@ -19,13 +19,14 @@
 # limitations under the License.
 
 
-from collections.abc import Mapping, Sequence
+from abc import ABCMeta, abstractmethod
+from collections.abc import Sequence, Set, Mapping
 from datetime import date, time, datetime, timedelta
 from functools import reduce
 from operator import xor as xor_operator
 
 from neo4j.conf import iter_items
-from neo4j.graph import Graph
+from neo4j.graph import Graph, Node, Relationship, Path
 from neo4j.packstream import INT64_MIN, INT64_MAX, Structure
 from neo4j.spatial import Point, hydrate_point, dehydrate_point
 from neo4j.time import Date, Time, DateTime, Duration
@@ -212,20 +213,57 @@ class Record(tuple, Mapping):
         :return: dictionary of values, keyed by field name
         :raises: :exc:`IndexError` if an out-of-bounds index is specified
         """
-        if keys:
-            d = {}
-            for key in keys:
-                try:
-                    i = self.index(key)
-                except KeyError:
-                    d[key] = None
-                else:
-                    d[self.__keys[i]] = self[i]
-            return d
-        return dict(self)
+        return RecordExporter().transform(dict(self.items(*keys)))
+
+
+class DataTransformer(metaclass=ABCMeta):
+    """ Abstract base class for transforming data from one form into
+    another.
+    """
+
+    @abstractmethod
+    def transform(self, x):
+        """ Transform a value, or collection of values.
+
+        :param x: input value
+        :return: output value
+        """
+
+
+class RecordExporter(DataTransformer):
+    """ Transformer class used by the :meth:`.Record.data` method.
+    """
+
+    def transform(self, x):
+        if isinstance(x, Node):
+            return self.transform(dict(x))
+        elif isinstance(x, Relationship):
+            return (self.transform(dict(x.start_node)),
+                    x.__class__.__name__,
+                    self.transform(dict(x.end_node)))
+        elif isinstance(x, Path):
+            path = [self.transform(x.start_node)]
+            for i, relationship in enumerate(x.relationships):
+                path.append(self.transform(relationship.__class__.__name__))
+                path.append(self.transform(x.nodes[i + 1]))
+            return path
+        elif isinstance(x, str):
+            return x
+        elif isinstance(x, Sequence):
+            t = type(x)
+            return t(map(self.transform, x))
+        elif isinstance(x, Set):
+            t = type(x)
+            return t(map(self.transform, x))
+        elif isinstance(x, Mapping):
+            t = type(x)
+            return t((k, self.transform(v)) for k, v in x.items())
+        else:
+            return x
 
 
 class DataHydrator:
+    # TODO: extend DataTransformer
 
     def __init__(self):
         super(DataHydrator, self).__init__()
@@ -276,6 +314,7 @@ class DataHydrator:
 
 
 class DataDehydrator:
+    # TODO: extend DataTransformer
 
     @classmethod
     def fix_parameters(cls, parameters):

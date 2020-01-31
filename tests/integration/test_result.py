@@ -208,30 +208,6 @@ def test_multiple_keyed_values(session):
                                        [9, 3]]
 
 
-def test_multiple_data(session):
-    result = session.run("UNWIND range(1, 3) AS n "
-                         "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-    assert result.data() == [{"x": 1, "y": 2, "z": 3},
-                             {"x": 2, "y": 4, "z": 6},
-                             {"x": 3, "y": 6, "z": 9}]
-
-
-def test_multiple_indexed_data(session):
-    result = session.run("UNWIND range(1, 3) AS n "
-                         "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-    assert result.data(2, 0) == [{"x": 1, "z": 3},
-                                 {"x": 2, "z": 6},
-                                 {"x": 3, "z": 9}]
-
-
-def test_multiple_keyed_data(session):
-    result = session.run("UNWIND range(1, 3) AS n "
-                         "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-    assert result.data("z", "x") == [{"x": 1, "z": 3},
-                                     {"x": 2, "z": 6},
-                                     {"x": 3, "z": 9}]
-
-
 def test_value_with_no_keys_and_no_records(neo4j_driver):
     with neo4j_driver.session() as session:
         result = session.run("CREATE ()")
@@ -241,11 +217,6 @@ def test_value_with_no_keys_and_no_records(neo4j_driver):
 def test_values_with_one_key_and_no_records(session):
     result = session.run("UNWIND range(1, 0) AS n RETURN n")
     assert result.values() == []
-
-
-def test_data_with_one_key_and_no_records(session):
-    result = session.run("UNWIND range(1, 0) AS n RETURN n")
-    assert result.data() == []
 
 
 def test_single_with_no_keys_and_no_records(session):
@@ -311,18 +282,3 @@ def test_single_indexed_values(session):
 def test_single_keyed_values(session):
     result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
     assert result.single().values("z", "x") == [3, 1]
-
-
-def test_single_data(session):
-    result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
-    assert result.single().data() == {"x": 1, "y": 2, "z": 3}
-
-
-def test_single_indexed_data(session):
-    result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
-    assert result.single().data(2, 0) == {"x": 1, "z": 3}
-
-
-def test_single_keyed_data(session):
-    result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
-    assert result.single().data("z", "x") == {"x": 1, "z": 3}
