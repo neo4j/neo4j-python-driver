@@ -350,7 +350,7 @@ def cypher_eval(bolt_driver):
     def run_and_rollback(tx, cypher, **parameters):
         result = tx.run(cypher, **parameters)
         value = result.single().value()
-        tx.success = False
+        tx.rollback()
         return value
 
     def f(cypher, **parameters):
