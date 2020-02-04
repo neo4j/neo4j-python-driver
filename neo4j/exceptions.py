@@ -54,6 +54,7 @@ Connector API Errors
   + BoltConnectionError
   + BoltFailure
   + BoltNeo4jAvailabilityError
+  + BoltSecurityError
   + Bolt*
 
 """
@@ -69,11 +70,6 @@ class IncompleteCommitError(Exception):
     response. For non-idempotent write transactions, this leaves the data
     in an unknown state with regard to whether the transaction completed
     successfully or not.
-    """
-
-
-class SecurityError(Exception):
-    """ Raised when an action is denied due to security settings.
     """
 
 
@@ -171,7 +167,7 @@ class NotALeaderError(ClientError):
     """
 
 
-class Forbidden(ClientError, SecurityError):
+class Forbidden(ClientError):
     """
     """
 
@@ -181,7 +177,7 @@ class ForbiddenOnReadOnlyDatabaseError(Forbidden):
     """
 
 
-class AuthError(ClientError, SecurityError):
+class AuthError(ClientError):
     """ Raised when authentication failure occurs.
     """
 

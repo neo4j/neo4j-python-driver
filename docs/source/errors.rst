@@ -11,10 +11,6 @@ Connectivity errors
     Raised when a database server or service is not available.
     This may be due to incorrect configuration or could indicate a runtime failure of a database service that the driver is unable to route around.
 
-.. class:: neo4j.exceptions.SecurityError
-
-    Raised when a security issue occurs, generally around TLS or authentication.
-
 
 Cypher execution errors
 =======================

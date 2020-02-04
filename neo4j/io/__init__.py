@@ -69,10 +69,10 @@ from neo4j.conf import PoolConfig
 from neo4j.errors import (
     BoltRoutingError,
     BoltNeo4jAvailabilityError,
+    BoltSecurityError,
 )
 from neo4j.exceptions import (
     ProtocolError,
-    SecurityError,
     ServiceUnavailable,
     ClientError,
     SessionExpired,
@@ -783,8 +783,7 @@ def _secure(s, host, ssl_context):
             s = ssl_context.wrap_socket(s, server_hostname=sni_host)
         except SSLError as cause:
             s.close()
-            error = SecurityError("Failed to establish secure connection "
-                                  "to {!r}".format(cause.args[1]))
+            error = BoltSecurityError(message="Failed to establish secure connection to {!r}".format(cause.args[1]), address=(host, port))
             error.__cause__ = cause
             raise error
         else:
