@@ -29,9 +29,10 @@ Driver API Errors
     + CypherSyntaxError
     + CypherTypeError
     + ConstraintError
-    + ForbiddenOnReadOnlyDatabaseError
     + AuthError
     + Forbidden
+      + ForbiddenOnReadOnlyDatabaseError
+    + NotALeaderError
   + DatabaseError
   + TransientError
     + DatabaseUnavailableError

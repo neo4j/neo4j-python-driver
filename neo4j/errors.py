@@ -175,13 +175,6 @@ class ClientError(BoltFailure):
     transient = False
 
 
-class NotALeader(ClientError):
-    """
-    """
-
-    code = "Neo.ClientError.Cluster.NotALeader"
-
-
 class ForbiddenOnReadOnlyDatabase(ClientError):
     """
     """
