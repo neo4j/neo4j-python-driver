@@ -1,0 +1,29 @@
+!: BOLT 4
+!: AUTO HELLO
+!: AUTO GOODBYE
+!: AUTO RESET
+!: PORT 9004
+
+C: BEGIN {}
+S: SUCCESS {}
+
+C: RUN "RETURN 1" {} {}
+   PULL {"n": -1}
+S: SUCCESS {"fields": ["1"]}
+   RECORD [1]
+   SUCCESS {}
+
+C: COMMIT
+S: SUCCESS {"bookmark": "bookmark:1"}
+
+C: BEGIN {"bookmarks": ["bookmark:1"]}
+S: SUCCESS {}
+
+C: RUN "RETURN 1" {} {}
+   PULL {"n": -1}
+S: SUCCESS {"fields": ["1"]}
+   RECORD [1]
+   SUCCESS {}
+
+C: COMMIT
+S: SUCCESS {"bookmark": "bookmark:2"}

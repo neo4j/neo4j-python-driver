@@ -1,0 +1,9 @@
+!: BOLT 4
+!: AUTO HELLO
+!: AUTO GOODBYE
+!: AUTO RESET
+!: PORT 9004
+
+C: RUN "RETURN $x" {"x": 1} {}
+   PULL {"n": -1}
+S: <EXIT>

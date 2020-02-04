@@ -19,174 +19,262 @@
 # limitations under the License.
 
 
+import pytest
+
 from neo4j import GraphDatabase
-from neo4j.exceptions import CypherError, TransientError
+from neo4j.exceptions import (
+    CypherError,
+    TransientError,
+)
 
-from tests.stub.conftest import StubTestCase, StubCluster
+from tests.stub.conftest import StubCluster
+
+# python -m pytest tests/stub/test_accesslevel.py -s -v
 
 
-class AccessLevelTestCase(StubTestCase):
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/return_1_in_read_tx.script"),
+        ("v4x0/router.script", "v4x0/tx_return_1_port_9004.script"),
+    ]
+)
+def test_read_transaction(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_read_transaction
+    with StubCluster(*test_scripts):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session() as session:
 
-    def test_read_transaction(self):
-        with StubCluster("v3/router.script", "v3/return_1_in_read_tx.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session() as session:
+                def unit_of_work(tx):
+                    total = 0
+                    for record in tx.run("RETURN 1"):
+                        total += record[0]
+                    return total
 
-                    def unit_of_work(tx):
-                        total = 0
-                        for record in tx.run("RETURN 1"):
-                            total += record[0]
-                        return total
+                value = session.read_transaction(unit_of_work)
+                assert value == 1
 
-                    value = session.read_transaction(unit_of_work)
-                    assert value == 1
 
-    def test_write_transaction(self):
-        with StubCluster("v3/router.script", "v3/return_1_in_write_tx.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session() as session:
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/return_1_in_write_tx.script"),
+        ("v4x0/router.script", "v4x0/tx_return_1_port_9006.script"),
+    ]
+)
+def test_write_transaction(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_write_transaction
+    with StubCluster(*test_scripts):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session() as session:
 
-                    def unit_of_work(tx):
-                        total = 0
-                        for record in tx.run("RETURN 1"):
-                            total += record[0]
-                        return total
+                def unit_of_work(tx):
+                    total = 0
+                    for record in tx.run("RETURN 1"):
+                        total += record[0]
+                    return total
 
-                    value = session.write_transaction(unit_of_work)
-                    assert value == 1
+                value = session.write_transaction(unit_of_work)
+                assert value == 1
 
-    def test_read_transaction_with_error(self):
-        with StubCluster("v3/router.script", "v3/error_in_read_tx.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session() as session:
 
-                    def unit_of_work(tx):
-                        tx.run("X")
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/error_in_read_tx.script"),
+        ("v4x0/router.script", "v4x0/tx_run_with_failure_syntax_error_port_9004.script"),
+    ]
+)
+def test_read_transaction_with_error(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_read_transaction_with_error
+    with StubCluster(*test_scripts):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session() as session:
 
-                    with self.assertRaises(CypherError):
-                        _ = session.read_transaction(unit_of_work)
+                def unit_of_work(tx):
+                    tx.run("X")
 
-    def test_write_transaction_with_error(self):
-        with StubCluster("v3/router.script", "v3/error_in_write_tx.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session() as session:
+                with pytest.raises(CypherError):
+                    _ = session.read_transaction(unit_of_work)
 
-                    def unit_of_work(tx):
-                        tx.run("X")
 
-                    with self.assertRaises(CypherError):
-                        _ = session.write_transaction(unit_of_work)
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/error_in_write_tx.script"),
+        ("v4x0/router.script", "v4x0/tx_run_with_failure_syntax_error_port_9006.script"),
+    ]
+)
+def test_write_transaction_with_error(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_write_transaction_with_error
+    with StubCluster(*test_scripts):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session() as session:
 
-    def test_two_subsequent_read_transactions(self):
-        with StubCluster("v3/router.script",
-                         "v3/return_1_in_read_tx_twice.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session() as session:
+                def unit_of_work(tx):
+                    tx.run("X")
 
-                    def unit_of_work(tx):
-                        total = 0
-                        for record in tx.run("RETURN 1"):
-                            total += record[0]
-                        return total
+                with pytest.raises(CypherError):
+                    _ = session.write_transaction(unit_of_work)
 
-                    value = session.read_transaction(unit_of_work)
-                    assert value == 1
-                    value = session.read_transaction(unit_of_work)
-                    assert value == 1
 
-    def test_two_subsequent_write_transactions(self):
-        with StubCluster("v3/router.script",
-                         "v3/return_1_in_write_tx_twice.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session() as session:
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/return_1_in_read_tx_twice.script"),
+        ("v4x0/router.script", "v4x0/tx_two_subsequent_return_1_port_9004.script"),
+    ]
+)
+def test_two_subsequent_read_transactions(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_two_subsequent_read_transactions
+    with StubCluster(*test_scripts):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session() as session:
 
-                    def unit_of_work(tx):
-                        total = 0
-                        for record in tx.run("RETURN 1"):
-                            total += record[0]
-                        return total
+                def unit_of_work(tx):
+                    total = 0
+                    for record in tx.run("RETURN 1"):
+                        total += record[0]
+                    return total
 
-                    value = session.write_transaction(unit_of_work)
-                    assert value == 1
-                    value = session.write_transaction(unit_of_work)
-                    assert value == 1
+                value = session.read_transaction(unit_of_work)
+                assert value == 1
+                value = session.read_transaction(unit_of_work)
+                assert value == 1
 
-    def test_read_tx_then_write_tx(self):
-        with StubCluster("v3/router.script",
-                         "v3/return_1_in_read_tx.script",
-                         "v3/return_2_in_write_tx.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session() as session:
 
-                    def unit_of_work_1(tx):
-                        total = 0
-                        for record in tx.run("RETURN 1"):
-                            total += record[0]
-                        return total
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/return_1_in_write_tx_twice.script"),
+        ("v4x0/router.script", "v4x0/tx_two_subsequent_return_1_port_9006.script"),
+    ]
+)
+def test_two_subsequent_write_transactions(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_two_subsequent_write_transactions
+    with StubCluster(*test_scripts):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session() as session:
 
-                    def unit_of_work_2(tx):
-                        total = 0
-                        for record in tx.run("RETURN 2"):
-                            total += record[0]
-                        return total
+                def unit_of_work(tx):
+                    total = 0
+                    for record in tx.run("RETURN 1"):
+                        total += record[0]
+                    return total
 
-                    value = session.read_transaction(unit_of_work_1)
-                    assert session.last_bookmark() == "bookmark:1"
-                    assert value == 1
-                    value = session.write_transaction(unit_of_work_2)
-                    assert session.last_bookmark() == "bookmark:2"
-                    assert value == 2
+                value = session.write_transaction(unit_of_work)
+                assert value == 1
+                value = session.write_transaction(unit_of_work)
+                assert value == 1
 
-    def test_write_tx_then_read_tx(self):
-        with StubCluster("v3/router.script",
-                         "v3/return_2_in_read_tx.script",
-                         "v3/return_1_in_write_tx.script"):
-            uri = "bolt+routing://localhost:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session() as session:
 
-                    def unit_of_work_1(tx):
-                        total = 0
-                        for record in tx.run("RETURN 1"):
-                            total += record[0]
-                        return total
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/return_1_in_read_tx.script", "v3/return_2_in_write_tx.script"),
+        ("v4x0/router.script", "v4x0/tx_return_1_port_9004.script", "v4x0/tx_return_2_with_bookmark_port_9006.script"),
+    ]
+)
+def test_read_tx_then_write_tx(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_read_tx_then_write_tx
+    with StubCluster(*test_scripts):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session() as session:
 
-                    def unit_of_work_2(tx):
-                        total = 0
-                        for record in tx.run("RETURN 2"):
-                            total += record[0]
-                        return total
+                def unit_of_work_1(tx):
+                    total = 0
+                    for record in tx.run("RETURN 1"):
+                        total += record[0]
+                    return total
 
-                    value = session.write_transaction(unit_of_work_1)
-                    assert value == 1
-                    value = session.read_transaction(unit_of_work_2)
-                    assert value == 2
+                def unit_of_work_2(tx):
+                    total = 0
+                    for record in tx.run("RETURN 2"):
+                        total += record[0]
+                    return total
 
-    def test_no_retry_read_on_user_canceled_tx(self):
-        with StubCluster("v3/router.script", "v3/user_canceled_read.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session() as session:
-                    def unit_of_work(tx):
-                        tx.run("RETURN 1")
+                value = session.read_transaction(unit_of_work_1)
+                assert session.last_bookmark() == "bookmark:1"
+                assert value == 1
+                value = session.write_transaction(unit_of_work_2)
+                assert session.last_bookmark() == "bookmark:2"
+                assert value == 2
 
-                    with self.assertRaises(TransientError):
-                        _ = session.read_transaction(unit_of_work)
 
-    def test_no_retry_write_on_user_canceled_tx(self):
-        with StubCluster("v3/router.script", "v3/user_canceled_write.script"):
-            uri = "bolt+routing://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with driver.session() as session:
-                    def unit_of_work(tx):
-                        tx.run("RETURN 1")
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/return_1_in_write_tx.script", "v3/return_2_in_read_tx.script"),
+        ("v4x0/router.script", "v4x0/tx_return_1_port_9006.script", "v4x0/tx_return_2_with_bookmark_port_9004.script"),
+    ]
+)
+def test_write_tx_then_read_tx(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_write_tx_then_read_tx
+    with StubCluster(*test_scripts):
+        uri = "bolt+routing://localhost:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session() as session:
 
-                    with self.assertRaises(TransientError):
-                        _ = session.write_transaction(unit_of_work)
+                def unit_of_work_1(tx):
+                    total = 0
+                    for record in tx.run("RETURN 1"):
+                        total += record[0]
+                    return total
+
+                def unit_of_work_2(tx):
+                    total = 0
+                    for record in tx.run("RETURN 2"):
+                        total += record[0]
+                    return total
+
+                value = session.write_transaction(unit_of_work_1)
+                assert value == 1
+                value = session.read_transaction(unit_of_work_2)
+                assert value == 2
+
+
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/user_canceled_read.script"),
+        ("v4x0/router.script", "v4x0/tx_return_1_reset_port_9004.script"),
+    ]
+)
+def test_no_retry_read_on_user_canceled_tx(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_no_retry_read_on_user_canceled_tx
+    with StubCluster(*test_scripts):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session() as session:
+                def unit_of_work(tx):
+                    tx.run("RETURN 1")
+
+                with pytest.raises(TransientError):
+                    _ = session.read_transaction(unit_of_work)
+
+
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v3/router.script", "v3/user_canceled_write.script"),
+        ("v4x0/router.script", "v4x0/tx_return_1_reset_port_9006.script"),
+    ]
+)
+def test_no_retry_write_on_user_canceled_tx(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_no_retry_write_on_user_canceled_tx
+    with StubCluster(*test_scripts):
+        uri = "bolt+routing://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session() as session:
+                def unit_of_work(tx):
+                    tx.run("RETURN 1")
+
+                with pytest.raises(TransientError):
+                    _ = session.write_transaction(unit_of_work)

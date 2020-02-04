@@ -1,0 +1,15 @@
+!: BOLT 4
+!: AUTO HELLO
+!: AUTO GOODBYE
+!: PORT 9004
+
+C: BEGIN {}
+S: SUCCESS {}
+
+C: RUN "RETURN 1" {} {}
+   PULL {"n": -1}
+S: FAILURE {"code": "Neo.TransientError.Transaction.LockClientStopped", "message": "X"}
+   IGNORED {}
+
+C: RESET
+S: SUCCESS {}

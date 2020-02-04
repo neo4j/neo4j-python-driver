@@ -23,22 +23,9 @@ from os.path import dirname, join as path_join
 from subprocess import check_call
 from threading import Thread
 from time import sleep
-from unittest import TestCase
 
 from boltkit.server.stub import BoltStubService
 from pytest import fixture
-
-
-class StubTestCase(TestCase):
-    """ Base class for test cases that integrate with a server.
-    """
-
-    uri = "bolt://localhost:7687"
-    bolt_routing_uri = "bolt+routing://localhost:7687"
-
-    user = "test"
-    password = "test"
-    auth_token = (user, password)
 
 
 class StubServer(Thread):
