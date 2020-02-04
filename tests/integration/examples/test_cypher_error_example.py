@@ -25,7 +25,7 @@ from neo4j.exceptions import ClientError
 # end::cypher-error-import[]
 
 
-class CypherErrorExample:
+class Neo4jErrorExample:
 
     def __init__(self, driver):
         self.driver = driver
@@ -49,6 +49,6 @@ class CypherErrorExample:
 def test(bolt_driver):
     s = StringIO()
     with redirect_stdout(s):
-        example = CypherErrorExample(bolt_driver)
+        example = Neo4jErrorExample(bolt_driver)
         example.get_employee_number('Alice')
         assert s.getvalue().startswith("Invalid input")

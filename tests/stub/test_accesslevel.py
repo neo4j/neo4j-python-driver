@@ -23,7 +23,7 @@ import pytest
 
 from neo4j import GraphDatabase
 from neo4j.exceptions import (
-    CypherError,
+    Neo4jError,
     TransientError,
 )
 
@@ -97,7 +97,7 @@ def test_read_transaction_with_error(driver_info, test_scripts):
                 def unit_of_work(tx):
                     tx.run("X")
 
-                with pytest.raises(CypherError):
+                with pytest.raises(Neo4jError):
                     _ = session.read_transaction(unit_of_work)
 
 
@@ -118,7 +118,7 @@ def test_write_transaction_with_error(driver_info, test_scripts):
                 def unit_of_work(tx):
                     tx.run("X")
 
-                with pytest.raises(CypherError):
+                with pytest.raises(Neo4jError):
                     _ = session.write_transaction(unit_of_work)
 
 

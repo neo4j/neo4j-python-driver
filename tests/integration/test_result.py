@@ -21,7 +21,7 @@
 
 from pytest import raises, warns
 
-from neo4j.exceptions import CypherError
+from neo4j.exceptions import Neo4jError
 
 
 def test_can_consume_result_immediately(session):
@@ -93,7 +93,7 @@ def test_can_consume_results_after_harsh_session_death(bolt_driver):
 
 def test_can_consume_result_after_session_with_error(bolt_driver):
     session = bolt_driver.session()
-    with raises(CypherError):
+    with raises(Neo4jError):
         session.run("X").consume()
     session.close()
     session = bolt_driver.session()

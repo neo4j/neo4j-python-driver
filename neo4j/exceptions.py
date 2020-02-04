@@ -21,6 +21,39 @@
 
 """
 This module contains the core driver exceptions.
+
+Driver API Errors
+=================
++ Neo4jError
+  + ClientError
+    + CypherSyntaxError
+    + CypherTypeError
+    + ConstraintError
+    + ForbiddenOnReadOnlyDatabaseError
+    + AuthError
+    + Forbidden
+  + DatabaseError
+  + TransientError
+    + DatabaseUnavailableError
+
++ DriverError
+  + TransactionError
+  + SessionExpired
+  + ServiceUnavailable
+  + ConfigurationError
+    + AuthConfigurationError
+    + CertificateConfigurationError
+
+
+Connector API Errors
+====================
++ BoltError
+  + BoltHandshakeError
+  + BoltRoutingError
+  + BoltConnectionError
+  + BoltFailure
+  + Bolt*
+
 """
 
 
@@ -47,7 +80,7 @@ class SecurityError(Exception):
     """
 
 
-class CypherError(Exception):
+class Neo4jError(Exception):
     """ Raised when the Cypher engine returns an error to the client.
     """
 
@@ -101,17 +134,17 @@ class CypherError(Exception):
             return cls
 
 
-class ClientError(CypherError):
+class ClientError(Neo4jError):
     """ The Client sent a bad request - changing the request might yield a successful outcome.
     """
 
 
-class DatabaseError(CypherError):
+class DatabaseError(Neo4jError):
     """ The database failed to service the request.
     """
 
 
-class TransientError(CypherError):
+class TransientError(Neo4jError):
     """ The database cannot service the request right now, retrying later might yield a successful outcome.
     """
 

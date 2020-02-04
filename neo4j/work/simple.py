@@ -29,7 +29,7 @@ from neo4j import READ_ACCESS, WRITE_ACCESS
 from neo4j.conf import DeprecatedAlias
 from neo4j.data import DataHydrator, DataDehydrator
 from neo4j.exceptions import (
-    CypherError,
+    Neo4jError,
     IncompleteCommitError,
     ServiceUnavailable,
     TransientError,
@@ -123,7 +123,7 @@ class Session(Workspace):
             try:
                 self._connection.send_all()
                 self._connection.fetch_all()
-            except (CypherError, TransactionError, ServiceUnavailable, SessionExpired):
+            except (Neo4jError, TransactionError, ServiceUnavailable, SessionExpired):
                 pass
             finally:
                 self._disconnect()
@@ -518,7 +518,7 @@ class Transaction:
         self._assert_open()
         try:
             self.sync()
-        except CypherError:
+        except Neo4jError:
             self.success = False
             raise
         finally:

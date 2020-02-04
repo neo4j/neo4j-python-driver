@@ -19,12 +19,12 @@ Connectivity errors
 Cypher execution errors
 =======================
 
-.. class:: neo4j.exceptions.CypherError
+.. class:: neo4j.exceptions.Neo4jError
 
     Raised when the Cypher engine returns an error to the client.
     There are many possible types of Cypher error, each identified by a unique `status code <https://neo4j.com/docs/developer-manual/current/reference/status-codes/>`_.
 
-    The three classifications of status code are supported by the three subclasses of :class:`.CypherError`, listed below:
+    The three classifications of status code are supported by the three subclasses of :class:`.Neo4jError`, listed below:
 
 .. autoclass:: neo4j.exceptions.ClientError
 

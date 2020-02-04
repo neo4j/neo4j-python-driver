@@ -25,7 +25,7 @@ import pytest
 from pytest import raises
 
 from neo4j.work.simple import Statement
-from neo4j.exceptions import CypherError, ClientError, TransientError
+from neo4j.exceptions import Neo4jError, ClientError, TransientError
 from neo4j.graph import Node, Relationship
 from neo4j.api import Version
 
@@ -76,12 +76,12 @@ def test_autocommit_transactions_use_bookmarks(neo4j_driver):
 
 
 def test_fails_on_bad_syntax(session):
-    with raises(CypherError):
+    with raises(Neo4jError):
         session.run("X").consume()
 
 
 def test_fails_on_missing_parameter(session):
-    with raises(CypherError):
+    with raises(Neo4jError):
         session.run("RETURN {x}").consume()
 
 
@@ -141,7 +141,7 @@ def test_can_return_relationship(neo4j_driver):
 
 
 def test_can_handle_cypher_error(session):
-    with raises(CypherError):
+    with raises(Neo4jError):
         session.run("X").consume()
 
 
@@ -153,7 +153,7 @@ def test_keys_are_available_before_and_after_stream(session):
 
 
 def test_keys_with_an_error(session):
-    with raises(CypherError):
+    with raises(Neo4jError):
         result = session.run("X")
         list(result.keys())
 
@@ -225,7 +225,7 @@ def test_regex_inline(session):
 def test_automatic_reset_after_failure(session):
     try:
         session.run("X").consume()
-    except CypherError:
+    except Neo4jError:
         result = session.run("RETURN 1")
         record = next(iter(result))
         assert record[0] == 1

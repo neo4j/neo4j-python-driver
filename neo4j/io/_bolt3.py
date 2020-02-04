@@ -30,7 +30,7 @@ from neo4j.io._courier import MessageInbox
 from neo4j.meta import get_user_agent
 from neo4j.exceptions import (
     ProtocolError,
-    CypherError,
+    Neo4jError,
     AuthError,
     ServiceUnavailable,
     DatabaseUnavailableError,
@@ -601,7 +601,7 @@ class Response:
         handler = self.handlers.get("on_summary")
         if callable(handler):
             handler()
-        raise CypherError.hydrate(**metadata)
+        raise Neo4jError.hydrate(**metadata)
 
     def on_ignored(self, metadata=None):
         """ Called when an IGNORED message has been received.
