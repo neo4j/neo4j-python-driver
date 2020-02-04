@@ -64,11 +64,6 @@ class ProtocolError(Exception):
     """
 
 
-class ServiceUnavailable(Exception):
-    """ Raised when no database service is available.
-    """
-
-
 class IncompleteCommitError(Exception):
     """ Raised when a disconnection occurs while still waiting for a commit
     response. For non-idempotent write transactions, this leaves the data
@@ -231,7 +226,12 @@ transient_errors = {
 }
 
 
-class SessionExpired(Exception):
+class DriverError(Exception):
+    """ Raised when the Driver raises an error.
+    """
+
+
+class SessionExpired(DriverError):
     """ Raised when no a session is no longer able to fulfil
     the purpose described by its original parameters.
     """
@@ -240,10 +240,15 @@ class SessionExpired(Exception):
         super(SessionExpired, self).__init__(session, *args, **kwargs)
 
 
-class TransactionError(Exception):
+class TransactionError(DriverError):
     """ Raised when an error occurs while using a transaction.
     """
 
     def __init__(self, transaction, *args, **kwargs):
         super(TransactionError, self).__init__(*args, **kwargs)
         self.transaction = transaction
+
+
+class ServiceUnavailable(DriverError):
+    """ Raised when no database service is available.
+    """
