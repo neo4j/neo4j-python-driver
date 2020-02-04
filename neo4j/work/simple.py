@@ -107,7 +107,7 @@ class Session(Workspace):
             self._disconnect()
         self._connection = self._pool.acquire(access_mode, timeout=self._config.acquire_timeout)
 
-    def _disconnect(self, sync=None):  # TODO: remove sync arg
+    def _disconnect(self):
         if self._connection:
             self._connection.in_use = False
             self._connection = None
