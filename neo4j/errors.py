@@ -212,9 +212,3 @@ class Neo4jAvailabilityError(Neo4jError):
     """ Raised when a Neo4j service is partially or completely
     unavailable.
     """
-
-
-class Neo4jCompatibilityError(Neo4jError):
-    """ Raised when expected functionality is not supported or
-    available.
-    """
