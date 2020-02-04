@@ -36,9 +36,9 @@ from neo4j.exceptions import (
     DatabaseUnavailableError,
     NotALeaderError,
     ForbiddenOnReadOnlyDatabaseError,
-    IncompleteCommitError,
     SessionExpired,
 )
+from neo4j.errors import BoltIncompleteCommitError
 from neo4j.packstream import (
     Unpacker,
     Packer,
@@ -357,7 +357,7 @@ class Bolt4x0(Bolt):
         # unable to confirm that the COMMIT completed successfully.
         for response in self.responses:
             if isinstance(response, CommitResponse):
-                raise IncompleteCommitError(message)
+                raise BoltIncompleteCommitError(message, address=None)
 
         if direct_driver:
             raise ServiceUnavailable(message)

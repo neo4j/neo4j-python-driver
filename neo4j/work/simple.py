@@ -30,12 +30,12 @@ from neo4j.conf import DeprecatedAlias
 from neo4j.data import DataHydrator, DataDehydrator
 from neo4j.exceptions import (
     Neo4jError,
-    IncompleteCommitError,
     ServiceUnavailable,
     TransientError,
     SessionExpired,
     TransactionError,
 )
+from neo4j.errors import BoltIncompleteCommitError
 from neo4j.work import Workspace, WorkspaceConfig
 from neo4j.work.summary import BoltStatementResultSummary
 
@@ -328,7 +328,7 @@ class Session(Workspace):
             self._connection.commit(on_success=metadata.update)
             self._connection.send_all()
             self._connection.fetch_all()
-        except IncompleteCommitError:
+        except BoltIncompleteCommitError:
             raise ServiceUnavailable("Connection closed during commit")
         finally:
             self._disconnect()
