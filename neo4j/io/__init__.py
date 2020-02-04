@@ -802,16 +802,16 @@ def _handshake(s, resolved_address):
     """
     local_port = s.getsockname()[1]
 
-    if __debug__:
-        handshake = Bolt.get_handshake()
-        import struct
-        handshake = struct.unpack(">16B", handshake)
-        handshake = [handshake[i:i + 4] for i in range(0, len(handshake), 4)]
+    # TODO: Optimize logging code
+    handshake = Bolt.get_handshake()
+    import struct
+    handshake = struct.unpack(">16B", handshake)
+    handshake = [handshake[i:i + 4] for i in range(0, len(handshake), 4)]
 
-        supported_versions = [("0x%02X%02X%02X%02X" % (vx[0], vx[1], vx[2], vx[3])) for vx in handshake]
+    supported_versions = [("0x%02X%02X%02X%02X" % (vx[0], vx[1], vx[2], vx[3])) for vx in handshake]
 
-        log.debug("[#%04X]  C: <MAGIC> 0x%08X", local_port, int.from_bytes(Bolt.MAGIC_PREAMBLE, byteorder="big"))
-        log.debug("[#%04X]  C: <HANDSHAKE> %s %s %s %s", local_port, *supported_versions)
+    log.debug("[#%04X]  C: <MAGIC> 0x%08X", local_port, int.from_bytes(Bolt.MAGIC_PREAMBLE, byteorder="big"))
+    log.debug("[#%04X]  C: <HANDSHAKE> %s %s %s %s", local_port, *supported_versions)
 
     data = Bolt.MAGIC_PREAMBLE + Bolt.get_handshake()
     s.sendall(data)
