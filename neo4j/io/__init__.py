@@ -70,9 +70,9 @@ from neo4j.errors import (
     BoltRoutingError,
     BoltNeo4jAvailabilityError,
     BoltSecurityError,
+    BoltProtocolError,
 )
 from neo4j.exceptions import (
-    ProtocolError,
     ServiceUnavailable,
     ClientError,
     SessionExpired,
@@ -179,7 +179,7 @@ class Bolt:
             log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
             s.shutdown(SHUT_RDWR)
             s.close()
-            raise ProtocolError("Driver does not support Bolt protocol version: 0x%06X%02X", config.protocol_version[0], config.protocol_version[1])
+            raise BoltProtocolError("Driver does not support Bolt protocol version: 0x%06X%02X", config.protocol_version[0], config.protocol_version[1])
 
         connection.hello()
         return connection
@@ -565,7 +565,7 @@ class Neo4jPool(IOPool):
         :return: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
         :raise ServiceUnavailable: if no writers are available
-        :raise ProtocolError: if the routing information received is unusable
+        :raise BoltProtocolError: if the routing information received is unusable
         """
         new_routing_info = self.fetch_routing_info(address)
         if new_routing_info is None:
@@ -791,8 +791,7 @@ def _secure(s, host, ssl_context):
             der_encoded_server_certificate = s.getpeercert(binary_form=True)
             if der_encoded_server_certificate is None:
                 s.close()
-                raise ProtocolError("When using a secure socket, the server "
-                                    "should always provide a certificate")
+                raise BoltProtocolError("When using a secure socket, the server should always provide a certificate", address=(host, port))
     return s
 
 
@@ -839,9 +838,7 @@ def _handshake(s, resolved_address):
         # Some garbled data has been received
         log.debug("[#%04X]  S: @*#!", local_port)
         s.close()
-        raise ProtocolError("Expected four byte Bolt handshake response "
-                            "from %r, received %r instead; check for "
-                            "incorrect port number" % (resolved_address, data))
+        raise BoltProtocolError("Expected four byte Bolt handshake response from %r, received %r instead; check for incorrect port number" % (resolved_address, data), address=resolved_address)
     elif data == b"HTTP":
         log.debug("[#%04X]  S: <CLOSE>", local_port)
         s.close()

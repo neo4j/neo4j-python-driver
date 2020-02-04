@@ -180,3 +180,8 @@ class BoltIncompleteCommitError(BoltError):
     in an unknown state with regard to whether the transaction completed
     successfully or not.
     """
+
+
+class BoltProtocolError(BoltError):
+    """ Raised when an unexpected or unsupported protocol event occurs.
+    """

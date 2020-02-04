@@ -29,7 +29,6 @@ from neo4j.api import (
 from neo4j.io._courier import MessageInbox
 from neo4j.meta import get_user_agent
 from neo4j.exceptions import (
-    ProtocolError,
     Neo4jError,
     AuthError,
     ServiceUnavailable,
@@ -38,7 +37,10 @@ from neo4j.exceptions import (
     ForbiddenOnReadOnlyDatabaseError,
     SessionExpired,
 )
-from neo4j.errors import BoltIncompleteCommitError
+from neo4j.errors import (
+    BoltIncompleteCommitError,
+    BoltProtocolError,
+)
 from neo4j.packstream import (
     Unpacker,
     Packer,
@@ -240,7 +242,7 @@ class Bolt3(Bolt):
         """
 
         def fail(metadata):
-            raise ProtocolError("RESET failed %r" % metadata)
+            raise BoltProtocolError("RESET failed %r" % metadata, address=self.unresolved_address)
 
         log.debug("[#%04X]  C: RESET", self.local_port)
         self._append(b"\x0F", response=Response(self, on_failure=fail))
@@ -334,8 +336,7 @@ class Bolt3(Bolt):
                     self.pool.on_write_failure(self.unresolved_address),
                 raise
         else:
-            raise ProtocolError("Unexpected response message with "
-                                "signature %02X" % summary_signature)
+            raise BoltProtocolError("Unexpected response message with signature %02X" % summary_signature, address=self.unresolved_address)
 
         return len(details), 1
 

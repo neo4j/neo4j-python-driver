@@ -56,14 +56,10 @@ Connector API Errors
   + BoltNeo4jAvailabilityError
   + BoltSecurityError
   + BoltIncompleteCommitError
+  + BoltProtocolError
   + Bolt*
 
 """
-
-
-class ProtocolError(Exception):
-    """ Raised when an unexpected or unsupported protocol event occurs.
-    """
 
 
 class Neo4jError(Exception):

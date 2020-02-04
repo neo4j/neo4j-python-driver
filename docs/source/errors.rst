@@ -27,13 +27,3 @@ Cypher execution errors
 .. autoclass:: neo4j.exceptions.DatabaseError
 
 .. autoclass:: neo4j.exceptions.TransientError
-
-
-Low-level errors
-================
-
-.. class:: neo4j.exceptions.ProtocolError
-
-    Raised when an unexpected or unsupported protocol event occurs.
-    This error generally indicates a fault with the driver or server software.
-    If you receive this error, please raise a GitHub issue or a support ticket.

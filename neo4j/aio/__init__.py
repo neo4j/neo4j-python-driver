@@ -398,7 +398,7 @@ class Bolt(Addressable, object):
         :return: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
         :raise ServiceUnavailable: if no writers are available
-        :raise ProtocolError: if the routing information received is unusable
+        :raise BoltProtocolError: if the routing information received is unusable
         """
 
 
