@@ -168,27 +168,6 @@ class BoltFailure(BoltError):
             return None
 
 
-class ClientError(BoltFailure):
-    """
-    """
-
-    transient = False
-
-
-class DatabaseError(BoltFailure):
-    """
-    """
-
-    transient = False
-
-
-class TransientError(BoltFailure):
-    """
-    """
-
-    transient = True
-
-
 class BoltNeo4jAvailabilityError(BoltError):
     """ Raised when a Neo4j service is partially or completely
     unavailable.

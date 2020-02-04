@@ -36,6 +36,7 @@ from neo4j.errors import (
     BoltTransactionError,
     BoltRoutingError,
 )
+from neo4j.exceptions import Neo4jError
 from neo4j.packstream import PackStream, Structure
 from neo4j.routing import RoutingTable
 
@@ -612,7 +613,9 @@ class Bolt3(Bolt):
             # TODO: fix "requires two params, only one was given" error
             handler(failure)
         else:
-            raise failure
+            # TODO: fix correct error logic after error and exception refactoring
+            # raise failure  # This is a BoltFailure
+            raise Neo4jError.hydrate(message=str(failure), code=failure.code)
 
     def get_failure_handler(self, cls):
         return self._failure_handlers.get(cls)
