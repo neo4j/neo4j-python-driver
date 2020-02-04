@@ -90,9 +90,54 @@ class Bolt:
     the handshake was carried out.
     """
 
-    MAGIC_PREAMBLE = 0x6060B017
+    MAGIC_PREAMBLE = b"\x60\x60\xB0\x17"
 
     PROTOCOL_VERSION = None
+
+    @classmethod
+    def get_handshake(cls):
+        """ Return the supported Bolt versions as bytes.
+        The length is 16 bytes as specified in the Bolt version negotiation.
+        :return: bytes
+        """
+        offered_versions = sorted(cls.protocol_handlers().keys(), reverse=True)[:4]
+        return b"".join(version.to_bytes() for version in offered_versions).ljust(16, b"\x00")
+
+    @classmethod
+    def protocol_handlers(cls, protocol_version=None):
+        """ Return a dictionary of available Bolt protocol handlers,
+        keyed by version tuple. If an explicit protocol version is
+        provided, the dictionary will contain either zero or one items,
+        depending on whether that version is supported. If no protocol
+        version is provided, all available versions will be returned.
+
+        :param protocol_version: tuple identifying a specific protocol
+            version (e.g. (3, 5)) or None
+        :return: dictionary of version tuple to handler class for all
+            relevant and supported protocol versions
+        :raise TypeError: if protocol version is not passed in a tuple
+        """
+
+        # Carry out subclass imports locally to avoid circular
+        # dependency issues.
+        from neo4j.io._bolt3 import Bolt3
+        from neo4j.io._bolt4x0 import Bolt4x0
+
+        handlers = {
+            Bolt3.PROTOCOL_VERSION: Bolt3,
+            Bolt4x0.PROTOCOL_VERSION: Bolt4x0
+        }
+
+        if protocol_version is None:
+            return handlers
+
+        if not isinstance(protocol_version, tuple):
+            raise TypeError("Protocol version must be specified as a tuple")
+
+        if protocol_version in handlers:
+            return {protocol_version: handlers[protocol_version]}
+
+        return {}
 
     @classmethod
     def ping(cls, address, *, timeout=None, **config):
@@ -757,12 +802,18 @@ def _handshake(s, resolved_address):
     """
     local_port = s.getsockname()[1]
 
-    # Send details of the protocol versions supported
-    supported_versions = [3, 0, 0, 0]
-    handshake = [Bolt.MAGIC_PREAMBLE] + supported_versions
-    log.debug("[#%04X]  C: <MAGIC> 0x%08X", local_port, Bolt.MAGIC_PREAMBLE)
-    log.debug("[#%04X]  C: <HANDSHAKE> 0x%08X 0x%08X 0x%08X 0x%08X", local_port, *supported_versions)
-    data = b"".join(struct_pack(">I", num) for num in handshake)
+    # TODO: Optimize logging code
+    handshake = Bolt.get_handshake()
+    import struct
+    handshake = struct.unpack(">16B", handshake)
+    handshake = [handshake[i:i + 4] for i in range(0, len(handshake), 4)]
+
+    supported_versions = [("0x%02X%02X%02X%02X" % (vx[0], vx[1], vx[2], vx[3])) for vx in handshake]
+
+    log.debug("[#%04X]  C: <MAGIC> 0x%08X", local_port, int.from_bytes(Bolt.MAGIC_PREAMBLE, byteorder="big"))
+    log.debug("[#%04X]  C: <HANDSHAKE> %s %s %s %s", local_port, *supported_versions)
+
+    data = Bolt.MAGIC_PREAMBLE + Bolt.get_handshake()
     s.sendall(data)
 
     # Handle the handshake response
@@ -796,17 +847,7 @@ def _handshake(s, resolved_address):
                                  "(looks like HTTP)".format(resolved_address))
     agreed_version = data[-1], data[-2]
     log.debug("[#%04X]  S: <HANDSHAKE> 0x%06X%02X", local_port, agreed_version[1], agreed_version[0])
-    if agreed_version == (0, 0):
-        log.debug("[#%04X]  C: <CLOSE>", local_port)
-        s.shutdown(SHUT_RDWR)
-        s.close()
-    elif agreed_version in ((3, 0),):
-        return s, agreed_version
-    else:
-        log.debug("[#%04X]  S: <CLOSE>", local_port)
-        s.close()
-        raise ProtocolError("Unknown Bolt protocol version: "
-                            "{}".format(agreed_version))
+    return s, agreed_version
 
 
 def connect(address, *, timeout=None, config):

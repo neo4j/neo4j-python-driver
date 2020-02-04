@@ -19,42 +19,63 @@
 # limitations under the License.
 
 
+import pytest
+
 from neo4j.exceptions import ServiceUnavailable
 
-from neo4j import GraphDatabase, BoltDriver
+from neo4j import (
+    GraphDatabase,
+    BoltDriver,
+)
 
-from tests.stub.conftest import StubTestCase, StubCluster
+from tests.stub.conftest import (
+    StubCluster,
+)
+
+# python -m pytest tests/stub/test_directdriver.py
 
 
-class BoltDriverTestCase(StubTestCase):
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/empty.script",
+        "v4x0/empty.script",
+    ]
+)
+def test_bolt_uri_constructs_bolt_driver(driver_info, test_script):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_uri_constructs_bolt_driver
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            assert isinstance(driver, BoltDriver)
 
-    def test_bolt_uri_constructs_bolt_driver(self):
-        with StubCluster("v3/empty.script"):
-            uri = "bolt://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                assert isinstance(driver, BoltDriver)
 
-    def test_direct_disconnect_on_run(self):
-        with StubCluster("v3/disconnect_on_run.script"):
-            uri = "bolt://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with self.assertRaises(ServiceUnavailable):
-                    with driver.session() as session:
-                        session.run("RETURN $x", {"x": 1}).consume()
-
-    def test_direct_disconnect_on_pull_all(self):
-        with StubCluster("v3/disconnect_on_pull_all.script"):
-            uri = "bolt://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token) as driver:
-                with self.assertRaises(ServiceUnavailable):
-                    with driver.session() as session:
-                        session.run("RETURN $x", {"x": 1}).consume()
-
-    def test_direct_session_close_after_server_close(self):
-        with StubCluster("v3/disconnect_after_init.script"):
-            uri = "bolt://127.0.0.1:9001"
-            with GraphDatabase.driver(uri, auth=self.auth_token, max_retry_time=0,
-                                      acquire_timeout=3, user_agent="test") as driver:
+def test_direct_disconnect_on_run(driver_info):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_disconnect_on_run
+    with StubCluster("v3/disconnect_on_run.script"):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with pytest.raises(ServiceUnavailable):
                 with driver.session() as session:
-                    with self.assertRaises(ServiceUnavailable):
-                        session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
+                    session.run("RETURN $x", {"x": 1}).consume()
+
+
+def test_direct_disconnect_on_pull_all(driver_info):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_disconnect_on_pull_all
+    with StubCluster("v3/disconnect_on_pull_all.script"):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with pytest.raises(ServiceUnavailable):
+                with driver.session() as session:
+                    session.run("RETURN $x", {"x": 1}).consume()
+
+
+def test_direct_session_close_after_server_close(driver_info):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_session_close_after_server_close
+    with StubCluster("v3/disconnect_after_init.script"):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], max_retry_time=0,
+                                  acquire_timeout=3, user_agent="test") as driver:
+            with driver.session() as session:
+                with pytest.raises(ServiceUnavailable):
+                    session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
