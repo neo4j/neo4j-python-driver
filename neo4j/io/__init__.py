@@ -66,7 +66,10 @@ from threading import (
 
 from neo4j.addressing import Address
 from neo4j.conf import PoolConfig
-from neo4j.errors import BoltRoutingError, Neo4jAvailabilityError
+from neo4j.errors import (
+    BoltRoutingError,
+    BoltNeo4jAvailabilityError,
+)
 from neo4j.exceptions import (
     ProtocolError,
     SecurityError,
@@ -434,7 +437,7 @@ class IOPool:
                 self.remove(address)
 
     def on_write_failure(self, address):
-        raise Neo4jAvailabilityError("No write service available for pool {}".format(self))
+        raise BoltNeo4jAvailabilityError("No write service available for pool {}".format(self))
 
     def remove(self, address):
         """ Remove an address from the connection pool, if present, closing
@@ -681,7 +684,7 @@ class Neo4jPool(IOPool):
         for address in addresses:
             addresses_by_usage.setdefault(self.in_use_connection_count(address), []).append(address)
         if not addresses_by_usage:
-            raise Neo4jAvailabilityError("No {} service currently available".format(
+            raise BoltNeo4jAvailabilityError("No {} service currently available".format(
                 "read" if access_mode == READ_ACCESS else "write"))
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
@@ -694,7 +697,7 @@ class Neo4jPool(IOPool):
         while True:
             try:
                 address = self._select_address(access_mode)
-            except Neo4jAvailabilityError as err:
+            except BoltNeo4jAvailabilityError as err:
                 raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode) from err
             try:
                 connection = self._acquire(address, timeout=timeout)  # should always be a resolved address

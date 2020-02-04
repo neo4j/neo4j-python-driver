@@ -203,12 +203,7 @@ class TransientError(BoltFailure):
     transient = True
 
 
-class Neo4jError(Exception):
-    """ Base class for all Neo4j service exceptions.
-    """
-
-
-class Neo4jAvailabilityError(Neo4jError):
+class BoltNeo4jAvailabilityError(BoltError):
     """ Raised when a Neo4j service is partially or completely
     unavailable.
     """

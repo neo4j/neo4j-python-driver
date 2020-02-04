@@ -52,6 +52,7 @@ Connector API Errors
   + BoltRoutingError
   + BoltConnectionError
   + BoltFailure
+  + BoltNeo4jAvailabilityError
   + Bolt*
 
 """

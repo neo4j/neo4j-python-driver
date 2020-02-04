@@ -68,7 +68,7 @@ from neo4j.errors import (
     BoltSecurityError,
     BoltConnectionBroken,
     BoltHandshakeError,
-    Neo4jAvailabilityError,
+    BoltNeo4jAvailabilityError,
 )
 from neo4j.api import Version
 from neo4j.conf import PoolConfig
@@ -817,7 +817,7 @@ class Neo4jPool:
 
         # None of the routers have been successful, so just fail
         log.error("Unable to retrieve routing information")
-        raise Neo4jAvailabilityError("Unable to retrieve routing information")
+        raise BoltNeo4jAvailabilityError("Unable to retrieve routing information")
 
     async def _ensure_routing_table_is_fresh(self, readonly=False):
         """ Update the routing table if stale.
@@ -855,7 +855,7 @@ class Neo4jPool:
         for pool in pools:
             pools_by_usage.setdefault(pool.in_use, []).append(pool)
         if not pools_by_usage:
-            raise Neo4jAvailabilityError("No {} service currently "
+            raise BoltNeo4jAvailabilityError("No {} service currently "
                                          "available".format("read" if readonly else "write"))
         return choice(pools_by_usage[min(pools_by_usage)])
 
