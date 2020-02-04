@@ -175,13 +175,6 @@ class ClientError(BoltFailure):
     transient = False
 
 
-class ForbiddenOnReadOnlyDatabase(ClientError):
-    """
-    """
-
-    code = "Neo.ClientError.General.ForbiddenOnReadOnlyDatabase"
-
-
 class DatabaseError(BoltFailure):
     """
     """

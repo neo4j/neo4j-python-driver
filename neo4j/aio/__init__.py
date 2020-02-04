@@ -878,10 +878,7 @@ class Neo4jPool:
                     # readonly, then intercept NotALeader and
                     # ForbiddenOnReadOnlyDatabase errors to
                     # invalidate the routing table.
-                    from neo4j.errors import (
-                        ForbiddenOnReadOnlyDatabase,
-                    )
-                    from neo4j.exceptions import NotALeaderError
+                    from neo4j.exceptions import ForbiddenOnReadOnlyDatabaseError, NotALeaderError
 
                     def handler(failure):
                         """ Invalidate the routing table before raising the failure.
@@ -891,7 +888,7 @@ class Neo4jPool:
                         raise failure
 
                     cx.set_failure_handler(NotALeaderError, handler)
-                    cx.set_failure_handler(ForbiddenOnReadOnlyDatabase, handler)
+                    cx.set_failure_handler(ForbiddenOnReadOnlyDatabaseError, handler)
                 return cx
 
     async def release(self, connection, *, force_reset=False):
@@ -905,12 +902,9 @@ class Neo4jPool:
                 pass
             else:
                 # Unhook any custom error handling and exit.
-                from neo4j.errors import (
-                    ForbiddenOnReadOnlyDatabase,
-                )
-                from neo4j.exceptions import NotALeaderError
+                from neo4j.exceptions import ForbiddenOnReadOnlyDatabaseError, NotALeaderError
                 connection.del_failure_handler(NotALeaderError)
-                connection.del_failure_handler(ForbiddenOnReadOnlyDatabase)
+                connection.del_failure_handler(ForbiddenOnReadOnlyDatabaseError)
                 break
         else:
             raise ValueError("Connection does not belong to this pool")
