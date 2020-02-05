@@ -168,12 +168,6 @@ class BoltFailure(BoltError):
             return None
 
 
-class BoltNeo4jAvailabilityError(BoltError):
-    """ Raised when a Neo4j service is partially or completely
-    unavailable.
-    """
-
-
 class BoltIncompleteCommitError(BoltError):
     """ Raised when a disconnection occurs while still waiting for a commit
     response. For non-idempotent write transactions, this leaves the data

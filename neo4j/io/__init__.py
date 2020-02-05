@@ -68,7 +68,6 @@ from neo4j.addressing import Address
 from neo4j.conf import PoolConfig
 from neo4j.errors import (
     BoltRoutingError,
-    BoltNeo4jAvailabilityError,
     BoltSecurityError,
     BoltProtocolError,
 )
@@ -76,6 +75,8 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     ClientError,
     SessionExpired,
+    ReadServiceUnavailable,
+    WriteServiceUnavailable,
 )
 from neo4j.routing import RoutingTable
 
@@ -437,7 +438,7 @@ class IOPool:
                 self.remove(address)
 
     def on_write_failure(self, address):
-        raise BoltNeo4jAvailabilityError("No write service available for pool {}".format(self))
+        raise WriteServiceUnavailable("No write service available for pool {}".format(self))
 
     def remove(self, address):
         """ Remove an address from the connection pool, if present, closing
@@ -684,8 +685,10 @@ class Neo4jPool(IOPool):
         for address in addresses:
             addresses_by_usage.setdefault(self.in_use_connection_count(address), []).append(address)
         if not addresses_by_usage:
-            raise BoltNeo4jAvailabilityError("No {} service currently available".format(
-                "read" if access_mode == READ_ACCESS else "write"))
+            if access_mode == READ_ACCESS:
+                raise ReadServiceUnavailable("No read service currently available")
+            else:
+                raise WriteServiceUnavailable("No write service currently available")
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
     def acquire(self, access_mode=None, timeout=None):
@@ -697,7 +700,7 @@ class Neo4jPool(IOPool):
         while True:
             try:
                 address = self._select_address(access_mode)
-            except BoltNeo4jAvailabilityError as err:
+            except (ReadServiceUnavailable, WriteServiceUnavailable) as err:
                 raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode) from err
             try:
                 connection = self._acquire(address, timeout=timeout)  # should always be a resolved address

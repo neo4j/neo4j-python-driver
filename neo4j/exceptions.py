@@ -41,6 +41,9 @@ Driver API Errors
   + TransactionError
   + SessionExpired
   + ServiceUnavailable
+    + RoutingServiceUnavailable
+    + WriteServiceUnavailable
+    + ReadServiceUnavailable
   + ConfigurationError
     + AuthConfigurationError
     + CertificateConfigurationError
@@ -53,7 +56,6 @@ Connector API Errors
   + BoltRoutingError
   + BoltConnectionError
   + BoltFailure
-  + BoltNeo4jAvailabilityError
   + BoltSecurityError
   + BoltIncompleteCommitError
   + BoltProtocolError
@@ -236,4 +238,19 @@ class TransactionError(DriverError):
 
 class ServiceUnavailable(DriverError):
     """ Raised when no database service is available.
+    """
+
+
+class RoutingServiceUnavailable(ServiceUnavailable):
+    """ Raised when no routing service is available.
+    """
+
+
+class WriteServiceUnavailable(ServiceUnavailable):
+    """ Raised when no write service is available.
+    """
+
+
+class ReadServiceUnavailable(ServiceUnavailable):
+    """ Raised when no read service is available.
     """
