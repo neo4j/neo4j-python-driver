@@ -25,7 +25,7 @@ from pytest import mark, raises
 
 from neo4j import PoolConfig
 from neo4j.aio import Bolt, BoltPool
-from neo4j.errors import BoltConnectionError, BoltTransactionError
+from neo4j._exceptions import BoltConnectionError, BoltTransactionError
 from neo4j.exceptions import ClientError
 
 

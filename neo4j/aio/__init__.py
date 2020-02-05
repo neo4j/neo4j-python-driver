@@ -62,7 +62,7 @@ from time import perf_counter
 from neo4j.addressing import Address
 from neo4j.aio._collections import WaitingList
 from neo4j.aio._mixins import Addressable, Breakable
-from neo4j.errors import (
+from neo4j._exceptions import (
     BoltError,
     BoltConnectionError,
     BoltSecurityError,

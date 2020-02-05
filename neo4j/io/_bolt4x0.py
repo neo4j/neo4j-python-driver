@@ -37,7 +37,7 @@ from neo4j.exceptions import (
     ForbiddenOnReadOnlyDatabaseError,
     SessionExpired,
 )
-from neo4j.errors import (
+from neo4j._exceptions import (
     BoltIncompleteCommitError,
     BoltProtocolError,
 )

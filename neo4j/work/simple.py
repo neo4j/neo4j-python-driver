@@ -35,7 +35,7 @@ from neo4j.exceptions import (
     SessionExpired,
     TransactionError,
 )
-from neo4j.errors import BoltIncompleteCommitError
+from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.work import Workspace, WorkspaceConfig
 from neo4j.work.summary import BoltStatementResultSummary
 

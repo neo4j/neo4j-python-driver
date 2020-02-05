@@ -28,7 +28,7 @@ from neo4j.aio import Bolt
 from neo4j.aio._mixins import Addressable
 from neo4j.api import Bookmark, Version
 from neo4j.data import Record
-from neo4j.errors import (
+from neo4j._exceptions import (
     BoltError,
     BoltFailure,
     BoltConnectionBroken,

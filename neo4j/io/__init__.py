@@ -66,7 +66,7 @@ from threading import (
 
 from neo4j.addressing import Address
 from neo4j.conf import PoolConfig
-from neo4j.errors import (
+from neo4j._exceptions import (
     BoltRoutingError,
     BoltSecurityError,
     BoltProtocolError,
