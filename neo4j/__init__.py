@@ -242,6 +242,17 @@ class Driver:
         """
         self._pool.close()
 
+    def verify_connectivity(self):
+        """ This verifies if the driver can connect to a remote server or a cluster
+        by establishing a network connection with the remote and possibly exchanging
+        a few data before closing the connection. It throws exception if fails to connect.
+
+        Use the exception to further understand the cause of the connectivity problem.
+
+        Note: Even if this method throws an exception, the driver still need to be closed via close() to free up all resources.
+        """
+        raise NotImplementedError
+
 
 class AsyncDriver:
 
@@ -306,6 +317,15 @@ class BoltDriver(Direct, Driver):
         pipeline_config = PipelineConfig(self._default_workspace_config,
                                          PipelineConfig.consume(config))
         return Pipeline(self._pool, pipeline_config)
+
+    def verify_connectivity(self, **config):
+        server_agent = None
+        with self.session(**config) as session:
+            result = session.run("RETURN 1 AS x")
+            value = result.single().value()
+            summary = result.summary()
+            server_agent = summary.server.agent
+        return server_agent
 
 
 class Neo4jDriver(Routing, Driver):
