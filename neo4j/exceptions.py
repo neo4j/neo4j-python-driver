@@ -55,8 +55,10 @@ Connector API Errors
   + BoltHandshakeError
   + BoltRoutingError
   + BoltConnectionError
+      + BoltSecurityError
+      + BoltConnectionBroken
+      + BoltConnectionClosed
   + BoltFailure
-  + BoltSecurityError
   + BoltIncompleteCommitError
   + BoltProtocolError
   + Bolt*
