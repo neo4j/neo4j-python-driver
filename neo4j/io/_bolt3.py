@@ -34,7 +34,7 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     DatabaseUnavailable,
     NotALeader,
-    ForbiddenOnReadOnlyDatabaseError,
+    ForbiddenOnReadOnlyDatabase,
     SessionExpired,
 )
 from neo4j._exceptions import (
@@ -331,7 +331,7 @@ class Bolt3(Bolt):
                 if self.pool:
                     self.pool.deactivate(self.unresolved_address),
                 raise
-            except (NotALeader, ForbiddenOnReadOnlyDatabaseError):
+            except (NotALeader, ForbiddenOnReadOnlyDatabase):
                 if self.pool:
                     self.pool.on_write_failure(self.unresolved_address),
                 raise

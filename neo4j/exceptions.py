@@ -31,7 +31,7 @@ Driver API Errors
     + ConstraintError
     + AuthError
     + Forbidden
-      + ForbiddenOnReadOnlyDatabaseError
+      + ForbiddenOnReadOnlyDatabase
     + NotALeader
   + DatabaseError
   + TransientError
@@ -163,7 +163,7 @@ class Forbidden(ClientError):
     """
 
 
-class ForbiddenOnReadOnlyDatabaseError(Forbidden):
+class ForbiddenOnReadOnlyDatabase(Forbidden):
     """
     """
 
@@ -191,7 +191,7 @@ client_errors = {
     "Neo.ClientError.Statement.TypeError": CypherTypeError,
 
     # Forbidden
-    "Neo.ClientError.General.ForbiddenOnReadOnlyDatabase": ForbiddenOnReadOnlyDatabaseError,
+    "Neo.ClientError.General.ForbiddenOnReadOnlyDatabase": ForbiddenOnReadOnlyDatabase,
     "Neo.ClientError.General.ReadOnly": Forbidden,
     "Neo.ClientError.Schema.ForbiddenOnConstraintIndex": Forbidden,
     "Neo.ClientError.Schema.IndexBelongsToConstraint": Forbidden,
