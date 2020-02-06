@@ -40,7 +40,13 @@ class BoltConnectionError(BoltError):
     """
 
     def __init__(self, message, address):
-        super().__init__(message, address)
+        msg = (
+        "Connection Failed. "
+        "Please ensure that your database is listening on the correct host and port and that you have enabled encryption if required. "
+        "Note that the default encryption setting has changed in Neo4j 4.0. See the docs for more information. "
+        "{}")
+
+        super().__init__(msg.format(message), address)
 
     def __str__(self):
         s = super().__str__()
