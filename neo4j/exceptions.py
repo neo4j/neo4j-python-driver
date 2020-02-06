@@ -32,7 +32,7 @@ Driver API Errors
     + AuthError
     + Forbidden
       + ForbiddenOnReadOnlyDatabaseError
-    + NotALeaderError
+    + NotALeader
   + DatabaseError
   + TransientError
     + DatabaseUnavailableError
@@ -153,7 +153,7 @@ class CypherTypeError(ClientError):
     """
 
 
-class NotALeaderError(ClientError):
+class NotALeader(ClientError):
     """
     """
 
@@ -202,8 +202,8 @@ client_errors = {
     "Neo.ClientError.Security.AuthorizationFailed": AuthError,
     "Neo.ClientError.Security.Unauthorized": AuthError,
 
-    # NotALeaderError
-    "Neo.ClientError.Cluster.NotALeader": NotALeaderError
+    # NotALeader
+    "Neo.ClientError.Cluster.NotALeader": NotALeader
 }
 
 transient_errors = {
