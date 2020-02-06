@@ -35,7 +35,7 @@ Driver API Errors
     + NotALeader
   + DatabaseError
   + TransientError
-    + DatabaseUnavailableError
+    + DatabaseUnavailable
 
 + DriverError
   + TransactionError
@@ -133,7 +133,7 @@ class TransientError(Neo4jError):
     """
 
 
-class DatabaseUnavailableError(TransientError):
+class DatabaseUnavailable(TransientError):
     """
     """
 
@@ -209,7 +209,7 @@ client_errors = {
 transient_errors = {
 
     # DatabaseUnavailableError
-    "Neo.TransientError.General.DatabaseUnavailable": DatabaseUnavailableError
+    "Neo.TransientError.General.DatabaseUnavailable": DatabaseUnavailable
 }
 
 

@@ -32,7 +32,7 @@ from neo4j.exceptions import (
     Neo4jError,
     AuthError,
     ServiceUnavailable,
-    DatabaseUnavailableError,
+    DatabaseUnavailable,
     NotALeader,
     ForbiddenOnReadOnlyDatabaseError,
     SessionExpired,
@@ -325,7 +325,7 @@ class Bolt4x0(Bolt):
             log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
             try:
                 response.on_failure(summary_metadata or {})
-            except (ServiceUnavailable, DatabaseUnavailableError):
+            except (ServiceUnavailable, DatabaseUnavailable):
                 if self.pool:
                     self.pool.deactivate(self.unresolved_address),
                 raise
