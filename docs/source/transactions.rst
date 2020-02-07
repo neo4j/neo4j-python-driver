@@ -81,24 +81,6 @@ It also gives applications the ability to directly control `commit` and `rollbac
 
     .. automethod:: sync
 
-    .. attribute:: success
-
-        This attribute can be used to determine the outcome of a transaction on closure.
-        Specifically, this will be either a COMMIT or a ROLLBACK.
-        A value can be set for this attribute multiple times in user code before a transaction completes, with only the final value taking effect.
-
-        On closure, the outcome is evaluated according to the following rules:
-
-        ================  ====================  ===========================  ==============  ===============  =================
-        :attr:`.success`  ``__exit__`` cleanly  ``__exit__`` with exception  ``tx.close()``  ``tx.commit()``  ``tx.rollback()``
-        ================  ====================  ===========================  ==============  ===============  =================
-        :const:`None`     COMMIT                ROLLBACK                     ROLLBACK        COMMIT           ROLLBACK
-        :const:`True`     COMMIT                COMMIT [1]_                  COMMIT          COMMIT           ROLLBACK
-        :const:`False`    ROLLBACK              ROLLBACK                     ROLLBACK        COMMIT           ROLLBACK
-        ================  ====================  ===========================  ==============  ===============  =================
-
-        .. [1] While a COMMIT will be attempted in this scenario, it will likely fail if the exception originated from Cypher execution within that transaction.
-
     .. automethod:: close
 
     .. automethod:: closed
@@ -107,7 +89,7 @@ It also gives applications the ability to directly control `commit` and `rollbac
 
     .. automethod:: rollback
 
-Closing an explicit transaction can either happen automatically at the end of a ``with`` block, using the :attr:`.Transaction.success` attribute to determine success,
+Closing an explicit transaction can either happen automatically at the end of a ``with`` block,
 or can be explicitly controlled through the :meth:`.Transaction.commit` and :meth:`.Transaction.rollback` methods.
 Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction.
 
