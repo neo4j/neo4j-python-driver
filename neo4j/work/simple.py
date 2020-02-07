@@ -376,11 +376,11 @@ class Session(Workspace):
                 try:
                     result = unit_of_work(tx, *args, **kwargs)
                 except Exception:
-                    tx.success = False
+                    tx._success = False
                     raise
                 else:
-                    if tx.success is None:
-                        tx.success = True
+                    if tx._success is None:
+                        tx._success = True
                 finally:
                     tx.close()
             except (ServiceUnavailable, SessionExpired) as error:
@@ -414,8 +414,8 @@ class Session(Workspace):
 class Transaction:
     """ Container for multiple Cypher queries to be executed within
     a single context. Transactions can be used within a :py:const:`with`
-    block where the value of :attr:`.success` will determine whether
-    the transaction is committed or rolled back on :meth:`.Transaction.close`::
+    block where the transaction is committed or rolled back on based on
+    whether or not an exception is raised::
 
         with session.begin_transaction() as tx:
             pass
@@ -426,7 +426,11 @@ class Transaction:
     #: will be rolled back. This attribute can be set in user code
     #: multiple times before a transaction completes, with only the final
     #: value taking effect.
-    success = None
+    #
+    # This became internal with Neo4j 4.0, when the server-side
+    # transaction semantics changed.
+    #
+    _success = None
 
     _closed = False
 
@@ -440,8 +444,8 @@ class Transaction:
     def __exit__(self, exc_type, exc_value, traceback):
         if self._closed:
             return
-        if self.success is None:
-            self.success = not bool(exc_type)
+        if self._success is None:
+            self._success = not bool(exc_type)
         self.close()
 
     def run(self, statement, parameters=None, **kwparameters):
@@ -489,29 +493,22 @@ class Transaction:
         """ Mark this transaction as successful and close in order to
         trigger a COMMIT. This is functionally equivalent to::
 
-            tx.success = True
-            tx.close()
-
         :raise TransactionError: if already closed
         """
-        self.success = True
+        self._success = True
         self.close()
 
     def rollback(self):
         """ Mark this transaction as unsuccessful and close in order to
         trigger a ROLLBACK. This is functionally equivalent to::
 
-            tx.success = False
-            tx.close()
-
         :raise TransactionError: if already closed
         """
-        self.success = False
+        self._success = False
         self.close()
 
     def close(self):
-        """ Close this transaction, triggering either a COMMIT or a ROLLBACK,
-        depending on the value of :attr:`.success`.
+        """ Close this transaction, triggering either a COMMIT or a ROLLBACK.
 
         :raise TransactionError: if already closed
         """
@@ -519,11 +516,11 @@ class Transaction:
         try:
             self.sync()
         except Neo4jError:
-            self.success = False
+            self._success = False
             raise
         finally:
             if self.session.has_transaction():
-                if self.success:
+                if self._success:
                     self.session.commit_transaction()
                 else:
                     self.session.rollback_transaction()

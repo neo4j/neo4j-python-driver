@@ -85,7 +85,7 @@ def test_can_commit_transaction_using_with_block(session):
         tx.run("MATCH (a) WHERE id(a) = $n "
                "SET a.foo = $foo", {"n": node_id, "foo": "bar"})
 
-        tx.success = True
+        tx.commit()
 
     # Check the property value
     result = session.run("MATCH (a) WHERE id(a) = $n "
@@ -106,8 +106,7 @@ def test_can_rollback_transaction_using_with_block(session):
         # Update a property
         tx.run("MATCH (a) WHERE id(a) = $n "
                "SET a.foo = $foo", {"n": node_id, "foo": "bar"})
-
-        tx.success = False
+        tx.rollback()
 
     # Check the property value
     result = session.run("MATCH (a) WHERE id(a) = $n "

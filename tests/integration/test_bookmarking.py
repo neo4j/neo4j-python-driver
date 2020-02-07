@@ -58,9 +58,12 @@ def test_bookmark_should_be_none_after_rollback(driver):
     with driver.session(default_access_mode=WRITE_ACCESS) as session:
         with session.begin_transaction() as tx:
             tx.run("CREATE (a)")
+
     assert session.last_bookmark() is not None
+
     with driver.session(default_access_mode=WRITE_ACCESS) as session:
         with session.begin_transaction() as tx:
             tx.run("CREATE (a)")
-            tx.success = False
+            tx.rollback()
+
     assert session.last_bookmark() is None
