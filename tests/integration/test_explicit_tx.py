@@ -155,13 +155,14 @@ def test_transaction_timeout(driver):
                 tx2.run("MATCH (a:Node) SET a.property = 2").consume()
 
 
-def test_exit_after_explicit_close_should_be_silent(bolt_driver):
-    with bolt_driver.session() as s:
-        with s.begin_transaction() as tx:
-            assert not tx.closed()
-            tx.close()
-            assert tx.closed()
-        assert tx.closed()
+# TODO: Re-enable and test when TC is available again
+# def test_exit_after_explicit_close_should_be_silent(bolt_driver):
+#     with bolt_driver.session() as s:
+#         with s.begin_transaction() as tx:
+#             assert not tx.closed()
+#             tx.close()
+#             assert tx.closed()
+#         assert tx.closed()
 
 
 def test_should_sync_after_commit(session):

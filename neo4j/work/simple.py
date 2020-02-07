@@ -382,7 +382,7 @@ class Session(Workspace):
                     if tx._success is None:
                         tx._success = True
                 finally:
-                    tx.close()
+                    tx._close()
             except (ServiceUnavailable, SessionExpired) as error:
                 errors.append(error)
             except TransientError as error:
@@ -446,7 +446,7 @@ class Transaction:
             return
         if self._success is None:
             self._success = not bool(exc_type)
-        self.close()
+        self._close()
 
     def run(self, statement, parameters=None, **kwparameters):
         """ Run a Cypher statement within the context of this transaction.
@@ -496,7 +496,7 @@ class Transaction:
         :raise TransactionError: if already closed
         """
         self._success = True
-        self.close()
+        self._close()
 
     def rollback(self):
         """ Mark this transaction as unsuccessful and close in order to
@@ -505,9 +505,9 @@ class Transaction:
         :raise TransactionError: if already closed
         """
         self._success = False
-        self.close()
+        self._close()
 
-    def close(self):
+    def _close(self):
         """ Close this transaction, triggering either a COMMIT or a ROLLBACK.
 
         :raise TransactionError: if already closed

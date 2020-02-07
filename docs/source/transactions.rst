@@ -81,8 +81,6 @@ It also gives applications the ability to directly control `commit` and `rollbac
 
     .. automethod:: sync
 
-    .. automethod:: close
-
     .. automethod:: closed
 
     .. automethod:: commit
