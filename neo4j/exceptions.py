@@ -21,33 +21,50 @@
 
 """
 This module contains the core driver exceptions.
+
+Driver API Errors
+=================
++ Neo4jError
+  + ClientError
+    + CypherSyntaxError
+    + CypherTypeError
+    + ConstraintError
+    + AuthError
+    + Forbidden
+      + ForbiddenOnReadOnlyDatabase
+    + NotALeader
+  + DatabaseError
+  + TransientError
+    + DatabaseUnavailable
+
++ DriverError
+  + TransactionError
+  + SessionExpired
+  + ServiceUnavailable
+    + RoutingServiceUnavailable
+    + WriteServiceUnavailable
+    + ReadServiceUnavailable
+  + ConfigurationError
+    + AuthConfigurationError
+    + CertificateConfigurationError
+
+
+Connector API Errors
+====================
++ BoltError
+  + BoltHandshakeError
+  + BoltRoutingError
+  + BoltConnectionError
+  + BoltFailure
+  + BoltSecurityError
+  + BoltIncompleteCommitError
+  + BoltProtocolError
+  + Bolt*
+
 """
 
 
-class ProtocolError(Exception):
-    """ Raised when an unexpected or unsupported protocol event occurs.
-    """
-
-
-class ServiceUnavailable(Exception):
-    """ Raised when no database service is available.
-    """
-
-
-class IncompleteCommitError(Exception):
-    """ Raised when a disconnection occurs while still waiting for a commit
-    response. For non-idempotent write transactions, this leaves the data
-    in an unknown state with regard to whether the transaction completed
-    successfully or not.
-    """
-
-
-class SecurityError(Exception):
-    """ Raised when an action is denied due to security settings.
-    """
-
-
-class CypherError(Exception):
+class Neo4jError(Exception):
     """ Raised when the Cypher engine returns an error to the client.
     """
 
@@ -101,22 +118,22 @@ class CypherError(Exception):
             return cls
 
 
-class ClientError(CypherError):
+class ClientError(Neo4jError):
     """ The Client sent a bad request - changing the request might yield a successful outcome.
     """
 
 
-class DatabaseError(CypherError):
+class DatabaseError(Neo4jError):
     """ The database failed to service the request.
     """
 
 
-class TransientError(CypherError):
+class TransientError(Neo4jError):
     """ The database cannot service the request right now, retrying later might yield a successful outcome.
     """
 
 
-class DatabaseUnavailableError(TransientError):
+class DatabaseUnavailable(TransientError):
     """
     """
 
@@ -136,22 +153,22 @@ class CypherTypeError(ClientError):
     """
 
 
-class NotALeaderError(ClientError):
+class NotALeader(ClientError):
     """
     """
 
 
-class Forbidden(ClientError, SecurityError):
+class Forbidden(ClientError):
     """
     """
 
 
-class ForbiddenOnReadOnlyDatabaseError(Forbidden):
+class ForbiddenOnReadOnlyDatabase(Forbidden):
     """
     """
 
 
-class AuthError(ClientError, SecurityError):
+class AuthError(ClientError):
     """ Raised when authentication failure occurs.
     """
 
@@ -174,7 +191,7 @@ client_errors = {
     "Neo.ClientError.Statement.TypeError": CypherTypeError,
 
     # Forbidden
-    "Neo.ClientError.General.ForbiddenOnReadOnlyDatabase": ForbiddenOnReadOnlyDatabaseError,
+    "Neo.ClientError.General.ForbiddenOnReadOnlyDatabase": ForbiddenOnReadOnlyDatabase,
     "Neo.ClientError.General.ReadOnly": Forbidden,
     "Neo.ClientError.Schema.ForbiddenOnConstraintIndex": Forbidden,
     "Neo.ClientError.Schema.IndexBelongsToConstraint": Forbidden,
@@ -185,18 +202,23 @@ client_errors = {
     "Neo.ClientError.Security.AuthorizationFailed": AuthError,
     "Neo.ClientError.Security.Unauthorized": AuthError,
 
-    # NotALeaderError
-    "Neo.ClientError.Cluster.NotALeader": NotALeaderError
+    # NotALeader
+    "Neo.ClientError.Cluster.NotALeader": NotALeader
 }
 
 transient_errors = {
 
     # DatabaseUnavailableError
-    "Neo.TransientError.General.DatabaseUnavailable": DatabaseUnavailableError
+    "Neo.TransientError.General.DatabaseUnavailable": DatabaseUnavailable
 }
 
 
-class SessionExpired(Exception):
+class DriverError(Exception):
+    """ Raised when the Driver raises an error.
+    """
+
+
+class SessionExpired(DriverError):
     """ Raised when no a session is no longer able to fulfil
     the purpose described by its original parameters.
     """
@@ -205,10 +227,30 @@ class SessionExpired(Exception):
         super(SessionExpired, self).__init__(session, *args, **kwargs)
 
 
-class TransactionError(Exception):
+class TransactionError(DriverError):
     """ Raised when an error occurs while using a transaction.
     """
 
     def __init__(self, transaction, *args, **kwargs):
         super(TransactionError, self).__init__(*args, **kwargs)
         self.transaction = transaction
+
+
+class ServiceUnavailable(DriverError):
+    """ Raised when no database service is available.
+    """
+
+
+class RoutingServiceUnavailable(ServiceUnavailable):
+    """ Raised when no routing service is available.
+    """
+
+
+class WriteServiceUnavailable(ServiceUnavailable):
+    """ Raised when no write service is available.
+    """
+
+
+class ReadServiceUnavailable(ServiceUnavailable):
+    """ Raised when no read service is available.
+    """

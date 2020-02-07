@@ -62,13 +62,17 @@ from time import perf_counter
 from neo4j.addressing import Address
 from neo4j.aio._collections import WaitingList
 from neo4j.aio._mixins import Addressable, Breakable
-from neo4j.errors import (
+from neo4j._exceptions import (
     BoltError,
     BoltConnectionError,
     BoltSecurityError,
     BoltConnectionBroken,
     BoltHandshakeError,
-    Neo4jAvailabilityError,
+)
+from neo4j.exceptions import (
+    RoutingServiceUnavailable,
+    ReadServiceUnavailable,
+    WriteServiceUnavailable,
 )
 from neo4j.api import Version
 from neo4j.conf import PoolConfig
@@ -398,7 +402,7 @@ class Bolt(Addressable, object):
         :return: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
         :raise ServiceUnavailable: if no writers are available
-        :raise ProtocolError: if the routing information received is unusable
+        :raise BoltProtocolError: if the routing information received is unusable
         """
 
 
@@ -817,7 +821,7 @@ class Neo4jPool:
 
         # None of the routers have been successful, so just fail
         log.error("Unable to retrieve routing information")
-        raise Neo4jAvailabilityError("Unable to retrieve routing information")
+        raise RoutingServiceUnavailable("Unable to retrieve routing information")
 
     async def _ensure_routing_table_is_fresh(self, readonly=False):
         """ Update the routing table if stale.
@@ -855,8 +859,10 @@ class Neo4jPool:
         for pool in pools:
             pools_by_usage.setdefault(pool.in_use, []).append(pool)
         if not pools_by_usage:
-            raise Neo4jAvailabilityError("No {} service currently "
-                                         "available".format("read" if readonly else "write"))
+            if readonly:
+                raise ReadServiceUnavailable("No read service currently available")
+            else:
+                raise WriteServiceUnavailable("No write service currently available")
         return choice(pools_by_usage[min(pools_by_usage)])
 
     async def acquire(self, *, readonly=False, force_reset=False):
@@ -878,10 +884,7 @@ class Neo4jPool:
                     # readonly, then intercept NotALeader and
                     # ForbiddenOnReadOnlyDatabase errors to
                     # invalidate the routing table.
-                    from neo4j.errors import (
-                        NotALeader,
-                        ForbiddenOnReadOnlyDatabase,
-                    )
+                    from neo4j.exceptions import ForbiddenOnReadOnlyDatabaseError, NotALeaderError
 
                     def handler(failure):
                         """ Invalidate the routing table before raising the failure.
@@ -890,8 +893,8 @@ class Neo4jPool:
                         self._routing_table.ttl = 0
                         raise failure
 
-                    cx.set_failure_handler(NotALeader, handler)
-                    cx.set_failure_handler(ForbiddenOnReadOnlyDatabase, handler)
+                    cx.set_failure_handler(NotALeaderError, handler)
+                    cx.set_failure_handler(ForbiddenOnReadOnlyDatabaseError, handler)
                 return cx
 
     async def release(self, connection, *, force_reset=False):
@@ -905,12 +908,9 @@ class Neo4jPool:
                 pass
             else:
                 # Unhook any custom error handling and exit.
-                from neo4j.errors import (
-                    NotALeader,
-                    ForbiddenOnReadOnlyDatabase,
-                )
-                connection.del_failure_handler(NotALeader)
-                connection.del_failure_handler(ForbiddenOnReadOnlyDatabase)
+                from neo4j.exceptions import ForbiddenOnReadOnlyDatabaseError, NotALeaderError
+                connection.del_failure_handler(NotALeaderError)
+                connection.del_failure_handler(ForbiddenOnReadOnlyDatabaseError)
                 break
         else:
             raise ValueError("Connection does not belong to this pool")

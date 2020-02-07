@@ -168,53 +168,14 @@ class BoltFailure(BoltError):
             return None
 
 
-class ClientError(BoltFailure):
-    """
-    """
-
-    transient = False
-
-
-class NotALeader(ClientError):
-    """
-    """
-
-    code = "Neo.ClientError.Cluster.NotALeader"
-
-
-class ForbiddenOnReadOnlyDatabase(ClientError):
-    """
-    """
-
-    code = "Neo.ClientError.General.ForbiddenOnReadOnlyDatabase"
-
-
-class DatabaseError(BoltFailure):
-    """
-    """
-
-    transient = False
-
-
-class TransientError(BoltFailure):
-    """
-    """
-
-    transient = True
-
-
-class Neo4jError(Exception):
-    """ Base class for all Neo4j service exceptions.
+class BoltIncompleteCommitError(BoltError):
+    """ Raised when a disconnection occurs while still waiting for a commit
+    response. For non-idempotent write transactions, this leaves the data
+    in an unknown state with regard to whether the transaction completed
+    successfully or not.
     """
 
 
-class Neo4jAvailabilityError(Neo4jError):
-    """ Raised when a Neo4j service is partially or completely
-    unavailable.
-    """
-
-
-class Neo4jCompatibilityError(Neo4jError):
-    """ Raised when expected functionality is not supported or
-    available.
+class BoltProtocolError(BoltError):
+    """ Raised when an unexpected or unsupported protocol event occurs.
     """

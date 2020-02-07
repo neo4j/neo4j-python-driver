@@ -29,15 +29,17 @@ from neo4j.api import (
 from neo4j.io._courier import MessageInbox
 from neo4j.meta import get_user_agent
 from neo4j.exceptions import (
-    ProtocolError,
-    CypherError,
+    Neo4jError,
     AuthError,
     ServiceUnavailable,
-    DatabaseUnavailableError,
-    NotALeaderError,
-    ForbiddenOnReadOnlyDatabaseError,
-    IncompleteCommitError,
+    DatabaseUnavailable,
+    NotALeader,
+    ForbiddenOnReadOnlyDatabase,
     SessionExpired,
+)
+from neo4j._exceptions import (
+    BoltIncompleteCommitError,
+    BoltProtocolError,
 )
 from neo4j.packstream import (
     Unpacker,
@@ -238,7 +240,7 @@ class Bolt4x0(Bolt):
         """
 
         def fail(metadata):
-            raise ProtocolError("RESET failed %r" % metadata)
+            raise BoltProtocolError("RESET failed %r" % metadata, self.unresolved_address)
 
         log.debug("[#%04X]  C: RESET", self.local_port)
         self._append(b"\x0F", response=Response(self, on_failure=fail))
@@ -323,17 +325,16 @@ class Bolt4x0(Bolt):
             log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
             try:
                 response.on_failure(summary_metadata or {})
-            except (ServiceUnavailable, DatabaseUnavailableError):
+            except (ServiceUnavailable, DatabaseUnavailable):
                 if self.pool:
                     self.pool.deactivate(self.unresolved_address),
                 raise
-            except (NotALeaderError, ForbiddenOnReadOnlyDatabaseError):
+            except (NotALeader, ForbiddenOnReadOnlyDatabase):
                 if self.pool:
                     self.pool.on_write_failure(self.unresolved_address),
                 raise
         else:
-            raise ProtocolError("Unexpected response message with "
-                                "signature %02X" % summary_signature)
+            raise BoltProtocolError("Unexpected response message with signature %02X" % summary_signature, self.unresolved_address)
 
         return len(details), 1
 
@@ -357,7 +358,7 @@ class Bolt4x0(Bolt):
         # unable to confirm that the COMMIT completed successfully.
         for response in self.responses:
             if isinstance(response, CommitResponse):
-                raise IncompleteCommitError(message)
+                raise BoltIncompleteCommitError(message, address=None)
 
         if direct_driver:
             raise ServiceUnavailable(message)
@@ -599,7 +600,7 @@ class Response:
         handler = self.handlers.get("on_summary")
         if callable(handler):
             handler()
-        raise CypherError.hydrate(**metadata)
+        raise Neo4jError.hydrate(**metadata)
 
     def on_ignored(self, metadata=None):
         """ Called when an IGNORED message has been received.

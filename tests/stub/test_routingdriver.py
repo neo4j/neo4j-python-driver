@@ -28,7 +28,7 @@ from neo4j import (
     Neo4jDriver,
 )
 
-from neo4j.errors import BoltRoutingError
+from neo4j._exceptions import BoltRoutingError
 
 from neo4j.exceptions import (
     ServiceUnavailable,

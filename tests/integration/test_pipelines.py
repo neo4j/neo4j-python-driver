@@ -25,7 +25,7 @@ from unittest import SkipTest
 from pytest import raises
 
 from neo4j.packstream import Structure
-from neo4j.exceptions import CypherError, CypherSyntaxError
+from neo4j.exceptions import Neo4jError, CypherSyntaxError
 from neo4j.graph import Node, Relationship, Path
 from neo4j.work.pipelining import PullOrderException
 
@@ -85,7 +85,7 @@ def test_can_run_write_statement_with_no_return(driver):
 
 def test_fails_on_bad_syntax(bolt_driver):
     pipeline = bolt_driver.pipeline(flush_every=0)
-    with raises(CypherError):
+    with raises(Neo4jError):
         pipeline.push("X")
         next(pipeline.pull())
 
@@ -95,13 +95,13 @@ def test_doesnt_fail_on_bad_syntax_somewhere(bolt_driver):
     pipeline.push("RETURN 1 AS n")
     pipeline.push("X")
     assert next(pipeline.pull())[0] == 1
-    with raises(CypherError):
+    with raises(Neo4jError):
         next(pipeline.pull())
 
 
 def test_fails_on_missing_parameter(bolt_driver):
     pipeline = bolt_driver.pipeline(flush_every=0)
-    with raises(CypherError):
+    with raises(Neo4jError):
         pipeline.push("RETURN $x")
         next(pipeline.pull())
 
@@ -187,7 +187,7 @@ def test_can_return_path(neo4j_driver):
 def test_can_handle_cypher_error(bolt_driver):
     with bolt_driver.pipeline(flush_every=0) as pipeline:
         pipeline.push("X")
-        with raises(CypherError):
+        with raises(Neo4jError):
             next(pipeline.pull())
 
 
@@ -294,7 +294,7 @@ def test_automatic_reset_after_failure(bolt_driver):
         try:
             pipeline.push("X")
             next(pipeline.pull())
-        except CypherError:
+        except Neo4jError:
             pipeline.push("RETURN 1")
             record = next(pipeline.pull())
             assert record[0] == 1
