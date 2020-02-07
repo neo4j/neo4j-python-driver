@@ -50,6 +50,48 @@ def test_bolt_uri_constructs_bolt_driver(driver_info, test_script):
             assert isinstance(driver, BoltDriver)
 
 
+def test_direct_driver_with_wrong_port(driver_info):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_driver_with_wrong_port
+    uri = "bolt://127.0.0.1:9002"
+    with pytest.raises(ServiceUnavailable):
+        driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
+        # assert isinstance(driver, BoltDriver)
+        # with pytest.raises(ServiceUnavailable):
+        #     driver.verify_connectivity()
+
+
+@pytest.mark.parametrize(
+    "test_script, test_expected",
+    [
+        ("v3/return_1_port_9001.script", "Neo4j/3.0.0"),
+        ("v4x0/return_1_port_9001.script", "Neo4j/4.0.0"),
+    ]
+)
+def test_direct_verify_connectivity(driver_info, test_script, test_expected):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_verify_connectivity
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            assert driver.verify_connectivity() == test_expected
+
+
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/disconnect_on_run.script",
+        "v4x0/disconnect_on_run.script",
+    ]
+)
+def test_direct_verify_connectivity_disconnect_on_run(driver_info, test_script):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_verify_connectivity_disconnect_on_run
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with pytest.raises(ServiceUnavailable):
+                driver.verify_connectivity()
+
+
 @pytest.mark.parametrize(
     "test_script",
     [
@@ -64,7 +106,7 @@ def test_direct_disconnect_on_run(driver_info, test_script):
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with pytest.raises(ServiceUnavailable):
                 with driver.session() as session:
-                    session.run("RETURN $x", {"x": 1}).consume()
+                    session.run("RETURN 1 AS x").consume()
 
 
 @pytest.mark.parametrize(

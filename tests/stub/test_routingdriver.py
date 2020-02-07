@@ -60,6 +60,45 @@ def test_bolt_plus_routing_uri_constructs_neo4j_driver(driver_info, test_script)
 @pytest.mark.parametrize(
     "test_script",
     [
+        "v3/router.script",
+        "v4x0/router_port_9001_one_read_port_9004_one_write_port_9006.script",
+    ]
+)
+def test_neo4j_driver_verify_connectivity(driver_info, test_script):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_driver_verify_connectivity
+    uri = "bolt+routing://127.0.0.1:9001"
+    with StubCluster(test_script):
+        driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
+        assert isinstance(driver, Neo4jDriver)
+
+    with StubCluster(test_script):
+        assert driver.verify_connectivity() is not None
+        driver.close()
+
+
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/router.script",
+        "v4x0/router_port_9001_one_read_port_9004_one_write_port_9006.script",
+    ]
+)
+def test_neo4j_driver_verify_connectivity_server_down(driver_info, test_script):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_driver_verify_connectivity_server_down
+    uri = "bolt+routing://127.0.0.1:9001"
+    with StubCluster(test_script):
+        driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
+        assert isinstance(driver, Neo4jDriver)
+
+        with pytest.raises(ServiceUnavailable):
+            driver.verify_connectivity()
+
+        driver.close()
+
+
+@pytest.mark.parametrize(
+    "test_script",
+    [
         "v3/non_router.script",
         "v4x0/routing_table_failure_not_a_router.script",
     ]

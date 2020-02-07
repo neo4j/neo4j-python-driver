@@ -242,6 +242,17 @@ class Driver:
         """
         self._pool.close()
 
+    def verify_connectivity(self, **config):
+        """ This verifies if the driver can connect to a remote server or a cluster
+        by establishing a network connection with the remote and possibly exchanging
+        a few data before closing the connection. It throws exception if fails to connect.
+
+        Use the exception to further understand the cause of the connectivity problem.
+
+        Note: Even if this method throws an exception, the driver still need to be closed via close() to free up all resources.
+        """
+        raise NotImplementedError
+
 
 class AsyncDriver:
 
@@ -307,6 +318,15 @@ class BoltDriver(Direct, Driver):
                                          PipelineConfig.consume(config))
         return Pipeline(self._pool, pipeline_config)
 
+    def verify_connectivity(self, **config):
+        server_agent = None
+        with self.session(**config) as session:
+            result = session.run("RETURN 1 AS x")
+            value = result.single().value()
+            summary = result.summary()
+            server_agent = summary.server.agent
+        return server_agent
+
 
 class Neo4jDriver(Routing, Driver):
     """ A :class:`.Neo4jDriver` is created from a ``neo4j`` URI. The
@@ -342,6 +362,24 @@ class Neo4jDriver(Routing, Driver):
         pipeline_config = PipelineConfig(self._default_workspace_config,
                                          PipelineConfig.consume(config))
         return Pipeline(self._pool, pipeline_config)
+
+    def get_routing_table(self):
+        return self._pool.routing_table
+
+    def verify_connectivity(self, **config):
+        # TODO: Improve and update Stub Test Server to be able to test.
+        return self._verify_routing_connectivity()
+
+    def _verify_routing_connectivity(self):
+        table = self.get_routing_table()
+        routing_info = {}
+        for ix in list(table.routers):
+            routing_info[ix] = self._pool.fetch_routing_info(table.routers[0])
+
+        for key, val in routing_info.items():
+            if val is not None:
+                return routing_info
+        raise ServiceUnavailable("Could not connect to any routing servers.")
 
 
 class AsyncBoltDriver(Direct, AsyncDriver):
