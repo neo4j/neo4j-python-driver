@@ -405,9 +405,49 @@ class Session(Workspace):
             raise ServiceUnavailable("Transaction failed")
 
     def read_transaction(self, unit_of_work, *args, **kwargs):
+        """
+        Execute a unit of work in a managed read transaction.
+        This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
+
+        Managed transactions should not generally be explicitly committed (via tx.commit()).
+
+        Example:
+
+        def do_cypher(tx, cypher):
+            result = tx.run(cypher)
+            # consume result
+            return 1
+
+        session.read_transaction(do_cypher, "RETURN 1")
+
+        :param unit_of_work: A function that takes a transaction as an argument and do work with the transaction. unit_of_work(tx, *args, **kwargs)
+        :param args: arguments for the unit_of_work function
+        :param kwargs: key word arguments for the unit_of_work function
+        :return: a result as returned by the given unit of work
+        """
         return self._run_transaction(READ_ACCESS, unit_of_work, *args, **kwargs)
 
     def write_transaction(self, unit_of_work, *args, **kwargs):
+        """
+        Execute a unit of work in a managed write transaction.
+        This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
+
+        Managed transactions should not generally be explicitly committed (via tx.commit()).
+
+        Example:
+
+        def do_cypher(tx, cypher):
+            result = tx.run(cypher)
+            # consume result
+            return 1
+
+        session.write_transaction(do_cypher, "RETURN 1")
+
+        :param unit_of_work: A function that takes a transaction as an argument and do work with the transaction. unit_of_work(tx, *args, **kwargs)
+        :param args: key word arguments for the unit_of_work function
+        :param kwargs: key word arguments for the unit_of_work function
+        :return: a result as returned by the given unit of work
+        """
         return self._run_transaction(WRITE_ACCESS, unit_of_work, *args, **kwargs)
 
 
