@@ -376,13 +376,13 @@ class Session(Workspace):
                 try:
                     result = unit_of_work(tx, *args, **kwargs)
                 except Exception:
-                    tx.success = False
+                    tx._success = False
                     raise
                 else:
-                    if tx.success is None:
-                        tx.success = True
+                    if tx._success is None:
+                        tx._success = True
                 finally:
-                    tx.close()
+                    tx._close()
             except (ServiceUnavailable, SessionExpired) as error:
                 errors.append(error)
             except TransientError as error:
@@ -405,17 +405,57 @@ class Session(Workspace):
             raise ServiceUnavailable("Transaction failed")
 
     def read_transaction(self, unit_of_work, *args, **kwargs):
+        """
+        Execute a unit of work in a managed read transaction.
+        This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
+
+        Managed transactions should not generally be explicitly committed (via tx.commit()).
+
+        Example:
+
+        def do_cypher(tx, cypher):
+            result = tx.run(cypher)
+            # consume result
+            return 1
+
+        session.read_transaction(do_cypher, "RETURN 1")
+
+        :param unit_of_work: A function that takes a transaction as an argument and do work with the transaction. unit_of_work(tx, *args, **kwargs)
+        :param args: arguments for the unit_of_work function
+        :param kwargs: key word arguments for the unit_of_work function
+        :return: a result as returned by the given unit of work
+        """
         return self._run_transaction(READ_ACCESS, unit_of_work, *args, **kwargs)
 
     def write_transaction(self, unit_of_work, *args, **kwargs):
+        """
+        Execute a unit of work in a managed write transaction.
+        This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
+
+        Managed transactions should not generally be explicitly committed (via tx.commit()).
+
+        Example:
+
+        def do_cypher(tx, cypher):
+            result = tx.run(cypher)
+            # consume result
+            return 1
+
+        session.write_transaction(do_cypher, "RETURN 1")
+
+        :param unit_of_work: A function that takes a transaction as an argument and do work with the transaction. unit_of_work(tx, *args, **kwargs)
+        :param args: key word arguments for the unit_of_work function
+        :param kwargs: key word arguments for the unit_of_work function
+        :return: a result as returned by the given unit of work
+        """
         return self._run_transaction(WRITE_ACCESS, unit_of_work, *args, **kwargs)
 
 
 class Transaction:
     """ Container for multiple Cypher queries to be executed within
     a single context. Transactions can be used within a :py:const:`with`
-    block where the value of :attr:`.success` will determine whether
-    the transaction is committed or rolled back on :meth:`.Transaction.close`::
+    block where the transaction is committed or rolled back on based on
+    whether or not an exception is raised::
 
         with session.begin_transaction() as tx:
             pass
@@ -426,7 +466,11 @@ class Transaction:
     #: will be rolled back. This attribute can be set in user code
     #: multiple times before a transaction completes, with only the final
     #: value taking effect.
-    success = None
+    #
+    # This became internal with Neo4j 4.0, when the server-side
+    # transaction semantics changed.
+    #
+    _success = None
 
     _closed = False
 
@@ -440,9 +484,9 @@ class Transaction:
     def __exit__(self, exc_type, exc_value, traceback):
         if self._closed:
             return
-        if self.success is None:
-            self.success = not bool(exc_type)
-        self.close()
+        if self._success is None:
+            self._success = not bool(exc_type)
+        self._close()
 
     def run(self, statement, parameters=None, **kwparameters):
         """ Run a Cypher statement within the context of this transaction.
@@ -489,29 +533,22 @@ class Transaction:
         """ Mark this transaction as successful and close in order to
         trigger a COMMIT. This is functionally equivalent to::
 
-            tx.success = True
-            tx.close()
-
         :raise TransactionError: if already closed
         """
-        self.success = True
-        self.close()
+        self._success = True
+        self._close()
 
     def rollback(self):
         """ Mark this transaction as unsuccessful and close in order to
         trigger a ROLLBACK. This is functionally equivalent to::
 
-            tx.success = False
-            tx.close()
-
         :raise TransactionError: if already closed
         """
-        self.success = False
-        self.close()
+        self._success = False
+        self._close()
 
-    def close(self):
-        """ Close this transaction, triggering either a COMMIT or a ROLLBACK,
-        depending on the value of :attr:`.success`.
+    def _close(self):
+        """ Close this transaction, triggering either a COMMIT or a ROLLBACK.
 
         :raise TransactionError: if already closed
         """
@@ -519,11 +556,11 @@ class Transaction:
         try:
             self.sync()
         except Neo4jError:
-            self.success = False
+            self._success = False
             raise
         finally:
             if self.session.has_transaction():
-                if self.success:
+                if self._success:
                     self.session.commit_transaction()
                 else:
                     self.session.rollback_transaction()

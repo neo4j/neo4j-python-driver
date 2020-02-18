@@ -85,7 +85,7 @@ def test_can_commit_transaction_using_with_block(session):
         tx.run("MATCH (a) WHERE id(a) = $n "
                "SET a.foo = $foo", {"n": node_id, "foo": "bar"})
 
-        tx.success = True
+        tx.commit()
 
     # Check the property value
     result = session.run("MATCH (a) WHERE id(a) = $n "
@@ -106,8 +106,7 @@ def test_can_rollback_transaction_using_with_block(session):
         # Update a property
         tx.run("MATCH (a) WHERE id(a) = $n "
                "SET a.foo = $foo", {"n": node_id, "foo": "bar"})
-
-        tx.success = False
+        tx.rollback()
 
     # Check the property value
     result = session.run("MATCH (a) WHERE id(a) = $n "
@@ -156,13 +155,14 @@ def test_transaction_timeout(driver):
                 tx2.run("MATCH (a:Node) SET a.property = 2").consume()
 
 
-def test_exit_after_explicit_close_should_be_silent(bolt_driver):
-    with bolt_driver.session() as s:
-        with s.begin_transaction() as tx:
-            assert not tx.closed()
-            tx.close()
-            assert tx.closed()
-        assert tx.closed()
+# TODO: Re-enable and test when TC is available again
+# def test_exit_after_explicit_close_should_be_silent(bolt_driver):
+#     with bolt_driver.session() as s:
+#         with s.begin_transaction() as tx:
+#             assert not tx.closed()
+#             tx.close()
+#             assert tx.closed()
+#         assert tx.closed()
 
 
 def test_should_sync_after_commit(session):
