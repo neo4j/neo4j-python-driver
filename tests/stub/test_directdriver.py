@@ -50,6 +50,28 @@ def test_bolt_uri_constructs_bolt_driver(driver_info, test_script):
             assert isinstance(driver, BoltDriver)
 
 
+@pytest.mark.parametrize(
+    "test_script, test_expected",
+    [
+        ("v1/empty_explicit_hello_goodbye.script", ServiceUnavailable),
+        ("v2/empty_explicit_hello_goodbye.script", ServiceUnavailable),
+        ("v3/empty_explicit_hello_goodbye.script", None),
+        ("v4x0/empty_explicit_hello_goodbye.script", None),
+    ]
+)
+def test_direct_driver_handshake_negotiation(driver_info, test_script, test_expected):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_driver_handshake_negotiation
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        if test_expected:
+            with pytest.raises(test_expected):
+                driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
+        else:
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
+            assert isinstance(driver, BoltDriver)
+            driver.close()
+
+
 def test_direct_driver_with_wrong_port(driver_info):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_driver_with_wrong_port
     uri = "bolt://127.0.0.1:9002"
