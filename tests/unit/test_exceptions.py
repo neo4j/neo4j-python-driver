@@ -59,6 +59,8 @@ from neo4j._exceptions import (
     BoltProtocolError,
 )
 
+from neo4j.io import Bolt
+
 
 # python -m pytest tests/unit/test_exceptions.py -s -v
 
@@ -89,3 +91,18 @@ def test_bolt_protocol_error():
         e.match("FAIL!")
 
     e.match("Driver does not support Bolt protocol version: 0x00000205")
+
+
+def test_bolt_handshake_error():
+    handshake = b"\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00"
+    response = b"\x00\x00\x00\x00"
+    supported_versions = Bolt.protocol_handlers().keys()
+
+    with pytest.raises(BoltHandshakeError) as e:
+        error = BoltHandshakeError("The Neo4J server does not support communication with this driver. Supported Bolt Protocols {}".format(supported_versions), address="localhost", request_data=handshake, response_data=response)
+        assert error.address == "localhost"
+        assert error.request_data == handshake
+        assert error.response_data == response
+        raise error
+
+    e.match("The Neo4J server does not support communication with this driver. Supported Bolt Protocols ")
