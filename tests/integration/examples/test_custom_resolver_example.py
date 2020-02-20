@@ -19,11 +19,17 @@
 # limitations under the License.
 
 
+import pytest
+
 # tag::custom-resolver-import[]
 from neo4j import GraphDatabase
 # end::custom-resolver-import[]
 
+from neo4j._exceptions import BoltHandshakeError
 from tests.integration.examples import DriverSetupExample
+
+
+# python -m pytest tests/integration/examples/test_custom_resolver_example.py -s -v
 
 
 class CustomResolverExample(DriverSetupExample):
@@ -44,5 +50,8 @@ class CustomResolverExample(DriverSetupExample):
     # end::custom-resolver[]
 
 
-def test(uri, auth):
-    CustomResolverExample.test(uri, auth)
+def test_example(uri, auth):
+    try:
+        CustomResolverExample.test(uri, auth)
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])

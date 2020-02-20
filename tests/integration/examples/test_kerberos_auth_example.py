@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from pytest import skip
+import pytest
 
 # tag::kerberos-auth-import[]
 from neo4j import GraphDatabase, kerberos_auth
@@ -28,6 +28,8 @@ from neo4j import GraphDatabase, kerberos_auth
 from tests.integration.examples import DriverSetupExample
 
 
+# python -m pytest tests/integration/examples/test_kerberos_auth_example.py -s -v
+
 class KerberosAuthExample(DriverSetupExample):
     # tag::kerberos-auth[]
     def __init__(self, uri, ticket):
@@ -35,5 +37,5 @@ class KerberosAuthExample(DriverSetupExample):
     # end::kerberos-auth[]
 
 
-def test():
-    skip("Currently no way to test Kerberos auth")
+def test_example():
+    pytest.skip("Currently no way to test Kerberos auth")

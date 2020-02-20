@@ -19,12 +19,17 @@
 # limitations under the License.
 
 
+import pytest
+
 # tag::custom-auth-import[]
 from neo4j import GraphDatabase, custom_auth
 # end::custom-auth-import[]
 
+from neo4j._exceptions import BoltHandshakeError
 from tests.integration.examples import DriverSetupExample
 
+
+# python -m pytest tests/integration/examples/test_custom_auth_example.py -s -v
 
 class CustomAuthExample(DriverSetupExample):
 
@@ -35,5 +40,8 @@ class CustomAuthExample(DriverSetupExample):
     # end::custom-auth[]
 
 
-def test(uri, auth):
-    CustomAuthExample.test(uri, auth[0], auth[1], None, "basic", key="value")
+def test_example(uri, auth):
+    try:
+        CustomAuthExample.test(uri, auth[0], auth[1], None, "basic", key="value")
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])

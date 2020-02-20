@@ -19,6 +19,8 @@
 # limitations under the License.
 
 
+import pytest
+
 from contextlib import redirect_stdout
 from io import StringIO
 
@@ -26,6 +28,10 @@ from io import StringIO
 from neo4j import GraphDatabase
 # end::hello-world-import[]
 
+from neo4j._exceptions import BoltHandshakeError
+
+
+# python -m pytest tests/integration/examples/test_hello_world_example.py -s -v
 
 # tag::hello-world[]
 class HelloWorldExample:
@@ -55,10 +61,14 @@ class HelloWorldExample:
 
 
 def test_hello_world_example(uri, auth):
-    s = StringIO()
-    with redirect_stdout(s):
-        example = HelloWorldExample(uri, auth)
-        example.print_greeting("hello, world")
-        example.close()
+    try:
+        s = StringIO()
+        with redirect_stdout(s):
+            example = HelloWorldExample(uri, auth)
+            example.print_greeting("hello, world")
+            example.close()
 
-    assert s.getvalue().startswith("hello, world, from node ")
+        assert s.getvalue().startswith("hello, world, from node ")
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
+

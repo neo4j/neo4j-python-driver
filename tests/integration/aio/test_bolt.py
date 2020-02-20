@@ -21,27 +21,40 @@
 
 from asyncio import sleep, wait, wait_for, TimeoutError
 
+import pytest
 from pytest import mark, raises
+
 
 from neo4j import PoolConfig
 from neo4j.aio import Bolt, BoltPool
-from neo4j._exceptions import BoltConnectionError, BoltTransactionError
+from neo4j._exceptions import (
+    BoltConnectionError,
+    BoltTransactionError,
+    BoltHandshakeError,
+)
 from neo4j.exceptions import ClientError
 
+# python -m pytest tests/integration/aio/test_bolt.py -s -v
 
 @mark.asyncio
 async def test_good_connectivity(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    assert bolt.protocol_version
-    await bolt.close()
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        assert bolt.protocol_version
+        await bolt.close()
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
+
 
 
 @mark.asyncio
 async def test_connectivity_over_ipv4(address, auth):
-    bolt = await Bolt.open(("127.0.0.1", address[1]), auth=auth)
-    assert bolt.protocol_version
-    await bolt.close()
-
+    try:
+        bolt = await Bolt.open(("127.0.0.1", address[1]), auth=auth)
+        assert bolt.protocol_version
+        await bolt.close()
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 # @mark.asyncio
 # async def test_connectivity_over_ipv6(address, auth):
@@ -59,16 +72,21 @@ async def test_bad_connectivity(address, auth):
 
 @mark.asyncio
 async def test_security_none(address, auth):
-    bolt = await Bolt.open(address, auth=auth, secure=None)
-    assert not bolt.secure
-    await bolt.close()
-
+    try:
+        bolt = await Bolt.open(address, auth=auth, secure=None)
+        assert not bolt.secure
+        await bolt.close()
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 @mark.asyncio
 async def test_security_false(address, auth):
-    bolt = await Bolt.open(address, auth=auth, secure=False)
-    assert not bolt.secure
-    await bolt.close()
+    try:
+        bolt = await Bolt.open(address, auth=auth, secure=False)
+        assert not bolt.secure
+        await bolt.close()
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 # TODO: re-enable when we have a way of testing against full certs
@@ -103,142 +121,178 @@ async def test_bad_protocol_version_format(address, auth):
 
 @mark.asyncio
 async def test_bad_auth(address, auth):
-    with raises(ClientError) as e:
-        _ = await Bolt.open(address, auth=("sneaky", "hacker"))
-    error = e.value
-    assert error.category == "Security"
-    assert error.title == "Unauthorized"
+    try:
+        with raises(ClientError) as e:
+            _ = await Bolt.open(address, auth=("sneaky", "hacker"))
+        error = e.value
+        assert error.category == "Security"
+        assert error.title == "Unauthorized"
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_autocommit_transaction(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    values = []
-    async for record in await bolt.run("UNWIND [2, 3, 5] AS n RETURN n"):
-        values.append(record[0])
-    await bolt.close()
-    assert values == [2, 3, 5]
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        values = []
+        async for record in await bolt.run("UNWIND [2, 3, 5] AS n RETURN n"):
+            values.append(record[0])
+        await bolt.close()
+        assert values == [2, 3, 5]
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_discarded_autocommit_transaction(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    values = []
-    async for record in await bolt.run("UNWIND [2, 3, 5] AS n RETURN n", discard=True):
-        values.append(record[0])
-    await bolt.close()
-    assert values == []
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        values = []
+        async for record in await bolt.run("UNWIND [2, 3, 5] AS n RETURN n", discard=True):
+            values.append(record[0])
+        await bolt.close()
+        assert values == []
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_explicit_transaction_with_commit(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    tx = await bolt.begin()
-    assert not tx.closed
-    values = []
-    async for record in await tx.run("UNWIND [2, 3, 5] AS n RETURN n"):
-        values.append(record[0])
-    bookmark = await tx.commit()
-    assert bookmark  # We can't assert anything about the content
-    assert tx.closed
-    await bolt.close()
-    assert values == [2, 3, 5]
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        tx = await bolt.begin()
+        assert not tx.closed
+        values = []
+        async for record in await tx.run("UNWIND [2, 3, 5] AS n RETURN n"):
+            values.append(record[0])
+        bookmark = await tx.commit()
+        assert bookmark  # We can't assert anything about the content
+        assert tx.closed
+        await bolt.close()
+        assert values == [2, 3, 5]
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_explicit_transaction_with_rollback(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    tx = await bolt.begin()
-    assert not tx.closed
-    values = []
-    async for record in await tx.run("UNWIND [2, 3, 5] AS n RETURN n"):
-        values.append(record[0])
-    await tx.rollback()
-    assert tx.closed
-    await bolt.close()
-    assert values == [2, 3, 5]
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        tx = await bolt.begin()
+        assert not tx.closed
+        values = []
+        async for record in await tx.run("UNWIND [2, 3, 5] AS n RETURN n"):
+            values.append(record[0])
+        await tx.rollback()
+        assert tx.closed
+        await bolt.close()
+        assert values == [2, 3, 5]
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_autocommit_in_autocommit(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    values = []
-    async for r1 in await bolt.run("UNWIND [2, 3, 5] AS n RETURN n"):
-        async for r2 in await bolt.run("UNWIND [7, 11, 13] AS n RETURN n"):
-            values.append(r1[0] * r2[0])
-    await bolt.close()
-    assert values == [14, 22, 26, 21, 33, 39, 35, 55, 65]
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        values = []
+        async for r1 in await bolt.run("UNWIND [2, 3, 5] AS n RETURN n"):
+            async for r2 in await bolt.run("UNWIND [7, 11, 13] AS n RETURN n"):
+                values.append(r1[0] * r2[0])
+        await bolt.close()
+        assert values == [14, 22, 26, 21, 33, 39, 35, 55, 65]
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_explicit_in_autocommit(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    tx = await bolt.begin()
-    with raises(BoltTransactionError):
-        _ = await bolt.run("UNWIND [2, 3, 5] AS n RETURN n")
-    await tx.rollback()
-    await bolt.close()
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        tx = await bolt.begin()
+        with raises(BoltTransactionError):
+            _ = await bolt.run("UNWIND [2, 3, 5] AS n RETURN n")
+        await tx.rollback()
+        await bolt.close()
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_autocommit_in_explicit(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    tx = await bolt.begin()
-    async for _ in await tx.run("UNWIND [2, 3, 5] AS n RETURN n"):
-        with raises(BoltTransactionError):
-            _ = await bolt.run("UNWIND [7, 11, 13] AS n RETURN n")
-    await tx.commit()
-    await bolt.close()
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        tx = await bolt.begin()
+        async for _ in await tx.run("UNWIND [2, 3, 5] AS n RETURN n"):
+            with raises(BoltTransactionError):
+                _ = await bolt.run("UNWIND [7, 11, 13] AS n RETURN n")
+        await tx.commit()
+        await bolt.close()
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_explicit_in_explicit(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    tx = await bolt.begin()
-    with raises(BoltTransactionError):
-        _ = await bolt.begin()
-    await tx.rollback()
-    await bolt.close()
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        tx = await bolt.begin()
+        with raises(BoltTransactionError):
+            _ = await bolt.begin()
+        await tx.rollback()
+        await bolt.close()
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_commit_is_non_idempotent(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    tx = await bolt.begin()
-    values = []
-    async for record in await tx.run("UNWIND [2, 3, 5] AS n RETURN n"):
-        values.append(record[0])
-    await tx.commit()
-    with raises(BoltTransactionError):
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        tx = await bolt.begin()
+        values = []
+        async for record in await tx.run("UNWIND [2, 3, 5] AS n RETURN n"):
+            values.append(record[0])
         await tx.commit()
-    await bolt.close()
-    assert values == [2, 3, 5]
+        with raises(BoltTransactionError):
+            await tx.commit()
+        await bolt.close()
+        assert values == [2, 3, 5]
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_rollback_is_non_idempotent(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    tx = await bolt.begin()
-    values = []
-    async for record in await tx.run("UNWIND [2, 3, 5] AS n RETURN n"):
-        values.append(record[0])
-    await tx.rollback()
-    with raises(BoltTransactionError):
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        tx = await bolt.begin()
+        values = []
+        async for record in await tx.run("UNWIND [2, 3, 5] AS n RETURN n"):
+            values.append(record[0])
         await tx.rollback()
-    await bolt.close()
-    assert values == [2, 3, 5]
+        with raises(BoltTransactionError):
+            await tx.rollback()
+        await bolt.close()
+        assert values == [2, 3, 5]
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_cypher_error_in_autocommit_transaction(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    with raises(ClientError) as e:
-        async for _ in await bolt.run("X"):
-            pass
-    error = e.value
-    assert isinstance(error, ClientError)
-    assert error.category == "Statement"
-    assert error.title == "SyntaxError"
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        with raises(ClientError) as e:
+            async for _ in await bolt.run("X"):
+                pass
+        error = e.value
+        assert isinstance(error, ClientError)
+        assert error.category == "Statement"
+        assert error.title == "SyntaxError"
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.skip(reason="TODO: fix correct error logic after error and exception refactoring")
@@ -257,21 +311,24 @@ async def test_can_resume_after_error_in_autocommit_transaction(address, auth):
 
 @mark.asyncio
 async def test_cypher_error_in_explicit_transaction(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    tx = await bolt.begin()
-    result1 = await tx.run("X")
-    result2 = await tx.run("RETURN 1")
-    with raises(ClientError) as e:
-        await tx.commit()
-    error = e.value
-    assert isinstance(error, ClientError)
-    assert error.category == "Statement"
-    assert error.title == "SyntaxError"
-    ok = await result1.consume()
-    assert not ok
-    ok = await result2.consume()
-    assert not ok
-    await bolt.close()
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        tx = await bolt.begin()
+        result1 = await tx.run("X")
+        result2 = await tx.run("RETURN 1")
+        with raises(ClientError) as e:
+            await tx.commit()
+        error = e.value
+        assert isinstance(error, ClientError)
+        assert error.category == "Statement"
+        assert error.title == "SyntaxError"
+        ok = await result1.consume()
+        assert not ok
+        ok = await result2.consume()
+        assert not ok
+        await bolt.close()
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
@@ -312,48 +369,56 @@ async def test_dirty_transaction_function(bolt):
 
 @mark.asyncio
 async def test_pool_exhaustion(address, auth):
-    pool = await BoltPool.open(address, auth=auth, max_size=3)
-    first = await pool.acquire()
-    second = await pool.acquire()
-    third = await pool.acquire()
-    assert isinstance(first, Bolt)
-    assert isinstance(second, Bolt)
-    assert isinstance(third, Bolt)
-    with raises(TimeoutError):
-        _ = await wait_for(pool.acquire(), timeout=1)
+    try:
+        pool = await BoltPool.open(address, auth=auth, max_size=3)
+        first = await pool.acquire()
+        second = await pool.acquire()
+        third = await pool.acquire()
+        assert isinstance(first, Bolt)
+        assert isinstance(second, Bolt)
+        assert isinstance(third, Bolt)
+        with raises(TimeoutError):
+            _ = await wait_for(pool.acquire(), timeout=1)
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_pool_reuse(address, auth):
-    pool = await BoltPool.open(address, auth=auth, max_size=3)
-    first = await pool.acquire()
-    second = await pool.acquire()
-    third = await pool.acquire()
-    assert first is not second and second is not third and first is not third
-    await pool.release(second)
-    fourth = await pool.acquire()
-    assert fourth is second
-
+    try:
+        pool = await BoltPool.open(address, auth=auth, max_size=3)
+        first = await pool.acquire()
+        second = await pool.acquire()
+        third = await pool.acquire()
+        assert first is not second and second is not third and first is not third
+        await pool.release(second)
+        fourth = await pool.acquire()
+        assert fourth is second
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 @mark.asyncio
 async def test_pool_release_notifies_acquire(address, auth):
-    pool = await BoltPool.open(address, auth=auth, max_size=1)
-    first = await pool.acquire()
+    try:
+        pool = await BoltPool.open(address, auth=auth, max_size=1)
+        first = await pool.acquire()
 
-    async def delayed_release():
-        await sleep(1)
-        await pool.release(first)
+        async def delayed_release():
+            await sleep(1)
+            await pool.release(first)
 
-    done, pending = await wait([
-        delayed_release(),
-        pool.acquire(),
-    ])
-    assert len(done) == 2
-    assert len(pending) == 0
-    assert pool.size == 1
-    for future in done:
-        result = future.result()
-        assert result is None or result is first
+        done, pending = await wait([
+            delayed_release(),
+            pool.acquire(),
+        ])
+        assert len(done) == 2
+        assert len(pending) == 0
+        assert pool.size == 1
+        for future in done:
+            result = future.result()
+            assert result is None or result is first
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
@@ -363,58 +428,68 @@ async def test_default_pool_open_and_close(bolt_pool, address):
 
 @mark.asyncio
 async def test_closing_pool_with_free_connections(address, auth):
-    pool = await BoltPool.open(address, auth=auth, max_size=3)
-    first = await pool.acquire()
-    second = await pool.acquire()
-    third = await pool.acquire()
-    await pool.release(first)
-    await pool.release(second)
-    await pool.release(third)
-    await pool.close()
-    assert first.closed
-    assert second.closed
-    assert third.closed
-
+    try:
+        pool = await BoltPool.open(address, auth=auth, max_size=3)
+        first = await pool.acquire()
+        second = await pool.acquire()
+        third = await pool.acquire()
+        await pool.release(first)
+        await pool.release(second)
+        await pool.release(third)
+        await pool.close()
+        assert first.closed
+        assert second.closed
+        assert third.closed
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 @mark.asyncio
 async def test_closing_pool_with_in_use_connections(address, auth):
-    pool = await BoltPool.open(address, auth=auth, max_size=3)
-    first = await pool.acquire()
-    second = await pool.acquire()
-    third = await pool.acquire()
-    await pool.close()
-    assert first.closed
-    assert second.closed
-    assert third.closed
-
+    try:
+        pool = await BoltPool.open(address, auth=auth, max_size=3)
+        first = await pool.acquire()
+        second = await pool.acquire()
+        third = await pool.acquire()
+        await pool.close()
+        assert first.closed
+        assert second.closed
+        assert third.closed
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 @mark.asyncio
 async def test_expired_connections_are_not_returned_to_pool(address, auth):
-    pool = await BoltPool.open(address, auth=auth, max_size=1, max_age=0.25)
-    assert pool.size == PoolConfig.init_size
-    assert pool.in_use == 0
-    cx = await pool.acquire()
-    assert pool.size == 1
-    assert pool.in_use == 1
-    await sleep(0.5)
-    await pool.release(cx)
-    assert pool.size == 0
-    assert pool.in_use == 0
-    assert cx.closed
+    try:
+        pool = await BoltPool.open(address, auth=auth, max_size=1, max_age=0.25)
+        assert pool.size == PoolConfig.init_size
+        assert pool.in_use == 0
+        cx = await pool.acquire()
+        assert pool.size == 1
+        assert pool.in_use == 1
+        await sleep(0.5)
+        await pool.release(cx)
+        assert pool.size == 0
+        assert pool.in_use == 0
+        assert cx.closed
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
 async def test_closed_connections_are_not_returned_to_pool(address, auth):
-    pool = await BoltPool.open(address, auth=auth, max_size=1)
-    assert pool.size == PoolConfig.init_size
-    assert pool.in_use == 0
-    cx = await pool.acquire()
-    assert pool.size == 1
-    assert pool.in_use == 1
-    await cx.close()
-    await pool.release(cx)
-    assert pool.size == 0
-    assert pool.in_use == 0
+    try:
+        pool = await BoltPool.open(address, auth=auth, max_size=1)
+        assert pool.size == PoolConfig.init_size
+        assert pool.in_use == 0
+        cx = await pool.acquire()
+        assert pool.size == 1
+        assert pool.in_use == 1
+        await cx.close()
+        await pool.release(cx)
+        assert pool.size == 0
+        assert pool.in_use == 0
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
 @mark.asyncio
@@ -427,6 +502,9 @@ async def test_cannot_release_already_released_connection(bolt_pool):
 
 @mark.asyncio
 async def test_cannot_release_unowned_connection(bolt_pool, address, auth):
-    cx = await Bolt.open(address, auth=auth)
-    with raises(ValueError):
-        await bolt_pool.release(cx)
+    try:
+        cx = await Bolt.open(address, auth=auth)
+        with raises(ValueError):
+            await bolt_pool.release(cx)
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])

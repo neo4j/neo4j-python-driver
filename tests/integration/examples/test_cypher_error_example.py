@@ -17,6 +17,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
 from contextlib import redirect_stdout
 from io import StringIO
 
@@ -46,7 +48,7 @@ class Neo4jErrorExample:
     # end::cypher-error[]
 
 
-def test(bolt_driver):
+def test_example(bolt_driver):
     s = StringIO()
     with redirect_stdout(s):
         example = Neo4jErrorExample(bolt_driver)

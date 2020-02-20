@@ -19,6 +19,8 @@
 # limitations under the License.
 
 
+import pytest
+
 # tag::config-trust-import[]
 from neo4j import GraphDatabase
 # end::config-trust-import[]
@@ -34,7 +36,7 @@ class ConfigTrustExample(DriverSetupExample):
     # end::config-trust[]
 
 
-def test(uri, auth):
+def test_example(uri, auth):
     # TODO: re-enable when we can test with secure=True on Docker
     # ConfigTrustExample.test(uri, auth)
-    pass
+    pytest.skip("re-enable when we can test with secure=True on Docker")

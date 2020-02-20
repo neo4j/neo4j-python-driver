@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from pytest import skip
+import pytest
 
 # tag::service-unavailable-import[]
 from neo4j.exceptions import ServiceUnavailable
@@ -42,5 +42,6 @@ class ServiceUnavailableExample:
     # end::service-unavailable[]
 
 
-def test():
-    skip("TODO")
+def test_example():
+    # TODO: Better error messages for the user
+    pytest.skip("Fix better error messages for the user. Be able to kill the server.")

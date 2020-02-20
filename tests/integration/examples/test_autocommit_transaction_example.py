@@ -24,6 +24,8 @@ from neo4j.work.simple import Statement
 # end::autocommit-transaction-import[]
 
 
+# python -m pytest tests/integration/examples/test_autocommit_transaction_example.py -s -v
+
 class AutocommitTransactionExample:
 
     def __init__(self, driver):
@@ -41,7 +43,7 @@ class AutocommitTransactionExample:
     # end::autocommit-transaction[]
 
 
-def test(driver):
+def test_example(driver):
     eg = AutocommitTransactionExample(driver)
     with eg.driver.session() as session:
         session.run("MATCH (_) DETACH DELETE _")

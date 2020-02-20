@@ -19,12 +19,17 @@
 # limitations under the License.
 
 
+import pytest
+
 # tag::config-max-retry-time-import[]
 from neo4j import GraphDatabase
 # end::config-max-retry-time-import[]
 
+from neo4j._exceptions import BoltHandshakeError
 from tests.integration.examples import DriverSetupExample
 
+
+# python -m pytest tests/integration/examples/test_config_max_retry_time_example.py -s -v
 
 class ConfigMaxRetryTimeExample(DriverSetupExample):
 
@@ -35,4 +40,7 @@ class ConfigMaxRetryTimeExample(DriverSetupExample):
 
 
 def test(uri, auth):
-    ConfigMaxRetryTimeExample.test(uri, auth)
+    try:
+        ConfigMaxRetryTimeExample.test(uri, auth)
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])

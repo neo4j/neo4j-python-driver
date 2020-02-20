@@ -19,10 +19,16 @@
 # limitations under the License.
 
 
+import pytest
+
 # tag::driver-lifecycle-import[]
 from neo4j import GraphDatabase
 # end::driver-lifecycle-import[]
 
+from neo4j._exceptions import BoltHandshakeError
+
+
+# python -m pytest tests/integration/examples/test_driver_lifecycle_example.py -s -v
 
 # tag::driver-lifecycle[]
 class DriverLifecycleExample:
@@ -34,6 +40,9 @@ class DriverLifecycleExample:
 # end::driver-lifecycle[]
 
 
-def test(uri, auth):
-    eg = DriverLifecycleExample(uri, auth)
-    eg.close()
+def test_example(uri, auth):
+    try:
+        eg = DriverLifecycleExample(uri, auth)
+        eg.close()
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
