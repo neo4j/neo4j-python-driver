@@ -28,6 +28,7 @@ from pytest import fixture, skip
 
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
+from neo4j._exceptions import BoltHandshakeError
 from neo4j.io import Bolt
 
 
@@ -277,11 +278,14 @@ def auth():
 
 @fixture(scope="session")
 def bolt_driver(target, auth):
-    driver = GraphDatabase.bolt_driver(target, auth=auth)
     try:
-        yield driver
-    finally:
-        driver.close()
+        driver = GraphDatabase.bolt_driver(target, auth=auth)
+        try:
+            yield driver
+        finally:
+            driver.close()
+    except BoltHandshakeError as error:
+        skip(error.args[0])
 
 
 @fixture(scope="session")
@@ -302,6 +306,8 @@ def neo4j_driver(target, auth):
             skip(error.args[0])
         else:
             raise
+    except BoltHandshakeError as error:
+        skip(error.args[0])
     else:
         try:
             yield driver

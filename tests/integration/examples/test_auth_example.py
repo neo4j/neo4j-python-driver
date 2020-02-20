@@ -19,12 +19,17 @@
 # limitations under the License.
 
 
+import pytest
+
 # tag::basic-auth-import[]
 from neo4j import GraphDatabase
 # end::basic-auth-import[]
 
+from neo4j._exceptions import BoltHandshakeError
 from tests.integration.examples import DriverSetupExample
 
+
+# python -m pytest tests/integration/examples/test_auth_example.py -s -v
 
 class BasicAuthExample(DriverSetupExample):
 
@@ -34,5 +39,8 @@ class BasicAuthExample(DriverSetupExample):
     # end::basic-auth[]
 
 
-def test(uri, auth):
-    BasicAuthExample.test(uri, user=auth[0], password=auth[1])
+def test_example(uri, auth):
+    try:
+        BasicAuthExample.test(uri, user=auth[0], password=auth[1])
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])

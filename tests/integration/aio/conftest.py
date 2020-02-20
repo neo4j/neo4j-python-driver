@@ -18,21 +18,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from pytest import fixture
+import pytest
 
 from neo4j.aio import Bolt, BoltPool
+from neo4j._exceptions import BoltHandshakeError
 
 
-@fixture
+@pytest.fixture
 async def bolt(address, auth):
-    bolt = await Bolt.open(address, auth=auth)
-    yield bolt
-    await bolt.close()
+    try:
+        bolt = await Bolt.open(address, auth=auth)
+        yield bolt
+        await bolt.close()
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])
 
 
-@fixture
+@pytest.fixture
 async def bolt_pool(address, auth):
-    pool = await BoltPool.open(address, auth=auth)
-    yield pool
-    await pool.close()
+    try:
+        pool = await BoltPool.open(address, auth=auth)
+        yield pool
+        await pool.close()
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])

@@ -35,7 +35,7 @@ class SessionExample:
     # end::session[]
 
 
-def test(driver):
+def test_example(driver):
     eg = SessionExample(driver)
     with eg.driver.session() as session:
         session.run("MATCH (_) DETACH DELETE _")

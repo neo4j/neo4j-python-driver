@@ -19,12 +19,17 @@
 # limitations under the License.
 
 
+import pytest
+
 # tag::config-secure-import[]
 from neo4j import GraphDatabase
 # end::config-secure-import[]
 
+from neo4j._exceptions import BoltHandshakeError
 from tests.integration.examples import DriverSetupExample
 
+
+# python -m pytest tests/integration/examples/test_config_secure_example.py -s -v
 
 class ConfigSecureExample(DriverSetupExample):
 
@@ -34,5 +39,8 @@ class ConfigSecureExample(DriverSetupExample):
     # end::config-secure[]
 
 
-def test(uri, auth):
-    ConfigSecureExample.test(uri, auth)
+def test_example(uri, auth):
+    try:
+        ConfigSecureExample.test(uri, auth)
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])

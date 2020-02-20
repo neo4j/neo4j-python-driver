@@ -68,7 +68,7 @@ class ResultRetainExample:
                                 "RETURN count(emp)", company_name=company_name).single().value()
 
 
-def test(driver):
+def test_example(driver):
     eg = ResultRetainExample(driver)
     eg.delete_all()
     eg.add_person("Alice")

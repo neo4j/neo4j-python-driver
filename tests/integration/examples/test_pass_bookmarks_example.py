@@ -18,10 +18,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import pytest
+
 # tag:pass-bookmarks-import[]
 from neo4j import GraphDatabase
 # end::pass-bookmarks-import[]
 
+from neo4j._exceptions import BoltHandshakeError
+
+
+# python -m pytest tests/integration/examples/test_pass_bookmarks_example.py -s -v
 
 # tag::pass-bookmarks[]
 class BookmarksExample:
@@ -85,7 +92,10 @@ class BookmarksExample:
 
 
 def test(uri, auth):
-    eg = BookmarksExample(uri, auth)
-    with eg.driver.session() as session:
-        session.run("MATCH (_) DETACH DELETE _")
-    eg.main()
+    try:
+        eg = BookmarksExample(uri, auth)
+        with eg.driver.session() as session:
+            session.run("MATCH (_) DETACH DELETE _")
+        eg.main()
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])

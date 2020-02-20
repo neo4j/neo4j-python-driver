@@ -19,12 +19,18 @@
 # limitations under the License.
 
 
+import pytest
+
+from neo4j._exceptions import BoltHandshakeError
+
 # tag::config-connection-pool-import[]
 from neo4j import GraphDatabase
 # end::config-connection-pool-import[]
 
 from tests.integration.examples import DriverSetupExample
 
+
+# python -m pytest tests/integration/examples/test_config_connection_pool_example.py -s -v
 
 class ConfigConnectionPoolExample(DriverSetupExample):
 
@@ -38,4 +44,7 @@ class ConfigConnectionPoolExample(DriverSetupExample):
 
 
 def test(uri, auth):
-    ConfigConnectionPoolExample.test(uri, auth)
+    try:
+        ConfigConnectionPoolExample.test(uri, auth)
+    except BoltHandshakeError as error:
+        pytest.skip(error.args[0])

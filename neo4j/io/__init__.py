@@ -70,6 +70,7 @@ from neo4j._exceptions import (
     BoltRoutingError,
     BoltSecurityError,
     BoltProtocolError,
+    BoltHandshakeError,
 )
 from neo4j.exceptions import (
     ServiceUnavailable,
@@ -168,7 +169,7 @@ class Bolt:
         :return:
         """
         config = PoolConfig.consume(config)
-        s, config.protocol_version = connect(address, timeout=timeout, config=config)
+        s, config.protocol_version, handshake, data = connect(address, timeout=timeout, config=config)
 
         if config.protocol_version == (3, 0):
             from neo4j.io._bolt3 import Bolt3
@@ -180,7 +181,9 @@ class Bolt:
             log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
             s.shutdown(SHUT_RDWR)
             s.close()
-            raise BoltProtocolError("Driver does not support Bolt protocol version: 0x%06X%02X", config.protocol_version[0], config.protocol_version[1])
+
+            supported_versions = Bolt.protocol_handlers().keys()
+            raise BoltHandshakeError("The Neo4J server does not support communication with this driver. This driver have support for Bolt Protocols {}".format(supported_versions), address=address, request_data=handshake, response_data=data)
 
         connection.hello()
         return connection
@@ -849,7 +852,7 @@ def _handshake(s, resolved_address):
                                  "(looks like HTTP)".format(resolved_address))
     agreed_version = data[-1], data[-2]
     log.debug("[#%04X]  S: <HANDSHAKE> 0x%06X%02X", local_port, agreed_version[1], agreed_version[0])
-    return s, agreed_version
+    return s, agreed_version, handshake, data
 
 
 def connect(address, *, timeout=None, config):

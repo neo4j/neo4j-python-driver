@@ -49,7 +49,7 @@ class ResultConsumeExample:
     # end::result-consume[]
 
 
-def test(driver):
+def test_example(driver):
     eg = ResultConsumeExample(driver)
     eg.delete_all()
     eg.add_person("Alice")

@@ -19,8 +19,6 @@
 # limitations under the License.
 
 
-from unittest import SkipTest
-
 import pytest
 from pytest import raises
 

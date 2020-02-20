@@ -23,14 +23,17 @@ from pytest import mark, raises, warns, skip
 
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable, AuthError
+from neo4j._exceptions import BoltHandshakeError
 
 
 def test_bolt_uri(bolt_uri, auth):
-    with GraphDatabase.driver(bolt_uri, auth=auth) as driver:
-        with driver.session() as session:
-            value = session.run("RETURN 1").single().value()
-            assert value == 1
-
+    try:
+        with GraphDatabase.driver(bolt_uri, auth=auth) as driver:
+            with driver.session() as session:
+                value = session.run("RETURN 1").single().value()
+                assert value == 1
+    except BoltHandshakeError as error:
+        skip(error.args[0])
 
 # def test_readonly_bolt_uri(readonly_bolt_uri, auth):
 #     with GraphDatabase.driver(readonly_bolt_uri, auth=auth) as driver:
@@ -48,6 +51,8 @@ def test_neo4j_uri(neo4j_uri, auth):
     except ServiceUnavailable as error:
         if error.args[0] == "Server does not support routing":
             skip(error.args[0])
+    except BoltHandshakeError as error:
+        skip(error.args[0])
 
 
 # TODO
@@ -70,16 +75,22 @@ def test_normal_use_case(bolt_driver):
 def test_invalid_url_scheme(service):
     address = service.addresses[0]
     uri = "x://{}:{}".format(address[0], address[1])
-    with raises(ValueError):
-        _ = GraphDatabase.driver(uri, auth=service.auth)
+    try:
+        with raises(ValueError):
+            _ = GraphDatabase.driver(uri, auth=service.auth)
+    except BoltHandshakeError as error:
+        skip(error.args[0])
 
 
 def test_fail_nicely_when_using_http_port(service):
     from tests.integration.conftest import NEO4J_PORTS
     address = service.addresses[0]
     uri = "bolt://{}:{}".format(address[0], NEO4J_PORTS["http"])
-    with raises(ServiceUnavailable):
-        _ = GraphDatabase.driver(uri, auth=service.auth)
+    try:
+        with raises(ServiceUnavailable):
+            _ = GraphDatabase.driver(uri, auth=service.auth)
+    except BoltHandshakeError as error:
+        skip(error.args[0])
 
 
 def test_custom_resolver(service):
@@ -90,18 +101,24 @@ def test_custom_resolver(service):
         yield "99.99.99.99", port     # should be rejected as unable to connect
         yield "127.0.0.1", port       # should succeed
 
-    with GraphDatabase.driver("bolt://*", auth=service.auth,
-                              connect_timeout=3,  # enables rapid timeout
-                              resolver=my_resolver) as driver:
-        with driver.session() as session:
-            summary = session.run("RETURN 1").summary()
-            assert summary.server.address == ("127.0.0.1", port)
+    try:
+        with GraphDatabase.driver("bolt://*", auth=service.auth,
+                                  connect_timeout=3,  # enables rapid timeout
+                                  resolver=my_resolver) as driver:
+            with driver.session() as session:
+                summary = session.run("RETURN 1").summary()
+                assert summary.server.address == ("127.0.0.1", port)
+    except BoltHandshakeError as error:
+        skip(error.args[0])
 
 
 def test_encrypted_arg_can_still_be_used(bolt_uri, auth):
     with warns(UserWarning):
-        with GraphDatabase.driver(bolt_uri, auth=auth, encrypted=False) as driver:
-            assert not driver.secure
+        try:
+            with GraphDatabase.driver(bolt_uri, auth=auth, encrypted=False) as driver:
+                assert not driver.secure
+        except BoltHandshakeError as error:
+            skip(error.args[0])
 
 
 def test_insecure_by_default(bolt_driver):
@@ -110,6 +127,9 @@ def test_insecure_by_default(bolt_driver):
 
 def test_should_fail_on_incorrect_password(bolt_uri):
     with raises(AuthError):
-        with GraphDatabase.driver(bolt_uri, auth=("neo4j", "wrong-password")) as driver:
-            with driver.session() as session:
-                _ = session.run("RETURN 1")
+        try:
+            with GraphDatabase.driver(bolt_uri, auth=("neo4j", "wrong-password")) as driver:
+                with driver.session() as session:
+                    _ = session.run("RETURN 1")
+        except BoltHandshakeError as error:
+            skip(error.args[0])
