@@ -289,15 +289,6 @@ def bolt_driver(target, auth):
 
 
 @fixture(scope="session")
-async def async_bolt_driver(target, auth):
-    driver = await GraphDatabase.async_bolt_driver(target, auth=auth)
-    try:
-        yield driver
-    finally:
-        driver.close()
-
-
-@fixture(scope="session")
 def neo4j_driver(target, auth):
     try:
         driver = GraphDatabase.neo4j_driver(target, auth=auth)
@@ -316,22 +307,8 @@ def neo4j_driver(target, auth):
 
 
 @fixture(scope="session")
-async def async_neo4j_driver(target, auth):
-    driver = await GraphDatabase.async_neo4j_driver(target, auth=auth)
-    try:
-        yield driver
-    finally:
-        driver.close()
-
-
-@fixture(scope="session")
 def driver(neo4j_driver):
     return neo4j_driver
-
-
-@fixture(scope="session")
-async def async_driver(async_neo4j_driver):
-    return async_neo4j_driver
 
 
 @fixture()
