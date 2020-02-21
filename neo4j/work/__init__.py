@@ -89,21 +89,6 @@ class Workspace:
         self._disconnect(sync=True)
 
 
-class AsyncWorkspace(Workspace):
-
-    def __init__(self, pool, config):
-        super().__init__(pool, config)
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.close()
-
-    async def close(self):
-        super().close()
-
-
 class WorkspaceError(Exception):
 
     pass

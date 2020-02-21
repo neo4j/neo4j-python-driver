@@ -1,7 +1,6 @@
 -e git://github.com/neo4j-drivers/boltkit.git#egg=boltkit
 coverage
 pytest
-pytest-asyncio
 pytest-benchmark
 pytest-cov
 teamcity-messages

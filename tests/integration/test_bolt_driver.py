@@ -54,18 +54,6 @@ def test_neo4j_uri(neo4j_uri, auth):
     except BoltHandshakeError as error:
         skip(error.args[0])
 
-
-# TODO
-# @mark.asyncio
-# async def test_async_bolt_uri(bolt_uri, auth):
-#     async with await GraphDatabase.async_driver(bolt_uri, auth=auth) as driver:
-#         async with await driver.session() as session:
-#             result = await session.run("RETURN 1")
-#             record = await result.single()
-#             value = record.value()
-#             assert value == 1
-
-
 def test_normal_use_case(bolt_driver):
     session = bolt_driver.session()
     value = session.run("RETURN 1").single().value()
