@@ -6,8 +6,12 @@ This repository contains the official Neo4j driver for Python.
 Each driver release (from 4.0 upwards) is built specifically to work with a corresponding Neo4j release, i.e. that with the same `major.minor` version number.
 These drivers will also be compatible with the previous Neo4j release, although new server features will not be available.
 
-Python 3.4 or above is required.
-Python 2 support has been dropped as of the Neo4j 4.0 release.
++ Python 3.8 supported.
++ Python 3.7 supported.
++ Python 3.6 supported.
++ Python 3.5 supported.
+
+Python 2.7 support has been dropped as of the Neo4j 4.0 release.
 
 
 Installation
@@ -56,7 +60,7 @@ Other Information
 * `Example Project`_
 * `Driver Wiki`_ (includes change logs)
 
-.. _`Neo4j Manual`: https://neo4j.com/docs/developer-manual/current/drivers/
+.. _`Neo4j Manual`: https://neo4j.com/docs/developer-manual/current/
 .. _`Neo4j Quick Reference Card`: https://neo4j.com/docs/cypher-refcard/current/
 .. _`Example Project`: https://github.com/neo4j-examples/movies-python-bolt
 .. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki
