@@ -37,7 +37,7 @@ from neo4j.exceptions import (
 )
 from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.work import Workspace, WorkspaceConfig
-from neo4j.work.summary import BoltStatementResultSummary
+from neo4j.work.summary import ResultSummary
 
 
 log = getLogger("neo4j")
@@ -132,11 +132,11 @@ class Session(Workspace):
         """ Run a Cypher statement within an auto-commit transaction.
 
         The statement is sent and the result header received
-        immediately but the :class:`.StatementResult` content is
+        immediately but the :class:`neo4j.Result` content is
         fetched lazily as consumed by the client application.
 
         If a statement is executed before a previous
-        :class:`.StatementResult` in the same :class:`.Session` has
+        :class:`neo4j.Result` in the same :class:`.Session` has
         been fully consumed, the first result will be fully fetched
         and buffered. Note therefore that the generally recommended
         pattern of usage is to fully consume one result before
@@ -149,7 +149,7 @@ class Session(Workspace):
         :param cypher: Cypher statement
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
-        :returns: :class:`.StatementResult` object
+        :returns: :class:`neo4j.Result` object
         """
         if not cypher:
             raise ValueError("Cannot run an empty statement")
@@ -514,7 +514,7 @@ class Transaction:
         :param statement: template Cypher statement
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
-        :returns: :class:`.StatementResult` object
+        :returns: :class:`neo4j.Result` object
         :raise TransactionError: if the transaction is closed
         """
         self._assert_open()
@@ -668,17 +668,17 @@ class Result:
     def summary(self):
         """ Obtain the summary of this result, buffering any remaining records.
 
-        :returns: The :class:`.ResultSummary` for this result
+        :returns: The :class:`neo4j.ResultSummary` for this result
         """
         self.detach()
         if self._summary is None:
-            self._summary = BoltStatementResultSummary(**self._metadata)
+            self._summary = ResultSummary(**self._metadata)
         return self._summary
 
     def consume(self):
         """ Consume the remainder of this result and return the summary.
 
-        :returns: The :class:`.ResultSummary` for this result
+        :returns: The :class:`neo4j.ResultSummary` for this result
         """
         if self.attached():
             for _ in self:

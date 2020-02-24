@@ -103,7 +103,7 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`.
 Summary Details
 ---------------
 
-.. autoclass:: neo4j.BoltStatementResultSummary
+.. autoclass:: neo4j.ResultSummary
    :members:
 
 .. autoclass:: neo4j.SummaryCounters

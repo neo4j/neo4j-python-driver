@@ -27,8 +27,8 @@ BOLT_VERSION_3 = 3
 BOLT_VERSION_4 = 4
 
 
-class BoltStatementResultSummary:
-    """ A summary of execution returned with a :class:`.StatementResult` object.
+class ResultSummary:
+    """ A summary of execution returned with a :class:`.Result` object.
     """
 
     #: The version of Bolt protocol over which this result was obtained.
