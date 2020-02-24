@@ -21,7 +21,7 @@ Path           :class:`.Path`
 .. class:: neo4j.types.graph.Graph
 
     A local, self-contained graph object that acts as a container for :class:`.Node` and :class:`.Relationship` instances.
-    This is typically obtained via the :meth:`.BoltStatementResult.graph` method.
+    This is typically obtained via the :meth:`neo4j.Result.graph` method.
 
     .. autoattribute:: nodes
 

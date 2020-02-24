@@ -193,7 +193,7 @@ class Session(Workspace):
                 self._bookmarks_in = tuple([bookmark])
                 self._bookmark_out = bookmark
 
-        self._last_result = result = BoltStatementResult(self, hydrant, result_metadata)
+        self._last_result = result = Result(self, hydrant, result_metadata)
 
         if has_transaction:
             if statement_metadata:
@@ -595,7 +595,7 @@ class Statement:
         return str(self.text)
 
 
-class BoltStatementResult:
+class Result:
     """ A handler for the result of Cypher statement execution. Instances
     of this class are typically constructed and returned by
     :meth:`.Session.run` and :meth:`.Transaction.run`.
