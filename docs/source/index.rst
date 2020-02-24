@@ -2,8 +2,82 @@
 Neo4j Bolt Driver |version| for Python
 **************************************
 
-The Official Neo4j Driver for Python supports Neo4j 3.2 and above and requires Python version 2.7 or 3.4+.
-Note that support for Python 2.7 will be removed in the 2.0 driver.
+The Official Neo4j Driver for Python.
+
+Neo4j versions supported:
+
+* Neo4j 4.0
+* Neo4j 3.5
+
+Python versions supported:
+
+* Python 3.8
+* Python 3.7
+* Python 3.6
+* Python 3.5
+
+
+**Note:** Python 2.7 support has been dropped.
+
+Use the previous driver (Python Driver 1.7) for older versions of python.
+
+
+Breaking Changes
+============
+
+Namespace Changes
+---------
+
+`import neo4j.v1` have changed namespace to be `import neo4j`
+
+
+Secure Connection
+---------
+
+Neo4j 4.0 is by default configured to use a non secure connection.
+
+The Driver Configuration argument `encrypted` is by default set to `False`.
+
+To be able to connect to Neo4j 3.5 set `encrypted=True` to have it configured as the default for that setup.
+
+
+Bookmark Changes
+---------
+
+Bookmarks is now a Bookmark class instead of a string.
+
+
+Exceptions Changes
+---------
+
+The exceptions in `import.exceptions` have been updated and there is internal exceptions starting with the naming `Bolt` that should be propagated into the exceptions API.
+
+
+URI Changes
+---------
+
+`bolt+routing` have been renamed to `neo4j`
+
+
+Class Renaming Changes
+---------
+
+* `BoltStatementResult` is now `Result`
+* `StatementResultSummary` is now `ResultSummary`
+* `Statement` is now `Query`
+
+
+Argument Renaming Changes
+---------
+
+* `statement` is now `query`
+
+
+Dependency Changes
+---------
+
+The dependency on `neobolt` have been removed.
+
 
 
 Quick Example
@@ -26,12 +100,6 @@ Quick Example
         session.read_transaction(print_friends_of, "Alice")
 
 
-.. note::
-
-    While imports from ``neo4j.v1`` still work, these will be removed in the 2.0 driver.
-    It is therefore recommended to change all imports from ``neo4j.v1`` to ``neo4j``.
-
-
 Installation
 ============
 
@@ -39,12 +107,7 @@ To install the latest stable driver release, use:
 
 .. code:: bash
 
-    pip install neo4j
-
-.. note::
-
-    The driver is currently released under two package names on `PyPI <https://pypi.org/>`_: ``neo4j`` and ``neo4j-driver``.
-    Installing from ``neo4j`` is recommended since ``neo4j-driver`` will be removed in a future release.
+    python -m pip install neo4j
 
 
 API Documentation
@@ -53,18 +116,18 @@ API Documentation
 .. toctree::
    :maxdepth: 1
 
-   aio
-
 
 Other Information
 =================
 
-* `Neo4j Manual`_
+* `Neo4j Documentation`_
+* `The Neo4j Drivers Manual`_
 * `Neo4j Quick Reference Card`_
 * `Example Project`_
 * `Driver Wiki`_ (includes change logs)
 
-.. _`Neo4j Manual`: https://neo4j.com/docs/
+.. _`Neo4j Documentation`: https://neo4j.com/docs/
+.. _`The Neo4j Drivers Manual`: https://neo4j.com/docs/driver-manual/current/
 .. _`Neo4j Quick Reference Card`: https://neo4j.com/docs/cypher-refcard/current/
 .. _`Example Project`: https://github.com/neo4j-examples/movies-python-bolt
 .. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki
