@@ -2,9 +2,11 @@
 Sphinx Documentation
 ====================
 
-From the root of this repository...
+```
+pip install -r requirements.txt
+```
 
-.. code:: bash
+```
+make -C docs html
+```
 
-    pip install -r docs_requirements.txt
-    make -C docs html
