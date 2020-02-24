@@ -144,7 +144,7 @@ class Bolt4x0(Bolt):
         self.send_all()
         self.fetch_all()
 
-    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None,
+    def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None,
             timeout=None, db=None, **handlers):
         if not parameters:
             parameters = {}
@@ -168,9 +168,9 @@ class Bolt4x0(Bolt):
                 extra["tx_timeout"] = int(1000 * timeout)
             except TypeError:
                 raise TypeError("Timeout must be specified as a number of seconds")
-        fields = (statement, parameters, extra)
+        fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
-        if statement.upper() == u"COMMIT":
+        if query.upper() == u"COMMIT":
             self._append(b"\x10", fields, CommitResponse(self, **handlers))
         else:
             self._append(b"\x10", fields, Response(self, **handlers))
