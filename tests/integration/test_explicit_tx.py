@@ -24,7 +24,7 @@ from uuid import uuid4
 
 from pytest import raises
 
-from neo4j.work.simple import Statement, TransactionError
+from neo4j.work.simple import Query, TransactionError
 from neo4j.exceptions import CypherSyntaxError, ClientError, TransientError
 
 
@@ -125,7 +125,7 @@ def test_broken_transaction_should_not_break_session(session):
 def test_statement_object_not_supported(session):
     with session.begin_transaction() as tx:
         with raises(ValueError):
-            tx.run(Statement("RETURN 1", timeout=0.25))
+            tx.run(Query("RETURN 1", timeout=0.25))
 
 
 def test_transaction_metadata(session):

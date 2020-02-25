@@ -20,12 +20,15 @@
 
 import pytest
 
+
 def test_can_obtain_summary_after_consuming_result(session):
+    # python -m pytest tests/integration/test_summary.py -s -v -k test_can_obtain_summary_after_consuming_result
+
     result = session.run("CREATE (n) RETURN n")
     summary = result.summary()
-    assert summary.statement == "CREATE (n) RETURN n"
+    assert summary.query == "CREATE (n) RETURN n"
     assert summary.parameters == {}
-    assert summary.statement_type == "rw"
+    assert summary.query_type == "rw"
     assert summary.counters.nodes_created == 1
 
 

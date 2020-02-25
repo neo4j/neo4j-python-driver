@@ -215,11 +215,11 @@ class Bolt:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def run(self, statement, parameters=None, mode=None, bookmarks=None, metadata=None,
+    def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None,
             timeout=None, db=None, **handlers):
         """ Appends a RUN message to the output stream.
 
-        :param statement: Cypher query string
+        :param query: Cypher query string
         :param parameters: dictionary of Cypher parameters
         :param mode: access mode for routing - "READ" or "WRITE" (default)
         :param bookmarks: iterable of bookmark values after which this transaction should begin

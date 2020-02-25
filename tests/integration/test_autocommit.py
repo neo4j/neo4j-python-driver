@@ -22,7 +22,7 @@
 import pytest
 from pytest import raises
 
-from neo4j.work.simple import Statement
+from neo4j.work.simple import Query
 from neo4j.exceptions import Neo4jError, ClientError, TransientError
 from neo4j.graph import Node, Relationship
 from neo4j.api import Version
@@ -162,7 +162,7 @@ def test_should_not_allow_empty_statements(session):
 
 
 def test_statement_object(session):
-    value = session.run(Statement("RETURN $x"), x=1).single().value()
+    value = session.run(Query("RETURN $x"), x=1).single().value()
     assert value == 1
 
 
@@ -183,7 +183,7 @@ def test_autocommit_transactions_should_support_metadata(session, test_input, ne
     server_agent = summary.server.agent
 
     try:
-        statement = Statement(test_input, metadata=metadata_in)
+        statement = Query(test_input, metadata=metadata_in)
         result = session.run(statement)
         metadata_out = result.single().value()
     except ClientError as e:
@@ -202,8 +202,8 @@ def test_autocommit_transactions_should_support_timeout(neo4j_driver):
             tx1 = s1.begin_transaction()
             tx1.run("MATCH (a:Node) SET a.property = 1").consume()
             with raises(TransientError):
-                s2.run(Statement("MATCH (a:Node) SET a.property = 2",
-                                 timeout=0.25)).consume()
+                s2.run(Query("MATCH (a:Node) SET a.property = 2",
+                             timeout=0.25)).consume()
 
 
 def test_regex_in_parameter(session):

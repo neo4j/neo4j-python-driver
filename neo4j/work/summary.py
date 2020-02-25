@@ -27,8 +27,8 @@ BOLT_VERSION_3 = 3
 BOLT_VERSION_4 = 4
 
 
-class BoltStatementResultSummary:
-    """ A summary of execution returned with a :class:`.StatementResult` object.
+class ResultSummary:
+    """ A summary of execution returned with a :class:`.Result` object.
     """
 
     #: The version of Bolt protocol over which this result was obtained.
@@ -37,14 +37,14 @@ class BoltStatementResultSummary:
     #: The server on which this result was generated.
     server = None
 
-    #: The statement that was executed to produce this result.
-    statement = None
+    #: The query that was executed to produce this result.
+    query = None
 
     #: Dictionary of parameters passed with the statement.
     parameters = None
 
-    #: The type of statement (``'r'`` = read-only, ``'rw'`` = read/write).
-    statement_type = None
+    #: The type of query (``'r'`` = read-only, ``'rw'`` = read/write).
+    query_type = None
 
     #: A set of statistical information held in a :class:`.Counters` instance.
     counters = None
@@ -71,9 +71,9 @@ class BoltStatementResultSummary:
         self.metadata = metadata
         self.protocol_version = metadata.get("protocol_version")
         self.server = metadata.get("server")
-        self.statement = metadata.get("statement")
+        self.query = metadata.get("query")
         self.parameters = metadata.get("parameters")
-        self.statement_type = metadata.get("type")
+        self.query_type = metadata.get("type")
         self.counters = SummaryCounters(metadata.get("stats", {}))
         if self.protocol_version[0] < BOLT_VERSION_3:
             self.result_available_after = metadata.get("result_available_after")

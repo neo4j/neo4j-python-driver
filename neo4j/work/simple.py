@@ -37,7 +37,7 @@ from neo4j.exceptions import (
 )
 from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.work import Workspace, WorkspaceConfig
-from neo4j.work.summary import BoltStatementResultSummary
+from neo4j.work.summary import ResultSummary
 
 
 log = getLogger("neo4j")
@@ -128,33 +128,33 @@ class Session(Workspace):
             finally:
                 self._disconnect()
 
-    def run(self, cypher, parameters=None, **kwparameters):
-        """ Run a Cypher statement within an auto-commit transaction.
+    def run(self, query, parameters=None, **kwparameters):
+        """ Run a Cypher query within an auto-commit transaction.
 
-        The statement is sent and the result header received
-        immediately but the :class:`.StatementResult` content is
+        The query is sent and the result header received
+        immediately but the :class:`neo4j.Result` content is
         fetched lazily as consumed by the client application.
 
-        If a statement is executed before a previous
-        :class:`.StatementResult` in the same :class:`.Session` has
+        If a query is executed before a previous
+        :class:`neo4j.Result` in the same :class:`.Session` has
         been fully consumed, the first result will be fully fetched
         and buffered. Note therefore that the generally recommended
         pattern of usage is to fully consume one result before
-        executing a subsequent statement. If two results need to be
+        executing a subsequent query. If two results need to be
         consumed in parallel, multiple :class:`.Session` objects
         can be used as an alternative to result buffering.
 
         For more usage details, see :meth:`.Transaction.run`.
 
-        :param cypher: Cypher statement
+        :param query: Cypher query
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
-        :returns: :class:`.StatementResult` object
+        :returns: :class:`neo4j.Result` object
         """
-        if not cypher:
-            raise ValueError("Cannot run an empty statement")
-        if not isinstance(cypher, (str, Statement)):
-            raise TypeError("Statement must be a string or a Statement instance")
+        if not query:
+            raise ValueError("Cannot run an empty query")
+        if not isinstance(query, (str, Query)):
+            raise TypeError("query must be a string or a Query instance")
 
         if not self._connection:
             self._connect(self._config.default_access_mode)
@@ -164,9 +164,9 @@ class Session(Workspace):
 
         has_transaction = self.has_transaction()
 
-        statement_text = str(cypher)
-        statement_metadata = getattr(cypher, "metadata", None)
-        statement_timeout = getattr(cypher, "timeout", None)
+        query_text = str(query)
+        query_metadata = getattr(query, "metadata", None)
+        query_timeout = getattr(query, "timeout", None)
         parameters = DataDehydrator.fix_parameters(dict(parameters or {}, **kwparameters))
 
         def fail(_):
@@ -174,14 +174,14 @@ class Session(Workspace):
 
         hydrant = DataHydrator()
         result_metadata = {
-            "statement": statement_text,
+            "query": query_text,
             "parameters": parameters,
             "server": server,
             "protocol_version": protocol_version,
         }
         run_metadata = {
-            "metadata": statement_metadata,
-            "timeout": statement_timeout,
+            "metadata": query_metadata,
+            "timeout": query_timeout,
             "on_success": result_metadata.update,
             "on_failure": fail,
         }
@@ -193,12 +193,12 @@ class Session(Workspace):
                 self._bookmarks_in = tuple([bookmark])
                 self._bookmark_out = bookmark
 
-        self._last_result = result = BoltStatementResult(self, hydrant, result_metadata)
+        self._last_result = result = Result(self, hydrant, result_metadata)
 
         if has_transaction:
-            if statement_metadata:
+            if query_metadata:
                 raise ValueError("Metadata can only be attached at transaction level")
-            if statement_timeout:
+            if query_timeout:
                 raise ValueError("Timeouts only apply at transaction level")
             # TODO: fail if explicit database name has been set
         else:
@@ -206,7 +206,7 @@ class Session(Workspace):
 
         # TODO: capture ValueError and surface as SessionError/TransactionError if
         # TODO: explicit database selection has been made
-        cx.run(statement_text, parameters, **run_metadata)
+        cx.run(query_text, parameters, **run_metadata)
         cx.pull(
             on_records=lambda records: result._records.extend(
                 hydrant.hydrate_records(result.keys(), records)),
@@ -488,40 +488,40 @@ class Transaction:
             self._success = not bool(exc_type)
         self._close()
 
-    def run(self, statement, parameters=None, **kwparameters):
-        """ Run a Cypher statement within the context of this transaction.
+    def run(self, query, parameters=None, **kwparameters):
+        """ Run a Cypher query within the context of this transaction.
 
-        The statement is sent to the server lazily, when its result is
-        consumed. To force the statement to be sent to the server, use
+        The query is sent to the server lazily, when its result is
+        consumed. To force the query to be sent to the server, use
         the :meth:`.Transaction.sync` method.
 
-        Cypher is typically expressed as a statement template plus a
+        Cypher is typically expressed as a query template plus a
         set of named parameters. In Python, parameters may be expressed
         through a dictionary of parameters, through individual parameter
         arguments, or as a mixture of both. For example, the `run`
-        statements below are all equivalent::
+        queries below are all equivalent::
 
-            >>> statement = "CREATE (a:Person {name:{name}, age:{age}})"
-            >>> tx.run(statement, {"name": "Alice", "age": 33})
-            >>> tx.run(statement, {"name": "Alice"}, age=33)
-            >>> tx.run(statement, name="Alice", age=33)
+            >>> query = "CREATE (a:Person {name:{name}, age:{age}})"
+            >>> tx.run(query, {"name": "Alice", "age": 33})
+            >>> tx.run(query, {"name": "Alice"}, age=33)
+            >>> tx.run(query, name="Alice", age=33)
 
         Parameter values can be of any type supported by the Neo4j type
         system. In Python, this includes :class:`bool`, :class:`int`,
         :class:`str`, :class:`list` and :class:`dict`. Note however that
         :class:`list` properties must be homogenous.
 
-        :param statement: template Cypher statement
+        :param query: template Cypher query
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
-        :returns: :class:`.StatementResult` object
+        :returns: :class:`neo4j.Result` object
         :raise TransactionError: if the transaction is closed
         """
         self._assert_open()
-        return self.session.run(statement, parameters, **kwparameters)
+        return self.session.run(query, parameters, **kwparameters)
 
     def sync(self):
-        """ Force any queued statements to be sent to the server and
+        """ Force any queued queries to be sent to the server and
         all related results to be fetched and buffered.
 
         :raise TransactionError: if the transaction is closed
@@ -578,8 +578,13 @@ class Transaction:
             raise TransactionError("Transaction closed")
 
 
-class Statement:
+class Query:
+    """ Create a new query.
 
+    :param text: The query text.
+    :param metadata: Dictionary of parameters, metadata attached to the query.
+    :param timeout: Timeout in seconds.
+    """
     def __init__(self, text, metadata=None, timeout=None):
         self.text = text
         try:
@@ -595,8 +600,8 @@ class Statement:
         return str(self.text)
 
 
-class BoltStatementResult:
-    """ A handler for the result of Cypher statement execution. Instances
+class Result:
+    """ A handler for the result of Cypher query execution. Instances
     of this class are typically constructed and returned by
     :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
@@ -668,17 +673,17 @@ class BoltStatementResult:
     def summary(self):
         """ Obtain the summary of this result, buffering any remaining records.
 
-        :returns: The :class:`.ResultSummary` for this result
+        :returns: The :class:`neo4j.ResultSummary` for this result
         """
         self.detach()
         if self._summary is None:
-            self._summary = BoltStatementResultSummary(**self._metadata)
+            self._summary = ResultSummary(**self._metadata)
         return self._summary
 
     def consume(self):
         """ Consume the remainder of this result and return the summary.
 
-        :returns: The :class:`.ResultSummary` for this result
+        :returns: The :class:`neo4j.ResultSummary` for this result
         """
         if self.attached():
             for _ in self:
