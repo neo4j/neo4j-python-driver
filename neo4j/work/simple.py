@@ -488,40 +488,40 @@ class Transaction:
             self._success = not bool(exc_type)
         self._close()
 
-    def run(self, statement, parameters=None, **kwparameters):
-        """ Run a Cypher statement within the context of this transaction.
+    def run(self, query, parameters=None, **kwparameters):
+        """ Run a Cypher query within the context of this transaction.
 
-        The statement is sent to the server lazily, when its result is
-        consumed. To force the statement to be sent to the server, use
+        The query is sent to the server lazily, when its result is
+        consumed. To force the query to be sent to the server, use
         the :meth:`.Transaction.sync` method.
 
-        Cypher is typically expressed as a statement template plus a
+        Cypher is typically expressed as a query template plus a
         set of named parameters. In Python, parameters may be expressed
         through a dictionary of parameters, through individual parameter
         arguments, or as a mixture of both. For example, the `run`
-        statements below are all equivalent::
+        queries below are all equivalent::
 
-            >>> statement = "CREATE (a:Person {name:{name}, age:{age}})"
-            >>> tx.run(statement, {"name": "Alice", "age": 33})
-            >>> tx.run(statement, {"name": "Alice"}, age=33)
-            >>> tx.run(statement, name="Alice", age=33)
+            >>> query = "CREATE (a:Person {name:{name}, age:{age}})"
+            >>> tx.run(query, {"name": "Alice", "age": 33})
+            >>> tx.run(query, {"name": "Alice"}, age=33)
+            >>> tx.run(query, name="Alice", age=33)
 
         Parameter values can be of any type supported by the Neo4j type
         system. In Python, this includes :class:`bool`, :class:`int`,
         :class:`str`, :class:`list` and :class:`dict`. Note however that
         :class:`list` properties must be homogenous.
 
-        :param statement: template Cypher statement
+        :param query: template Cypher query
         :param parameters: dictionary of parameters
         :param kwparameters: additional keyword parameters
         :returns: :class:`neo4j.Result` object
         :raise TransactionError: if the transaction is closed
         """
         self._assert_open()
-        return self.session.run(statement, parameters, **kwparameters)
+        return self.session.run(query, parameters, **kwparameters)
 
     def sync(self):
-        """ Force any queued statements to be sent to the server and
+        """ Force any queued queries to be sent to the server and
         all related results to be fetched and buffered.
 
         :raise TransactionError: if the transaction is closed
@@ -601,7 +601,7 @@ class Query:
 
 
 class Result:
-    """ A handler for the result of Cypher statement execution. Instances
+    """ A handler for the result of Cypher query execution. Instances
     of this class are typically constructed and returned by
     :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
