@@ -174,7 +174,7 @@ class Session(Workspace):
 
         hydrant = DataHydrator()
         result_metadata = {
-            "statement": statement_text,
+            "query": statement_text,
             "parameters": parameters,
             "server": server,
             "protocol_version": protocol_version,

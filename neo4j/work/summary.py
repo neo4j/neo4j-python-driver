@@ -71,7 +71,7 @@ class ResultSummary:
         self.metadata = metadata
         self.protocol_version = metadata.get("protocol_version")
         self.server = metadata.get("server")
-        self.query = metadata.get("statement")
+        self.query = metadata.get("query")
         self.parameters = metadata.get("parameters")
         self.query_type = metadata.get("type")
         self.counters = SummaryCounters(metadata.get("stats", {}))
