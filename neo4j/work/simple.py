@@ -153,7 +153,7 @@ class Session(Workspace):
         """
         if not cypher:
             raise ValueError("Cannot run an empty statement")
-        if not isinstance(cypher, (str, Statement)):
+        if not isinstance(cypher, (str, Query)):
             raise TypeError("Statement must be a string or a Statement instance")
 
         if not self._connection:
@@ -578,8 +578,13 @@ class Transaction:
             raise TransactionError("Transaction closed")
 
 
-class Statement:
+class Query:
+    """ Create a new query.
 
+    :param text: The query text.
+    :param metadata: Dictionary of parameters, metadata attached to the query.
+    :param timeout: Timeout in seconds.
+    """
     def __init__(self, text, metadata=None, timeout=None):
         self.text = text
         try:

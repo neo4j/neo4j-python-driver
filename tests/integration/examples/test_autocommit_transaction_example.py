@@ -20,7 +20,7 @@
 
 
 # tag::autocommit-transaction-import[]
-from neo4j.work.simple import Statement
+from neo4j.work.simple import Query
 # end::autocommit-transaction-import[]
 
 
@@ -39,7 +39,7 @@ class AutocommitTransactionExample:
     # Alternative implementation, with a one second timeout
     def add_person_within_a_second(self, name):
         with self.driver.session() as session:
-            session.run(Statement("CREATE (a:Person {name: $name})", timeout=1.0), name=name)
+            session.run(Query("CREATE (a:Person {name: $name})", timeout=1.0), name=name)
     # end::autocommit-transaction[]
 
 
