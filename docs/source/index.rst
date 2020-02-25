@@ -28,7 +28,7 @@ Breaking Changes
 Namespace Changes
 ---------
 
-`import neo4j.v1` have changed namespace to be `import neo4j`
+:code:`import neo4j.v1` have changed namespace to be :code:`import neo4j`
 
 
 Secure Connection
@@ -36,7 +36,7 @@ Secure Connection
 
 Neo4j 4.0 is by default configured to use a non secure connection.
 
-The Driver Configuration argument `encrypted` is by default set to `False`.
+The Driver Configuration argument :code:`encrypted` is by default set to :code:`False`.
 
 To be able to connect to Neo4j 3.5 set `encrypted=True` to have it configured as the default for that setup.
 
@@ -50,7 +50,7 @@ Bookmarks is now a Bookmark class instead of a string.
 Exceptions Changes
 ---------
 
-The exceptions in `import.exceptions` have been updated and there is internal exceptions starting with the naming `Bolt` that should be propagated into the exceptions API.
+The exceptions in :code:`neo4j.exceptions` have been updated and there is internal exceptions starting with the naming :code:`Bolt` that should be propagated into the exceptions API.
 
 
 URI Changes
@@ -62,21 +62,26 @@ URI Changes
 Class Renaming Changes
 ---------
 
-* `BoltStatementResult` is now `Result`
-* `StatementResultSummary` is now `ResultSummary`
-* `Statement` is now `Query`
+* :code:`BoltStatementResult` is now :code:`Result`
+* :code:`StatementResultSummary` is now :code:`ResultSummary`
+* :code:`Statement` is now :code:`Query`
 
 
 Argument Renaming Changes
 ---------
 
-* `statement` is now `query`
+* :code:`statement` is now :code:`query`
+* :code:`cypher` is now :code:`query`
+* :code:`Session.run(cypher, ...` is now :code:`Session.run(query, ...`
+* :code:`Transaction.run(statement, ...` is now :code:`Transaction.run(query, ...`
+* :code:`StatementResultSummary.statement` is now :code:`ResultSummary.query`
+* :code:`StatementResultSummary.statement_type` is now :code:`ResultSummary.query_type`
 
 
 Dependency Changes
 ---------
 
-The dependency on `neobolt` have been removed.
+The dependency :code:`neobolt` have been removed.
 
 
 
