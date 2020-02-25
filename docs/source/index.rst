@@ -1,6 +1,6 @@
-**************************************
+######################################
 Neo4j Bolt Driver |version| for Python
-**************************************
+######################################
 
 The Official Neo4j Driver for Python.
 
@@ -22,45 +22,46 @@ Python versions supported:
 Use the previous driver (Python Driver 1.7) for older versions of python.
 
 
+****************
 Breaking Changes
-============
+****************
 
 Namespace Changes
----------
+=================
 
 :code:`import neo4j.v1` have changed namespace to be :code:`import neo4j`
 
 
 Secure Connection
----------
+=================
 
 Neo4j 4.0 is by default configured to use a non secure connection.
 
 The Driver Configuration argument :code:`encrypted` is by default set to :code:`False`.
 
-To be able to connect to Neo4j 3.5 set `encrypted=True` to have it configured as the default for that setup.
+To be able to connect to Neo4j 3.5 set :code:`encrypted=True` to have it configured as the default for that setup.
 
 
 Bookmark Changes
----------
+================
 
 Bookmarks is now a Bookmark class instead of a string.
 
 
 Exceptions Changes
----------
+==================
 
 The exceptions in :code:`neo4j.exceptions` have been updated and there is internal exceptions starting with the naming :code:`Bolt` that should be propagated into the exceptions API.
 
 
 URI Changes
----------
+===========
 
 `bolt+routing` have been renamed to `neo4j`
 
 
 Class Renaming Changes
----------
+======================
 
 * :code:`BoltStatementResult` is now :code:`Result`
 * :code:`StatementResultSummary` is now :code:`ResultSummary`
@@ -68,7 +69,7 @@ Class Renaming Changes
 
 
 Argument Renaming Changes
----------
+=========================
 
 * :code:`statement` is now :code:`query`
 * :code:`cypher` is now :code:`query`
@@ -79,14 +80,14 @@ Argument Renaming Changes
 
 
 Dependency Changes
----------
+==================
 
 The dependency :code:`neobolt` have been removed.
 
 
-
+*************
 Quick Example
-=============
+*************
 
 .. code-block:: python
 
@@ -105,8 +106,9 @@ Quick Example
         session.read_transaction(print_friends_of, "Alice")
 
 
+************
 Installation
-============
+************
 
 To install the latest stable driver release, use:
 
@@ -115,15 +117,23 @@ To install the latest stable driver release, use:
     python -m pip install neo4j
 
 
+*****************
 API Documentation
-=================
+*****************
 
 .. toctree::
    :maxdepth: 1
 
+   driver
+   errors
+   results
+   transactions
+   usage_patterns
 
+
+*****************
 Other Information
-=================
+*****************
 
 * `Neo4j Documentation`_
 * `The Neo4j Drivers Manual`_
