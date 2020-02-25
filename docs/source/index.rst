@@ -2,6 +2,10 @@
 Neo4j Bolt Driver |version| for Python
 ######################################
 
+.. warning::
+    This API docs is not production ready!
+
+
 The Official Neo4j Driver for Python.
 
 Neo4j versions supported:
@@ -20,6 +24,7 @@ Python versions supported:
 **Note:** Python 2.7 support has been dropped.
 
 Use the previous driver (Python Driver 1.7) for older versions of python.
+
 
 
 ****************
@@ -129,6 +134,10 @@ API Documentation
    results
    transactions
    usage_patterns
+   types/core
+   types/graph
+   types/spatial
+   types/temporal
 
 
 *****************

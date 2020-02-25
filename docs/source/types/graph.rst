@@ -18,10 +18,10 @@ Relationship   :class:`.Relationship`
 Path           :class:`.Path`
 =============  ======================
 
-.. class:: neo4j.types.graph.Graph
+.. class:: neo4j.graph.Graph
 
     A local, self-contained graph object that acts as a container for :class:`.Node` and :class:`.Relationship` instances.
-    This is typically obtained via the :meth:`neo4j.Result.graph` method.
+    This is typically obtained via the :meth:`.Result.graph` method.
 
     .. autoattribute:: nodes
 
@@ -30,7 +30,7 @@ Path           :class:`.Path`
     .. automethod:: relationship_type
 
 
-.. class:: neo4j.types.graph.Node
+.. class:: neo4j.graph.Node
 
     .. describe:: node == other
 
@@ -76,7 +76,7 @@ Path           :class:`.Path`
     .. automethod:: items
 
 
-.. class:: neo4j.types.graph.Relationship
+.. class:: neo4j.graph.Relationship
 
     .. describe:: relationship == other
 
@@ -133,7 +133,7 @@ Path           :class:`.Path`
     .. automethod:: items
 
 
-.. class:: neo4j.types.graph.Path
+.. class:: neo4j.graph.Path
 
     .. describe:: path == other
 

@@ -42,7 +42,7 @@ A :class:`.Result` is attached to an active connection, through a :class:`.Sessi
     .. automethod:: data
 
 
-.. class:: neo4j.Record
+.. class:: .Record
 
     A :class:`.Record` is an immutable ordered collection of key-value
     pairs. It is generally closer to a :py:class:`namedtuple` than to a

@@ -25,7 +25,7 @@ For example::
 
 To construct a :class:`.Session` use the :meth:`.Driver.session` method.
 
-.. class:: neo4j.Session
+.. class:: .Session
 
     .. automethod:: close
 
@@ -75,7 +75,7 @@ Explicit transactions support multiple statements and must be created with an ex
 This creates a new :class:`.Transaction` object that can be used to run Cypher.
 It also gives applications the ability to directly control `commit` and `rollback` activity.
 
-.. class:: neo4j.Transaction
+.. class:: .Transaction
 
     .. automethod:: run
 
@@ -127,7 +127,7 @@ Returning a live result object would prevent the driver from correctly managing 
 
 To exert more control over how a transaction function is carried out, the :func:`.unit_of_work` decorator can be used.
 
-.. autofunction:: neo4j.unit_of_work
+.. autofunction:: neo4j.work.simple.unit_of_work
 
 
 Access modes
