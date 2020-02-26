@@ -158,6 +158,7 @@ Other Information
 * `Neo4j Quick Reference Card`_
 * `Example Project`_
 * `Driver Wiki`_ (includes change logs)
+* `Migration Guide - Upgrade Neo4j drivers`_
 
 .. _`Python Driver 1.7`: https://neo4j.com/docs/api/python-driver/1.7/
 .. _`Neo4j Documentation`: https://neo4j.com/docs/
@@ -165,3 +166,4 @@ Other Information
 .. _`Neo4j Quick Reference Card`: https://neo4j.com/docs/cypher-refcard/current/
 .. _`Example Project`: https://github.com/neo4j-examples/movies-python-bolt
 .. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki
+.. _`Migration Guide - Upgrade Neo4j drivers`: https://neo4j.com/docs/migration-guide/4.0/upgrade-driver/
