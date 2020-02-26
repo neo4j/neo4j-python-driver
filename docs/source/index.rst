@@ -1,6 +1,6 @@
-######################################
-Neo4j Bolt Driver |version| for Python
-######################################
+#############################
+Neo4j Python Driver |version|
+#############################
 
 .. warning::
     This API docs is not production ready!
@@ -10,8 +10,8 @@ The Official Neo4j Driver for Python.
 
 Neo4j versions supported:
 
-* Neo4j 4.0
-* Neo4j 3.5
+* Neo4j 4.0 - Using the Bolt Protocol Version 4.0
+* Neo4j 3.5 - Using the Bolt Protocol Version 3
 
 Python versions supported:
 
@@ -23,13 +23,22 @@ Python versions supported:
 
 **Note:** Python 2.7 support has been dropped.
 
-Use the previous driver (Python Driver 1.7) for older versions of python.
+.. note::
+   The driver may still work with older versions of python.
 
+   The previous driver `Python Driver 1.7`_ supports older versions of python,
+   the Neo4j 4.0 will work in fallback mode (using Bolt Protocol Version 3) with that driver.
 
 
 ****************
 Breaking Changes
 ****************
+
+Version Scheme Changes
+======================
+
+The version number have jumped from :code:`1.7` to :code:`Python Driver 4.0` to align with the Neo4j Database version scheme.
+
 
 Namespace Changes
 =================
@@ -150,6 +159,7 @@ Other Information
 * `Example Project`_
 * `Driver Wiki`_ (includes change logs)
 
+.. _`Python Driver 1.7`: https://neo4j.com/docs/api/python-driver/1.7/
 .. _`Neo4j Documentation`: https://neo4j.com/docs/
 .. _`The Neo4j Drivers Manual`: https://neo4j.com/docs/driver-manual/current/
 .. _`Neo4j Quick Reference Card`: https://neo4j.com/docs/cypher-refcard/current/
