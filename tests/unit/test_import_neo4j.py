@@ -76,12 +76,12 @@ def test_import_custom_auth():
 
 def test_import_read_access():
     # python -m pytest tests/unit/test_import_neo4j.py -s -v -k test_import_read_access
-    from neo4j.api import READ_ACCESS
+    from neo4j import READ_ACCESS
 
 
 def test_import_write_access():
     # python -m pytest tests/unit/test_import_neo4j.py -s -v -k test_import_write_access
-    from neo4j.api import WRITE_ACCESS
+    from neo4j import WRITE_ACCESS
 
 
 def test_import_transaction():
