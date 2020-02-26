@@ -25,7 +25,7 @@ For example::
 
 To construct a :class:`.Session` use the :meth:`.Driver.session` method.
 
-.. class:: neo4j.Session
+.. class:: .Session
 
     .. automethod:: close
 
@@ -75,7 +75,7 @@ Explicit transactions support multiple statements and must be created with an ex
 This creates a new :class:`.Transaction` object that can be used to run Cypher.
 It also gives applications the ability to directly control `commit` and `rollback` activity.
 
-.. class:: neo4j.Transaction
+.. class:: .Transaction
 
     .. automethod:: run
 
@@ -127,7 +127,7 @@ Returning a live result object would prevent the driver from correctly managing 
 
 To exert more control over how a transaction function is carried out, the :func:`.unit_of_work` decorator can be used.
 
-.. autofunction:: neo4j.unit_of_work
+.. autofunction:: neo4j.work.simple.unit_of_work
 
 
 Access modes
@@ -140,7 +140,7 @@ Note that this mode is simply a default and not a constraint.
 This means that transaction functions within a session can override the access mode passed to that session on construction.
 
 .. note::
-    The driver does not parse Cypher statements and cannot determine whether a statement tagged as `read` or `write` is tagged correctly.
-    Since the access mode is not passed to the server, this can allow a `write` statement to be executed in a `read` call on a single instance.
+    The driver does not parse Cypher queries and cannot determine whether the access mode should be :code:`ACCESS_READ` or :code:`ACCESS_WRITE`.
+    Since the access mode is not passed to the server, this can allow a :code:`ACCESS_WRITE` statement to be executed for a :code:`ACCESS_READ` call on a single instance.
     Clustered environments are not susceptible to this loophole as cluster roles prevent it.
     This behaviour should not be relied upon as the loophole may be closed in a future release.
