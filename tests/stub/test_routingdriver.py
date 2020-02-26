@@ -23,10 +23,9 @@ import pytest
 
 from neo4j import (
     GraphDatabase,
-    READ_ACCESS,
-    WRITE_ACCESS,
     Neo4jDriver,
 )
+from neo4j.api import READ_ACCESS, WRITE_ACCESS
 
 from neo4j._exceptions import BoltRoutingError
 

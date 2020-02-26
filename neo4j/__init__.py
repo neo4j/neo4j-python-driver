@@ -21,8 +21,6 @@
 
 __all__ = [
     "__version__",
-    "READ_ACCESS",
-    "WRITE_ACCESS",
     "GraphDatabase",
     "Driver",
     "BoltDriver",
@@ -51,6 +49,8 @@ from neo4j.api import (
     Bookmark,
     ServerInfo,
     Version,
+    READ_ACCESS,
+    WRITE_ACCESS,
 )
 from neo4j.conf import (
     Config,
@@ -61,12 +61,19 @@ from neo4j.meta import (
     get_user_agent,
     version as __version__,
 )
+from neo4j.data import (
+    Record,
+)
+from neo4j.work.simple import (
+    Transaction,
+    Result,
+    ResultSummary,
+    Query,
+    Session,
+    SessionConfig,
+    unit_of_work,
+)
 from neo4j.exceptions import ServiceUnavailable
-
-
-READ_ACCESS = "READ"
-WRITE_ACCESS = "WRITE"
-
 
 log = getLogger("neo4j")
 
