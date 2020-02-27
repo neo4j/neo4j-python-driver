@@ -19,17 +19,32 @@
 # limitations under the License.
 
 
-from datetime import time, datetime, timedelta
-
-from pytz import FixedOffset, timezone, utc
+from datetime import (
+    time,
+    datetime,
+    timedelta,
+)
 
 from neo4j.packstream import Structure
-from neo4j.time import Duration, Date, Time, DateTime
+from neo4j.time import (
+    Duration,
+    Date,
+    Time,
+    DateTime,
+)
 
 
-UNIX_EPOCH_DATE = Date(1970, 1, 1)
-UNIX_EPOCH_DATE_ORDINAL = UNIX_EPOCH_DATE.to_ordinal()
-UNIX_EPOCH_DATETIME_UTC = DateTime(1970, 1, 1, 0, 0, 0, utc)
+def get_date_unix_epoch():
+    return Date(1970, 1, 1)
+
+
+def get_date_unix_epoch_ordinal():
+    return get_date_unix_epoch().to_ordinal()
+
+
+def get_datetime_unix_epoch_utc():
+    from pytz import utc
+    return DateTime(1970, 1, 1, 0, 0, 0, utc)
 
 
 def hydrate_date(days):
@@ -38,7 +53,7 @@ def hydrate_date(days):
     :param days:
     :return: Date
     """
-    return Date.from_ordinal(UNIX_EPOCH_DATE_ORDINAL + days)
+    return Date.from_ordinal(get_date_unix_epoch_ordinal() + days)
 
 
 def dehydrate_date(value):
@@ -48,7 +63,7 @@ def dehydrate_date(value):
     :type value: Date
     :return:
     """
-    return Structure(b"D", value.toordinal() - UNIX_EPOCH_DATE.toordinal())
+    return Structure(b"D", value.toordinal() - get_date_unix_epoch().toordinal())
 
 
 def hydrate_time(nanoseconds, tz=None):
@@ -58,6 +73,7 @@ def hydrate_time(nanoseconds, tz=None):
     :param tz:
     :return: Time
     """
+    from pytz import FixedOffset
     seconds, nanoseconds = map(int, divmod(nanoseconds, 1000000000))
     minutes, seconds = map(int, divmod(seconds, 60))
     hours, minutes = map(int, divmod(minutes, 60))
@@ -98,11 +114,12 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):
     :param tz:
     :return: datetime
     """
+    from pytz import FixedOffset, timezone
     minutes, seconds = map(int, divmod(seconds, 60))
     hours, minutes = map(int, divmod(minutes, 60))
     days, hours = map(int, divmod(hours, 24))
     seconds = (1000000000 * seconds + nanoseconds) / 1000000000
-    t = DateTime.combine(Date.from_ordinal(UNIX_EPOCH_DATE_ORDINAL + days), Time(hours, minutes, seconds))
+    t = DateTime.combine(Date.from_ordinal(get_date_unix_epoch_ordinal() + days), Time(hours, minutes, seconds))
     if tz is None:
         return t
     if isinstance(tz, int):
@@ -131,6 +148,7 @@ def dehydrate_datetime(value):
     tz = value.tzinfo
     if tz is None:
         # without time zone
+        from pytz import utc
         value = utc.localize(value)
         seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"d", seconds, nanoseconds)

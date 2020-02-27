@@ -4,4 +4,3 @@ pytest
 pytest-benchmark
 pytest-cov
 teamcity-messages
-pytz
