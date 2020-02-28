@@ -73,7 +73,7 @@ from neo4j.work.simple import (
     SessionConfig,
     unit_of_work,
 )
-from neo4j.exceptions import ServiceUnavailable
+
 
 log = getLogger("neo4j")
 
@@ -94,12 +94,10 @@ class GraphDatabase:
         """
         parsed = urlparse(uri)
         if parsed.scheme == "bolt":
-            return cls.bolt_driver(parsed.netloc, auth=auth, acquire_timeout=acquire_timeout,
-                                   **config)
+            return cls.bolt_driver(parsed.netloc, auth=auth, acquire_timeout=acquire_timeout, **config)
         elif parsed.scheme == "neo4j" or parsed.scheme == "bolt+routing":
             rc = cls._parse_routing_context(parsed.query)
-            return cls.neo4j_driver(parsed.netloc, auth=auth, routing_context=rc,
-                                    acquire_timeout=acquire_timeout, **config)
+            return cls.neo4j_driver(parsed.netloc, auth=auth, routing_context=rc, acquire_timeout=acquire_timeout, **config)
         else:
             raise ValueError("Unknown URI scheme {!r}".format(parsed.scheme))
 
@@ -108,7 +106,13 @@ class GraphDatabase:
         """ Create a driver for direct Bolt server access that uses
         socket I/O and thread-based concurrency.
         """
-        return BoltDriver.open(target, auth=auth, acquire_timeout=acquire_timeout, **config)
+        from neo4j._exceptions import BoltHandshakeError
+
+        try:
+            return BoltDriver.open(target, auth=auth, acquire_timeout=acquire_timeout, **config)
+        except BoltHandshakeError as error:
+            from neo4j.exceptions import ServiceUnavailable
+            raise ServiceUnavailable(str(error)) from error
 
     @classmethod
     def neo4j_driver(cls, *targets, auth=None, routing_context=None, acquire_timeout=None,
@@ -116,8 +120,13 @@ class GraphDatabase:
         """ Create a driver for routing-capable Neo4j service access
         that uses socket I/O and thread-based concurrency.
         """
-        return Neo4jDriver.open(*targets, auth=auth, routing_context=routing_context,
-                                acquire_timeout=acquire_timeout, **config)
+        from neo4j._exceptions import BoltHandshakeError
+
+        try:
+            return Neo4jDriver.open(*targets, auth=auth, routing_context=routing_context, acquire_timeout=acquire_timeout, **config)
+        except BoltHandshakeError as error:
+            from neo4j.exceptions import ServiceUnavailable
+            raise ServiceUnavailable(str(error)) from error
 
     @classmethod
     def _parse_routing_context(cls, query):
@@ -344,6 +353,8 @@ class Neo4jDriver(Routing, Driver):
         return self._verify_routing_connectivity()
 
     def _verify_routing_connectivity(self):
+        from neo4j.exceptions import ServiceUnavailable
+
         table = self.get_routing_table()
         routing_info = {}
         for ix in list(table.routers):

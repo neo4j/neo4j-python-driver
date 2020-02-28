@@ -27,12 +27,14 @@ from neo4j._exceptions import BoltHandshakeError
 
 
 def test_bolt_uri(bolt_uri, auth):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_bolt_uri
     try:
         with GraphDatabase.driver(bolt_uri, auth=auth) as driver:
             with driver.session() as session:
                 value = session.run("RETURN 1").single().value()
                 assert value == 1
-    except BoltHandshakeError as error:
+    except ServiceUnavailable as error:
+        assert isinstance(error.__cause__, BoltHandshakeError)
         skip(error.args[0])
 
 # def test_readonly_bolt_uri(readonly_bolt_uri, auth):
