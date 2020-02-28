@@ -66,6 +66,10 @@ Connector API Errors
 
 """
 
+CLASSIFICATION_CLIENT = "ClientError"
+CLASSIFICATION_TRANSIENT = "TransientError"
+CLASSIFICATION_DATABASE = "DatabaseError"
+
 
 class Neo4jError(Exception):
     """ Raised when the Cypher engine returns an error to the client.
@@ -80,12 +84,12 @@ class Neo4jError(Exception):
 
     @classmethod
     def hydrate(cls, message=None, code=None, **metadata):
-        message = message or "An unknown error occurred."
+        message = message or "An unknown error occurred"
         code = code or "Neo.DatabaseError.General.UnknownError"
         try:
             _, classification, category, title = code.split(".")
         except ValueError:
-            classification = "DatabaseError"
+            classification = CLASSIFICATION_DATABASE
             category = "General"
             title = "UnknownError"
 
@@ -102,19 +106,19 @@ class Neo4jError(Exception):
 
     @classmethod
     def _extract_error_class(cls, classification, code):
-        if classification == "ClientError":
+        if classification == CLASSIFICATION_CLIENT:
             try:
                 return client_errors[code]
             except KeyError:
                 return ClientError
 
-        elif classification == "TransientError":
+        elif classification == CLASSIFICATION_TRANSIENT:
             try:
                 return transient_errors[code]
             except KeyError:
                 return TransientError
 
-        elif classification == "DatabaseError":
+        elif classification == CLASSIFICATION_DATABASE:
             return DatabaseError
 
         else:
@@ -271,5 +275,18 @@ class ReadServiceUnavailable(ServiceUnavailable):
 class ResultConsumedError(DriverError):
     """ Raised when trying to access records after the records have been consumed.
     """
-    def __init__(self, session, *args, **kwargs):
-        super(ResultConsumedError, self).__init__(session, *args, **kwargs)
+
+
+class ConfigurationError(DriverError):
+    """ Raised when there is an error concerning a configuration.
+    """
+
+
+class AuthConfigurationError(ConfigurationError):
+    """ Raised when there is an error with the authentication configuration.
+    """
+
+
+class CertificateConfigurationError(ConfigurationError):
+    """ Raised when there is an error with the authentication configuration.
+    """
