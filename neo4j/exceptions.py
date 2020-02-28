@@ -39,6 +39,7 @@ Driver API Errors
 
 + DriverError
   + TransactionError
+    + TransactionNestingError
   + SessionExpired
   + ServiceUnavailable
     + RoutingServiceUnavailable
@@ -47,7 +48,7 @@ Driver API Errors
   + ConfigurationError
     + AuthConfigurationError
     + CertificateConfigurationError
-
+  + ResultConsumedError
 
 Connector API Errors
 ====================
@@ -238,6 +239,15 @@ class TransactionError(DriverError):
         self.transaction = transaction
 
 
+class TransactionNestingError(DriverError):
+    """ Raised when transactions are nested incorrectly.
+    """
+
+    def __init__(self, transaction, *args, **kwargs):
+        super(TransactionError, self).__init__(*args, **kwargs)
+        self.transaction = transaction
+
+
 class ServiceUnavailable(DriverError):
     """ Raised when no database service is available.
     """
@@ -256,3 +266,10 @@ class WriteServiceUnavailable(ServiceUnavailable):
 class ReadServiceUnavailable(ServiceUnavailable):
     """ Raised when no read service is available.
     """
+
+
+class ResultConsumedError(DriverError):
+    """ Raised when trying to access records after the records have been consumed.
+    """
+    def __init__(self, session, *args, **kwargs):
+        super(ResultConsumedError, self).__init__(session, *args, **kwargs)
