@@ -23,8 +23,8 @@ import pytest
 
 from neo4j import (
     GraphDatabase,
-    READ_ACCESS,
 )
+from neo4j.api import READ_ACCESS
 
 from tests.stub.conftest import StubCluster
 

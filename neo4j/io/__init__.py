@@ -662,7 +662,7 @@ class Neo4jPool(IOPool):
 
         :return: `True` if an update was required, `False` otherwise.
         """
-        from neo4j import READ_ACCESS
+        from neo4j.api import READ_ACCESS
         if self.routing_table.is_fresh(readonly=(access_mode == READ_ACCESS)):
             return False
         with self.refresh_lock:
@@ -676,7 +676,7 @@ class Neo4jPool(IOPool):
             return True
 
     def _select_address(self, access_mode=None):
-        from neo4j import READ_ACCESS
+        from neo4j.api import READ_ACCESS
         """ Selects the address with the fewest in-use connections.
         """
         self.ensure_routing_table_is_fresh(access_mode)
@@ -695,7 +695,8 @@ class Neo4jPool(IOPool):
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
     def acquire(self, access_mode=None, timeout=None):
-        from neo4j import READ_ACCESS, WRITE_ACCESS
+        from neo4j.api import WRITE_ACCESS
+        from neo4j.api import READ_ACCESS
         if access_mode is None:
             access_mode = WRITE_ACCESS
         if access_mode not in (READ_ACCESS, WRITE_ACCESS):

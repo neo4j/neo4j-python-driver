@@ -21,7 +21,7 @@
 
 from uuid import uuid4
 
-from neo4j import WRITE_ACCESS, READ_ACCESS
+from neo4j.api import READ_ACCESS, WRITE_ACCESS
 from neo4j.graph import Node
 
 

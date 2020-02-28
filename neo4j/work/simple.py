@@ -25,7 +25,7 @@ from random import random
 from time import perf_counter, sleep
 from warnings import warn
 
-from neo4j import READ_ACCESS, WRITE_ACCESS
+from neo4j.api import READ_ACCESS, WRITE_ACCESS
 from neo4j.conf import DeprecatedAlias
 from neo4j.data import DataHydrator, DataDehydrator
 from neo4j.exceptions import (

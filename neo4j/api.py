@@ -159,3 +159,7 @@ class Version(tuple):
         if b[0] != 0 or b[1] != 0:
             raise ValueError("First two bytes must contain zero")
         return Version(b[-1], b[-2])
+
+
+READ_ACCESS = "READ"
+WRITE_ACCESS = "WRITE"
