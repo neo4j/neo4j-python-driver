@@ -106,3 +106,47 @@ def test_bolt_handshake_error():
         raise error
 
     e.match("The Neo4J server does not support communication with this driver. Supported Bolt Protocols ")
+
+
+def test_serviceunavailable():
+    with pytest.raises(ServiceUnavailable) as e:
+        error = ServiceUnavailable("Test error message")
+        raise error
+
+    assert e.value.__cause__ is None
+
+
+def test_serviceunavailable_raised_from_bolt_protocol_error_with_implicit_style():
+    error = BoltProtocolError("Driver does not support Bolt protocol version: 0x%06X%02X" % (2, 5), address="localhost")
+    with pytest.raises(ServiceUnavailable) as e:
+        assert error.address == "localhost"
+        try:
+            raise error
+        except BoltProtocolError as error_bolt_protocol:
+            raise ServiceUnavailable(str(error_bolt_protocol)) from error_bolt_protocol
+
+    # The regexp parameter of the match method is matched with the re.search function.
+    with pytest.raises(AssertionError):
+        e.match("FAIL!")
+
+    e.match("Driver does not support Bolt protocol version: 0x00000205")
+    assert e.value.__cause__ is error
+
+def test_serviceunavailable_raised_from_bolt_protocol_error_with_explicit_style():
+    error = BoltProtocolError("Driver does not support Bolt protocol version: 0x%06X%02X" % (2, 5), address="localhost")
+
+    with pytest.raises(ServiceUnavailable) as e:
+        assert error.address == "localhost"
+        try:
+            raise error
+        except BoltProtocolError as error_bolt_protocol:
+            error_nested = ServiceUnavailable(str(error_bolt_protocol))
+            error_nested.__cause__ = error_bolt_protocol
+            raise error_nested
+
+    # The regexp parameter of the match method is matched with the re.search function.
+    with pytest.raises(AssertionError):
+        e.match("FAIL!")
+
+    e.match("Driver does not support Bolt protocol version: 0x00000205")
+    assert e.value.__cause__ is error
