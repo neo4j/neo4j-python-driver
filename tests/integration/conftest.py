@@ -25,11 +25,15 @@ from os.path import dirname, join
 from threading import RLock
 
 import pytest
+import urllib
 
-from neo4j import GraphDatabase
+from neo4j import (
+    GraphDatabase,
+)
 from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
 from neo4j.io import Bolt
+
 
 
 NEO4J_RELEASES = getenv("NEO4J_RELEASES", "snapshot-enterprise 3.5-enterprise").split()
@@ -182,9 +186,12 @@ def service(request):
         if existing_service:
             NEO4J_SERVICE = existing_service
         else:
-            NEO4J_SERVICE = Neo4jService(auth=NEO4J_AUTH, image=request.param,
-                                         n_cores=NEO4J_CORES, n_replicas=NEO4J_REPLICAS)
-            NEO4J_SERVICE.start(timeout=300)
+            try:
+                NEO4J_SERVICE = Neo4jService(auth=NEO4J_AUTH, image=request.param, n_cores=NEO4J_CORES, n_replicas=NEO4J_REPLICAS)
+                NEO4J_SERVICE.start(timeout=300)
+            except urllib.error.HTTPError as error:
+                # pytest.skip(str(error))
+                pytest.xfail(str(error) + " " + request.param)
         yield NEO4J_SERVICE
         if NEO4J_SERVICE is not None:
             NEO4J_SERVICE.stop(timeout=300)

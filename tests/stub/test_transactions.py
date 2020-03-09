@@ -21,12 +21,41 @@
 
 import pytest
 
-from neo4j import GraphDatabase
+from neo4j import (
+    GraphDatabase,
+    WRITE_ACCESS,
+)
 from neo4j.exceptions import ServiceUnavailable
 
 from tests.stub.conftest import StubCluster
 
 # python -m pytest tests/stub/test_transactions.py -s -v
+
+
+driver_config = {
+    "secure": False,
+    # "trust": None, # TODO: Investigate why this seem to hang the max_retry_time
+    "user_agent": "test",
+    "max_age": 1000,
+    "max_size": 10,
+    # "connection_acquisition_timeout": 1, # TODO: Investigate why this seem to hang the max_retry_time
+    # "connection_timeout": 1, # TODO: Investigate why this seem to hang the max_retry_time
+    "keep_alive": False,
+    "max_retry_time": 1,
+    "resolver": None,
+}
+
+session_config = {
+    # "fetch_size": 100,
+    # "database": "default",
+    # "bookmarks": ["bookmark-1", ],
+    "default_access_mode": WRITE_ACCESS,
+    "acquire_timeout": 1.0,
+    "max_retry_time": 1.0,
+    "initial_retry_delay": 1.0,
+    "retry_delay_multiplier": 1.0,
+    "retry_delay_jitter_factor": 0.1,
+}
 
 
 def create_bob(tx):
@@ -44,8 +73,8 @@ def test_connection_error_on_explicit_commit(driver_info, test_script):
     # python -m pytest tests/stub/test_transactions.py -s -v -k test_connection_error_on_explicit_commit
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
-        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], max_retry_time=0) as driver:
-            with driver.session() as session:
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
+            with driver.session(**session_config) as session:
                 tx = session.begin_transaction()
                 tx.run("CREATE (n {name:'Bob'})").data()
                 with pytest.raises(ServiceUnavailable):
@@ -61,11 +90,9 @@ def test_connection_error_on_explicit_commit(driver_info, test_script):
 )
 def test_connection_error_on_commit(driver_info, test_script):
     # python -m pytest tests/stub/test_transactions.py -s -v -k test_connection_error_on_commit
-
-    # TODO: Investigate why max_retry_time wont seem to trigger.
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
-        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], max_retry_time=0) as driver:
-            with driver.session() as session:
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
+            with driver.session(**session_config) as session:
                 with pytest.raises(ServiceUnavailable):
                     session.write_transaction(create_bob)
