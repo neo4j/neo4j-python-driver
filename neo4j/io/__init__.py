@@ -154,6 +154,8 @@ class Bolt:
             s, protocol_version = connect(address, timeout=timeout, config=config)
         except ServiceUnavailable:
             return None
+        except BoltHandshakeError as e:
+            return None
         else:
             s.close()
             return protocol_version
@@ -167,6 +169,8 @@ class Bolt:
         :param timeout:
         :param config:
         :return:
+        :raise BoltHandshakeError: raised if the Bolt Protocol can not negotiate a protocol version.
+        :raise ServiceUnavailable: raised if there was a connection issue.
         """
         config = PoolConfig.consume(config)
         s, config.protocol_version, handshake, data = connect(address, timeout=timeout, config=config)
@@ -839,8 +843,7 @@ def _handshake(s, resolved_address):
         # response, the server has closed the connection
         log.debug("[#%04X]  S: <CLOSE>", local_port)
         s.close()
-        raise ServiceUnavailable("Connection to %r closed without handshake "
-                                 "response" % (resolved_address,))
+        raise BoltHandshakeError("Connection to {address} closed without handshake response".format(address=resolved_address), address=resolved_address, request_data=handshake, response_data=None)
     if data_size != 4:
         # Some garbled data has been received
         log.debug("[#%04X]  S: @*#!", local_port)

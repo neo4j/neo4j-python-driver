@@ -22,6 +22,7 @@
 import pytest
 
 from neo4j.exceptions import ServiceUnavailable
+from neo4j._exceptions import BoltHandshakeError
 
 from neo4j import (
     GraphDatabase,
@@ -64,8 +65,9 @@ def test_direct_driver_handshake_negotiation(driver_info, test_script, test_expe
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
         if test_expected:
-            with pytest.raises(test_expected):
+            with pytest.raises(test_expected) as error:
                 driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
+            assert isinstance(error.value.__cause__, BoltHandshakeError)
         else:
             driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
             assert isinstance(driver, BoltDriver)

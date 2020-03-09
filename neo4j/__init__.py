@@ -349,16 +349,23 @@ class Neo4jDriver(Routing, Driver):
         return self._pool.routing_table
 
     def verify_connectivity(self, **config):
+        """
+        :raise ServiceUnavailable: raised if the server does not support routing or if routing support is broken.
+        """
         # TODO: Improve and update Stub Test Server to be able to test.
         return self._verify_routing_connectivity()
 
     def _verify_routing_connectivity(self):
         from neo4j.exceptions import ServiceUnavailable
+        from neo4j._exceptions import BoltHandshakeError
 
         table = self.get_routing_table()
         routing_info = {}
         for ix in list(table.routers):
-            routing_info[ix] = self._pool.fetch_routing_info(table.routers[0])
+            try:
+                routing_info[ix] = self._pool.fetch_routing_info(table.routers[0])
+            except BoltHandshakeError as error:
+                routing_info[ix] = None
 
         for key, val in routing_info.items():
             if val is not None:
