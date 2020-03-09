@@ -19,10 +19,9 @@
 # limitations under the License.
 
 
-from unittest import SkipTest
+import pytest
 from uuid import uuid4
 
-from pytest import raises
 
 from neo4j.work.simple import unit_of_work
 from neo4j.exceptions import ClientError
@@ -55,8 +54,7 @@ def test_read_with_arg_and_metadata(session):
     try:
         value = session.read_transaction(work)
     except ClientError:
-        raise SkipTest("Transaction metadata and timeout only supported "
-                       "in Neo4j EE 3.5+")
+        pytest.skip("Transaction metadata and timeout only supported in Neo4j EE 3.5+")
     else:
         assert value == {"foo": "bar"}
 
@@ -88,8 +86,7 @@ def test_write_with_arg_and_metadata(session):
     try:
         value = session.write_transaction(work, x=1)
     except ClientError:
-        raise SkipTest("Transaction metadata and timeout only supported "
-                       "in Neo4j EE 3.5+")
+        pytest.skip("Transaction metadata and timeout only supported in Neo4j EE 3.5+")
     else:
         assert value == 1
 
@@ -99,5 +96,5 @@ def test_error_on_write_transaction(session):
     def f(tx, uuid):
         tx.run("CREATE (a:Thing {uuid:$uuid})", uuid=uuid), uuid4()
 
-    with raises(TypeError):
+    with pytest.raises(TypeError):
         session.write_transaction(f)

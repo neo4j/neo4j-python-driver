@@ -19,13 +19,19 @@
 # limitations under the License.
 
 
-from unittest import SkipTest
+import pytest
 from uuid import uuid4
 
-from pytest import raises
 
-from neo4j.work.simple import Query, TransactionError
-from neo4j.exceptions import CypherSyntaxError, ClientError, TransientError
+from neo4j.work.simple import (
+    Query,
+    TransactionError,
+)
+from neo4j.exceptions import (
+    CypherSyntaxError,
+    ClientError,
+    TransientError,
+)
 
 
 def test_can_commit_transaction(session):
@@ -115,7 +121,7 @@ def test_can_rollback_transaction_using_with_block(session):
 
 
 def test_broken_transaction_should_not_break_session(session):
-    with raises(CypherSyntaxError):
+    with pytest.raises(CypherSyntaxError):
         with session.begin_transaction() as tx:
             tx.run("X")
     with session.begin_transaction() as tx:
@@ -124,7 +130,7 @@ def test_broken_transaction_should_not_break_session(session):
 
 def test_statement_object_not_supported(session):
     with session.begin_transaction() as tx:
-        with raises(ValueError):
+        with pytest.raises(ValueError):
             tx.run(Query("RETURN 1", timeout=0.25))
 
 
@@ -135,9 +141,7 @@ def test_transaction_metadata(session):
             metadata_out = tx.run("CALL dbms.getTXMetaData").single().value()
         except ClientError as e:
             if e.code == "Neo.ClientError.Procedure.ProcedureNotFound":
-                raise SkipTest("Cannot assert correct metadata as Neo4j "
-                               "edition does not support procedure "
-                               "dbms.getTXMetaData")
+                pytest.skip("Cannot assert correct metadata as Neo4j edition does not support procedure dbms.getTXMetaData")
             else:
                 raise
         else:
@@ -151,7 +155,7 @@ def test_transaction_timeout(driver):
             tx1 = s1.begin_transaction()
             tx1.run("MATCH (a:Node) SET a.property = 1").consume()
             tx2 = s2.begin_transaction(timeout=0.25)
-            with raises(TransientError):
+            with pytest.raises(TransientError):
                 tx2.run("MATCH (a:Node) SET a.property = 2").consume()
 
 
@@ -185,7 +189,7 @@ def test_should_sync_after_rollback(session):
 
 def test_errors_on_run_transaction(session):
     tx = session.begin_transaction()
-    with raises(TypeError):
+    with pytest.raises(TypeError):
         tx.run("CREATE (a:Thing {uuid:$uuid})", uuid=uuid4())
     tx.rollback()
 
@@ -194,5 +198,5 @@ def test_error_on_using_closed_transaction(session):
     tx = session.begin_transaction()
     tx.run("RETURN 1")
     tx.commit()
-    with raises(TransactionError):
+    with pytest.raises(TransactionError):
         tx.run("RETURN 1")

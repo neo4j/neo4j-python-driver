@@ -19,9 +19,13 @@
 # limitations under the License.
 
 
-from pytest import raises
+import pytest
 
-from neo4j.spatial import CartesianPoint, WGS84Point
+
+from neo4j.spatial import (
+    CartesianPoint,
+    WGS84Point,
+)
 
 
 def test_cartesian_point_input(cypher_eval):
@@ -74,7 +78,7 @@ def test_cartesian_point_output(cypher_eval):
     assert isinstance(value, CartesianPoint)
     assert value.x == 3.0
     assert value.y == 4.0
-    with raises(AttributeError):
+    with pytest.raises(AttributeError):
         _ = value.z
 
 
@@ -93,9 +97,9 @@ def test_wgs84_point_output(cypher_eval):
     assert value.y == 3.0
     assert value.longitude == 4.0
     assert value.x == 4.0
-    with raises(AttributeError):
+    with pytest.raises(AttributeError):
         _ = value.height
-    with raises(AttributeError):
+    with pytest.raises(AttributeError):
         _ = value.z
 
 

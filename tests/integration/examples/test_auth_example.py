@@ -25,6 +25,7 @@ import pytest
 from neo4j import GraphDatabase
 # end::basic-auth-import[]
 
+from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
 from tests.integration.examples import DriverSetupExample
 
@@ -42,5 +43,6 @@ class BasicAuthExample(DriverSetupExample):
 def test_example(uri, auth):
     try:
         BasicAuthExample.test(uri, user=auth[0], password=auth[1])
-    except BoltHandshakeError as error:
-        pytest.skip(error.args[0])
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])

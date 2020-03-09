@@ -19,11 +19,20 @@
 # limitations under the License.
 
 
-from pytest import raises
-from pytz import FixedOffset, timezone, utc
+import pytest
+from pytz import (
+    FixedOffset,
+    timezone,
+    utc,
+)
 
 from neo4j.exceptions import CypherTypeError
-from neo4j.time import Date, Time, DateTime, Duration
+from neo4j.time import (
+    Date,
+    Time,
+    DateTime,
+    Duration,
+)
 
 
 def test_native_date_input(cypher_eval):
@@ -228,7 +237,7 @@ def test_timedelta_input(cypher_eval):
 
 def test_mixed_array_input(cypher_eval):
     data = [Date(1976, 6, 13), Duration(9, 8, 7, 6, 5, 4)]
-    with raises(CypherTypeError):
+    with pytest.raises(CypherTypeError):
         _ = cypher_eval("CREATE (a {x:$x}) RETURN a.x", x=data)
 
 

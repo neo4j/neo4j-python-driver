@@ -25,6 +25,7 @@ import pytest
 from neo4j import GraphDatabase
 # end::custom-resolver-import[]
 
+from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
 from tests.integration.examples import DriverSetupExample
 
@@ -53,5 +54,6 @@ class CustomResolverExample(DriverSetupExample):
 def test_example(uri, auth):
     try:
         CustomResolverExample.test(uri, auth)
-    except BoltHandshakeError as error:
-        pytest.skip(error.args[0])
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])

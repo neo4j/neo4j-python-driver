@@ -20,7 +20,6 @@
 
 
 import pytest
-from pytest import raises
 
 from neo4j.work.simple import Query
 from neo4j.exceptions import Neo4jError, ClientError, TransientError
@@ -33,12 +32,12 @@ def test_can_run_simple_statement(session):
     for record in result:
         assert record[0] == 1
         assert record["n"] == 1
-        with raises(KeyError):
+        with pytest.raises(KeyError):
             _ = record["x"]
         assert record["n"] == 1
-        with raises(KeyError):
+        with pytest.raises(KeyError):
             _ = record["x"]
-        with raises(TypeError):
+        with pytest.raises(TypeError):
             _ = record[object()]
         assert repr(record)
         assert len(record) == 1
@@ -74,12 +73,12 @@ def test_autocommit_transactions_use_bookmarks(neo4j_driver):
 
 
 def test_fails_on_bad_syntax(session):
-    with raises(Neo4jError):
+    with pytest.raises(Neo4jError):
         session.run("X").consume()
 
 
 def test_fails_on_missing_parameter(session):
-    with raises(Neo4jError):
+    with pytest.raises(Neo4jError):
         session.run("RETURN {x}").consume()
 
 
@@ -139,7 +138,7 @@ def test_can_return_relationship(neo4j_driver):
 
 
 def test_can_handle_cypher_error(session):
-    with raises(Neo4jError):
+    with pytest.raises(Neo4jError):
         session.run("X").consume()
 
 
@@ -151,13 +150,13 @@ def test_keys_are_available_before_and_after_stream(session):
 
 
 def test_keys_with_an_error(session):
-    with raises(Neo4jError):
+    with pytest.raises(Neo4jError):
         result = session.run("X")
         list(result.keys())
 
 
 def test_should_not_allow_empty_statements(session):
-    with raises(ValueError):
+    with pytest.raises(ValueError):
         _ = session.run("")
 
 
@@ -201,7 +200,7 @@ def test_autocommit_transactions_should_support_timeout(neo4j_driver):
         with neo4j_driver.session() as s2:
             tx1 = s1.begin_transaction()
             tx1.run("MATCH (a:Node) SET a.property = 1").consume()
-            with raises(TransientError):
+            with pytest.raises(TransientError):
                 s2.run(Query("MATCH (a:Node) SET a.property = 2",
                              timeout=0.25)).consume()
 

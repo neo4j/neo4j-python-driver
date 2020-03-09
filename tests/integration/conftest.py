@@ -24,7 +24,7 @@ from os import getenv
 from os.path import dirname, join
 from threading import RLock
 
-from pytest import fixture, skip
+import pytest
 
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
@@ -170,7 +170,7 @@ if existing_service:
     NEO4J_RELEASES = ["existing"]
 
 
-@fixture(scope="session", params=NEO4J_RELEASES)
+@pytest.fixture(scope="session", params=NEO4J_RELEASES)
 def service(request):
     global NEO4J_SERVICE
     if NEO4J_DEBUG:
@@ -191,7 +191,7 @@ def service(request):
             NEO4J_SERVICE = None
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def addresses(service):
     try:
         machines = service.cores()
@@ -209,7 +209,7 @@ def addresses(service):
 #     return [machine.address for machine in machines]
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def address(addresses):
     try:
         return addresses[0]
@@ -225,7 +225,7 @@ def address(addresses):
 #         return None
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def targets(addresses):
     return " ".join("{}:{}".format(address[0], address[1]) for address in addresses)
 
@@ -235,7 +235,7 @@ def targets(addresses):
 #     return " ".join("{}:{}".format(address[0], address[1]) for address in readonly_addresses)
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def target(address):
     return "{}:{}".format(address[0], address[1])
 
@@ -248,17 +248,17 @@ def target(address):
 #         return None
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def bolt_uri(service, target):
     return "bolt://" + target
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def neo4j_uri(service, target):
     return "neo4j://" + target
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def uri(bolt_uri):
     return bolt_uri
 
@@ -271,12 +271,12 @@ def uri(bolt_uri):
 #         return None
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def auth():
     return NEO4J_AUTH
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def bolt_driver(target, auth):
     try:
         driver = GraphDatabase.bolt_driver(target, auth=auth)
@@ -284,21 +284,22 @@ def bolt_driver(target, auth):
             yield driver
         finally:
             driver.close()
-    except BoltHandshakeError as error:
-        skip(error.args[0])
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def neo4j_driver(target, auth):
     try:
         driver = GraphDatabase.neo4j_driver(target, auth=auth)
     except ServiceUnavailable as error:
-        if error.args[0] == "Server does not support routing":
-            skip(error.args[0])
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+        elif error.args[0] == "Server does not support routing":
+            pytest.skip(error.args[0])
         else:
             raise
-    except BoltHandshakeError as error:
-        skip(error.args[0])
     else:
         try:
             yield driver
@@ -306,12 +307,12 @@ def neo4j_driver(target, auth):
             driver.close()
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def driver(neo4j_driver):
     return neo4j_driver
 
 
-@fixture()
+@pytest.fixture()
 def session(bolt_driver):
     session = bolt_driver.session()
     try:
@@ -320,14 +321,14 @@ def session(bolt_driver):
         session.close()
 
 
-@fixture()
+@pytest.fixture()
 def protocol_version(session):
     result = session.run("RETURN 1")
     yield session._connection.protocol_version
     result.consume()
 
 
-@fixture
+@pytest.fixture()
 def cypher_eval(bolt_driver):
 
     def run_and_rollback(tx, cypher, **parameters):
