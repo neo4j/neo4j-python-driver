@@ -27,6 +27,8 @@ from neo4j._exceptions import BoltHandshakeError
 from neo4j import (
     GraphDatabase,
     BoltDriver,
+    Query,
+    WRITE_ACCESS,
 )
 
 from tests.stub.conftest import (
@@ -34,6 +36,32 @@ from tests.stub.conftest import (
 )
 
 # python -m pytest tests/stub/test_directdriver.py
+
+
+driver_config = {
+    "secure": False,
+    # "trust": None, # TODO: Investigate why this seem to hang the max_retry_time
+    "user_agent": "test",
+    "max_age": 1000,
+    "max_size": 10,
+    # "connection_acquisition_timeout": 1, # TODO: Investigate why this seem to hang the max_retry_time
+    # "connection_timeout": 1, # TODO: Investigate why this seem to hang the max_retry_time
+    "keep_alive": False,
+    "max_retry_time": 1,
+    "resolver": None,
+}
+
+session_config = {
+    # "fetch_size": 100,
+    # "database": "default",
+    # "bookmarks": ["bookmark-1", ],
+    "default_access_mode": WRITE_ACCESS,
+    "acquire_timeout": 1.0,
+    "max_retry_time": 1.0,
+    "initial_retry_delay": 1.0,
+    "retry_delay_multiplier": 1.0,
+    "retry_delay_jitter_factor": 0.1,
+}
 
 
 @pytest.mark.parametrize(
@@ -66,10 +94,10 @@ def test_direct_driver_handshake_negotiation(driver_info, test_script, test_expe
         uri = "bolt://127.0.0.1:9001"
         if test_expected:
             with pytest.raises(test_expected) as error:
-                driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
+                driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
             assert isinstance(error.value.__cause__, BoltHandshakeError)
         else:
-            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
             assert isinstance(driver, BoltDriver)
             driver.close()
 
@@ -78,7 +106,7 @@ def test_direct_driver_with_wrong_port(driver_info):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_driver_with_wrong_port
     uri = "bolt://127.0.0.1:9002"
     with pytest.raises(ServiceUnavailable):
-        driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
+        driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
         # assert isinstance(driver, BoltDriver)
         # with pytest.raises(ServiceUnavailable):
         #     driver.verify_connectivity()
@@ -95,7 +123,7 @@ def test_direct_verify_connectivity(driver_info, test_script, test_expected):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_verify_connectivity
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
-        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
             assert isinstance(driver, BoltDriver)
             assert driver.verify_connectivity() == test_expected
 
@@ -111,7 +139,7 @@ def test_direct_verify_connectivity_disconnect_on_run(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_verify_connectivity_disconnect_on_run
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
-        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
             with pytest.raises(ServiceUnavailable):
                 driver.verify_connectivity()
 
@@ -127,9 +155,9 @@ def test_direct_disconnect_on_run(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_disconnect_on_run
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
-        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
             with pytest.raises(ServiceUnavailable):
-                with driver.session() as session:
+                with driver.session(**session_config) as session:
                     session.run("RETURN 1 AS x").consume()
 
 
@@ -144,9 +172,9 @@ def test_direct_disconnect_on_pull_all(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_disconnect_on_pull_all
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
-        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
             with pytest.raises(ServiceUnavailable):
-                with driver.session() as session:
+                with driver.session(**session_config) as session:
                     session.run("RETURN $x", {"x": 1}).consume()
 
 
@@ -162,22 +190,7 @@ def test_direct_session_close_after_server_close(driver_info, test_script):
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
 
-        # acquire_timeout:
-        # The maximum time to allow for a connection to be initialized.
-        # (seconds)
-
-        # Config Settings
-        #
-        # user_agent:
-        # A custom user agent string, if required. The driver will generate a user agent if none is supplied.
-        #
-        # max_retry_time:
-        # The maximum time to allow for retries to be attempted when using transaction functions.
-        # After this time, no more retries will be attempted. This setting does not terminate running queries.
-        # (seconds)
-
-        # TODO: Investigate why max_retry_time wont seem to trigger.
-        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], acquire_timeout=3, user_agent="test", max_retry_time=0) as driver:
-            with driver.session() as session:
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
+            with driver.session(**session_config) as session:
                 with pytest.raises(ServiceUnavailable):
-                    session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
+                    session.write_transaction(lambda tx: tx.run(Query("CREATE (a:Item)", timeout=1)))
