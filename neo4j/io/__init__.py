@@ -792,9 +792,9 @@ def _secure(s, host, ssl_context):
         try:
             sni_host = host if HAS_SNI and host else None
             s = ssl_context.wrap_socket(s, server_hostname=sni_host)
-        except SSLError as cause:
+        except (SSLError, OSError) as cause:
             s.close()
-            error = BoltSecurityError(message="Failed to establish secure connection to {!r}".format(cause.args[1]), address=(host, port))
+            error = BoltSecurityError(message="Failed to establish secure connection.", address=(host, local_port))
             error.__cause__ = cause
             raise error
         else:
@@ -802,7 +802,7 @@ def _secure(s, host, ssl_context):
             der_encoded_server_certificate = s.getpeercert(binary_form=True)
             if der_encoded_server_certificate is None:
                 s.close()
-                raise BoltProtocolError("When using a secure socket, the server should always provide a certificate", address=(host, port))
+                raise BoltProtocolError("When using a secure socket, the server should always provide a certificate", address=(host, local_port))
     return s
 
 

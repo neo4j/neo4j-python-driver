@@ -22,7 +22,10 @@
 import pytest
 
 from neo4j.exceptions import ServiceUnavailable
-from neo4j._exceptions import BoltHandshakeError
+from neo4j._exceptions import (
+    BoltHandshakeError,
+    BoltSecurityError,
+)
 
 from neo4j import (
     GraphDatabase,
@@ -194,3 +197,44 @@ def test_direct_session_close_after_server_close(driver_info, test_script):
             with driver.session(**session_config) as session:
                 with pytest.raises(ServiceUnavailable):
                     session.write_transaction(lambda tx: tx.run(Query("CREATE (a:Item)", timeout=1)))
+
+
+# @pytest.mark.skip(reason="Testing Self Signed Certificate is not available")
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/empty.script",
+        "v4x0/empty.script",
+    ]
+)
+def test_bolt_uri_scheme_self_signed_certificate_constructs_bolt_driver(driver_info, test_script):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_uri_scheme_self_signed_certificate_constructs_bolt_driver
+    import ssl
+    with StubCluster(test_script):
+        uri = "bolt+ssc://127.0.0.1:9001"
+        try:
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
+            assert isinstance(driver, BoltDriver)
+            driver.close()
+        except ServiceUnavailable as error:
+            assert isinstance(error.__cause__, BoltSecurityError)
+
+
+# @pytest.mark.skip(reason="Testing Secure Connection is not available")
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/empty.script",
+        "v4x0/empty.script",
+    ]
+)
+def test_bolt_uri_scheme_secure_constructs_bolt_driver(driver_info, test_script):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_uri_scheme_secure_constructs_bolt_driver
+    with StubCluster(test_script):
+        uri = "bolt+s://127.0.0.1:9001"
+        try:
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
+            assert isinstance(driver, BoltDriver)
+            driver.close()
+        except ServiceUnavailable as error:
+            assert isinstance(error.__cause__, BoltSecurityError)

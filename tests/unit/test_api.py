@@ -24,6 +24,9 @@ from uuid import uuid4
 
 import neo4j.api
 from neo4j.work.simple import DataDehydrator
+from neo4j.exceptions import (
+    ConfigurationError,
+)
 
 standard_ascii = [chr(i) for i in range(128)]
 not_ascii = "♥O◘♦♥O◘♦"
@@ -359,3 +362,31 @@ def test_serverinfo_with_metadata(test_input, expected_agent, expected_version_i
 
     assert server_info.agent == expected_agent
     assert server_info.version_info() == expected_version_info
+
+
+@pytest.mark.parametrize(
+    "test_input, expected_driver_type, expected_security_type, expected_error",
+    [
+        ("bolt://localhost:7676", neo4j.api.DRIVER_BOLT, neo4j.api.SECURITY_TYPE_NOT_SECURE, None),
+        ("bolt+ssc://localhost:7676", neo4j.api.DRIVER_BOLT, neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, None),
+        ("bolt+s://localhost:7676", neo4j.api.DRIVER_BOLT, neo4j.api.SECURITY_TYPE_SECURE, None),
+        ("neo4j://localhost:7676", neo4j.api.DRIVER_NEO4j, neo4j.api.SECURITY_TYPE_NOT_SECURE, None),
+        ("neo4j+ssc://localhost:7676", neo4j.api.DRIVER_NEO4j, neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, None),
+        ("neo4j+s://localhost:7676", neo4j.api.DRIVER_NEO4j, neo4j.api.SECURITY_TYPE_SECURE, None),
+        ("undefined://localhost:7676", None, None, ConfigurationError),
+        ("localhost:7676", None, None, ConfigurationError),
+        ("://localhost:7676", None, None, ConfigurationError),
+        ("bolt+routing://localhost:7676", neo4j.api.DRIVER_NEO4j, neo4j.api.SECURITY_TYPE_NOT_SECURE, None),
+        ("bolt://username@localhost:7676", None, None, ConfigurationError),
+        ("bolt://username:password@localhost:7676", None, None, ConfigurationError),
+    ]
+)
+def test_uri_scheme(test_input, expected_driver_type, expected_security_type, expected_error):
+    # python -m pytest tests/unit/test_api.py -s -k test_uri_scheme
+    if expected_error:
+        with pytest.raises(expected_error):
+            neo4j.api.parse_neo4j_uri(test_input)
+    else:
+        driver_type, security_type, parsed = neo4j.api.parse_neo4j_uri(test_input)
+        assert driver_type == expected_driver_type
+        assert security_type == expected_security_type

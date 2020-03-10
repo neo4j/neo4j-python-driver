@@ -18,9 +18,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from urllib.parse import (
+    urlparse,
+)
+from.exceptions import (
+    ConfigurationError,
+)
 
 """ Base classes and helpers.
 """
+
+READ_ACCESS = "READ"
+WRITE_ACCESS = "WRITE"
+
+DRIVER_BOLT = "DRIVER_BOLT"
+DRIVER_NEO4j = "DRIVER_NEO4J"
+
+SECURITY_TYPE_NOT_SECURE = "SECURITY_TYPE_NOT_SECURE"
+SECURITY_TYPE_SELF_SIGNED_CERTIFICATE = "SECURITY_TYPE_SELF_SIGNED_CERTIFICATE"
+SECURITY_TYPE_SECURE = "SECURITY_TYPE_SECURE"
+
+URI_SCHEME_BOLT = "bolt"
+URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE = "bolt+ssc"
+URI_SCHEME_BOLT_SECURE = "bolt+s"
+
+URI_SCHEME_NEO4J = "neo4j"
+URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE = "neo4j+ssc"
+URI_SCHEME_NEO4J_SECURE = "neo4j+s"
+
+URI_SCHEME_BOLT_ROUTING = "bolt+routing"
 
 
 class Auth:
@@ -161,5 +187,44 @@ class Version(tuple):
         return Version(b[-1], b[-2])
 
 
-READ_ACCESS = "READ"
-WRITE_ACCESS = "WRITE"
+def parse_neo4j_uri(uri):
+    parsed = urlparse(uri)
+
+    if parsed.username:
+        raise ConfigurationError("Username is not supported in the URI")
+
+    if parsed.password:
+        raise ConfigurationError("Password is not supported in the URI")
+
+    if parsed.scheme == URI_SCHEME_BOLT:
+        driver_type = DRIVER_BOLT
+        security_type = SECURITY_TYPE_NOT_SECURE
+    elif parsed.scheme == URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE:
+        driver_type = DRIVER_BOLT
+        security_type = SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
+    elif parsed.scheme == URI_SCHEME_BOLT_SECURE:
+        driver_type = DRIVER_BOLT
+        security_type = SECURITY_TYPE_SECURE
+    elif parsed.scheme == URI_SCHEME_NEO4J or parsed.scheme == URI_SCHEME_BOLT_ROUTING:
+        driver_type = DRIVER_NEO4j
+        security_type = SECURITY_TYPE_NOT_SECURE
+    elif parsed.scheme == URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE:
+        driver_type = DRIVER_NEO4j
+        security_type = SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
+    elif parsed.scheme == URI_SCHEME_NEO4J_SECURE:
+        driver_type = DRIVER_NEO4j
+        security_type = SECURITY_TYPE_SECURE
+    else:
+        raise ConfigurationError("URI scheme {!r} is not supported. Supported URI schemes are {}. Examples: bolt://host[:port] or neo4j://host[:port][?routing_context]".format(
+            parsed.scheme,
+            [
+                URI_SCHEME_BOLT,
+                URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
+                URI_SCHEME_BOLT_SECURE,
+                URI_SCHEME_NEO4J,
+                URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
+                URI_SCHEME_NEO4J_SECURE
+            ]
+        ))
+
+    return driver_type, security_type, parsed
