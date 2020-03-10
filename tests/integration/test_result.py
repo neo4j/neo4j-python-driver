@@ -19,7 +19,8 @@
 # limitations under the License.
 
 
-from pytest import raises, warns
+import pytest
+
 
 from neo4j.exceptions import Neo4jError
 
@@ -93,7 +94,7 @@ def test_can_consume_results_after_harsh_session_death(bolt_driver):
 
 def test_can_consume_result_after_session_with_error(bolt_driver):
     session = bolt_driver.session()
-    with raises(Neo4jError):
+    with pytest.raises(Neo4jError):
         session.run("X").consume()
     session.close()
     session = bolt_driver.session()
@@ -249,7 +250,7 @@ def test_single_consumes_entire_result_if_one_record(session):
 
 def test_single_consumes_entire_result_if_multiple_records(session):
     result = session.run("UNWIND range(1, 3) AS n RETURN n")
-    with warns(UserWarning):
+    with pytest.warns(UserWarning):
         _ = result.single()
     assert not result.session
 

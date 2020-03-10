@@ -25,6 +25,7 @@ import pytest
 from neo4j import GraphDatabase
 # end::config-secure-import[]
 
+from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
 from tests.integration.examples import DriverSetupExample
 
@@ -42,5 +43,6 @@ class ConfigSecureExample(DriverSetupExample):
 def test_example(uri, auth):
     try:
         ConfigSecureExample.test(uri, auth)
-    except BoltHandshakeError as error:
-        pytest.skip(error.args[0])
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])

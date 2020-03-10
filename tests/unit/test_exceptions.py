@@ -36,14 +36,19 @@ from neo4j.exceptions import (
     DatabaseUnavailable,
     DriverError,
     TransactionError,
+    TransactionNestingError,
     SessionExpired,
     ServiceUnavailable,
     RoutingServiceUnavailable,
     WriteServiceUnavailable,
     ReadServiceUnavailable,
-    # ConfigurationError,
-    # AuthConfigurationError,
-    # CertificateConfigurationError,
+    ConfigurationError,
+    AuthConfigurationError,
+    CertificateConfigurationError,
+    ResultConsumedError,
+    CLASSIFICATION_CLIENT,
+    CLASSIFICATION_DATABASE,
+    CLASSIFICATION_TRANSIENT,
 )
 
 from neo4j._exceptions import (
@@ -106,3 +111,110 @@ def test_bolt_handshake_error():
         raise error
 
     e.match("The Neo4J server does not support communication with this driver. Supported Bolt Protocols ")
+
+
+def test_serviceunavailable():
+    with pytest.raises(ServiceUnavailable) as e:
+        error = ServiceUnavailable("Test error message")
+        raise error
+
+    assert e.value.__cause__ is None
+
+
+def test_serviceunavailable_raised_from_bolt_protocol_error_with_implicit_style():
+    error = BoltProtocolError("Driver does not support Bolt protocol version: 0x%06X%02X" % (2, 5), address="localhost")
+    with pytest.raises(ServiceUnavailable) as e:
+        assert error.address == "localhost"
+        try:
+            raise error
+        except BoltProtocolError as error_bolt_protocol:
+            raise ServiceUnavailable(str(error_bolt_protocol)) from error_bolt_protocol
+
+    # The regexp parameter of the match method is matched with the re.search function.
+    with pytest.raises(AssertionError):
+        e.match("FAIL!")
+
+    e.match("Driver does not support Bolt protocol version: 0x00000205")
+    assert e.value.__cause__ is error
+
+
+def test_serviceunavailable_raised_from_bolt_protocol_error_with_explicit_style():
+    error = BoltProtocolError("Driver does not support Bolt protocol version: 0x%06X%02X" % (2, 5), address="localhost")
+
+    with pytest.raises(ServiceUnavailable) as e:
+        assert error.address == "localhost"
+        try:
+            raise error
+        except BoltProtocolError as error_bolt_protocol:
+            error_nested = ServiceUnavailable(str(error_bolt_protocol))
+            error_nested.__cause__ = error_bolt_protocol
+            raise error_nested
+
+    # The regexp parameter of the match method is matched with the re.search function.
+    with pytest.raises(AssertionError):
+        e.match("FAIL!")
+
+    e.match("Driver does not support Bolt protocol version: 0x00000205")
+    assert e.value.__cause__ is error
+
+
+def test_neo4jerror_hydrate_with_no_args():
+    error = Neo4jError.hydrate()
+
+    assert isinstance(error, DatabaseError)
+    assert error.classification == CLASSIFICATION_DATABASE
+    assert error.category == "General"
+    assert error.title == "UnknownError"
+    assert error.metadata == {}
+    assert error.message == "An unknown error occurred"
+    assert error.code == "Neo.DatabaseError.General.UnknownError"
+
+
+def test_neo4jerror_hydrate_with_message_and_code_rubish():
+    error = Neo4jError.hydrate(message="Test error message", code="ASDF_asdf")
+
+    assert isinstance(error, DatabaseError)
+    assert error.classification == CLASSIFICATION_DATABASE
+    assert error.category == "General"
+    assert error.title == "UnknownError"
+    assert error.metadata == {}
+    assert error.message == "Test error message"
+    assert error.code == "ASDF_asdf"
+
+
+def test_neo4jerror_hydrate_with_message_and_code_database():
+    error = Neo4jError.hydrate(message="Test error message", code="Neo.DatabaseError.General.UnknownError")
+
+    assert isinstance(error, DatabaseError)
+    assert error.classification == CLASSIFICATION_DATABASE
+    assert error.category == "General"
+    assert error.title == "UnknownError"
+    assert error.metadata == {}
+    assert error.message == "Test error message"
+    assert error.code == "Neo.DatabaseError.General.UnknownError"
+
+
+def test_neo4jerror_hydrate_with_message_and_code_transient():
+    error = Neo4jError.hydrate(message="Test error message", code="Neo.TransientError.General.TestError")
+    # error = Neo4jError.hydrate(message="Test error message", code="Neo.{}.General.TestError".format(CLASSIFICATION_TRANSIENT))
+
+    assert isinstance(error, TransientError)
+    assert error.classification == CLASSIFICATION_TRANSIENT
+    assert error.category == "General"
+    assert error.title == "TestError"
+    assert error.metadata == {}
+    assert error.message == "Test error message"
+    assert error.code == "Neo.{}.General.TestError".format(CLASSIFICATION_TRANSIENT)
+
+
+def test_neo4jerror_hydrate_with_message_and_code_client():
+    error = Neo4jError.hydrate(message="Test error message", code="Neo.{}.General.TestError".format(CLASSIFICATION_CLIENT))
+
+    assert isinstance(error, ClientError)
+    assert error.classification == CLASSIFICATION_CLIENT
+    assert error.category == "General"
+    assert error.title == "TestError"
+    assert error.metadata == {}
+    assert error.message == "Test error message"
+    assert error.code == "Neo.{}.General.TestError".format(CLASSIFICATION_CLIENT)
+

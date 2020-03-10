@@ -25,6 +25,7 @@ import pytest
 from neo4j import GraphDatabase
 # end::pass-bookmarks-import[]
 
+from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
 
 
@@ -97,5 +98,6 @@ def test(uri, auth):
         with eg.driver.session() as session:
             session.run("MATCH (_) DETACH DELETE _")
         eg.main()
-    except BoltHandshakeError as error:
-        pytest.skip(error.args[0])
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])

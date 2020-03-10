@@ -25,6 +25,7 @@ import pytest
 from neo4j import GraphDatabase
 # end::driver-lifecycle-import[]
 
+from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
 
 
@@ -44,5 +45,6 @@ def test_example(uri, auth):
     try:
         eg = DriverLifecycleExample(uri, auth)
         eg.close()
-    except BoltHandshakeError as error:
-        pytest.skip(error.args[0])
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])

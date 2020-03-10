@@ -28,6 +28,7 @@ from io import StringIO
 from neo4j import GraphDatabase
 # end::hello-world-import[]
 
+from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
 
 
@@ -69,6 +70,7 @@ def test_hello_world_example(uri, auth):
             example.close()
 
         assert s.getvalue().startswith("hello, world, from node ")
-    except BoltHandshakeError as error:
-        pytest.skip(error.args[0])
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
 

@@ -19,14 +19,20 @@
 # limitations under the License.
 
 
+import pytest
 from uuid import uuid4
-from unittest import SkipTest
 
-from pytest import raises
 
 from neo4j.packstream import Structure
-from neo4j.exceptions import Neo4jError, CypherSyntaxError
-from neo4j.graph import Node, Relationship, Path
+from neo4j.exceptions import (
+    Neo4jError,
+    CypherSyntaxError,
+)
+from neo4j.graph import (
+    Node,
+    Relationship,
+    Path,
+)
 from neo4j.work.pipelining import PullOrderException
 
 
@@ -38,12 +44,12 @@ def test_can_run_simple_statement(bolt_driver):
         assert record[0] == 1
         # TODO: why does pipeline result not look like a regular result?
         # assert record["n"] == 1
-        # with raises(KeyError):
+        # with pytest.raises(KeyError):
         #    _ = record["x"]
         # assert record["n"] == 1
-        # with raises(KeyError):
+        # with pytest.raises(KeyError):
         #    _ = record["x"]
-        with raises(TypeError):
+        with pytest.raises(TypeError):
             _ = record[object()]
         assert repr(record)
         assert len(record) == 1
@@ -85,7 +91,7 @@ def test_can_run_write_statement_with_no_return(driver):
 
 def test_fails_on_bad_syntax(bolt_driver):
     pipeline = bolt_driver.pipeline(flush_every=0)
-    with raises(Neo4jError):
+    with pytest.raises(Neo4jError):
         pipeline.push("X")
         next(pipeline.pull())
 
@@ -95,13 +101,13 @@ def test_doesnt_fail_on_bad_syntax_somewhere(bolt_driver):
     pipeline.push("RETURN 1 AS n")
     pipeline.push("X")
     assert next(pipeline.pull())[0] == 1
-    with raises(Neo4jError):
+    with pytest.raises(Neo4jError):
         next(pipeline.pull())
 
 
 def test_fails_on_missing_parameter(bolt_driver):
     pipeline = bolt_driver.pipeline(flush_every=0)
-    with raises(Neo4jError):
+    with pytest.raises(Neo4jError):
         pipeline.push("RETURN $x")
         next(pipeline.pull())
 
@@ -109,7 +115,7 @@ def test_fails_on_missing_parameter(bolt_driver):
 def test_can_run_simple_statement_from_bytes_string(bolt_driver):
     pipeline = bolt_driver.pipeline(flush_every=0)
     count = 0
-    raise SkipTest("FIXME: why can't pipeline handle bytes string?")
+    pytest.skip("FIXME: why can't pipeline handle bytes string?")
     pipeline.push(b"RETURN 1 AS n")
     for record in pipeline.pull():
         assert record[0] == 1
@@ -140,7 +146,7 @@ def test_can_return_node(neo4j_driver):
         for record in record_list:
             alice = record[0]
             print(alice)
-            raise SkipTest("FIXME: why does pipeline result not look like a regular result?")
+            pytest.skip("FIXME: why does pipeline result not look like a regular result?")
             assert isinstance(alice, Node)
             assert alice.labels == {"Person"}
             assert dict(alice) == {"name": "Alice"}
@@ -154,7 +160,7 @@ def test_can_return_relationship(neo4j_driver):
         for record in record_list:
             rel = record[0]
             print(rel)
-            raise SkipTest("FIXME: why does pipeline result not look like a regular result?")
+            pytest.skip("FIXME: why does pipeline result not look like a regular result?")
             assert isinstance(rel, Relationship)
             assert rel.type == "KNOWS"
             assert dict(rel) == {"since": 1999}
@@ -175,7 +181,7 @@ def test_can_return_path(neo4j_driver):
         for record in record_list:
             path = record[0]
             print(path)
-            raise SkipTest("FIXME: why does pipeline result not look like a regular result?")
+            pytest.skip("FIXME: why does pipeline result not look like a regular result?")
             assert isinstance(path, Path)
             assert path.start_node["name"] == "Alice"
             assert path.end_node["name"] == "Bob"
@@ -187,14 +193,14 @@ def test_can_return_path(neo4j_driver):
 def test_can_handle_cypher_error(bolt_driver):
     with bolt_driver.pipeline(flush_every=0) as pipeline:
         pipeline.push("X")
-        with raises(Neo4jError):
+        with pytest.raises(Neo4jError):
             next(pipeline.pull())
 
 
 def test_should_not_allow_empty_statements(bolt_driver):
     with bolt_driver.pipeline(flush_every=0) as pipeline:
         pipeline.push("")
-        with raises(CypherSyntaxError):
+        with pytest.raises(CypherSyntaxError):
             next(pipeline.pull())
 
 
@@ -214,7 +220,7 @@ def test_can_queue_multiple_statements(bolt_driver):
 def test_pull_order_exception(bolt_driver):
     """If you try and pull when you haven't finished iterating the previous result you get an error"""
     pipeline = bolt_driver.pipeline(flush_every=0)
-    with raises(PullOrderException):
+    with pytest.raises(PullOrderException):
         pipeline.push("unwind(range(1, 10)) AS z RETURN z")
         pipeline.push("unwind(range(11, 20)) AS z RETURN z")
         generator_one = pipeline.pull()

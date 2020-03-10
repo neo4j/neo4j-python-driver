@@ -19,7 +19,11 @@
 # limitations under the License.
 
 
-from neo4j.graph import Node, Relationship, Path
+from neo4j.graph import (
+    Node,
+    Relationship,
+    Path,
+)
 
 
 def test_node(cypher_eval):

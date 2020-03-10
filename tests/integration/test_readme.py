@@ -20,6 +20,7 @@
 
 import pytest
 
+from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
 
 # python -m pytest tests/integration/test_readme.py -s -v
@@ -33,8 +34,9 @@ def test_should_run_readme(uri, auth):
 
     try:
         driver = GraphDatabase.driver(uri, auth=auth)
-    except BoltHandshakeError as error:
-        pytest.skip(error.args[0])
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
 
     def print_friends(tx, name):
         for record in tx.run("MATCH (a:Person)-[:KNOWS]->(friend) "

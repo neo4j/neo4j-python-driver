@@ -39,6 +39,7 @@ Driver API Errors
 
 + DriverError
   + TransactionError
+    + TransactionNestingError
   + SessionExpired
   + ServiceUnavailable
     + RoutingServiceUnavailable
@@ -47,7 +48,7 @@ Driver API Errors
   + ConfigurationError
     + AuthConfigurationError
     + CertificateConfigurationError
-
+  + ResultConsumedError
 
 Connector API Errors
 ====================
@@ -65,6 +66,10 @@ Connector API Errors
 
 """
 
+CLASSIFICATION_CLIENT = "ClientError"
+CLASSIFICATION_TRANSIENT = "TransientError"
+CLASSIFICATION_DATABASE = "DatabaseError"
+
 
 class Neo4jError(Exception):
     """ Raised when the Cypher engine returns an error to the client.
@@ -79,12 +84,12 @@ class Neo4jError(Exception):
 
     @classmethod
     def hydrate(cls, message=None, code=None, **metadata):
-        message = message or "An unknown error occurred."
+        message = message or "An unknown error occurred"
         code = code or "Neo.DatabaseError.General.UnknownError"
         try:
             _, classification, category, title = code.split(".")
         except ValueError:
-            classification = "DatabaseError"
+            classification = CLASSIFICATION_DATABASE
             category = "General"
             title = "UnknownError"
 
@@ -101,19 +106,19 @@ class Neo4jError(Exception):
 
     @classmethod
     def _extract_error_class(cls, classification, code):
-        if classification == "ClientError":
+        if classification == CLASSIFICATION_CLIENT:
             try:
                 return client_errors[code]
             except KeyError:
                 return ClientError
 
-        elif classification == "TransientError":
+        elif classification == CLASSIFICATION_TRANSIENT:
             try:
                 return transient_errors[code]
             except KeyError:
                 return TransientError
 
-        elif classification == "DatabaseError":
+        elif classification == CLASSIFICATION_DATABASE:
             return DatabaseError
 
         else:
@@ -238,6 +243,15 @@ class TransactionError(DriverError):
         self.transaction = transaction
 
 
+class TransactionNestingError(DriverError):
+    """ Raised when transactions are nested incorrectly.
+    """
+
+    def __init__(self, transaction, *args, **kwargs):
+        super(TransactionError, self).__init__(*args, **kwargs)
+        self.transaction = transaction
+
+
 class ServiceUnavailable(DriverError):
     """ Raised when no database service is available.
     """
@@ -255,4 +269,24 @@ class WriteServiceUnavailable(ServiceUnavailable):
 
 class ReadServiceUnavailable(ServiceUnavailable):
     """ Raised when no read service is available.
+    """
+
+
+class ResultConsumedError(DriverError):
+    """ Raised when trying to access records after the records have been consumed.
+    """
+
+
+class ConfigurationError(DriverError):
+    """ Raised when there is an error concerning a configuration.
+    """
+
+
+class AuthConfigurationError(ConfigurationError):
+    """ Raised when there is an error with the authentication configuration.
+    """
+
+
+class CertificateConfigurationError(ConfigurationError):
+    """ Raised when there is an error with the authentication configuration.
     """

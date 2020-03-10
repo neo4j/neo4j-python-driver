@@ -21,7 +21,7 @@
 
 from math import isnan
 
-from pytest import raises
+import pytest
 
 
 def test_null(cypher_eval):
@@ -78,5 +78,5 @@ def test_map(cypher_eval):
 
 
 def test_non_string_map_keys(session):
-    with raises(TypeError):
+    with pytest.raises(TypeError):
         _ = session.run("RETURN $x", x={1: 'eins', 2: 'zwei', 3: 'drei'})

@@ -21,6 +21,7 @@
 
 import pytest
 
+from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
 
 # tag::config-connection-pool-import[]
@@ -46,5 +47,6 @@ class ConfigConnectionPoolExample(DriverSetupExample):
 def test(uri, auth):
     try:
         ConfigConnectionPoolExample.test(uri, auth)
-    except BoltHandshakeError as error:
-        pytest.skip(error.args[0])
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
