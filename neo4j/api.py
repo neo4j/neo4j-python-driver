@@ -196,7 +196,9 @@ def parse_neo4j_uri(uri):
     if parsed.password:
         raise ConfigurationError("Password is not supported in the URI")
 
-    if parsed.scheme == URI_SCHEME_BOLT:
+    if parsed.scheme == URI_SCHEME_BOLT_ROUTING:
+        raise ConfigurationError("Uri scheme {!r} have been renamed. Use {!r}".format(parsed.scheme, URI_SCHEME_NEO4J))
+    elif parsed.scheme == URI_SCHEME_BOLT:
         driver_type = DRIVER_BOLT
         security_type = SECURITY_TYPE_NOT_SECURE
     elif parsed.scheme == URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE:
@@ -205,7 +207,7 @@ def parse_neo4j_uri(uri):
     elif parsed.scheme == URI_SCHEME_BOLT_SECURE:
         driver_type = DRIVER_BOLT
         security_type = SECURITY_TYPE_SECURE
-    elif parsed.scheme == URI_SCHEME_NEO4J or parsed.scheme == URI_SCHEME_BOLT_ROUTING:
+    elif parsed.scheme == URI_SCHEME_NEO4J:
         driver_type = DRIVER_NEO4j
         security_type = SECURITY_TYPE_NOT_SECURE
     elif parsed.scheme == URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE:

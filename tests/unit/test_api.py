@@ -376,7 +376,7 @@ def test_serverinfo_with_metadata(test_input, expected_agent, expected_version_i
         ("undefined://localhost:7676", None, None, ConfigurationError),
         ("localhost:7676", None, None, ConfigurationError),
         ("://localhost:7676", None, None, ConfigurationError),
-        ("bolt+routing://localhost:7676", neo4j.api.DRIVER_NEO4j, neo4j.api.SECURITY_TYPE_NOT_SECURE, None),
+        ("bolt+routing://localhost:7676", neo4j.api.DRIVER_NEO4j, neo4j.api.SECURITY_TYPE_NOT_SECURE, ConfigurationError),
         ("bolt://username@localhost:7676", None, None, ConfigurationError),
         ("bolt://username:password@localhost:7676", None, None, ConfigurationError),
     ]
