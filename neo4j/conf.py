@@ -199,14 +199,50 @@ class PoolConfig(Config):
     def get_ssl_context(self):
         if not self.secure:
             return None
-        # See https://docs.python.org/3.7/library/ssl.html#protocol-versions
-        from ssl import SSLContext, PROTOCOL_TLS_CLIENT, OP_NO_TLSv1, OP_NO_TLSv1_1, CERT_REQUIRED
-        ssl_context = SSLContext(PROTOCOL_TLS_CLIENT)
-        ssl_context.options |= OP_NO_TLSv1
-        ssl_context.options |= OP_NO_TLSv1_1
-        if self.verify_cert:
-            ssl_context.verify_mode = CERT_REQUIRED
-        ssl_context.set_default_verify_paths()
+
+        import ssl
+
+        ssl_context = None
+
+        # SSL stands for Secure Sockets Layer and was originally created by Netscape.
+        # SSLv2 and SSLv3 are the 2 versions of this protocol (SSLv1 was never publicly released).
+        # After SSLv3, SSL was renamed to TLS.
+        # TLS stands for Transport Layer Security and started with TLSv1.0 which is an upgraded version of SSLv3.
+
+        # SSLv2 - (Disabled)
+        # SSLv3 - (Disabled)
+        # TLS 1.0 - Released in 1999, published as RFC 2246. (Disabled)
+        # TLS 1.1 - Released in 2006, published as RFC 4346. (Disabled)
+        # TLS 1.2 - Released in 2008, published as RFC 5246.
+
+        try:
+            # python 3.6+
+            # https://docs.python.org/3.6/library/ssl.html#ssl.PROTOCOL_TLS_CLIENT
+            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+
+            # For recommended security options see
+            # https://docs.python.org/3.6/library/ssl.html#protocol-versions
+            ssl_context.options |= ssl.OP_NO_TLSv1      # Python 3.2
+            ssl_context.options |= ssl.OP_NO_TLSv1_1    # Python 3.4
+
+        except AttributeError:
+            # python 3.5
+            # https://docs.python.org/3.5/library/ssl.html#ssl.PROTOCOL_TLS
+            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+
+            # For recommended security options see
+            # https://docs.python.org/3.5/library/ssl.html#protocol-versions
+            ssl_context.options |= ssl.OP_NO_SSLv2      # Python 3.2
+            ssl_context.options |= ssl.OP_NO_SSLv3      # Python 3.2
+            ssl_context.options |= ssl.OP_NO_TLSv1      # Python 3.2
+            ssl_context.options |= ssl.OP_NO_TLSv1_1    # Python 3.4
+
+            ssl_context.verify_mode = ssl.CERT_REQUIRED     # https://docs.python.org/3.5/library/ssl.html#ssl.SSLContext.verify_mode
+            ssl_context.check_hostname = True               # https://docs.python.org/3.5/library/ssl.html#ssl.SSLContext.check_hostname
+
+        if self.verify_cert is False:
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE     # https://docs.python.org/3.5/library/ssl.html#ssl.CERT_NONE
+
+        ssl_context.set_default_verify_paths()  # https://docs.python.org/3.5/library/ssl.html#ssl.SSLContext.set_default_verify_paths
         return ssl_context
-
-
