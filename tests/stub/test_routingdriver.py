@@ -48,12 +48,50 @@ from tests.stub.conftest import StubCluster
         "v4x0/router.script",
     ]
 )
-def test_bolt_plus_routing_uri_constructs_neo4j_driver(driver_info, test_script):
-    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_bolt_plus_routing_uri_constructs_neo4j_driver
+def test_neo4j_uri_scheme_constructs_neo4j_driver(driver_info, test_script):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_constructs_neo4j_driver
     with StubCluster(test_script):
         uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             assert isinstance(driver, Neo4jDriver)
+
+
+# @pytest.mark.skip(reason="Testing Self Signed Certificate is not available")
+@pytest.mark.parametrize(
+    "test_script, expected_failure, expected_failure_message",
+    [
+        ("v3/router.script", ServiceUnavailable, "Failed to establish secure connection"),
+        ("v4x0/router.script", ServiceUnavailable, "Failed to establish secure connection"),
+    ]
+)
+def test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver(driver_info, test_script, expected_failure, expected_failure_message):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver
+    with StubCluster(test_script):
+        uri = "neo4j+ssc://127.0.0.1:9001"
+        with pytest.raises(expected_failure) as error:
+            with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+                assert isinstance(driver, Neo4jDriver)
+
+    assert error.match(expected_failure_message)
+
+
+# @pytest.mark.skip(reason="Testing Secure Connection is not available")
+@pytest.mark.parametrize(
+    "test_script, expected_failure, expected_failure_message",
+    [
+        ("v3/router.script", ServiceUnavailable, "Failed to establish secure connection"),
+        ("v4x0/router.script", ServiceUnavailable, "Failed to establish secure connection"),
+    ]
+)
+def test_neo4j_uri_scheme_secure_constructs_neo4j_driver(driver_info, test_script, expected_failure, expected_failure_message):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver
+    with StubCluster(test_script):
+        uri = "neo4j+s://127.0.0.1:9001"
+        with pytest.raises(expected_failure) as error:
+            with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+                assert isinstance(driver, Neo4jDriver)
+
+    assert error.match(expected_failure_message)
 
 
 @pytest.mark.parametrize(
