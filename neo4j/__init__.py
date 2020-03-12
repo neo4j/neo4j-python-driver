@@ -119,14 +119,35 @@ class GraphDatabase:
             SECURITY_TYPE_NOT_SECURE,
             SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
             SECURITY_TYPE_SECURE,
+            URI_SCHEME_BOLT,
+            URI_SCHEME_NEO4J,
+            URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
+            URI_SCHEME_BOLT_SECURE,
+            URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
+            URI_SCHEME_NEO4J_SECURE,
         )
 
         driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
+        if security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE] and ("encrypted" in config.keys() or "verify_cert" in config.keys()):
+            from neo4j.exceptions import ConfigurationError
+            raise ConfigurationError("The config settings 'encrypted' and 'verify_cert' can only be used with the URI schemes {!r}. Use the other URI schemes {!r} for setting encryption settings.".format(
+                [
+                    URI_SCHEME_BOLT,
+                    URI_SCHEME_NEO4J,
+                ],
+                [
+                    URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
+                    URI_SCHEME_BOLT_SECURE,
+                    URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
+                    URI_SCHEME_NEO4J_SECURE,
+                ]
+            ))
+
         if security_type == SECURITY_TYPE_SECURE:
-            config["secure"] = True
+            config["encrypted"] = True
         elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
-            config["secure"] = True
+            config["encrypted"] = True
             config["verify_cert"] = False
 
         if driver_type == DRIVER_BOLT:
@@ -262,8 +283,8 @@ class Driver:
         self.close()
 
     @property
-    def secure(self):
-        return bool(self._pool.config.secure)
+    def encrypted(self):
+        return bool(self._pool.config.encrypted)
 
     def session(self, **config):
         """ Create a simple session.

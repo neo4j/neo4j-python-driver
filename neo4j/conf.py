@@ -187,8 +187,7 @@ class PoolConfig(Config):
     resolver = None
 
     #:
-    secure = False
-    encrypted = DeprecatedAlias("secure")
+    encrypted = False
 
     #:
     user_agent = get_user_agent()
@@ -197,7 +196,7 @@ class PoolConfig(Config):
     verify_cert = True
 
     def get_ssl_context(self):
-        if not self.secure:
+        if not self.encrypted:
             return None
 
         import ssl

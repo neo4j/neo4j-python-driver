@@ -193,7 +193,7 @@ class Bolt:
         return connection
 
     @property
-    def secure(self):
+    def encrypted(self):
         raise NotImplementedError
 
     @property
@@ -788,13 +788,13 @@ def _secure(s, host, ssl_context):
     local_port = s.getsockname()[1]
     # Secure the connection if an SSL context has been provided
     if ssl_context:
-        log.debug("[#%04X]  C: <SECURE> %s", local_port, host)
+        log.debug("[#%04X]  C: <ENCRYPTED> %s", local_port, host)
         try:
             sni_host = host if HAS_SNI and host else None
             s = ssl_context.wrap_socket(s, server_hostname=sni_host)
         except (SSLError, OSError) as cause:
             s.close()
-            error = BoltSecurityError(message="Failed to establish secure connection.", address=(host, local_port))
+            error = BoltSecurityError(message="Failed to establish encrypted connection.", address=(host, local_port))
             error.__cause__ = cause
             raise error
         else:
@@ -802,7 +802,7 @@ def _secure(s, host, ssl_context):
             der_encoded_server_certificate = s.getpeercert(binary_form=True)
             if der_encoded_server_certificate is None:
                 s.close()
-                raise BoltProtocolError("When using a secure socket, the server should always provide a certificate", address=(host, local_port))
+                raise BoltProtocolError("When using an encrypted socket, the server should always provide a certificate", address=(host, local_port))
     return s
 
 

@@ -33,13 +33,11 @@ from tests.stub.conftest import StubCluster
 
 
 driver_config = {
-    "secure": False,
-    # "trust": None, # TODO: Investigate why this seem to hang the max_retry_time
+    "encrypted": False,
+    "verify_cert": False,
     "user_agent": "test",
     "max_age": 1000,
     "max_size": 10,
-    # "connection_acquisition_timeout": 1, # TODO: Investigate why this seem to hang the max_retry_time
-    # "connection_timeout": 1, # TODO: Investigate why this seem to hang the max_retry_time
     "keep_alive": False,
     "max_retry_time": 1,
     "resolver": None,

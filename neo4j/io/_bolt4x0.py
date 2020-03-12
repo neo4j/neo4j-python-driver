@@ -118,7 +118,7 @@ class Bolt4x0(Bolt):
                 raise AuthError("Password cannot be None")
 
     @property
-    def secure(self):
+    def encrypted(self):
         return isinstance(self.socket, SSLSocket)
 
     @property

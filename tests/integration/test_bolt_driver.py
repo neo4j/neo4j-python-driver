@@ -114,20 +114,9 @@ def test_custom_resolver(service):
             pytest.skip(error.args[0])
 
 
-def test_encrypted_arg_can_still_be_used(bolt_uri, auth):
-    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_encrypted_arg_can_still_be_used
-    with pytest.warns(UserWarning):
-        try:
-            with GraphDatabase.driver(bolt_uri, auth=auth, encrypted=False) as driver:
-                assert not driver.secure
-        except ServiceUnavailable as error:
-            if isinstance(error.__cause__, BoltHandshakeError):
-                pytest.skip(error.args[0])
-
-
-def test_insecure_by_default(bolt_driver):
-    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_insecure_by_default
-    assert bolt_driver.secure is False
+def test_encrypted_set_to_false_by_default(bolt_driver):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_encrypted_set_to_false_by_default
+    assert bolt_driver.encrypted is False
 
 
 def test_should_fail_on_incorrect_password(bolt_uri):

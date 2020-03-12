@@ -32,11 +32,11 @@ class ConfigTrustExample(DriverSetupExample):
 
     # tag::config-trust[]
     def __init__(self, uri, auth):
-        self.driver = GraphDatabase.driver(uri, auth=auth, secure=True, verify_cert=False)
+        self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=True, verify_cert=False)
     # end::config-trust[]
 
 
 def test_example(uri, auth):
-    # TODO: re-enable when we can test with secure=True on Docker
+    # TODO: re-enable when we can test with encrypted=True on Docker
     # ConfigTrustExample.test(uri, auth)
-    pytest.skip("re-enable when we can test with secure=True on Docker")
+    pytest.skip("re-enable when we can test with encrypted=True on Docker")
