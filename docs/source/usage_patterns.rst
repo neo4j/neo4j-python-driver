@@ -48,12 +48,10 @@ Driver Initialization Work Pattern
 
     driver_config = {
         "encrypted": False,
-        "trust": None,
+        "verify_cert": False,
         "user_agent": "example",
         "max_connection_lifetime": 1000,
         "max_connection_pool_size": 100,
-        "connection_acquisition_timeout": 10,
-        "connection_timeout": 1,
         "keep_alive": False,
         "max_retry_time": 10,
         "resolver": None,
