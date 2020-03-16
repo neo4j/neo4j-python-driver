@@ -25,6 +25,9 @@ from warnings import warn
 
 from neo4j.meta import get_user_agent
 
+TRUST_SYSTEM_CA_SIGNED_CERTIFICATES = "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"  # Default
+TRUST_ALL_CERTIFICATES = "TRUST_ALL_CERTIFICATES"
+
 
 def iter_items(iterable):
     """ Iterate through all items (key-value pairs) within an iterable
@@ -193,7 +196,7 @@ class PoolConfig(Config):
     user_agent = get_user_agent()
 
     #:
-    verify_cert = True
+    trust = TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
 
     def get_ssl_context(self):
         if not self.encrypted:
@@ -239,7 +242,7 @@ class PoolConfig(Config):
             ssl_context.verify_mode = ssl.CERT_REQUIRED     # https://docs.python.org/3.5/library/ssl.html#ssl.SSLContext.verify_mode
             ssl_context.check_hostname = True               # https://docs.python.org/3.5/library/ssl.html#ssl.SSLContext.check_hostname
 
-        if self.verify_cert is False:
+        if self.trust == TRUST_ALL_CERTIFICATES:
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE     # https://docs.python.org/3.5/library/ssl.html#ssl.CERT_NONE
 

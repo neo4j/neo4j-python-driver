@@ -24,6 +24,7 @@ import pytest
 from neo4j import (
     GraphDatabase,
     WRITE_ACCESS,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
 from neo4j.exceptions import ServiceUnavailable
 
@@ -34,7 +35,7 @@ from tests.stub.conftest import StubCluster
 
 driver_config = {
     "encrypted": False,
-    "verify_cert": False,
+    "trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     "user_agent": "test",
     "max_age": 1000,
     "max_size": 10,

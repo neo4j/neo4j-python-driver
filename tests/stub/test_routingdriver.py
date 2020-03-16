@@ -24,6 +24,8 @@ import pytest
 from neo4j import (
     GraphDatabase,
     Neo4jDriver,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
 from neo4j.api import (
     READ_ACCESS,
@@ -123,7 +125,7 @@ def test_neo4j_uri_scheme_secure_constructs_neo4j_driver(driver_info, test_scrip
 @pytest.mark.parametrize(
     "test_uri",
     [
-        "neo4j+scc://127.0.0.1:9001",
+        "neo4j+ssc://127.0.0.1:9001",
         "neo4j+s://127.0.0.1:9001",
     ]
 )
@@ -132,16 +134,15 @@ def test_neo4j_uri_scheme_secure_constructs_neo4j_driver(driver_info, test_scrip
     [
         ({"encrypted": False}, ConfigurationError, "The config settings"),
         ({"encrypted": True}, ConfigurationError, "The config settings"),
-        ({"encrypted": True, "verify_cert": False}, ConfigurationError, "The config settings"),
-        ({"verify_cert": False}, ConfigurationError, "The config settings"),
-        ({"verify_cert": True}, ConfigurationError, "The config settings"),
+        ({"encrypted": True, "trust": TRUST_ALL_CERTIFICATES}, ConfigurationError, "The config settings"),
+        ({"trust": TRUST_ALL_CERTIFICATES}, ConfigurationError, "The config settings"),
+        ({"trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES}, ConfigurationError, "The config settings"),
     ]
 )
 def test_neo4j_uri_scheme_secure_constructs_neo4j_driver_config_error(driver_info, test_uri, test_config, expected_failure, expected_failure_message):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_secure_constructs_neo4j_driver_config_error
-    uri = "neo4j+s://127.0.0.1:9001"
     with pytest.raises(expected_failure) as error:
-        driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
+        driver = GraphDatabase.driver(test_uri, auth=driver_info["auth_token"], **test_config)
 
     assert error.match(expected_failure_message)
 
@@ -608,6 +609,7 @@ def test_forgets_address_on_service_unavailable_error(driver_info, test_scripts,
                 assert table.writers == {('127.0.0.1', 9006)}
 
             assert conn.in_use is False
+
 
 @pytest.mark.parametrize(
     "test_scripts, test_run_args",

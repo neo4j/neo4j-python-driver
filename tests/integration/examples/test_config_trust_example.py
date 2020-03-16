@@ -22,7 +22,11 @@
 import pytest
 
 # tag::config-trust-import[]
-from neo4j import GraphDatabase
+from neo4j import (
+    GraphDatabase,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    TRUST_ALL_CERTIFICATES,
+)
 # end::config-trust-import[]
 
 from tests.integration.examples import DriverSetupExample
@@ -32,7 +36,7 @@ class ConfigTrustExample(DriverSetupExample):
 
     # tag::config-trust[]
     def __init__(self, uri, auth):
-        self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=True, verify_cert=False)
+        self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=True, trust=TRUST_ALL_CERTIFICATES)
     # end::config-trust[]
 
 

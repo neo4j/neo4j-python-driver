@@ -55,6 +55,8 @@ from neo4j.api import (
 from neo4j.conf import (
     Config,
     PoolConfig,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
 from neo4j.meta import (
     experimental,
@@ -126,12 +128,26 @@ class GraphDatabase:
             URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
             URI_SCHEME_NEO4J_SECURE,
         )
+        from neo4j.conf import (
+            TRUST_ALL_CERTIFICATES,
+            TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+        )
 
         driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
-        if security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE] and ("encrypted" in config.keys() or "verify_cert" in config.keys()):
+        if "trust" in config.keys():
+            if config.get("trust") not in [TRUST_ALL_CERTIFICATES, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES]:
+                from neo4j.exceptions import ConfigurationError
+                raise ConfigurationError("The config setting `trust` values are {!r}".format(
+                    [
+                        TRUST_ALL_CERTIFICATES,
+                        TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+                    ]
+                ))
+
+        if security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE] and ("encrypted" in config.keys() or "trust" in config.keys()):
             from neo4j.exceptions import ConfigurationError
-            raise ConfigurationError("The config settings 'encrypted' and 'verify_cert' can only be used with the URI schemes {!r}. Use the other URI schemes {!r} for setting encryption settings.".format(
+            raise ConfigurationError("The config settings 'encrypted' and 'trust' can only be used with the URI schemes {!r}. Use the other URI schemes {!r} for setting encryption settings.".format(
                 [
                     URI_SCHEME_BOLT,
                     URI_SCHEME_NEO4J,
@@ -148,7 +164,7 @@ class GraphDatabase:
             config["encrypted"] = True
         elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
             config["encrypted"] = True
-            config["verify_cert"] = False
+            config["trust"] = TRUST_ALL_CERTIFICATES
 
         if driver_type == DRIVER_BOLT:
             return cls.bolt_driver(parsed.netloc, auth=auth, acquire_timeout=acquire_timeout, **config)

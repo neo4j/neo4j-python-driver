@@ -35,6 +35,8 @@ from neo4j import (
     BoltDriver,
     Query,
     WRITE_ACCESS,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
 
 from tests.stub.conftest import (
@@ -56,9 +58,6 @@ driver_config = {
 
 
 session_config = {
-    # "fetch_size": 100,
-    # "database": "default",
-    # "bookmarks": ["bookmark-1", ],
     "default_access_mode": WRITE_ACCESS,
     "acquire_timeout": 1.0,
     "max_retry_time": 1.0,
@@ -111,9 +110,6 @@ def test_direct_driver_with_wrong_port(driver_info):
     uri = "bolt://127.0.0.1:9002"
     with pytest.raises(ServiceUnavailable):
         driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
-        # assert isinstance(driver, BoltDriver)
-        # with pytest.raises(ServiceUnavailable):
-        #     driver.verify_connectivity()
 
 
 @pytest.mark.parametrize(
@@ -263,7 +259,7 @@ def test_bolt_uri_scheme_secure_constructs_bolt_driver(driver_info, test_script)
 @pytest.mark.parametrize(
     "test_uri",
     [
-        "bolt+scc://127.0.0.1:9001",
+        "bolt+ssc://127.0.0.1:9001",
         "bolt+s://127.0.0.1:9001",
     ]
 )
@@ -272,14 +268,30 @@ def test_bolt_uri_scheme_secure_constructs_bolt_driver(driver_info, test_script)
     [
         ({"encrypted": False}, ConfigurationError, "The config settings"),
         ({"encrypted": True}, ConfigurationError, "The config settings"),
-        ({"encrypted": True, "verify_cert": False}, ConfigurationError, "The config settings"),
-        ({"verify_cert": False}, ConfigurationError, "The config settings"),
-        ({"verify_cert": True}, ConfigurationError, "The config settings"),
+        ({"encrypted": True, "trust": TRUST_ALL_CERTIFICATES}, ConfigurationError, "The config settings"),
+        ({"trust": TRUST_ALL_CERTIFICATES}, ConfigurationError, "The config settings"),
+        ({"trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES}, ConfigurationError, "The config settings"),
     ]
 )
-def test_neo4j_uri_scheme_secure_constructs_driver_config_error(driver_info, test_uri, test_config, expected_failure, expected_failure_message):
-    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_neo4j_uri_scheme_secure_constructs_driver_config_error
-    uri = "neo4j+s://127.0.0.1:9001"
+def test_bolt_uri_scheme_secure_constructs_driver_config_error(driver_info, test_uri, test_config, expected_failure, expected_failure_message):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_uri_scheme_secure_constructs_driver_config_error
+    with pytest.raises(expected_failure) as error:
+        driver = GraphDatabase.driver(test_uri, auth=driver_info["auth_token"], **test_config)
+
+    assert error.match(expected_failure_message)
+
+
+@pytest.mark.parametrize(
+    "test_config, expected_failure, expected_failure_message",
+    [
+        ({"trust": 1}, ConfigurationError, "The config setting `trust`"),
+        ({"trust": True}, ConfigurationError, "The config setting `trust`"),
+        ({"trust": None}, ConfigurationError, "The config setting `trust`"),
+    ]
+)
+def test_driver_trust_config_error(driver_info, test_config, expected_failure, expected_failure_message):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_driver_trust_config_error
+    uri = "bolt://127.0.0.1:9001"
     with pytest.raises(expected_failure) as error:
         driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
 

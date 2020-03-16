@@ -22,7 +22,7 @@
 import pytest
 
 # tag::config-secure-import[]
-from neo4j import GraphDatabase
+from neo4j import GraphDatabase, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
 # end::config-secure-import[]
 
 from neo4j.exceptions import ServiceUnavailable
@@ -36,7 +36,7 @@ class ConfigSecureExample(DriverSetupExample):
 
     # tag::config-secure[]
     def __init__(self, uri, auth):
-        self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=True, verify_cert=True)
+        self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=True, trust=TRUST_SYSTEM_CA_SIGNED_CERTIFICATES)
     # end::config-secure[]
 
 
