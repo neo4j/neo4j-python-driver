@@ -41,19 +41,17 @@ Driver Initialization Work Pattern
 
 .. code-block:: python
 
-    from neo4j import GraphDatabase
+    from neo4j import GraphDatabase, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
     from neo4j.exceptions import ServiceUnavailable
 
     uri = "bolt://localhost:7687"
 
     driver_config = {
         "encrypted": False,
-        "trust": None,
+        "trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
         "user_agent": "example",
         "max_connection_lifetime": 1000,
         "max_connection_pool_size": 100,
-        "connection_acquisition_timeout": 10,
-        "connection_timeout": 1,
         "keep_alive": False,
         "max_retry_time": 10,
         "resolver": None,

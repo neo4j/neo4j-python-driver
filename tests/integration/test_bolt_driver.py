@@ -22,7 +22,11 @@
 import pytest
 
 from neo4j import GraphDatabase
-from neo4j.exceptions import ServiceUnavailable, AuthError
+from neo4j.exceptions import (
+    ServiceUnavailable,
+    AuthError,
+    ConfigurationError,
+)
 from neo4j._exceptions import BoltHandshakeError
 
 
@@ -73,7 +77,7 @@ def test_invalid_url_scheme(service):
     address = service.addresses[0]
     uri = "x://{}:{}".format(address[0], address[1])
     try:
-        with pytest.raises(ValueError):
+        with pytest.raises(ConfigurationError):
             _ = GraphDatabase.driver(uri, auth=service.auth)
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
@@ -110,20 +114,9 @@ def test_custom_resolver(service):
             pytest.skip(error.args[0])
 
 
-def test_encrypted_arg_can_still_be_used(bolt_uri, auth):
-    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_encrypted_arg_can_still_be_used
-    with pytest.warns(UserWarning):
-        try:
-            with GraphDatabase.driver(bolt_uri, auth=auth, encrypted=False) as driver:
-                assert not driver.secure
-        except ServiceUnavailable as error:
-            if isinstance(error.__cause__, BoltHandshakeError):
-                pytest.skip(error.args[0])
-
-
-def test_insecure_by_default(bolt_driver):
-    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_insecure_by_default
-    assert not bolt_driver.secure
+def test_encrypted_set_to_false_by_default(bolt_driver):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_encrypted_set_to_false_by_default
+    assert bolt_driver.encrypted is False
 
 
 def test_should_fail_on_incorrect_password(bolt_uri):

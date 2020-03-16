@@ -41,7 +41,7 @@ from tests.stub.conftest import StubCluster
 def test_should_be_no_bookmark_in_new_session(driver_info, test_script):
     # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_should_be_no_bookmark_in_new_session
     with StubCluster(test_script):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
                 assert session.last_bookmark() is None
@@ -57,7 +57,7 @@ def test_should_be_no_bookmark_in_new_session(driver_info, test_script):
 def test_should_be_able_to_set_bookmark(driver_info, test_script):
     # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_should_be_able_to_set_bookmark
     with StubCluster(test_script):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(bookmarks=["X"]) as session:
                 assert session.next_bookmarks() == ("X",)
@@ -73,7 +73,7 @@ def test_should_be_able_to_set_bookmark(driver_info, test_script):
 def test_should_be_able_to_set_multiple_bookmarks(driver_info, test_script):
     # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_should_be_able_to_set_multiple_bookmarks
     with StubCluster(test_script):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(bookmarks=[":1", ":2"]) as session:
                 assert session.next_bookmarks() == (":1", ":2")
@@ -89,7 +89,7 @@ def test_should_be_able_to_set_multiple_bookmarks(driver_info, test_script):
 def test_should_automatically_chain_bookmarks(driver_info, test_scripts):
     # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_should_automatically_chain_bookmarks
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS,
                                 bookmarks=["bookmark:0", "bookmark:1"]) as session:
@@ -111,7 +111,7 @@ def test_should_automatically_chain_bookmarks(driver_info, test_scripts):
 def test_autocommit_transaction_included_in_chain(driver_info, test_scripts):
     # python -m pytest tests/stub/test_bookmarking.py -s -v -k test_autocommit_transaction_included_in_chain
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS,
                                 bookmarks=["bookmark:1"]) as session:

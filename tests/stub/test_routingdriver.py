@@ -24,18 +24,24 @@ import pytest
 from neo4j import (
     GraphDatabase,
     Neo4jDriver,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
-from neo4j.api import READ_ACCESS, WRITE_ACCESS
-
-from neo4j._exceptions import BoltRoutingError
-
+from neo4j.api import (
+    READ_ACCESS,
+    WRITE_ACCESS,
+)
 from neo4j.exceptions import (
     ServiceUnavailable,
     ClientError,
     TransientError,
     SessionExpired,
+    ConfigurationError,
 )
-
+from neo4j._exceptions import (
+    BoltRoutingError,
+    BoltSecurityError,
+)
 from tests.stub.conftest import StubCluster
 
 # python -m pytest tests/stub/test_routingdriver.py -s -v
@@ -48,12 +54,97 @@ from tests.stub.conftest import StubCluster
         "v4x0/router.script",
     ]
 )
-def test_bolt_plus_routing_uri_constructs_neo4j_driver(driver_info, test_script):
-    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_bolt_plus_routing_uri_constructs_neo4j_driver
+def test_neo4j_uri_scheme_constructs_neo4j_driver(driver_info, test_script):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_constructs_neo4j_driver
     with StubCluster(test_script):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             assert isinstance(driver, Neo4jDriver)
+
+
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/router.script",
+        "v4x0/router.script",
+    ]
+)
+def test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver(driver_info, test_script):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver
+    with StubCluster(test_script):
+        uri = "neo4j+ssc://127.0.0.1:9001"
+
+        test_config = {
+            "user_agent": "test",
+            "max_age": 1000,
+            "max_size": 10,
+            "keep_alive": False,
+            "max_retry_time": 1,
+            "resolver": None,
+        }
+
+        try:
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
+            assert isinstance(driver, Neo4jDriver)
+            driver.close()
+        except ServiceUnavailable as error:
+            assert isinstance(error.__cause__, BoltSecurityError)
+            pytest.skip("Failed to establish encrypted connection")
+
+
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/router.script",
+        "v4x0/router.script",
+    ]
+)
+def test_neo4j_uri_scheme_secure_constructs_neo4j_driver(driver_info, test_script):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_secure_constructs_neo4j_driver
+    with StubCluster(test_script):
+        uri = "neo4j+s://127.0.0.1:9001"
+
+        test_config = {
+            "user_agent": "test",
+            "max_age": 1000,
+            "max_size": 10,
+            "keep_alive": False,
+            "max_retry_time": 1,
+            "resolver": None,
+        }
+
+        try:
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
+            assert isinstance(driver, Neo4jDriver)
+            driver.close()
+        except ServiceUnavailable as error:
+            assert isinstance(error.__cause__, BoltSecurityError)
+            pytest.skip("Failed to establish encrypted connection")
+
+
+@pytest.mark.parametrize(
+    "test_uri",
+    [
+        "neo4j+ssc://127.0.0.1:9001",
+        "neo4j+s://127.0.0.1:9001",
+    ]
+)
+@pytest.mark.parametrize(
+    "test_config, expected_failure, expected_failure_message",
+    [
+        ({"encrypted": False}, ConfigurationError, "The config settings"),
+        ({"encrypted": True}, ConfigurationError, "The config settings"),
+        ({"encrypted": True, "trust": TRUST_ALL_CERTIFICATES}, ConfigurationError, "The config settings"),
+        ({"trust": TRUST_ALL_CERTIFICATES}, ConfigurationError, "The config settings"),
+        ({"trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES}, ConfigurationError, "The config settings"),
+    ]
+)
+def test_neo4j_uri_scheme_secure_constructs_neo4j_driver_config_error(driver_info, test_uri, test_config, expected_failure, expected_failure_message):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_secure_constructs_neo4j_driver_config_error
+    with pytest.raises(expected_failure) as error:
+        driver = GraphDatabase.driver(test_uri, auth=driver_info["auth_token"], **test_config)
+
+    assert error.match(expected_failure_message)
 
 
 @pytest.mark.parametrize(
@@ -65,7 +156,7 @@ def test_bolt_plus_routing_uri_constructs_neo4j_driver(driver_info, test_script)
 )
 def test_neo4j_driver_verify_connectivity(driver_info, test_script):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_driver_verify_connectivity
-    uri = "bolt+routing://127.0.0.1:9001"
+    uri = "neo4j://127.0.0.1:9001"
     with StubCluster(test_script):
         driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
         assert isinstance(driver, Neo4jDriver)
@@ -84,7 +175,7 @@ def test_neo4j_driver_verify_connectivity(driver_info, test_script):
 )
 def test_neo4j_driver_verify_connectivity_server_down(driver_info, test_script):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_driver_verify_connectivity_server_down
-    uri = "bolt+routing://127.0.0.1:9001"
+    uri = "neo4j://127.0.0.1:9001"
     with StubCluster(test_script):
         driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
         assert isinstance(driver, Neo4jDriver)
@@ -105,7 +196,7 @@ def test_neo4j_driver_verify_connectivity_server_down(driver_info, test_script):
 def test_cannot_discover_servers_on_non_router(driver_info, test_script):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_cannot_discover_servers_on_non_router
     with StubCluster(test_script):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with pytest.raises(ServiceUnavailable):
             with GraphDatabase.driver(uri, auth=driver_info["auth_token"]):
                 pass
@@ -121,7 +212,7 @@ def test_cannot_discover_servers_on_non_router(driver_info, test_script):
 def test_cannot_discover_servers_on_silent_router(driver_info, test_script):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_cannot_discover_servers_on_silent_router
     with StubCluster(test_script):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with pytest.raises(BoltRoutingError):
             with GraphDatabase.driver(uri, auth=driver_info["auth_token"]):
                 pass
@@ -137,7 +228,7 @@ def test_cannot_discover_servers_on_silent_router(driver_info, test_script):
 def test_should_discover_servers_on_driver_construction(driver_info, test_script):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_discover_servers_on_driver_construction
     with StubCluster(test_script):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             table = driver._pool.routing_table
             assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002),
@@ -156,7 +247,7 @@ def test_should_discover_servers_on_driver_construction(driver_info, test_script
 def test_should_be_able_to_read(driver_info, test_scripts):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_be_able_to_read
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
                 result = session.run("RETURN $x", {"x": 1})
@@ -175,7 +266,7 @@ def test_should_be_able_to_read(driver_info, test_scripts):
 def test_should_be_able_to_write(driver_info, test_scripts):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_be_able_to_write
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=WRITE_ACCESS) as session:
                 result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
@@ -193,7 +284,7 @@ def test_should_be_able_to_write(driver_info, test_scripts):
 def test_should_be_able_to_write_as_default(driver_info, test_scripts):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_be_able_to_write_as_default
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
                 result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
@@ -211,7 +302,7 @@ def test_should_be_able_to_write_as_default(driver_info, test_scripts):
 def test_routing_disconnect_on_run(driver_info, test_scripts):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_routing_disconnect_on_run
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with pytest.raises(SessionExpired):
                 with driver.session(default_access_mode=READ_ACCESS) as session:
@@ -228,7 +319,7 @@ def test_routing_disconnect_on_run(driver_info, test_scripts):
 def test_routing_disconnect_on_pull_all(driver_info, test_scripts):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_routing_disconnect_on_pull_all
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with pytest.raises(SessionExpired):
                 with driver.session(default_access_mode=READ_ACCESS) as session:
@@ -245,7 +336,7 @@ def test_routing_disconnect_on_pull_all(driver_info, test_scripts):
 def test_should_disconnect_after_fetching_autocommit_result(driver_info, test_scripts):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_disconnect_after_fetching_autocommit_result
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
                 result = session.run("RETURN $x", {"x": 1})
@@ -264,7 +355,7 @@ def test_should_disconnect_after_fetching_autocommit_result(driver_info, test_sc
 def test_should_disconnect_after_explicit_commit(driver_info, test_scripts, test_run_args):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_disconnect_after_explicit_commit
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
                 with session.begin_transaction() as tx:
@@ -289,7 +380,7 @@ def test_should_disconnect_after_explicit_commit(driver_info, test_scripts, test
 def test_should_reconnect_for_new_query(driver_info, test_scripts, test_run_args):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_reconnect_for_new_query
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
                 result_1 = session.run(*test_run_args)
@@ -312,7 +403,7 @@ def test_should_reconnect_for_new_query(driver_info, test_scripts, test_run_args
 def test_should_retain_connection_if_fetching_multiple_results(driver_info, test_scripts, test_run_args):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_retain_connection_if_fetching_multiple_results
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
                 result_1 = session.run(*test_run_args)
@@ -334,7 +425,7 @@ def test_should_retain_connection_if_fetching_multiple_results(driver_info, test
 def test_two_sessions_can_share_a_connection(driver_info, test_scripts, test_run_args):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_two_sessions_can_share_a_connection
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             session_1 = driver.session(default_access_mode=READ_ACCESS)
             session_2 = driver.session(default_access_mode=READ_ACCESS)
@@ -369,7 +460,7 @@ def test_two_sessions_can_share_a_connection(driver_info, test_scripts, test_run
 def test_should_call_get_routing_table_procedure(driver_info, test_scripts, test_run_args):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_call_get_routing_table_procedure
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
                 result = session.run(*test_run_args)
@@ -388,7 +479,7 @@ def test_should_call_get_routing_table_procedure(driver_info, test_scripts, test
 def test_should_call_get_routing_table_with_context(driver_info, test_scripts, test_run_args):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_call_get_routing_table_with_context
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001/?name=molly&age=1"
+        uri = "neo4j://127.0.0.1:9001/?name=molly&age=1"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
                 result = session.run(*test_run_args)
@@ -407,7 +498,7 @@ def test_should_call_get_routing_table_with_context(driver_info, test_scripts, t
 def test_should_serve_read_when_missing_writer(driver_info, test_scripts, test_run_args):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_serve_read_when_missing_writer
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
                 result = session.run(*test_run_args)
@@ -426,7 +517,7 @@ def test_should_serve_read_when_missing_writer(driver_info, test_scripts, test_r
 def test_should_error_when_missing_reader(driver_info, test_script):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_error_when_missing_reader
     with StubCluster(test_script):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with pytest.raises(BoltRoutingError):
             GraphDatabase.driver(uri, auth=driver_info["auth_token"])
 
@@ -441,7 +532,7 @@ def test_should_error_when_missing_reader(driver_info, test_script):
 def test_forgets_address_on_not_a_leader_error(driver_info, test_scripts, test_run_args):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_forgets_address_on_not_a_leader_error
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=WRITE_ACCESS) as session:
                 with pytest.raises(ClientError):
@@ -468,7 +559,7 @@ def test_forgets_address_on_not_a_leader_error(driver_info, test_scripts, test_r
 def test_forgets_address_on_forbidden_on_read_only_database_error(driver_info, test_scripts, test_run_args):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_forgets_address_on_forbidden_on_read_only_database_error
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=WRITE_ACCESS) as session:
                 with pytest.raises(ClientError):
@@ -495,7 +586,7 @@ def test_forgets_address_on_forbidden_on_read_only_database_error(driver_info, t
 def test_forgets_address_on_service_unavailable_error(driver_info, test_scripts, test_run_args):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_forgets_address_on_service_unavailable_error
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
 
@@ -519,6 +610,7 @@ def test_forgets_address_on_service_unavailable_error(driver_info, test_scripts,
 
             assert conn.in_use is False
 
+
 @pytest.mark.parametrize(
     "test_scripts, test_run_args",
     [
@@ -529,7 +621,7 @@ def test_forgets_address_on_service_unavailable_error(driver_info, test_scripts,
 def test_forgets_address_on_database_unavailable_error(driver_info, test_scripts, test_run_args):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_forgets_address_on_database_unavailable_error
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=READ_ACCESS) as session:
 

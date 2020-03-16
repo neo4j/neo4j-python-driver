@@ -55,6 +55,8 @@ from neo4j.api import (
 from neo4j.conf import (
     Config,
     PoolConfig,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
 from neo4j.meta import (
     experimental,
@@ -88,29 +90,98 @@ class GraphDatabase:
         concurrency.
 
         :param uri:
+
+            bolt://host[:port]
+            Settings: Direct driver with no encryption.
+
+            bolt+ssc://host[:port]
+            Settings: Direct driver with encryption (accepts self signed certificates).
+
+            bolt+s://host[:port]
+            Settings: Direct driver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.
+
+            neo4j://host[:port][?routing_context]
+            Settings: Routing driver with no encryption.
+
+            neo4j+ssc://host[:port][?routing_context]
+            Settings: Routing driver with encryption (accepts self signed certificates).
+
+            neo4j+s://host[:port][?routing_context]
+            Settings: Routing driver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.
+
         :param auth:
-        :param acquire_timeout:
+        :param acquire_timeout: seconds
         :param config: connection configuration settings
         """
-        parsed = urlparse(uri)
-        if parsed.scheme == "bolt":
+
+        from neo4j.api import (
+            parse_neo4j_uri,
+            DRIVER_BOLT,
+            DRIVER_NEO4j,
+            SECURITY_TYPE_NOT_SECURE,
+            SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
+            SECURITY_TYPE_SECURE,
+            URI_SCHEME_BOLT,
+            URI_SCHEME_NEO4J,
+            URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
+            URI_SCHEME_BOLT_SECURE,
+            URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
+            URI_SCHEME_NEO4J_SECURE,
+        )
+        from neo4j.conf import (
+            TRUST_ALL_CERTIFICATES,
+            TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+        )
+
+        driver_type, security_type, parsed = parse_neo4j_uri(uri)
+
+        if "trust" in config.keys():
+            if config.get("trust") not in [TRUST_ALL_CERTIFICATES, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES]:
+                from neo4j.exceptions import ConfigurationError
+                raise ConfigurationError("The config setting `trust` values are {!r}".format(
+                    [
+                        TRUST_ALL_CERTIFICATES,
+                        TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+                    ]
+                ))
+
+        if security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE] and ("encrypted" in config.keys() or "trust" in config.keys()):
+            from neo4j.exceptions import ConfigurationError
+            raise ConfigurationError("The config settings 'encrypted' and 'trust' can only be used with the URI schemes {!r}. Use the other URI schemes {!r} for setting encryption settings.".format(
+                [
+                    URI_SCHEME_BOLT,
+                    URI_SCHEME_NEO4J,
+                ],
+                [
+                    URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
+                    URI_SCHEME_BOLT_SECURE,
+                    URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
+                    URI_SCHEME_NEO4J_SECURE,
+                ]
+            ))
+
+        if security_type == SECURITY_TYPE_SECURE:
+            config["encrypted"] = True
+        elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
+            config["encrypted"] = True
+            config["trust"] = TRUST_ALL_CERTIFICATES
+
+        if driver_type == DRIVER_BOLT:
             return cls.bolt_driver(parsed.netloc, auth=auth, acquire_timeout=acquire_timeout, **config)
-        elif parsed.scheme == "neo4j" or parsed.scheme == "bolt+routing":
+        elif driver_type == DRIVER_NEO4j:
             rc = cls._parse_routing_context(parsed.query)
             return cls.neo4j_driver(parsed.netloc, auth=auth, routing_context=rc, acquire_timeout=acquire_timeout, **config)
-        else:
-            raise ValueError("Unknown URI scheme {!r}".format(parsed.scheme))
 
     @classmethod
     def bolt_driver(cls, target, *, auth=None, acquire_timeout=None, **config):
         """ Create a driver for direct Bolt server access that uses
         socket I/O and thread-based concurrency.
         """
-        from neo4j._exceptions import BoltHandshakeError
+        from neo4j._exceptions import BoltHandshakeError, BoltSecurityError
 
         try:
             return BoltDriver.open(target, auth=auth, acquire_timeout=acquire_timeout, **config)
-        except BoltHandshakeError as error:
+        except (BoltHandshakeError, BoltSecurityError) as error:
             from neo4j.exceptions import ServiceUnavailable
             raise ServiceUnavailable(str(error)) from error
 
@@ -120,11 +191,11 @@ class GraphDatabase:
         """ Create a driver for routing-capable Neo4j service access
         that uses socket I/O and thread-based concurrency.
         """
-        from neo4j._exceptions import BoltHandshakeError
+        from neo4j._exceptions import BoltHandshakeError, BoltSecurityError
 
         try:
             return Neo4jDriver.open(*targets, auth=auth, routing_context=routing_context, acquire_timeout=acquire_timeout, **config)
-        except BoltHandshakeError as error:
+        except (BoltHandshakeError, BoltSecurityError) as error:
             from neo4j.exceptions import ServiceUnavailable
             raise ServiceUnavailable(str(error)) from error
 
@@ -228,8 +299,8 @@ class Driver:
         self.close()
 
     @property
-    def secure(self):
-        return bool(self._pool.config.secure)
+    def encrypted(self):
+        return bool(self._pool.config.encrypted)
 
     def session(self, **config):
         """ Create a simple session.
@@ -278,8 +349,7 @@ class BoltDriver(Direct, Driver):
         from neo4j.io import BoltPool
         from neo4j.work import WorkspaceConfig
         address = cls.parse_target(target)
-        pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig,
-                                                                     WorkspaceConfig)
+        pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         pool = BoltPool.open(address, auth=auth, **pool_config)
         return cls(pool, default_workspace_config)
 
@@ -323,8 +393,7 @@ class Neo4jDriver(Routing, Driver):
         from neo4j.io import Neo4jPool
         from neo4j.work import WorkspaceConfig
         addresses = cls.parse_targets(*targets)
-        pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig,
-                                                                     WorkspaceConfig)
+        pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, **pool_config)
         return cls(pool, default_workspace_config)
 

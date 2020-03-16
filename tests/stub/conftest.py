@@ -111,7 +111,7 @@ def driver_info():
     """
     return {
         "uri": "bolt://localhost:7687",
-        "bolt_routing_uri": "bolt+routing://localhost:7687",
+        "bolt_routing_uri": "neo4j://localhost:7687",
         "user": "test",
         "password": "test",
         "auth_token": ("test", "test")

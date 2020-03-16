@@ -42,7 +42,7 @@ from tests.stub.conftest import StubCluster
 def test_read_transaction(driver_info, test_scripts):
     # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_read_transaction
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
 
@@ -66,7 +66,7 @@ def test_read_transaction(driver_info, test_scripts):
 def test_write_transaction(driver_info, test_scripts):
     # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_write_transaction
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
 
@@ -90,7 +90,7 @@ def test_write_transaction(driver_info, test_scripts):
 def test_read_transaction_with_error(driver_info, test_scripts):
     # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_read_transaction_with_error
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
 
@@ -111,7 +111,7 @@ def test_read_transaction_with_error(driver_info, test_scripts):
 def test_write_transaction_with_error(driver_info, test_scripts):
     # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_write_transaction_with_error
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
 
@@ -132,7 +132,7 @@ def test_write_transaction_with_error(driver_info, test_scripts):
 def test_two_subsequent_read_transactions(driver_info, test_scripts):
     # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_two_subsequent_read_transactions
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
 
@@ -158,7 +158,7 @@ def test_two_subsequent_read_transactions(driver_info, test_scripts):
 def test_two_subsequent_write_transactions(driver_info, test_scripts):
     # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_two_subsequent_write_transactions
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
 
@@ -184,7 +184,7 @@ def test_two_subsequent_write_transactions(driver_info, test_scripts):
 def test_read_tx_then_write_tx(driver_info, test_scripts):
     # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_read_tx_then_write_tx
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
 
@@ -218,7 +218,7 @@ def test_read_tx_then_write_tx(driver_info, test_scripts):
 def test_write_tx_then_read_tx(driver_info, test_scripts):
     # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_write_tx_then_read_tx
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://localhost:9001"
+        uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
 
@@ -250,7 +250,7 @@ def test_write_tx_then_read_tx(driver_info, test_scripts):
 def test_no_retry_read_on_user_canceled_tx(driver_info, test_scripts):
     # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_no_retry_read_on_user_canceled_tx
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
                 def unit_of_work(tx):
@@ -270,7 +270,7 @@ def test_no_retry_read_on_user_canceled_tx(driver_info, test_scripts):
 def test_no_retry_write_on_user_canceled_tx(driver_info, test_scripts):
     # python -m pytest tests/stub/test_accesslevel.py -s -v -k test_no_retry_write_on_user_canceled_tx
     with StubCluster(*test_scripts):
-        uri = "bolt+routing://127.0.0.1:9001"
+        uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session() as session:
                 def unit_of_work(tx):
