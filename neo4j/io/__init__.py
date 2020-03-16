@@ -788,7 +788,7 @@ def _secure(s, host, ssl_context):
     local_port = s.getsockname()[1]
     # Secure the connection if an SSL context has been provided
     if ssl_context:
-        log.debug("[#%04X]  C: <ENCRYPTED> %s", local_port, host)
+        log.debug("[#%04X]  C: <SECURE> %s", local_port, host)
         try:
             sni_host = host if HAS_SNI and host else None
             s = ssl_context.wrap_socket(s, server_hostname=sni_host)
