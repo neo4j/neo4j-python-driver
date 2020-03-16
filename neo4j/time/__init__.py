@@ -190,7 +190,7 @@ class ClockTime(tuple):
 class Clock:
     """ Accessor for time values. This class is fulfilled by implementations
     that subclass :class:`.Clock`. These implementations are contained within
-    the ``neotime.clock_implementations`` module, and are not intended to be
+    the ``neo4j.time.clock_implementations`` module, and are not intended to be
     accessed directly.
 
     Creating a new :class:`.Clock` instance will produce the highest
@@ -198,7 +198,7 @@ class Clock:
 
         >>> clock = Clock()
         >>> type(clock)                                         # doctest: +SKIP
-        neotime.clock_implementations.LibCClock
+        neo4j.time.clock_implementations.LibCClock
         >>> clock.local_time()                                  # doctest: +SKIP
         ClockTime(seconds=1525265942, nanoseconds=506844026)
 
@@ -1127,9 +1127,9 @@ class Time(metaclass=TimeType):
 
     def __repr__(self):
         if self.tzinfo is None:
-            return "neotime.Time(%r, %r, %r)" % self.hour_minute_second
+            return "neo4j.time.Time(%r, %r, %r)" % self.hour_minute_second
         else:
-            return "neotime.Time(%r, %r, %r, tzinfo=%r)" % (self.hour_minute_second + (self.tzinfo,))
+            return "neo4j.time.Time(%r, %r, %r, tzinfo=%r)" % (self.hour_minute_second + (self.tzinfo,))
 
     def __str__(self):
         return self.iso_format()
@@ -1158,7 +1158,7 @@ class DateTime(metaclass=DateTimeType):
     precision held by the object within the `second` attribute.
 
         >>> dt = DateTime(2018, 4, 30, 12, 34, 56.789123456); dt
-        neotime.DateTime(2018, 4, 30, 12, 34, 56.789123456)
+        neo4j.time.DateTime(2018, 4, 30, 12, 34, 56.789123456)
         >>> dt.second
         56.789123456
 
@@ -1461,10 +1461,10 @@ class DateTime(metaclass=DateTimeType):
     def __repr__(self):
         if self.tzinfo is None:
             fields = self.year_month_day + self.hour_minute_second
-            return "neotime.DateTime(%r, %r, %r, %r, %r, %r)" % fields
+            return "neo4j.time.DateTime(%r, %r, %r, %r, %r, %r)" % fields
         else:
             fields = self.year_month_day + self.hour_minute_second + (self.tzinfo,)
-            return "neotime.DateTime(%r, %r, %r, %r, %r, %r, tzinfo=%r)" % fields
+            return "neo4j.time.DateTime(%r, %r, %r, %r, %r, %r, tzinfo=%r)" % fields
 
     def __str__(self):
         return self.iso_format()
