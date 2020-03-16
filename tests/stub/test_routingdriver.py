@@ -25,10 +25,10 @@ from neo4j import (
     GraphDatabase,
     Neo4jDriver,
 )
-from neo4j.api import READ_ACCESS, WRITE_ACCESS
-
-from neo4j._exceptions import BoltRoutingError
-
+from neo4j.api import (
+    READ_ACCESS,
+    WRITE_ACCESS,
+)
 from neo4j.exceptions import (
     ServiceUnavailable,
     ClientError,
@@ -36,7 +36,10 @@ from neo4j.exceptions import (
     SessionExpired,
     ConfigurationError,
 )
-
+from neo4j._exceptions import (
+    BoltRoutingError,
+    BoltSecurityError,
+)
 from tests.stub.conftest import StubCluster
 
 # python -m pytest tests/stub/test_routingdriver.py -s -v
@@ -57,63 +60,90 @@ def test_neo4j_uri_scheme_constructs_neo4j_driver(driver_info, test_script):
             assert isinstance(driver, Neo4jDriver)
 
 
-# @pytest.mark.skip(reason="Testing Self Signed Certificate is not available")
 @pytest.mark.parametrize(
-    "test_script, test_config, expected_failure, expected_failure_message",
+    "test_script",
     [
-        ("v3/router.script", {}, ServiceUnavailable, "Failed to establish encrypted connection"),
-        ("v4x0/router.script", {}, ServiceUnavailable, "Failed to establish encrypted connection"),
-        ("v4x0/router.script", {"encrypted": False}, ConfigurationError, "The config settings"),
-        ("v4x0/router.script", {"encrypted": True}, ConfigurationError, "The config settings"),
-        ("v4x0/router.script", {"encrypted": True, "verify_cert": False}, ConfigurationError, "The config settings"),
-        ("v4x0/router.script", {"verify_cert": False}, ConfigurationError, "The config settings"),
-        ("v4x0/router.script", {"verify_cert": True}, ConfigurationError, "The config settings"),
+        "v3/router.script",
+        "v4x0/router.script",
     ]
 )
-def test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver(driver_info, test_script, test_config, expected_failure, expected_failure_message):
-    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver
-    uri = "neo4j+ssc://127.0.0.1:9001"
-    if expected_failure is ServiceUnavailable:
-        with StubCluster(test_script):
-            with pytest.raises(expected_failure) as error:
-                with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config) as driver:
-                    assert isinstance(driver, Neo4jDriver)
-    else:
-        with pytest.raises(expected_failure) as error:
-            with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config) as driver:
-                assert isinstance(driver, Neo4jDriver)
-
-    assert error.match(expected_failure_message)
-
-
-# @pytest.mark.skip(reason="Testing Secure Connection is not available")
-@pytest.mark.parametrize(
-    "test_script, test_config, expected_failure, expected_failure_message",
-    [
-        ("v3/router.script", {}, ServiceUnavailable, "Failed to establish encrypted connection"),
-        ("v4x0/router.script", {}, ServiceUnavailable, "Failed to establish encrypted connection"),
-        ("v4x0/router.script", {"encrypted": False}, ConfigurationError, "The config settings"),
-        ("v4x0/router.script", {"encrypted": True}, ConfigurationError, "The config settings"),
-        ("v4x0/router.script", {"encrypted": True, "verify_cert": False}, ConfigurationError, "The config settings"),
-        ("v4x0/router.script", {"verify_cert": False}, ConfigurationError, "The config settings"),
-        ("v4x0/router.script", {"verify_cert": True}, ConfigurationError, "The config settings"),
-    ]
-)
-def test_neo4j_uri_scheme_secure_constructs_neo4j_driver(driver_info, test_script, test_config, expected_failure, expected_failure_message):
+def test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver(driver_info, test_script):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver
     with StubCluster(test_script):
-        uri = "neo4j+s://127.0.0.1:9001"
-        if expected_failure is ServiceUnavailable:
-            with StubCluster(test_script):
-                with pytest.raises(expected_failure) as error:
-                    with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config) as driver:
-                        assert isinstance(driver, Neo4jDriver)
-        else:
-            with pytest.raises(expected_failure) as error:
-                with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config) as driver:
-                    assert isinstance(driver, Neo4jDriver)
+        uri = "neo4j+ssc://127.0.0.1:9001"
 
-        assert error.match(expected_failure_message)
+        test_config = {
+            "user_agent": "test",
+            "max_age": 1000,
+            "max_size": 10,
+            "keep_alive": False,
+            "max_retry_time": 1,
+            "resolver": None,
+        }
+
+        try:
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
+            assert isinstance(driver, Neo4jDriver)
+            driver.close()
+        except ServiceUnavailable as error:
+            assert isinstance(error.__cause__, BoltSecurityError)
+            pytest.skip("Failed to establish encrypted connection")
+
+
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/router.script",
+        "v4x0/router.script",
+    ]
+)
+def test_neo4j_uri_scheme_secure_constructs_neo4j_driver(driver_info, test_script):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_secure_constructs_neo4j_driver
+    with StubCluster(test_script):
+        uri = "neo4j+s://127.0.0.1:9001"
+
+        test_config = {
+            "user_agent": "test",
+            "max_age": 1000,
+            "max_size": 10,
+            "keep_alive": False,
+            "max_retry_time": 1,
+            "resolver": None,
+        }
+
+        try:
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
+            assert isinstance(driver, Neo4jDriver)
+            driver.close()
+        except ServiceUnavailable as error:
+            assert isinstance(error.__cause__, BoltSecurityError)
+            pytest.skip("Failed to establish encrypted connection")
+
+
+@pytest.mark.parametrize(
+    "test_uri",
+    [
+        "neo4j+scc://127.0.0.1:9001",
+        "neo4j+s://127.0.0.1:9001",
+    ]
+)
+@pytest.mark.parametrize(
+    "test_config, expected_failure, expected_failure_message",
+    [
+        ({"encrypted": False}, ConfigurationError, "The config settings"),
+        ({"encrypted": True}, ConfigurationError, "The config settings"),
+        ({"encrypted": True, "verify_cert": False}, ConfigurationError, "The config settings"),
+        ({"verify_cert": False}, ConfigurationError, "The config settings"),
+        ({"verify_cert": True}, ConfigurationError, "The config settings"),
+    ]
+)
+def test_neo4j_uri_scheme_secure_constructs_neo4j_driver_config_error(driver_info, test_uri, test_config, expected_failure, expected_failure_message):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_secure_constructs_neo4j_driver_config_error
+    uri = "neo4j+s://127.0.0.1:9001"
+    with pytest.raises(expected_failure) as error:
+        driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
+
+    assert error.match(expected_failure_message)
 
 
 @pytest.mark.parametrize(

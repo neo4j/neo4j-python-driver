@@ -21,7 +21,10 @@
 
 import pytest
 
-from neo4j.exceptions import ServiceUnavailable
+from neo4j.exceptions import (
+    ServiceUnavailable,
+    ConfigurationError,
+)
 from neo4j._exceptions import (
     BoltHandshakeError,
     BoltSecurityError,
@@ -38,7 +41,7 @@ from tests.stub.conftest import (
     StubCluster,
 )
 
-# python -m pytest tests/stub/test_directdriver.py
+# python -m pytest tests/stub/test_directdriver.py -s -v
 
 
 driver_config = {
@@ -50,6 +53,7 @@ driver_config = {
     "max_retry_time": 1,
     "resolver": None,
 }
+
 
 session_config = {
     # "fetch_size": 100,
@@ -196,7 +200,6 @@ def test_direct_session_close_after_server_close(driver_info, test_script):
                     session.write_transaction(lambda tx: tx.run(Query("CREATE (a:Item)", timeout=1)))
 
 
-# @pytest.mark.skip(reason="Testing Self Signed Certificate is not available")
 @pytest.mark.parametrize(
     "test_script",
     [
@@ -206,18 +209,27 @@ def test_direct_session_close_after_server_close(driver_info, test_script):
 )
 def test_bolt_uri_scheme_self_signed_certificate_constructs_bolt_driver(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_uri_scheme_self_signed_certificate_constructs_bolt_driver
-    import ssl
+
+    test_config = {
+        "user_agent": "test",
+        "max_age": 1000,
+        "max_size": 10,
+        "keep_alive": False,
+        "max_retry_time": 1,
+        "resolver": None,
+    }
+
     with StubCluster(test_script):
         uri = "bolt+ssc://127.0.0.1:9001"
         try:
-            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
             assert isinstance(driver, BoltDriver)
             driver.close()
         except ServiceUnavailable as error:
             assert isinstance(error.__cause__, BoltSecurityError)
+            pytest.skip("Failed to establish encrypted connection")
 
 
-# @pytest.mark.skip(reason="Testing Encrypted Connection is not available")
 @pytest.mark.parametrize(
     "test_script",
     [
@@ -227,11 +239,48 @@ def test_bolt_uri_scheme_self_signed_certificate_constructs_bolt_driver(driver_i
 )
 def test_bolt_uri_scheme_secure_constructs_bolt_driver(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_uri_scheme_secure_constructs_bolt_driver
+
+    test_config = {
+        "user_agent": "test",
+        "max_age": 1000,
+        "max_size": 10,
+        "keep_alive": False,
+        "max_retry_time": 1,
+        "resolver": None,
+    }
+
     with StubCluster(test_script):
         uri = "bolt+s://127.0.0.1:9001"
         try:
-            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
             assert isinstance(driver, BoltDriver)
             driver.close()
         except ServiceUnavailable as error:
             assert isinstance(error.__cause__, BoltSecurityError)
+            pytest.skip("Failed to establish encrypted connection")
+
+
+@pytest.mark.parametrize(
+    "test_uri",
+    [
+        "bolt+scc://127.0.0.1:9001",
+        "bolt+s://127.0.0.1:9001",
+    ]
+)
+@pytest.mark.parametrize(
+    "test_config, expected_failure, expected_failure_message",
+    [
+        ({"encrypted": False}, ConfigurationError, "The config settings"),
+        ({"encrypted": True}, ConfigurationError, "The config settings"),
+        ({"encrypted": True, "verify_cert": False}, ConfigurationError, "The config settings"),
+        ({"verify_cert": False}, ConfigurationError, "The config settings"),
+        ({"verify_cert": True}, ConfigurationError, "The config settings"),
+    ]
+)
+def test_neo4j_uri_scheme_secure_constructs_driver_config_error(driver_info, test_uri, test_config, expected_failure, expected_failure_message):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_neo4j_uri_scheme_secure_constructs_driver_config_error
+    uri = "neo4j+s://127.0.0.1:9001"
+    with pytest.raises(expected_failure) as error:
+        driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
+
+    assert error.match(expected_failure_message)
