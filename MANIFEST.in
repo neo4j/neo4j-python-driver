@@ -1,2 +1,2 @@
 global-exclude *.class *.pyc *.pyo *.so *.dll __pycache__
-prune test
+prune tests
