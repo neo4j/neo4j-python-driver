@@ -172,7 +172,7 @@ class PoolConfig(Config):
     #:
     init_size = 1
 
-    #:
+    #: Specify whether TCP keep-alive should be enabled. TODO: This setting is not in use
     keep_alive = True
 
     #:
