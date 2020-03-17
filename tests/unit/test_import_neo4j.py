@@ -99,11 +99,6 @@ def test_import_session():
     from neo4j import Session
 
 
-def test_import_sessionconfig():
-    # python -m pytest tests/unit/test_import_neo4j.py -s -v -k test_import_sessionconfig
-    from neo4j import SessionConfig
-
-
 def test_import_query():
     # python -m pytest tests/unit/test_import_neo4j.py -s -v -k test_import_query
     from neo4j import Query
@@ -132,6 +127,11 @@ def test_import_config():
 def test_import_poolconfig():
     # python -m pytest tests/unit/test_import_neo4j.py -s -v -k test_import_poolconfig
     from neo4j import PoolConfig
+
+
+def test_import_sessionconfig():
+    # python -m pytest tests/unit/test_import_neo4j.py -s -v -k test_import_sessionconfig
+    from neo4j import SessionConfig
 
 
 def test_import_graph():
@@ -169,3 +169,16 @@ def test_import_exceptions():
     import neo4j.exceptions as exceptions
 
 
+def test_import_trust_all_certificates():
+    # python -m pytest tests/unit/test_import_neo4j.py -s -v -k test_import_trust_all_certificates
+    from neo4j import TRUST_ALL_CERTIFICATES
+
+
+def test_import_trust_system_ca_signed_certificates():
+    # python -m pytest tests/unit/test_import_neo4j.py -s -v -k test_import_trust_system_ca_signed_certificates
+    from neo4j import TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+
+
+def test_import_system_database_name():
+    # python -m pytest tests/unit/test_import_neo4j.py -s -v -k test_import_system_database_name
+    from neo4j import SYSTEM_DATABASE_NAME

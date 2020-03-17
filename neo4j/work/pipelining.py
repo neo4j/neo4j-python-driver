@@ -23,13 +23,8 @@ from collections import deque
 from threading import Thread, Lock
 from time import sleep
 
-from neo4j.work import Workspace, WorkspaceConfig
-
-
-class PipelineConfig(WorkspaceConfig):
-
-    #:
-    flush_every = 8192  # bytes
+from neo4j.conf import PipelineConfig
+from neo4j.work import Workspace
 
 
 class Pipeline(Workspace):

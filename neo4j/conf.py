@@ -24,9 +24,11 @@ from collections.abc import Mapping
 from warnings import warn
 
 from neo4j.meta import get_user_agent
-
-TRUST_SYSTEM_CA_SIGNED_CERTIFICATES = "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"  # Default
-TRUST_ALL_CERTIFICATES = "TRUST_ALL_CERTIFICATES"
+from neo4j.api import (
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    TRUST_ALL_CERTIFICATES,
+    WRITE_ACCESS,
+)
 
 
 def iter_items(iterable):
@@ -248,3 +250,41 @@ class PoolConfig(Config):
 
         ssl_context.set_default_verify_paths()  # https://docs.python.org/3.5/library/ssl.html#ssl.SSLContext.set_default_verify_paths
         return ssl_context
+
+
+class WorkspaceConfig(Config):
+    """ Session configuration.
+    """
+
+    #:
+    acquire_timeout = 60.0  # seconds
+
+    #:
+    max_retry_time = 30.0  # seconds
+
+    #:
+    initial_retry_delay = 1.0  # seconds
+
+    #:
+    retry_delay_multiplier = 2.0  # seconds
+
+    #:
+    retry_delay_jitter_factor = 0.2  # seconds
+
+
+class SessionConfig(WorkspaceConfig):
+    """ Session configuration.
+    """
+
+    #:
+    bookmarks = ()
+
+    #:
+    default_access_mode = WRITE_ACCESS
+    access_mode = DeprecatedAlias("default_access_mode")
+
+
+class PipelineConfig(WorkspaceConfig):
+
+    #:
+    flush_every = 8192  # bytes

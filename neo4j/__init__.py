@@ -51,12 +51,16 @@ from neo4j.api import (
     Version,
     READ_ACCESS,
     WRITE_ACCESS,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    SYSTEM_DATABASE_NAME,
 )
 from neo4j.conf import (
     Config,
     PoolConfig,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    WorkspaceConfig,
+    SessionConfig,
+    PipelineConfig,
 )
 from neo4j.meta import (
     experimental,
@@ -72,7 +76,6 @@ from neo4j.work.simple import (
     ResultSummary,
     Query,
     Session,
-    SessionConfig,
     unit_of_work,
 )
 
@@ -133,10 +136,6 @@ class GraphDatabase:
             URI_SCHEME_BOLT_SECURE,
             URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
             URI_SCHEME_NEO4J_SECURE,
-        )
-        from neo4j.conf import (
-            TRUST_ALL_CERTIFICATES,
-            TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
         )
 
         driver_type, security_type, parsed = parse_neo4j_uri(uri)
@@ -350,7 +349,6 @@ class BoltDriver(Direct, Driver):
     @classmethod
     def open(cls, target, *, auth=None, **config):
         from neo4j.io import BoltPool
-        from neo4j.work import WorkspaceConfig
         address = cls.parse_target(target)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         pool = BoltPool.open(address, auth=auth, **pool_config)
@@ -362,13 +360,14 @@ class BoltDriver(Direct, Driver):
         self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
-        from neo4j.work.simple import Session, SessionConfig
+        from neo4j.work.simple import Session
+        from neo4j import SessionConfig
         session_config = SessionConfig(self._default_workspace_config,
                                        SessionConfig.consume(config))
         return Session(self._pool, session_config)
 
     def pipeline(self, **config):
-        from neo4j.work.pipelining import Pipeline, PipelineConfig
+        from neo4j.work.pipelining import Pipeline
         pipeline_config = PipelineConfig(self._default_workspace_config,
                                          PipelineConfig.consume(config))
         return Pipeline(self._pool, pipeline_config)
@@ -394,7 +393,7 @@ class Neo4jDriver(Routing, Driver):
     @classmethod
     def open(cls, *targets, auth=None, routing_context=None, **config):
         from neo4j.io import Neo4jPool
-        from neo4j.work import WorkspaceConfig
+        from neo4j import WorkspaceConfig
         addresses = cls.parse_targets(*targets)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, **pool_config)
@@ -406,13 +405,15 @@ class Neo4jDriver(Routing, Driver):
         self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
-        from neo4j.work.simple import Session, SessionConfig
+        from neo4j.work.simple import Session
+        from neo4j import SessionConfig
         session_config = SessionConfig(self._default_workspace_config,
                                        SessionConfig.consume(config))
         return Session(self._pool, session_config)
 
     def pipeline(self, **config):
-        from neo4j.work.pipelining import Pipeline, PipelineConfig
+        from neo4j.work.pipelining import Pipeline
+        from neo4j import PipelineConfig
         pipeline_config = PipelineConfig(self._default_workspace_config,
                                          PipelineConfig.consume(config))
         return Pipeline(self._pool, pipeline_config)
