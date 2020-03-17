@@ -2,51 +2,59 @@
 Driver Objects
 ==============
 
-Every Neo4j-backed application will require a :class:`.Driver` object.
+Every Neo4j-backed application will require a :class:`neo4j.Driver` object.
 This object holds the details required to establish connections with a Neo4j database, including server URIs, credentials and other configuration.
-:class:`.Driver` objects hold a connection pool from which :class:`.Session` objects can borrow connections.
+:class:`neo4j.Driver` objects hold a connection pool from which :class:`neo4j.Session` objects can borrow connections.
 Closing a driver will immediately shut down all connections in the pool.
 
 Construction
 ============
 
-:class:`.Driver` construction can either be carried out directly or via a `classmethod` on the :class:`.GraphDatabase` class.
+:class:`neo4j.Driver` construction can either be carried out directly or via a `classmethod` on the :class:`neo4j.GraphDatabase` class.
 
 .. autoclass:: neo4j.GraphDatabase
    :members: driver
 
-.. autoclass:: neo4j.Driver(uri, **config)
+.. autoclass:: neo4j.Driver()
    :members: session, close, closed
 
 
 URI
 ===
 
-On construction, the scheme of the URI determines the type of :class:`.Driver` object created.
-Each supported scheme maps to a particular :class:`.Driver` subclass that implements a specific behaviour.
-The remainder of the URI should be considered subclass-specific.
+On construction, the `scheme` of the URI determines the type of :class:`neo4j.Driver` object created.
+
+Example URI::
+
+    uri = bolt://localhost:7676
+
+Example URI::
+
+    uri = neo4j://localhost:7676
+
+Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that implements a specific behaviour.
 
 The alternative behaviours are described in the subsections below.
 
 
-Bolt Direct
------------
+BoltDriver
+----------
 
-URI scheme:
-    ``bolt``
+URI schemes:
+    ``bolt``, ``bolt+ssc``, ``bolt+s``
 Driver subclass:
-    :class:`.BoltDriver`
+    :class:`neo4j.BoltDriver`
 
 .. autoclass:: neo4j.BoltDriver
 
 
-Bolt Routing
+Neo4jDriver
 ------------
 
-URI scheme:
-    ``neo4j``
+URI schemes:
+    ``neo4j``, ``neo4j+ssc``, ``neo4j+s``
 Driver subclass:
-    :class:`.Neo4jDriver`
+    :class:`neo4j.Neo4jDriver`
 
 .. autoclass:: neo4j.Neo4jDriver
 
@@ -54,7 +62,7 @@ Driver subclass:
 Configuration
 =============
 
-Additional configuration, including authentication details, can be provided via the :class:`.Driver` constructor.
+Additional configuration, including authentication details, can be provided via the :class:`neo4j.Driver` constructor.
 
 ``auth``
 --------
@@ -71,13 +79,17 @@ Alternatively, one of the auth token functions can be used.
 -------------
 
 A boolean indicating whether or not TLS should be used for connections.
-Defaults to :py:const:`True` if TLS is available.
+
+:Type: ``bool``
+:Default: :py:const:`True`
+
 
 ``trust``
 ---------
 
 The trust level for certificates received from the server during TLS negotiation.
 This setting does not have any effect if ``encrypted`` is set to :py:const:`False`.
+
 
 .. py:attribute:: neo4j.TRUST_ALL_CERTIFICATES
 
@@ -91,6 +103,8 @@ This setting does not have any effect if ``encrypted`` is set to :py:const:`Fals
    Trust server certificates that can be verified against the system
    certificate authority. This option is primarily intended for use with
    full certificates.
+
+:Default: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``.
 
 ``user_agent``
 --------------
@@ -149,7 +163,7 @@ For example::
 Object Lifetime
 ===============
 
-For general applications, it is recommended to create one top-level :class:`.Driver` object that lives for the lifetime of the application.
+For general applications, it is recommended to create one top-level :class:`neo4j.Driver` object that lives for the lifetime of the application.
 For example:
 
 .. code-block:: python
@@ -164,10 +178,10 @@ For example:
         def close(self):
             self.driver.close()
 
-Connection details held by the :class:`.Driver` are immutable.
-Therefore if, for example, a password is changed, a replacement :class:`.Driver` object must be created.
+Connection details held by the :class:`neo4j.Driver` are immutable.
+Therefore if, for example, a password is changed, a replacement :class:`neo4j.Driver` object must be created.
 More than one :class:`.Driver` may be required if connections to multiple databases, or connections as multiple users, are required.
 
-:class:`.Driver` objects are thread-safe but cannot be shared across processes.
+:class:`neo4j.Driver` objects are thread-safe but cannot be shared across processes.
 Therefore, ``multithreading`` should generally be preferred over ``multiprocessing`` for parallel database access.
-If using ``multiprocessing`` however, each process will require its own :class:`.Driver` object.
+If using ``multiprocessing`` however, each process will require its own :class:`neo4j.Driver` object.

@@ -27,7 +27,55 @@ Python versions supported:
    The driver may still work with older versions of python.
 
    The previous driver `Python Driver 1.7`_ supports older versions of python,
-   the Neo4j 4.0 will work in fallback mode (using Bolt Protocol Version 3) with that driver.
+   the **Neo4j 4.0** will work in fallback mode (using Bolt Protocol Version 3) with that driver.
+
+*************
+Quick Example
+*************
+
+.. code-block:: python
+
+    from neo4j import GraphDatabase
+
+    uri = "bolt://localhost:7687"
+    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
+
+    def print_friends_of(tx, name):
+        for record in tx.run("MATCH (a:Person)-[:KNOWS]->(f) "
+                             "WHERE a.name = {name} "
+                             "RETURN f.name", name=name):
+            print(record["f.name"])
+
+    with driver.session() as session:
+        session.read_transaction(print_friends_of, "Alice")
+
+    driver.close()
+
+
+************
+Installation
+************
+
+To install the latest stable driver release, use:
+
+.. code:: bash
+
+    python -m pip install neo4j
+
+
+**Note:** It is always recommended to install python packages for user space in a virtual environment.
+
+.. code:: bash
+
+    python -m venv sandbox
+
+.. code:: bash
+
+    source sandbox/bin/activate
+
+.. code:: bash
+
+    deactivate
 
 
 ****************
@@ -37,23 +85,38 @@ Breaking Changes
 Version Scheme Changes
 ======================
 
-The version number have jumped from :code:`1.7` to :code:`Python Driver 4.0` to align with the Neo4j Database version scheme.
+The version number have jumped from **Python Driver 1.7** to **Python Driver 4.0** to align with the Neo4j Database version scheme.
 
 
 Namespace Changes
 =================
 
-:code:`import neo4j.v1` have changed namespace to be :code:`import neo4j`
+.. code-block:: python
+
+    import neo4j.v1
+
+Have changed to
+
+.. code-block:: python
+
+    import neo4j
 
 
 Secure Connection
 =================
 
-Neo4j 4.0 is by default configured to use a non secure connection.
+**Neo4j 4.0** is by default configured to use a **non secure connection**.
 
-The Driver Configuration argument :code:`encrypted` is by default set to :code:`False`.
+The driver configuration argument :code:`encrypted` is by default set to :code:`False`.
 
-To be able to connect to Neo4j 3.5 set :code:`encrypted=True` to have it configured as the default for that setup.
+**Note:** To be able to connect to **Neo4j 3.5** set :code:`encrypted=True` to have it configured as the default for that setup.
+
+.. code-block:: python
+
+    from neo4j import GraphDatabase
+
+    driver = GraphDatabase("bolt://localhost:7687", auth=("neo4j", "password"), encrypted=True)
+    driver.close()
 
 
 Bookmark Changes
@@ -68,10 +131,10 @@ Exceptions Changes
 The exceptions in :code:`neo4j.exceptions` have been updated and there is internal exceptions starting with the naming :code:`Bolt` that should be propagated into the exceptions API.
 
 
-URI Changes
-===========
+URI Scheme Changes
+==================
 
-`bolt+routing` have been renamed to `neo4j`
+**bolt+routing** have been renamed to **neo4j**.
 
 
 Class Renaming Changes
@@ -99,36 +162,7 @@ Dependency Changes
 The dependency :code:`neobolt` have been removed.
 
 
-*************
-Quick Example
-*************
 
-.. code-block:: python
-
-    from neo4j import GraphDatabase
-
-    uri = "bolt://localhost:7687"
-    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
-
-    def print_friends_of(tx, name):
-        for record in tx.run("MATCH (a:Person)-[:KNOWS]->(f) "
-                             "WHERE a.name = {name} "
-                             "RETURN f.name", name=name):
-            print(record["f.name"])
-
-    with driver.session() as session:
-        session.read_transaction(print_friends_of, "Alice")
-
-
-************
-Installation
-************
-
-To install the latest stable driver release, use:
-
-.. code:: bash
-
-    python -m pip install neo4j
 
 
 *****************

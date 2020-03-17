@@ -39,7 +39,6 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.ifconfig',
     'sphinx.ext.intersphinx',
-    "sphinx_rtd_theme",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -57,7 +56,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'Neo4j Bolt Driver for Python'
+project = 'Neo4j Python Driver'
 copyright = '2002-2020, Neo Technology'
 author = 'Neo Technology'
 
@@ -120,8 +119,7 @@ todo_include_todos = True
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-# html_theme = 'nature'
-html_theme = "sphinx_rtd_theme"
+html_theme = 'nature'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -133,7 +131,7 @@ html_theme = "sphinx_rtd_theme"
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = "Neo4j Bolt Driver %s for Python" % version
+html_title = "Neo4j Python Driver {}".format(version)
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #html_short_title = None
@@ -305,5 +303,4 @@ def setup(app):
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
-    'neotime': ('https://neotime.readthedocs.io/en/latest/', None),
 }

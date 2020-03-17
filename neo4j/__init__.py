@@ -91,23 +91,29 @@ class GraphDatabase:
 
         :param uri:
 
-            bolt://host[:port]
-            Settings: Direct driver with no encryption.
+            ``bolt://host[:port]``
 
-            bolt+ssc://host[:port]
-            Settings: Direct driver with encryption (accepts self signed certificates).
+            **Settings:** BoltDriver with no encryption.
 
-            bolt+s://host[:port]
-            Settings: Direct driver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.
+            ``bolt+ssc://host[:port]``
 
-            neo4j://host[:port][?routing_context]
-            Settings: Routing driver with no encryption.
+            **Settings:** BoltDriver with encryption (accepts self signed certificates).
 
-            neo4j+ssc://host[:port][?routing_context]
-            Settings: Routing driver with encryption (accepts self signed certificates).
+            ``bolt+s://host[:port]``
 
-            neo4j+s://host[:port][?routing_context]
-            Settings: Routing driver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.
+            **Settings:** BoltDriver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.
+
+            ``neo4j://host[:port][?routing_context]``
+
+            **Settings:** Neo4jDriver with no encryption.
+
+            ``neo4j+ssc://host[:port][?routing_context]``
+
+            **Settings:** Neo4jDriver with encryption (accepts self signed certificates).
+
+            ``neo4j+s://host[:port][?routing_context]``
+
+            **Settings:** Neo4jDriver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.
 
         :param auth:
         :param acquire_timeout: seconds
@@ -277,9 +283,6 @@ class Routing:
 class Driver:
     """ Base class for all types of :class:`.Driver`, instances of which are
     used as the primary access point to Neo4j.
-
-    :param uri: URI for a graph database service
-    :param config: configuration and authentication details
     """
 
     #: Connection pool
