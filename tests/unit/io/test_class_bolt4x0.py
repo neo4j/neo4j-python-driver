@@ -22,21 +22,22 @@
 import pytest
 from neo4j.io._bolt4x0 import Bolt4x0
 
+
 def test_conn_timed_out(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt4x0(address, fake_socket(address), max_age=0)
+    connection = Bolt4x0(address, fake_socket(address), max_connection_lifetime=0)
     assert connection.timedout() is True
 
 
 def test_conn_not_timed_out_if_not_enabled(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt4x0(address, fake_socket(address), max_age=-1)
+    connection = Bolt4x0(address, fake_socket(address), max_connection_lifetime=-1)
     assert connection.timedout() is False
 
 
 def test_conn_not_timed_out(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt4x0(address, fake_socket(address), max_age=999999999)
+    connection = Bolt4x0(address, fake_socket(address), max_connection_lifetime=999999999)
     assert connection.timedout() is False
 
 

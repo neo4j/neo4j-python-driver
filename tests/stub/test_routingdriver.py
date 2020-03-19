@@ -26,6 +26,7 @@ from neo4j import (
     Neo4jDriver,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    PoolConfig,
 )
 from neo4j.api import (
     READ_ACCESS,
@@ -44,7 +45,10 @@ from neo4j._exceptions import (
 )
 from tests.stub.conftest import StubCluster
 
-# python -m pytest tests/stub/test_routingdriver.py -s -v
+# python -m pytest tests/stub/test_routingdriver.py -s -v -r sEx
+
+from neo4j.debug import watch
+watch("neo4j")
 
 
 @pytest.mark.parametrize(
@@ -69,22 +73,32 @@ def test_neo4j_uri_scheme_constructs_neo4j_driver(driver_info, test_script):
         "v4x0/router.script",
     ]
 )
+def test_neo4j_uri_scheme_constructs_neo4j_driver_encrypted(driver_info, test_script):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_constructs_neo4j_driver_encrypted
+    with StubCluster(test_script):
+        uri = "neo4j://127.0.0.1:9001"
+        try:
+            with GraphDatabase.driver(uri, auth=driver_info["auth_token"], encrypted=True) as driver:
+                assert isinstance(driver, Neo4jDriver)
+        except ServiceUnavailable as error:
+            assert isinstance(error.__cause__, BoltSecurityError)
+            pytest.skip("Failed to establish encrypted connection")
+
+
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/router.script",
+        "v4x0/router.script",
+    ]
+)
 def test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver(driver_info, test_script):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver
     with StubCluster(test_script):
         uri = "neo4j+ssc://127.0.0.1:9001"
 
-        test_config = {
-            "user_agent": "test",
-            "max_age": 1000,
-            "max_size": 10,
-            "keep_alive": False,
-            "max_retry_time": 1,
-            "resolver": None,
-        }
-
         try:
-            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"])
             assert isinstance(driver, Neo4jDriver)
             driver.close()
         except ServiceUnavailable as error:
@@ -104,17 +118,8 @@ def test_neo4j_uri_scheme_secure_constructs_neo4j_driver(driver_info, test_scrip
     with StubCluster(test_script):
         uri = "neo4j+s://127.0.0.1:9001"
 
-        test_config = {
-            "user_agent": "test",
-            "max_age": 1000,
-            "max_size": 10,
-            "keep_alive": False,
-            "max_retry_time": 1,
-            "resolver": None,
-        }
-
         try:
-            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"])
             assert isinstance(driver, Neo4jDriver)
             driver.close()
         except ServiceUnavailable as error:

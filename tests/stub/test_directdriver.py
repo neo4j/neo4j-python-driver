@@ -37,11 +37,15 @@ from neo4j import (
     WRITE_ACCESS,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    PoolConfig,
 )
 
 from tests.stub.conftest import (
     StubCluster,
 )
+
+from neo4j.debug import watch
+watch("neo4j")
 
 # python -m pytest tests/stub/test_directdriver.py -s -v
 
@@ -49,17 +53,16 @@ from tests.stub.conftest import (
 driver_config = {
     "encrypted": False,
     "user_agent": "test",
-    "max_age": 1000,
-    "max_size": 10,
+    "max_connection_lifetime": 1000,
+    "max_connection_pool_size": 10,
     "keep_alive": False,
-    "max_retry_time": 1,
     "resolver": None,
 }
 
 
 session_config = {
     "default_access_mode": WRITE_ACCESS,
-    "acquire_timeout": 1.0,
+    "connection_acquisition_timeout": 1.0,
     "max_retry_time": 1.0,
     "initial_retry_delay": 1.0,
     "retry_delay_multiplier": 1.0,
@@ -83,6 +86,25 @@ def test_bolt_uri_constructs_bolt_driver(driver_info, test_script):
 
 
 @pytest.mark.parametrize(
+    "test_script",
+    [
+        "v3/empty.script",
+        "v4x0/empty.script",
+    ]
+)
+def test_bolt_uri_constructs_bolt_driver_encrypted(driver_info, test_script):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_uri_constructs_bolt_driver_encrypted
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        try:
+            with GraphDatabase.driver(uri, auth=driver_info["auth_token"], encrypted=True) as driver:
+                assert isinstance(driver, BoltDriver)
+        except ServiceUnavailable as error:
+            assert isinstance(error.__cause__, BoltSecurityError)
+            pytest.skip("Failed to establish encrypted connection")
+
+
+@pytest.mark.parametrize(
     "test_script, test_expected",
     [
         ("v1/empty_explicit_hello_goodbye.script", ServiceUnavailable),
@@ -93,14 +115,18 @@ def test_bolt_uri_constructs_bolt_driver(driver_info, test_script):
 )
 def test_direct_driver_handshake_negotiation(driver_info, test_script, test_expected):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_driver_handshake_negotiation
+
+    test_config = PoolConfig.consume(driver_config)
+    test_config.user_agent = "test"
+
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
         if test_expected:
             with pytest.raises(test_expected) as error:
-                driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
+                driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
             assert isinstance(error.value.__cause__, BoltHandshakeError)
         else:
-            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
             assert isinstance(driver, BoltDriver)
             driver.close()
 
@@ -108,8 +134,11 @@ def test_direct_driver_handshake_negotiation(driver_info, test_script, test_expe
 def test_direct_driver_with_wrong_port(driver_info):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_driver_with_wrong_port
     uri = "bolt://127.0.0.1:9002"
+
+    test_config = PoolConfig.consume(driver_config)
+
     with pytest.raises(ServiceUnavailable):
-        driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
+        driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
 
 
 @pytest.mark.parametrize(
@@ -121,9 +150,13 @@ def test_direct_driver_with_wrong_port(driver_info):
 )
 def test_direct_verify_connectivity(driver_info, test_script, test_expected):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_verify_connectivity
+
+    test_config = PoolConfig.consume(driver_config)
+    test_config.user_agent = "test"
+
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
-        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config) as driver:
             assert isinstance(driver, BoltDriver)
             assert driver.verify_connectivity() == test_expected
 
@@ -137,9 +170,12 @@ def test_direct_verify_connectivity(driver_info, test_script, test_expected):
 )
 def test_direct_verify_connectivity_disconnect_on_run(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_verify_connectivity_disconnect_on_run
+
+    test_config = PoolConfig.consume(driver_config)
+
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
-        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config) as driver:
             with pytest.raises(ServiceUnavailable):
                 driver.verify_connectivity()
 
@@ -170,9 +206,12 @@ def test_direct_disconnect_on_run(driver_info, test_script):
 )
 def test_direct_disconnect_on_pull_all(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_disconnect_on_pull_all
+
+    test_config = PoolConfig.consume(driver_config)
+
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
-        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config) as driver:
             with pytest.raises(ServiceUnavailable):
                 with driver.session(**session_config) as session:
                     session.run("RETURN $x", {"x": 1}).consume()
@@ -187,13 +226,17 @@ def test_direct_disconnect_on_pull_all(driver_info, test_script):
 )
 def test_direct_session_close_after_server_close(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_session_close_after_server_close
+
+    test_config = PoolConfig.consume(driver_config)
+    test_config.user_agent = "test"
+
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
 
-        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config) as driver:
             with driver.session(**session_config) as session:
                 with pytest.raises(ServiceUnavailable):
-                    session.write_transaction(lambda tx: tx.run(Query("CREATE (a:Item)", timeout=1)))
+                    session.write_transaction(lambda tx: tx.run(Query("CREATE (a:Item)", connection_timeout=1)))
 
 
 @pytest.mark.parametrize(
@@ -206,19 +249,10 @@ def test_direct_session_close_after_server_close(driver_info, test_script):
 def test_bolt_uri_scheme_self_signed_certificate_constructs_bolt_driver(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_uri_scheme_self_signed_certificate_constructs_bolt_driver
 
-    test_config = {
-        "user_agent": "test",
-        "max_age": 1000,
-        "max_size": 10,
-        "keep_alive": False,
-        "max_retry_time": 1,
-        "resolver": None,
-    }
-
     with StubCluster(test_script):
         uri = "bolt+ssc://127.0.0.1:9001"
         try:
-            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"])
             assert isinstance(driver, BoltDriver)
             driver.close()
         except ServiceUnavailable as error:
@@ -236,19 +270,10 @@ def test_bolt_uri_scheme_self_signed_certificate_constructs_bolt_driver(driver_i
 def test_bolt_uri_scheme_secure_constructs_bolt_driver(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_uri_scheme_secure_constructs_bolt_driver
 
-    test_config = {
-        "user_agent": "test",
-        "max_age": 1000,
-        "max_size": 10,
-        "keep_alive": False,
-        "max_retry_time": 1,
-        "resolver": None,
-    }
-
     with StubCluster(test_script):
         uri = "bolt+s://127.0.0.1:9001"
         try:
-            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"])
             assert isinstance(driver, BoltDriver)
             driver.close()
         except ServiceUnavailable as error:

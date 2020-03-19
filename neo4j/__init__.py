@@ -88,7 +88,7 @@ class GraphDatabase:
     """
 
     @classmethod
-    def driver(cls, uri, *, auth=None, acquire_timeout=None, **config):
+    def driver(cls, uri, *, auth=None, **config):
         """ Create a Neo4j driver that uses socket I/O and thread-based
         concurrency.
 
@@ -119,7 +119,7 @@ class GraphDatabase:
             **Settings:** Neo4jDriver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.
 
         :param auth:
-        :param acquire_timeout: seconds
+        :param connection_acquisition_timeout: seconds
         :param config: connection configuration settings
         """
 
@@ -150,7 +150,18 @@ class GraphDatabase:
                     ]
                 ))
 
-        if security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE] and ("encrypted" in config.keys() or "trust" in config.keys()):
+        secure_scheme = security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE]
+        have_secure_config_settings = "encrypted" in config.keys() or "trust" in config.keys()
+
+        if security_type == SECURITY_TYPE_SECURE:
+            config["encrypted"] = True
+        elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
+            config["encrypted"] = True
+            config["trust"] = TRUST_ALL_CERTIFICATES
+
+        pool_config, session_config = Config.consume_chain(config, PoolConfig, SessionConfig)
+
+        if secure_scheme and have_secure_config_settings:
             from neo4j.exceptions import ConfigurationError
             raise ConfigurationError("The config settings 'encrypted' and 'trust' can only be used with the URI schemes {!r}. Use the other URI schemes {!r} for setting encryption settings.".format(
                 [
@@ -165,41 +176,34 @@ class GraphDatabase:
                 ]
             ))
 
-        if security_type == SECURITY_TYPE_SECURE:
-            config["encrypted"] = True
-        elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
-            config["encrypted"] = True
-            config["trust"] = TRUST_ALL_CERTIFICATES
-
         if driver_type == DRIVER_BOLT:
-            return cls.bolt_driver(parsed.netloc, auth=auth, acquire_timeout=acquire_timeout, **config)
+            return cls.bolt_driver(parsed.netloc, auth=auth, **pool_config)
         elif driver_type == DRIVER_NEO4j:
-            rc = cls._parse_routing_context(parsed.query)
-            return cls.neo4j_driver(parsed.netloc, auth=auth, routing_context=rc, acquire_timeout=acquire_timeout, **config)
+            routing_context = cls._parse_routing_context(parsed.query)
+            return cls.neo4j_driver(parsed.netloc, auth=auth, routing_context=routing_context, **pool_config)
 
     @classmethod
-    def bolt_driver(cls, target, *, auth=None, acquire_timeout=None, **config):
+    def bolt_driver(cls, target, *, auth=None, **pool_config):
         """ Create a driver for direct Bolt server access that uses
         socket I/O and thread-based concurrency.
         """
         from neo4j._exceptions import BoltHandshakeError, BoltSecurityError
 
         try:
-            return BoltDriver.open(target, auth=auth, acquire_timeout=acquire_timeout, **config)
+            return BoltDriver.open(target, auth=auth, **pool_config)
         except (BoltHandshakeError, BoltSecurityError) as error:
             from neo4j.exceptions import ServiceUnavailable
             raise ServiceUnavailable(str(error)) from error
 
     @classmethod
-    def neo4j_driver(cls, *targets, auth=None, routing_context=None, acquire_timeout=None,
-                     **config):
+    def neo4j_driver(cls, *targets, auth=None, routing_context=None, **pool_config):
         """ Create a driver for routing-capable Neo4j service access
         that uses socket I/O and thread-based concurrency.
         """
         from neo4j._exceptions import BoltHandshakeError, BoltSecurityError
 
         try:
-            return Neo4jDriver.open(*targets, auth=auth, routing_context=routing_context, acquire_timeout=acquire_timeout, **config)
+            return Neo4jDriver.open(*targets, auth=auth, routing_context=routing_context, **pool_config)
         except (BoltHandshakeError, BoltSecurityError) as error:
             from neo4j.exceptions import ServiceUnavailable
             raise ServiceUnavailable(str(error)) from error
@@ -391,11 +395,11 @@ class Neo4jDriver(Routing, Driver):
     """
 
     @classmethod
-    def open(cls, *targets, auth=None, routing_context=None, **config):
+    def open(cls, *targets, auth=None, routing_context=None, **pool_config):
         from neo4j.io import Neo4jPool
         from neo4j import WorkspaceConfig
         addresses = cls.parse_targets(*targets)
-        pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
+        pool_config, default_workspace_config = Config.consume_chain(pool_config, PoolConfig, WorkspaceConfig)
         pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, **pool_config)
         return cls(pool, default_workspace_config)
 

@@ -29,6 +29,9 @@ from neo4j.api import (
     TRUST_ALL_CERTIFICATES,
     WRITE_ACCESS,
 )
+from neo4j.exceptions import (
+    ConfigurationError,
+)
 
 
 def iter_items(iterable):
@@ -103,7 +106,7 @@ class Config(Mapping, metaclass=ConfigType):
                 raise TypeError("%r is not a Config subclass" % config_class)
             values.append(config_class._consume(data))
         if data:
-            raise ValueError("Unexpected config keys: %s" % ", ".join(data.keys()))
+            raise ConfigurationError("Unexpected config keys: %s" % ", ".join(data.keys()))
         return values
 
     @classmethod
@@ -133,7 +136,7 @@ class Config(Mapping, metaclass=ConfigType):
             elif k in self._deprecated_keys():
                 k0 = self._get_new(k)
                 if k0 in data_dict:
-                    raise ValueError("Cannot specify both '{}' and '{}' in config".format(k0, k))
+                    raise ConfigurationError("Cannot specify both '{}' and '{}' in config".format(k0, k))
                 warn("The '{}' config key is deprecated, please use '{}' instead".format(k, k0))
                 set_attr(k0, v)
             else:
@@ -168,36 +171,36 @@ class PoolConfig(Config):
     """ Connection pool configuration.
     """
 
-    #:
-    connect_timeout = 30.0  # seconds
+    #: The maximum amount of time to wait for a TCP connection to be established.
+    connection_timeout = 30.0  # seconds
 
     #:
     init_size = 1
 
-    #: Specify whether TCP keep-alive should be enabled. TODO: This setting is not in use
+    #: Specify whether TCP keep-alive should be enabled.
     keep_alive = True
 
-    #:
-    max_age = 3600  # 1h
-    max_connection_lifetime = DeprecatedAlias("max_age")
+    #: The maximum duration the driver will keep a connection for before being removed from the pool.
+    max_connection_lifetime = 3600  # 1h
 
     #: Maximum number of connections per host
-    max_size = 100
-    max_connection_pool_size = DeprecatedAlias("max_size")
+    max_connection_pool_size = 100
 
     #:
     protocol_version = None
 
-    #:
+    #: CustomResolver, Specify a custom server address resolver.
     resolver = None
 
-    #:
+    #: Specify whether to use an encrypted connection between the driver and server.
+    #: Note: Other drivers may refer this as `Encryption`
     encrypted = False
 
     #:
     user_agent = get_user_agent()
 
-    #:
+    #: Specify how to determine the authenticity of encryption certificates.
+    #: Note: Other drivers may refer this as `TrustStrategy`
     trust = TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
 
     def get_ssl_context(self):
@@ -256,10 +259,11 @@ class WorkspaceConfig(Config):
     """ Session configuration.
     """
 
-    #:
-    acquire_timeout = 60.0  # seconds
+    #: ConnectionAcquisitionTimeout
+    # acquire_timeout = 60.0  # seconds
+    connection_acquisition_timeout = 60.0  # seconds
 
-    #:
+    #: MaxRetryTime
     max_retry_time = 30.0  # seconds
 
     #:
@@ -282,6 +286,9 @@ class SessionConfig(WorkspaceConfig):
     #:
     default_access_mode = WRITE_ACCESS
     access_mode = DeprecatedAlias("default_access_mode")
+
+    #: The database name being targeted. If set to `None` the default database (configured on the Neo4j server) will be targeted.
+    database = None
 
 
 class PipelineConfig(WorkspaceConfig):

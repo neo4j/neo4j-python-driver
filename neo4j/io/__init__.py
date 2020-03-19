@@ -145,13 +145,20 @@ class Bolt:
         return {}
 
     @classmethod
-    def ping(cls, address, *, timeout=None, **config):
+    def ping(cls, address, **config):
         """ Attempt to establish a Bolt connection, returning the
         agreed Bolt protocol version if successful.
+
+        :param address:
+        :type: neo4j.Address
+        :param: timeout
+        :type: int
+        :param config:
+        :type: PoolConfig
         """
         config = PoolConfig.consume(config)
         try:
-            s, protocol_version = connect(address, timeout=timeout, config=config)
+            s, protocol_version = connect(address, **config)
         except ServiceUnavailable:
             return None
         except BoltHandshakeError as e:
@@ -161,19 +168,19 @@ class Bolt:
             return protocol_version
 
     @classmethod
-    def open(cls, address, *, auth=None, timeout=None, **config):
+    def open(cls, address, *, auth=None, **config):
         """ Open a new Bolt connection to a given server address.
 
         :param address:
         :param auth:
-        :param timeout:
+        :param connection_timeout:
         :param config:
         :return:
         :raise BoltHandshakeError: raised if the Bolt Protocol can not negotiate a protocol version.
         :raise ServiceUnavailable: raised if there was a connection issue.
         """
         config = PoolConfig.consume(config)
-        s, config.protocol_version, handshake, data = connect(address, timeout=timeout, config=config)
+        s, config.protocol_version, handshake, data = connect(address, **config)
 
         if config.protocol_version == (3, 0):
             from neo4j.io._bolt3 import Bolt3
@@ -316,19 +323,18 @@ class IOPool:
     """ A collection of connections to one or more server addresses.
     """
 
-    _default_acquire_timeout = 60  # seconds
+    # _default_acquire_timeout = 60  # seconds
+    # connection_acquisition_timeout set in neo4j.conf.SessionConfig
 
-    _default_max_size = 100
-
-    def __init__(self, opener, config):
+    def __init__(self, opener, pool_config):
         assert callable(opener)
-        assert isinstance(config, PoolConfig)
+        assert isinstance(pool_config, PoolConfig)
         self.opener = opener
-        self.config = config
+        self.config = pool_config
         self.connections = {}
         self.lock = RLock()
         self.cond = Condition(self.lock)
-        self._max_connection_pool_size = config.max_size
+        self._max_connection_pool_size = pool_config.max_connection_pool_size
 
     def __enter__(self):
         return self
@@ -336,7 +342,7 @@ class IOPool:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _acquire(self, address, timeout):
+    def _acquire(self, address, connection_timeout=None):
         """ Acquire a connection to a given address from the pool.
         The address supplied should always be an IP address, not
         a host name.
@@ -344,8 +350,9 @@ class IOPool:
         This method is thread safe.
         """
         t0 = perf_counter()
-        if timeout is None:
-            timeout = self._default_acquire_timeout
+
+        if connection_timeout is None:
+            connection_timeout = self.config.connection_timeout
 
         with self.lock:
             try:
@@ -354,7 +361,7 @@ class IOPool:
                 connections = self.connections[address] = deque()
 
             def time_remaining():
-                t = timeout - (perf_counter() - t0)
+                t = connection_timeout - (perf_counter() - t0)
                 return t if t > 0 else 0
 
             while True:
@@ -371,9 +378,9 @@ class IOPool:
                                       self._max_connection_pool_size == float("inf"))
                 can_create_new_connection = infinite_pool_size or len(connections) < self._max_connection_pool_size
                 if can_create_new_connection:
-                    timeout = min(self.config.connect_timeout, time_remaining())
+                    connection_timeout = min(self.config.connection_timeout, time_remaining())
                     try:
-                        connection = self.opener(address, timeout)
+                        connection = self.opener(address, connection_timeout)
                     except ServiceUnavailable:
                         self.remove(address)
                         raise
@@ -393,16 +400,16 @@ class IOPool:
                     # timed out when we come to this line
                     if not time_remaining():
                         raise ClientError("Failed to obtain a connection from pool "
-                                          "within {!r}s".format(timeout))
+                                          "within {!r}s".format(connection_timeout))
                 else:
                     raise ClientError("Failed to obtain a connection from pool "
-                                      "within {!r}s".format(timeout))
+                                      "within {!r}s".format(connection_timeout))
 
-    def acquire(self, access_mode=None, timeout=None):
+    def acquire(self, access_mode=None, connection_timeout=None):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
         :param access_mode:
-        :param timeout:
+        :param connection_timeout:
         """
 
     def release(self, *connections):
@@ -477,7 +484,7 @@ class BoltPool(IOPool):
         pool_config = PoolConfig.consume(config)
 
         def opener(addr, timeout):
-            return Bolt.open(addr, auth=auth, timeout=timeout, **pool_config)
+            return Bolt.open(addr, auth=auth, **pool_config)
 
         pool = cls(opener, pool_config, address)
         seeds = [pool.acquire() for _ in range(pool_config.init_size)]
@@ -491,8 +498,10 @@ class BoltPool(IOPool):
     def __repr__(self):
         return "<{} address={!r}>".format(self.__class__.__name__, self.address)
 
-    def acquire(self, access_mode=None, timeout=None):
-        return self._acquire(self.address, timeout)
+    def acquire(self, access_mode=None, connection_timeout=None):
+        if connection_timeout is None:
+            connection_timeout = self.config.connection_timeout
+        return self._acquire(self.address, connection_timeout)
 
 
 class Neo4jPool(IOPool):
@@ -500,15 +509,17 @@ class Neo4jPool(IOPool):
     """
 
     @classmethod
-    def open(cls, *addresses, auth=None, routing_context=None, **config):
-        pool_config = PoolConfig.consume(config)
+    def open(cls, *addresses, auth=None, routing_context=None, **pool_config):
+        pool_config = PoolConfig.consume(pool_config)
 
         def opener(addr, timeout):
-            return Bolt.open(addr, auth=auth, timeout=timeout, **pool_config)
+            return Bolt.open(addr, auth=auth, **pool_config)
 
         pool = cls(opener, pool_config, addresses, routing_context)
         try:
+            log.debug("Getting routing table")
             pool.update_routing_table()
+            log.debug("Updated routing table")
         except Exception:
             pool.close()
             raise
@@ -523,8 +534,7 @@ class Neo4jPool(IOPool):
         self.refresh_lock = Lock()
 
     def __repr__(self):
-        return "<{} addresses={!r}>".format(self.__class__.__name__,
-                                            self.routing_table.initial_routers)
+        return "<{} addresses={!r}>".format(self.__class__.__name__, self.routing_table.initial_routers)
 
     @property
     def initial_address(self):
@@ -549,7 +559,7 @@ class Neo4jPool(IOPool):
                 raise BoltRoutingError("Routing support broken on server", address)
 
         try:
-            with self._acquire(address, timeout=300) as cx:  # TODO: remove magic timeout number
+            with self._acquire(address) as cx:
                 _, _, server_version = (cx.server.agent or "").partition("/")
                 log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
                 cx.run("CALL dbms.cluster.routing.getRoutingTable($context)",
@@ -612,15 +622,15 @@ class Neo4jPool(IOPool):
         :return: True if the routing table is successfully updated,
         otherwise False
         """
-        log.debug("Attempting to update routing table from "
-                  "{}".format(", ".join(map(repr, routers))))
+        log.debug("Attempting to update routing table from {}".format(", ".join(map(repr, routers))))
+
         for router in routers:
             new_routing_table = self.fetch_routing_table(router)
             if new_routing_table is not None:
                 self.routing_table.update(new_routing_table)
-                log.debug("Successfully updated routing table from "
-                          "{!r} ({!r})".format(router, self.routing_table))
+                log.debug("Successfully updated routing table from {!r} ({!r})".format(router, self.routing_table))
                 return True
+
         return False
 
     def update_routing_table(self):
@@ -675,7 +685,9 @@ class Neo4jPool(IOPool):
                     # if reader is fresh but writers is not fresh, then we are reading in absence of writer
                     self.missing_writer = not self.routing_table.is_fresh(readonly=False)
                 return False
+            log.debug("HELL YEAH!")
             self.update_routing_table()
+            log.debug("IM OK")
             self.update_connection_pool()
             return True
 
@@ -698,7 +710,10 @@ class Neo4jPool(IOPool):
                 raise WriteServiceUnavailable("No write service currently available")
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
-    def acquire(self, access_mode=None, timeout=None):
+    def acquire(self, access_mode=None, connection_timeout=None):
+        if connection_timeout is None:
+            connection_timeout = self.config.connection_timeout
+
         from neo4j.api import WRITE_ACCESS
         from neo4j.api import READ_ACCESS
         if access_mode is None:
@@ -711,7 +726,7 @@ class Neo4jPool(IOPool):
             except (ReadServiceUnavailable, WriteServiceUnavailable) as err:
                 raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode) from err
             try:
-                connection = self._acquire(address, timeout=timeout)  # should always be a resolved address
+                connection = self._acquire(address, connection_timeout=connection_timeout)  # should always be a resolved address
             except ServiceUnavailable:
                 self.deactivate(address)
             else:
@@ -739,62 +754,67 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
 
 
-def _connect(resolved_address, timeout=None, **config):
+def _connect(resolved_address, pool_config):
     """
 
     :param resolved_address:
-    :param config:
-    :return: socket object
-    """
-    config = PoolConfig.consume(config)
+    :type: neo4j.Address
+    :param config: The `connection_timeout` is used.
+    :type: neo4j.PoolConfig
 
-    s = None
+    :return: socket
+    :rtype: socket.socket
+    """
+
+    s = None  # The socket
+
     try:
         if len(resolved_address) == 2:
             s = socket(AF_INET)
         elif len(resolved_address) == 4:
             s = socket(AF_INET6)
         else:
-            raise ValueError("Unsupported address "
-                             "{!r}".format(resolved_address))
-        t = s.gettimeout()
-        if timeout is None:
-            s.settimeout(config.connect_timeout)
-        else:
-            s.settimeout(timeout)
+            raise ValueError("Unsupported address {!r}".format(resolved_address))
+
+        s.settimeout(pool_config.connection_timeout)  # https://docs.python.org/3/library/socket.html#socket.socket.settimeout
         log.debug("[#0000]  C: <OPEN> %s", resolved_address)
         s.connect(resolved_address)
-        s.settimeout(t)
-        keep_alive = 1 if config.keep_alive else 0
+        keep_alive = 1 if pool_config.keep_alive else 0
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
     except SocketTimeout:
         log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
         log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
         s.close()
-        raise ServiceUnavailable("Timed out trying to establish connection "
-                                 "to {!r}".format(resolved_address))
+        raise ServiceUnavailable("Timed out trying to establish connection to {!r}".format(resolved_address))
     except OSError as error:
-        log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
-                  " ".join(map(repr, error.args)))
+        log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__, " ".join(map(repr, error.args)))
         log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
         s.close()
-        raise ServiceUnavailable("Failed to establish connection to {!r} "
-                                 "(reason {})".format(resolved_address, error))
+        raise ServiceUnavailable("Failed to establish connection to {!r} (reason {})".format(resolved_address, error))
     else:
         return s
 
 
-def _secure(s, host, ssl_context):
-    local_port = s.getsockname()[1]
-    # Secure the connection if an SSL context has been provided
+def _secure(s, host_name, ssl_context):
+    """ Secure the connection if an SSL context has been provided
+
+    :param s:
+    :param host:
+    :param ssl_context:
+    :return: socket
+    :type: socket.socket
+    """
+
     if ssl_context:
-        log.debug("[#%04X]  C: <SECURE> %s", local_port, host)
+        local_port = s.getsockname()[1]
+
+        log.debug("[#%04X]  C: <SECURE> %s", local_port, host_name)
         try:
-            sni_host = host if HAS_SNI and host else None
-            s = ssl_context.wrap_socket(s, server_hostname=sni_host)
+            sni_host_name = host_name if HAS_SNI and host_name else None
+            s = ssl_context.wrap_socket(s, server_hostname=sni_host_name)
         except (SSLError, OSError) as cause:
             s.close()
-            error = BoltSecurityError(message="Failed to establish encrypted connection.", address=(host, local_port))
+            error = BoltSecurityError(message="Failed to establish encrypted connection.", address=(host_name, None))
             error.__cause__ = cause
             raise error
         else:
@@ -802,7 +822,7 @@ def _secure(s, host, ssl_context):
             der_encoded_server_certificate = s.getpeercert(binary_form=True)
             if der_encoded_server_certificate is None:
                 s.close()
-                raise BoltProtocolError("When using an encrypted socket, the server should always provide a certificate", address=(host, local_port))
+                raise BoltProtocolError("When using an encrypted socket, the server should always provide a certificate", address=(host_name, None))
     return s
 
 
@@ -810,7 +830,10 @@ def _handshake(s, resolved_address):
     """
 
     :param s:
-    :return:
+    :type: Socket
+    :param resolved_address:
+    :type: neo4j.Address
+    :return: (socket, agreed_version, handshake, response_data)
     """
     local_port = s.getsockname()[1]
 
@@ -852,35 +875,55 @@ def _handshake(s, resolved_address):
     elif data == b"HTTP":
         log.debug("[#%04X]  S: <CLOSE>", local_port)
         s.close()
-        raise ServiceUnavailable("Cannot to connect to Bolt service on {!r} "
-                                 "(looks like HTTP)".format(resolved_address))
+        raise ServiceUnavailable("Cannot to connect to Bolt service on {!r} (looks like HTTP)".format(resolved_address))
     agreed_version = data[-1], data[-2]
     log.debug("[#%04X]  S: <HANDSHAKE> 0x%06X%02X", local_port, agreed_version[1], agreed_version[0])
     return s, agreed_version, handshake, data
 
 
-def connect(address, *, timeout=None, config):
+def connect(address, **config):
     """ Connect and perform a handshake and return a valid Connection object,
     assuming a protocol version can be agreed.
+
+    :param address: "localhost:7687", (localhost, 7687), Address(localhost, 7687)
+    :type address: neo4j.Address
+    :type: int, float
+    :param config:
+    :type: neo4j.PoolConfig
     """
-    last_error = None
     # Establish a connection to the host and port specified
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
+
+    # Config Settings In Use
+    #
+    # config.get_ssl_context
+    # config.resolver
+    # config.connection_timeout
+    # config.keep_alive
+
+    pool_config = PoolConfig.consume(config)
+
+    last_error = None
+
     log.debug("[#0000]  C: <RESOLVE> %s", address)
-    custom_resolver = config.get("resolver")
-    for resolved_address in Address(address).resolve(resolver=custom_resolver):
+    custom_resolver = pool_config.resolver
+
+    addresses = Address(address).resolve(resolver=custom_resolver)
+
+    for resolved_address in addresses:
+        log.debug("[#0000]  C: <RESOLVED ADDRESS> %s", resolved_address)
         s = None
         try:
             host = address[0]
-            s = _connect(resolved_address, timeout=timeout, **config)
-            s = _secure(s, host, config.get_ssl_context())
+            s = _connect(resolved_address, pool_config)
+            s = _secure(s, host, pool_config.get_ssl_context())
             return _handshake(s, address)
         except Exception as error:
             if s:
                 s.close()
             last_error = error
     if last_error is None:
-        raise ServiceUnavailable("Failed to resolve addresses for %s" % address)
+        raise ServiceUnavailable("Failed to establish connection. Resolved addresses {!r}. Given address {!r}.".format(addresses, address))
     else:
         raise last_error
