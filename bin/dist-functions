@@ -48,7 +48,8 @@ function set_metadata_and_setup
     ORIGINAL_VERSION=$(get_version)
     echo "Source code originally configured for package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}"
     echo "----------------------------------------"
-    tail -2 neo4j/meta.py
+    grep "package\s\+=" neo4j/meta.py
+    grep "version\s\+=" neo4j/meta.py
     echo "----------------------------------------"
 
     # Temporarily override package metadata
@@ -56,7 +57,8 @@ function set_metadata_and_setup
     set_version "${VERSION}"
     echo "Source code reconfigured for package ${PACKAGE}/${VERSION}"
     echo "----------------------------------------"
-    tail -2 neo4j/meta.py
+    grep "package\s\+=" neo4j/meta.py
+    grep "version\s\+=" neo4j/meta.py
     echo "----------------------------------------"
 
     # Create source distribution
@@ -70,7 +72,8 @@ function set_metadata_and_setup
     set_version "${ORIGINAL_VERSION}"
     echo "Source code reconfigured back to original package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}"
     echo "----------------------------------------"
-    tail -2 neo4j/meta.py
+    grep "package\s\+=" neo4j/meta.py
+    grep "version\s\+=" neo4j/meta.py
     echo "----------------------------------------"
 
 }
