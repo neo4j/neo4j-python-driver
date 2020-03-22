@@ -257,7 +257,7 @@ class WorkspaceConfig(Config):
 
     #: Connection Acquisition Timeout
     connection_acquisition_timeout = 60.0  # seconds
-    # acquire_timeout = 60.0  # seconds
+    # pool.acquire acquire_timeout = 60.0  # seconds
 
     # TODO: Move PoolConfig.connection_timeout here
 
@@ -283,7 +283,7 @@ class SessionConfig(WorkspaceConfig):
 
     # Default AccessMode
     default_access_mode = WRITE_ACCESS
-    access_mode = DeprecatedAlias("default_access_mode")
+    # access_mode = DeprecatedAlias("default_access_mode")
 
     #: Database
 

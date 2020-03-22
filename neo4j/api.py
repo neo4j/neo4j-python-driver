@@ -233,3 +233,13 @@ def parse_neo4j_uri(uri):
         ))
 
     return driver_type, security_type, parsed
+
+
+def check_access_mode(access_mode):
+    if access_mode is None:
+        return WRITE_ACCESS
+    if access_mode not in (READ_ACCESS, WRITE_ACCESS):
+        msg = "Unsupported access mode {}".format(access_mode)
+        raise ConfigurationError(msg)
+
+    return access_mode

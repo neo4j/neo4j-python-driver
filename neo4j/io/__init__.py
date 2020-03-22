@@ -527,10 +527,11 @@ class Neo4jPool(IOPool):
     def initial_address(self):
         return self.routing_table.initial_routers[0]
 
-    def fetch_routing_info(self, address):
+    def fetch_routing_info(self, address, timeout=None):
         """ Fetch raw routing info from a given router address.
 
         :param address: router address
+        :param timeout: seconds
         :return: list of routing records or
                  None if no connection could be established
         :raise ServiceUnavailable: if the server does not support routing or
@@ -546,7 +547,7 @@ class Neo4jPool(IOPool):
                 raise BoltRoutingError("Routing support broken on server", address)
 
         try:
-            with self._acquire(address, timeout=300) as cx:  # TODO: remove magic timeout number
+            with self._acquire(address, timeout) as cx:
                 _, _, server_version = (cx.server.agent or "").partition("/")
                 log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
                 cx.run("CALL dbms.cluster.routing.getRoutingTable($context)",
@@ -563,16 +564,17 @@ class Neo4jPool(IOPool):
             self.deactivate(address)
             return None
 
-    def fetch_routing_table(self, address):
+    def fetch_routing_table(self, address, timeout=None):
         """ Fetch a routing table from a given router address.
 
         :param address: router address
+        :param timeout: seconds
         :return: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
         :raise ServiceUnavailable: if no writers are available
         :raise BoltProtocolError: if the routing information received is unusable
         """
-        new_routing_info = self.fetch_routing_info(address)
+        new_routing_info = self.fetch_routing_info(address, timeout)
         if new_routing_info is None:
             return None
         elif not new_routing_info:
@@ -696,12 +698,8 @@ class Neo4jPool(IOPool):
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
     def acquire(self, access_mode=None, timeout=None):
-        from neo4j.api import WRITE_ACCESS
-        from neo4j.api import READ_ACCESS
-        if access_mode is None:
-            access_mode = WRITE_ACCESS
-        if access_mode not in (READ_ACCESS, WRITE_ACCESS):
-            raise ValueError("Unsupported access mode {}".format(access_mode))
+        from neo4j.api import check_access_mode
+        access_mode = check_access_mode(access_mode)
         while True:
             try:
                 address = self._select_address(access_mode)

@@ -80,10 +80,10 @@ class Session(Workspace):
     # The bookmark returned from the last commit.
     _bookmark_out = None
 
-    def __init__(self, pool, config):
-        super().__init__(pool, config)
-        assert isinstance(config, SessionConfig)
-        self._bookmarks_in = tuple(config.bookmarks)
+    def __init__(self, pool, session_config):
+        super().__init__(pool, session_config)
+        assert isinstance(session_config, SessionConfig)
+        self._bookmarks_in = tuple(session_config.bookmarks)
 
     def __del__(self):
         try:
