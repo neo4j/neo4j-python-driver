@@ -171,33 +171,43 @@ class PoolConfig(Config):
 
     #: Max Connection Lifetime
     max_connection_lifetime = 3600  # seconds
+    # The maximum duration the driver will keep a connection for before being removed from the pool.
 
     #: Max Connection Pool Size
     max_connection_pool_size = 100
+    # The maximum total number of connections allowed, per host (i.e. cluster nodes), to be managed by the connection pool.
 
     #: Connection Timeout
     connection_timeout = 30.0  # seconds
+    # The maximum amount of time to wait for a TCP connection to be established.
 
     #: Trust
     trust = TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+    # Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
 
     #: Custom Resolver
     resolver = None
+    # Custom resolver function, returning list of resolved addresses.
 
     #: Encrypted
     encrypted = False
+    # Specify whether to use an encrypted connection between the driver and server.
 
     #: User Agent (Python Driver Specific)
     user_agent = get_user_agent()
+    # Specify the client agent name.
 
     #: Protocol Version (Python Driver Specific)
-    protocol_version = None
+    protocol_version = None  # Version(4, 0)
+    # Specify a specific Bolt Protocol Version
 
     #: Initial Connection Pool Size (Python Driver Specific)
-    init_size = 1
+    init_size = 1  # The other drivers do not seed from the start.
+    # This will seed the pool with the specified number of connections.
 
     #: Socket Keep Alive (Python and .NET Driver Specific)
     keep_alive = True
+    # Specify whether TCP keep-alive should be enabled.
 
     def get_ssl_context(self):
         if not self.encrypted:
@@ -257,12 +267,13 @@ class WorkspaceConfig(Config):
 
     #: Connection Acquisition Timeout
     connection_acquisition_timeout = 60.0  # seconds
-    # pool.acquire acquire_timeout = 60.0  # seconds
-
-    # TODO: Move PoolConfig.connection_timeout here
+    # The maximum amount of time a session will wait when requesting a connection from the connection pool.
+    # Since the process of acquiring a connection may involve creating a new connection, ensure that the value
+    # of this configuration is higher than the configured Connection Timeout.
 
     #: Max Retry Time
     max_retry_time = 30.0  # seconds
+    # The maximum amount of time that a managed transaction will retry for before failing.
 
     #: Initial Retry Delay
     initial_retry_delay = 1.0  # seconds
@@ -286,5 +297,8 @@ class SessionConfig(WorkspaceConfig):
     # access_mode = DeprecatedAlias("default_access_mode")
 
     #: Database
+    database = None
+    # Name of the database to query.
 
     #: Fetch Size
+    fetch_size = 1000
