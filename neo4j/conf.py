@@ -29,6 +29,7 @@ from neo4j.api import (
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     TRUST_ALL_CERTIFICATES,
     WRITE_ACCESS,
+    DATABASE_NAME_USE_DEFAULT,
 )
 
 
@@ -296,8 +297,8 @@ class SessionConfig(WorkspaceConfig):
     default_access_mode = WRITE_ACCESS
     # access_mode = DeprecatedAlias("default_access_mode")
 
-    #: Database
-    database = None
+    #: Database Name
+    database = DATABASE_NAME_USE_DEFAULT
     # Name of the database to query.
 
     #: Fetch Size
