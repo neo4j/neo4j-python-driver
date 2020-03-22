@@ -319,17 +319,14 @@ class IOPool:
 
     _default_acquire_timeout = WorkspaceConfig.connection_acquisition_timeout
 
-    _default_max_size = PoolConfig.max_connection_pool_size
-
-    def __init__(self, opener, config):
+    def __init__(self, opener, pool_config):
         assert callable(opener)
-        assert isinstance(config, PoolConfig)
+        assert isinstance(pool_config, PoolConfig)
         self.opener = opener
-        self.config = config
+        self.pool_config = pool_config
         self.connections = {}
         self.lock = RLock()
         self.cond = Condition(self.lock)
-        self._max_connection_pool_size = config.max_connection_pool_size
 
     def __enter__(self):
         return self
@@ -368,11 +365,10 @@ class IOPool:
                         connection.in_use = True
                         return connection
                 # all connections in pool are in-use
-                infinite_pool_size = (self._max_connection_pool_size < 0 or
-                                      self._max_connection_pool_size == float("inf"))
-                can_create_new_connection = infinite_pool_size or len(connections) < self._max_connection_pool_size
+                infinite_pool_size = (self.pool_config.max_connection_pool_size < 0 or self.pool_config.max_connection_pool_size == float("inf"))
+                can_create_new_connection = infinite_pool_size or len(connections) < self.pool_config.max_connection_pool_size
                 if can_create_new_connection:
-                    timeout = min(self.config.connection_timeout, time_remaining())
+                    timeout = min(self.pool_config.connection_timeout, time_remaining())
                     try:
                         connection = self.opener(address, timeout)
                     except ServiceUnavailable:
@@ -485,8 +481,8 @@ class BoltPool(IOPool):
         pool.release(*seeds)
         return pool
 
-    def __init__(self, opener, config, address):
-        super(BoltPool, self).__init__(opener, config)
+    def __init__(self, opener, pool_config, address):
+        super(BoltPool, self).__init__(opener, pool_config)
         self.address = address
 
     def __repr__(self):
@@ -516,8 +512,8 @@ class Neo4jPool(IOPool):
         else:
             return pool
 
-    def __init__(self, opener, config, addresses, routing_context):
-        super(Neo4jPool, self).__init__(opener, config)
+    def __init__(self, opener, pool_config, addresses, routing_context):
+        super(Neo4jPool, self).__init__(opener, pool_config)
         self.routing_table = RoutingTable(addresses)
         self.routing_context = routing_context
         self.missing_writer = False

@@ -302,7 +302,7 @@ class Driver:
 
     @property
     def encrypted(self):
-        return bool(self._pool.config.encrypted)
+        return bool(self._pool.pool_config.encrypted)
 
     def session(self, **config):
         """ Create a simple session.
