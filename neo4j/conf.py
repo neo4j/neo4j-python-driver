@@ -175,8 +175,8 @@ class PoolConfig(Config):
     #: Max Connection Pool Size
     max_connection_pool_size = 100
 
-    #: Connection Acquisition Timeout
-    connect_timeout = 30.0  # seconds
+    #: Connection Timeout
+    connection_timeout = 30.0  # seconds
 
     #: Trust
     trust = TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
@@ -257,6 +257,8 @@ class WorkspaceConfig(Config):
 
     #: Connection Acquisition Timeout
     acquire_timeout = 60.0  # seconds
+
+    # TODO: Move PoolConfig.connection_timeout here
 
     #: Max Retry Time
     max_retry_time = 30.0  # seconds

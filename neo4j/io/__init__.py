@@ -372,7 +372,7 @@ class IOPool:
                                       self._max_connection_pool_size == float("inf"))
                 can_create_new_connection = infinite_pool_size or len(connections) < self._max_connection_pool_size
                 if can_create_new_connection:
-                    timeout = min(self.config.connect_timeout, time_remaining())
+                    timeout = min(self.config.connection_timeout, time_remaining())
                     try:
                         connection = self.opener(address, timeout)
                     except ServiceUnavailable:
@@ -760,7 +760,7 @@ def _connect(resolved_address, timeout=None, **config):
                              "{!r}".format(resolved_address))
         t = s.gettimeout()
         if timeout is None:
-            s.settimeout(config.connect_timeout)
+            s.settimeout(config.connection_timeout)
         else:
             s.settimeout(timeout)
         log.debug("[#0000]  C: <OPEN> %s", resolved_address)
