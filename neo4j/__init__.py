@@ -55,6 +55,7 @@ from neo4j.api import (
 from neo4j.conf import (
     Config,
     PoolConfig,
+    WorkspaceConfig,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
@@ -350,7 +351,6 @@ class BoltDriver(Direct, Driver):
     @classmethod
     def open(cls, target, *, auth=None, **config):
         from neo4j.io import BoltPool
-        from neo4j.work import WorkspaceConfig
         address = cls.parse_target(target)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         pool = BoltPool.open(address, auth=auth, **pool_config)
@@ -394,7 +394,7 @@ class Neo4jDriver(Routing, Driver):
     @classmethod
     def open(cls, *targets, auth=None, routing_context=None, **config):
         from neo4j.io import Neo4jPool
-        from neo4j.work import WorkspaceConfig
+        from neo4j import WorkspaceConfig
         addresses = cls.parse_targets(*targets)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, **pool_config)

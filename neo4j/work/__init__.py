@@ -19,28 +19,8 @@
 # limitations under the License.
 
 
-from neo4j.conf import Config
+from neo4j.conf import WorkspaceConfig
 from neo4j.exceptions import ServiceUnavailable
-
-
-class WorkspaceConfig(Config):
-    """ Session configuration.
-    """
-
-    #:
-    acquire_timeout = 60.0  # seconds
-
-    #:
-    max_retry_time = 30.0  # seconds
-
-    #:
-    initial_retry_delay = 1.0  # seconds
-
-    #:
-    retry_delay_multiplier = 2.0  # seconds
-
-    #:
-    retry_delay_jitter_factor = 0.2  # seconds
 
 
 class Workspace:

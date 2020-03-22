@@ -248,3 +248,23 @@ class PoolConfig(Config):
 
         ssl_context.set_default_verify_paths()  # https://docs.python.org/3.5/library/ssl.html#ssl.SSLContext.set_default_verify_paths
         return ssl_context
+
+
+class WorkspaceConfig(Config):
+    """ Session configuration.
+    """
+
+    #:
+    acquire_timeout = 60.0  # seconds
+
+    #:
+    max_retry_time = 30.0  # seconds
+
+    #:
+    initial_retry_delay = 1.0  # seconds
+
+    #:
+    retry_delay_multiplier = 2.0  # seconds
+
+    #:
+    retry_delay_jitter_factor = 0.2  # seconds
