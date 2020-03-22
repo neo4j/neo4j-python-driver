@@ -174,8 +174,7 @@ class PoolConfig(Config):
     max_connection_lifetime = DeprecatedAlias("max_age")
 
     #: Max Connection Pool Size
-    max_size = 100
-    max_connection_pool_size = DeprecatedAlias("max_size")
+    max_connection_pool_size = 100
 
     #: Connection Acquisition Timeout
     connect_timeout = 30.0  # seconds

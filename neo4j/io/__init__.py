@@ -315,10 +315,11 @@ class Bolt:
 class IOPool:
     """ A collection of connections to one or more server addresses.
     """
+    from neo4j.conf import PoolConfig
 
     _default_acquire_timeout = 60  # seconds
 
-    _default_max_size = 100
+    _default_max_size = PoolConfig.max_connection_pool_size
 
     def __init__(self, opener, config):
         assert callable(opener)
@@ -328,7 +329,7 @@ class IOPool:
         self.connections = {}
         self.lock = RLock()
         self.cond = Condition(self.lock)
-        self._max_connection_pool_size = config.max_size
+        self._max_connection_pool_size = config.max_connection_pool_size
 
     def __enter__(self):
         return self

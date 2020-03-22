@@ -181,7 +181,7 @@ class ConnectionPoolTestCase(TestCase):
         self.assertEqual(self.pool.in_use_connection_count(address), 0)
 
     def test_max_conn_pool_size(self):
-        with FakeBoltPool((), max_size=1) as pool:
+        with FakeBoltPool((), max_connection_pool_size=1) as pool:
             address = ("127.0.0.1", 7687)
             pool._acquire(address, timeout=0)
             self.assertEqual(pool.in_use_connection_count(address), 1)
@@ -190,7 +190,7 @@ class ConnectionPoolTestCase(TestCase):
             self.assertEqual(pool.in_use_connection_count(address), 1)
 
     def test_multithread(self):
-        with FakeBoltPool((), max_size=5) as pool:
+        with FakeBoltPool((), max_connection_pool_size=5) as pool:
             address = ("127.0.0.1", 7687)
             releasing_event = Event()
 

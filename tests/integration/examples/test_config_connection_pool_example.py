@@ -39,7 +39,7 @@ class ConfigConnectionPoolExample(DriverSetupExample):
     def __init__(self, uri, auth):
         self.driver = GraphDatabase.driver(uri, auth=auth,
                                            max_age=30 * 60,
-                                           max_size=50,
+                                           max_connection_pool_size=50,
                                            acquire_timeout=2 * 60)
     # end::config-connection-pool[]
 

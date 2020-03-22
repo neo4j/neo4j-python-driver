@@ -38,7 +38,7 @@ driver_config = {
     "trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     "user_agent": "test",
     "max_age": 1000,
-    "max_size": 10,
+    "max_connection_pool_size": 10,
     "keep_alive": False,
     "max_retry_time": 1,
     "resolver": None,
