@@ -49,7 +49,7 @@ session_config = {
     # "database": "default",
     # "bookmarks": ["bookmark-1", ],
     "default_access_mode": WRITE_ACCESS,
-    "acquire_timeout": 1.0,
+    "connection_acquisition_timeout": 1.0,
     "max_retry_time": 1.0,
     "initial_retry_delay": 1.0,
     "retry_delay_multiplier": 1.0,

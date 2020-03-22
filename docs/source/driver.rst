@@ -122,7 +122,7 @@ The maximum time for which a connection can exist before being closed on release
 
 The maximum number of connections managed by the connection pool
 
-``acquire_timeout``
+``connection_acquisition_timeout``
 ----------------------------------
 
 The maximum time to wait for a connection to be acquired from the pool.

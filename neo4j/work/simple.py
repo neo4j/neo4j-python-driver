@@ -105,7 +105,7 @@ class Session(Workspace):
             self._connection.send_all()
             self._connection.fetch_all()
             self._disconnect()
-        self._connection = self._pool.acquire(access_mode, timeout=self._config.acquire_timeout)
+        self._connection = self._pool.acquire(access_mode, timeout=self._config.connection_acquisition_timeout)
 
     def _disconnect(self):
         if self._connection:

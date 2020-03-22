@@ -252,11 +252,12 @@ class PoolConfig(Config):
 
 
 class WorkspaceConfig(Config):
-    """ Session configuration.
+    """ WorkSpace configuration.
     """
 
     #: Connection Acquisition Timeout
-    acquire_timeout = 60.0  # seconds
+    connection_acquisition_timeout = 60.0  # seconds
+    # acquire_timeout = 60.0  # seconds
 
     # TODO: Move PoolConfig.connection_timeout here
 

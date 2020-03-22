@@ -315,9 +315,9 @@ class Bolt:
 class IOPool:
     """ A collection of connections to one or more server addresses.
     """
-    from neo4j.conf import PoolConfig
+    from neo4j.conf import PoolConfig, WorkspaceConfig
 
-    _default_acquire_timeout = 60  # seconds
+    _default_acquire_timeout = WorkspaceConfig.connection_acquisition_timeout
 
     _default_max_size = PoolConfig.max_connection_pool_size
 
