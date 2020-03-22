@@ -151,7 +151,13 @@ class Bolt:
         """
         config = PoolConfig.consume(config)
         try:
-            s, protocol_version = connect(address, timeout=timeout, config=config)
+            s, protocol_version, handshake, data = connect(
+                address,
+                timeout=timeout,
+                custom_resolver=config.resolver,
+                ssl_context=config.get_ssl_context(),
+                keep_alive=config.keep_alive,
+            )
         except ServiceUnavailable:
             return None
         except BoltHandshakeError as e:
@@ -173,7 +179,13 @@ class Bolt:
         :raise ServiceUnavailable: raised if there was a connection issue.
         """
         config = PoolConfig.consume(config)
-        s, config.protocol_version, handshake, data = connect(address, timeout=timeout, config=config)
+        s, config.protocol_version, handshake, data = connect(
+            address,
+            timeout=timeout,
+            custom_resolver=config.resolver,
+            ssl_context=config.get_ssl_context(),
+            keep_alive=config.keep_alive,
+        )
 
         if config.protocol_version == (3, 0):
             from neo4j.io._bolt3 import Bolt3
@@ -734,47 +746,43 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
 
 
-def _connect(resolved_address, timeout=None, **config):
+def _connect(resolved_address, timeout, keep_alive):
     """
 
     :param resolved_address:
-    :param config:
+    :param timeout: seconds
+    :param keep_alive: True or False
     :return: socket object
     """
-    config = PoolConfig.consume(config)
 
-    s = None
+    s = None  # The socket
+
     try:
         if len(resolved_address) == 2:
             s = socket(AF_INET)
         elif len(resolved_address) == 4:
             s = socket(AF_INET6)
         else:
-            raise ValueError("Unsupported address "
-                             "{!r}".format(resolved_address))
+            raise ValueError("Unsupported address {!r}".format(resolved_address))
         t = s.gettimeout()
-        if timeout is None:
-            s.settimeout(config.connection_timeout)
-        else:
+        if timeout:
             s.settimeout(timeout)
         log.debug("[#0000]  C: <OPEN> %s", resolved_address)
         s.connect(resolved_address)
         s.settimeout(t)
-        keep_alive = 1 if config.keep_alive else 0
+        keep_alive = 1 if keep_alive else 0
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
     except SocketTimeout:
         log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
         log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
         s.close()
-        raise ServiceUnavailable("Timed out trying to establish connection "
-                                 "to {!r}".format(resolved_address))
+        raise ServiceUnavailable("Timed out trying to establish connection to {!r}".format(resolved_address))
     except OSError as error:
         log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
                   " ".join(map(repr, error.args)))
         log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
         s.close()
-        raise ServiceUnavailable("Failed to establish connection to {!r} "
-                                 "(reason {})".format(resolved_address, error))
+        raise ServiceUnavailable("Failed to establish connection to {!r} (reason {})".format(resolved_address, error))
     else:
         return s
 
@@ -804,8 +812,10 @@ def _secure(s, host, ssl_context):
 def _handshake(s, resolved_address):
     """
 
-    :param s:
-    :return:
+    :param s: Socket
+    :param resolved_address:
+
+    :return: (socket, version, client_handshake, server_response_data)
     """
     local_port = s.getsockname()[1]
 
@@ -854,7 +864,7 @@ def _handshake(s, resolved_address):
     return s, agreed_version, handshake, data
 
 
-def connect(address, *, timeout=None, config):
+def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
     """ Connect and perform a handshake and return a valid Connection object,
     assuming a protocol version can be agreed.
     """
@@ -863,13 +873,13 @@ def connect(address, *, timeout=None, config):
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
     log.debug("[#0000]  C: <RESOLVE> %s", address)
-    custom_resolver = config.get("resolver")
+
     for resolved_address in Address(address).resolve(resolver=custom_resolver):
         s = None
         try:
             host = address[0]
-            s = _connect(resolved_address, timeout=timeout, **config)
-            s = _secure(s, host, config.get_ssl_context())
+            s = _connect(resolved_address, timeout, keep_alive)
+            s = _secure(s, host, ssl_context)
             return _handshake(s, address)
         except Exception as error:
             if s:
