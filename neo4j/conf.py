@@ -268,3 +268,15 @@ class WorkspaceConfig(Config):
 
     #:
     retry_delay_jitter_factor = 0.2  # seconds
+
+
+class SessionConfig(WorkspaceConfig):
+    """ Session configuration.
+    """
+
+    #:
+    bookmarks = ()
+
+    #:
+    default_access_mode = "WRITE"
+    access_mode = DeprecatedAlias("default_access_mode")

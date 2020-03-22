@@ -56,6 +56,7 @@ from neo4j.conf import (
     Config,
     PoolConfig,
     WorkspaceConfig,
+    SessionConfig,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
@@ -73,7 +74,6 @@ from neo4j.work.simple import (
     ResultSummary,
     Query,
     Session,
-    SessionConfig,
     unit_of_work,
 )
 
@@ -362,7 +362,8 @@ class BoltDriver(Direct, Driver):
         self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
-        from neo4j.work.simple import Session, SessionConfig
+        from neo4j.work.simple import Session
+        from neo4j.conf import SessionConfig
         session_config = SessionConfig(self._default_workspace_config,
                                        SessionConfig.consume(config))
         return Session(self._pool, session_config)
@@ -406,7 +407,8 @@ class Neo4jDriver(Routing, Driver):
         self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
-        from neo4j.work.simple import Session, SessionConfig
+        from neo4j.work.simple import Session
+        from neo4j.conf import SessionConfig
         session_config = SessionConfig(self._default_workspace_config,
                                        SessionConfig.consume(config))
         return Session(self._pool, session_config)

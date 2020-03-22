@@ -25,11 +25,8 @@ from random import random
 from time import perf_counter, sleep
 from warnings import warn
 
+from neo4j.conf import SessionConfig
 from neo4j.api import READ_ACCESS, WRITE_ACCESS
-from neo4j.conf import (
-    DeprecatedAlias,
-    WorkspaceConfig,
-)
 from neo4j.data import DataHydrator, DataDehydrator
 from neo4j.exceptions import (
     Neo4jError,
@@ -803,15 +800,3 @@ def is_retriable_transient_error(error):
     """
     return not (error.code in ("Neo.TransientError.Transaction.Terminated",
                                "Neo.TransientError.Transaction.LockClientStopped"))
-
-
-class SessionConfig(WorkspaceConfig):
-    """ Session configuration.
-    """
-
-    #:
-    bookmarks = ()
-
-    #:
-    default_access_mode = "WRITE"
-    access_mode = DeprecatedAlias("default_access_mode")
