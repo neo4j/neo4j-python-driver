@@ -25,8 +25,11 @@ from warnings import warn
 
 from neo4j.meta import get_user_agent
 
-TRUST_SYSTEM_CA_SIGNED_CERTIFICATES = "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"  # Default
-TRUST_ALL_CERTIFICATES = "TRUST_ALL_CERTIFICATES"
+from neo4j.api import (
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    TRUST_ALL_CERTIFICATES,
+    WRITE_ACCESS,
+)
 
 
 def iter_items(iterable):
