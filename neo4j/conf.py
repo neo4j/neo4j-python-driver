@@ -280,6 +280,8 @@ class SessionConfig(WorkspaceConfig):
     #:
     bookmarks = ()
 
-    #:
-    default_access_mode = "WRITE"
+    # The type of access required by units of work in this session,
+    # neo4j.WRITE_ACCESS (Default)
+    # neo4j.READ_ACCESS
+    default_access_mode = WRITE_ACCESS
     access_mode = DeprecatedAlias("default_access_mode")
