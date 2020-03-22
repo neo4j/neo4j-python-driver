@@ -170,8 +170,7 @@ class PoolConfig(Config):
     """
 
     #: Max Connection Lifetime
-    max_age = 3600  # 1h
-    max_connection_lifetime = DeprecatedAlias("max_age")
+    max_connection_lifetime = 3600  # seconds
 
     #: Max Connection Pool Size
     max_connection_pool_size = 100
@@ -194,7 +193,7 @@ class PoolConfig(Config):
     #: Protocol Version (Python Driver Specific)
     protocol_version = None
 
-    #: Initial Connection PoolSize (Python Driver Specific)
+    #: Initial Connection Pool Size (Python Driver Specific)
     init_size = 1
 
     #: Socket Keep Alive (Python and .NET Driver Specific)

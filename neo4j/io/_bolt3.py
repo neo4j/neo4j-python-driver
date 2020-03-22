@@ -86,7 +86,7 @@ class Bolt3(Bolt):
         self.packer = Packer(self.outbox)
         self.unpacker = Unpacker(self.inbox)
         self.responses = deque()
-        self._max_connection_lifetime = self.config.max_age
+        self._max_connection_lifetime = self.config.max_connection_lifetime
         self._creation_timestamp = perf_counter()
 
         # Determine the user agent

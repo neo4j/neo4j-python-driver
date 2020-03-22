@@ -49,7 +49,7 @@ from tests.stub.conftest import (
 driver_config = {
     "encrypted": False,
     "user_agent": "test",
-    "max_age": 1000,
+    "max_connection_lifetime": 1000,
     "max_connection_pool_size": 10,
     "keep_alive": False,
     "max_retry_time": 1,
@@ -208,7 +208,7 @@ def test_bolt_uri_scheme_self_signed_certificate_constructs_bolt_driver(driver_i
 
     test_config = {
         "user_agent": "test",
-        "max_age": 1000,
+        "max_connection_lifetime": 1000,
         "max_connection_pool_size": 10,
         "keep_alive": False,
         "max_retry_time": 1,
@@ -238,7 +238,7 @@ def test_bolt_uri_scheme_secure_constructs_bolt_driver(driver_info, test_script)
 
     test_config = {
         "user_agent": "test",
-        "max_age": 1000,
+        "max_connection_lifetime": 1000,
         "max_connection_pool_size": 10,
         "keep_alive": False,
         "max_retry_time": 1,
