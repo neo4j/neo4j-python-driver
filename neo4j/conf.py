@@ -169,37 +169,37 @@ class PoolConfig(Config):
     """ Connection pool configuration.
     """
 
-    #:
-    connect_timeout = 30.0  # seconds
-
-    #:
-    init_size = 1
-
-    #:
-    keep_alive = True
-
-    #:
+    #: Max Connection Lifetime
     max_age = 3600  # 1h
     max_connection_lifetime = DeprecatedAlias("max_age")
 
-    #: Maximum number of connections per host
+    #: Max Connection Pool Size
     max_size = 100
     max_connection_pool_size = DeprecatedAlias("max_size")
 
-    #:
-    protocol_version = None
+    #: Connection Acquisition Timeout
+    connect_timeout = 30.0  # seconds
 
-    #:
+    #: Trust
+    trust = TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+
+    #: Custom Resolver
     resolver = None
 
-    #:
+    #: Encrypted
     encrypted = False
 
-    #:
+    #: User Agent (Python Driver Specific)
     user_agent = get_user_agent()
 
-    #:
-    trust = TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+    #: Protocol Version (Python Driver Specific)
+    protocol_version = None
+
+    #: Initial Connection PoolSize (Python Driver Specific)
+    init_size = 1
+
+    #: Socket Keep Alive (Python and .NET Driver Specific)
+    keep_alive = True
 
     def get_ssl_context(self):
         if not self.encrypted:
@@ -257,19 +257,19 @@ class WorkspaceConfig(Config):
     """ Session configuration.
     """
 
-    #:
+    #: Connection Acquisition Timeout
     acquire_timeout = 60.0  # seconds
 
-    #:
+    #: Max Retry Time
     max_retry_time = 30.0  # seconds
 
-    #:
+    #: Initial Retry Delay
     initial_retry_delay = 1.0  # seconds
 
-    #:
+    #: Retry Delay Multiplier
     retry_delay_multiplier = 2.0  # seconds
 
-    #:
+    #: Retry Delay Jitter Factor
     retry_delay_jitter_factor = 0.2  # seconds
 
 
@@ -277,11 +277,13 @@ class SessionConfig(WorkspaceConfig):
     """ Session configuration.
     """
 
-    #:
+    #: Bookmarks
     bookmarks = ()
 
-    # The type of access required by units of work in this session,
-    # neo4j.WRITE_ACCESS (Default)
-    # neo4j.READ_ACCESS
+    # Default AccessMode
     default_access_mode = WRITE_ACCESS
     access_mode = DeprecatedAlias("default_access_mode")
+
+    #: Database
+
+    #: Fetch Size
