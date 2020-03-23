@@ -306,3 +306,18 @@ class SessionConfig(WorkspaceConfig):
 
     #: Fetch Size
     fetch_size = 1000
+
+
+class TransactionConfig(Config):
+    """ Transaction configuration.
+
+    neo4j.Query
+    neo4j.unit_of_work
+
+    are both using the same settings.
+    """
+    #: Metadata
+    metadata = None  # dictionary
+
+    #: Timeout
+    timeout = None  # seconds

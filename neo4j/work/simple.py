@@ -582,19 +582,17 @@ class Query:
     """ Create a new query.
 
     :param text: The query text.
-    :param metadata: Dictionary of parameters, metadata attached to the query.
-    :param timeout: Timeout in seconds.
+    :type str:
+    :param metadata: metadata attached to the query.
+    :type dict:
+    :param timeout: seconds.
+    :type int:
     """
     def __init__(self, text, metadata=None, timeout=None):
         self.text = text
-        try:
-            self.metadata = metadata
-        except TypeError:
-            raise TypeError("Metadata must be coercible to a dict")
-        try:
-            self.timeout = timeout
-        except TypeError:
-            raise TypeError("Timeout must be specified as a number of seconds")
+
+        self.metadata = metadata
+        self.timeout = timeout
 
     def __str__(self):
         return str(self.text)
@@ -772,6 +770,10 @@ def unit_of_work(metadata=None, timeout=None):
         def count_people(tx):
             return tx.run("MATCH (a:Person) RETURN count(a)").single().value()
 
+    :param metadata: metadata attached to the query.
+    :type dict:
+    :param timeout: seconds.
+    :type int:
     """
 
     def wrapper(f):
