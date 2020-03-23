@@ -29,7 +29,7 @@ from neo4j.api import (
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     TRUST_ALL_CERTIFICATES,
     WRITE_ACCESS,
-    DATABASE_NAME_USE_DEFAULT,
+    DEFAULT_DATABASE,
 )
 from neo4j.exceptions import (
     ConfigurationError,
@@ -289,8 +289,9 @@ class WorkspaceConfig(Config):
     retry_delay_jitter_factor = 0.2  # seconds
 
     #: Database Name
-    database = DATABASE_NAME_USE_DEFAULT
+    database = DEFAULT_DATABASE
     # Name of the database to query.
+    # Note: The default database can be set on the Neo4j instance settings.
 
     #: Fetch Size
     fetch_size = 1000

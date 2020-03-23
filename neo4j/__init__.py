@@ -38,7 +38,7 @@ from neo4j.addressing import (
     IPv6Address,
 )
 from neo4j.api import (
-    Auth,
+    Auth,  # TODO: Validate naming for Auth compared to other drivers.
     AuthToken,
     basic_auth,
     kerberos_auth,
@@ -48,14 +48,16 @@ from neo4j.api import (
     Version,
     READ_ACCESS,
     WRITE_ACCESS,
+    SYSTEM_DATABASE,
+    DEFAULT_DATABASE,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
 from neo4j.conf import (
     Config,
     PoolConfig,
     WorkspaceConfig,
     SessionConfig,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
 from neo4j.meta import (
     experimental,
