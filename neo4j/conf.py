@@ -288,6 +288,13 @@ class WorkspaceConfig(Config):
     #: Retry Delay Jitter Factor
     retry_delay_jitter_factor = 0.2  # seconds
 
+    #: Database Name
+    database = DATABASE_NAME_USE_DEFAULT
+    # Name of the database to query.
+
+    #: Fetch Size
+    fetch_size = 1000
+
 
 class SessionConfig(WorkspaceConfig):
     """ Session configuration.
@@ -299,13 +306,6 @@ class SessionConfig(WorkspaceConfig):
     # Default AccessMode
     default_access_mode = WRITE_ACCESS
     # access_mode = DeprecatedAlias("default_access_mode")
-
-    #: Database Name
-    database = DATABASE_NAME_USE_DEFAULT
-    # Name of the database to query.
-
-    #: Fetch Size
-    fetch_size = 1000
 
 
 class TransactionConfig(Config):

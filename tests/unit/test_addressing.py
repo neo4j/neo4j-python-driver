@@ -240,6 +240,3 @@ def test_address_resolve_with_custom_resolver():
     assert resolved[0] == IPv4Address(('127.0.0.1', 7687))
     assert resolved[1] == IPv6Address(('::1', 1234, 0, 0))
     assert resolved[2] == IPv4Address(('127.0.0.1', 1234))
-
-
-
