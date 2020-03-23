@@ -20,6 +20,7 @@
 
 from urllib.parse import (
     urlparse,
+    parse_qs,
 )
 from.exceptions import (
     ConfigurationError,
@@ -247,3 +248,23 @@ def check_access_mode(access_mode):
         raise ConfigurationError(msg)
 
     return access_mode
+
+
+def parse_routing_context(query):
+    """ Parse the query portion of a URI to generate a routing context dictionary.
+    """
+    if not query:
+        return {}
+
+    context = {}
+    parameters = parse_qs(query, True)
+    for key in parameters:
+        value_list = parameters[key]
+        if len(value_list) != 1:
+            raise ConfigurationError("Duplicated query parameters with key '%s', value '%s' found in query string '%s'" % (key, value_list, query))
+        value = value_list[0]
+        if not value:
+            raise ConfigurationError("Invalid parameters:'%s=%s' in query string '%s'." % (key, value, query))
+        context[key] = value
+
+    return context

@@ -242,19 +242,4 @@ def test_address_resolve_with_custom_resolver():
     assert resolved[2] == IPv4Address(('127.0.0.1', 1234))
 
 
-def test_graphdatabase_parse_routing_context():
-    # python -m pytest tests/unit/test_addressing.py -s -k test_graphdatabase_parse_routing_context
-    context = GraphDatabase._parse_routing_context(query="name=molly&color=white")
-    assert context == {"name": "molly", "color": "white"}
 
-
-def test_graphdatabase_parse_routing_context_should_error_when_value_missing():
-    # python -m pytest tests/unit/test_addressing.py -s -k test_graphdatabase_parse_routing_context_should_error_when_value_missing
-    with pytest.raises(ValueError):
-        GraphDatabase._parse_routing_context("name=&color=white")
-
-
-def test_graphdatabase_parse_routing_context_should_error_when_key_duplicate():
-    # python -m pytest tests/unit/test_addressing.py -s -k test_graphdatabase_parse_routing_context_should_error_when_key_duplicate
-    with pytest.raises(ValueError):
-        GraphDatabase._parse_routing_context("name=molly&name=white")
