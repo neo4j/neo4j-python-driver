@@ -25,8 +25,15 @@ from warnings import warn
 
 from neo4j.meta import get_user_agent
 
-TRUST_SYSTEM_CA_SIGNED_CERTIFICATES = "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"  # Default
-TRUST_ALL_CERTIFICATES = "TRUST_ALL_CERTIFICATES"
+from neo4j.api import (
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    TRUST_ALL_CERTIFICATES,
+    WRITE_ACCESS,
+    DEFAULT_DATABASE,
+)
+from neo4j.exceptions import (
+    ConfigurationError,
+)
 
 
 def iter_items(iterable):
@@ -101,7 +108,7 @@ class Config(Mapping, metaclass=ConfigType):
                 raise TypeError("%r is not a Config subclass" % config_class)
             values.append(config_class._consume(data))
         if data:
-            raise ValueError("Unexpected config keys: %s" % ", ".join(data.keys()))
+            raise ConfigurationError("Unexpected config keys: %s" % ", ".join(data.keys()))
         return values
 
     @classmethod
@@ -166,37 +173,45 @@ class PoolConfig(Config):
     """ Connection pool configuration.
     """
 
-    #:
-    connect_timeout = 30.0  # seconds
+    #: Max Connection Lifetime
+    max_connection_lifetime = 3600  # seconds
+    # The maximum duration the driver will keep a connection for before being removed from the pool.
 
-    #:
-    init_size = 1
+    #: Max Connection Pool Size
+    max_connection_pool_size = 100
+    # The maximum total number of connections allowed, per host (i.e. cluster nodes), to be managed by the connection pool.
 
-    #:
-    keep_alive = True
+    #: Connection Timeout
+    connection_timeout = 30.0  # seconds
+    # The maximum amount of time to wait for a TCP connection to be established.
 
-    #:
-    max_age = 3600  # 1h
-    max_connection_lifetime = DeprecatedAlias("max_age")
-
-    #: Maximum number of connections per host
-    max_size = 100
-    max_connection_pool_size = DeprecatedAlias("max_size")
-
-    #:
-    protocol_version = None
-
-    #:
-    resolver = None
-
-    #:
-    encrypted = False
-
-    #:
-    user_agent = get_user_agent()
-
-    #:
+    #: Trust
     trust = TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+    # Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
+
+    #: Custom Resolver
+    resolver = None
+    # Custom resolver function, returning list of resolved addresses.
+
+    #: Encrypted
+    encrypted = False
+    # Specify whether to use an encrypted connection between the driver and server.
+
+    #: User Agent (Python Driver Specific)
+    user_agent = get_user_agent()
+    # Specify the client agent name.
+
+    #: Protocol Version (Python Driver Specific)
+    protocol_version = None  # Version(4, 0)
+    # Specify a specific Bolt Protocol Version
+
+    #: Initial Connection Pool Size (Python Driver Specific)
+    init_size = 1  # The other drivers do not seed from the start.
+    # This will seed the pool with the specified number of connections.
+
+    #: Socket Keep Alive (Python and .NET Driver Specific)
+    keep_alive = True
+    # Specify whether TCP keep-alive should be enabled.
 
     def get_ssl_context(self):
         if not self.encrypted:
@@ -248,3 +263,62 @@ class PoolConfig(Config):
 
         ssl_context.set_default_verify_paths()  # https://docs.python.org/3.5/library/ssl.html#ssl.SSLContext.set_default_verify_paths
         return ssl_context
+
+
+class WorkspaceConfig(Config):
+    """ WorkSpace configuration.
+    """
+
+    #: Connection Acquisition Timeout
+    connection_acquisition_timeout = 60.0  # seconds
+    # The maximum amount of time a session will wait when requesting a connection from the connection pool.
+    # Since the process of acquiring a connection may involve creating a new connection, ensure that the value
+    # of this configuration is higher than the configured Connection Timeout.
+
+    #: Max Retry Time
+    max_retry_time = 30.0  # seconds
+    # The maximum amount of time that a managed transaction will retry for before failing.
+
+    #: Initial Retry Delay
+    initial_retry_delay = 1.0  # seconds
+
+    #: Retry Delay Multiplier
+    retry_delay_multiplier = 2.0  # seconds
+
+    #: Retry Delay Jitter Factor
+    retry_delay_jitter_factor = 0.2  # seconds
+
+    #: Database Name
+    database = DEFAULT_DATABASE
+    # Name of the database to query.
+    # Note: The default database can be set on the Neo4j instance settings.
+
+    #: Fetch Size
+    fetch_size = 1000
+
+
+class SessionConfig(WorkspaceConfig):
+    """ Session configuration.
+    """
+
+    #: Bookmarks
+    bookmarks = ()
+
+    # Default AccessMode
+    default_access_mode = WRITE_ACCESS
+    # access_mode = DeprecatedAlias("default_access_mode")
+
+
+class TransactionConfig(Config):
+    """ Transaction configuration.
+
+    neo4j.Query
+    neo4j.unit_of_work
+
+    are both using the same settings.
+    """
+    #: Metadata
+    metadata = None  # dictionary
+
+    #: Timeout
+    timeout = None  # seconds

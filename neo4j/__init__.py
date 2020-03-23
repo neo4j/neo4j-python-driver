@@ -30,10 +30,7 @@ __all__ = [
 ]
 
 from logging import getLogger
-from urllib.parse import (
-    urlparse,
-    parse_qs,
-)
+
 
 from neo4j.addressing import (
     Address,
@@ -41,7 +38,7 @@ from neo4j.addressing import (
     IPv6Address,
 )
 from neo4j.api import (
-    Auth,
+    Auth,  # TODO: Validate naming for Auth compared to other drivers.
     AuthToken,
     basic_auth,
     kerberos_auth,
@@ -51,12 +48,16 @@ from neo4j.api import (
     Version,
     READ_ACCESS,
     WRITE_ACCESS,
+    SYSTEM_DATABASE,
+    DEFAULT_DATABASE,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
 from neo4j.conf import (
     Config,
     PoolConfig,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    WorkspaceConfig,
+    SessionConfig,
 )
 from neo4j.meta import (
     experimental,
@@ -72,7 +73,6 @@ from neo4j.work.simple import (
     ResultSummary,
     Query,
     Session,
-    SessionConfig,
     unit_of_work,
 )
 
@@ -85,7 +85,7 @@ class GraphDatabase:
     """
 
     @classmethod
-    def driver(cls, uri, *, auth=None, acquire_timeout=None, **config):
+    def driver(cls, uri, *, auth=None, **config):
         """ Create a Neo4j driver that uses socket I/O and thread-based
         concurrency.
 
@@ -116,12 +116,12 @@ class GraphDatabase:
             **Settings:** Neo4jDriver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.
 
         :param auth:
-        :param acquire_timeout: seconds
         :param config: connection configuration settings
         """
 
         from neo4j.api import (
             parse_neo4j_uri,
+            parse_routing_context,
             DRIVER_BOLT,
             DRIVER_NEO4j,
             SECURITY_TYPE_NOT_SECURE,
@@ -173,59 +173,36 @@ class GraphDatabase:
             config["trust"] = TRUST_ALL_CERTIFICATES
 
         if driver_type == DRIVER_BOLT:
-            return cls.bolt_driver(parsed.netloc, auth=auth, acquire_timeout=acquire_timeout, **config)
+            return cls.bolt_driver(parsed.netloc, auth=auth, **config)
         elif driver_type == DRIVER_NEO4j:
-            rc = cls._parse_routing_context(parsed.query)
-            return cls.neo4j_driver(parsed.netloc, auth=auth, routing_context=rc, acquire_timeout=acquire_timeout, **config)
+            routing_context = parse_routing_context(parsed.query)
+            return cls.neo4j_driver(parsed.netloc, auth=auth, routing_context=routing_context, **config)
 
     @classmethod
-    def bolt_driver(cls, target, *, auth=None, acquire_timeout=None, **config):
+    def bolt_driver(cls, target, *, auth=None, **config):
         """ Create a driver for direct Bolt server access that uses
         socket I/O and thread-based concurrency.
         """
         from neo4j._exceptions import BoltHandshakeError, BoltSecurityError
 
         try:
-            return BoltDriver.open(target, auth=auth, acquire_timeout=acquire_timeout, **config)
+            return BoltDriver.open(target, auth=auth, **config)
         except (BoltHandshakeError, BoltSecurityError) as error:
             from neo4j.exceptions import ServiceUnavailable
             raise ServiceUnavailable(str(error)) from error
 
     @classmethod
-    def neo4j_driver(cls, *targets, auth=None, routing_context=None, acquire_timeout=None,
-                     **config):
+    def neo4j_driver(cls, *targets, auth=None, routing_context=None, **config):
         """ Create a driver for routing-capable Neo4j service access
         that uses socket I/O and thread-based concurrency.
         """
         from neo4j._exceptions import BoltHandshakeError, BoltSecurityError
 
         try:
-            return Neo4jDriver.open(*targets, auth=auth, routing_context=routing_context, acquire_timeout=acquire_timeout, **config)
+            return Neo4jDriver.open(*targets, auth=auth, routing_context=routing_context, **config)
         except (BoltHandshakeError, BoltSecurityError) as error:
             from neo4j.exceptions import ServiceUnavailable
             raise ServiceUnavailable(str(error)) from error
-
-    @classmethod
-    def _parse_routing_context(cls, query):
-        """ Parse the query portion of a URI to generate a routing
-        context dictionary.
-        """
-        if not query:
-            return {}
-
-        context = {}
-        parameters = parse_qs(query, True)
-        for key in parameters:
-            value_list = parameters[key]
-            if len(value_list) != 1:
-                raise ValueError("Duplicated query parameters with key '%s', "
-                                 "value '%s' found in query string '%s'" % (key, value_list, query))
-            value = value_list[0]
-            if not value:
-                raise ValueError("Invalid parameters:'%s=%s' in query string "
-                                 "'%s'." % (key, value, query))
-            context[key] = value
-        return context
 
 
 class Direct:
@@ -303,7 +280,7 @@ class Driver:
 
     @property
     def encrypted(self):
-        return bool(self._pool.config.encrypted)
+        return bool(self._pool.pool_config.encrypted)
 
     def session(self, **config):
         """ Create a simple session.
@@ -350,7 +327,6 @@ class BoltDriver(Direct, Driver):
     @classmethod
     def open(cls, target, *, auth=None, **config):
         from neo4j.io import BoltPool
-        from neo4j.work import WorkspaceConfig
         address = cls.parse_target(target)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         pool = BoltPool.open(address, auth=auth, **pool_config)
@@ -362,15 +338,15 @@ class BoltDriver(Direct, Driver):
         self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
-        from neo4j.work.simple import Session, SessionConfig
-        session_config = SessionConfig(self._default_workspace_config,
-                                       SessionConfig.consume(config))
+        from neo4j.work.simple import Session
+        session_config = SessionConfig(self._default_workspace_config, config)
+        SessionConfig.consume(config)  # Consume the config
         return Session(self._pool, session_config)
 
     def pipeline(self, **config):
         from neo4j.work.pipelining import Pipeline, PipelineConfig
-        pipeline_config = PipelineConfig(self._default_workspace_config,
-                                         PipelineConfig.consume(config))
+        pipeline_config = PipelineConfig(self._default_workspace_config, config)
+        PipelineConfig.consume(config)  # Consume the config
         return Pipeline(self._pool, pipeline_config)
 
     def verify_connectivity(self, **config):
@@ -394,7 +370,6 @@ class Neo4jDriver(Routing, Driver):
     @classmethod
     def open(cls, *targets, auth=None, routing_context=None, **config):
         from neo4j.io import Neo4jPool
-        from neo4j.work import WorkspaceConfig
         addresses = cls.parse_targets(*targets)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, **pool_config)
@@ -406,15 +381,15 @@ class Neo4jDriver(Routing, Driver):
         self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
-        from neo4j.work.simple import Session, SessionConfig
-        session_config = SessionConfig(self._default_workspace_config,
-                                       SessionConfig.consume(config))
+        from neo4j.work.simple import Session
+        session_config = SessionConfig(self._default_workspace_config, config)
+        SessionConfig.consume(config)  # Consume the config
         return Session(self._pool, session_config)
 
     def pipeline(self, **config):
         from neo4j.work.pipelining import Pipeline, PipelineConfig
-        pipeline_config = PipelineConfig(self._default_workspace_config,
-                                         PipelineConfig.consume(config))
+        pipeline_config = PipelineConfig(self._default_workspace_config, config)
+        PipelineConfig.consume(config)  # Consume the config
         return Pipeline(self._pool, pipeline_config)
 
     def get_routing_table(self):

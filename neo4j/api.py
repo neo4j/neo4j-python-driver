@@ -20,6 +20,7 @@
 
 from urllib.parse import (
     urlparse,
+    parse_qs,
 )
 from.exceptions import (
     ConfigurationError,
@@ -47,6 +48,12 @@ URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE = "neo4j+ssc"
 URI_SCHEME_NEO4J_SECURE = "neo4j+s"
 
 URI_SCHEME_BOLT_ROUTING = "bolt+routing"
+
+TRUST_SYSTEM_CA_SIGNED_CERTIFICATES = "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"  # Default
+TRUST_ALL_CERTIFICATES = "TRUST_ALL_CERTIFICATES"
+
+SYSTEM_DATABASE = "system"
+DEFAULT_DATABASE = None
 
 
 class Auth:
@@ -230,3 +237,33 @@ def parse_neo4j_uri(uri):
         ))
 
     return driver_type, security_type, parsed
+
+
+def check_access_mode(access_mode):
+    if access_mode is None:
+        return WRITE_ACCESS
+    if access_mode not in (READ_ACCESS, WRITE_ACCESS):
+        msg = "Unsupported access mode {}".format(access_mode)
+        raise ConfigurationError(msg)
+
+    return access_mode
+
+
+def parse_routing_context(query):
+    """ Parse the query portion of a URI to generate a routing context dictionary.
+    """
+    if not query:
+        return {}
+
+    context = {}
+    parameters = parse_qs(query, True)
+    for key in parameters:
+        value_list = parameters[key]
+        if len(value_list) != 1:
+            raise ConfigurationError("Duplicated query parameters with key '%s', value '%s' found in query string '%s'" % (key, value_list, query))
+        value = value_list[0]
+        if not value:
+            raise ConfigurationError("Invalid parameters:'%s=%s' in query string '%s'." % (key, value, query))
+        context[key] = value
+
+    return context

@@ -151,7 +151,13 @@ class Bolt:
         """
         config = PoolConfig.consume(config)
         try:
-            s, protocol_version = connect(address, timeout=timeout, config=config)
+            s, protocol_version, handshake, data = connect(
+                address,
+                timeout=timeout,
+                custom_resolver=config.resolver,
+                ssl_context=config.get_ssl_context(),
+                keep_alive=config.keep_alive,
+            )
         except ServiceUnavailable:
             return None
         except BoltHandshakeError as e:
@@ -173,7 +179,13 @@ class Bolt:
         :raise ServiceUnavailable: raised if there was a connection issue.
         """
         config = PoolConfig.consume(config)
-        s, config.protocol_version, handshake, data = connect(address, timeout=timeout, config=config)
+        s, config.protocol_version, handshake, data = connect(
+            address,
+            timeout=timeout,
+            custom_resolver=config.resolver,
+            ssl_context=config.get_ssl_context(),
+            keep_alive=config.keep_alive,
+        )
 
         if config.protocol_version == (3, 0):
             from neo4j.io._bolt3 import Bolt3
@@ -315,20 +327,18 @@ class Bolt:
 class IOPool:
     """ A collection of connections to one or more server addresses.
     """
+    from neo4j.conf import PoolConfig, WorkspaceConfig
 
-    _default_acquire_timeout = 60  # seconds
+    _default_acquire_timeout = WorkspaceConfig.connection_acquisition_timeout
 
-    _default_max_size = 100
-
-    def __init__(self, opener, config):
+    def __init__(self, opener, pool_config):
         assert callable(opener)
-        assert isinstance(config, PoolConfig)
+        assert isinstance(pool_config, PoolConfig)
         self.opener = opener
-        self.config = config
+        self.pool_config = pool_config
         self.connections = {}
         self.lock = RLock()
         self.cond = Condition(self.lock)
-        self._max_connection_pool_size = config.max_size
 
     def __enter__(self):
         return self
@@ -367,11 +377,10 @@ class IOPool:
                         connection.in_use = True
                         return connection
                 # all connections in pool are in-use
-                infinite_pool_size = (self._max_connection_pool_size < 0 or
-                                      self._max_connection_pool_size == float("inf"))
-                can_create_new_connection = infinite_pool_size or len(connections) < self._max_connection_pool_size
+                infinite_pool_size = (self.pool_config.max_connection_pool_size < 0 or self.pool_config.max_connection_pool_size == float("inf"))
+                can_create_new_connection = infinite_pool_size or len(connections) < self.pool_config.max_connection_pool_size
                 if can_create_new_connection:
-                    timeout = min(self.config.connect_timeout, time_remaining())
+                    timeout = min(self.pool_config.connection_timeout, time_remaining())
                     try:
                         connection = self.opener(address, timeout)
                     except ServiceUnavailable:
@@ -484,8 +493,8 @@ class BoltPool(IOPool):
         pool.release(*seeds)
         return pool
 
-    def __init__(self, opener, config, address):
-        super(BoltPool, self).__init__(opener, config)
+    def __init__(self, opener, pool_config, address):
+        super(BoltPool, self).__init__(opener, pool_config)
         self.address = address
 
     def __repr__(self):
@@ -515,8 +524,8 @@ class Neo4jPool(IOPool):
         else:
             return pool
 
-    def __init__(self, opener, config, addresses, routing_context):
-        super(Neo4jPool, self).__init__(opener, config)
+    def __init__(self, opener, pool_config, addresses, routing_context):
+        super(Neo4jPool, self).__init__(opener, pool_config)
         self.routing_table = RoutingTable(addresses)
         self.routing_context = routing_context
         self.missing_writer = False
@@ -530,10 +539,11 @@ class Neo4jPool(IOPool):
     def initial_address(self):
         return self.routing_table.initial_routers[0]
 
-    def fetch_routing_info(self, address):
+    def fetch_routing_info(self, address, timeout=None):
         """ Fetch raw routing info from a given router address.
 
         :param address: router address
+        :param timeout: seconds
         :return: list of routing records or
                  None if no connection could be established
         :raise ServiceUnavailable: if the server does not support routing or
@@ -549,7 +559,7 @@ class Neo4jPool(IOPool):
                 raise BoltRoutingError("Routing support broken on server", address)
 
         try:
-            with self._acquire(address, timeout=300) as cx:  # TODO: remove magic timeout number
+            with self._acquire(address, timeout) as cx:
                 _, _, server_version = (cx.server.agent or "").partition("/")
                 log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
                 cx.run("CALL dbms.cluster.routing.getRoutingTable($context)",
@@ -566,16 +576,17 @@ class Neo4jPool(IOPool):
             self.deactivate(address)
             return None
 
-    def fetch_routing_table(self, address):
+    def fetch_routing_table(self, address, timeout=None):
         """ Fetch a routing table from a given router address.
 
         :param address: router address
+        :param timeout: seconds
         :return: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
         :raise ServiceUnavailable: if no writers are available
         :raise BoltProtocolError: if the routing information received is unusable
         """
-        new_routing_info = self.fetch_routing_info(address)
+        new_routing_info = self.fetch_routing_info(address, timeout)
         if new_routing_info is None:
             return None
         elif not new_routing_info:
@@ -699,12 +710,8 @@ class Neo4jPool(IOPool):
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
     def acquire(self, access_mode=None, timeout=None):
-        from neo4j.api import WRITE_ACCESS
-        from neo4j.api import READ_ACCESS
-        if access_mode is None:
-            access_mode = WRITE_ACCESS
-        if access_mode not in (READ_ACCESS, WRITE_ACCESS):
-            raise ValueError("Unsupported access mode {}".format(access_mode))
+        from neo4j.api import check_access_mode
+        access_mode = check_access_mode(access_mode)
         while True:
             try:
                 address = self._select_address(access_mode)
@@ -739,47 +746,43 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_table)
 
 
-def _connect(resolved_address, timeout=None, **config):
+def _connect(resolved_address, timeout, keep_alive):
     """
 
     :param resolved_address:
-    :param config:
+    :param timeout: seconds
+    :param keep_alive: True or False
     :return: socket object
     """
-    config = PoolConfig.consume(config)
 
-    s = None
+    s = None  # The socket
+
     try:
         if len(resolved_address) == 2:
             s = socket(AF_INET)
         elif len(resolved_address) == 4:
             s = socket(AF_INET6)
         else:
-            raise ValueError("Unsupported address "
-                             "{!r}".format(resolved_address))
+            raise ValueError("Unsupported address {!r}".format(resolved_address))
         t = s.gettimeout()
-        if timeout is None:
-            s.settimeout(config.connect_timeout)
-        else:
+        if timeout:
             s.settimeout(timeout)
         log.debug("[#0000]  C: <OPEN> %s", resolved_address)
         s.connect(resolved_address)
         s.settimeout(t)
-        keep_alive = 1 if config.keep_alive else 0
+        keep_alive = 1 if keep_alive else 0
         s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
     except SocketTimeout:
         log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
         log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
         s.close()
-        raise ServiceUnavailable("Timed out trying to establish connection "
-                                 "to {!r}".format(resolved_address))
+        raise ServiceUnavailable("Timed out trying to establish connection to {!r}".format(resolved_address))
     except OSError as error:
         log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
                   " ".join(map(repr, error.args)))
         log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
         s.close()
-        raise ServiceUnavailable("Failed to establish connection to {!r} "
-                                 "(reason {})".format(resolved_address, error))
+        raise ServiceUnavailable("Failed to establish connection to {!r} (reason {})".format(resolved_address, error))
     else:
         return s
 
@@ -809,8 +812,10 @@ def _secure(s, host, ssl_context):
 def _handshake(s, resolved_address):
     """
 
-    :param s:
-    :return:
+    :param s: Socket
+    :param resolved_address:
+
+    :return: (socket, version, client_handshake, server_response_data)
     """
     local_port = s.getsockname()[1]
 
@@ -859,7 +864,7 @@ def _handshake(s, resolved_address):
     return s, agreed_version, handshake, data
 
 
-def connect(address, *, timeout=None, config):
+def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
     """ Connect and perform a handshake and return a valid Connection object,
     assuming a protocol version can be agreed.
     """
@@ -868,13 +873,13 @@ def connect(address, *, timeout=None, config):
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
     log.debug("[#0000]  C: <RESOLVE> %s", address)
-    custom_resolver = config.get("resolver")
+
     for resolved_address in Address(address).resolve(resolver=custom_resolver):
         s = None
         try:
             host = address[0]
-            s = _connect(resolved_address, timeout=timeout, **config)
-            s = _secure(s, host, config.get_ssl_context())
+            s = _connect(resolved_address, timeout, keep_alive)
+            s = _secure(s, host, ssl_context)
             return _handshake(s, address)
         except Exception as error:
             if s:

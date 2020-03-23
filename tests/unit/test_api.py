@@ -390,3 +390,21 @@ def test_uri_scheme(test_input, expected_driver_type, expected_security_type, ex
         driver_type, security_type, parsed = neo4j.api.parse_neo4j_uri(test_input)
         assert driver_type == expected_driver_type
         assert security_type == expected_security_type
+
+
+def test_parse_routing_context():
+    # python -m pytest tests/unit/test_api.py -s -v -k test_parse_routing_context
+    context = neo4j.api.parse_routing_context(query="name=molly&color=white")
+    assert context == {"name": "molly", "color": "white"}
+
+
+def test_parse_routing_context_should_error_when_value_missing():
+    # python -m pytest tests/unit/test_api.py -s -v -k test_parse_routing_context_should_error_when_value_missing
+    with pytest.raises(ConfigurationError):
+        neo4j.api.parse_routing_context("name=&color=white")
+
+
+def test_parse_routing_context_should_error_when_key_duplicate():
+    # python -m pytest tests/unit/test_api.py -s -v -k test_parse_routing_context_should_error_when_key_duplicate
+    with pytest.raises(ConfigurationError):
+        neo4j.api.parse_routing_context("name=molly&name=white")

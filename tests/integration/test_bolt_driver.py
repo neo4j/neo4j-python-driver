@@ -104,7 +104,7 @@ def test_custom_resolver(service):
 
     try:
         with GraphDatabase.driver("bolt://*", auth=service.auth,
-                                  connect_timeout=3,  # enables rapid timeout
+                                  connection_timeout=3,  # enables rapid timeout
                                   resolver=my_resolver) as driver:
             with driver.session() as session:
                 summary = session.run("RETURN 1").summary()

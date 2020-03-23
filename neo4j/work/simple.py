@@ -25,8 +25,8 @@ from random import random
 from time import perf_counter, sleep
 from warnings import warn
 
+from neo4j.conf import SessionConfig
 from neo4j.api import READ_ACCESS, WRITE_ACCESS
-from neo4j.conf import DeprecatedAlias
 from neo4j.data import DataHydrator, DataDehydrator
 from neo4j.exceptions import (
     Neo4jError,
@@ -36,7 +36,7 @@ from neo4j.exceptions import (
     TransactionError,
 )
 from neo4j._exceptions import BoltIncompleteCommitError
-from neo4j.work import Workspace, WorkspaceConfig
+from neo4j.work import Workspace
 from neo4j.work.summary import ResultSummary
 
 
@@ -80,10 +80,10 @@ class Session(Workspace):
     # The bookmark returned from the last commit.
     _bookmark_out = None
 
-    def __init__(self, pool, config):
-        super().__init__(pool, config)
-        assert isinstance(config, SessionConfig)
-        self._bookmarks_in = tuple(config.bookmarks)
+    def __init__(self, pool, session_config):
+        super().__init__(pool, session_config)
+        assert isinstance(session_config, SessionConfig)
+        self._bookmarks_in = tuple(session_config.bookmarks)
 
     def __del__(self):
         try:
@@ -105,7 +105,7 @@ class Session(Workspace):
             self._connection.send_all()
             self._connection.fetch_all()
             self._disconnect()
-        self._connection = self._pool.acquire(access_mode, timeout=self._config.acquire_timeout)
+        self._connection = self._pool.acquire(access_mode, timeout=self._config.connection_acquisition_timeout)
 
     def _disconnect(self):
         if self._connection:
@@ -582,19 +582,17 @@ class Query:
     """ Create a new query.
 
     :param text: The query text.
-    :param metadata: Dictionary of parameters, metadata attached to the query.
-    :param timeout: Timeout in seconds.
+    :type str:
+    :param metadata: metadata attached to the query.
+    :type dict:
+    :param timeout: seconds.
+    :type int:
     """
     def __init__(self, text, metadata=None, timeout=None):
         self.text = text
-        try:
-            self.metadata = metadata
-        except TypeError:
-            raise TypeError("Metadata must be coercible to a dict")
-        try:
-            self.timeout = timeout
-        except TypeError:
-            raise TypeError("Timeout must be specified as a number of seconds")
+
+        self.metadata = metadata
+        self.timeout = timeout
 
     def __str__(self):
         return str(self.text)
@@ -772,6 +770,10 @@ def unit_of_work(metadata=None, timeout=None):
         def count_people(tx):
             return tx.run("MATCH (a:Person) RETURN count(a)").single().value()
 
+    :param metadata: metadata attached to the query.
+    :type dict:
+    :param timeout: seconds.
+    :type int:
     """
 
     def wrapper(f):
@@ -800,15 +802,3 @@ def is_retriable_transient_error(error):
     """
     return not (error.code in ("Neo.TransientError.Transaction.Terminated",
                                "Neo.TransientError.Transaction.LockClientStopped"))
-
-
-class SessionConfig(WorkspaceConfig):
-    """ Session configuration.
-    """
-
-    #:
-    bookmarks = ()
-
-    #:
-    default_access_mode = "WRITE"
-    access_mode = DeprecatedAlias("default_access_mode")
