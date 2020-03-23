@@ -337,15 +337,14 @@ class BoltDriver(Direct, Driver):
 
     def session(self, **config):
         from neo4j.work.simple import Session
-        from neo4j.conf import SessionConfig
-        session_config = SessionConfig(self._default_workspace_config,
-                                       SessionConfig.consume(config))
+        session_config = SessionConfig(self._default_workspace_config, config)
+        SessionConfig.consume(config)  # Consume the config
         return Session(self._pool, session_config)
 
     def pipeline(self, **config):
         from neo4j.work.pipelining import Pipeline, PipelineConfig
-        pipeline_config = PipelineConfig(self._default_workspace_config,
-                                         PipelineConfig.consume(config))
+        pipeline_config = PipelineConfig(self._default_workspace_config, config)
+        PipelineConfig.consume(config)  # Consume the config
         return Pipeline(self._pool, pipeline_config)
 
     def verify_connectivity(self, **config):
@@ -381,15 +380,14 @@ class Neo4jDriver(Routing, Driver):
 
     def session(self, **config):
         from neo4j.work.simple import Session
-        from neo4j.conf import SessionConfig
-        session_config = SessionConfig(self._default_workspace_config,
-                                       SessionConfig.consume(config))
+        session_config = SessionConfig(self._default_workspace_config, config)
+        SessionConfig.consume(config)  # Consume the config
         return Session(self._pool, session_config)
 
     def pipeline(self, **config):
         from neo4j.work.pipelining import Pipeline, PipelineConfig
-        pipeline_config = PipelineConfig(self._default_workspace_config,
-                                         PipelineConfig.consume(config))
+        pipeline_config = PipelineConfig(self._default_workspace_config, config)
+        PipelineConfig.consume(config)  # Consume the config
         return Pipeline(self._pool, pipeline_config)
 
     def get_routing_table(self):
