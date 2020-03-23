@@ -9,6 +9,15 @@ The official Neo4j driver for Python supports Neo4j 3.0 and above and Python ver
     Python 2 support is deprecated and will be discontinued in the 2.x series driver releases.
 
 
+.. warning::
+
+    Connecting to Neo4j 4.X requires an unencrypted connection by default.
+
+
+.. code-block:: python
+
+    driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "password"), encrypted=False)
+
 Quick Example
 =============
 
