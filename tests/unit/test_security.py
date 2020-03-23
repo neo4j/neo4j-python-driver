@@ -19,40 +19,46 @@
 # limitations under the License.
 
 
-from unittest import TestCase
-from neo4j import kerberos_auth, basic_auth, custom_auth
+from neo4j.api import (
+    kerberos_auth,
+    basic_auth,
+    custom_auth,
+)
+
+# python -m pytest -s -v tests/unit/test_security.py
 
 
-class AuthTokenTestCase(TestCase):
+def test_should_generate_kerberos_auth_token_correctly():
+    auth = kerberos_auth("I am a base64 service ticket")
+    assert auth.scheme == "kerberos"
+    assert auth.principal == ""
+    assert auth.credentials == "I am a base64 service ticket"
+    assert not auth.realm
+    assert not hasattr(auth, "parameters")
 
-    def test_should_generate_kerberos_auth_token_correctly(self):
-        auth = kerberos_auth("I am a base64 service ticket")
-        assert auth.scheme == "kerberos"
-        assert auth.principal == ""
-        assert auth.credentials == "I am a base64 service ticket"
-        assert not auth.realm
-        assert not hasattr(auth, "parameters")
 
-    def test_should_generate_basic_auth_without_realm_correctly(self):
-        auth = basic_auth("molly", "meoooow")
-        assert auth.scheme == "basic"
-        assert auth.principal == "molly"
-        assert auth.credentials == "meoooow"
-        assert not auth.realm
-        assert not hasattr(auth, "parameters")
+def test_should_generate_basic_auth_without_realm_correctly():
+    auth = basic_auth("molly", "meoooow")
+    assert auth.scheme == "basic"
+    assert auth.principal == "molly"
+    assert auth.credentials == "meoooow"
+    assert not auth.realm
+    assert not hasattr(auth, "parameters")
 
-    def test_should_generate_base_auth_with_realm_correctly(self):
-        auth = basic_auth("molly", "meoooow", "cat_cafe")
-        assert auth.scheme == "basic"
-        assert auth.principal == "molly"
-        assert auth.credentials == "meoooow"
-        assert auth.realm == "cat_cafe"
-        assert not hasattr(auth, "parameters")
 
-    def test_should_generate_custom_auth_correctly(self):
-        auth = custom_auth("molly", "meoooow", "cat_cafe", "cat", age="1", color="white")
-        assert auth.scheme == "cat"
-        assert auth.principal == "molly"
-        assert auth.credentials == "meoooow"
-        assert auth.realm == "cat_cafe"
-        assert auth.parameters == {"age": "1", "color": "white"}
+def test_should_generate_base_auth_with_realm_correctly():
+    auth = basic_auth("molly", "meoooow", "cat_cafe")
+    assert auth.scheme == "basic"
+    assert auth.principal == "molly"
+    assert auth.credentials == "meoooow"
+    assert auth.realm == "cat_cafe"
+    assert not hasattr(auth, "parameters")
+
+
+def test_should_generate_custom_auth_correctly():
+    auth = custom_auth("molly", "meoooow", "cat_cafe", "cat", age="1", color="white")
+    assert auth.scheme == "cat"
+    assert auth.principal == "molly"
+    assert auth.credentials == "meoooow"
+    assert auth.realm == "cat_cafe"
+    assert auth.parameters == {"age": "1", "color": "white"}
