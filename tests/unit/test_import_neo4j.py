@@ -144,8 +144,8 @@ def test_import_graph_node():
     from neo4j.graph import Node
 
 
-def test_import_graph_Path():
-    # python -m pytest tests/unit/test_import_neo4j.py -s -v -k test_import_graph_Path
+def test_import_graph_path():
+    # python -m pytest tests/unit/test_import_neo4j.py -s -v -k test_import_graph_path
     from neo4j.graph import Path
 
 

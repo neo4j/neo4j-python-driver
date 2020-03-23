@@ -217,4 +217,3 @@ def test_neo4jerror_hydrate_with_message_and_code_client():
     assert error.metadata == {}
     assert error.message == "Test error message"
     assert error.code == "Neo.{}.General.TestError".format(CLASSIFICATION_CLIENT)
-
