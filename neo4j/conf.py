@@ -31,6 +31,9 @@ from neo4j.api import (
     WRITE_ACCESS,
     DATABASE_NAME_USE_DEFAULT,
 )
+from neo4j.exceptions import (
+    ConfigurationError,
+)
 
 
 def iter_items(iterable):
@@ -105,7 +108,7 @@ class Config(Mapping, metaclass=ConfigType):
                 raise TypeError("%r is not a Config subclass" % config_class)
             values.append(config_class._consume(data))
         if data:
-            raise ValueError("Unexpected config keys: %s" % ", ".join(data.keys()))
+            raise ConfigurationError("Unexpected config keys: %s" % ", ".join(data.keys()))
         return values
 
     @classmethod
