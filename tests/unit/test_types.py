@@ -45,7 +45,7 @@ def test_can_create_node():
     assert set(alice.items()) == {("name", "Alice"), ("age", 33)}
     assert alice.get("name") == "Alice"
     assert alice.get("age") == 33
-    assert repr(alice) == "<Node id=1 labels=frozenset({'Person'}) properties={'name': 'Alice', 'age': 33}>"
+    assert repr(alice) == "<Node id=1 labels=frozenset({'Person'}) properties={'age': 33, 'name': 'Alice'}>"
     assert len(alice) == 2
     assert alice["name"] == "Alice"
     assert alice["age"] == 33
@@ -103,7 +103,7 @@ def test_can_create_relationship():
     assert set(alice_knows_bob.values()) == {1999}
     assert set(alice_knows_bob.items()) == {("since", 1999)}
     assert alice_knows_bob.get("since") == 1999
-    assert repr(alice_knows_bob) == "<Relationship id=1 nodes=(<Node id=1 labels=frozenset({'Person'}) properties={'name': 'Alice', 'age': 33}>, <Node id=2 labels=frozenset({'Person'}) properties={'name': 'Bob', 'age': 44}>) type='KNOWS' properties={'since': 1999}>"
+    assert repr(alice_knows_bob) == "<Relationship id=1 nodes=(<Node id=1 labels=frozenset({'Person'}) properties={'age': 33, 'name': 'Alice'}>, <Node id=2 labels=frozenset({'Person'}) properties={'age': 44, 'name': 'Bob'}>) type='KNOWS' properties={'since': 1999}>"
 
 
 # Path
@@ -123,7 +123,7 @@ def test_can_create_path():
     assert path.nodes == (alice, bob, carol)
     assert path.relationships == (alice_knows_bob, carol_dislikes_bob)
     assert list(path) == [alice_knows_bob, carol_dislikes_bob]
-    assert repr(path) == "<Path start=<Node id=1 labels=frozenset({'Person'}) properties={'name': 'Alice', 'age': 33}> end=<Node id=3 labels=frozenset({'Person'}) properties={'name': 'Carol', 'age': 55}> size=2>"
+    assert repr(path) == "<Path start=<Node id=1 labels=frozenset({'Person'}) properties={'age': 33, 'name': 'Alice'}> end=<Node id=3 labels=frozenset({'Person'}) properties={'age': 55, 'name': 'Carol'}> size=2>"
 
 
 def test_can_hydrate_path():
@@ -142,7 +142,7 @@ def test_can_hydrate_path():
     expected_carol_dislikes_bob = gh.hydrate_relationship(2, carol.id, bob.id, "DISLIKES", {})
     assert path.relationships == (expected_alice_knows_bob, expected_carol_dislikes_bob)
     assert list(path) == [expected_alice_knows_bob, expected_carol_dislikes_bob]
-    assert repr(path) == "<Path start=<Node id=1 labels=frozenset({'Person'}) properties={'name': 'Alice', 'age': 33}> end=<Node id=3 labels=frozenset({'Person'}) properties={'name': 'Carol', 'age': 55}> size=2>"
+    assert repr(path) == "<Path start=<Node id=1 labels=frozenset({'Person'}) properties={'age': 33, 'name': 'Alice'}> end=<Node id=3 labels=frozenset({'Person'}) properties={'age': 55, 'name': 'Carol'}> size=2>"
 
 
 def test_path_equality():
