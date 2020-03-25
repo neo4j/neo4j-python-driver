@@ -221,7 +221,7 @@ class Node(Entity):
         self._labels = frozenset(n_labels or ())
 
     def __repr__(self):
-        return "<Node id=%r labels=frozenset({%r}) properties=%r>" % (self._id, "', '".join(sorted(self._labels)), {key: val for key, val in sorted(self._properties.items())})
+        return "<Node id=%r labels=%r properties=%r>" % (self._id, self._labels, self._properties)
 
     @property
     def labels(self):

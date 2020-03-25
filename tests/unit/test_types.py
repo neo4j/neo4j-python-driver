@@ -26,6 +26,7 @@ from neo4j.graph import (
     Node,
     Path,
     Graph,
+    Relationship,
 )
 from neo4j.packstream import Structure
 
@@ -39,13 +40,13 @@ def test_can_create_node():
     g = Graph()
     gh = Graph.Hydrator(g)
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
+    assert isinstance(alice, Node)
     assert alice.labels == {"Person"}
     assert set(alice.keys()) == {"name", "age"}
     assert set(alice.values()) == {"Alice", 33}
     assert set(alice.items()) == {("name", "Alice"), ("age", 33)}
     assert alice.get("name") == "Alice"
     assert alice.get("age") == 33
-    assert repr(alice) == "<Node id=1 labels=frozenset({'Person'}) properties={'age': 33, 'name': 'Alice'}>"
     assert len(alice) == 2
     assert alice["name"] == "Alice"
     assert alice["age"] == 33
@@ -58,6 +59,7 @@ def test_null_properties():
     g = Graph()
     gh = Graph.Hydrator(g)
     stuff = gh.hydrate_node(1, (), {"good": ["puppies", "kittens"], "bad": None})
+    assert isinstance(stuff, Node)
     assert set(stuff.keys()) == {"good"}
     assert stuff.get("good") == ["puppies", "kittens"]
     assert stuff.get("bad") is None
@@ -87,6 +89,13 @@ def test_node_hashing():
     assert hash(node_1) != hash(node_3)
 
 
+def test_node_repr():
+    g = Graph()
+    gh = Graph.Hydrator(g)
+    alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"})
+    assert repr(alice) == "<Node id=1 labels=frozenset({'Person'}) properties={'name': 'Alice'}>"
+
+
 # Relationship
 
 
@@ -96,6 +105,7 @@ def test_can_create_relationship():
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
     bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
     alice_knows_bob = gh.hydrate_relationship(1, alice.id, bob.id, "KNOWS", {"since": 1999})
+    assert isinstance(alice_knows_bob, Relationship)
     assert alice_knows_bob.start_node == alice
     assert alice_knows_bob.type == "KNOWS"
     assert alice_knows_bob.end_node == bob
@@ -103,7 +113,15 @@ def test_can_create_relationship():
     assert set(alice_knows_bob.values()) == {1999}
     assert set(alice_knows_bob.items()) == {("since", 1999)}
     assert alice_knows_bob.get("since") == 1999
-    assert repr(alice_knows_bob) == "<Relationship id=1 nodes=(<Node id=1 labels=frozenset({'Person'}) properties={'age': 33, 'name': 'Alice'}>, <Node id=2 labels=frozenset({'Person'}) properties={'age': 44, 'name': 'Bob'}>) type='KNOWS' properties={'since': 1999}>"
+
+
+def test_relationship_repr():
+    g = Graph()
+    gh = Graph.Hydrator(g)
+    alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"})
+    bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob"})
+    alice_knows_bob = gh.hydrate_relationship(1, alice.id, bob.id, "KNOWS", {"since": 1999})
+    assert repr(alice_knows_bob) == "<Relationship id=1 nodes=(<Node id=1 labels=frozenset({'Person'}) properties={'name': 'Alice'}>, <Node id=2 labels=frozenset({'Person'}) properties={'name': 'Bob'}>) type='KNOWS' properties={'since': 1999}>"
 
 
 # Path
@@ -118,12 +136,12 @@ def test_can_create_path():
     alice_knows_bob = gh.hydrate_relationship(1, alice.id, bob.id, "KNOWS", {"since": 1999})
     carol_dislikes_bob = gh.hydrate_relationship(2, carol.id, bob.id, "DISLIKES", {})
     path = Path(alice, alice_knows_bob, carol_dislikes_bob)
+    assert isinstance(path, Path)
     assert path.start_node == alice
     assert path.end_node == carol
     assert path.nodes == (alice, bob, carol)
     assert path.relationships == (alice_knows_bob, carol_dislikes_bob)
     assert list(path) == [alice_knows_bob, carol_dislikes_bob]
-    assert repr(path) == "<Path start=<Node id=1 labels=frozenset({'Person'}) properties={'age': 33, 'name': 'Alice'}> end=<Node id=3 labels=frozenset({'Person'}) properties={'age': 55, 'name': 'Carol'}> size=2>"
 
 
 def test_can_hydrate_path():
@@ -142,7 +160,6 @@ def test_can_hydrate_path():
     expected_carol_dislikes_bob = gh.hydrate_relationship(2, carol.id, bob.id, "DISLIKES", {})
     assert path.relationships == (expected_alice_knows_bob, expected_carol_dislikes_bob)
     assert list(path) == [expected_alice_knows_bob, expected_carol_dislikes_bob]
-    assert repr(path) == "<Path start=<Node id=1 labels=frozenset({'Person'}) properties={'age': 33, 'name': 'Alice'}> end=<Node id=3 labels=frozenset({'Person'}) properties={'age': 55, 'name': 'Carol'}> size=2>"
 
 
 def test_path_equality():
@@ -170,3 +187,15 @@ def test_path_hashing():
     path_1 = Path(alice, alice_knows_bob, carol_dislikes_bob)
     path_2 = Path(alice, alice_knows_bob, carol_dislikes_bob)
     assert hash(path_1) == hash(path_2)
+
+
+def test_path_repr():
+    g = Graph()
+    gh = Graph.Hydrator(g)
+    alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"})
+    bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob"})
+    carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol"})
+    alice_knows_bob = gh.hydrate_relationship(1, alice.id, bob.id, "KNOWS", {"since": 1999})
+    carol_dislikes_bob = gh.hydrate_relationship(2, carol.id, bob.id, "DISLIKES", {})
+    path = Path(alice, alice_knows_bob, carol_dislikes_bob)
+    assert repr(path) == "<Path start=<Node id=1 labels=frozenset({'Person'}) properties={'name': 'Alice'}> end=<Node id=3 labels=frozenset({'Person'}) properties={'name': 'Carol'}> size=2>"
