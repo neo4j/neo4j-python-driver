@@ -76,8 +76,8 @@ class Bolt4x0(Bolt):
     #: The pool of which this connection is a member
     pool = None
 
-    def __init__(self, unresolved_address, sock, *, auth=None, **config):
-        self.config = PoolConfig.consume(config)
+    def __init__(self, unresolved_address, sock, max_connection_lifetime, *, auth=None, user_agent=None):
+        #self.pool_config = PoolConfig.consume(pool_config)
         self.unresolved_address = unresolved_address
         self.socket = sock
         self.server = ServerInfo(Address(sock.getpeername()), Bolt4x0.PROTOCOL_VERSION)
@@ -86,11 +86,11 @@ class Bolt4x0(Bolt):
         self.packer = Packer(self.outbox)
         self.unpacker = Unpacker(self.inbox)
         self.responses = deque()
-        self._max_connection_lifetime = self.config.max_connection_lifetime
+        self._max_connection_lifetime = max_connection_lifetime  # self.pool_config.max_connection_lifetime
         self._creation_timestamp = perf_counter()
 
         # Determine the user agent
-        user_agent = self.config.user_agent
+        # user_agent = self.pool_config.user_agent
         if user_agent:
             self.user_agent = user_agent
         else:
@@ -144,8 +144,7 @@ class Bolt4x0(Bolt):
         self.send_all()
         self.fetch_all()
 
-    def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None,
-            timeout=None, db=None, **handlers):
+    def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
         if not parameters:
             parameters = {}
         extra = {}

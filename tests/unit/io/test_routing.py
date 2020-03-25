@@ -45,10 +45,6 @@ VALID_ROUTING_RECORD_WITH_EXTRA_ROLE = {
 }
 
 
-def opener(address, error_handler):
-    return Bolt.open(address, error_handler=error_handler, auth=("neotest", "neotest"))
-
-
 class OrderedSetTestCase(TestCase):
     def test_should_repr_as_set(self):
         s = OrderedSet([1, 2, 3])

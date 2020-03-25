@@ -2,7 +2,7 @@
 !: AUTO HELLO
 !: AUTO GOODBYE
 
-C: RUN "CALL dbms.cluster.routing.getRoutingTable($context)" {"context": {}} {}
+C: RUN "CALL dbms.routing.getRoutingTable($context)" {"context": {}} {"mode": "r", "db": "system"}
    PULL {"n": -1}
 S: FAILURE {"code": "Neo.ClientError.Procedure.ProcedureNotFound", "message": "Not a router"}
    IGNORED

@@ -25,7 +25,11 @@ from threading import (
     Thread,
     Event,
 )
-from neo4j import PoolConfig
+from neo4j import (
+    Config,
+    PoolConfig,
+    WorkspaceConfig,
+)
 from neo4j.io import (
     Bolt,
     BoltPool,
@@ -76,14 +80,14 @@ class QuickConnection:
 class FakeBoltPool(IOPool):
 
     def __init__(self, address, *, auth=None, **config):
-        self.config = PoolConfig._consume(config)
+        self.pool_config, self.workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         if config:
             raise ValueError("Unexpected config keys: %s" % ", ".join(config.keys()))
 
         def opener(addr, timeout):
             return QuickConnection(FakeSocket(addr))
 
-        super().__init__(opener, self.config)
+        super().__init__(opener, self.pool_config, self.workspace_config)
         self.address = address
 
     def acquire(self, access_mode=None, timeout=None):

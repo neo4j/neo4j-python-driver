@@ -4,7 +4,7 @@
 !: AUTO RESET
 !: PORT 9001
 
-C: RUN "CALL dbms.cluster.routing.getRoutingTable($context)" {"context": {}} {}
+C: RUN "CALL dbms.routing.getRoutingTable($context)" {"context": {}} {"mode": "r", "db": "system"}
    PULL {"n": -1}
 S: SUCCESS {"fields": ["ttl", "servers"]}
    RECORD [302, [{"role":"ROUTE", "addresses":["127.0.0.1:9001", "127.0.0.1:9002"]}, {"role":"READ", "addresses":["127.0.0.1:9002"]}, {"role":"WRITE", "addresses":["127.0.0.1:9001"]}]]

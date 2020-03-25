@@ -325,7 +325,7 @@ class BoltDriver(Direct, Driver):
         from neo4j.io import BoltPool
         address = cls.parse_target(target)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
-        pool = BoltPool.open(address, auth=auth, **pool_config)
+        pool = BoltPool.open(address, auth=auth, pool_config=pool_config, workspace_config=default_workspace_config)
         return cls(pool, default_workspace_config)
 
     def __init__(self, pool, default_workspace_config):
@@ -368,7 +368,7 @@ class Neo4jDriver(Routing, Driver):
         from neo4j.io import Neo4jPool
         addresses = cls.parse_targets(*targets)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
-        pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, **pool_config)
+        pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, pool_config=pool_config, workspace_config=default_workspace_config)
         return cls(pool, default_workspace_config)
 
     def __init__(self, pool, default_workspace_config):
