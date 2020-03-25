@@ -134,10 +134,6 @@ class GraphDatabase:
             URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
             URI_SCHEME_NEO4J_SECURE,
         )
-        from neo4j.conf import (
-            TRUST_ALL_CERTIFICATES,
-            TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
-        )
 
         driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
@@ -381,7 +377,6 @@ class Neo4jDriver(Routing, Driver):
         self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
-        from neo4j.work.simple import Session
         session_config = SessionConfig(self._default_workspace_config, config)
         SessionConfig.consume(config)  # Consume the config
         return Session(self._pool, session_config)
