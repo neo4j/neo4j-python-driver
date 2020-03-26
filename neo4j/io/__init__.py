@@ -573,7 +573,7 @@ class Neo4jPool(IOPool):
 
         try:
             with self._acquire(address, timeout) as cx:
-                _, _, server_version = (cx.server.agent or "").partition("/")
+                _, _, server_version = (cx.server_info.agent or "").partition("/")
                 log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
 
                 if database is None:
@@ -582,7 +582,7 @@ class Neo4jPool(IOPool):
                 if cx.PROTOCOL_VERSION == Bolt3.PROTOCOL_VERSION:
                     if database != DEFAULT_DATABASE:
                         raise ConfigurationError("Database name parameter for selecting database is not supported in Bolt Protocol {!r}. Database name {!r}. Server Agent {!r}.".format(
-                                Bolt3.PROTOCOL_VERSION, database, cx.server.agent))
+                                Bolt3.PROTOCOL_VERSION, database, cx.server_info.agent))
                     cx.run(
                         "CALL dbms.cluster.routing.getRoutingTable($context)",  # This is an internal procedure call. Only available if the Neo4j 3.5 is setup with clustering.
                         {"context": self.routing_context},

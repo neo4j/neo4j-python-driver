@@ -160,7 +160,7 @@ class Session(Workspace):
             self._connect(self._config.default_access_mode)
         cx = self._connection
         protocol_version = cx.PROTOCOL_VERSION
-        server = cx.server
+        server_info = cx.server_info
 
         has_transaction = self.has_transaction()
 
@@ -176,7 +176,7 @@ class Session(Workspace):
         result_metadata = {
             "query": query_text,
             "parameters": parameters,
-            "server": server,
+            "server": server_info,
             "protocol_version": protocol_version,
         }
         run_metadata = {

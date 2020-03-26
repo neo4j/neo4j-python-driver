@@ -62,7 +62,7 @@ class Bolt3(Bolt):
     PROTOCOL_VERSION = Version(3, 0)
 
     #: Server details for this connection
-    server = None
+    server_info = None
 
     # The socket
     in_use = False
@@ -80,7 +80,7 @@ class Bolt3(Bolt):
         # self.pool_config = PoolConfig.consume(pool_config)
         self.unresolved_address = unresolved_address
         self.socket = sock
-        self.server = ServerInfo(Address(sock.getpeername()), Bolt3.PROTOCOL_VERSION)
+        self.server_info = ServerInfo(Address(sock.getpeername()), Bolt3.PROTOCOL_VERSION)
         self.outbox = Outbox()
         self.inbox = Inbox(self.socket, on_error=self._set_defunct)
         self.packer = Packer(self.outbox)
@@ -140,7 +140,7 @@ class Bolt3(Bolt):
             logged_headers["credentials"] = "*******"
         log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
         self._append(b"\x01", (headers,),
-                     response=InitResponse(self, on_success=self.server.metadata.update))
+                     response=InitResponse(self, on_success=self.server_info.metadata.update))
         self.send_all()
         self.fetch_all()
 
@@ -259,11 +259,11 @@ class Bolt3(Bolt):
         """
         if self.closed():
             raise ServiceUnavailable("Failed to write to closed connection {!r} ({!r})".format(
-                self.unresolved_address, self.server.address))
+                self.unresolved_address, self.server_info.address))
 
         if self.defunct():
             raise ServiceUnavailable("Failed to write to defunct connection {!r} ({!r})".format(
-                self.unresolved_address, self.server.address))
+                self.unresolved_address, self.server_info.address))
 
         try:
             self._send_all()
@@ -271,7 +271,7 @@ class Bolt3(Bolt):
             log.error("Failed to write data to connection "
                       "{!r} ({!r}); ({!r})".
                       format(self.unresolved_address,
-                             self.server.address,
+                             self.server_info.address,
                              "; ".join(map(repr, error.args))))
             if self.pool:
                 self.pool.deactivate(self.unresolved_address)
@@ -285,11 +285,11 @@ class Bolt3(Bolt):
         """
         if self._closed:
             raise ServiceUnavailable("Failed to read from closed connection {!r} ({!r})".format(
-                self.unresolved_address, self.server.address))
+                self.unresolved_address, self.server_info.address))
 
         if self._defunct:
             raise ServiceUnavailable("Failed to read from defunct connection {!r} ({!r})".format(
-                self.unresolved_address, self.server.address))
+                self.unresolved_address, self.server_info.address))
 
         if not self.responses:
             return 0, 0
@@ -301,7 +301,7 @@ class Bolt3(Bolt):
             log.error("Failed to read data from connection "
                       "{!r} ({!r}); ({!r})".
                       format(self.unresolved_address,
-                             self.server.address,
+                             self.server_info.address,
                              "; ".join(map(repr, error.args))))
             if self.pool:
                 self.pool.deactivate(self.unresolved_address)
@@ -343,7 +343,7 @@ class Bolt3(Bolt):
         direct_driver = isinstance(self.pool, BoltPool)
 
         message = ("Failed to read from defunct connection {!r} ({!r})".format(
-            self.unresolved_address, self.server.address))
+            self.unresolved_address, self.server_info.address))
 
         log.error(message)
         # We were attempting to receive data but the connection
