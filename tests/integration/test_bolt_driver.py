@@ -51,20 +51,6 @@ def test_bolt_uri(bolt_uri, auth):
 #             assert value == 1
 
 
-def test_neo4j_uri(neo4j_uri, auth):
-    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_neo4j_uri
-    try:
-        with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
-            with driver.session() as session:
-                value = session.run("RETURN 1").single().value()
-                assert value == 1
-    except ServiceUnavailable as error:
-        if error.args[0] == "Server does not support routing":
-            pytest.skip(error.args[0])
-        elif isinstance(error.__cause__, BoltHandshakeError):
-            pytest.skip(error.args[0])
-
-
 def test_normal_use_case(bolt_driver):
     # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_normal_use_case
     session = bolt_driver.session()
