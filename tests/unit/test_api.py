@@ -245,7 +245,7 @@ def test_bookmark_initialization_with_invalid_strings(test_input, expected):
         (("3",), "3", "Version('3',)"),
         (("3", "0"), "3.0", "Version('3', '0')"),
         ((3,), "3", "Version(3,)"),
-        ((3,0), "3.0", "Version(3, 0)"),
+        ((3, 0), "3.0", "Version(3, 0)"),
         ((3, 0, 0), "3.0.0", "Version(3, 0, 0)"),
         ((3, 0, 0, 0), "3.0.0.0", "Version(3, 0, 0, 0)"),
     ]
