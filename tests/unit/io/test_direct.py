@@ -41,9 +41,6 @@ class FakeSocket:
     def __init__(self, address):
         self.address = address
 
-    def setblocking(self, flag):
-        pass
-
     def getpeername(self):
         return self.address
 

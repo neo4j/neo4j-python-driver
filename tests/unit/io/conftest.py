@@ -31,9 +31,6 @@ class FakeSocket:
         self.captured = b""
         self.messages = MessageInbox(self, on_error=print)
 
-    def setblocking(self, flag):
-        pass
-
     def getsockname(self):
         return "127.0.0.1", 0xFFFF
 
