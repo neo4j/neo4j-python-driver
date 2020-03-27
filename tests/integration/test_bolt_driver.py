@@ -21,7 +21,11 @@
 
 import pytest
 
-from neo4j import GraphDatabase
+from neo4j import (
+    GraphDatabase,
+    BoltDriver,
+    Version,
+)
 from neo4j.exceptions import (
     ServiceUnavailable,
     AuthError,
@@ -115,3 +119,23 @@ def test_should_fail_on_incorrect_password(bolt_uri):
         except ServiceUnavailable as error:
             if isinstance(error.__cause__, BoltHandshakeError):
                 pytest.skip(error.args[0])
+
+
+def test_supports_multi_db(bolt_uri, auth):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_supports_multi_db
+    driver = GraphDatabase.driver(bolt_uri, auth=auth)
+    assert isinstance(driver, BoltDriver)
+
+    with driver.session() as session:
+        result = session.run("RETURN 1")
+        value = result.single().value()  # Consumes the result
+        summary = result.summary()
+        server_info = summary.server
+
+    result = driver.supports_multi_db()
+    driver.close()
+
+    if server_info.version_info() >= Version(4, 0, 0) and server_info.protocol_version >= Version(4, 0):
+        assert result is True
+    else:
+        assert result is False

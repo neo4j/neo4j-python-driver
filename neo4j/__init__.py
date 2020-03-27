@@ -310,6 +310,23 @@ class Driver:
         """
         raise NotImplementedError
 
+    def supports_multi_db(self):
+        """ Check if the server or cluster supports multi-databases.
+        :return: Returns true if the server or cluster the driver connects to supports multi-databases, otherwise false.
+        :rtype: bool
+        """
+        from neo4j.io._bolt4x0 import Bolt4x0
+
+        multi_database = False
+        cx = self._pool.acquire()
+
+        if cx.PROTOCOL_VERSION >= Bolt4x0.PROTOCOL_VERSION and cx.server_info.version_info() >= Version(4, 0, 0):
+            multi_database = True
+
+        self._pool.release(cx)
+
+        return multi_database
+
 
 class BoltDriver(Direct, Driver):
     """ A :class:`.BoltDriver` is created from a ``bolt`` URI and addresses

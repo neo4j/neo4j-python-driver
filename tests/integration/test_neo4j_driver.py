@@ -21,7 +21,11 @@
 
 import pytest
 
-from neo4j import GraphDatabase
+from neo4j import (
+    GraphDatabase,
+    Neo4jDriver,
+    Version,
+)
 from neo4j.exceptions import (
     ServiceUnavailable,
 )
@@ -45,3 +49,30 @@ def test_neo4j_uri(neo4j_uri, auth, target):
             pytest.skip(error.args[0])
         elif isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
+
+
+def test_supports_multi_db(neo4j_uri, auth, target):
+    # python -m pytest tests/integration/test_neo4j_driver.py -s -v -k test_supports_multi_db
+    try:
+        driver = GraphDatabase.driver(neo4j_uri, auth=auth)
+        assert isinstance(driver, Neo4jDriver)
+    except ServiceUnavailable as error:
+        if error.args[0] == "Server does not support routing":
+            # This is because a single instance Neo4j 3.5 does not have dbms.routing.cluster.getRoutingTable() call
+            pytest.skip(error.args[0])
+        elif isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+    with driver.session() as session:
+        result = session.run("RETURN 1")
+        value = result.single().value()   # Consumes the result
+        summary = result.summary()
+        server_info = summary.server
+
+    result = driver.supports_multi_db()
+    driver.close()
+
+    if server_info.version_info() >= Version(4, 0, 0) and server_info.protocol_version >= Version(4, 0):
+        assert result is True
+    else:
+        assert result is False
