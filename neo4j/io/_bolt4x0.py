@@ -61,9 +61,6 @@ class Bolt4x0(Bolt):
 
     PROTOCOL_VERSION = Version(4, 0)
 
-    #: Server details for this connection
-    server_info = None
-
     # The socket
     in_use = False
 
@@ -77,7 +74,6 @@ class Bolt4x0(Bolt):
     pool = None
 
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *, auth=None, user_agent=None):
-        #self.pool_config = PoolConfig.consume(pool_config)
         self.unresolved_address = unresolved_address
         self.socket = sock
         self.server_info = ServerInfo(Address(sock.getpeername()), Bolt4x0.PROTOCOL_VERSION)
@@ -90,7 +86,6 @@ class Bolt4x0(Bolt):
         self._creation_timestamp = perf_counter()
 
         # Determine the user agent
-        # user_agent = self.pool_config.user_agent
         if user_agent:
             self.user_agent = user_agent
         else:

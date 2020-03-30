@@ -107,8 +107,8 @@ def test_contains_time_information(session):
 def test_protocol_version_information(session):
     summary = session.run("UNWIND range(1,100) AS n RETURN n AS number").consume()
 
-    assert isinstance(summary.protocol_version, tuple)
-    assert isinstance(summary.protocol_version[0], int)
-    assert isinstance(summary.protocol_version[1], int)
+    assert isinstance(summary.server.protocol_version, tuple)
+    assert isinstance(summary.server.protocol_version[0], int)
+    assert isinstance(summary.server.protocol_version[1], int)
 
 

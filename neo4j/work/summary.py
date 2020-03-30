@@ -31,10 +31,7 @@ class ResultSummary:
     """ A summary of execution returned with a :class:`.Result` object.
     """
 
-    #: The version of Bolt protocol over which this result was obtained.
-    protocol_version = None
-
-    #: The server on which this result was generated.
+    #: Provides some basic information of the server where the result is obtained from. ServerInfo object.
     server = None
 
     #: The query that was executed to produce this result.
@@ -69,13 +66,12 @@ class ResultSummary:
 
     def __init__(self, **metadata):
         self.metadata = metadata
-        self.protocol_version = metadata.get("protocol_version")
         self.server = metadata.get("server")
         self.query = metadata.get("query")
         self.parameters = metadata.get("parameters")
         self.query_type = metadata.get("type")
         self.counters = SummaryCounters(metadata.get("stats", {}))
-        if self.protocol_version[0] < BOLT_VERSION_3:
+        if self.server.protocol_version[0] < BOLT_VERSION_3:
             self.result_available_after = metadata.get("result_available_after")
             self.result_consumed_after = metadata.get("result_consumed_after")
         else:

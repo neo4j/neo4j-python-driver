@@ -154,6 +154,7 @@ Argument Renaming Changes
 * :code:`Transaction.run(statement, ...` is now :code:`Transaction.run(query, ...`
 * :code:`StatementResultSummary.statement` is now :code:`ResultSummary.query`
 * :code:`StatementResultSummary.statement_type` is now :code:`ResultSummary.query_type`
+* :code:`StatementResultSummary.protocol_version` is now :code:`ResultSummary.server.protocol_version`
 
 
 Dependency Changes
