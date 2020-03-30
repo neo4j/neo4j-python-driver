@@ -8,4 +8,4 @@ C: RUN "CALL dbms.routing.getRoutingTable($context)" {"context": {"name": "molly
    PULL {"n": -1}
 S: SUCCESS {"fields": ["ttl", "servers"]}
    RECORD [302, [{"role":"ROUTE", "addresses":["127.0.0.1:9001", "127.0.0.1:9002"]}, {"role":"READ", "addresses":["127.0.0.1:9002"]}, {"role":"WRITE", "addresses":["127.0.0.1:9001"]}]]
-   SUCCESS {}
+   SUCCESS {"bookmark": "neo4j:bookmark-test-1", "type": "s", "t_last": 15, "db": "system"}
