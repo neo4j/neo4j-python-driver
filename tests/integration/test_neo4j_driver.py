@@ -74,5 +74,9 @@ def test_supports_multi_db(neo4j_uri, auth, target):
 
     if server_info.version_info() >= Version(4, 0, 0) and server_info.protocol_version >= Version(4, 0):
         assert result is True
+        assert summary.database == "neo4j"  # This is the default database name if not set explicitly on the Neo4j Server
+        assert summary.query_type == "r"
     else:
         assert result is False
+        assert summary.database is None
+        assert summary.query_type == "r"

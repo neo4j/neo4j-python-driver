@@ -31,8 +31,11 @@ class ResultSummary:
     """ A summary of execution returned with a :class:`.Result` object.
     """
 
-    #: Provides some basic information of the server where the result is obtained from. ServerInfo object.
+    #: A :class: `neo4j.ServerInfo` instance. Provides some basic information of the server where the result is obtained from.
     server = None
+
+    #: The database name where this summary is obtained from.
+    database = None
 
     #: The query that was executed to produce this result.
     query = None
@@ -43,10 +46,10 @@ class ResultSummary:
     #: The type of query (``'r'`` = read-only, ``'rw'`` = read/write).
     query_type = None
 
-    #: A set of statistical information held in a :class:`.Counters` instance.
+    #: A :class:`.Counters` instance. Counters for operations the query triggered.
     counters = None
 
-    #: A :class:`.Plan` instance
+    #: A :class:`.Plan` instance. This describes how the database will execute the query.
     plan = None
 
     #: A :class:`.ProfiledPlan` instance
@@ -58,6 +61,7 @@ class ResultSummary:
     #: The time it took for the server to consume the result. (milliseconds)
     result_consumed_after = None
 
+    #: A list of :class: `.Notification` instances
     #: Notifications provide extra information for a user executing a statement.
     #: They can be warnings about problematic queries or other valuable information that can be
     #: presented in a client.
@@ -67,6 +71,7 @@ class ResultSummary:
     def __init__(self, **metadata):
         self.metadata = metadata
         self.server = metadata.get("server")
+        self.database = metadata.get("db")
         self.query = metadata.get("query")
         self.parameters = metadata.get("parameters")
         self.query_type = metadata.get("type")
