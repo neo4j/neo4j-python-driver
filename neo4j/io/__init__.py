@@ -554,6 +554,23 @@ class Neo4jPool(IOPool):
         :raise ServiceUnavailable: if the server does not support routing or
                                    if routing support is broken
         """
+
+        # The name of system database is fixed and named as "system".
+        # It cannot be changed for a single instance or a cluster. (We can reliably assume that the system db exists on each instance.)
+        #
+        # Database name is NOT case sensitive.
+        #
+        # Each cluster member will host the exact same databases. For example, if a cluster member A has databases "foo" and
+        # "system", then all other members in the cluster should also have and only have "foo" and "system".
+        # However at a certain time, the cluster members may or may not up-to-date, as a result, cluster members may contain different databases.
+        #
+        # Maintain a routing table for each database.
+        #
+        # Default database is named "neo4j", (this can be renamed on the Neo4j server).
+        #
+        # Any core member in a cluster can provide a routing table for any database inside the cluster.
+        # The seed_url can be used to find all databases in the cluster.
+
         from neo4j.io._bolt3 import Bolt3
         from neo4j.io._bolt4x0 import Bolt4x0
         from neo4j.api import (
