@@ -25,6 +25,8 @@ from struct import pack as struct_pack
 from time import perf_counter
 from neo4j.api import (
     Version,
+    READ_ACCESS,
+    WRITE_ACCESS,
 )
 from neo4j.io._courier import MessageInbox
 from neo4j.meta import get_user_agent
@@ -36,6 +38,7 @@ from neo4j.exceptions import (
     NotALeader,
     ForbiddenOnReadOnlyDatabase,
     SessionExpired,
+    ConfigurationError,
 )
 from neo4j._exceptions import (
     BoltIncompleteCommitError,
@@ -141,12 +144,12 @@ class Bolt3(Bolt):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
         if db is not None:
-            raise ValueError("Database selection is not supported in Bolt 3")
+            raise ConfigurationError("Database name parameter for selecting database is not supported in Bolt Protocol {!r}. Database name {!r}.".format(Bolt3.PROTOCOL_VERSION, db))
         if not parameters:
             parameters = {}
         extra = {}
-        if mode:
-            extra["mode"] = mode
+        if mode in (READ_ACCESS, "r"):
+            extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
@@ -185,13 +188,12 @@ class Bolt3(Bolt):
         log.debug("[#%04X]  C: PULL_ALL", self.local_port)
         self._append(b"\x3F", (), Response(self, **handlers))
 
-    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, **handlers):
+    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
         if db is not None:
-            raise ValueError("Database selection is not supported in Bolt 3")
+            raise ConfigurationError("Database name parameter for selecting database is not supported in Bolt Protocol {!r}. Database name {!r}.".format(Bolt3.PROTOCOL_VERSION, db))
         extra = {}
-        if mode:
-            extra["mode"] = mode
+        if mode in (READ_ACCESS, "r"):
+            extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)

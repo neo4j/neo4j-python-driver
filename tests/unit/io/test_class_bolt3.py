@@ -23,6 +23,11 @@ import pytest
 
 from neo4j.io._bolt3 import Bolt3
 from neo4j.conf import PoolConfig
+from neo4j.exceptions import (
+    ConfigurationError,
+)
+
+# python -m pytest tests/unit/io/test_class_bolt3.py -s -v
 
 
 def test_conn_timed_out(fake_socket):
@@ -49,14 +54,14 @@ def test_conn_not_timed_out(fake_socket):
 def test_db_extra_not_supported_in_begin(fake_socket):
     address = ("127.0.0.1", 7687)
     connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
-    with pytest.raises(ValueError):
+    with pytest.raises(ConfigurationError):
         connection.begin(db="something")
 
 
 def test_db_extra_not_supported_in_run(fake_socket):
     address = ("127.0.0.1", 7687)
     connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
-    with pytest.raises(ValueError):
+    with pytest.raises(ConfigurationError):
         connection.run("", db="something")
 
 

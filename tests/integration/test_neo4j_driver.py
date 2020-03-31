@@ -28,6 +28,8 @@ from neo4j import (
 )
 from neo4j.exceptions import (
     ServiceUnavailable,
+    ConfigurationError,
+    ClientError,
 )
 from neo4j._exceptions import (
     BoltHandshakeError,
@@ -80,3 +82,22 @@ def test_supports_multi_db(neo4j_uri, auth, target):
         assert result is False
         assert summary.database is None
         assert summary.query_type == "r"
+
+
+def test_test_multi_db_specify_database(neo4j_uri, auth, target):
+    # python -m pytest tests/integration/test_neo4j_driver.py -s -v -k test_test_multi_db_specify_database
+    try:
+        with GraphDatabase.driver(neo4j_uri, auth=auth, database="test_database") as driver:
+            with driver.session() as session:
+                result = session.run("RETURN 1")
+                assert next(result) == 1
+                summary = result.summary()
+                assert summary.database == "test_database"
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+    except ConfigurationError as error:
+        assert "Database name parameter for selecting database is not supported in Bolt Protocol Version(3, 0)." in error.args[0]
+    except ClientError as error:
+        # FAILURE {'code': 'Neo.ClientError.Database.DatabaseNotFound' - This message is sent from the server
+        assert error.args[0] == "Unable to get a routing table for database 'test_database' because this database does not exist"

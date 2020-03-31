@@ -35,6 +35,7 @@ from neo4j import (
     BoltDriver,
     Query,
     WRITE_ACCESS,
+    READ_ACCESS,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
@@ -57,7 +58,7 @@ driver_config = {
 
 
 session_config = {
-    "default_access_mode": WRITE_ACCESS,
+    "default_access_mode": READ_ACCESS,
     "connection_acquisition_timeout": 1.0,
     "max_retry_time": 1.0,
     "initial_retry_delay": 1.0,
@@ -124,7 +125,7 @@ def test_direct_verify_connectivity(driver_info, test_script, test_expected):
         uri = "bolt://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
             assert isinstance(driver, BoltDriver)
-            assert driver.verify_connectivity() == test_expected
+            assert driver.verify_connectivity(default_access_mode=READ_ACCESS) == test_expected
 
 
 @pytest.mark.parametrize(
@@ -140,7 +141,7 @@ def test_direct_verify_connectivity_disconnect_on_run(driver_info, test_script):
         uri = "bolt://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
             with pytest.raises(ServiceUnavailable):
-                driver.verify_connectivity()
+                driver.verify_connectivity(default_access_mode=READ_ACCESS)
 
 
 @pytest.mark.parametrize(

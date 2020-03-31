@@ -4,12 +4,12 @@
 !: AUTO RESET
 !: PORT 9004
 
-C: BEGIN {"bookmarks": ["bookmark:0", "bookmark:1"]}
+C: BEGIN {"bookmarks": ["bookmark:0", "bookmark:1"], "mode": "r"}
 S: SUCCESS {}
 C: COMMIT
 S: SUCCESS {"bookmark": "bookmark:2"}
 
-C: BEGIN {"bookmarks": ["bookmark:2"]}
+C: BEGIN {"bookmarks": ["bookmark:2"], "mode": "r"}
 S: SUCCESS {}
 C: COMMIT
 S: SUCCESS {"bookmark": "bookmark:3"}

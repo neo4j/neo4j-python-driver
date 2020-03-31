@@ -25,6 +25,8 @@ from struct import pack as struct_pack
 from time import perf_counter
 from neo4j.api import (
     Version,
+    READ_ACCESS,
+    WRITE_ACCESS,
 )
 from neo4j.io._courier import MessageInbox
 from neo4j.meta import get_user_agent
@@ -143,8 +145,8 @@ class Bolt4x0(Bolt):
         if not parameters:
             parameters = {}
         extra = {}
-        if mode:
-            extra["mode"] = mode
+        if mode in (READ_ACCESS, "r"):
+            extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
         if db:
             extra["db"] = db
         if bookmarks:
@@ -186,8 +188,8 @@ class Bolt4x0(Bolt):
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
               db=None, **handlers):
         extra = {}
-        if mode:
-            extra["mode"] = mode
+        if mode in (READ_ACCESS, "r"):
+            extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
         if db:
             extra["db"] = db
         if bookmarks:

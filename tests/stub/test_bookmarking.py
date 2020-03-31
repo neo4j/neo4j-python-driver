@@ -91,8 +91,7 @@ def test_should_automatically_chain_bookmarks(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session(default_access_mode=READ_ACCESS,
-                                bookmarks=["bookmark:0", "bookmark:1"]) as session:
+            with driver.session(default_access_mode=READ_ACCESS, bookmarks=["bookmark:0", "bookmark:1"]) as session:
                 with session.begin_transaction():
                     pass
                 assert session.last_bookmark() == "bookmark:2"
@@ -113,8 +112,7 @@ def test_autocommit_transaction_included_in_chain(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session(default_access_mode=READ_ACCESS,
-                                bookmarks=["bookmark:1"]) as session:
+            with driver.session(default_access_mode=READ_ACCESS, bookmarks=["bookmark:1"]) as session:
                 with session.begin_transaction():
                     pass
                 assert session.last_bookmark() == "bookmark:2"

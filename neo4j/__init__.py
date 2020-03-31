@@ -339,6 +339,14 @@ class BoltDriver(Direct, Driver):
 
     @classmethod
     def open(cls, target, *, auth=None, **config):
+        """
+        :param target:
+        :param auth:
+        :param config: The values that can be specified are found in PoolConfig and WorkspaceConfig.
+
+        :return:
+        :rtype: neo4j.BoltDriver
+        """
         from neo4j.io import BoltPool
         address = cls.parse_target(target)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
@@ -351,6 +359,12 @@ class BoltDriver(Direct, Driver):
         self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
+        """
+        :param config: The values that can be specified are found in SessionConfig.
+
+        :return:
+        :rtype: neo4j.Session
+        """
         from neo4j.work.simple import Session
         session_config = SessionConfig(self._default_workspace_config, config)
         SessionConfig.consume(config)  # Consume the config

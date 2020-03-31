@@ -4,7 +4,7 @@
 !: AUTO RESET
 !: PORT 9002
 
-C: RUN "RETURN 1 AS x" {} {}
+C: RUN "RETURN 1 AS x" {} {"mode": "r"}
    PULL {"n": -1}
 S: SUCCESS {"fields": ["x"]}
    RECORD [1]

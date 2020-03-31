@@ -586,6 +586,7 @@ class Neo4jPool(IOPool):
                     cx.run(
                         "CALL dbms.cluster.routing.getRoutingTable($context)",  # This is an internal procedure call. Only available if the Neo4j 3.5 is setup with clustering.
                         {"context": self.routing_context},
+                        mode="r",  # Bolt Protocol Version(3, 0) supports mode
                         on_success=metadata.update,
                         on_failure=fail,
                     )

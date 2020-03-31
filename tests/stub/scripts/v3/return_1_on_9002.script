@@ -4,7 +4,7 @@
 !: AUTO RESET
 !: PORT 9002
 
-C: RUN "RETURN $x" {"x": 1} {}
+C: RUN "RETURN $x" {"x": 1} {"mode": "r"}
    PULL_ALL
 S: SUCCESS {"fields": ["x"]}
    RECORD [1]

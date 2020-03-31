@@ -30,6 +30,7 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     AuthError,
     ConfigurationError,
+    ClientError,
 )
 from neo4j._exceptions import BoltHandshakeError
 
@@ -137,5 +138,28 @@ def test_supports_multi_db(bolt_uri, auth):
 
     if server_info.version_info() >= Version(4, 0, 0) and server_info.protocol_version >= Version(4, 0):
         assert result is True
+        assert summary.database == "neo4j"  # This is the default database name if not set explicitly on the Neo4j Server
+        assert summary.query_type == "r"
     else:
         assert result is False
+        assert summary.database is None
+        assert summary.query_type == "r"
+
+
+def test_test_multi_db_specify_database(bolt_uri, auth):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_test_multi_db_specify_database
+    try:
+        with GraphDatabase.driver(bolt_uri, auth=auth, database="test_database") as driver:
+            with driver.session() as session:
+                result = session.run("RETURN 1")
+                assert next(result) == 1
+                summary = result.summary()
+                assert summary.database == "test_database"
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+    except ConfigurationError as error:
+        assert "Database name parameter for selecting database is not supported in Bolt Protocol Version(3, 0)" in error.args[0]
+    except ClientError as error:
+        # FAILURE {'code': 'Neo.ClientError.Database.DatabaseNotFound' - This message is sent from the server
+        assert error.args[0] == "Database does not exist. Database name: 'test_database'."
