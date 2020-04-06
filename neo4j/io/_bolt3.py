@@ -325,11 +325,11 @@ class Bolt3(Bolt):
                 response.on_failure(summary_metadata or {})
             except (ServiceUnavailable, DatabaseUnavailable):
                 if self.pool:
-                    self.pool.deactivate(self.unresolved_address),
+                    self.pool.deactivate(address=self.unresolved_address),
                 raise
             except (NotALeader, ForbiddenOnReadOnlyDatabase):
                 if self.pool:
-                    self.pool.on_write_failure(self.unresolved_address),
+                    self.pool.on_write_failure(address=self.unresolved_address),
                 raise
         else:
             raise BoltProtocolError("Unexpected response message with signature %02X" % summary_signature, address=self.unresolved_address)
@@ -350,7 +350,7 @@ class Bolt3(Bolt):
         self._defunct = True
         self.close()
         if self.pool:
-            self.pool.deactivate(self.unresolved_address)
+            self.pool.deactivate(address=self.unresolved_address)
         # Iterate through the outstanding responses, and if any correspond
         # to COMMIT requests then raise an error to signal that we are
         # unable to confirm that the COMMIT completed successfully.

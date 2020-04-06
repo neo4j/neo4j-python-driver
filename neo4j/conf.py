@@ -304,7 +304,7 @@ class SessionConfig(WorkspaceConfig):
     #: Bookmarks
     bookmarks = ()
 
-    # Default AccessMode
+    #: Default AccessMode
     default_access_mode = WRITE_ACCESS
     # access_mode = DeprecatedAlias("default_access_mode")
 
@@ -322,3 +322,18 @@ class TransactionConfig(Config):
 
     #: Timeout
     timeout = None  # seconds
+
+
+class RoutingConfig(Config):
+    """ Neo4jDriver routing settings. This is internal for now.
+    """
+
+    #: Routing Table Purge_Delay
+    routing_table_purge_delay = 30.0  # seconds
+    # The TTL + routing_table_purge_delay should be used to check if the database routing table should be removed.
+
+    #: Max Routing Failures
+    # max_routing_failures = 1
+
+    #: Retry Timeout Delay
+    # retry_timeout_delay = 5.0  # seconds

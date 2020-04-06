@@ -25,7 +25,9 @@ from time import sleep
 
 from neo4j.work import Workspace
 from neo4j.conf import WorkspaceConfig
-
+from neo4j.api import (
+    WRITE_ACCESS,
+)
 
 class PipelineConfig(WorkspaceConfig):
 
@@ -38,7 +40,7 @@ class Pipeline(Workspace):
     def __init__(self, pool, config):
         assert isinstance(config, PipelineConfig)
         super(Pipeline, self).__init__(pool, config)
-        self._connect("WRITE")
+        self._connect(WRITE_ACCESS)
         self._flush_every = config.flush_every
         self._data = deque()
         self._pull_lock = Lock()

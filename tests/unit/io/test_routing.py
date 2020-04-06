@@ -21,9 +21,17 @@
 
 from unittest import TestCase
 
-from neo4j.io import Bolt, Neo4jPool
-from neo4j.routing import OrderedSet, RoutingTable
-
+from neo4j.io import (
+    Bolt,
+    Neo4jPool,
+)
+from neo4j.routing import (
+    OrderedSet,
+    RoutingTable,
+)
+from neo4j.api import (
+    DEFAULT_DATABASE,
+)
 
 VALID_ROUTING_RECORD = {
     "ttl": 300,
@@ -125,23 +133,29 @@ class OrderedSetTestCase(TestCase):
 
 class RoutingTableConstructionTestCase(TestCase):
     def test_should_be_initially_stale(self):
-        table = RoutingTable()
+        table = RoutingTable(database=DEFAULT_DATABASE)
         assert not table.is_fresh(readonly=True)
         assert not table.is_fresh(readonly=False)
 
 
 class RoutingTableParseRoutingInfoTestCase(TestCase):
     def test_should_return_routing_table_on_valid_record(self):
-        table = RoutingTable.parse_routing_info(VALID_ROUTING_RECORD["servers"],
-                                                VALID_ROUTING_RECORD["ttl"])
+        table = RoutingTable.parse_routing_info(
+            database=DEFAULT_DATABASE,
+            servers=VALID_ROUTING_RECORD["servers"],
+            ttl=VALID_ROUTING_RECORD["ttl"],
+        )
         assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
         assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
         assert table.writers == {('127.0.0.1', 9006)}
         assert table.ttl == 300
 
     def test_should_return_routing_table_on_valid_record_with_extra_role(self):
-        table = RoutingTable.parse_routing_info(VALID_ROUTING_RECORD_WITH_EXTRA_ROLE["servers"],
-                                                VALID_ROUTING_RECORD_WITH_EXTRA_ROLE["ttl"])
+        table = RoutingTable.parse_routing_info(
+            database=DEFAULT_DATABASE,
+            servers=VALID_ROUTING_RECORD_WITH_EXTRA_ROLE["servers"],
+            ttl=VALID_ROUTING_RECORD_WITH_EXTRA_ROLE["ttl"],
+        )
         assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
         assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
         assert table.writers == {('127.0.0.1', 9006)}
@@ -158,34 +172,50 @@ class RoutingTableServersTestCase(TestCase):
                 {"role": "WRITE", "addresses": ["127.0.0.1:9002"]},
             ],
         }
-        table = RoutingTable.parse_routing_info(routing_table["servers"], routing_table["ttl"])
+        table = RoutingTable.parse_routing_info(
+            database=DEFAULT_DATABASE,
+            servers=routing_table["servers"],
+            ttl=routing_table["ttl"],
+        )
         assert table.servers() == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003), ('127.0.0.1', 9005)}
 
 
 class RoutingTableFreshnessTestCase(TestCase):
     def test_should_be_fresh_after_update(self):
-        table = RoutingTable.parse_routing_info(VALID_ROUTING_RECORD["servers"],
-                                                VALID_ROUTING_RECORD["ttl"])
+        table = RoutingTable.parse_routing_info(
+            database=DEFAULT_DATABASE,
+            servers=VALID_ROUTING_RECORD["servers"],
+            ttl=VALID_ROUTING_RECORD["ttl"],
+        )
         assert table.is_fresh(readonly=True)
         assert table.is_fresh(readonly=False)
 
     def test_should_become_stale_on_expiry(self):
-        table = RoutingTable.parse_routing_info(VALID_ROUTING_RECORD["servers"],
-                                                VALID_ROUTING_RECORD["ttl"])
+        table = RoutingTable.parse_routing_info(
+            database=DEFAULT_DATABASE,
+            servers=VALID_ROUTING_RECORD["servers"],
+            ttl=VALID_ROUTING_RECORD["ttl"],
+        )
         table.ttl = 0
         assert not table.is_fresh(readonly=True)
         assert not table.is_fresh(readonly=False)
 
     def test_should_become_stale_if_no_readers(self):
-        table = RoutingTable.parse_routing_info(VALID_ROUTING_RECORD["servers"],
-                                                VALID_ROUTING_RECORD["ttl"])
+        table = RoutingTable.parse_routing_info(
+            database=DEFAULT_DATABASE,
+            servers=VALID_ROUTING_RECORD["servers"],
+            ttl=VALID_ROUTING_RECORD["ttl"],
+        )
         table.readers.clear()
         assert not table.is_fresh(readonly=True)
         assert table.is_fresh(readonly=False)
 
     def test_should_become_stale_if_no_writers(self):
-        table = RoutingTable.parse_routing_info(VALID_ROUTING_RECORD["servers"],
-                                                VALID_ROUTING_RECORD["ttl"])
+        table = RoutingTable.parse_routing_info(
+            database=DEFAULT_DATABASE,
+            servers=VALID_ROUTING_RECORD["servers"],
+            ttl=VALID_ROUTING_RECORD["ttl"],
+        )
         table.writers.clear()
         assert table.is_fresh(readonly=True)
         assert not table.is_fresh(readonly=False)
@@ -194,10 +224,19 @@ class RoutingTableFreshnessTestCase(TestCase):
 class RoutingTableUpdateTestCase(TestCase):
     def setUp(self):
         self.table = RoutingTable(
-            [("192.168.1.1", 7687), ("192.168.1.2", 7687)], [("192.168.1.3", 7687)], [], 0)
+            database=DEFAULT_DATABASE,
+            routers=[("192.168.1.1", 7687), ("192.168.1.2", 7687)],
+            readers=[("192.168.1.3", 7687)],
+            writers=[],
+            ttl=0,
+        )
         self.new_table = RoutingTable(
-            [("127.0.0.1", 9001), ("127.0.0.1", 9002), ("127.0.0.1", 9003)],
-            [("127.0.0.1", 9004), ("127.0.0.1", 9005)], [("127.0.0.1", 9006)], 300)
+            database=DEFAULT_DATABASE,
+            routers=[("127.0.0.1", 9001), ("127.0.0.1", 9002), ("127.0.0.1", 9003)],
+            readers=[("127.0.0.1", 9004), ("127.0.0.1", 9005)],
+            writers=[("127.0.0.1", 9006)],
+            ttl=300,
+        )
 
     def test_update_should_replace_routers(self):
         self.table.update(self.new_table)

@@ -97,7 +97,7 @@ class Session(Workspace):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _connect(self, access_mode):
+    def _connect(self, access_mode, database):
         if access_mode is None:
             access_mode = self._config.default_access_mode
         if self._connection:
@@ -105,7 +105,7 @@ class Session(Workspace):
             self._connection.send_all()
             self._connection.fetch_all()
             self._disconnect()
-        self._connection = self._pool.acquire(access_mode, timeout=self._config.connection_acquisition_timeout)
+        self._connection = self._pool.acquire(access_mode=access_mode, timeout=self._config.connection_acquisition_timeout, database=database)
 
     def _disconnect(self):
         if self._connection:
@@ -157,7 +157,7 @@ class Session(Workspace):
             raise TypeError("query must be a string or a Query instance")
 
         if not self._connection:
-            self._connect(self._config.default_access_mode)
+            self._connect(self._config.default_access_mode, database=self._config.database)
         cx = self._connection
         protocol_version = cx.PROTOCOL_VERSION
         server_info = cx.server_info
@@ -322,7 +322,7 @@ class Session(Workspace):
         :returns: A new transaction instance.
         :rtype: :class:`neo4j.Transaction`
 
-        :raise: :class:`neo4j.exceptions.TransactionError` if a transaction is already open.
+        :raises TransactionError: :class:`neo4j.exceptions.TransactionError` if a transaction is already open.
         """
         # TODO: Test and implement begin_transaction(bookmarks=["todo:implement:me"])
 
@@ -335,9 +335,9 @@ class Session(Workspace):
         self._open_transaction(access_mode=access_mode, database=database, metadata=metadata, timeout=timeout)
         return self._transaction
 
-    def _open_transaction(self, access_mode=None, database=None, metadata=None, timeout=None):
+    def _open_transaction(self, *, access_mode, database, metadata=None, timeout=None):
         self._transaction = Transaction(self, on_close=self._close_transaction)
-        self._connect(access_mode)
+        self._connect(access_mode=access_mode, database=database)
         # TODO: capture ValueError and surface as SessionError/TransactionError if
         self._connection.begin(bookmarks=self._bookmarks_in, metadata=metadata, timeout=timeout, mode=access_mode, db=database)
 
@@ -347,7 +347,7 @@ class Session(Workspace):
         :returns: the bookmark returned from the server, if any
         :rtype: :class: `neo4j.Bookmark`
 
-        :raise: :class:`neo4j.exceptions.TransactionError` if no transaction is currently open
+        :raises TransactionError: :class:`neo4j.exceptions.TransactionError` if no transaction is currently open
         """
         if not self._transaction:
             raise TransactionError("No transaction to commit")
@@ -399,7 +399,7 @@ class Session(Workspace):
         t0 = perf_counter()
         while True:
             try:
-                self._open_transaction(access_mode=access_mode, metadata=metadata, timeout=timeout)
+                self._open_transaction(access_mode=access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
                 tx = self._transaction
                 try:
                     result = unit_of_work(tx, *args, **kwargs)

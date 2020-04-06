@@ -26,6 +26,7 @@ from neo4j import (
     Neo4jDriver,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    DEFAULT_DATABASE,
 )
 from neo4j.api import (
     READ_ACCESS,
@@ -230,7 +231,7 @@ def test_should_discover_servers_on_driver_construction(driver_info, test_script
     with StubCluster(test_script):
         uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            table = driver._pool.routing_table
+            table = driver._pool.routing_tables[DEFAULT_DATABASE]
             assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002),
                                      ('127.0.0.1', 9003)}
             assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
@@ -564,7 +565,7 @@ def test_forgets_address_on_not_a_leader_error(driver_info, test_scripts, test_r
                     _ = session.run(*test_run_args)
 
                 pool = driver._pool
-                table = pool.routing_table
+                table = driver._pool.routing_tables[DEFAULT_DATABASE]
 
                 # address might still have connections in the pool, failed instance just can't serve writes
                 assert ('127.0.0.1', 9006) in pool.connections
@@ -591,7 +592,7 @@ def test_forgets_address_on_forbidden_on_read_only_database_error(driver_info, t
                     _ = session.run(*test_run_args)
 
                 pool = driver._pool
-                table = pool.routing_table
+                table = driver._pool.routing_tables[DEFAULT_DATABASE]
 
                 # address might still have connections in the pool, failed instance just can't serve writes
                 assert ('127.0.0.1', 9006) in pool.connections
@@ -616,7 +617,7 @@ def test_forgets_address_on_service_unavailable_error(driver_info, test_scripts,
             with driver.session(default_access_mode=READ_ACCESS) as session:
 
                 pool = driver._pool
-                table = pool.routing_table
+                table = driver._pool.routing_tables[DEFAULT_DATABASE]
                 table.readers.remove(('127.0.0.1', 9005))
 
                 with pytest.raises(SessionExpired):
@@ -651,7 +652,7 @@ def test_forgets_address_on_database_unavailable_error(driver_info, test_scripts
             with driver.session(default_access_mode=READ_ACCESS) as session:
 
                 pool = driver._pool
-                table = pool.routing_table
+                table = driver._pool.routing_tables[DEFAULT_DATABASE]
                 table.readers.remove(('127.0.0.1', 9005))
 
                 with pytest.raises(TransientError) as raised:
@@ -659,7 +660,7 @@ def test_forgets_address_on_database_unavailable_error(driver_info, test_scripts
                     assert raised.exception.title == "DatabaseUnavailable"
 
                 pool = driver._pool
-                table = pool.routing_table
+                table = driver._pool.routing_tables[DEFAULT_DATABASE]
 
                 # address should not have connections in the pool, it has failed
                 assert ('127.0.0.1', 9004) not in pool.connections

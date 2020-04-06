@@ -34,6 +34,9 @@ from neo4j.exceptions import (
 from neo4j._exceptions import (
     BoltHandshakeError,
 )
+from neo4j.conf import (
+    RoutingConfig,
+)
 
 # python -m pytest tests/integration/test_neo4j_driver.py -s -v
 
@@ -101,3 +104,221 @@ def test_test_multi_db_specify_database(neo4j_uri, auth, target):
     except ClientError as error:
         # FAILURE {'code': 'Neo.ClientError.Database.DatabaseNotFound' - This message is sent from the server
         assert error.args[0] == "Unable to get a routing table for database 'test_database' because this database does not exist"
+
+
+def test_neo4j_multi_database_support_create(neo4j_uri, auth, target):
+    # python -m pytest tests/integration/test_neo4j_driver.py -s -v -k test_neo4j_multi_database_support_create
+    try:
+        with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
+            with driver.session(database="system") as session:
+                session.run("DROP DATABASE test IF EXISTS").consume()
+                result = session.run("SHOW DATABASES")
+                databases = set()
+                for record in result:
+                    databases.add(record.get("name"))
+                assert databases == {"system", "neo4j"}
+
+                session.run("CREATE DATABASE test").consume()
+                result = session.run("SHOW DATABASES")
+                for record in result:
+                    databases.add(record.get("name"))
+                assert databases == {"system", "neo4j", "test"}
+            with driver.session(database="system") as session:
+                session.run("DROP DATABASE test IF EXISTS").consume()
+    except ServiceUnavailable as error:
+        if error.args[0] == "Server does not support routing":
+            # This is because a single instance Neo4j 3.5 does not have dbms.routing.cluster.getRoutingTable() call
+            pytest.skip(error.args[0])
+        elif isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+
+def test_neo4j_multi_database_support_different(neo4j_uri, auth, target):
+    # python -m pytest tests/integration/test_neo4j_driver.py -s -v -k test_neo4j_multi_database_support_different
+    try:
+        with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
+            with driver.session() as session:
+                # Test that default database is empty
+                session.run("MATCH (n) DETACH DELETE n").consume()
+                result = session.run("MATCH (p:Person) RETURN p")
+                names = set()
+                for ix in result:
+                    names.add(ix["p"].get("name"))
+                assert names == set()  # THIS FAILS?
+            with driver.session(database="system") as session:
+                session.run("DROP DATABASE testa IF EXISTS").consume()
+                session.run("DROP DATABASE testb IF EXISTS").consume()
+            with driver.session(database="system") as session:
+                result = session.run("SHOW DATABASES")
+                databases = set()
+                for record in result:
+                    databases.add(record.get("name"))
+                assert databases == {"system", "neo4j"}
+                result = session.run("CREATE DATABASE testa")
+                result.consume()
+                result = session.run("CREATE DATABASE testb")
+                result.consume()
+            with driver.session(database="testa") as session:
+                result = session.run('CREATE (p:Person {name: "ALICE"})')
+                result.consume()
+            with driver.session(database="testb") as session:
+                result = session.run('CREATE (p:Person {name: "BOB"})')
+                result.consume()
+            with driver.session() as session:
+                # Test that default database is still empty
+                result = session.run("MATCH (p:Person) RETURN p")
+                names = set()
+                for ix in result:
+                    names.add(ix["p"].get("name"))
+                assert names == set()  # THIS FAILS?
+            with driver.session(database="testa") as session:
+                result = session.run("MATCH (p:Person) RETURN p")
+                names = set()
+                for ix in result:
+                    names.add(ix["p"].get("name"))
+                assert names == {"ALICE", }
+            with driver.session(database="testb") as session:
+                result = session.run("MATCH (p:Person) RETURN p")
+                names = set()
+                for ix in result:
+                    names.add(ix["p"].get("name"))
+                assert names == {"BOB", }
+            with driver.session(database="system") as session:
+                session.run("DROP DATABASE testa IF EXISTS").consume()
+            with driver.session(database="system") as session:
+                session.run("DROP DATABASE testb IF EXISTS").consume()
+            with driver.session() as session:
+                session.run("MATCH (n) DETACH DELETE n").consume()
+    except ServiceUnavailable as error:
+        if error.args[0] == "Server does not support routing":
+            # This is because a single instance Neo4j 3.5 does not have dbms.routing.cluster.getRoutingTable() call
+            pytest.skip(error.args[0])
+        elif isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+
+def test_neo4j_multi_database_test_routing_table_creates_new_if_deleted(neo4j_uri, auth, target):
+    # python -m pytest tests/integration/test_neo4j_driver.py -s -v -k test_neo4j_multi_database_test_routing_table_creates_new_if_deleted
+    try:
+        with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
+            with driver.session(database="system") as session:
+                result = session.run("DROP DATABASE test IF EXISTS")
+                result.consume()
+                result = session.run("SHOW DATABASES")
+                databases = set()
+                for record in result:
+                    databases.add(record.get("name"))
+                assert databases == {"system", "neo4j"}
+
+                result = session.run("CREATE DATABASE test")
+                result.consume()
+                result = session.run("SHOW DATABASES")
+                for record in result:
+                    databases.add(record.get("name"))
+                assert databases == {"system", "neo4j", "test"}
+            with driver.session(database="test") as session:
+                result = session.run("RETURN 1 AS x")
+                result.consume()
+            del driver._pool.routing_tables["test"]
+            with driver.session(database="test") as session:
+                result = session.run("RETURN 1 AS x")
+                result.consume()
+            with driver.session(database="system") as session:
+                result = session.run("DROP DATABASE test IF EXISTS")
+                result.consume()
+    except ServiceUnavailable as error:
+        if error.args[0] == "Server does not support routing":
+            # This is because a single instance Neo4j 3.5 does not have dbms.routing.cluster.getRoutingTable() call
+            pytest.skip(error.args[0])
+        elif isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+
+def test_neo4j_multi_database_test_routing_table_updates_if_stale(neo4j_uri, auth, target):
+    # python -m pytest tests/integration/test_neo4j_driver.py -s -v -k test_neo4j_multi_database_test_routing_table_updates_if_stale
+    try:
+        with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
+            with driver.session(database="system") as session:
+                result = session.run("DROP DATABASE test IF EXISTS")
+                result.consume()
+                result = session.run("SHOW DATABASES")
+                databases = set()
+                for record in result:
+                    databases.add(record.get("name"))
+                assert databases == {"system", "neo4j"}
+
+                result = session.run("CREATE DATABASE test")
+                result.consume()
+                result = session.run("SHOW DATABASES")
+                for record in result:
+                    databases.add(record.get("name"))
+                assert databases == {"system", "neo4j", "test"}
+            with driver.session(database="test") as session:
+                result = session.run("RETURN 1 AS x")
+                result.consume()
+            driver._pool.routing_tables["test"].ttl = 0
+            old_value = driver._pool.routing_tables["test"].last_updated_time
+            with driver.session(database="test") as session:
+                result = session.run("RETURN 1 AS x")
+                result.consume()
+            with driver.session(database="system") as session:
+                result = session.run("DROP DATABASE test IF EXISTS")
+                result.consume()
+            assert driver._pool.routing_tables["test"].last_updated_time > old_value
+    except ServiceUnavailable as error:
+        if error.args[0] == "Server does not support routing":
+            # This is because a single instance Neo4j 3.5 does not have dbms.routing.cluster.getRoutingTable() call
+            pytest.skip(error.args[0])
+        elif isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+
+def test_neo4j_multi_database_test_routing_table_removes_aged(neo4j_uri, auth, target):
+    # python -m pytest tests/integration/test_neo4j_driver.py -s -v -k test_neo4j_multi_database_test_routing_table_removes_aged
+    try:
+        with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
+            with driver.session(database="system") as session:
+                result = session.run("DROP DATABASE testa IF EXISTS")
+                result.consume()
+                result = session.run("DROP DATABASE testb IF EXISTS")
+                result.consume()
+                result = session.run("SHOW DATABASES")
+                databases = set()
+                for record in result:
+                    databases.add(record.get("name"))
+                assert databases == {"system", "neo4j"}
+
+                result = session.run("CREATE DATABASE testa")
+                result.consume()
+                result = session.run("CREATE DATABASE testb")
+                result.consume()
+                result = session.run("SHOW DATABASES")
+                for record in result:
+                    databases.add(record.get("name"))
+                assert databases == {"system", "neo4j", "testa", "testb"}
+            with driver.session(database="testa") as session:
+                result = session.run("RETURN 1 AS x")
+                result.consume()
+            with driver.session(database="testb") as session:
+                result = session.run("RETURN 1 AS x")
+                result.consume()
+            driver._pool.routing_tables["testa"].ttl = 0
+            driver._pool.routing_tables["testb"].ttl = -1 * RoutingConfig.routing_table_purge_delay
+            old_value = driver._pool.routing_tables["testa"].last_updated_time
+            with driver.session(database="testa") as session:
+                # This will refresh the routing table for "testa" and the refresh will trigger a cleanup of aged routing tables
+                result = session.run("RETURN 1 AS x")
+                result.consume()
+            with driver.session(database="system") as session:
+                result = session.run("DROP DATABASE testa IF EXISTS")
+                result.consume()
+                result = session.run("DROP DATABASE testb IF EXISTS")
+                result.consume()
+            assert driver._pool.routing_tables["testa"].last_updated_time > old_value
+            assert "testb" not in driver._pool.routing_tables
+    except ServiceUnavailable as error:
+        if error.args[0] == "Server does not support routing":
+            # This is because a single instance Neo4j 3.5 does not have dbms.routing.cluster.getRoutingTable() call
+            pytest.skip(error.args[0])
+        elif isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
