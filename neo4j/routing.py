@@ -150,8 +150,8 @@ class RoutingTable:
         """
         return not self.is_fresh(readonly=False)
 
-    def aged(self):
-        """ Check if the routing table is old.
+    def should_be_purged_from_memory(self):
+        """ Check if the routing table is stale and not used for a long time and should be removed from memory.
 
         :return: Returns true if it is old and not used for a while.
         :rtype: bool

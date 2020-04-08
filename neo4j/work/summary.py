@@ -26,6 +26,8 @@ BOLT_VERSION_2 = 2
 BOLT_VERSION_3 = 3
 BOLT_VERSION_4 = 4
 
+# TODO: This logic should be inside the Bolt subclasses, because it can change depending on Bolt Protocol Version.
+
 
 class ResultSummary:
     """ A summary of execution returned with a :class:`.Result` object.

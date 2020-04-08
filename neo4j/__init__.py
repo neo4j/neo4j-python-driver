@@ -309,6 +309,7 @@ class Driver:
         """
         raise NotImplementedError
 
+    @experimental("Feature support query, based on Bolt Protocol Version and Neo4j Server Version will change in the future.")
     def supports_multi_db(self):
         """ Check if the server or cluster supports multi-databases.
 
@@ -320,6 +321,7 @@ class Driver:
         multi_database = False
         cx = self._pool.acquire(access_mode=READ_ACCESS, timeout=self._pool.workspace_config.connection_acquisition_timeout, database=self._pool.workspace_config.database)
 
+        # TODO: This logic should be inside the Bolt subclasses, because it can change depending on Bolt Protocol Version.
         if cx.PROTOCOL_VERSION >= Bolt4x0.PROTOCOL_VERSION and cx.server_info.version_info() >= Version(4, 0, 0):
             multi_database = True
 
@@ -417,14 +419,6 @@ class Neo4jDriver(Routing, Driver):
         pipeline_config = PipelineConfig(self._default_workspace_config, config)
         PipelineConfig.consume(config)  # Consume the config
         return Pipeline(self._pool, pipeline_config)
-
-    def get_routing_tables(self):
-        """ Get the connection pool routing tables.
-
-        :return: The routing table where the key is the database name.
-        :rtype: dict
-        """
-        return self._pool.routing_tables
 
     def verify_connectivity(self, **config):
         """

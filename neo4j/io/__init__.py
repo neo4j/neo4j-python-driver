@@ -637,6 +637,7 @@ class Neo4jPool(IOPool):
                 if database is None:
                     database = self.workspace_config.database
 
+                # TODO: This logic should be inside the Bolt subclasses, because it can change depending on Bolt Protocol Version.
                 if cx.PROTOCOL_VERSION == Bolt3.PROTOCOL_VERSION:
                     if database != DEFAULT_DATABASE:
                         raise ConfigurationError("Database name parameter for selecting database is not supported in Bolt Protocol {!r}. Database name {!r}. Server Agent {!r}.".format(
@@ -800,7 +801,7 @@ class Neo4jPool(IOPool):
                 # Remove unused databases in the routing table
                 # Remove the routing table after a timeout = TTL + 30s
                 log.debug("[#0000]  C: <ROUTING AGED> database=%s", database)
-                if self.routing_tables[database].aged() and database != self.workspace_config.database:
+                if self.routing_tables[database].should_be_purged_from_memory() and database != self.workspace_config.database:
                     del self.routing_tables[database]
 
             return True
