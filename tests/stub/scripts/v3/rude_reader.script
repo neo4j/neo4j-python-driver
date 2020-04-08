@@ -4,7 +4,7 @@
 !: AUTO RESET
 !: PORT 9004
 
-C: RUN "RETURN 1" {} {}
+C: RUN "RETURN 1" {} {"mode": "r"}
    PULL_ALL
 S: <EXIT>
 

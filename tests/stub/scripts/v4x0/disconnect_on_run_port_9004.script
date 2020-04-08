@@ -4,5 +4,5 @@
 !: AUTO RESET
 !: PORT 9004
 
-C: RUN "RETURN $x" {"x": 1} {}
+C: RUN "RETURN $x" {"x": 1} {"mode": "r"}
 S: <EXIT>

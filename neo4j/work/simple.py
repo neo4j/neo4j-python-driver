@@ -97,7 +97,7 @@ class Session(Workspace):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _connect(self, access_mode):
+    def _connect(self, access_mode, database):
         if access_mode is None:
             access_mode = self._config.default_access_mode
         if self._connection:
@@ -105,7 +105,7 @@ class Session(Workspace):
             self._connection.send_all()
             self._connection.fetch_all()
             self._disconnect()
-        self._connection = self._pool.acquire(access_mode, timeout=self._config.connection_acquisition_timeout)
+        self._connection = self._pool.acquire(access_mode=access_mode, timeout=self._config.connection_acquisition_timeout, database=database)
 
     def _disconnect(self):
         if self._connection:
@@ -157,10 +157,10 @@ class Session(Workspace):
             raise TypeError("query must be a string or a Query instance")
 
         if not self._connection:
-            self._connect(self._config.default_access_mode)
+            self._connect(self._config.default_access_mode, database=self._config.database)
         cx = self._connection
         protocol_version = cx.PROTOCOL_VERSION
-        server = cx.server
+        server_info = cx.server_info
 
         has_transaction = self.has_transaction()
 
@@ -176,7 +176,7 @@ class Session(Workspace):
         result_metadata = {
             "query": query_text,
             "parameters": parameters,
-            "server": server,
+            "server": server_info,
             "protocol_version": protocol_version,
         }
         run_metadata = {
@@ -195,21 +195,40 @@ class Session(Workspace):
 
         self._last_result = result = Result(self, hydrant, result_metadata)
 
+        access_mode = None
+        db = None
+        bookmarks = None
+
         if has_transaction:
+            # Explicit Transaction Run does not carry any extra values. RUN "query" {parameters} {extra}
             if query_metadata:
                 raise ValueError("Metadata can only be attached at transaction level")
             if query_timeout:
                 raise ValueError("Timeouts only apply at transaction level")
-            # TODO: fail if explicit database name has been set
+            access_mode = None
+            db = None
+            bookmarks = None
         else:
             run_metadata["bookmarks"] = self._bookmarks_in
+            access_mode = self._config.default_access_mode
+            db = self._config.database
+            bookmarks = run_metadata.get("bookmarks", self._config.bookmarks)
 
-        # TODO: capture ValueError and surface as SessionError/TransactionError if
-        # TODO: explicit database selection has been made
-        cx.run(query_text, parameters, **run_metadata)
+        # BOLT RUN
+        cx.run(
+            query_text,
+            parameters=parameters,
+            mode=access_mode,
+            bookmarks=bookmarks,
+            metadata=run_metadata["metadata"],
+            timeout=run_metadata["timeout"],
+            db=db,
+            on_success=run_metadata["on_success"],
+            on_failure=run_metadata["on_failure"],
+        )
+        # BOLT PULL
         cx.pull(
-            on_records=lambda records: result._records.extend(
-                hydrant.hydrate_records(result.keys(), records)),
+            on_records=lambda records: result._records.extend(hydrant.hydrate_records(result.keys(), records)),
             on_success=done,
             on_failure=fail,
             on_summary=lambda: result.detach(sync=False),
@@ -291,35 +310,39 @@ class Session(Workspace):
     def _close_transaction(self):
         self._transaction = None
 
-    def begin_transaction(self, bookmark=None, metadata=None, timeout=None):
-        """ Create a new :class:`.Transaction` within this session.
-        Calling this method with a bookmark is equivalent to
+    def begin_transaction(self, metadata=None, timeout=None):
+        """ Begin a new unmanaged transaction. Creates a new :class:`.Transaction` within this session.
+            At most one transaction may exist in a session at any point in time.
+            To maintain multiple concurrent transactions, use multiple concurrent sessions.
 
-        :param bookmark: a bookmark to which the server should
-                         synchronise before beginning the transaction
         :param metadata:
         :param timeout:
-        :returns: new :class:`.Transaction` instance.
-        :raise: :class:`.TransactionError` if a transaction is already open
+
+        :returns: A new transaction instance.
+        :rtype: :class:`neo4j.Transaction`
+
+        :raises TransactionError: :class:`neo4j.exceptions.TransactionError` if a transaction is already open.
         """
+        # TODO: Implement TransactionConfig consumption
+
         if self.has_transaction():
             raise TransactionError("Explicit transaction already open")
 
-        self._open_transaction(metadata=metadata, timeout=timeout)
+        self._open_transaction(access_mode=self._config.default_access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
         return self._transaction
 
-    def _open_transaction(self, access_mode=None, metadata=None, timeout=None):
+    def _open_transaction(self, *, access_mode, database, metadata=None, timeout=None):
         self._transaction = Transaction(self, on_close=self._close_transaction)
-        self._connect(access_mode)
-        # TODO: capture ValueError and surface as SessionError/TransactionError if
-        # TODO: explicit database selection has been made
-        self._connection.begin(bookmarks=self._bookmarks_in, metadata=metadata, timeout=timeout)
+        self._connect(access_mode=access_mode, database=database)
+        self._connection.begin(bookmarks=self._bookmarks_in, metadata=metadata, timeout=timeout, mode=access_mode, db=database)
 
     def commit_transaction(self):
         """ Commit the current transaction.
 
         :returns: the bookmark returned from the server, if any
-        :raise: :class:`.TransactionError` if no transaction is currently open
+        :rtype: :class: `neo4j.Bookmark`
+
+        :raises TransactionError: :class:`neo4j.exceptions.TransactionError` if no transaction is currently open
         """
         if not self._transaction:
             raise TransactionError("No transaction to commit")
@@ -371,7 +394,7 @@ class Session(Workspace):
         t0 = perf_counter()
         while True:
             try:
-                self._open_transaction(access_mode, metadata, timeout)
+                self._open_transaction(access_mode=access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
                 tx = self._transaction
                 try:
                     result = unit_of_work(tx, *args, **kwargs)

@@ -4,6 +4,6 @@
 !: AUTO RESET
 !: PORT 9001
 
-C: RUN "RETURN $x" {"x": 1} {}
+C: RUN "RETURN $x" {"x": 1} {"mode": "r"}
    PULL {"n": -1}
 S: <EXIT>

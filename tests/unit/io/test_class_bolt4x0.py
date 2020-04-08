@@ -20,31 +20,36 @@
 
 
 import pytest
+
 from neo4j.io._bolt4x0 import Bolt4x0
+from neo4j.conf import PoolConfig
 
 
 def test_conn_timed_out(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt4x0(address, fake_socket(address), max_connection_lifetime=0)
+    max_connection_lifetime = 0
+    connection = Bolt4x0(address, fake_socket(address), max_connection_lifetime)
     assert connection.timedout() is True
 
 
 def test_conn_not_timed_out_if_not_enabled(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt4x0(address, fake_socket(address), max_connection_lifetime=-1)
+    max_connection_lifetime = -1
+    connection = Bolt4x0(address, fake_socket(address), max_connection_lifetime)
     assert connection.timedout() is False
 
 
 def test_conn_not_timed_out(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt4x0(address, fake_socket(address), max_connection_lifetime=999999999)
+    max_connection_lifetime = 999999999
+    connection = Bolt4x0(address, fake_socket(address), max_connection_lifetime)
     assert connection.timedout() is False
 
 
 def test_db_extra_in_begin(fake_socket):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
-    connection = Bolt4x0(address, socket)
+    connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.begin(db="something")
     connection.send_all()
     tag, fields = socket.pop_message()
@@ -56,7 +61,7 @@ def test_db_extra_in_begin(fake_socket):
 def test_db_extra_in_run(fake_socket):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
-    connection = Bolt4x0(address, socket)
+    connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.run("", {}, db="something")
     connection.send_all()
     tag, fields = socket.pop_message()
@@ -70,7 +75,7 @@ def test_db_extra_in_run(fake_socket):
 def test_n_extra_in_discard(fake_socket):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
-    connection = Bolt4x0(address, socket)
+    connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666)
     connection.send_all()
     tag, fields = socket.pop_message()
@@ -89,7 +94,7 @@ def test_n_extra_in_discard(fake_socket):
 def test_qid_extra_in_discard(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
-    connection = Bolt4x0(address, socket)
+    connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(qid=test_input)
     connection.send_all()
     tag, fields = socket.pop_message()
@@ -109,7 +114,7 @@ def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
     # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_n_and_qid_extras_in_discard
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
-    connection = Bolt4x0(address, socket)
+    connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666, qid=test_input)
     connection.send_all()
     tag, fields = socket.pop_message()
@@ -128,7 +133,7 @@ def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
 def test_n_extra_in_pull(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
-    connection = Bolt4x0(address, socket)
+    connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=test_input)
     connection.send_all()
     tag, fields = socket.pop_message()
@@ -148,7 +153,7 @@ def test_qid_extra_in_pull(fake_socket, test_input, expected):
     # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_qid_extra_in_pull
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
-    connection = Bolt4x0(address, socket)
+    connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(qid=test_input)
     connection.send_all()
     tag, fields = socket.pop_message()
@@ -160,7 +165,7 @@ def test_qid_extra_in_pull(fake_socket, test_input, expected):
 def test_n_and_qid_extras_in_pull(fake_socket):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
-    connection = Bolt4x0(address, socket)
+    connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=666, qid=777)
     connection.send_all()
     tag, fields = socket.pop_message()

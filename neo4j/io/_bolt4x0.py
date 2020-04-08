@@ -25,6 +25,8 @@ from struct import pack as struct_pack
 from time import perf_counter
 from neo4j.api import (
     Version,
+    READ_ACCESS,
+    WRITE_ACCESS,
 )
 from neo4j.io._courier import MessageInbox
 from neo4j.meta import get_user_agent
@@ -61,9 +63,6 @@ class Bolt4x0(Bolt):
 
     PROTOCOL_VERSION = Version(4, 0)
 
-    #: Server details for this connection
-    server = None
-
     # The socket
     in_use = False
 
@@ -76,21 +75,19 @@ class Bolt4x0(Bolt):
     #: The pool of which this connection is a member
     pool = None
 
-    def __init__(self, unresolved_address, sock, *, auth=None, **config):
-        self.config = PoolConfig.consume(config)
+    def __init__(self, unresolved_address, sock, max_connection_lifetime, *, auth=None, user_agent=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
-        self.server = ServerInfo(Address(sock.getpeername()), Bolt4x0.PROTOCOL_VERSION)
+        self.server_info = ServerInfo(Address(sock.getpeername()), Bolt4x0.PROTOCOL_VERSION)
         self.outbox = Outbox()
         self.inbox = Inbox(self.socket, on_error=self._set_defunct)
         self.packer = Packer(self.outbox)
         self.unpacker = Unpacker(self.inbox)
         self.responses = deque()
-        self._max_connection_lifetime = self.config.max_connection_lifetime
+        self._max_connection_lifetime = max_connection_lifetime  # self.pool_config.max_connection_lifetime
         self._creation_timestamp = perf_counter()
 
         # Determine the user agent
-        user_agent = self.config.user_agent
         if user_agent:
             self.user_agent = user_agent
         else:
@@ -140,17 +137,16 @@ class Bolt4x0(Bolt):
             logged_headers["credentials"] = "*******"
         log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
         self._append(b"\x01", (headers,),
-                     response=InitResponse(self, on_success=self.server.metadata.update))
+                     response=InitResponse(self, on_success=self.server_info.metadata.update))
         self.send_all()
         self.fetch_all()
 
-    def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None,
-            timeout=None, db=None, **handlers):
+    def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
         if not parameters:
             parameters = {}
         extra = {}
-        if mode:
-            extra["mode"] = mode
+        if mode in (READ_ACCESS, "r"):
+            extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
         if db:
             extra["db"] = db
         if bookmarks:
@@ -192,8 +188,8 @@ class Bolt4x0(Bolt):
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
               db=None, **handlers):
         extra = {}
-        if mode:
-            extra["mode"] = mode
+        if mode in (READ_ACCESS, "r"):
+            extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
         if db:
             extra["db"] = db
         if bookmarks:
@@ -258,11 +254,11 @@ class Bolt4x0(Bolt):
         """
         if self.closed():
             raise ServiceUnavailable("Failed to write to closed connection {!r} ({!r})".format(
-                self.unresolved_address, self.server.address))
+                self.unresolved_address, self.server_info.address))
 
         if self.defunct():
             raise ServiceUnavailable("Failed to write to defunct connection {!r} ({!r})".format(
-                self.unresolved_address, self.server.address))
+                self.unresolved_address, self.server_info.address))
 
         try:
             self._send_all()
@@ -270,7 +266,7 @@ class Bolt4x0(Bolt):
             log.error("Failed to write data to connection "
                       "{!r} ({!r}); ({!r})".
                       format(self.unresolved_address,
-                             self.server.address,
+                             self.server_info.address,
                              "; ".join(map(repr, error.args))))
             if self.pool:
                 self.pool.deactivate(self.unresolved_address)
@@ -284,11 +280,11 @@ class Bolt4x0(Bolt):
         """
         if self._closed:
             raise ServiceUnavailable("Failed to read from closed connection {!r} ({!r})".format(
-                self.unresolved_address, self.server.address))
+                self.unresolved_address, self.server_info.address))
 
         if self._defunct:
             raise ServiceUnavailable("Failed to read from defunct connection {!r} ({!r})".format(
-                self.unresolved_address, self.server.address))
+                self.unresolved_address, self.server_info.address))
 
         if not self.responses:
             return 0, 0
@@ -300,7 +296,7 @@ class Bolt4x0(Bolt):
             log.error("Failed to read data from connection "
                       "{!r} ({!r}); ({!r})".
                       format(self.unresolved_address,
-                             self.server.address,
+                             self.server_info.address,
                              "; ".join(map(repr, error.args))))
             if self.pool:
                 self.pool.deactivate(self.unresolved_address)
@@ -327,11 +323,11 @@ class Bolt4x0(Bolt):
                 response.on_failure(summary_metadata or {})
             except (ServiceUnavailable, DatabaseUnavailable):
                 if self.pool:
-                    self.pool.deactivate(self.unresolved_address),
+                    self.pool.deactivate(address=self.unresolved_address),
                 raise
             except (NotALeader, ForbiddenOnReadOnlyDatabase):
                 if self.pool:
-                    self.pool.on_write_failure(self.unresolved_address),
+                    self.pool.on_write_failure(address=self.unresolved_address),
                 raise
         else:
             raise BoltProtocolError("Unexpected response message with signature %02X" % summary_signature, self.unresolved_address)
@@ -342,7 +338,7 @@ class Bolt4x0(Bolt):
         direct_driver = isinstance(self.pool, BoltPool)
 
         message = ("Failed to read from defunct connection {!r} ({!r})".format(
-            self.unresolved_address, self.server.address))
+            self.unresolved_address, self.server_info.address))
 
         log.error(message)
         # We were attempting to receive data but the connection
@@ -352,7 +348,7 @@ class Bolt4x0(Bolt):
         self._defunct = True
         self.close()
         if self.pool:
-            self.pool.deactivate(self.unresolved_address)
+            self.pool.deactivate(address=self.unresolved_address)
         # Iterate through the outstanding responses, and if any correspond
         # to COMMIT requests then raise an error to signal that we are
         # unable to confirm that the COMMIT completed successfully.

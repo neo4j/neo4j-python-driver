@@ -3,7 +3,7 @@
 !: AUTO GOODBYE
 !: AUTO RESET
 
-C: RUN "CALL dbms.cluster.routing.getRoutingTable($context)" {"context": {}} {}
+C: RUN "CALL dbms.cluster.routing.getRoutingTable($context)" {"context": {}} {"mode": "r"}
    PULL_ALL
 S: <EXIT>
 

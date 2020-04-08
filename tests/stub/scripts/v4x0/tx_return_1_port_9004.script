@@ -4,7 +4,7 @@
 !: AUTO RESET
 !: PORT 9004
 
-C: BEGIN {}
+C: BEGIN {"mode": "r"}
 S: SUCCESS {}
 
 C: RUN "RETURN 1" {} {}

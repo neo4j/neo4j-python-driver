@@ -7,7 +7,7 @@
 !: AUTO ROLLBACK
 !: PORT 9004
 
-C: RUN "RETURN 1" {} {}
+C: RUN "RETURN 1" {} {"mode": "r"}
 C: PULL_ALL
 S: FAILURE {"code": "Neo.TransientError.General.DatabaseUnavailable", "message": "Database is busy doing store copy"}
 S: IGNORED

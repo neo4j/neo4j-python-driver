@@ -4,5 +4,5 @@
 !: AUTO RESET
 !: PORT 9001
 
-C: RUN "RETURN 1 AS x" {} {}
+C: RUN "RETURN 1 AS x" {} {"mode": "r"}
 S: <EXIT>

@@ -22,44 +22,53 @@
 import pytest
 
 from neo4j.io._bolt3 import Bolt3
+from neo4j.conf import PoolConfig
+from neo4j.exceptions import (
+    ConfigurationError,
+)
+
+# python -m pytest tests/unit/io/test_class_bolt3.py -s -v
 
 
 def test_conn_timed_out(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address), max_connection_lifetime=0)
+    max_connection_lifetime = 0
+    connection = Bolt3(address, fake_socket(address), max_connection_lifetime)
     assert connection.timedout() is True
 
 
 def test_conn_not_timed_out_if_not_enabled(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address), max_connection_lifetime=-1)
+    max_connection_lifetime = -1
+    connection = Bolt3(address, fake_socket(address), max_connection_lifetime)
     assert connection.timedout() is False
 
 
 def test_conn_not_timed_out(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address), max_connection_lifetime=999999999)
+    max_connection_lifetime = 999999999
+    connection = Bolt3(address, fake_socket(address), max_connection_lifetime)
     assert connection.timedout() is False
 
 
 def test_db_extra_not_supported_in_begin(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address))
-    with pytest.raises(ValueError):
+    connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
+    with pytest.raises(ConfigurationError):
         connection.begin(db="something")
 
 
 def test_db_extra_not_supported_in_run(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address))
-    with pytest.raises(ValueError):
+    connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
+    with pytest.raises(ConfigurationError):
         connection.run("", db="something")
 
 
 def test_simple_discard(fake_socket):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
-    connection = Bolt3(address, socket)
+    connection = Bolt3(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard()
     connection.send_all()
     tag, fields = socket.pop_message()
@@ -69,14 +78,14 @@ def test_simple_discard(fake_socket):
 
 def test_n_extra_not_supported_in_discard(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address))
+    connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
     with pytest.raises(ValueError):
         connection.discard(n=666)
 
 
 def test_qid_extra_not_supported_in_discard(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address))
+    connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
     with pytest.raises(ValueError):
         connection.discard(qid=666)
 
@@ -84,7 +93,7 @@ def test_qid_extra_not_supported_in_discard(fake_socket):
 def test_simple_pull(fake_socket):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
-    connection = Bolt3(address, socket)
+    connection = Bolt3(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull()
     connection.send_all()
     tag, fields = socket.pop_message()
@@ -94,14 +103,13 @@ def test_simple_pull(fake_socket):
 
 def test_n_extra_not_supported_in_pull(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address))
+    connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
     with pytest.raises(ValueError):
         connection.pull(n=666)
 
 
 def test_qid_extra_not_supported_in_pull(fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address))
+    connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
     with pytest.raises(ValueError):
         connection.pull(qid=666)
-

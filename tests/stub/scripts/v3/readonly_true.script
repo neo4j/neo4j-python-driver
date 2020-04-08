@@ -3,7 +3,7 @@
 !: AUTO GOODBYE
 !: AUTO RESET
 
-C: RUN "RETURN 1" {} {"mode": "R"}
+C: RUN "RETURN 1" {} {"mode": "r"}
    PULL_ALL
 S: SUCCESS {"fields": ["1"]}
    RECORD [1]

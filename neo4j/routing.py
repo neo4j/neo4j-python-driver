@@ -81,7 +81,7 @@ class OrderedSet(MutableSet):
 class RoutingTable:
 
     @classmethod
-    def parse_routing_info(cls, servers, ttl):
+    def parse_routing_info(cls, *, database, servers, ttl):
         """ Parse the records returned from the procedure call and
         return a new RoutingTable instance.
         """
@@ -103,18 +103,20 @@ class RoutingTable:
         except (KeyError, TypeError):
             raise ValueError("Cannot parse routing info")
         else:
-            return cls(routers, readers, writers, ttl)
+            return cls(database=database, routers=routers, readers=readers, writers=writers, ttl=ttl)
 
-    def __init__(self, routers=(), readers=(), writers=(), ttl=0):
+    def __init__(self, *, database, routers=(), readers=(), writers=(), ttl=0):
         self.initial_routers = OrderedSet(routers)
         self.routers = OrderedSet(routers)
         self.readers = OrderedSet(readers)
         self.writers = OrderedSet(writers)
         self.last_updated_time = perf_counter()
         self.ttl = ttl
+        self.database = database
 
     def __repr__(self):
-        return "RoutingTable(routers=%r, readers=%r, writers=%r, last_updated_time=%r, ttl=%r)" % (
+        return "RoutingTable(database=%r routers=%r, readers=%r, writers=%r, last_updated_time=%r, ttl=%r)" % (
+            self.database,
             self.routers,
             self.readers,
             self.writers,
@@ -139,6 +141,25 @@ class RoutingTable:
         log.debug("[#0000]  C: <ROUTING> Table routers=%r", self.routers)
         log.debug("[#0000]  C: <ROUTING> Table has_server_for_mode=%r", has_server_for_mode)
         return not expired and self.routers and has_server_for_mode
+
+    def missing_fresh_writer(self):
+        """ Check if the routing table have a fresh write address.
+
+        :return: Return true if it does not have a fresh write address.
+        :rtype: bool
+        """
+        return not self.is_fresh(readonly=False)
+
+    def should_be_purged_from_memory(self):
+        """ Check if the routing table is stale and not used for a long time and should be removed from memory.
+
+        :return: Returns true if it is old and not used for a while.
+        :rtype: bool
+        """
+        from neo4j.conf import RoutingConfig
+        perf_time = perf_counter()
+        log.debug("[#0000]  C: <ROUTING AGED> last_updated_time=%r perf_time=%r", self.last_updated_time, perf_time)
+        return self.last_updated_time + self.ttl + RoutingConfig.routing_table_purge_delay <= perf_time
 
     def update(self, new_routing_table):
         """ Update the current routing table with new routing information

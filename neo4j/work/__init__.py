@@ -49,7 +49,7 @@ class Workspace:
             if access_mode == self._connection_access_mode:
                 return
             self._disconnect(sync=True)
-        self._connection = self._pool.acquire(access_mode)
+        self._connection = self._pool.acquire(access_mode=access_mode, timeout=self._config.connection_acquisition_timeout, database=self._config.database)
         self._connection_access_mode = access_mode
 
     def _disconnect(self, sync):

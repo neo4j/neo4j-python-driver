@@ -266,6 +266,6 @@ Transaction Object Work Pattern
 
     query = Query("RETURN 1 AS x, timeout=10, metadata={"hello": 123})
 
-    tx = session.begin_transaction(bookmark=None, metadata=None, timeout=None)
+    tx = session.begin_transaction(metadata=None, timeout=None)
     tx.run(query)
     tx.commit()

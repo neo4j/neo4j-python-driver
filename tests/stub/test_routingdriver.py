@@ -26,6 +26,7 @@ from neo4j import (
     Neo4jDriver,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    DEFAULT_DATABASE,
 )
 from neo4j.api import (
     READ_ACCESS,
@@ -230,7 +231,7 @@ def test_should_discover_servers_on_driver_construction(driver_info, test_script
     with StubCluster(test_script):
         uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            table = driver._pool.routing_table
+            table = driver._pool.routing_tables[DEFAULT_DATABASE]
             assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002),
                                      ('127.0.0.1', 9003)}
             assert table.readers == {('127.0.0.1', 9004), ('127.0.0.1', 9005)}
@@ -354,6 +355,31 @@ def test_should_disconnect_after_fetching_autocommit_result(driver_info, test_sc
 )
 def test_should_disconnect_after_explicit_commit(driver_info, test_scripts, test_run_args):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_disconnect_after_explicit_commit
+    with StubCluster(*test_scripts):
+        uri = "neo4j://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
+            with driver.session(default_access_mode=READ_ACCESS) as session:
+                with session.begin_transaction() as tx:
+                    result = tx.run(*test_run_args)
+                    assert session._connection is not None
+                    result.consume()
+                    assert session._connection is not None
+                    result = tx.run(*test_run_args)
+                    assert session._connection is not None
+                    result.consume()
+                    assert session._connection is not None
+                assert session._connection is None
+
+
+@pytest.mark.parametrize(
+    "test_scripts, test_run_args",
+    [
+        (("v3/router.script", "v3/return_1_twice_in_read_tx.script"), ("RETURN $x", {"x": 1})),
+        (("v4x0/router.script", "v4x0/tx_return_1_twice_port_9004.script"), ("RETURN 1", )),
+    ]
+)
+def test_default_access_mode_defined_at_session_level(driver_info, test_scripts, test_run_args):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_default_access_mode_defined_at_session_level
     with StubCluster(*test_scripts):
         uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
@@ -539,7 +565,7 @@ def test_forgets_address_on_not_a_leader_error(driver_info, test_scripts, test_r
                     _ = session.run(*test_run_args)
 
                 pool = driver._pool
-                table = pool.routing_table
+                table = driver._pool.routing_tables[DEFAULT_DATABASE]
 
                 # address might still have connections in the pool, failed instance just can't serve writes
                 assert ('127.0.0.1', 9006) in pool.connections
@@ -566,7 +592,7 @@ def test_forgets_address_on_forbidden_on_read_only_database_error(driver_info, t
                     _ = session.run(*test_run_args)
 
                 pool = driver._pool
-                table = pool.routing_table
+                table = driver._pool.routing_tables[DEFAULT_DATABASE]
 
                 # address might still have connections in the pool, failed instance just can't serve writes
                 assert ('127.0.0.1', 9006) in pool.connections
@@ -591,7 +617,7 @@ def test_forgets_address_on_service_unavailable_error(driver_info, test_scripts,
             with driver.session(default_access_mode=READ_ACCESS) as session:
 
                 pool = driver._pool
-                table = pool.routing_table
+                table = driver._pool.routing_tables[DEFAULT_DATABASE]
                 table.readers.remove(('127.0.0.1', 9005))
 
                 with pytest.raises(SessionExpired):
@@ -626,7 +652,7 @@ def test_forgets_address_on_database_unavailable_error(driver_info, test_scripts
             with driver.session(default_access_mode=READ_ACCESS) as session:
 
                 pool = driver._pool
-                table = pool.routing_table
+                table = driver._pool.routing_tables[DEFAULT_DATABASE]
                 table.readers.remove(('127.0.0.1', 9005))
 
                 with pytest.raises(TransientError) as raised:
@@ -634,7 +660,7 @@ def test_forgets_address_on_database_unavailable_error(driver_info, test_scripts
                     assert raised.exception.title == "DatabaseUnavailable"
 
                 pool = driver._pool
-                table = pool.routing_table
+                table = driver._pool.routing_tables[DEFAULT_DATABASE]
 
                 # address should not have connections in the pool, it has failed
                 assert ('127.0.0.1', 9004) not in pool.connections

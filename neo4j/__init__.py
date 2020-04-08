@@ -134,10 +134,6 @@ class GraphDatabase:
             URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
             URI_SCHEME_NEO4J_SECURE,
         )
-        from neo4j.conf import (
-            TRUST_ALL_CERTIFICATES,
-            TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
-        )
 
         driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
@@ -252,8 +248,7 @@ class Routing:
         targets = " ".join(targets)
         if not targets:
             targets = cls.default_targets
-        addresses = Address.parse_list(targets, default_host=cls.default_host,
-                                       default_port=cls.default_port)
+        addresses = Address.parse_list(targets, default_host=cls.default_host, default_port=cls.default_port)
         return addresses
 
 
@@ -314,6 +309,26 @@ class Driver:
         """
         raise NotImplementedError
 
+    @experimental("Feature support query, based on Bolt Protocol Version and Neo4j Server Version will change in the future.")
+    def supports_multi_db(self):
+        """ Check if the server or cluster supports multi-databases.
+
+        :return: Returns true if the server or cluster the driver connects to supports multi-databases, otherwise false.
+        :rtype: bool
+        """
+        from neo4j.io._bolt4x0 import Bolt4x0
+
+        multi_database = False
+        cx = self._pool.acquire(access_mode=READ_ACCESS, timeout=self._pool.workspace_config.connection_acquisition_timeout, database=self._pool.workspace_config.database)
+
+        # TODO: This logic should be inside the Bolt subclasses, because it can change depending on Bolt Protocol Version.
+        if cx.PROTOCOL_VERSION >= Bolt4x0.PROTOCOL_VERSION and cx.server_info.version_info() >= Version(4, 0, 0):
+            multi_database = True
+
+        self._pool.release(cx)
+
+        return multi_database
+
 
 class BoltDriver(Direct, Driver):
     """ A :class:`.BoltDriver` is created from a ``bolt`` URI and addresses
@@ -326,10 +341,18 @@ class BoltDriver(Direct, Driver):
 
     @classmethod
     def open(cls, target, *, auth=None, **config):
+        """
+        :param target:
+        :param auth:
+        :param config: The values that can be specified are found in :class: `neo4j.PoolConfig` and :class: `neo4j.WorkspaceConfig`
+
+        :return:
+        :rtype: :class: `neo4j.BoltDriver`
+        """
         from neo4j.io import BoltPool
         address = cls.parse_target(target)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
-        pool = BoltPool.open(address, auth=auth, **pool_config)
+        pool = BoltPool.open(address, auth=auth, pool_config=pool_config, workspace_config=default_workspace_config)
         return cls(pool, default_workspace_config)
 
     def __init__(self, pool, default_workspace_config):
@@ -338,6 +361,12 @@ class BoltDriver(Direct, Driver):
         self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
+        """
+        :param config: The values that can be specified are found in :class: `neo4j.SessionConfig`
+
+        :return:
+        :rtype: :class: `neo4j.Session`
+        """
         from neo4j.work.simple import Session
         session_config = SessionConfig(self._default_workspace_config, config)
         SessionConfig.consume(config)  # Consume the config
@@ -372,16 +401,15 @@ class Neo4jDriver(Routing, Driver):
         from neo4j.io import Neo4jPool
         addresses = cls.parse_targets(*targets)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
-        pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, **pool_config)
+        pool = Neo4jPool.open(*addresses, auth=auth, routing_context=routing_context, pool_config=pool_config, workspace_config=default_workspace_config)
         return cls(pool, default_workspace_config)
 
     def __init__(self, pool, default_workspace_config):
-        Routing.__init__(self, pool.routing_table.initial_routers)
+        Routing.__init__(self, pool.get_default_database_initial_router_addresses())
         Driver.__init__(self, pool)
         self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
-        from neo4j.work.simple import Session
         session_config = SessionConfig(self._default_workspace_config, config)
         SessionConfig.consume(config)  # Consume the config
         return Session(self._pool, session_config)
@@ -391,9 +419,6 @@ class Neo4jDriver(Routing, Driver):
         pipeline_config = PipelineConfig(self._default_workspace_config, config)
         PipelineConfig.consume(config)  # Consume the config
         return Pipeline(self._pool, pipeline_config)
-
-    def get_routing_table(self):
-        return self._pool.routing_table
 
     def verify_connectivity(self, **config):
         """
@@ -406,11 +431,11 @@ class Neo4jDriver(Routing, Driver):
         from neo4j.exceptions import ServiceUnavailable
         from neo4j._exceptions import BoltHandshakeError
 
-        table = self.get_routing_table()
+        table = self._pool.get_routing_table_for_default_database()
         routing_info = {}
         for ix in list(table.routers):
             try:
-                routing_info[ix] = self._pool.fetch_routing_info(table.routers[0])
+                routing_info[ix] = self._pool.fetch_routing_info(address=table.routers[0], timeout=self._default_workspace_config.connection_acquisition_timeout, database=self._default_workspace_config.database)
             except BoltHandshakeError as error:
                 routing_info[ix] = None
 

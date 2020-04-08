@@ -21,11 +21,16 @@
 
 import pytest
 
-from neo4j import GraphDatabase
+from neo4j import (
+    GraphDatabase,
+    BoltDriver,
+    Version,
+)
 from neo4j.exceptions import (
     ServiceUnavailable,
     AuthError,
     ConfigurationError,
+    ClientError,
 )
 from neo4j._exceptions import BoltHandshakeError
 
@@ -49,20 +54,6 @@ def test_bolt_uri(bolt_uri, auth):
 #         with driver.session() as session:
 #             value = session.run("RETURN 1").single().value()
 #             assert value == 1
-
-
-def test_neo4j_uri(neo4j_uri, auth):
-    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_neo4j_uri
-    try:
-        with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
-            with driver.session() as session:
-                value = session.run("RETURN 1").single().value()
-                assert value == 1
-    except ServiceUnavailable as error:
-        if error.args[0] == "Server does not support routing":
-            pytest.skip(error.args[0])
-        elif isinstance(error.__cause__, BoltHandshakeError):
-            pytest.skip(error.args[0])
 
 
 def test_normal_use_case(bolt_driver):
@@ -129,3 +120,50 @@ def test_should_fail_on_incorrect_password(bolt_uri):
         except ServiceUnavailable as error:
             if isinstance(error.__cause__, BoltHandshakeError):
                 pytest.skip(error.args[0])
+
+
+def test_supports_multi_db(bolt_uri, auth):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_supports_multi_db
+    try:
+        driver = GraphDatabase.driver(bolt_uri, auth=auth)
+        assert isinstance(driver, BoltDriver)
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+    with driver.session() as session:
+        result = session.run("RETURN 1")
+        value = result.single().value()  # Consumes the result
+        summary = result.summary()
+        server_info = summary.server
+
+    result = driver.supports_multi_db()
+    driver.close()
+
+    if server_info.version_info() >= Version(4, 0, 0) and server_info.protocol_version >= Version(4, 0):
+        assert result is True
+        assert summary.database == "neo4j"  # This is the default database name if not set explicitly on the Neo4j Server
+        assert summary.query_type == "r"
+    else:
+        assert result is False
+        assert summary.database is None
+        assert summary.query_type == "r"
+
+
+def test_test_multi_db_specify_database(bolt_uri, auth):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_test_multi_db_specify_database
+    try:
+        with GraphDatabase.driver(bolt_uri, auth=auth, database="test_database") as driver:
+            with driver.session() as session:
+                result = session.run("RETURN 1")
+                assert next(result) == 1
+                summary = result.summary()
+                assert summary.database == "test_database"
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+    except ConfigurationError as error:
+        assert "Database name parameter for selecting database is not supported in Bolt Protocol Version(3, 0)" in error.args[0]
+    except ClientError as error:
+        # FAILURE {'code': 'Neo.ClientError.Database.DatabaseNotFound' - This message is sent from the server
+        assert error.args[0] == "Database does not exist. Database name: 'test_database'."

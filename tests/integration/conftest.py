@@ -35,7 +35,6 @@ from neo4j._exceptions import BoltHandshakeError
 from neo4j.io import Bolt
 
 
-
 NEO4J_RELEASES = getenv("NEO4J_RELEASES", "snapshot-enterprise 3.5-enterprise").split()
 NEO4J_HOST = "localhost"
 NEO4J_PORTS = {
@@ -331,7 +330,7 @@ def session(bolt_driver):
 @pytest.fixture()
 def protocol_version(session):
     result = session.run("RETURN 1")
-    yield session._connection.protocol_version
+    yield session._connection.server_info.protocol_version
     result.consume()
 
 
