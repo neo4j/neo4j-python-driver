@@ -124,8 +124,12 @@ def test_should_fail_on_incorrect_password(bolt_uri):
 
 def test_supports_multi_db(bolt_uri, auth):
     # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_supports_multi_db
-    driver = GraphDatabase.driver(bolt_uri, auth=auth)
-    assert isinstance(driver, BoltDriver)
+    try:
+        driver = GraphDatabase.driver(bolt_uri, auth=auth)
+        assert isinstance(driver, BoltDriver)
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
 
     with driver.session() as session:
         result = session.run("RETURN 1")
