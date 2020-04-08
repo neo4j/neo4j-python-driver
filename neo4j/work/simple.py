@@ -310,12 +310,11 @@ class Session(Workspace):
     def _close_transaction(self):
         self._transaction = None
 
-    def begin_transaction(self, access_mode=None, database=None, bookmarks=None, metadata=None, timeout=None):
-        """ Create a new :class:`.Transaction` within this session.
+    def begin_transaction(self, metadata=None, timeout=None):
+        """ Begin a new unmanaged transaction. Creates a new :class:`.Transaction` within this session.
+            At most one transaction may exist in a session at any point in time.
+            To maintain multiple concurrent transactions, use multiple concurrent sessions.
 
-        :param access_mode:
-        :param database:
-        :param bookmarks: Bookmark to which the server should synchronise before beginning the transaction
         :param metadata:
         :param timeout:
 
@@ -324,21 +323,17 @@ class Session(Workspace):
 
         :raises TransactionError: :class:`neo4j.exceptions.TransactionError` if a transaction is already open.
         """
-        # TODO: Test and implement begin_transaction(bookmarks=["todo:implement:me"])
+        # TODO: Implement TransactionConfig consumption
 
         if self.has_transaction():
             raise TransactionError("Explicit transaction already open")
 
-        if access_mode is None:
-            access_mode = self._config.default_access_mode
-
-        self._open_transaction(access_mode=access_mode, database=database, metadata=metadata, timeout=timeout)
+        self._open_transaction(access_mode=self._config.default_access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
         return self._transaction
 
     def _open_transaction(self, *, access_mode, database, metadata=None, timeout=None):
         self._transaction = Transaction(self, on_close=self._close_transaction)
         self._connect(access_mode=access_mode, database=database)
-        # TODO: capture ValueError and surface as SessionError/TransactionError if
         self._connection.begin(bookmarks=self._bookmarks_in, metadata=metadata, timeout=timeout, mode=access_mode, db=database)
 
     def commit_transaction(self):

@@ -358,8 +358,8 @@ def test_should_disconnect_after_explicit_commit(driver_info, test_scripts, test
     with StubCluster(*test_scripts):
         uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session() as session:
-                with session.begin_transaction(access_mode=READ_ACCESS) as tx:
+            with driver.session(default_access_mode=READ_ACCESS) as session:
+                with session.begin_transaction() as tx:
                     result = tx.run(*test_run_args)
                     assert session._connection is not None
                     result.consume()

@@ -310,8 +310,9 @@ class SessionConfig(WorkspaceConfig):
 
 
 class TransactionConfig(Config):
-    """ Transaction configuration.
+    """ Transaction configuration. This is internal for now.
 
+    neo4j.session.begin_transaction
     neo4j.Query
     neo4j.unit_of_work
 
