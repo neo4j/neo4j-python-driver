@@ -128,8 +128,7 @@ class Bolt:
         :raise TypeError: if protocol version is not passed in a tuple
         """
 
-        # Carry out subclass imports locally to avoid circular
-        # dependency issues.
+        # Carry out Bolt subclass imports locally to avoid circular dependency issues.
         from neo4j.io._bolt3 import Bolt3
         from neo4j.io._bolt4x0 import Bolt4x0
 
@@ -193,9 +192,11 @@ class Bolt:
         )
 
         if pool_config.protocol_version == (3, 0):
+            # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt3 import Bolt3
             connection = Bolt3(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent)
         elif pool_config.protocol_version == (4, 0):
+            # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt4x0 import Bolt4x0
             connection = Bolt4x0(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent)
         else:
@@ -609,8 +610,10 @@ class Neo4jPool(IOPool):
         # Stale/Aged routing tables is removed when there is a failure to obtain a routing table.
         # Remove a routing table if it have been aged, timeout = TTL + RoutingConfig.routing_table_purge_delay
 
+        # Carry out Bolt subclass imports locally to avoid circular dependency issues.
         from neo4j.io._bolt3 import Bolt3
         from neo4j.io._bolt4x0 import Bolt4x0
+
         from neo4j.api import (
             SYSTEM_DATABASE,
             DEFAULT_DATABASE,
