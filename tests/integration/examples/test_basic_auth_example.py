@@ -30,7 +30,7 @@ from neo4j._exceptions import BoltHandshakeError
 from tests.integration.examples import DriverSetupExample
 
 
-# python -m pytest tests/integration/examples/test_auth_example.py -s -v
+# python -m pytest tests/integration/examples/test_basic_auth_example.py -s -v
 
 class BasicAuthExample(DriverSetupExample):
 
