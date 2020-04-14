@@ -163,7 +163,10 @@ Dependency Changes
 The dependency :code:`neobolt` have been removed.
 
 
+Configuration Name Changes
+==========================
 
+* :code:`max_retry_time` is now :code:`max_transaction_retry_time`
 
 
 *****************

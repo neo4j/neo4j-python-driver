@@ -60,7 +60,7 @@ driver_config = {
 session_config = {
     "default_access_mode": READ_ACCESS,
     "connection_acquisition_timeout": 1.0,
-    "max_retry_time": 1.0,
+    "max_transaction_retry_time": 1.0,
     "initial_retry_delay": 1.0,
     "retry_delay_multiplier": 1.0,
     "retry_delay_jitter_factor": 0.1,
@@ -211,7 +211,7 @@ def test_bolt_uri_scheme_self_signed_certificate_constructs_bolt_driver(driver_i
         "max_connection_lifetime": 1000,
         "max_connection_pool_size": 10,
         "keep_alive": False,
-        "max_retry_time": 1,
+        "max_transaction_retry_time": 1,
         "resolver": None,
     }
 
@@ -241,7 +241,7 @@ def test_bolt_uri_scheme_secure_constructs_bolt_driver(driver_info, test_script)
         "max_connection_lifetime": 1000,
         "max_connection_pool_size": 10,
         "keep_alive": False,
-        "max_retry_time": 1,
+        "max_transaction_retry_time": 1,
         "resolver": None,
     }
 
