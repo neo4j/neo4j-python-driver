@@ -50,7 +50,7 @@ def create_driver(uri, user, password):
 
 
 def add_person(name):
-    driver = create_driver("neo4j://x.acme.com", user="neo4j", password="password")
+    driver = create_driver("neo4j://x.example.com", user="neo4j", password="password")
     session = driver.session(default_access_mode=WRITE_ACCESS)
     session.run("CREATE (a:Person {name: $name})", {"name", name})
     session.close()
@@ -65,4 +65,4 @@ def test_example(uri, auth):
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
     except ValueError as error:
-        assert error.args[0] == "Cannot resolve address x.acme.com:7687"
+        assert error.args[0] == "Cannot resolve address a.example.com:7687"
