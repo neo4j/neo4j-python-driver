@@ -19,6 +19,35 @@
 # limitations under the License.
 
 
+# List of example tags used in the drivers manual version 4.0
+
+
+# hello-world               - Example 1.6. Hello World
+# driver-lifecycle          - Example 2.1. The driver lifecycle
+# custom-resolver           - Example 2.2. Custom Address Resolver
+# basic-auth                - Example 2.5. Basic authentication
+# kerberos-auth             - Example 2.6. Kerberos authentication
+# custom-auth               - Example 2.7. Custom authentication
+# config-connection-pool    - Example 2.8. Configure connection pool
+# config-connection-timeout - Example 2.9. Configure connection timeout
+# config-unencrypted        - Example 2.10. Unencrypted configuration
+# config-max-retry-time     - Example 2.11. Configure maximum transaction retry time
+# config-trust              - Example 2.12. Configure trusted certificates
+# pass-bookmarks            - Example 3.1. Pass bookmarks
+# read-write-transaction    - Example 3.2. Read-write transaction
+# database-selection        - Example 3.3. Database selection on session creation
+# transaction-function      - Example 4.2. Transaction function
+# session                   - Example 4.3. Simple auto-commit transactions
+# result-consume            - Example 4.4. Consuming results
+# result-retain             - Example 4.5. Retain results for further processing
+#                           - Example 4.6. Asynchronous transaction functions
+#                           - Example 4.7. Asynchronous auto-commit transactions
+#                           - Example 4.8. Consuming results
+#                           - Example 4.9. Reactive transaction functions
+#                           - Example 4.10. Auto-commit transactions
+#                           - Example 4.11. Consuming results
+
+
 class DriverSetupExample:
 
     driver = None

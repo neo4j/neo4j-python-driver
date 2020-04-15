@@ -98,6 +98,8 @@ def test(uri, auth):
         with eg.driver.session() as session:
             session.run("MATCH (_) DETACH DELETE _")
         eg.main()
+        with eg.driver.session() as session:
+            session.run("MATCH (_) DETACH DELETE _")
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])

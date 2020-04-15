@@ -26,6 +26,9 @@
 
 def result_consume_example(driver):
     with driver.session() as session:
+        session.run("MATCH (_) DETACH DELETE _").consume()
+
+    with driver.session() as session:
         session.run("CREATE (a:Person {name: $name}) RETURN a", name="Alice").single().value()
         session.run("CREATE (a:Person {name: $name}) RETURN a", name="Bob").single().value()
 
