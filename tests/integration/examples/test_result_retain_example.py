@@ -23,33 +23,14 @@
 # end::result-retain-import[]
 
 
-class ResultRetainExample:
+# python -m pytest tests/integration/examples/test_result_retain_example.py -s -v
 
-    def __init__(self, driver):
-        self.session = driver.session()
-
-    def close(self):
-        self.session.close()
-
-    def delete_all(self):
-        self.session.run("MATCH (_) DETACH DELETE _").consume()
-
-    def add_person(self, name):
-        return self.session.run("CREATE (a:Person {name: $name}) "
-                                "RETURN a", name=name).single().value()
+def result_retain_example(driver):
+    with driver.session() as session:
+        session.run("CREATE (a:Person {name: $name}) RETURN a", name="Alice").single().value()
+        session.run("CREATE (a:Person {name: $name}) RETURN a", name="Bob").single().value()
 
     # tag::result-retain[]
-    def add_employees(self, company_name):
-        employees = 0
-        persons = self.session.read_transaction(self.match_person_nodes)
-
-        for person in persons:
-            employees += self.session.write_transaction(self.add_employee_to_company,
-                                                        person, company_name)
-
-        return employees
-
-    @staticmethod
     def add_employee_to_company(tx, person, company_name):
         tx.run("MATCH (emp:Person {name: $person_name}) "
                "MERGE (com:Company {name: $company_name}) "
@@ -57,22 +38,41 @@ class ResultRetainExample:
                person_name=person["name"], company_name=company_name)
         return 1
 
-    @staticmethod
     def match_person_nodes(tx):
         return list(tx.run("MATCH (a:Person) RETURN a.name AS name"))
+
+    def add_employees(company_name):
+        employees = 0
+        with driver.session() as session:
+            persons = session.read_transaction(match_person_nodes)
+
+            for person in persons:
+                employees += session.write_transaction(add_employee_to_company, person, company_name)
+
+        return employees
     # end::result-retain[]
 
-    def count_employees(self, company_name):
-        return self.session.run("MATCH (emp:Person)-[:WORKS_FOR]->(com:Company) "
-                                "WHERE com.name = $company_name "
-                                "RETURN count(emp)", company_name=company_name).single().value()
+    employees = add_employees(company_name="Neo4j")
+
+    def count_employees(company_name):
+        with driver.session() as session:
+            head_count = session.run(
+                "MATCH (emp:Person)-[:WORKS_FOR]->(com:Company) "
+                "WHERE com.name = $company_name "
+                "RETURN count(emp)",
+                company_name=company_name).single().value()
+
+        return head_count
+
+    head_count = count_employees(company_name="Neo4j")
+
+    with driver.session() as session:
+        session.run("MATCH (_) DETACH DELETE _").consume()
+
+    return employees, head_count
 
 
 def test_example(driver):
-    eg = ResultRetainExample(driver)
-    eg.delete_all()
-    eg.add_person("Alice")
-    eg.add_person("Bob")
-    assert eg.add_employees("Acme") == 2
-    assert eg.count_employees("Acme") == 2
-    eg.close()
+    employees, head_count = result_retain_example(driver)
+    assert employees == 2
+    assert head_count == 2
