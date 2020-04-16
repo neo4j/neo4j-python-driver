@@ -24,7 +24,7 @@ from itertools import product
 from pytest import mark
 
 from neo4j import GraphDatabase
-from .tools import GraphDatabaseServer
+from .tools import RemoteGraphDatabaseServer
 
 
 class ReadWorkload(object):
@@ -34,9 +34,9 @@ class ReadWorkload(object):
 
     @classmethod
     def setup_class(cls):
-        cls.server = server = GraphDatabaseServer()
+        cls.server = server = RemoteGraphDatabaseServer()
         server.start()
-        cls.driver = GraphDatabase.driver(server.bolt_uri, auth=server.auth_token)
+        cls.driver = GraphDatabase.driver(server.server_uri, auth=server.auth_token, encrypted=server.encrypted)
 
     @classmethod
     def teardown_class(cls):
@@ -52,10 +52,6 @@ class ReadWorkload(object):
 
 
 class TestReadWorkload(ReadWorkload):
-
-    @staticmethod
-    def test_cypher(width):
-        return "UNWIND range(1, $count) AS _ RETURN {}".format(", ".join("$x AS x{}".format(i) for i in range(width)))
 
     @staticmethod
     def uow(record_count, record_width, value):

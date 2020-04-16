@@ -25,6 +25,9 @@ from os import getenv
 # Full path of a server package to be used for integration testing
 NEO4J_SERVER_PACKAGE = getenv("NEO4J_SERVER_PACKAGE")
 
+# An existing remote server at this URI
+NEO4J_SERVER_URI = getenv("NEO4J_URI")
+
 # Name of a user for the currently running server
 NEO4J_USER = getenv("NEO4J_USER")
 
