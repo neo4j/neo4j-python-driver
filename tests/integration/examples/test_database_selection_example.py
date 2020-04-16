@@ -63,15 +63,20 @@ class DatabaseSelectionExample:
         # end::database-selection[]
 
 
-def test_database_selection_example(uri, auth):
+def test_database_selection_example(neo4j_uri, auth):
     try:
         s = StringIO()
         with redirect_stdout(s):
-            example = DatabaseSelectionExample(uri, auth[0], auth[1])
+            example = DatabaseSelectionExample(neo4j_uri, auth[0], auth[1])
             example.run_example_code()
             example.close()
         assert s.getvalue().startswith("Hello, Example-Database")
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+        if error.args[0] == "Server does not support routing":
+            # This is because a single instance Neo4j 3.5 does not have dbms.routing.cluster.getRoutingTable() call
+            pytest.skip(error.args[0])
+    except ConfigurationError as error:
             pytest.skip(error.args[0])
 
