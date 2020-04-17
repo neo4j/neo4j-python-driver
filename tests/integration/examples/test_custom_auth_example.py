@@ -22,7 +22,10 @@
 import pytest
 
 # tag::custom-auth-import[]
-from neo4j import GraphDatabase, custom_auth
+from neo4j import (
+    GraphDatabase,
+    custom_auth,
+)
 # end::custom-auth-import[]
 
 from neo4j.exceptions import ServiceUnavailable

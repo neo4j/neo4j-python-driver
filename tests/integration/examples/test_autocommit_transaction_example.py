@@ -20,7 +20,7 @@
 
 
 # tag::autocommit-transaction-import[]
-from neo4j.work.simple import Query
+from neo4j import Query
 # end::autocommit-transaction-import[]
 
 
