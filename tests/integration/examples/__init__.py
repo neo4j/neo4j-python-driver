@@ -36,16 +36,17 @@
 # pass-bookmarks, pass-bookmarks-import                         - Example 3.1. Pass bookmarks
 # read-write-transaction                                        - Example 3.2. Read-write transaction
 # database-selection, database-selection-import                 - Example 3.3. Database selection on session creation
+# Hard coded (session)                                          - Example 4.1. Session construction and closure
 # transaction-function, transaction-function-import             - Example 4.2. Transaction function
-# session                                                       - Example 4.3. Simple auto-commit transactions
+# autocommit-transaction, autocommit-transaction-import         - Example 4.3. Simple auto-commit transactions
 # result-consume                                                - Example 4.4. Consuming results
 # result-retain                                                 - Example 4.5. Retain results for further processing
 #                                                               - Example 4.6. Asynchronous transaction functions
 #                                                               - Example 4.7. Asynchronous auto-commit transactions
-#                                                               - Example 4.8. Consuming results
+#                                                               - Example 4.8. Asynchronous consuming results
 #                                                               - Example 4.9. Reactive transaction functions
-#                                                               - Example 4.10. Auto-commit transactions
-#                                                               - Example 4.11. Consuming results
+#                                                               - Example 4.10.Reactive auto-commit transactions
+#                                                               - Example 4.11.Reactive consuming results
 
 
 class DriverSetupExample:
