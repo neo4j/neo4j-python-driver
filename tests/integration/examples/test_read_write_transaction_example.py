@@ -22,33 +22,36 @@
 # tag::read-write-transaction-import[]
 # end::read-write-transaction-import[]
 
+# python -m pytest tests/integration/examples/test_read_write_transaction_example.py -s -v
 
-class ReadWriteTransactionExample:
-
-    def __init__(self, driver):
-        self.driver = driver
+def read_write_transaction_example(driver):
+    with driver.session() as session:
+        session.run("MATCH (_) DETACH DELETE _")
 
     # tag::read-write-transaction[]
-    def add_person(self, name):
-        with self.driver.session() as session:
-            session.write_transaction(self.create_person_node, name)
-            return session.read_transaction(self.match_person_node, name)
-
-    @staticmethod
     def create_person_node(tx, name):
         tx.run("CREATE (a:Person {name: $name})", name=name)
-        return None
 
-    @staticmethod
     def match_person_node(tx, name):
         result = tx.run("MATCH (a:Person {name: $name}) RETURN count(a)", name=name)
         return result.single()[0]
+
+    def add_person(name):
+        with driver.session() as session:
+            session.write_transaction(create_person_node, name)
+            persons = session.read_transaction(match_person_node, name)
+            return persons
     # end::read-write-transaction[]
+
+    result = add_person("Alice")
+    result = add_person("Alice")
+
+    with driver.session() as session:
+        session.run("MATCH (_) DETACH DELETE _")
+
+    return result
 
 
 def test_example(driver):
-    eg = ReadWriteTransactionExample(driver)
-    with eg.driver.session() as session:
-        session.run("MATCH (_) DETACH DELETE _")
-    n = eg.add_person("Alice")
-    assert n == 1
+    result = read_write_transaction_example(driver)
+    assert result == 2

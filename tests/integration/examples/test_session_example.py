@@ -22,23 +22,30 @@
 # tag::session-import[]
 # end::session-import[]
 
+# python -m pytest tests/integration/examples/test_session_example.py -s -v
 
-class SessionExample:
-
-    def __init__(self, driver):
-        self.driver = driver
+def session_example(driver):
+    with driver.session() as session:
+        session.run("MATCH (_) DETACH DELETE _")
 
     # tag::session[]
-    def add_person(self, name):
-        with self.driver.session() as session:
+    def add_person(name):
+        with driver.session() as session:
             session.run("CREATE (a:Person {name: $name})", name=name)
     # end::session[]
 
+    add_person("Alice")
+    add_person("Bob")
+
+    with driver.session() as session:
+        persons = session.run("MATCH (a:Person) RETURN count(a)").single().value()
+
+    with driver.session() as session:
+        session.run("MATCH (_) DETACH DELETE _")
+
+    return persons
+
 
 def test_example(driver):
-    eg = SessionExample(driver)
-    with eg.driver.session() as session:
-        session.run("MATCH (_) DETACH DELETE _")
-        eg.add_person("Alice")
-        n = session.run("MATCH (a:Person) RETURN count(a)").single().value()
-        assert n == 1
+    persons = session_example(driver)
+    assert persons == 2

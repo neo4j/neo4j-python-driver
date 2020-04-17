@@ -67,7 +67,7 @@ class BookmarksExample:
     def print_friendships(cls, tx):
         result = tx.run("MATCH (a)-[:KNOWS]->(b) RETURN a.name, b.name")
         for record in result:
-            print("{} knows {}".format(record["a.name"] ,record["b.name"]))
+            print("{} knows {}".format(record["a.name"], record["b.name"]))
 
     def main(self):
         saved_bookmarks = []  # To collect the session bookmarks
@@ -98,6 +98,8 @@ def test(uri, auth):
         with eg.driver.session() as session:
             session.run("MATCH (_) DETACH DELETE _")
         eg.main()
+        with eg.driver.session() as session:
+            session.run("MATCH (_) DETACH DELETE _")
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])

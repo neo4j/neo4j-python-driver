@@ -275,9 +275,9 @@ class WorkspaceConfig(Config):
     # Since the process of acquiring a connection may involve creating a new connection, ensure that the value
     # of this configuration is higher than the configured Connection Timeout.
 
-    #: Max Retry Time
-    max_retry_time = 30.0  # seconds
-    # The maximum amount of time that a managed transaction will retry for before failing.
+    #: Max Transaction Retry Time
+    max_transaction_retry_time = 30.0  # seconds
+    # The maximum amount of time that a managed transaction will retry before failing.
 
     #: Initial Retry Delay
     initial_retry_delay = 1.0  # seconds

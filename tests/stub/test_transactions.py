@@ -40,7 +40,7 @@ driver_config = {
     "max_connection_lifetime": 1000,
     "max_connection_pool_size": 10,
     "keep_alive": False,
-    "max_retry_time": 1,
+    "max_transaction_retry_time": 1,
     "resolver": None,
 }
 
@@ -50,7 +50,7 @@ session_config = {
     # "bookmarks": ["bookmark-1", ],
     "default_access_mode": WRITE_ACCESS,
     "connection_acquisition_timeout": 1.0,
-    "max_retry_time": 1.0,
+    "max_transaction_retry_time": 1.0,
     "initial_retry_delay": 1.0,
     "retry_delay_multiplier": 1.0,
     "retry_delay_jitter_factor": 0.1,

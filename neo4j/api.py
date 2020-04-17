@@ -56,6 +56,7 @@ SYSTEM_DATABASE = "system"
 DEFAULT_DATABASE = None  # Must be a non string hashable value
 
 
+# TODO: This class is not tested
 class Auth:
     """ Container for auth details.
     """

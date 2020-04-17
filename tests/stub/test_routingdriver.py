@@ -80,7 +80,7 @@ def test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver(driver
             "max_connection_lifetime": 1000,
             "max_connection_pool_size": 10,
             "keep_alive": False,
-            "max_retry_time": 1,
+            "max_transaction_retry_time": 1,
             "resolver": None,
         }
 
@@ -110,7 +110,7 @@ def test_neo4j_uri_scheme_secure_constructs_neo4j_driver(driver_info, test_scrip
             "max_connection_lifetime": 1000,
             "max_connection_pool_size": 10,
             "keep_alive": False,
-            "max_retry_time": 1,
+            "max_transaction_retry_time": 1,
             "resolver": None,
         }
 

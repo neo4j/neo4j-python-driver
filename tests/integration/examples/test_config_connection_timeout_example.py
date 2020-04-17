@@ -21,32 +21,29 @@
 
 import pytest
 
-# tag::custom-auth-import[]
-from neo4j import (
-    GraphDatabase,
-    custom_auth,
-)
-# end::custom-auth-import[]
-
 from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
+
+# tag::config-connection-timeout-import[]
+from neo4j import GraphDatabase
+# end::config-connection-timeout-import[]
+
 from tests.integration.examples import DriverSetupExample
 
 
-# python -m pytest tests/integration/examples/test_custom_auth_example.py -s -v
+# python -m pytest tests/integration/examples/test_config_connection_timeout_example.py -s -v
 
-class CustomAuthExample(DriverSetupExample):
+class ConfigConnectionTimeoutExample(DriverSetupExample):
 
-    # tag::custom-auth[]
-    def __init__(self, uri, principal, credentials, realm, scheme, **parameters):
-        auth = custom_auth(principal, credentials, realm, scheme, **parameters)
-        self.driver = GraphDatabase.driver(uri, auth=auth)
-    # end::custom-auth[]
+    # tag::config-connection-timeout[]
+    def __init__(self, uri, auth):
+        self.driver = GraphDatabase.driver(uri, auth=auth, connection_timeout=15)
+    # end::config-connection-timeout[]
 
 
-def test_example(uri, auth):
+def test(uri, auth):
     try:
-        CustomAuthExample.test(uri, auth[0], auth[1], None, "basic", key="value")
+        ConfigConnectionTimeoutExample.test(uri, auth)
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])

@@ -21,28 +21,29 @@
 
 import pytest
 
-# tag::basic-auth-import[]
+# tag::config-unencrypted-import[]
 from neo4j import GraphDatabase
-# end::basic-auth-import[]
+# end::config-unencrypted-import[]
 
 from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
+
 from tests.integration.examples import DriverSetupExample
 
 
-# python -m pytest tests/integration/examples/test_auth_example.py -s -v
+# python -m pytest tests/integration/examples/test_config_unencrypted_example.py -s -v
 
-class BasicAuthExample(DriverSetupExample):
+class ConfigUnencryptedExample(DriverSetupExample):
 
-    # tag::basic-auth[]
-    def __init__(self, uri, user, password):
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
-    # end::basic-auth[]
+    # tag::config-unencrypted[]
+    def __init__(self, uri, auth):
+        self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=False)
+    # end::config-unencrypted[]
 
 
 def test_example(uri, auth):
     try:
-        BasicAuthExample.test(uri, user=auth[0], password=auth[1])
+        ConfigUnencryptedExample.test(uri, auth)
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])

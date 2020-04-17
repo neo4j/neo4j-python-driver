@@ -21,24 +21,28 @@
 
 import pytest
 
-# tag::kerberos-auth-import[]
-from neo4j import (
-    GraphDatabase,
-    kerberos_auth,
-)
-# end::kerberos-auth-import[]
+# tag::basic-auth-import[]
+from neo4j import GraphDatabase
+# end::basic-auth-import[]
 
+from neo4j.exceptions import ServiceUnavailable
+from neo4j._exceptions import BoltHandshakeError
 from tests.integration.examples import DriverSetupExample
 
 
-# python -m pytest tests/integration/examples/test_kerberos_auth_example.py -s -v
+# python -m pytest tests/integration/examples/test_basic_auth_example.py -s -v
 
-class KerberosAuthExample(DriverSetupExample):
-    # tag::kerberos-auth[]
-    def __init__(self, uri, ticket):
-        self._driver = GraphDatabase.driver(uri, auth=kerberos_auth(ticket))
-    # end::kerberos-auth[]
+class BasicAuthExample(DriverSetupExample):
+
+    # tag::basic-auth[]
+    def __init__(self, uri, user, password):
+        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+    # end::basic-auth[]
 
 
-def test_example():
-    pytest.skip("Currently no way to test Kerberos auth")
+def test_example(uri, auth):
+    try:
+        BasicAuthExample.test(uri, user=auth[0], password=auth[1])
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])

@@ -37,8 +37,8 @@ from neo4j._exceptions import BoltHandshakeError
 # tag::hello-world[]
 class HelloWorldExample:
 
-    def __init__(self, uri, auth):
-        self.driver = GraphDatabase.driver(uri, auth=auth)
+    def __init__(self, uri, user, password):
+        self.driver = GraphDatabase.driver(uri, auth=(user, password))
 
     def close(self):
         self.driver.close()
@@ -54,6 +54,12 @@ class HelloWorldExample:
                         "SET a.message = $message "
                         "RETURN a.message + ', from node ' + id(a)", message=message)
         return result.single()[0]
+
+
+if __name__ == "__main__":
+    greeter = HelloWorldExample("bolt://localhost:7687", "neo4j", "password")
+    greeter.print_greeting("hello, world")
+    greeter.close()
 # end::hello-world[]
 
 # tag::hello-world-output[]
@@ -65,7 +71,7 @@ def test_hello_world_example(uri, auth):
     try:
         s = StringIO()
         with redirect_stdout(s):
-            example = HelloWorldExample(uri, auth)
+            example = HelloWorldExample(uri, auth[0], auth[1])
             example.print_greeting("hello, world")
             example.close()
 

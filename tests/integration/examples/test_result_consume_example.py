@@ -22,38 +22,31 @@
 # tag::result-consume-import[]
 # end::result-consume-import[]
 
+# python -m pytest tests/integration/examples/test_result_consume_example.py -s -v
 
-class ResultConsumeExample:
+def result_consume_example(driver):
+    with driver.session() as session:
+        session.run("MATCH (_) DETACH DELETE _").consume()
 
-    def __init__(self, driver):
-        self.session = driver.session()
-
-    def close(self):
-        self.session.close()
-
-    def delete_all(self):
-        self.session.run("MATCH (_) DETACH DELETE _").consume()
-
-    def add_person(self, name):
-        return self.session.run("CREATE (a:Person {name: $name}) "
-                                "RETURN a", name=name).single().value()
+    with driver.session() as session:
+        session.run("CREATE (a:Person {name: $name}) RETURN a", name="Alice").single().value()
+        session.run("CREATE (a:Person {name: $name}) RETURN a", name="Bob").single().value()
 
     # tag::result-consume[]
-    def get_people(self):
-        return self.session.read_transaction(self.match_person_nodes)
-
-    @staticmethod
     def match_person_nodes(tx):
         result = tx.run("MATCH (a:Person) RETURN a.name ORDER BY a.name")
         return [record["a.name"] for record in result]
+
+    with driver.session() as session:
+        people = session.read_transaction(match_person_nodes)
     # end::result-consume[]
+
+    with driver.session() as session:
+        session.run("MATCH (_) DETACH DELETE _").consume()
+
+    return people
 
 
 def test_example(driver):
-    eg = ResultConsumeExample(driver)
-    eg.delete_all()
-    eg.add_person("Alice")
-    eg.add_person("Bob")
-    people = list(eg.get_people())
+    people = result_consume_example(driver)
     assert people == ['Alice', 'Bob']
-    eg.close()

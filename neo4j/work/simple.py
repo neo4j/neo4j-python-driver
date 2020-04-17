@@ -416,7 +416,7 @@ class Session(Workspace):
             else:
                 return result
             t1 = perf_counter()
-            if t1 - t0 > self._config.max_retry_time:
+            if t1 - t0 > self._config.max_transaction_retry_time:
                 break
             delay = next(retry_delay)
             log.warning("Transaction failed and will be retried in {}s "

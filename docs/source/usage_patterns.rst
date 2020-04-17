@@ -53,7 +53,7 @@ Driver Initialization Work Pattern
         "max_connection_lifetime": 1000,
         "max_connection_pool_size": 100,
         "keep_alive": False,
-        "max_retry_time": 10,
+        "max_transaction_retry_time": 10,
         "resolver": None,
     }
 
@@ -99,7 +99,7 @@ Session Initialization Work Pattern
         "bookmarks": ["bookmark-1",],
         "access_mode": ACCESS_WRITE,
         "connection_acquisition_timeout": 60.0,
-        "max_retry_time": 30.0,
+        "max_transaction_retry_time": 30.0,
         "initial_retry_delay": 1.0,
         "retry_delay_multiplier": 2.0,
         "retry_delay_jitter_factor": 0.2,

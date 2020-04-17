@@ -26,22 +26,32 @@ from neo4j.exceptions import ServiceUnavailable
 # end::service-unavailable-import[]
 
 
-class ServiceUnavailableExample:
-
-    def __init__(self, driver):
-        self.driver = driver
+def service_unavailable_example(driver):
+    with driver.session() as session:
+        session.run("MATCH (_) DETACH DELETE _")
 
     # tag::service-unavailable[]
-    def add_item(self):
+    def add_item():
         try:
-            with self.driver.session() as session:
+            with driver.session() as session:
                 session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
             return True
         except ServiceUnavailable:
             return False
     # end::service-unavailable[]
 
+    add_item()
+    add_item()
+    add_item()
+
+    with driver.session() as session:
+        items = session.run("MATCH (a:Item) RETURN count(a)").single().value()
+
+    with driver.session() as session:
+        session.run("MATCH (_) DETACH DELETE _")
+
+    return items
+
 
 def test_example():
-    # TODO: Better error messages for the user
     pytest.skip("Fix better error messages for the user. Be able to kill the server.")
