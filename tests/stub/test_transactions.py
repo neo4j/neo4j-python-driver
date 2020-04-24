@@ -54,6 +54,7 @@ session_config = {
     "initial_retry_delay": 1.0,
     "retry_delay_multiplier": 1.0,
     "retry_delay_jitter_factor": 0.1,
+    "fetch_size": -1,
 }
 
 

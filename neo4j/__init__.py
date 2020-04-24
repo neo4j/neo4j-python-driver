@@ -323,6 +323,7 @@ class Driver:
         """
         self._pool.close()
 
+    @experimental("The configuration may change in the future.")
     def verify_connectivity(self, **config):
         """ This verifies if the driver can connect to a remote server or a cluster
         by establishing a network connection with the remote and possibly exchanging
@@ -403,8 +404,10 @@ class BoltDriver(Direct, Driver):
         PipelineConfig.consume(config)  # Consume the config
         return Pipeline(self._pool, pipeline_config)
 
+    @experimental("The configuration may change in the future.")
     def verify_connectivity(self, **config):
         server_agent = None
+        config["fetch_size"] = -1
         with self.session(**config) as session:
             result = session.run("RETURN 1 AS x")
             value = result.single().value()
@@ -445,6 +448,7 @@ class Neo4jDriver(Routing, Driver):
         PipelineConfig.consume(config)  # Consume the config
         return Pipeline(self._pool, pipeline_config)
 
+    @experimental("The configuration may change in the future.")
     def verify_connectivity(self, **config):
         """
         :raise ServiceUnavailable: raised if the server does not support routing or if routing support is broken.

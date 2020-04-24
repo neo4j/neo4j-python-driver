@@ -64,6 +64,7 @@ session_config = {
     "initial_retry_delay": 1.0,
     "retry_delay_multiplier": 1.0,
     "retry_delay_jitter_factor": 0.1,
+    "fetch_size": -1,
 }
 
 
@@ -296,3 +297,24 @@ def test_driver_trust_config_error(driver_info, test_config, expected_failure, e
         driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
 
     assert error.match(expected_failure_message)
+
+
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v4x0/pull_n_port_9001.script",
+    ]
+)
+def test_bolt_driver_fetch_size_config(driver_info, test_script):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_fetch_size_config
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(database="test", fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = []
+                result = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+                for record in result:
+                    expected.append(record["x"])
+
+        assert expected == [1, 2, 3, 4]

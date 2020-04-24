@@ -38,7 +38,7 @@ from neo4j.exceptions import (
 from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.work import Workspace
 from neo4j.work.summary import ResultSummary
-
+from neo4j.io._bolt3 import Bolt3
 
 log = getLogger("neo4j")
 
@@ -186,14 +186,7 @@ class Session(Workspace):
             "on_failure": fail,
         }
 
-        def done(summary_metadata):
-            result_metadata.update(summary_metadata)
-            bookmark = result_metadata.get("bookmark")
-            if bookmark:
-                self._bookmarks_in = tuple([bookmark])
-                self._bookmark_out = bookmark
-
-        self._last_result = result = Result(self, hydrant, result_metadata)
+        self._last_result = result = Result(self, hydrant, result_metadata)  # The result object that consumes messages from the server
 
         access_mode = None
         db = None
@@ -226,11 +219,41 @@ class Session(Workspace):
             on_success=run_metadata["on_success"],
             on_failure=run_metadata["on_failure"],
         )
+
+        def on_success_done(summary_metadata):
+            result_metadata.update(summary_metadata)
+            bookmark = result_metadata.get("bookmark")
+            if bookmark:
+                self._bookmarks_in = tuple([bookmark])
+                self._bookmark_out = bookmark
+
+        def on_records_extend_records(records):
+            result._records.extend(hydrant.hydrate_records(result.keys(), records))
+
+        if cx.PROTOCOL_VERSION == Bolt3.PROTOCOL_VERSION:
+            fetch_size = -1
+        else:
+            fetch_size = self._config.fetch_size
+
+        def on_success_has_more_pull_records(connection, **handlers):
+            connection.pull(
+                n=fetch_size,
+                on_records=handlers.get("on_records"),
+                on_success=handlers.get("on_success"),
+                on_failure=handlers.get("on_failure"),
+                on_summary=handlers.get("on_summary"),
+                on_success_has_more=handlers.get("on_success_has_more"),
+            )
+            connection.send_all()
+            connection.fetch_message()
+
         # BOLT PULL
         cx.pull(
-            on_records=lambda records: result._records.extend(hydrant.hydrate_records(result.keys(), records)),
-            on_success=done,
+            n=fetch_size,
+            on_records=on_records_extend_records,
+            on_success=on_success_done,
             on_failure=fail,
+            on_success_has_more=on_success_has_more_pull_records,
             on_summary=lambda: result.detach(sync=False),
         )
 
@@ -702,7 +725,7 @@ class Result:
         return self._summary
 
     def consume(self):
-        """ Consume the remainder of this result and return the summary.
+        """ Consume the remainder of this result and return a ResultSummary.
 
         :returns: The :class:`neo4j.ResultSummary` for this result
         """

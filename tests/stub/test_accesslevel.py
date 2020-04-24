@@ -44,7 +44,7 @@ def test_read_transaction(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session() as session:
+            with driver.session(fetch_size=-1) as session:
 
                 def unit_of_work(tx):
                     total = 0
@@ -68,7 +68,7 @@ def test_write_transaction(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session() as session:
+            with driver.session(fetch_size=-1) as session:
 
                 def unit_of_work(tx):
                     total = 0
@@ -92,7 +92,7 @@ def test_read_transaction_with_error(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session() as session:
+            with driver.session(fetch_size=-1) as session:
 
                 def unit_of_work(tx):
                     tx.run("X")
@@ -113,7 +113,7 @@ def test_write_transaction_with_error(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session() as session:
+            with driver.session(fetch_size=-1) as session:
 
                 def unit_of_work(tx):
                     tx.run("X")
@@ -134,7 +134,7 @@ def test_two_subsequent_read_transactions(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session() as session:
+            with driver.session(fetch_size=-1) as session:
 
                 def unit_of_work(tx):
                     total = 0
@@ -160,7 +160,7 @@ def test_two_subsequent_write_transactions(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session() as session:
+            with driver.session(fetch_size=-1) as session:
 
                 def unit_of_work(tx):
                     total = 0
@@ -186,7 +186,7 @@ def test_read_tx_then_write_tx(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session() as session:
+            with driver.session(fetch_size=-1) as session:
 
                 def unit_of_work_1(tx):
                     total = 0
@@ -220,7 +220,7 @@ def test_write_tx_then_read_tx(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session() as session:
+            with driver.session(fetch_size=-1) as session:
 
                 def unit_of_work_1(tx):
                     total = 0
@@ -252,7 +252,7 @@ def test_no_retry_read_on_user_canceled_tx(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session() as session:
+            with driver.session(fetch_size=-1) as session:
                 def unit_of_work(tx):
                     tx.run("RETURN 1")
 
@@ -272,7 +272,7 @@ def test_no_retry_write_on_user_canceled_tx(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session() as session:
+            with driver.session(fetch_size=-1) as session:
                 def unit_of_work(tx):
                     tx.run("RETURN 1")
 

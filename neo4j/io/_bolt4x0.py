@@ -489,12 +489,17 @@ class Response:
     def on_success(self, metadata):
         """ Called when a SUCCESS message has been received.
         """
-        handler = self.handlers.get("on_success")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
+        if metadata.get("has_more"):
+            handler = self.handlers.get("on_success_has_more")
+            if callable(handler):
+                handler(self.connection, **self.handlers)
+        else:
+            handler = self.handlers.get("on_success")
+            if callable(handler):
+                handler(metadata)
+            handler = self.handlers.get("on_summary")
+            if callable(handler):
+                handler()
 
     def on_failure(self, metadata):
         """ Called when a FAILURE message has been received.

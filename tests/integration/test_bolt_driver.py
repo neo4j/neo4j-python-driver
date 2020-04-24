@@ -25,6 +25,7 @@ from neo4j import (
     GraphDatabase,
     BoltDriver,
     Version,
+    READ_ACCESS,
 )
 from neo4j.exceptions import (
     ServiceUnavailable,
@@ -167,3 +168,20 @@ def test_test_multi_db_specify_database(bolt_uri, auth):
     except ClientError as error:
         # FAILURE {'code': 'Neo.ClientError.Database.DatabaseNotFound' - This message is sent from the server
         assert error.args[0] == "Database does not exist. Database name: 'test_database'."
+
+
+def test_bolt_driver_fetch_size_config(bolt_uri, auth):
+    # python -m pytest tests/integration/test_bolt_driver.py-s -v -k test_bolt_driver_fetch_size_config
+    try:
+        with GraphDatabase.driver(bolt_uri, auth=auth, user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = []
+                result = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+                for record in result:
+                    expected.append(record["x"])
+
+        assert expected == [1, 2, 3, 4]
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
