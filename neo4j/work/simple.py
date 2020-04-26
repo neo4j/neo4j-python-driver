@@ -243,6 +243,18 @@ class Session(Workspace):
                 on_failure=handlers.get("on_failure"),
                 on_summary=handlers.get("on_summary"),
                 on_success_has_more=handlers.get("on_success_has_more"),
+                on_success_has_more_streaming_discard_all=handlers.get("on_success_has_more_streaming_discard_all")
+            )
+            connection.send_all()
+            connection.fetch_message()
+
+        def on_success_has_more_streaming_discard_all(connection, **handlers):
+            connection.discard(
+                n=-1,
+                # on_records=handlers.get("on_records"),
+                on_success=handlers.get("on_success"),
+                on_failure=handlers.get("on_failure"),
+                on_summary=handlers.get("on_summary"),
             )
             connection.send_all()
             connection.fetch_message()
@@ -255,6 +267,7 @@ class Session(Workspace):
             on_failure=fail,
             on_success_has_more=on_success_has_more_pull_records,
             on_summary=lambda: result.detach(sync=False),
+            on_success_has_more_streaming_discard_all=on_success_has_more_streaming_discard_all,
         )
 
         if not has_transaction:
@@ -730,6 +743,7 @@ class Result:
         :returns: The :class:`neo4j.ResultSummary` for this result
         """
         if self.attached():
+            self.attached()._connection.state = "streaming_discard_all"
             for _ in self:
                 pass
         return self.summary()

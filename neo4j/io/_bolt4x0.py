@@ -86,6 +86,7 @@ class Bolt4x0(Bolt):
         self.responses = deque()
         self._max_connection_lifetime = max_connection_lifetime  # self.pool_config.max_connection_lifetime
         self._creation_timestamp = perf_counter()
+        self.state = None
 
         # Determine the user agent
         if user_agent:
@@ -490,7 +491,11 @@ class Response:
         """ Called when a SUCCESS message has been received.
         """
         if metadata.get("has_more"):
-            handler = self.handlers.get("on_success_has_more")
+            if self.connection.state == "streaming_discard_all":
+                handler = self.handlers.get("on_success_has_more_streaming_discard_all")
+                self.connection.state = None
+            else:
+                handler = self.handlers.get("on_success_has_more")
             if callable(handler):
                 handler(self.connection, **self.handlers)
         else:
