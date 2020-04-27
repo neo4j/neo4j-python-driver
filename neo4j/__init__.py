@@ -411,7 +411,7 @@ class BoltDriver(Direct, Driver):
         with self.session(**config) as session:
             result = session.run("RETURN 1 AS x")
             value = result.single().value()
-            summary = result.summary()
+            summary = result.consume()
             server_agent = summary.server.agent
         return server_agent
 

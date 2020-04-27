@@ -47,6 +47,7 @@ from tests.stub.conftest import StubCluster
 
 # python -m pytest tests/stub/test_routingdriver.py -s -v
 
+
 @pytest.mark.parametrize(
     "test_script",
     [
@@ -253,7 +254,7 @@ def test_should_be_able_to_read(driver_info, test_scripts):
                 result = session.run("RETURN $x", {"x": 1})
                 for record in result:
                     assert record["x"] == 1
-                assert result.summary().server.address == ('127.0.0.1', 9004)
+                assert result.consume().server.address == ('127.0.0.1', 9004)
 
 
 @pytest.mark.parametrize(
@@ -271,7 +272,7 @@ def test_should_be_able_to_write(driver_info, test_scripts):
             with driver.session(default_access_mode=WRITE_ACCESS, fetch_size=-1) as session:
                 result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
                 assert not list(result)
-                assert result.summary().server.address == ('127.0.0.1', 9006)
+                assert result.consume().server.address == ('127.0.0.1', 9006)
 
 
 @pytest.mark.parametrize(
@@ -289,7 +290,7 @@ def test_should_be_able_to_write_as_default(driver_info, test_scripts):
             with driver.session(fetch_size=-1) as session:
                 result = session.run("CREATE (a $x)", {"x": {"name": "Alice"}})
                 assert not list(result)
-                assert result.summary().server.address == ('127.0.0.1', 9006)
+                assert result.consume().server.address == ('127.0.0.1', 9006)
 
 
 @pytest.mark.parametrize(
@@ -491,7 +492,7 @@ def test_should_call_get_routing_table_procedure(driver_info, test_scripts, test
                 result = session.run(*test_run_args)
                 for record in result:
                     assert record["x"] == 1
-                assert result.summary().server.address == ('127.0.0.1', 9002)
+                assert result.consume().server.address == ('127.0.0.1', 9002)
 
 
 @pytest.mark.parametrize(
@@ -510,7 +511,7 @@ def test_should_call_get_routing_table_with_context(driver_info, test_scripts, t
                 result = session.run(*test_run_args)
                 for record in result:
                     assert record["x"] == 1
-                assert result.summary().server.address == ('127.0.0.1', 9002)
+                assert result.consume().server.address == ('127.0.0.1', 9002)
 
 
 @pytest.mark.parametrize(
@@ -529,7 +530,7 @@ def test_should_serve_read_when_missing_writer(driver_info, test_scripts, test_r
                 result = session.run(*test_run_args)
                 for record in result:
                     assert record["x"] == 1
-                assert result.summary().server.address == ('127.0.0.1', 9005)
+                assert result.consume().server.address == ('127.0.0.1', 9005)
 
 
 @pytest.mark.parametrize(

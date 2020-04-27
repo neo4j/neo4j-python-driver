@@ -727,7 +727,7 @@ class Result:
             while records:
                 yield next_record()
 
-    def summary(self):
+    def _obtain_summary(self):
         """ Obtain the summary of this result, buffering any remaining records.
 
         :returns: The :class:`neo4j.ResultSummary` for this result
@@ -746,7 +746,7 @@ class Result:
             self.attached()._connection.state = "streaming_discard_all"
             for _ in self:
                 pass
-        return self.summary()
+        return self._obtain_summary()
 
     def single(self):
         """ Obtain the next and only remaining record from this result.

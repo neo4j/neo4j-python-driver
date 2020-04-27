@@ -73,7 +73,7 @@ def test_supports_multi_db(neo4j_uri, auth, target):
     with driver.session() as session:
         result = session.run("RETURN 1")
         value = result.single().value()   # Consumes the result
-        summary = result.summary()
+        summary = result.consume()
         server_info = summary.server
 
     result = driver.supports_multi_db()
@@ -96,7 +96,7 @@ def test_test_multi_db_specify_database(neo4j_uri, auth, target):
             with driver.session() as session:
                 result = session.run("RETURN 1")
                 assert next(result) == 1
-                summary = result.summary()
+                summary = result.consume()
                 assert summary.database == "test_database"
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):

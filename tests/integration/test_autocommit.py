@@ -178,7 +178,7 @@ def test_autocommit_transactions_should_support_metadata(session, test_input, ne
 
     result = session.run("RETURN 1")
     value = result.single().value()
-    summary = result.summary()
+    summary = result.consume()
     server_agent = summary.server.agent
 
     try:
