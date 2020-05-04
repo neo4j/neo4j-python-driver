@@ -19,8 +19,9 @@
 # limitations under the License.
 
 
-from os.path import dirname, join as path_join
-from subprocess import check_call
+import subprocess
+import os
+
 from threading import Thread
 from time import sleep
 
@@ -33,10 +34,31 @@ class StubServer(Thread):
     def __init__(self, port, script):
         super(StubServer, self).__init__()
         self.port = port
-        self.script = path_join(dirname(__file__), "scripts", script)
+        self.script = os.path.join(os.path.dirname(__file__), "scripts", script)
 
     def run(self):
-        check_call(["boltstub", str(self.port), self.script])
+        subprocess.check_call(["python", "-m", "boltkit", "stub", "-l", ":{}".format(str(self.port)), "-t", "10", self.script])
+
+
+class StubCluster(object):
+
+    def __init__(self, servers):
+        self.servers = {port: StubServer(port, script) for port, script in dict(servers).items()}
+
+    def __enter__(self):
+        self.start()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.wait()
+
+    def start(self):
+        for port, server in self.servers.items():
+            server.start()
+        sleep(0.5)
+
+    def wait(self):
+        for port, server in self.servers.items():
+            server.join()
 
 
 class LegacyStubServer(Thread):
@@ -44,10 +66,9 @@ class LegacyStubServer(Thread):
     def __init__(self, port, script):
         super(LegacyStubServer, self).__init__()
         self.port = port
-        self.script = path_join(dirname(__file__), "scripts", script)
+        self.script = os.path.join(os.path.dirname(__file__), "scripts", script)
 
     def run(self):
-        # check_call(["boltstub", str(self.port), self.script])
         check_call(["python", "-m", "boltkit.legacy.stub", "-v", str(self.port), self.script])
 
 
@@ -72,18 +93,17 @@ class LegacyStubCluster(object):
             server.join()
 
 
-class LegacyBoltStubService(BoltStubService):
+class DefaultBoltStubService(BoltStubService):
 
     default_base_port = 9001
 
 
-class StubCluster(LegacyStubCluster):
+class StubCluster(StubCluster):
 
     def __init__(self, *servers):
-        scripts = [path_join(dirname(__file__), "scripts", server)
-                   for server in servers]
+        scripts = [os.path.join(os.path.dirname(__file__), "scripts", server) for server in servers]
 
-        bss = LegacyBoltStubService.load(*scripts)
+        bss = DefaultBoltStubService.load(*scripts)
         servers2 = {port: script.filename for port, script in bss.scripts.items()}
         super().__init__(servers2)
 
