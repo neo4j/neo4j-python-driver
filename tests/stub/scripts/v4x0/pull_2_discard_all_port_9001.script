@@ -12,4 +12,4 @@ S: RECORD [1]
    RECORD [2]
    SUCCESS {"has_more": true}
 C: DISCARD {"n": -1}
-S: SUCCESS {"bookmark": "neo4j:bookmark-test-1", type": "r", "t_last": 500, "db": "test"}
+S: SUCCESS {"bookmark": "neo4j:bookmark-test-1", "type": "r", "t_last": 500, "db": "test"}

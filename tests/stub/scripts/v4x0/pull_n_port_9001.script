@@ -14,4 +14,4 @@ S: RECORD [1]
 C: PULL {"n": 2}
 S: RECORD [3]
    RECORD [4]
-   SUCCESS {"bookmark": "neo4j:bookmark-test-1", type": "r", "t_last": 500, "db": "test"}
+   SUCCESS {"bookmark": "neo4j:bookmark-test-1", "type": "r", "t_last": 500, "db": "test"}
