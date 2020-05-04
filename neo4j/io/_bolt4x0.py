@@ -304,7 +304,7 @@ class Bolt4x0(Bolt):
             raise
 
         if details:
-            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # TODO
+            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))
             self.responses[0].on_records(details)
 
         if summary_signature is None:
@@ -483,6 +483,7 @@ class Response:
     def on_records(self, records):
         """ Called when one or more RECORD messages have been received.
         """
+        self.connection.state = "streaming"
         handler = self.handlers.get("on_records")
         if callable(handler):
             handler(records)
@@ -494,11 +495,12 @@ class Response:
             if self.connection.state == "streaming_discard_all":
                 handler = self.handlers.get("on_success_has_more_streaming_discard_all")
                 self.connection.state = None
+                if callable(handler):
+                    handler(self.connection, **self.handlers)
             else:
-                handler = self.handlers.get("on_success_has_more")
-            if callable(handler):
-                handler(self.connection, **self.handlers)
+                self.connection.state = "streaming_has_more"
         else:
+            self.connection.state = None
             handler = self.handlers.get("on_success")
             if callable(handler):
                 handler(metadata)

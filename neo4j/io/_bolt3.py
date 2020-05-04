@@ -87,6 +87,7 @@ class Bolt3(Bolt):
         self.responses = deque()
         self._max_connection_lifetime = max_connection_lifetime
         self._creation_timestamp = perf_counter()
+        self.state = None
 
         # Determine the user agent
         if user_agent:
@@ -305,7 +306,7 @@ class Bolt3(Bolt):
             raise
 
         if details:
-            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # TODO
+            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))
             self.responses[0].on_records(details)
 
         if summary_signature is None:
