@@ -54,7 +54,7 @@ class StubCluster(object):
     def start(self):
         for port, server in self.servers.items():
             server.start()
-        sleep(0.5)
+        sleep(2)  # sleep to let the servers start up properly
 
     def wait(self):
         for port, server in self.servers.items():

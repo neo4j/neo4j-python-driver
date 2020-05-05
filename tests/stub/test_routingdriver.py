@@ -150,6 +150,7 @@ def test_neo4j_uri_scheme_secure_constructs_neo4j_driver_config_error(driver_inf
     assert error.match(expected_failure_message)
 
 
+@pytest.mark.skip(reason="Flaky")
 @pytest.mark.parametrize(
     "test_script",
     [
@@ -169,6 +170,7 @@ def test_neo4j_driver_verify_connectivity(driver_info, test_script):
         driver.close()
 
 
+@pytest.mark.skip(reason="Flaky")
 @pytest.mark.parametrize(
     "test_script",
     [
