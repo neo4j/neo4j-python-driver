@@ -13,7 +13,7 @@ S: RECORD [1]
    SUCCESS {"has_more": true}
 C: DISCARD {"n": -1}
 S: SUCCESS {"bookmark": "neo4j:bookmark-test-1", "type": "r", "t_last": 500, "db": "test"}
-C: RUN "UNWIND [5,6,7,8] AS x RETURN x" {} {"mode": "r", "db": "test"}
+C: RUN "UNWIND [5,6,7,8] AS x RETURN x" {} {"mode": "r", "db": "test", "bookmarks": ["neo4j:bookmark-test-1"]}
 C: PULL {"n": 2}
 S: RECORD [5]
    RECORD [6]
