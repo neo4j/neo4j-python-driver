@@ -79,6 +79,9 @@ class Session(Workspace):
     # The bookmark returned from the last commit.
     _bookmark_out = None
 
+    # The state this session is in.
+    _state = None
+
     def __init__(self, pool, session_config):
         super().__init__(pool, session_config)
         assert isinstance(session_config, SessionConfig)
@@ -93,7 +96,12 @@ class Session(Workspace):
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exception_type, exception_value, traceback):
+        # TODO: Fix better state logic
+        if exception_type is None:
+            self._state = "graceful_close_state"
+        else:
+            self._state = "error_state"
         self.close()
 
     def _connect(self, access_mode, database):
@@ -114,6 +122,15 @@ class Session(Workspace):
     def close(self):
         """Close the session. This will release any borrowed resources, such as connections, and will roll back any outstanding transactions.
         """
+        if self._last_result and self._connection:
+            if self._state != "error_state":
+                try:
+                    self._last_result.consume()
+                except Exception as e:
+                    # TODO: Investigate potential non graceful close states
+                    self._last_result = None
+                    self._state = "error_state"
+
         if self._connection:
             if self._transaction:
                 self._connection.rollback()
@@ -121,10 +138,19 @@ class Session(Workspace):
             try:
                 self._connection.send_all()
                 self._connection.fetch_all()
-            except (Neo4jError, TransactionError, ServiceUnavailable, SessionExpired):
+                # TODO: Investigate potential non graceful close states
+            except Neo4jError:
+                pass
+            except TransactionError:
+                pass
+            except ServiceUnavailable:
+                pass
+            except SessionExpired:
                 pass
             finally:
                 self._disconnect()
+
+            self._state = None
 
     def discard_all(self):
         """Internal API.
@@ -188,7 +214,8 @@ class Session(Workspace):
 
         :return: The state of the BOLT connection.
         """
-        return self._connection.state
+        if self._connection:
+            return self._connection.state
 
     def set_connection_state(self, state):
         """Internal API.
@@ -196,7 +223,8 @@ class Session(Workspace):
         :param: The state for the BOLT connection.
         :type: str
         """
-        self._connection.state = state
+        if self._connection:
+            self._connection.state = state
 
     def run(self, query, parameters=None, **kwparameters):
         """Run a Cypher query within an auto-commit transaction.
@@ -228,7 +256,6 @@ class Session(Workspace):
 
         if self._last_result:
             self._last_result.consume()
-            log.debug("consuming last result")
 
         if not self._connection:
             self._connect(self._config.default_access_mode, database=self._config.database)

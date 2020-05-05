@@ -63,6 +63,7 @@ def test_neo4j_uri_scheme_constructs_neo4j_driver(driver_info, test_script):
             assert isinstance(driver, Neo4jDriver)
 
 
+@pytest.mark.skip(reason="Cant close the Stub Server gracefully")
 @pytest.mark.parametrize(
     "test_script",
     [
@@ -93,6 +94,7 @@ def test_neo4j_uri_scheme_self_signed_certificate_constructs_neo4j_driver(driver
             pytest.skip("Failed to establish encrypted connection")
 
 
+@pytest.mark.skip(reason="Cant close the Stub Server gracefully")
 @pytest.mark.parametrize(
     "test_script",
     [
