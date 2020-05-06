@@ -174,18 +174,12 @@ class Bolt3(Bolt):
             self._append(b"\x10", fields, Response(self, **handlers))
 
     def discard(self, n=-1, qid=-1, **handlers):
-        if n != -1:
-            raise ValueError("Incremental discard is not supported in Bolt 3")
-        if qid != -1:
-            raise ValueError("Query selection on discard is not supported in Bolt 3")
+        # Just ignore n and qid, it is not supported in the Bolt 3 Protocol.
         log.debug("[#%04X]  C: DISCARD_ALL", self.local_port)
         self._append(b"\x2F", (), Response(self, **handlers))
 
     def pull(self, n=-1, qid=-1, **handlers):
-        if n != -1:
-            raise ValueError("Incremental pull is not supported in Bolt 3")
-        if qid != -1:
-            raise ValueError("Query selection on pull is not supported in Bolt 3")
+        # Just ignore n and qid, it is not supported in the Bolt 3 Protocol.
         log.debug("[#%04X]  C: PULL_ALL", self.local_port)
         self._append(b"\x3F", (), Response(self, **handlers))
 

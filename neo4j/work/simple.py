@@ -195,14 +195,9 @@ class Session(Workspace):
             hydrant = self._last_result._hydrant
             self._last_result._records.extend(hydrant.hydrate_records(self._last_result.keys(), records))
 
-        if self._connection.PROTOCOL_VERSION == Bolt3.PROTOCOL_VERSION:
-            fetch_size = -1
-        else:
-            fetch_size = self._config.fetch_size
-
         # BOLT PULL
         self._connection.pull(
-            n=fetch_size,
+            n=self._config.fetch_size,
             on_records=on_records_extend_records,
             on_success=on_success_done,
             on_failure=fail,
