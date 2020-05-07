@@ -640,6 +640,8 @@ class Transaction:
 
         :raise TransactionError: if already closed
         """
+        if self.session._last_result:
+            self.session._last_result.consume()
         self._success = True
         self._close()
 
@@ -649,6 +651,8 @@ class Transaction:
 
         :raise TransactionError: if already closed
         """
+        if self.session._last_result:
+            self.session._last_result.consume()
         self._success = False
         self._close()
 

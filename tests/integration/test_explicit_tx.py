@@ -169,6 +169,7 @@ def test_transaction_timeout(driver):
 #         assert tx.closed()
 
 
+@pytest.mark.skip(reason="This behaviour have changed. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
 def test_should_sync_after_commit(session):
     tx = session.begin_transaction()
     result = tx.run("RETURN 1")
@@ -178,6 +179,7 @@ def test_should_sync_after_commit(session):
     assert buffer[0][0] == 1
 
 
+@pytest.mark.skip(reason="This behaviour have changed. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
 def test_should_sync_after_rollback(session):
     tx = session.begin_transaction()
     result = tx.run("RETURN 1")

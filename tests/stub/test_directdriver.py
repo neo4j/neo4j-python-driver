@@ -542,3 +542,40 @@ def test_bolt_driver_read_transaction_fetch_size_config_normal_case(driver_info,
                 expected = session.read_transaction(unwind)
 
         assert expected == [1, 2, 3, 4]
+
+
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v4x0/tx_pull_2_discard_all_port_9001.script", "test"),  # TODO: Fix correct new behaviour with qid
+    ]
+)
+def test_bolt_driver_explicit_transaction_consume_result_case_a(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_explicit_transaction_consume_result_case_a
+    # This test is to check that the implicit consume that is triggered on transaction.commit() is working properly.
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                transaction = session.begin_transaction(timeout=3, metadata={"foo": "bar"})
+                result = transaction.run("UNWIND [1,2,3,4] AS x RETURN x")
+                transaction.commit()
+
+
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v4x0/tx_pull_2_discard_all_port_9001.script", "test"),  # TODO: Fix correct new behaviour with qid
+    ]
+)
+def test_bolt_driver_explicit_transaction_consume_result_case_b(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_explicit_transaction_consume_result_case_b
+    # This test is to check that the implicit consume that is triggered on transaction.commit() is working properly.
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                transaction = session.begin_transaction(timeout=3, metadata={"foo": "bar"})
+                result = transaction.run("UNWIND [1,2,3,4] AS x RETURN x")
+                result.consume()
+                transaction.commit()
