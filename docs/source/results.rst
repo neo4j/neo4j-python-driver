@@ -25,8 +25,6 @@ A :class:`.Result` is attached to an active connection, through a :class:`.Sessi
 
     .. automethod:: records
 
-    .. automethod:: summary
-
     .. automethod:: consume
 
     .. automethod:: single

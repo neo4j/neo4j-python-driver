@@ -76,20 +76,6 @@ def test_simple_discard(fake_socket):
     assert len(fields) == 0
 
 
-def test_n_extra_not_supported_in_discard(fake_socket):
-    address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
-    with pytest.raises(ValueError):
-        connection.discard(n=666)
-
-
-def test_qid_extra_not_supported_in_discard(fake_socket):
-    address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
-    with pytest.raises(ValueError):
-        connection.discard(qid=666)
-
-
 def test_simple_pull(fake_socket):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
@@ -99,17 +85,3 @@ def test_simple_pull(fake_socket):
     tag, fields = socket.pop_message()
     assert tag == b"\x3F"
     assert len(fields) == 0
-
-
-def test_n_extra_not_supported_in_pull(fake_socket):
-    address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
-    with pytest.raises(ValueError):
-        connection.pull(n=666)
-
-
-def test_qid_extra_not_supported_in_pull(fake_socket):
-    address = ("127.0.0.1", 7687)
-    connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
-    with pytest.raises(ValueError):
-        connection.pull(qid=666)

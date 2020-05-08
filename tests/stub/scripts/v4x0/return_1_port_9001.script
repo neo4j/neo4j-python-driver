@@ -9,4 +9,4 @@ C: RUN "RETURN 1 AS x" {} {"mode": "r"}
    PULL {"n": -1}
 S: SUCCESS {"fields": ["x"]}
    RECORD [1]
-   SUCCESS {"bookmark": "neo4j:bookmark-test-1", type": "r", "t_last": 5, "db": "system"}
+   SUCCESS {"bookmark": "neo4j:bookmark-test-1", "type": "r", "t_last": 5, "db": "system"}

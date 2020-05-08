@@ -25,7 +25,7 @@ def test_can_obtain_summary_after_consuming_result(session):
     # python -m pytest tests/integration/test_summary.py -s -v -k test_can_obtain_summary_after_consuming_result
 
     result = session.run("CREATE (n) RETURN n")
-    summary = result.summary()
+    summary = result.consume()
     assert summary.query == "CREATE (n) RETURN n"
     assert summary.parameters == {}
     assert summary.query_type == "rw"
@@ -34,14 +34,14 @@ def test_can_obtain_summary_after_consuming_result(session):
 
 def test_no_plan_info(session):
     result = session.run("CREATE (n) RETURN n")
-    summary = result.summary()
+    summary = result.consume()
     assert summary.plan is None
     assert summary.profile is None
 
 
 def test_can_obtain_plan_info(session):
     result = session.run("EXPLAIN CREATE (n) RETURN n")
-    summary = result.summary()
+    summary = result.consume()
     plan = summary.plan
     assert plan.operator_type == "ProduceResults"
     assert plan.identifiers == ["n"]
@@ -50,7 +50,7 @@ def test_can_obtain_plan_info(session):
 
 def test_can_obtain_profile_info(session):
     result = session.run("PROFILE CREATE (n) RETURN n")
-    summary = result.summary()
+    summary = result.consume()
     profile = summary.profile
     assert profile.db_hits == 0
     assert profile.rows == 1
@@ -61,14 +61,14 @@ def test_can_obtain_profile_info(session):
 
 def test_no_notification_info(session):
     result = session.run("CREATE (n) RETURN n")
-    summary = result.summary()
+    summary = result.consume()
     notifications = summary.notifications
     assert notifications == []
 
 
 def test_can_obtain_notification_info(session):
     result = session.run("EXPLAIN MATCH (n), (m) RETURN n, m")
-    summary = result.summary()
+    summary = result.consume()
     notifications = summary.notifications
 
     assert len(notifications) == 1

@@ -25,6 +25,8 @@ from neo4j import (
     GraphDatabase,
     Neo4jDriver,
     Version,
+    READ_ACCESS,
+    ResultSummary,
 )
 from neo4j.exceptions import (
     ServiceUnavailable,
@@ -71,7 +73,7 @@ def test_supports_multi_db(neo4j_uri, auth, target):
     with driver.session() as session:
         result = session.run("RETURN 1")
         value = result.single().value()   # Consumes the result
-        summary = result.summary()
+        summary = result.consume()
         server_info = summary.server
 
     result = driver.supports_multi_db()
@@ -94,7 +96,7 @@ def test_test_multi_db_specify_database(neo4j_uri, auth, target):
             with driver.session() as session:
                 result = session.run("RETURN 1")
                 assert next(result) == 1
-                summary = result.summary()
+                summary = result.consume()
                 assert summary.database == "test_database"
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
@@ -316,6 +318,66 @@ def test_neo4j_multi_database_test_routing_table_removes_aged(neo4j_uri, auth, t
                 result.consume()
             assert driver._pool.routing_tables["testa"].last_updated_time > old_value
             assert "testb" not in driver._pool.routing_tables
+    except ServiceUnavailable as error:
+        if error.args[0] == "Server does not support routing":
+            # This is because a single instance Neo4j 3.5 does not have dbms.routing.cluster.getRoutingTable() call
+            pytest.skip(error.args[0])
+        elif isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+
+def test_neo4j_driver_fetch_size_config_autocommit_normal_case(neo4j_uri, auth):
+    # python -m pytest tests/integration/test_neo4j_driver.py -s -v -k test_neo4j_driver_fetch_size_config_autocommit_normal_case
+    try:
+        with GraphDatabase.driver(neo4j_uri, auth=auth, user_agent="test") as driver:
+            assert isinstance(driver, Neo4jDriver)
+            with driver.session(fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = []
+                result = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+                for record in result:
+                    expected.append(record["x"])
+
+        assert expected == [1, 2, 3, 4]
+    except ServiceUnavailable as error:
+        if error.args[0] == "Server does not support routing":
+            # This is because a single instance Neo4j 3.5 does not have dbms.routing.cluster.getRoutingTable() call
+            pytest.skip(error.args[0])
+        elif isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+
+def test_neo4j_driver_fetch_size_config_autocommit_consume_case(neo4j_uri, auth):
+    # python -m pytest tests/integration/test_neo4j_driver.py -s -v -k test_neo4j_driver_fetch_size_config_autocommit_consume_case
+    try:
+        with GraphDatabase.driver(neo4j_uri, auth=auth, user_agent="test") as driver:
+            assert isinstance(driver, Neo4jDriver)
+            with driver.session(fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                result = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+                result_summary_consume = result.consume()
+
+        assert isinstance(result_summary_consume, ResultSummary)
+    except ServiceUnavailable as error:
+        if error.args[0] == "Server does not support routing":
+            # This is because a single instance Neo4j 3.5 does not have dbms.routing.cluster.getRoutingTable() call
+            pytest.skip(error.args[0])
+        elif isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+
+def test_neo4j_driver_fetch_size_config_explicit_transaction(neo4j_uri, auth):
+    # python -m pytest tests/integration/test_neo4j_driver.py -s -v -k test_neo4j_driver_fetch_size_config_explicit_transaction
+    try:
+        with GraphDatabase.driver(neo4j_uri, auth=auth, user_agent="test") as driver:
+            assert isinstance(driver, Neo4jDriver)
+            with driver.session(fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = []
+                tx = session.begin_transaction()
+                result = tx.run("UNWIND [1,2,3,4] AS x RETURN x")
+                for record in result:
+                    expected.append(record["x"])
+                tx.commit()
+
+        assert expected == [1, 2, 3, 4]
     except ServiceUnavailable as error:
         if error.args[0] == "Server does not support routing":
             # This is because a single instance Neo4j 3.5 does not have dbms.routing.cluster.getRoutingTable() call

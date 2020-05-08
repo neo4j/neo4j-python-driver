@@ -38,6 +38,10 @@ from neo4j import (
     READ_ACCESS,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    DEFAULT_DATABASE,
+    Result,
+    unit_of_work,
+    Transaction,
 )
 
 from tests.stub.conftest import (
@@ -46,6 +50,11 @@ from tests.stub.conftest import (
 
 # python -m pytest tests/stub/test_directdriver.py -s -v
 
+# import logging
+# from neo4j.debug import watch
+# watch("neo4j")
+#
+# log = logging.getLogger("neo4j")
 
 driver_config = {
     "encrypted": False,
@@ -64,6 +73,7 @@ session_config = {
     "initial_retry_delay": 1.0,
     "retry_delay_multiplier": 1.0,
     "retry_delay_jitter_factor": 0.1,
+    "fetch_size": -1,
 }
 
 
@@ -85,8 +95,8 @@ def test_bolt_uri_constructs_bolt_driver(driver_info, test_script):
 @pytest.mark.parametrize(
     "test_script, test_expected",
     [
-        ("v1/empty_explicit_hello_goodbye.script", ServiceUnavailable),
-        ("v2/empty_explicit_hello_goodbye.script", ServiceUnavailable),
+        # ("v1/empty_explicit_hello_goodbye.script", ServiceUnavailable), # skip: cant close stub server gracefully
+        # ("v2/empty_explicit_hello_goodbye.script", ServiceUnavailable), # skip: cant close stub server gracefully
         ("v3/empty_explicit_hello_goodbye.script", None),
         ("v4x0/empty_explicit_hello_goodbye.script", None),
     ]
@@ -196,6 +206,7 @@ def test_direct_session_close_after_server_close(driver_info, test_script):
                     session.write_transaction(lambda tx: tx.run(Query("CREATE (a:Item)", timeout=1)))
 
 
+@pytest.mark.skip(reason="Cant close the Stub Server gracefully")
 @pytest.mark.parametrize(
     "test_script",
     [
@@ -226,6 +237,7 @@ def test_bolt_uri_scheme_self_signed_certificate_constructs_bolt_driver(driver_i
             pytest.skip("Failed to establish encrypted connection")
 
 
+@pytest.mark.skip(reason="Cant close the Stub Server gracefully")
 @pytest.mark.parametrize(
     "test_script",
     [
@@ -296,3 +308,274 @@ def test_driver_trust_config_error(driver_info, test_config, expected_failure, e
         driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
 
     assert error.match(expected_failure_message)
+
+
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v3/pull_all_port_9001.script", DEFAULT_DATABASE),
+        ("v4x0/pull_n_port_9001.script", "test"),
+        ("v4x0/pull_n_port_9001_slow_network.script", "test"),
+    ]
+)
+def test_bolt_driver_fetch_size_config_normal_case(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_fetch_size_config_normal_case
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = []
+                result = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+                assert isinstance(result, Result)
+                for record in result:
+                    expected.append(record["x"])
+
+        assert expected == [1, 2, 3, 4]
+
+
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v3/pull_all_port_9001.script", DEFAULT_DATABASE),
+        ("v4x0/pull_n_port_9001.script", "test"),
+    ]
+)
+def test_bolt_driver_fetch_size_config_result_implements_iterator_protocol(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_fetch_size_config_result_implements_iterator_protocol
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = []
+                result = iter(session.run("UNWIND [1,2,3,4] AS x RETURN x"))
+                expected.append(next(result)["x"])
+                expected.append(next(result)["x"])
+                expected.append(next(result)["x"])
+                expected.append(next(result)["x"])
+                with pytest.raises(StopIteration):
+                    expected.append(next(result)["x"])
+
+        assert expected == [1, 2, 3, 4]
+
+
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v3/pull_all_port_9001.script", DEFAULT_DATABASE),
+        ("v4x0/pull_2_discard_all_port_9001.script", "test"),
+    ]
+)
+def test_bolt_driver_fetch_size_config_consume_case(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_fetch_size_config_consume_case
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                result = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+                result_summary = result.consume()
+
+    assert result_summary.server.address == ('127.0.0.1', 9001)
+
+
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v3/pull_all_port_9001.script", DEFAULT_DATABASE),
+        ("v4x0/pull_2_discard_all_port_9001.script", "test"),
+    ]
+)
+def test_bolt_driver_on_exit_consume_remaining_result(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_on_exit_consume_remaining_result
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                result = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+
+
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v3/pull_all_port_9001.script", DEFAULT_DATABASE),
+        ("v4x0/pull_2_discard_all_port_9001.script", "test"),
+    ]
+)
+def test_bolt_driver_on_close_result_consume(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_on_close_result_consume
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
+            session = driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS)
+            result = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+            session.close()
+
+
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v3/pull_all_port_9001.script", DEFAULT_DATABASE),
+        ("v4x0/pull_2_discard_all_port_9001.script", "test"),
+    ]
+)
+def test_bolt_driver_on_exit_result_consume(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_on_exit_result_consume
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                result = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+
+
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v3/pull_all_port_9001.script", DEFAULT_DATABASE),
+        ("v4x0/pull_n_port_9001.script", "test"),
+    ]
+)
+def test_bolt_driver_fetch_size_config_case_result_consume(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_fetch_size_config_case_result_consume
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = []
+                result = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+                for record in result:
+                    expected.append(record["x"])
+
+                result_summary = result.consume()
+                assert result_summary.server.address == ('127.0.0.1', 9001)
+
+                result_summary = result.consume()  # It will just return the result summary
+
+        assert expected == [1, 2, 3, 4]
+        assert result_summary.server.address == ('127.0.0.1', 9001)
+
+
+@pytest.mark.skip(reason="Bolt Stub Server cant handle this script correctly, see tests/integration/test_bolt_driver.py test_bolt_driver_fetch_size_config_run_consume_run")
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v4x0/pull_2_discard_all_pull_n_port_9001.script", "test"),
+    ]
+)
+def test_bolt_driver_fetch_size_config_run_consume_run(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_fetch_size_config_run_consume_run
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = []
+                result1 = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+                result1.consume()
+                result2 = session.run("UNWIND [5,6,7,8] AS x RETURN x")
+
+                for record in result2:
+                    expected.append(record["x"])
+
+                result_summary = result2.consume()
+                assert result_summary.server.address == ('127.0.0.1', 9001)
+
+        assert expected == [5, 6, 7, 8]
+        assert result_summary.server.address == ('127.0.0.1', 9001)
+
+
+@pytest.mark.skip(reason="Bolt Stub Server cant handle this script correctly, see tests/integration/test_bolt_driver.py test_bolt_driver_fetch_size_config_run_run")
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v4x0/pull_2_discard_all_pull_n_port_9001.script", "test"),
+    ]
+)
+def test_bolt_driver_fetch_size_config_run_run(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_fetch_size_config_run_run
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = []
+                result1 = session.run("UNWIND [1,2,3,4] AS x RETURN x")  # The session should discard all if in streaming mode and a new run is invoked.
+                result2 = session.run("UNWIND [5,6,7,8] AS x RETURN x")
+
+                for record in result2:
+                    expected.append(record["x"])
+
+                result_summary = result2.consume()
+                assert result_summary.server.address == ('127.0.0.1', 9001)
+
+        assert expected == [5, 6, 7, 8]
+        assert result_summary.server.address == ('127.0.0.1', 9001)
+
+
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v3/pull_all_port_9001_transaction_function.script", DEFAULT_DATABASE),
+        ("v4x0/tx_pull_n_port_9001.script", "test"),
+        ("v4x0/tx_pull_n_port_9001_slow_network.script", "test"),
+        # TODO: Test retry mechanism
+    ]
+)
+def test_bolt_driver_read_transaction_fetch_size_config_normal_case(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_read_transaction_fetch_size_config_normal_case
+    @unit_of_work(timeout=3, metadata={"foo": "bar"})
+    def unwind(transaction):
+        assert isinstance(transaction, Transaction)
+        values = []
+        result = transaction.run("UNWIND [1,2,3,4] AS x RETURN x")
+        assert isinstance(result, Result)
+        for record in result:
+            values.append(record["x"])
+        return values
+
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = session.read_transaction(unwind)
+
+        assert expected == [1, 2, 3, 4]
+
+
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v4x0/tx_pull_2_discard_all_port_9001.script", "test"),  # TODO: Fix correct new behaviour with qid
+    ]
+)
+def test_bolt_driver_explicit_transaction_consume_result_case_a(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_explicit_transaction_consume_result_case_a
+    # This test is to check that the implicit consume that is triggered on transaction.commit() is working properly.
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                transaction = session.begin_transaction(timeout=3, metadata={"foo": "bar"})
+                result = transaction.run("UNWIND [1,2,3,4] AS x RETURN x")
+                transaction.commit()
+
+
+@pytest.mark.parametrize(
+    "test_script, database",
+    [
+        ("v4x0/tx_pull_2_discard_all_port_9001.script", "test"),  # TODO: Fix correct new behaviour with qid
+    ]
+)
+def test_bolt_driver_explicit_transaction_consume_result_case_b(driver_info, test_script, database):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_bolt_driver_explicit_transaction_consume_result_case_b
+    # This test is to check that the implicit consume that is triggered on transaction.commit() is working properly.
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            with driver.session(database=database, fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                transaction = session.begin_transaction(timeout=3, metadata={"foo": "bar"})
+                result = transaction.run("UNWIND [1,2,3,4] AS x RETURN x")
+                result.consume()
+                transaction.commit()

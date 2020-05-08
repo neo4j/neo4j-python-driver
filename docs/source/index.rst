@@ -157,6 +157,12 @@ Argument Renaming Changes
 * :code:`StatementResultSummary.protocol_version` is now :code:`ResultSummary.server.protocol_version`
 
 
+API Changes
+=========================
+
+* :code:`Result.summary()` have been replaced with :code:`Result.consume()`, this behaviour is to consume all remaining records in the buffer and returns the ResultSummary.
+
+
 Dependency Changes
 ==================
 

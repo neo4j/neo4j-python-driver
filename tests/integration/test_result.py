@@ -44,6 +44,7 @@ def test_can_consume_result_from_buffer(session):
     session.read_transaction(f)
 
 
+@pytest.mark.skip(reason="This behaviour have changed. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
 def test_can_consume_result_after_commit(session):
     tx = session.begin_transaction()
     result = tx.run("UNWIND range(1, 3) AS n RETURN n")
@@ -51,6 +52,7 @@ def test_can_consume_result_after_commit(session):
     assert [record[0] for record in result] == [1, 2, 3]
 
 
+@pytest.mark.skip(reason="This behaviour have changed. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
 def test_can_consume_result_after_rollback(session):
     tx = session.begin_transaction()
     result = tx.run("UNWIND range(1, 3) AS n RETURN n")
@@ -58,6 +60,7 @@ def test_can_consume_result_after_rollback(session):
     assert [record[0] for record in result] == [1, 2, 3]
 
 
+@pytest.mark.skip(reason="This behaviour have changed. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
 def test_can_consume_result_after_session_close(bolt_driver):
     with bolt_driver.session() as session:
         tx = session.begin_transaction()
@@ -66,6 +69,7 @@ def test_can_consume_result_after_session_close(bolt_driver):
     assert [record[0] for record in result] == [1, 2, 3]
 
 
+@pytest.mark.skip(reason="This behaviour have changed. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
 def test_can_consume_result_after_session_reuse(bolt_driver):
     session = bolt_driver.session()
     tx = session.begin_transaction()
@@ -81,6 +85,7 @@ def test_can_consume_result_after_session_reuse(bolt_driver):
     assert [record[0] for record in result_b] == [4, 5, 6]
 
 
+@pytest.mark.skip(reason="This behaviour have changed. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
 def test_can_consume_results_after_harsh_session_death(bolt_driver):
     session = bolt_driver.session()
     result_a = session.run("UNWIND range(1, 3) AS n RETURN n")
@@ -92,6 +97,7 @@ def test_can_consume_results_after_harsh_session_death(bolt_driver):
     assert [record[0] for record in result_b] == [4, 5, 6]
 
 
+@pytest.mark.skip(reason="This behaviour have changed. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
 def test_can_consume_result_after_session_with_error(bolt_driver):
     session = bolt_driver.session()
     with pytest.raises(Neo4jError):

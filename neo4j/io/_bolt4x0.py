@@ -86,6 +86,7 @@ class Bolt4x0(Bolt):
         self.responses = deque()
         self._max_connection_lifetime = max_connection_lifetime  # self.pool_config.max_connection_lifetime
         self._creation_timestamp = perf_counter()
+        self.state = None
 
         # Determine the user agent
         if user_agent:
@@ -303,7 +304,7 @@ class Bolt4x0(Bolt):
             raise
 
         if details:
-            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # TODO
+            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))
             self.responses[0].on_records(details)
 
         if summary_signature is None:
@@ -482,6 +483,7 @@ class Response:
     def on_records(self, records):
         """ Called when one or more RECORD messages have been received.
         """
+        self.connection.state = "streaming"
         handler = self.handlers.get("on_records")
         if callable(handler):
             handler(records)
@@ -489,12 +491,22 @@ class Response:
     def on_success(self, metadata):
         """ Called when a SUCCESS message has been received.
         """
-        handler = self.handlers.get("on_success")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
+        if metadata.get("has_more"):
+            if self.connection.state == "streaming_discard_all":
+                handler = self.handlers.get("on_success_has_more_streaming_discard_all")
+                self.connection.state = None
+                if callable(handler):
+                    handler(self.connection, **self.handlers)
+            else:
+                self.connection.state = "streaming_has_more"
+        else:
+            self.connection.state = None
+            handler = self.handlers.get("on_success")
+            if callable(handler):
+                handler(metadata)
+            handler = self.handlers.get("on_summary")
+            if callable(handler):
+                handler()
 
     def on_failure(self, metadata):
         """ Called when a FAILURE message has been received.

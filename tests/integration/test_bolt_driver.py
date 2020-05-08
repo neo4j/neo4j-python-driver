@@ -25,6 +25,11 @@ from neo4j import (
     GraphDatabase,
     BoltDriver,
     Version,
+    READ_ACCESS,
+    ResultSummary,
+    unit_of_work,
+    Transaction,
+    Result,
 )
 from neo4j.exceptions import (
     ServiceUnavailable,
@@ -34,8 +39,14 @@ from neo4j.exceptions import (
 )
 from neo4j._exceptions import BoltHandshakeError
 
-
 # python -m pytest tests/integration/test_bolt_driver.py -s -v
+
+# import logging
+# from neo4j.debug import watch
+# watch("neo4j")
+#
+# log = logging.getLogger("neo4j")
+
 
 def test_bolt_uri(bolt_uri, auth):
     # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_bolt_uri
@@ -98,7 +109,7 @@ def test_custom_resolver(service):
                                   connection_timeout=3,  # enables rapid timeout
                                   resolver=my_resolver) as driver:
             with driver.session() as session:
-                summary = session.run("RETURN 1").summary()
+                summary = session.run("RETURN 1").consume()
                 assert summary.server.address == ("127.0.0.1", port)
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
@@ -134,7 +145,7 @@ def test_supports_multi_db(bolt_uri, auth):
     with driver.session() as session:
         result = session.run("RETURN 1")
         value = result.single().value()  # Consumes the result
-        summary = result.summary()
+        summary = result.consume()
         server_info = summary.server
 
     result = driver.supports_multi_db()
@@ -157,7 +168,7 @@ def test_test_multi_db_specify_database(bolt_uri, auth):
             with driver.session() as session:
                 result = session.run("RETURN 1")
                 assert next(result) == 1
-                summary = result.summary()
+                summary = result.consume()
                 assert summary.database == "test_database"
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
@@ -167,3 +178,102 @@ def test_test_multi_db_specify_database(bolt_uri, auth):
     except ClientError as error:
         # FAILURE {'code': 'Neo.ClientError.Database.DatabaseNotFound' - This message is sent from the server
         assert error.args[0] == "Database does not exist. Database name: 'test_database'."
+
+
+def test_bolt_driver_fetch_size_config_case_on_close_result_consume(bolt_uri, auth):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_bolt_driver_fetch_size_config_case_on_close_result_consume
+    try:
+        with GraphDatabase.driver(bolt_uri, auth=auth, user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                result = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+                # Check the expected result with logging manually
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+
+def test_bolt_driver_fetch_size_config_case_normal(bolt_uri, auth):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_bolt_driver_fetch_size_config_case_normal
+    try:
+        with GraphDatabase.driver(bolt_uri, auth=auth, user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = []
+                result = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+                for record in result:
+                    expected.append(record["x"])
+
+        assert expected == [1, 2, 3, 4]
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+
+def test_bolt_driver_fetch_size_config_run_consume_run(bolt_uri, auth):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_bolt_driver_fetch_size_config_run_consume_run
+    try:
+        with GraphDatabase.driver(bolt_uri, auth=auth, user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = []
+                result1 = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+                result1.consume()
+                result2 = session.run("UNWIND [5,6,7,8] AS x RETURN x")
+
+                for record in result2:
+                    expected.append(record["x"])
+
+                result_summary = result2.consume()
+                assert isinstance(result_summary, ResultSummary)
+
+        assert expected == [5, 6, 7, 8]
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+
+def test_bolt_driver_fetch_size_config_run_run(bolt_uri, auth):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_bolt_driver_fetch_size_config_run_run
+    try:
+        with GraphDatabase.driver(bolt_uri, auth=auth, user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = []
+                result1 = session.run("UNWIND [1,2,3,4] AS x RETURN x")
+                result2 = session.run("UNWIND [5,6,7,8] AS x RETURN x")
+
+                for record in result2:
+                    expected.append(record["x"])
+
+                result_summary = result2.consume()
+                assert isinstance(result_summary, ResultSummary)
+
+        assert expected == [5, 6, 7, 8]
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+
+def test_bolt_driver_read_transaction_fetch_size_config_normal_case(bolt_uri, auth):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_bolt_driver_read_transaction_fetch_size_config_normal_case
+    @unit_of_work(timeout=3, metadata={"foo": "bar"})
+    def unwind(transaction):
+        assert isinstance(transaction, Transaction)
+        values = []
+        result = transaction.run("UNWIND [1,2,3,4] AS x RETURN x")
+        assert isinstance(result, Result)
+        for record in result:
+            values.append(record["x"])
+        return values
+
+    try:
+        with GraphDatabase.driver(bolt_uri, auth=auth, user_agent="test") as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                expected = session.read_transaction(unwind)
+
+        assert expected == [1, 2, 3, 4]
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])

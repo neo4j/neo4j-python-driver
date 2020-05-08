@@ -43,7 +43,7 @@ def test_should_be_no_bookmark_in_new_session(driver_info, test_script):
     with StubCluster(test_script):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session() as session:
+            with driver.session(fetch_size=-1) as session:
                 assert session.last_bookmark() is None
 
 
@@ -59,7 +59,7 @@ def test_should_be_able_to_set_bookmark(driver_info, test_script):
     with StubCluster(test_script):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session(bookmarks=["X"]) as session:
+            with driver.session(bookmarks=["X"], fetch_size=-1) as session:
                 assert session.next_bookmarks() == ("X",)
 
 
@@ -75,7 +75,7 @@ def test_should_be_able_to_set_multiple_bookmarks(driver_info, test_script):
     with StubCluster(test_script):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session(bookmarks=[":1", ":2"]) as session:
+            with driver.session(bookmarks=[":1", ":2"], fetch_size=-1) as session:
                 assert session.next_bookmarks() == (":1", ":2")
 
 
@@ -91,7 +91,7 @@ def test_should_automatically_chain_bookmarks(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session(default_access_mode=READ_ACCESS, bookmarks=["bookmark:0", "bookmark:1"]) as session:
+            with driver.session(default_access_mode=READ_ACCESS, bookmarks=["bookmark:0", "bookmark:1"], fetch_size=-1) as session:
                 with session.begin_transaction():
                     pass
                 assert session.last_bookmark() == "bookmark:2"
@@ -112,7 +112,7 @@ def test_autocommit_transaction_included_in_chain(driver_info, test_scripts):
     with StubCluster(*test_scripts):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
-            with driver.session(default_access_mode=READ_ACCESS, bookmarks=["bookmark:1"]) as session:
+            with driver.session(default_access_mode=READ_ACCESS, bookmarks=["bookmark:1"], fetch_size=-1) as session:
                 with session.begin_transaction():
                     pass
                 assert session.last_bookmark() == "bookmark:2"
