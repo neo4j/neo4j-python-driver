@@ -14,15 +14,14 @@ class AutoTransaction():
         pass
 
     def run(self, query, parameters=None, **kwparameters):
-        self._result = _run(self._connection, query, parameters, self._db, self._access_mode, self._bookmarks, **kwparameters)
+        self._result = Result(self._connection, DataHydrator())
+        self._result._run(query, parameters, self._db, self._access_mode, self._bookmarks, **kwparameters)
         return self._result
 
-
     def close(self):
-        # If I have a pending result, discard it and detach it
+        # If I have a pending result, detach it and forget about it
         if self._result:
-            self._result.consume()
-            self._resullt
+            self._result.detach()
             self._result = None
 
 
@@ -89,7 +88,9 @@ class Transaction():
         :raise TransactionError: if the transaction is closed
         """
         self._assert_open()
-        result = _run(self._connection, query, parameters, None, None, None, **kwparameters)
+        result = Result(self._connection, DataHydrator())
+        result = result._run(query, parameters, None, None, None, **kwparameters)
+        self.results.append(result)
 
     def sync(self):
         """ Force any queued queries to be sent to the server and
@@ -115,7 +116,7 @@ class Transaction():
             raise ServiceUnavailable("Connection closed during commit")
         self._bookmark = metadata.get("bookmark")
         self._closed = True
-        self._detach_results()
+        self._consume_results()
         return self._bookmark
 
     def rollback(self):
@@ -129,8 +130,10 @@ class Transaction():
         self._connection.send_all()
         self._connection.fetch_all()
 
-    def _detach_results(self):
-        pass
+    def _consume_results(self):
+        for result in self._results:
+            result.consume()
+        self._results = []
 
     def _close(self):
         # TODO: Will always rollback..
@@ -141,7 +144,7 @@ class Transaction():
         if self._closed:
             return
         self.rollback()
-        self._detach_results()
+        self._consume_results()
 
     def closed(self):
         """ Indicator to show whether the transaction has been closed.
@@ -155,46 +158,49 @@ class Transaction():
 
 
 # Shared run func
-def _run(connection, query, parameters, db, access_mode, bookmarks, **kwparameters):
-    query_text = str(query)
-    query_metadata = getattr(query, "metadata", None)
-    query_timeout = getattr(query, "timeout", None)
-    parameters = DataDehydrator.fix_parameters(dict(parameters or {}, **kwparameters))
-
-    result_metadata = {
-        "query": query_text,
-        "parameters": parameters,
-        "server": server_info,
-        "protocol_version": protocol_version,
-    }
-    hydrant = DataHydrator()
-    result = Result(hydrant, result_metadata)
-
-    run_metadata = {
-        "metadata": query_metadata,
-        "timeout": query_timeout,
-        "on_success": result_metadata.update,
-        "on_failure": fail,
-    }
-    if bookmarks:
-        run_metadata["bookmarks"] = bookmarks
-
-    cx.run(
-        query_text,
-        parameters=parameters,
-        mode=access_mode,
-        bookmarks=bookmarks,
-        metadata=run_metadata["metadata"],
-        timeout=run_metadata["timeout"],
-        db=db,
-        on_success=run_metadata["on_success"],
-        on_failure=run_metadata["on_failure"],
-    )
-
-    self.pull()
-    self._connection.send_all()
-    self._connection.fetch_message()
-
-    return result
+# def _run(connection, query, parameters, db, access_mode, bookmarks, **kwparameters):
+#     query_text = str(query)
+#     query_metadata = getattr(query, "metadata", None)
+#     query_timeout = getattr(query, "timeout", None)
+#     parameters = DataDehydrator.fix_parameters(dict(parameters or {}, **kwparameters))
+# 
+#     result_metadata = {
+#         "query": query_text,
+#         "parameters": parameters,
+#         "server": server_info,
+#         "protocol_version": protocol_version,
+#     }
+#     hydrant = DataHydrator()
+#     result = Result(hydrant, result_metadata)
+# 
+#     run_metadata = {
+#         "metadata": query_metadata,
+#         "timeout": query_timeout,
+#         "on_success": result_metadata.update,
+#         "on_failure": fail,
+#     }
+#     if bookmarks:
+#         run_metadata["bookmarks"] = bookmarks
+# 
+#     cx.run(
+#         query_text,
+#         parameters=parameters,
+#         mode=access_mode,
+#         bookmarks=bookmarks,
+#         metadata=run_metadata["metadata"],
+#         timeout=run_metadata["timeout"],
+#         db=db,
+#         on_success=run_metadata["on_success"],
+#         on_failure=run_metadata["on_failure"],
+#     )
+# 
+#     #TODO:
+#     fetch_size = 10
+#     self._connection.pull(
+#         n=
+#     self._connection.send_all()
+#     self._connection.fetch_message()
+# 
+#     return result
 
 

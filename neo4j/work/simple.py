@@ -177,33 +177,33 @@ class Session(Workspace):
             on_summary=lambda: self._last_result.detach(sync=False),
         )
 
-    def pull(self):
-        """Internal API.
-        Add a BOLT Message, to pull more records, to the outgoing messages.
-        Use session.send() to send the buffered outgoing messages.
-        """
-        def fail(_):
-            self._close_transaction()
-
-        def on_success_done(summary_metadata):
-            self._last_result._metadata.update(summary_metadata)
-            bookmark = self._last_result._metadata.get("bookmark")
-            if bookmark:
-                self._bookmarks_in = tuple([bookmark])
-                self._bookmark_out = bookmark
-
-        def on_records_extend_records(records):
-            hydrant = self._last_result._hydrant
-            self._last_result._records.extend(hydrant.hydrate_records(self._last_result.keys(), records))
-
-        # BOLT PULL
-        self._connection.pull(
-            n=self._config.fetch_size,
-            on_records=on_records_extend_records,
-            on_success=on_success_done,
-            on_failure=fail,
-            on_summary=lambda: self._last_result.detach(sync=False),
-        )
+#     def pull(self):
+#         """Internal API.
+#         Add a BOLT Message, to pull more records, to the outgoing messages.
+#         Use session.send() to send the buffered outgoing messages.
+#         """
+#         def fail(_):
+#             self._close_transaction()
+# 
+#         def on_success_done(summary_metadata):
+#             self._last_result._metadata.update(summary_metadata)
+#             bookmark = self._last_result._metadata.get("bookmark")
+#             if bookmark:
+#                 self._bookmarks_in = tuple([bookmark])
+#                 self._bookmark_out = bookmark
+# 
+#         def on_records_extend_records(records):
+#             hydrant = self._last_result._hydrant
+#             self._last_result._records.extend(hydrant.hydrate_records(self._last_result.keys(), records))
+# 
+#         # BOLT PULL
+#         self._connection.pull(
+#             n=self._config.fetch_size,
+#             on_records=on_records_extend_records,
+#             on_success=on_success_done,
+#             on_failure=fail,
+#             on_summary=lambda: self._last_result.detach(sync=False),
+#         )
 
     def connection_state(self):
         """Internal API.
@@ -345,16 +345,16 @@ class Session(Workspace):
             self._connection.send_all()
 
     # TODO: Remove
-    def fetch(self):
+    #def fetch(self):
         """Attempt to fetch at least one more record.
 
         :returns: number of records fetched
         """
-        if self._connection:
-            detail_count, _ = self._connection.fetch_message()
-            return detail_count
+    #    if self._connection:
+    #        detail_count, _ = self._connection.fetch_message()
+    #        return detail_count
 
-        return 0
+    #    return 0
 
     def sync(self):
         """Carry out a full send and receive.
@@ -369,27 +369,27 @@ class Session(Workspace):
         return 0
 
     # TODO: Remove
-    def detach(self, result, sync=True):
-        """Detach a result from this session by fetching and buffering any remaining records.
-
-        :param result:
-        :param sync:
-        :returns: number of records fetched
-        """
-        count = 0
-
-        if sync and result.attached():
-            self.send()
-            fetch = self.fetch
-            while result.attached():
-                count += fetch()
-
-        if self._last_result is result:
-            if not self.has_transaction():
-                self._disconnect()
-
-        result._session = None
-        return count
+#     def detach(self, result, sync=True):
+#         """Detach a result from this session by fetching and buffering any remaining records.
+# 
+#         :param result:
+#         :param sync:
+#         :returns: number of records fetched
+#         """
+#         count = 0
+# 
+#         if sync and result.attached():
+#             self.send()
+#             fetch = self.fetch
+#             while result.attached():
+#                 count += fetch()
+# 
+#         if self._last_result is result:
+#             if not self.has_transaction():
+#                 self._disconnect()
+# 
+#         result._session = None
+#         return count
 
     def next_bookmarks(self):
         """ The set of bookmarks to be passed into the next
@@ -750,15 +750,88 @@ class Result:
     :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
 
-    def __init__(self, connection, hydrant, metadata):
+    def __init__(self, connection, hydrant): #, metadata):
         #self._session = session
         self._connection = connection
         self._hydrant = hydrant
-        self._metadata = metadata
+        self._metadata = None #metadata
         self._records = deque()
         self._summary = None
         self._state = None
-        self._attached = True
+        self._attached = False
+
+    def _run(self, query, parameters, db, access_mode, bookmarks, **kwparameters):
+        if self._attached:
+            # Can only do this once
+            raise "hell"
+
+        query_text = str(query)
+        query_metadata = getattr(query, "metadata", None)
+        query_timeout = getattr(query, "timeout", None)
+        parameters = DataDehydrator.fix_parameters(dict(parameters or {}, **kwparameters))
+
+        self._metadata = {
+            "query": query_text,
+            "parameters": parameters,
+            "server": server_info,
+            "protocol_version": protocol_version,
+        }
+
+        run_metadata = {
+            "metadata": query_metadata,
+            "timeout": query_timeout,
+        }
+
+        def on_attached(iterable):
+            self._metadata.update(iterable)
+            self._attached = True
+
+        def on_failed_attach()
+            self._attached = False # Probably already is...
+
+        self._connection.run(
+            query_text,
+            parameters=parameters,
+            mode=access_mode,
+            bookmarks=bookmarks,
+            metadata=query_metadata,
+            timeout=query_timeout,
+            db=db,
+            on_success=on_attached,
+            on_failure=on_failed_attach,
+        )
+        self._pull()
+        self._connection.send_all()
+        self._connection.fetch_message()
+
+    def _pull(self):
+        # TODO: Check meta-data for qid
+
+        # TODO:
+        fetch_size = 10
+
+        def on_records(records):
+            self._records.extend(self._hydrant.hydrate_records(self.keys(), records)
+            pass
+
+        def on_success(summary_metadata):
+            self._metadata.update(summary_metadata)
+            # TODO: _metadata["bookmark" should be used!
+            pass
+
+        def on_summary():
+            self._attached = False
+
+        def on_failure():
+            pass
+
+        self._connection.pull(
+            n=fetch_size,
+            on_records=on_records,
+            on_success=on_success,
+            on_failure=on_failure,
+            on_summary=on_summary)
+
 
     def __iter__(self):
         return self.records()
@@ -770,14 +843,15 @@ class Result:
     #    """
     #    return self._session
 
-    def attached(self):
-        """Indicator for whether or not this result is still attached to
-        an open :class:`.Session`.
-        """
-        #return self._session
-        return self._attached
+    # Not needed
+    #def attached(self):
+    #    """Indicator for whether or not this result is still attached to
+    #    an open :class:`.Session`.
+    #    """
+    #    #return self._session
+    #    return self._attached
 
-    def detach(self, sync=True):
+    def _detach(self, sync=True):
         """Detach this result from its parent session by fetching the
         remainder of this result from the network into the buffer.
 
@@ -789,7 +863,7 @@ class Result:
         #    re
         #else:
         #    return 0
-        self._connection.send_all()
+        #self._connection.send_all()
         fetch = self.fetch
         while result.attached():
             count += fetch()
@@ -805,7 +879,7 @@ class Result:
             return self._metadata["fields"]
         except KeyError:
             if self._attached:
-                self._connection.send_all()
+                #self._connection.send_all()
                 #self._session.send()
                 while "fields" not in self._metadata:
                     self._connection.fetch_message()
@@ -822,8 +896,9 @@ class Result:
         next_record = records_buffer.popleft
         while records_buffer:
             yield next_record()
-        attached = self.attached
-        if attached():
+        #attached = self.attached
+        #if attached():
+        if self._attached:
             self._connection.send_all()
             #self._session.send()
             while self._attached:
