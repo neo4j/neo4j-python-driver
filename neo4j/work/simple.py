@@ -70,7 +70,7 @@ class Session(Workspace):
     _transaction = None
 
     # The last result received.
-    _last_result = None
+    #_last_result = None
 
     # The set of bookmarks after which the next
     # :class:`.Transaction` should be carried out.
@@ -135,6 +135,7 @@ class Session(Workspace):
             if self._transaction:
                 self._connection.rollback()
                 self._transaction = None
+
             try:
                 self._connection.send_all()
                 self._connection.fetch_all()
@@ -249,8 +250,13 @@ class Session(Workspace):
         if not isinstance(query, (str, Query)):
             raise TypeError("query must be a string or a Query instance")
 
-        if self._last_result:
-            self._last_result.consume()
+        if self._transaction:
+            # Explicit transactions must be handled explicitly
+            if not self._transaction is AutoTransaction
+                raise "hell"
+            # Closes auto transaction
+            self._transaction.close()
+            self._transaction = None
 
         if not self._connection:
             self._connect(self._config.default_access_mode, database=self._config.database)
@@ -258,71 +264,79 @@ class Session(Workspace):
         protocol_version = cx.PROTOCOL_VERSION
         server_info = cx.server_info
 
-        has_transaction = self.has_transaction()
+        # TODO: Should only handle auto-commit tx!!!!
+        #has_transaction = self.has_transaction()
 
-        query_text = str(query)
-        query_metadata = getattr(query, "metadata", None)
-        query_timeout = getattr(query, "timeout", None)
-        parameters = DataDehydrator.fix_parameters(dict(parameters or {}, **kwparameters))
+        #query_text = str(query)
+        #query_metadata = getattr(query, "metadata", None)
+        #query_timeout = getattr(query, "timeout", None)
+        #parameters = DataDehydrator.fix_parameters(dict(parameters or {}, **kwparameters))
 
-        def fail(_):
-            self._close_transaction()
+        #def fail(_):
+        #    self._close_transaction()
 
-        hydrant = DataHydrator()
-        result_metadata = {
-            "query": query_text,
-            "parameters": parameters,
-            "server": server_info,
-            "protocol_version": protocol_version,
-        }
-        run_metadata = {
-            "metadata": query_metadata,
-            "timeout": query_timeout,
-            "on_success": result_metadata.update,
-            "on_failure": fail,
-        }
+        #hydrant = DataHydrator()
+        #result_metadata = {
+        #    "query": query_text,
+        #    "parameters": parameters,
+        #    "server": server_info,
+        #    "protocol_version": protocol_version,
+        #}
+        #run_metadata = {
+        #    "metadata": query_metadata,
+        #    "timeout": query_timeout,
+        #    "on_success": result_metadata.update,
+        #    "on_failure": fail,
+        #}
 
-        self._last_result = result = Result(self, hydrant, result_metadata)  # The result object that consumes messages from the server
+        #run_metadata["bookmarks"] = self._bookmarks_in
+        #bookmarks = run_metadata.get("bookmarks", self._config.bookmarks)
 
-        access_mode = None
-        db = None
-        bookmarks = None
+        # Create auto-commit transaction and run query on it
+        self._transaction = AutoTransaction(cx, self._config.database, self._config.default_access_mode, self._bookmarks_in)
+        result = self._transaction.run(query, parameters, **kwparameters)
+        return result
 
-        if has_transaction:
-            # Explicit Transaction Run does not carry any extra values. RUN "query" {parameters} {extra}
-            if query_metadata:
-                raise ValueError("Metadata can only be attached at transaction level")
-            if query_timeout:
-                raise ValueError("Timeouts only apply at transaction level")
-            access_mode = None
-            db = None
-            bookmarks = None
-        else:
-            run_metadata["bookmarks"] = self._bookmarks_in
-            access_mode = self._config.default_access_mode
-            db = self._config.database
-            bookmarks = run_metadata.get("bookmarks", self._config.bookmarks)
+
+        #self._last_result = result = Result(self, hydrant, result_metadata)  # The result object that consumes messages from the server
+
+        #access_mode = None
+        #db = None
+        #bookmarks = None
+
+        #if has_transaction:
+        #    # Explicit Transaction Run does not carry any extra values. RUN "query" {parameters} {extra}
+        #    if query_metadata:
+        #        raise ValueError("Metadata can only be attached at transaction level")
+        #    if query_timeout:
+        #        raise ValueError("Timeouts only apply at transaction level")
+        #    access_mode = None
+        #    db = None
+        #    bookmarks = None
+        #else:
+        #access_mode = self._config.default_access_mode
+        #db = self._config.database
 
         # BOLT RUN
-        cx.run(
-            query_text,
-            parameters=parameters,
-            mode=access_mode,
-            bookmarks=bookmarks,
-            metadata=run_metadata["metadata"],
-            timeout=run_metadata["timeout"],
-            db=db,
-            on_success=run_metadata["on_success"],
-            on_failure=run_metadata["on_failure"],
-        )
+        #cx.run(
+        #    query_text,
+        #    parameters=parameters,
+        #    mode=access_mode,
+        #    bookmarks=bookmarks,
+        #    metadata=run_metadata["metadata"],
+        #    timeout=run_metadata["timeout"],
+        #    db=db,
+        #    on_success=run_metadata["on_success"],
+        #    on_failure=run_metadata["on_failure"],
+        #)
 
-        self.pull()
+        #self.pull()
 
-        if not has_transaction:
-            self._connection.send_all()
-            self._connection.fetch_message()
+        #if not has_transaction:
+        #    self._connection.send_all()
+        #    self._connection.fetch_message()
 
-        return result
+        #return result
 
     def send(self):
         """Send all outstanding requests.
@@ -330,6 +344,7 @@ class Session(Workspace):
         if self._connection:
             self._connection.send_all()
 
+    # TODO: Remove
     def fetch(self):
         """Attempt to fetch at least one more record.
 
@@ -353,6 +368,7 @@ class Session(Workspace):
 
         return 0
 
+    # TODO: Remove
     def detach(self, result, sync=True):
         """Detach a result from this session by fetching and buffering any remaining records.
 
@@ -390,7 +406,10 @@ class Session(Workspace):
         return bool(self._transaction)
 
     def _close_transaction(self):
-        self._transaction = None
+        if self._transaction:
+            self._transaction._close()
+            # TODO: Collect outgoing bookmark
+            self._transaction = None
 
     def begin_transaction(self, metadata=None, timeout=None):
         """ Begin a new unmanaged transaction. Creates a new :class:`.Transaction` within this session.
@@ -407,16 +426,23 @@ class Session(Workspace):
         """
         # TODO: Implement TransactionConfig consumption
 
-        if self.has_transaction():
-            raise TransactionError("Explicit transaction already open")
+        #if self.has_transaction():
+        if self._transaction:
+            if not self._transaction is AutoTransaction:
+                raise TransactionError("Explicit transaction already open")
+            # Close pending auto commit transaction
+            self._transaction.close()
+            self._transaction = None
 
         self._open_transaction(access_mode=self._config.default_access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
         return self._transaction
 
     def _open_transaction(self, *, access_mode, database, metadata=None, timeout=None):
-        self._transaction = Transaction(self, on_close=self._close_transaction)
+        #self._transaction = Transaction(self, on_close=self._close_transaction)
         self._connect(access_mode=access_mode, database=database)
-        self._connection.begin(bookmarks=self._bookmarks_in, metadata=metadata, timeout=timeout, mode=access_mode, db=database)
+        self._transaction = Transaction(self._connection)
+        #self._connection.begin(bookmarks=self._bookmarks_in, metadata=metadata, timeout=timeout, mode=access_mode, db=database)
+        self._transaction._begin(dtabase, self._bookmarks_in, access_mode, metadata, timeout)
 
     def commit_transaction(self):
         """ Commit the current transaction.
@@ -428,19 +454,25 @@ class Session(Workspace):
         """
         if not self._transaction:
             raise TransactionError("No transaction to commit")
-        metadata = {}
+        #metadata = {}
+        #try:
+        #    self._connection.commit(on_success=metadata.update)
+        #    self._connection.send_all()
+        #    self._connection.fetch_all()
+        #except BoltIncompleteCommitError:
+        #    raise ServiceUnavailable("Connection closed during commit")
+        #finally:
+        #    self._disconnect()
+        #    self._transaction = None
+        #bookmark = metadata.get("bookmark")
+        #self._bookmarks_in = tuple([bookmark])
+        #self._bookmark_out = bookmark
         try:
-            self._connection.commit(on_success=metadata.update)
-            self._connection.send_all()
-            self._connection.fetch_all()
-        except BoltIncompleteCommitError:
-            raise ServiceUnavailable("Connection closed during commit")
+            bookmark = self._transaction.commit()
         finally:
+            self._close_transaction()
             self._disconnect()
-            self._transaction = None
-        bookmark = metadata.get("bookmark")
-        self._bookmarks_in = tuple([bookmark])
-        self._bookmark_out = bookmark
+
         return bookmark
 
     def rollback_transaction(self):
@@ -450,16 +482,23 @@ class Session(Workspace):
         """
         if not self._transaction:
             raise TransactionError("No transaction to rollback")
-        cx = self._connection
-        if cx:
-            metadata = {}
-            try:
-                cx.rollback(on_success=metadata.update)
-                cx.send_all()
-                cx.fetch_all()
-            finally:
-                self._disconnect()
-                self._transaction = None
+
+        try:
+            self._transaction.rollback()
+        finally:
+            self._close_transaction()
+            self._disconnect()
+
+        #cx = self._connection
+        #if cx:
+        #    metadata = {}
+        #    try:
+        #        cx.rollback(on_success=metadata.update)
+        #        cx.send_all()
+        #        cx.fetch_all()
+        #    finally:
+        #        self._disconnect()
+        #        self._transaction = None
 
     def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):
 
@@ -481,11 +520,13 @@ class Session(Workspace):
                 try:
                     result = unit_of_work(tx, *args, **kwargs)
                 except Exception:
-                    tx._success = False
+                    #tx._success = False
+                    tx.rollback()
                     raise
                 else:
-                    if tx._success is None:
-                        tx._success = True
+                    #if tx._success is None:
+                    #    tx._success = True
+                    tx.commit()
                 finally:
                     tx._close()
             except (ServiceUnavailable, SessionExpired) as error:
@@ -556,135 +597,131 @@ class Session(Workspace):
         return self._run_transaction(WRITE_ACCESS, unit_of_work, *args, **kwargs)
 
 
-class Transaction:
-    """ Container for multiple Cypher queries to be executed within
-    a single context. Transactions can be used within a :py:const:`with`
-    block where the transaction is committed or rolled back on based on
-    whether or not an exception is raised::
-
-        with session.begin_transaction() as tx:
-            pass
-
-    """
-
-    #: When set, the transaction will be committed on close, otherwise it
-    #: will be rolled back. This attribute can be set in user code
-    #: multiple times before a transaction completes, with only the final
-    #: value taking effect.
-    #
-    # This became internal with Neo4j 4.0, when the server-side
-    # transaction semantics changed.
-    #
-    _success = None
-
-    _closed = False
-
-    def __init__(self, session, on_close):
-        self.session = session
-        self.on_close = on_close
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self._closed:
-            return
-        if self._success is None:
-            self._success = not bool(exc_type)
-        self._close()
-
-    def run(self, query, parameters=None, **kwparameters):
-        """ Run a Cypher query within the context of this transaction.
-
-        The query is sent to the server lazily, when its result is
-        consumed. To force the query to be sent to the server, use
-        the :meth:`.Transaction.sync` method.
-
-        Cypher is typically expressed as a query template plus a
-        set of named parameters. In Python, parameters may be expressed
-        through a dictionary of parameters, through individual parameter
-        arguments, or as a mixture of both. For example, the `run`
-        queries below are all equivalent::
-
-            >>> query = "CREATE (a:Person {name:{name}, age:{age}})"
-            >>> tx.run(query, {"name": "Alice", "age": 33})
-            >>> tx.run(query, {"name": "Alice"}, age=33)
-            >>> tx.run(query, name="Alice", age=33)
-
-        Parameter values can be of any type supported by the Neo4j type
-        system. In Python, this includes :class:`bool`, :class:`int`,
-        :class:`str`, :class:`list` and :class:`dict`. Note however that
-        :class:`list` properties must be homogenous.
-
-        :param query: template Cypher query
-        :param parameters: dictionary of parameters
-        :param kwparameters: additional keyword parameters
-        :returns: :class:`neo4j.Result` object
-        :raise TransactionError: if the transaction is closed
-        """
-        self._assert_open()
-        return self.session.run(query, parameters, **kwparameters)
-
-    def sync(self):
-        """ Force any queued queries to be sent to the server and
-        all related results to be fetched and buffered.
-
-        :raise TransactionError: if the transaction is closed
-        """
-        self._assert_open()
-        self.session.sync()
-
-    def commit(self):
-        """ Mark this transaction as successful and close in order to
-        trigger a COMMIT. This is functionally equivalent to::
-
-        :raise TransactionError: if already closed
-        """
-        if self.session._last_result:
-            self.session._last_result.consume()
-        self._success = True
-        self._close()
-
-    def rollback(self):
-        """ Mark this transaction as unsuccessful and close in order to
-        trigger a ROLLBACK. This is functionally equivalent to::
-
-        :raise TransactionError: if already closed
-        """
-        if self.session._last_result:
-            self.session._last_result.consume()
-        self._success = False
-        self._close()
-
-    def _close(self):
-        """ Close this transaction, triggering either a COMMIT or a ROLLBACK.
-
-        :raise TransactionError: if already closed
-        """
-        self._assert_open()
-        try:
-            self.sync()
-        except Neo4jError:
-            self._success = False
-            raise
-        finally:
-            if self.session.has_transaction():
-                if self._success:
-                    self.session.commit_transaction()
-                else:
-                    self.session.rollback_transaction()
-            self._closed = True
-            self.on_close()
-
-    def closed(self):
-        """ Indicator to show whether the transaction has been closed.
-        :returns: :const:`True` if closed, :const:`False` otherwise.
-        """
-        return self._closed
-
-    def _assert_open(self):
-        if self._closed:
-            raise TransactionError("Transaction closed")
+# class Transaction:
+#     """ Container for multiple Cypher queries to be executed within
+#     a single context. Transactions can be used within a :py:const:`with`
+#     block where the transaction is committed or rolled back on based on
+#     whether or not an exception is raised::
+# 
+#         with session.begin_transaction() as tx:
+#             pass
+# 
+#     """
+# 
+#     #: When set, the transaction will be committed on close, otherwise it
+#     #: will be rolled back. This attribute can be set in user code
+#     #: multiple times before a transaction completes, with only the final
+#     #: value taking effect.
+#     #
+#     # This became internal with Neo4j 4.0, when the server-side
+#     # transaction semantics changed.
+#     #
+#     _success = None
+# 
+#     _closed = False
+# 
+#     def __init__(self, session, on_close):
+#         self.session = session
+#         self.on_close = on_close
+# 
+#     def __enter__(self):
+#         return self
+# 
+#     def __exit__(self, exc_type, exc_value, traceback):
+#         if self._closed:
+#             return
+#         if self._success is None:
+#             self._success = not bool(exc_type)
+#         self._close()
+# 
+#     def run(self, query, parameters=None, **kwparameters):
+#         """ Run a Cypher query within the context of this transaction.
+# 
+#         The query is sent to the server lazily, when its result is
+#         consumed. To force the query to be sent to the server, use
+#         the :meth:`.Transaction.sync` method.
+# 
+#         Cypher is typically expressed as a query template plus a
+#         set of named parameters. In Python, parameters may be expressed
+#         through a dictionary of parameters, through individual parameter
+#         arguments, or as a mixture of both. For example, the `run`
+#         queries below are all equivalent::
+# 
+#             >>> query = "CREATE (a:Person {name:{name}, age:{age}})"
+#             >>> tx.run(query, {"name": "Alice", "age": 33})
+#             >>> tx.run(query, {"name": "Alice"}, age=33)
+#             >>> tx.run(query, name="Alice", age=33)
+# 
+#         Parameter values can be of any type supported by the Neo4j type
+#         system. In Python, this includes :class:`bool`, :class:`int`,
+#         :class:`str`, :class:`list` and :class:`dict`. Note however that
+#         :class:`list` properties must be homogenous.
+# 
+#         :param query: template Cypher query
+#         :param parameters: dictionary of parameters
+#         :param kwparameters: additional keyword parameters
+#         :returns: :class:`neo4j.Result` object
+#         :raise TransactionError: if the transaction is closed
+#         """
+#         self._assert_open()
+#         return self.session.run(query, parameters, **kwparameters)
+# 
+#     def sync(self):
+#         """ Force any queued queries to be sent to the server and
+#         all related results to be fetched and buffered.
+# 
+#         :raise TransactionError: if the transaction is closed
+#         """
+#         self._assert_open()
+#         self.session.sync()
+# 
+#     def commit(self):
+#         """ Mark this transaction as successful and close in order to
+#         trigger a COMMIT. This is functionally equivalent to::
+# 
+#         :raise TransactionError: if already closed
+#         """
+#         self._success = True
+#         self._close()
+# 
+#     def rollback(self):
+#         """ Mark this transaction as unsuccessful and close in order to
+#         trigger a ROLLBACK. This is functionally equivalent to::
+# 
+#         :raise TransactionError: if already closed
+#         """
+#         self._success = False
+#         self._close()
+# 
+#     def _close(self):
+#         """ Close this transaction, triggering either a COMMIT or a ROLLBACK.
+# 
+#         :raise TransactionError: if already closed
+#         """
+#         self._assert_open()
+#         try:
+#             self.sync()
+#         except Neo4jError:
+#             self._success = False
+#             raise
+#         finally:
+#             if self.session.has_transaction():
+#                 if self._success:
+#                     self.session.commit_transaction()
+#                 else:
+#                     self.session.rollback_transaction()
+#             self._closed = True
+#             self.on_close()
+# 
+#     def closed(self):
+#         """ Indicator to show whether the transaction has been closed.
+#         :returns: :const:`True` if closed, :const:`False` otherwise.
+#         """
+#         return self._closed
+# 
+#     def _assert_open(self):
+#         if self._closed:
+#             raise TransactionError("Transaction closed")
 
 
 class Query:
@@ -713,28 +750,32 @@ class Result:
     :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
 
-    def __init__(self, session, hydrant, metadata):
-        self._session = session
+    def __init__(self, connection, hydrant, metadata):
+        #self._session = session
+        self._connection = connection
         self._hydrant = hydrant
         self._metadata = metadata
         self._records = deque()
         self._summary = None
         self._state = None
+        self._attached = True
 
     def __iter__(self):
         return self.records()
 
-    @property
-    def session(self):
-        """The :class:`.Session` to which this result is attached, if any.
-        """
-        return self._session
+    # TODO: Needed?
+    #@property
+    #def session(self):
+    #    """The :class:`.Session` to which this result is attached, if any.
+    #    """
+    #    return self._session
 
     def attached(self):
         """Indicator for whether or not this result is still attached to
         an open :class:`.Session`.
         """
-        return self._session
+        #return self._session
+        return self._attached
 
     def detach(self, sync=True):
         """Detach this result from its parent session by fetching the
@@ -742,10 +783,18 @@ class Result:
 
         :returns: number of records fetched
         """
-        if self.attached():
-            return self._session.detach(self, sync=sync)
-        else:
-            return 0
+        #if self._attached:
+        #if self.attached():
+            #return self._session.detach(self, sync=sync)
+        #    re
+        #else:
+        #    return 0
+        self._connection.send_all()
+        fetch = self.fetch
+        while result.attached():
+            count += fetch()
+
+        self._connection.fetch_message()
 
     def keys(self):
         """The keys for the records in this result.
@@ -755,10 +804,13 @@ class Result:
         try:
             return self._metadata["fields"]
         except KeyError:
-            if self.attached():
-                self._session.send()
-            while self.attached() and "fields" not in self._metadata:
-                self._session.fetch()
+            if self._attached:
+                self._connection.send_all()
+                #self._session.send()
+                while "fields" not in self._metadata:
+                    self._connection.fetch_message()
+            #while self.attached() and "fields" not in self._metadata:
+            #    self._session.fetch()
             return self._metadata.get("fields")
 
     def records(self):
@@ -772,8 +824,10 @@ class Result:
             yield next_record()
         attached = self.attached
         if attached():
-            self._session.send()
-        while attached():
+            self._connection.send_all()
+            #self._session.send()
+            while self._attached:
+            self._connection
             _ = self._session.fetch()  # Blocking call, this call can detach the session
             if self._session:
                 cx_state = self._session.connection_state()
@@ -798,7 +852,7 @@ class Result:
 
         :returns: The :class:`neo4j.ResultSummary` for this result
         """
-        self.detach()
+        #self.detach()
         if self._summary is None:
             self._summary = ResultSummary(**self._metadata)
         return self._summary
@@ -808,7 +862,7 @@ class Result:
 
         :returns: The :class:`neo4j.ResultSummary` for this result
         """
-        if self.attached():
+        if self._attached:
             self._state = "discard_all"
             for _ in self:
                 pass
