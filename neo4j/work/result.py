@@ -1,3 +1,24 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+
+# Copyright (c) 2002-2020 "Neo4j,"
+# Neo4j Sweden AB [http://neo4j.com]
+#
+# This file is part of Neo4j.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from neo4j.data import DataDehydrator
 
 class Result:
     """A handler for the result of Cypher query execution. Instances
@@ -16,10 +37,6 @@ class Result:
         self._qid = -1
 
     def _run(self, query, parameters, db, access_mode, bookmarks, **kwparameters):
-        if self._attached:
-            # Can only do this once
-            raise "hell"
-
         query_text = str(query)
         query_metadata = getattr(query, "metadata", None)
         query_timeout = getattr(query, "timeout", None)
@@ -29,7 +46,7 @@ class Result:
             "query": query_text,
             "parameters": parameters,
             "server": server_info,
-            "protocol_version": protocol_version,
+            "protocol_version": self._connection.PROTOCOL_VERSION,
         }
 
         run_metadata = {
@@ -44,7 +61,7 @@ class Result:
             self._attached = True
 
         def on_failed_attach()
-            self._attached = False # Probably already is...
+            self._attached = False
 
         self._connection.run(
             query_text,
@@ -62,7 +79,6 @@ class Result:
         self._connection.fetch_message() # Receive response to run
 
     def _pull(self):
-        # TODO: Check meta-data for qid
 
         # TODO:
         fetch_size = 10
@@ -99,11 +115,11 @@ class Result:
 
         self._connection.pull(
             n=fetch_size,
+            qid=self._qid,
             on_records=on_records,
             on_success=on_success,
             on_failure=on_failure,
             on_summary=on_summary)
-
 
     def __iter__(self):
         return self.records()
