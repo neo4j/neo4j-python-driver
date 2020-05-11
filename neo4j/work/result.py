@@ -39,6 +39,7 @@ class Result:
         self._summary = None
         self._discarding = False
         self._attached = False
+        self._bookmark = None
         self._qid = -1
 
     def _run(self, query, parameters, db, access_mode, bookmarks, **kwparameters):
@@ -84,7 +85,6 @@ class Result:
         self._connection.fetch_message() # Receive response to run
 
     def _pull(self):
-
         # TODO:
         fetch_size = 10
 
@@ -110,7 +110,7 @@ class Result:
                 return
 
             self._metadata.update(summary_metadata)
-            # TODO: _metadata["bookmark" should be used!
+            self._bookmark = summary_metadata["bookmark"]
 
         def on_summary():
             self._attached = False
@@ -129,43 +129,15 @@ class Result:
     def __iter__(self):
         return self.records()
 
-    # TODO: Needed?
-    #@property
-    #def session(self):
-    #    """The :class:`.Session` to which this result is attached, if any.
-    #    """
-    #    return self._session
-
-    # Not needed
-    #def attached(self):
-    #    """Indicator for whether or not this result is still attached to
-    #    an open :class:`.Session`.
-    #    """
-    #    #return self._session
-    #    return self._attached
-
+    # TODO: Better name!
     def _detach(self):
         """Detach this result from its parent session by fetching the
         remainder of this result from the network into the buffer.
 
         :returns: number of records fetched
         """
-        #if self._attached:
-        #if self.attached():
-            #return self._session.detach(self, sync=sync)
-        #    re
-        #else:
-        #    return 0
-        #self._connection.send_all()
-        #while result.attached():
-            #count += self.fetch()
-        #self._connection.fetch_message()
-
         while self._attached:
             self._connection.fetch_message()
-
-    #        detail_count, _ = self._connection.fetch_message()
-        
 
     def keys(self):
         """The keys for the records in this result.
@@ -181,39 +153,12 @@ class Result:
         """
         while self._records:
             yield _self._records.popleft()
-        #attached = self.attached
-        #if attached():
 
         # Set to False when summary received
         while self._attached:
             self._connection.fetch_message()
             if self._attached:
                 yield _self._records.popleft()
-
-
-        # if self._attached:
-        #     #self._connection.send_all()
-        #     #self._session.send()
-        #     while self._attached:
-
-        #     _ = self._session.fetch()  # Blocking call, this call can detach the session
-        #     if self._session:
-        #         cx_state = self._session.connection_state()
-        #         if cx_state == "pull":
-        #             log.debug("This should never happen because Session.fetch() is a blocking call")
-        #         if cx_state == "streaming_has_more":
-        #             if self._state == "discard":
-        #                 self._session.set_connection_state("discard_all")
-        #                 self._session.discard_all()
-        #                 self._session.send()
-        #             else:
-        #                 self._session.set_connection_state("pull")
-        #                 self._session.pull()
-        #                 self._session.send()
-
-        #     while records_buffer:
-        #         record = next_record()
-        #         yield record
 
     def _obtain_summary(self):
         """Obtain the summary of this result, buffering any remaining records.
@@ -234,10 +179,6 @@ class Result:
         while self._attached:
             self._connection.fetch_message()
 
-        #if self._attached:
-        #    self._discarding = True
-        #    for _ in self:
-        #        pass
         return self._obtain_summary()
 
     def single(self):
@@ -272,14 +213,6 @@ class Result:
             if self._records:
                 return self._records[0]
 
-        #if not self.attached():
-        #    return None
-        #if self.attached():
-        #    self._session.send()
-        #while self.attached() and not records:
-        #    self._session.fetch()
-        #    if records:
-        #        return records[0]
         return None
 
     def graph(self):

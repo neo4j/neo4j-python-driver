@@ -125,8 +125,7 @@ class Transaction:
         self._results = []
 
     def _close(self):
-        # TODO: Will always rollback..
-        """ Close this transaction, triggering either a COMMIT or a ROLLBACK.
+        """ Close this transaction, triggering either a ROLLBACK if not committed.
 
         :raise TransactionError: if already closed
         """

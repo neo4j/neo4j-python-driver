@@ -74,15 +74,9 @@ class Session(Workspace):
     # The current auto-transaction result, if any.
     _autoResult = None
 
-    # The last result received.
-    #_last_result = None
-
     # The set of bookmarks after which the next
     # :class:`.Transaction` should be carried out.
-    _bookmarks_in = None
-
-    # The bookmark returned from the last commit.
-    _bookmark_out = None
+    _bookmarks = None
 
     # The state this session is in.
     _state = None
@@ -90,7 +84,7 @@ class Session(Workspace):
     def __init__(self, pool, session_config):
         super().__init__(pool, session_config)
         assert isinstance(session_config, SessionConfig)
-        self._bookmarks_in = tuple(session_config.bookmarks)
+        self._bookmarks = tuple(session_config.bookmarks)
 
     def __del__(self):
         try:
@@ -132,6 +126,7 @@ class Session(Workspace):
                 if self._state != "error_state":
                     try:
                         self._autoResult.consume()
+                        self._collect_bookmark(self._autoResult._bookmark)
                     except Exception as e:
                         # TODO: Investigate potential non graceful close states
                         self._autoResult = None
@@ -192,6 +187,7 @@ class Session(Workspace):
 
         if self._autoResult:
             self._autoResult._detach()
+            self._collect_bookmark(self._autoResult._bookmark)
             self._autoResult = None
 
         if not self._connection:
@@ -202,27 +198,27 @@ class Session(Workspace):
 
         hydrant = DataHydrator()
         self._autoResult = Result(cx, hydrant)
-        self._autoResult.run(query, parameters, self._config.database, self._config.default_access_mode, self._bookmarks_in, **kwparameters)
+        self._autoResult.run(query, parameters, self._config.database, self._config.default_access_mode, self._bookmarks, **kwparameters)
         return result
 
     def next_bookmarks(self):
         """ The set of bookmarks to be passed into the next
         :class:`.Transaction`.
         """
-        return self._bookmarks_in
-
-    def last_bookmark(self):
-        """ The bookmark returned by the last :class:`.Transaction`.
-        """
-        return self._bookmark_out
+        # If there is a pending auto-result or transaction, we will not have the latest here.
+        return self._bookmarks
 
     def has_transaction(self):
         return bool(self._transaction)
 
+    def _collect_bookmark(self, bookmark):
+        if bookmark:
+            self._bookmarks = [bookmark]
+
     def _close_transaction(self):
         if self._transaction:
             self._transaction._close()
-            # TODO: Collect outgoing bookmark
+            self._collect_bookmark(self._transaction._bookmark)
             self._transaction = None
 
     def begin_transaction(self, metadata=None, timeout=None):
@@ -242,6 +238,7 @@ class Session(Workspace):
 
         if self._autoResult:
             self._autoResult._detach()
+            self._collect_bookmark(self._autoResult._bookmark)
             self._autoResult = None
 
         if self._transaction:
@@ -253,7 +250,7 @@ class Session(Workspace):
     def _open_transaction(self, *, access_mode, database, metadata=None, timeout=None):
         self._connect(access_mode=access_mode, database=database)
         self._transaction = Transaction(self._connection)
-        self._transaction._begin(database, self._bookmarks_in, access_mode, metadata, timeout)
+        self._transaction._begin(database, self._bookmarks, access_mode, metadata, timeout)
 
     def commit_transaction(self):
         """ Commit the current transaction.
