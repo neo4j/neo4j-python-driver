@@ -205,7 +205,15 @@ class Session(Workspace):
         """ The set of bookmarks to be passed into the next
         :class:`.Transaction`.
         """
-        # If there is a pending auto-result or transaction, we will not have the latest here.
+        if self._autoResult:
+            self._autoResult._detach()
+            self._collect_bookmark(self._autoResult._bookmark)
+            self._autoResult = None
+
+        if self._transaction and self._transaction._closed:
+            self._collect_bookmark(self._transaction._bookmark)
+            self._transaction = None
+
         return self._bookmarks
 
     def has_transaction(self):

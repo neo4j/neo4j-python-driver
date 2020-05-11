@@ -3,7 +3,12 @@
 
 from neo4j.work.result import Result
 from neo4j.data import DataHydrator
+from neo4j._exceptions import BoltIncompleteCommitError
 
+from neo4j.exceptions import (
+    ServiceUnavailable,
+    TransactionError,
+)
 
 class Transaction:
     """ Container for multiple Cypher queries to be executed within
@@ -78,6 +83,7 @@ class Transaction:
 
         self._result = Result(self._connection, DataHydrator())
         self._result._run(query, parameters, None, None, None, **kwparameters)
+        return self._result
 
     def sync(self):
         """ Force any queued queries to be sent to the server and

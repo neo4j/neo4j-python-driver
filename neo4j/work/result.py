@@ -110,7 +110,7 @@ class Result:
                 return
 
             self._metadata.update(summary_metadata)
-            self._bookmark = summary_metadata["bookmark"]
+            self._bookmark = summary_metadata.get("bookmark")
 
         def on_summary():
             self._attached = False
