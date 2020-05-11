@@ -1,28 +1,28 @@
 
 
 
-class AutoTransaction():
-    def __init__(self, connection, db, access_mode, bookmarks) :
-        self._connection = connection
-        self._result = None
-        self._bookmarks = bookmarks
-        self._access_mode = access_mode
-        self._db = db
-        self._bookmark = None
-
-    def rollback(self):
-        pass
-
-    def run(self, query, parameters=None, **kwparameters):
-        self._result = Result(self._connection, DataHydrator())
-        self._result._run(query, parameters, self._db, self._access_mode, self._bookmarks, **kwparameters)
-        return self._result
-
-    def close(self):
-        # If I have a pending result, detach it and forget about it
-        if self._result:
-            self._result.detach()
-            self._result = None
+# class AutoTransaction():
+#     def __init__(self, connection, db, access_mode, bookmarks) :
+#         self._connection = connection
+#         self._result = None
+#         self._bookmarks = bookmarks
+#         self._access_mode = access_mode
+#         self._db = db
+#         self._bookmark = None
+# 
+#     def rollback(self):
+#         pass
+# 
+#     def run(self, query, parameters=None, **kwparameters):
+#         self._result = Result(self._connection, DataHydrator())
+#         self._result._run(query, parameters, self._db, self._access_mode, self._bookmarks, **kwparameters)
+#         return self._result
+# 
+#     def close(self):
+#         # If I have a pending result, detach it and forget about it
+#         if self._result:
+#             self._result.detach()
+#             self._result = None
 
 
 class Transaction():

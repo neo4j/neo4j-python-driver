@@ -69,6 +69,9 @@ class Session(Workspace):
     # The current :class:`.Transaction` instance, if any.
     _transaction = None
 
+    # The current auto-transaction result, if any.
+    _autoResult = None
+
     # The last result received.
     #_last_result = None
 
@@ -122,16 +125,16 @@ class Session(Workspace):
     def close(self):
         """Close the session. This will release any borrowed resources, such as connections, and will roll back any outstanding transactions.
         """
-        if self._last_result and self._connection:
-            if self._state != "error_state":
-                try:
-                    self._last_result.consume()
-                except Exception as e:
-                    # TODO: Investigate potential non graceful close states
-                    self._last_result = None
-                    self._state = "error_state"
-
         if self._connection:
+            if self._autoResult:
+                if self._state != "error_state":
+                    try:
+                        self._autoResult.consume()
+                    except Exception as e:
+                        # TODO: Investigate potential non graceful close states
+                        self._autoResult = None
+                        self._state = "error_state"
+
             if self._transaction:
                 self._connection.rollback()
                 self._transaction = None
@@ -153,29 +156,29 @@ class Session(Workspace):
 
             self._state = None
 
-    def discard_all(self):
-        """Internal API.
-        Add a BOLT Message, to discard the remaining records, to the outgoing messages.
-        Use session.send() to send the buffered outgoing messages.
-        """
-        def fail(_):
-            self._close_transaction()
+    #def discard_all(self):
+    #    """Internal API.
+    #    Add a BOLT Message, to discard the remaining records, to the outgoing messages.
+    #    Use session.send() to send the buffered outgoing messages.
+    #    """
+    #    def fail(_):
+    #        self._close_transaction()
 
-        def on_success_done(summary_metadata):
-            self._last_result._metadata.update(summary_metadata)
-            bookmark = self._last_result._metadata.get("bookmark")
-            if bookmark:
-                self._bookmarks_in = tuple([bookmark])
-                self._bookmark_out = bookmark
+    #    def on_success_done(summary_metadata):
+    #        self._last_result._metadata.update(summary_metadata)
+    #        bookmark = self._last_result._metadata.get("bookmark")
+    #        if bookmark:
+    #            self._bookmarks_in = tuple([bookmark])
+    #            self._bookmark_out = bookmark
 
-        # BOLT DISCARD
-        self._connection.discard(
-            n=-1,
-            # on_records=handlers.get("on_records"),
-            on_success=on_success_done,
-            on_failure=fail,
-            on_summary=lambda: self._last_result.detach(sync=False),
-        )
+    #    # BOLT DISCARD
+    #    self._connection.discard(
+    #        n=-1,
+    #        # on_records=handlers.get("on_records"),
+    #        on_success=on_success_done,
+    #        on_failure=fail,
+    #        on_summary=lambda: self._last_result.detach(sync=False),
+    #    )
 
 #     def pull(self):
 #         """Internal API.
@@ -205,22 +208,22 @@ class Session(Workspace):
 #             on_summary=lambda: self._last_result.detach(sync=False),
 #         )
 
-    def connection_state(self):
-        """Internal API.
-
-        :return: The state of the BOLT connection.
-        """
-        if self._connection:
-            return self._connection.state
-
-    def set_connection_state(self, state):
-        """Internal API.
-
-        :param: The state for the BOLT connection.
-        :type: str
-        """
-        if self._connection:
-            self._connection.state = state
+#    def connection_state(self):
+#        """Internal API.
+#
+#        :return: The state of the BOLT connection.
+#        """
+#        if self._connection:
+#            return self._connection.state
+#
+#    def set_connection_state(self, state):
+#        """Internal API.
+#
+#        :param: The state for the BOLT connection.
+#        :type: str
+#        """
+#        if self._connection:
+#            self._connection.state = state
 
     def run(self, query, parameters=None, **kwparameters):
         """Run a Cypher query within an auto-commit transaction.
@@ -252,11 +255,11 @@ class Session(Workspace):
 
         if self._transaction:
             # Explicit transactions must be handled explicitly
-            if not self._transaction is AutoTransaction
-                raise "hell"
-            # Closes auto transaction
-            self._transaction.close()
-            self._transaction = None
+            raise "hell"
+
+        if self._autoResult:
+            self._autoResult._detach()
+            self._autoResult = None
 
         if not self._connection:
             self._connect(self._config.default_access_mode, database=self._config.database)
@@ -275,7 +278,7 @@ class Session(Workspace):
         #def fail(_):
         #    self._close_transaction()
 
-        #hydrant = DataHydrator()
+        hydrant = DataHydrator()
         #result_metadata = {
         #    "query": query_text,
         #    "parameters": parameters,
@@ -293,8 +296,8 @@ class Session(Workspace):
         #bookmarks = run_metadata.get("bookmarks", self._config.bookmarks)
 
         # Create auto-commit transaction and run query on it
-        self._transaction = AutoTransaction(cx, self._config.database, self._config.default_access_mode, self._bookmarks_in)
-        result = self._transaction.run(query, parameters, **kwparameters)
+        self._autoResult = Result(cx, hydrant)
+        self._autoResult.run(query, parameters, self._config.database, self._config.default_access_mode, self._bookmarks_in, **kwparameters)
         return result
 
 
@@ -338,11 +341,11 @@ class Session(Workspace):
 
         #return result
 
-    def send(self):
-        """Send all outstanding requests.
-        """
-        if self._connection:
-            self._connection.send_all()
+#    def send(self):
+#        """Send all outstanding requests.
+#        """
+#        if self._connection:
+#            self._connection.send_all()
 
     # TODO: Remove
     #def fetch(self):
@@ -356,17 +359,17 @@ class Session(Workspace):
 
     #    return 0
 
-    def sync(self):
-        """Carry out a full send and receive.
-
-        :returns: number of records fetched
-        """
-        if self._connection:
-            self._connection.send_all()
-            detail_count, _ = self._connection.fetch_all()
-            return detail_count
-
-        return 0
+#    def sync(self):
+#        """Carry out a full send and receive.
+#
+#        :returns: number of records fetched
+#        """
+#        if self._connection:
+#            self._connection.send_all()
+#            detail_count, _ = self._connection.fetch_all()
+#            return detail_count
+#
+#        return 0
 
     # TODO: Remove
 #     def detach(self, result, sync=True):
@@ -426,13 +429,12 @@ class Session(Workspace):
         """
         # TODO: Implement TransactionConfig consumption
 
-        #if self.has_transaction():
+        if self._autoResult:
+            self._autoResult._detach()
+            self._autoResult = None
+
         if self._transaction:
-            if not self._transaction is AutoTransaction:
-                raise TransactionError("Explicit transaction already open")
-            # Close pending auto commit transaction
-            self._transaction.close()
-            self._transaction = None
+            raise TransactionError("Explicit transaction already open")
 
         self._open_transaction(access_mode=self._config.default_access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
         return self._transaction
@@ -742,277 +744,6 @@ class Query:
 
     def __str__(self):
         return str(self.text)
-
-
-class Result:
-    """A handler for the result of Cypher query execution. Instances
-    of this class are typically constructed and returned by
-    :meth:`.Session.run` and :meth:`.Transaction.run`.
-    """
-
-    def __init__(self, connection, hydrant): #, metadata):
-        #self._session = session
-        self._connection = connection
-        self._hydrant = hydrant
-        self._metadata = None #metadata
-        self._records = deque()
-        self._summary = None
-        self._state = None
-        self._attached = False
-
-    def _run(self, query, parameters, db, access_mode, bookmarks, **kwparameters):
-        if self._attached:
-            # Can only do this once
-            raise "hell"
-
-        query_text = str(query)
-        query_metadata = getattr(query, "metadata", None)
-        query_timeout = getattr(query, "timeout", None)
-        parameters = DataDehydrator.fix_parameters(dict(parameters or {}, **kwparameters))
-
-        self._metadata = {
-            "query": query_text,
-            "parameters": parameters,
-            "server": server_info,
-            "protocol_version": protocol_version,
-        }
-
-        run_metadata = {
-            "metadata": query_metadata,
-            "timeout": query_timeout,
-        }
-
-        def on_attached(iterable):
-            self._metadata.update(iterable)
-            self._attached = True
-
-        def on_failed_attach()
-            self._attached = False # Probably already is...
-
-        self._connection.run(
-            query_text,
-            parameters=parameters,
-            mode=access_mode,
-            bookmarks=bookmarks,
-            metadata=query_metadata,
-            timeout=query_timeout,
-            db=db,
-            on_success=on_attached,
-            on_failure=on_failed_attach,
-        )
-        self._pull()
-        self._connection.send_all()
-        self._connection.fetch_message()
-
-    def _pull(self):
-        # TODO: Check meta-data for qid
-
-        # TODO:
-        fetch_size = 10
-
-        def on_records(records):
-            self._records.extend(self._hydrant.hydrate_records(self.keys(), records)
-            pass
-
-        def on_success(summary_metadata):
-            self._metadata.update(summary_metadata)
-            # TODO: _metadata["bookmark" should be used!
-            pass
-
-        def on_summary():
-            self._attached = False
-
-        def on_failure():
-            pass
-
-        self._connection.pull(
-            n=fetch_size,
-            on_records=on_records,
-            on_success=on_success,
-            on_failure=on_failure,
-            on_summary=on_summary)
-
-
-    def __iter__(self):
-        return self.records()
-
-    # TODO: Needed?
-    #@property
-    #def session(self):
-    #    """The :class:`.Session` to which this result is attached, if any.
-    #    """
-    #    return self._session
-
-    # Not needed
-    #def attached(self):
-    #    """Indicator for whether or not this result is still attached to
-    #    an open :class:`.Session`.
-    #    """
-    #    #return self._session
-    #    return self._attached
-
-    def _detach(self, sync=True):
-        """Detach this result from its parent session by fetching the
-        remainder of this result from the network into the buffer.
-
-        :returns: number of records fetched
-        """
-        #if self._attached:
-        #if self.attached():
-            #return self._session.detach(self, sync=sync)
-        #    re
-        #else:
-        #    return 0
-        #self._connection.send_all()
-        fetch = self.fetch
-        while result.attached():
-            count += fetch()
-
-        self._connection.fetch_message()
-
-    def keys(self):
-        """The keys for the records in this result.
-
-        :returns: tuple of key names
-        """
-        try:
-            return self._metadata["fields"]
-        except KeyError:
-            if self._attached:
-                #self._connection.send_all()
-                #self._session.send()
-                while "fields" not in self._metadata:
-                    self._connection.fetch_message()
-            #while self.attached() and "fields" not in self._metadata:
-            #    self._session.fetch()
-            return self._metadata.get("fields")
-
-    def records(self):
-        """Generator for records obtained from this result.
-
-        :yields: iterable of :class:`.Record` objects
-        """
-        records_buffer = self._records
-        next_record = records_buffer.popleft
-        while records_buffer:
-            yield next_record()
-        #attached = self.attached
-        #if attached():
-        if self._attached:
-            self._connection.send_all()
-            #self._session.send()
-            while self._attached:
-            self._connection
-            _ = self._session.fetch()  # Blocking call, this call can detach the session
-            if self._session:
-                cx_state = self._session.connection_state()
-                if cx_state == "pull":
-                    log.debug("This should never happen because Session.fetch() is a blocking call")
-                if cx_state == "streaming_has_more":
-                    if self._state == "discard_all":
-                        self._session.set_connection_state("discard_all")
-                        self._session.discard_all()
-                        self._session.send()
-                    else:
-                        self._session.set_connection_state("pull")
-                        self._session.pull()
-                        self._session.send()
-
-            while records_buffer:
-                record = next_record()
-                yield record
-
-    def _obtain_summary(self):
-        """Obtain the summary of this result, buffering any remaining records.
-
-        :returns: The :class:`neo4j.ResultSummary` for this result
-        """
-        #self.detach()
-        if self._summary is None:
-            self._summary = ResultSummary(**self._metadata)
-        return self._summary
-
-    def consume(self):
-        """Consume the remainder of this result and return a ResultSummary.
-
-        :returns: The :class:`neo4j.ResultSummary` for this result
-        """
-        if self._attached:
-            self._state = "discard_all"
-            for _ in self:
-                pass
-        return self._obtain_summary()
-
-    def single(self):
-        """Obtain the next and only remaining record from this result.
-
-        A warning is generated if more than one record is available but
-        the first of these is still returned.
-
-        :returns: the next :class:`.Record` or :const:`None` if none remain
-        :warns: if more than one record is available
-        """
-        records = list(self)
-        size = len(records)
-        if size == 0:
-            return None
-        if size != 1:
-            warn("Expected a result with a single record, but this result contains %d" % size)
-        return records[0]
-
-    def peek(self):
-        """Obtain the next record from this result without consuming it.
-        This leaves the record in the buffer for further processing.
-
-        :returns: the next :class:`.Record` or :const:`None` if none remain
-        """
-        records = self._records
-        if records:
-            return records[0]
-        if not self.attached():
-            return None
-        if self.attached():
-            self._session.send()
-        while self.attached() and not records:
-            self._session.fetch()
-            if records:
-                return records[0]
-        return None
-
-    def graph(self):
-        """Return a Graph instance containing all the graph objects
-        in the result. After calling this method, the result becomes
-        detached, buffering all remaining records.
-
-        :returns: result graph
-        """
-        self.detach()
-        return self._hydrant.graph
-
-    def value(self, item=0, default=None):
-        """Return the remainder of the result as a list of values.
-
-        :param item: field to return for each remaining record
-        :param default: default value, used if the index of key is unavailable
-        :returns: list of individual values
-        """
-        return [record.value(item, default) for record in self.records()]
-
-    def values(self, *items):
-        """Return the remainder of the result as a list of tuples.
-
-        :param items: fields to return for each remaining record
-        :returns: list of value tuples
-        """
-        return [record.values(*items) for record in self.records()]
-
-    def data(self, *items):
-        """Return the remainder of the result as a list of dictionaries.
-
-        :param items: fields to return for each remaining record
-        :returns: list of dictionaries
-        """
-        return [record.data(*items) for record in self.records()]
 
 
 def unit_of_work(metadata=None, timeout=None):
