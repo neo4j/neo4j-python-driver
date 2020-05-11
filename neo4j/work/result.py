@@ -5,15 +5,15 @@ class Result:
     :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
 
-    def __init__(self, connection, hydrant): #, metadata):
-        #self._session = session
+    def __init__(self, connection, hydrant):
         self._connection = connection
         self._hydrant = hydrant
-        self._metadata = None #metadata
+        self._metadata = None
         self._records = deque()
         self._summary = None
         self._discarding = False
         self._attached = False
+        self._qid = -1
 
     def _run(self, query, parameters, db, access_mode, bookmarks, **kwparameters):
         if self._attached:
@@ -39,6 +39,8 @@ class Result:
 
         def on_attached(iterable):
             self._metadata.update(iterable)
+            self._qid = iterable.get("qid")
+            self._keys = iterable.get("fields")
             self._attached = True
 
         def on_failed_attach()
@@ -57,7 +59,7 @@ class Result:
         )
         self._pull()
         self._connection.send_all()
-        self._connection.fetch_message()
+        self._connection.fetch_message() # Receive response to run
 
     def _pull(self):
         # TODO: Check meta-data for qid
@@ -66,9 +68,8 @@ class Result:
         fetch_size = 10
 
         def on_records(records):
-            if self._state != "discard":
-                keys = self._metadata["fields"]
-                self._records.extend(self._hydrant.hydrate_records(keys, records)
+            if not self._discarding:
+                self._records.extend(self._hydrant.hydrate_records(self._keys, records)
 
         def on_success(summary_metadata):
             has_more = metadata.get("has_more")
@@ -82,7 +83,9 @@ class Result:
                         on_summary=on_summary)
                     self._connection.send_all()
                 else:
-                   self._pull()
+                    self._pull()
+                    self._connection.send_all()
+                    self._connection.fetch_message()
                 return
 
             self._metadata.update(summary_metadata)
@@ -148,17 +151,7 @@ class Result:
 
         :returns: tuple of key names
         """
-        try:
-            return self._metadata["fields"]
-        except KeyError:
-            if self._attached:
-                #self._connection.send_all()
-                #self._session.send()
-                while "fields" not in self._metadata:
-                    self._connection.fetch_message()
-            #while self.attached() and "fields" not in self._metadata:
-            #    self._session.fetch()
-            return self._metadata.get("fields")
+        return self._keys
 
     def records(self):
         """Generator for records obtained from this result.
@@ -171,12 +164,11 @@ class Result:
         #if attached():
 
         # Set to False when summary received
-        if self._attached:
+        while self._attached:
             self._connection.fetch_message()
-
-        if self._attached:
-            while self._records:
+            if self._attached:
                 yield _self._records.popleft()
+
 
         # if self._attached:
         #     #self._connection.send_all()

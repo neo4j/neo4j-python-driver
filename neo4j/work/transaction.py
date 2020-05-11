@@ -72,9 +72,8 @@ class Transaction():
                 self.results.append(self._result)
             self._result = None
 
-        result = Result(self._connection, DataHydrator())
-        result = result._run(query, parameters, None, None, None, **kwparameters)
-        self.results.append(result)
+        self._result = Result(self._connection, DataHydrator())
+        self._result._run(query, parameters, None, None, None, **kwparameters)
 
     def sync(self):
         """ Force any queued queries to be sent to the server and
