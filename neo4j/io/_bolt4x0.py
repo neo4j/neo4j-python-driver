@@ -86,6 +86,7 @@ class Bolt4x0(Bolt):
         self.responses = deque()
         self._max_connection_lifetime = max_connection_lifetime  # self.pool_config.max_connection_lifetime
         self._creation_timestamp = perf_counter()
+        self. supports_multiple_results = True
 
         # Determine the user agent
         if user_agent:

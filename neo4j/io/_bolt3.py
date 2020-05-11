@@ -87,6 +87,7 @@ class Bolt3(Bolt):
         self.responses = deque()
         self._max_connection_lifetime = max_connection_lifetime
         self._creation_timestamp = perf_counter()
+        self. supports_multiple_results = False
 
         # Determine the user agent
         if user_agent:

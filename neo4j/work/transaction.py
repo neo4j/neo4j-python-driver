@@ -1,30 +1,6 @@
 
 
 
-# class AutoTransaction():
-#     def __init__(self, connection, db, access_mode, bookmarks) :
-#         self._connection = connection
-#         self._result = None
-#         self._bookmarks = bookmarks
-#         self._access_mode = access_mode
-#         self._db = db
-#         self._bookmark = None
-# 
-#     def rollback(self):
-#         pass
-# 
-#     def run(self, query, parameters=None, **kwparameters):
-#         self._result = Result(self._connection, DataHydrator())
-#         self._result._run(query, parameters, self._db, self._access_mode, self._bookmarks, **kwparameters)
-#         return self._result
-# 
-#     def close(self):
-#         # If I have a pending result, detach it and forget about it
-#         if self._result:
-#             self._result.detach()
-#             self._result = None
-
-
 class Transaction():
     """ Container for multiple Cypher queries to be executed within
     a single context. Transactions can be used within a :py:const:`with`
@@ -39,6 +15,7 @@ class Transaction():
     def __init__(self, connection) :
         self._connection = connection
         self._bookmark = None
+        self._result = None
         self._results = []
         self._closed = False
 
@@ -88,6 +65,13 @@ class Transaction():
         :raise TransactionError: if the transaction is closed
         """
         self._assert_open()
+        if self._result:
+            if not self._connection.supports_multiple_results:
+                self._result._detach()
+            else:
+                self.results.append(self._result)
+            self._result = None
+
         result = Result(self._connection, DataHydrator())
         result = result._run(query, parameters, None, None, None, **kwparameters)
         self.results.append(result)
@@ -129,6 +113,8 @@ class Transaction():
         self._connection.rollback(on_success=metadata.update)
         self._connection.send_all()
         self._connection.fetch_all()
+        self._closed = True
+        self._consume_results()
 
     def _consume_results(self):
         for result in self._results:
@@ -144,7 +130,6 @@ class Transaction():
         if self._closed:
             return
         self.rollback()
-        self._consume_results()
 
     def closed(self):
         """ Indicator to show whether the transaction has been closed.
@@ -155,52 +140,4 @@ class Transaction():
     def _assert_open(self):
         if self._closed:
             raise TransactionError("Transaction closed")
-
-
-# Shared run func
-# def _run(connection, query, parameters, db, access_mode, bookmarks, **kwparameters):
-#     query_text = str(query)
-#     query_metadata = getattr(query, "metadata", None)
-#     query_timeout = getattr(query, "timeout", None)
-#     parameters = DataDehydrator.fix_parameters(dict(parameters or {}, **kwparameters))
-# 
-#     result_metadata = {
-#         "query": query_text,
-#         "parameters": parameters,
-#         "server": server_info,
-#         "protocol_version": protocol_version,
-#     }
-#     hydrant = DataHydrator()
-#     result = Result(hydrant, result_metadata)
-# 
-#     run_metadata = {
-#         "metadata": query_metadata,
-#         "timeout": query_timeout,
-#         "on_success": result_metadata.update,
-#         "on_failure": fail,
-#     }
-#     if bookmarks:
-#         run_metadata["bookmarks"] = bookmarks
-# 
-#     cx.run(
-#         query_text,
-#         parameters=parameters,
-#         mode=access_mode,
-#         bookmarks=bookmarks,
-#         metadata=run_metadata["metadata"],
-#         timeout=run_metadata["timeout"],
-#         db=db,
-#         on_success=run_metadata["on_success"],
-#         on_failure=run_metadata["on_failure"],
-#     )
-# 
-#     #TODO:
-#     fetch_size = 10
-#     self._connection.pull(
-#         n=
-#     self._connection.send_all()
-#     self._connection.fetch_message()
-# 
-#     return result
-
 
