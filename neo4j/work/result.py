@@ -18,7 +18,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from collections import deque
+
 from neo4j.data import DataDehydrator
+from neo4j.work.summary import ResultSummary
+
 
 class Result:
     """A handler for the result of Cypher query execution. Instances
@@ -45,8 +50,8 @@ class Result:
         self._metadata = {
             "query": query_text,
             "parameters": parameters,
-            "server": server_info,
-            "protocol_version": self._connection.PROTOCOL_VERSION,
+            "server": self._connection.server_info,
+            # "protocol_version": self._connection.PROTOCOL_VERSION,  # This information is also available in the _connection.server_info object
         }
 
         run_metadata = {
@@ -60,7 +65,7 @@ class Result:
             self._keys = iterable.get("fields")
             self._attached = True
 
-        def on_failed_attach()
+        def on_failed_attach():
             self._attached = False
 
         self._connection.run(
@@ -85,10 +90,10 @@ class Result:
 
         def on_records(records):
             if not self._discarding:
-                self._records.extend(self._hydrant.hydrate_records(self._keys, records)
+                self._records.extend(self._hydrant.hydrate_records(self._keys, records))
 
         def on_success(summary_metadata):
-            has_more = metadata.get("has_more")
+            has_more = summary_metadata.get("has_more")
             if has_more:
                 if self._discarding:
                     # This was the last page received, discard the rest
@@ -272,9 +277,9 @@ class Result:
         #if self.attached():
         #    self._session.send()
         #while self.attached() and not records:
-       #     self._session.fetch()
-       #     if records:
-       #         return records[0]
+        #    self._session.fetch()
+        #    if records:
+        #        return records[0]
         return None
 
     def graph(self):

@@ -38,6 +38,8 @@ from neo4j.exceptions import (
 from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.work import Workspace
 from neo4j.work.summary import ResultSummary
+from neo4j.work.transaction import Transaction
+from neo4j.work.result import Result
 from neo4j.io._bolt3 import Bolt3
 
 log = getLogger("neo4j")
@@ -251,7 +253,7 @@ class Session(Workspace):
     def _open_transaction(self, *, access_mode, database, metadata=None, timeout=None):
         self._connect(access_mode=access_mode, database=database)
         self._transaction = Transaction(self._connection)
-        self._transaction._begin(dtabase, self._bookmarks_in, access_mode, metadata, timeout)
+        self._transaction._begin(database, self._bookmarks_in, access_mode, metadata, timeout)
 
     def commit_transaction(self):
         """ Commit the current transaction.

@@ -93,12 +93,18 @@ from neo4j.data import (
     Record,
 )
 from neo4j.work.simple import (
-    Transaction,
-    Result,
-    ResultSummary,
     Query,
     Session,
     unit_of_work,
+)
+from neo4j.work.transaction import (
+    Transaction,
+)
+from neo4j.work.result import (
+    Result,
+)
+from neo4j.work.summary import (
+    ResultSummary,
 )
 
 

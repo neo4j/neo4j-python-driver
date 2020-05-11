@@ -1,7 +1,11 @@
+# TODO: Add copyright
 
 
+from neo4j.work.result import Result
+from neo4j.data import DataHydrator
 
-class Transaction():
+
+class Transaction:
     """ Container for multiple Cypher queries to be executed within
     a single context. Transactions can be used within a :py:const:`with`
     block where the transaction is committed or rolled back on based on
@@ -12,7 +16,7 @@ class Transaction():
 
     """
 
-    def __init__(self, connection) :
+    def __init__(self, connection):
         self._connection = connection
         self._bookmark = None
         self._result = None
@@ -32,7 +36,7 @@ class Transaction():
             self.commit()
         self._close()
 
-    def _begin(self, db, bookmarks, access_mode, metadata, timeout, ):
+    def _begin(self, database, bookmarks, access_mode, metadata, timeout):
         self._connection.begin(bookmarks=bookmarks, metadata=metadata, timeout=timeout, mode=access_mode, db=database)
 
     def run(self, query, parameters=None, **kwparameters):
@@ -69,7 +73,7 @@ class Transaction():
             if not self._connection.supports_multiple_results:
                 self._result._detach()
             else:
-                self.results.append(self._result)
+                self._results.append(self._result)
             self._result = None
 
         self._result = Result(self._connection, DataHydrator())
