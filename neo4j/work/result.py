@@ -46,6 +46,7 @@ class Result:
         self._qid = -1
         self._fetch_size = fetch_size
 
+
     def _run(self, query, parameters, db, access_mode, bookmarks, **kwparameters):
         log.debug("Result._run")
         query_text = str(query)
@@ -88,8 +89,8 @@ class Result:
         )
         self._pull()
         self._connection.send_all()
-        ix = self._connection.fetch_message()  # Receive response to run
-        log.debug("RESULT._run {}".format(ix))
+        # ix = self._connection.fetch_message()  # Receive response to run
+        # log.debug("RESULT._run qid={} {}".format(self._qid, ix))
         # ix = self._connection.fetch_message()  # Receive response to pull, this will attach the result
         # log.debug("RESULT._run {}".format(ix))
 
@@ -178,6 +179,14 @@ class Result:
         log.debug("RESULT qid={} RECORDS INIT".format(self._qid))
         while self._record_buffer:
             yield self._record_buffer.popleft()
+
+        nbr = 0
+        while not self._attached:
+            fetched_detail_messages, fetched_summary_messages = self._connection.fetch_message()  # Receive at least one message from the server, if available.
+            log.debug("fetched_detail_messages {}, fetched_summary_messages {}".format(fetched_detail_messages, fetched_summary_messages))
+            nbr += 1
+            if nbr > 3:
+                break
 
         # Set to False when summary received
         while self._attached:
