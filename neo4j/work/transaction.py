@@ -48,8 +48,6 @@ class Transaction:
     def _begin(self, database, bookmarks, access_mode, metadata, timeout):
         log.debug("Transaction._begin")
         self._connection.begin(bookmarks=bookmarks, metadata=metadata, timeout=timeout, mode=access_mode, db=database)
-        self._connection.send_all()
-        ix = self._connection.fetch_message()  # Receive response to begin
 
     def run(self, query, parameters=None, **kwparameters):
         """ Run a Cypher query within the context of this transaction.

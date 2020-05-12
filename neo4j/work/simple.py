@@ -190,8 +190,8 @@ class Session(Workspace):
 
         if self._autoResult:
             self._autoResult._detach()
-            self._collect_bookmark(self._autoResult._bookmark)
-            self._autoResult = None
+            #self._collect_bookmark(self._autoResult._bookmark)
+            #self._autoResult = None
 
         if not self._connection:
             self._connect(self._config.default_access_mode, database=self._config.database)
@@ -216,8 +216,6 @@ class Session(Workspace):
         """
         if self._autoResult:
             self._autoResult._detach()
-            self._collect_bookmark(self._autoResult._bookmark)
-            self._autoResult = None
 
         if self._transaction and self._transaction._closed:
             self._collect_bookmark(self._transaction._bookmark)
@@ -250,8 +248,6 @@ class Session(Workspace):
 
         if self._autoResult:
             self._autoResult._detach()
-            self._collect_bookmark(self._autoResult._bookmark)
-            self._autoResult = None
 
         if self._transaction:
             raise TransactionError("Explicit transaction already open")

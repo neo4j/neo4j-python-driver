@@ -274,7 +274,7 @@ class Result:
         :param default: default value, used if the index of key is unavailable
         :returns: list of individual values
         """
-        return [record.value(item, default) for record in self.records()]
+        return [record.value(item, default) for record in self._records()]
 
     def values(self, *items):
         """Return the remainder of the result as a list of tuples.
@@ -282,7 +282,7 @@ class Result:
         :param items: fields to return for each remaining record
         :returns: list of value tuples
         """
-        return [record.values(*items) for record in self.records()]
+        return [record.values(*items) for record in self._records()]
 
     def data(self, *items):
         """Return the remainder of the result as a list of dictionaries.
@@ -290,5 +290,5 @@ class Result:
         :param items: fields to return for each remaining record
         :returns: list of dictionaries
         """
-        return [record.data(*items) for record in self.records()]
+        return [record.data(*items) for record in self._records()]
 
