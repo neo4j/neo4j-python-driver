@@ -152,13 +152,13 @@ class Result:
         :yields: iterable of :class:`.Record` objects
         """
         while self._records:
-            yield _self._records.popleft()
+            yield self._records.popleft()
 
         # Set to False when summary received
         while self._attached:
             self._connection.fetch_message()
             if self._attached:
-                yield _self._records.popleft()
+                yield self._records.popleft()
 
     def _obtain_summary(self):
         """Obtain the summary of this result, buffering any remaining records.
