@@ -199,7 +199,7 @@ class Session(Workspace):
         hydrant = DataHydrator()
         self._autoResult = Result(cx, hydrant)
         self._autoResult._run(query, parameters, self._config.database, self._config.default_access_mode, self._bookmarks, **kwparameters)
-        return result
+        return self._autoResult
 
     def next_bookmarks(self):
         """ The set of bookmarks to be passed into the next

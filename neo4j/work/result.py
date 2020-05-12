@@ -66,7 +66,7 @@ class Result:
             self._keys = iterable.get("fields")
             self._attached = True
 
-        def on_failed_attach():
+        def on_failed_attach(metadata):
             self._attached = False
 
         self._connection.run(
