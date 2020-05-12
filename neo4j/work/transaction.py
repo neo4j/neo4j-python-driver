@@ -4,11 +4,14 @@
 from neo4j.work.result import Result
 from neo4j.data import DataHydrator
 from neo4j._exceptions import BoltIncompleteCommitError
-
 from neo4j.exceptions import (
     ServiceUnavailable,
     TransactionError,
 )
+
+from logging import getLogger
+log = getLogger("neo4j")
+
 
 class Transaction:
     """ Container for multiple Cypher queries to be executed within
@@ -21,12 +24,13 @@ class Transaction:
 
     """
 
-    def __init__(self, connection):
+    def __init__(self, connection, fetch_size):
         self._connection = connection
         self._bookmark = None
         self._result = None
         self._results = []
         self._closed = False
+        self._fetch_size = fetch_size
 
     def __enter__(self):
         return self
@@ -36,13 +40,17 @@ class Transaction:
             return
         #if self._success is None:
         #    self._success = not bool(exc_type)
+        log.debug("Transaction.__exit__")
         success = not bool(exc_type)
         if success:
             self.commit()
         self._close()
 
     def _begin(self, database, bookmarks, access_mode, metadata, timeout):
+        log.debug("Transaction._begin")
         self._connection.begin(bookmarks=bookmarks, metadata=metadata, timeout=timeout, mode=access_mode, db=database)
+        self._connection.send_all()
+        ix = self._connection.fetch_message()  # Receive response to begin
 
     def run(self, query, parameters=None, **kwparameters):
         """ Run a Cypher query within the context of this transaction.
@@ -73,6 +81,7 @@ class Transaction:
         :returns: :class:`neo4j.Result` object
         :raise TransactionError: if the transaction is closed
         """
+        log.debug("Transaction.run")
         self._assert_open()
         if self._result:
             if not self._connection.supports_multiple_results:
@@ -81,8 +90,10 @@ class Transaction:
                 self._results.append(self._result)
             self._result = None
 
-        self._result = Result(self._connection, DataHydrator())
+        self._result = Result(self._connection, DataHydrator(), self._fetch_size)
         self._result._run(query, parameters, None, None, None, **kwparameters)
+        return self._result
+
         return self._result
 
     def sync(self):
@@ -102,9 +113,11 @@ class Transaction:
         """
         metadata = {}
         try:
+            log.debug("TRANSACTION COMMIT START")
             self._connection.commit(on_success=metadata.update)
             self._connection.send_all()
             self._connection.fetch_all()
+            log.debug("TRANSACTION COMMIT END")
         except BoltIncompleteCommitError:
             raise ServiceUnavailable("Connection closed during commit")
         self._bookmark = metadata.get("bookmark")
@@ -119,6 +132,7 @@ class Transaction:
         :raise TransactionError: if already closed
         """
         metadata = {}
+        log.debug("TRANSACTION ROLLBACK")
         self._connection.rollback(on_success=metadata.update)
         self._connection.send_all()
         self._connection.fetch_all()

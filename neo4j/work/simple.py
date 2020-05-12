@@ -97,6 +97,7 @@ class Session(Workspace):
 
     def __exit__(self, exception_type, exception_value, traceback):
         # TODO: Fix better state logic
+        log.debug("session.__EXIT__")
         if exception_type is None:
             self._state = "graceful_close_state"
         else:
@@ -133,7 +134,9 @@ class Session(Workspace):
                         self._state = "error_state"
 
             if self._transaction:
-                self._connection.rollback()
+                log.debug("session.close")
+                log.debug("RESULTS {}".format([result._qid for result in self._transaction._results]))
+                # self._connection.rollback()
                 self._transaction = None
 
             try:
@@ -243,6 +246,7 @@ class Session(Workspace):
         :raises TransactionError: :class:`neo4j.exceptions.TransactionError` if a transaction is already open.
         """
         # TODO: Implement TransactionConfig consumption
+        log.debug("Session.begin_transaction")
 
         if self._autoResult:
             self._autoResult._detach()
@@ -253,11 +257,12 @@ class Session(Workspace):
             raise TransactionError("Explicit transaction already open")
 
         self._open_transaction(access_mode=self._config.default_access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
+
         return self._transaction
 
     def _open_transaction(self, *, access_mode, database, metadata=None, timeout=None):
         self._connect(access_mode=access_mode, database=database)
-        self._transaction = Transaction(self._connection)
+        self._transaction = Transaction(self._connection, self._config.fetch_size)
         self._transaction._begin(database, self._bookmarks, access_mode, metadata, timeout)
 
     def commit_transaction(self):

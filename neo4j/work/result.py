@@ -24,6 +24,9 @@ from collections import deque
 from neo4j.data import DataDehydrator
 from neo4j.work.summary import ResultSummary
 
+from logging import getLogger
+log = getLogger("neo4j")
+
 
 class Result:
     """A handler for the result of Cypher query execution. Instances
@@ -31,18 +34,20 @@ class Result:
     :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
 
-    def __init__(self, connection, hydrant):
+    def __init__(self, connection, hydrant, fetch_size):
         self._connection = connection
         self._hydrant = hydrant
         self._metadata = None
-        self._records = deque()
+        self._record_buffer = deque()
         self._summary = None
         self._discarding = False
         self._attached = False
         self._bookmark = None
         self._qid = -1
+        self._fetch_size = fetch_size
 
     def _run(self, query, parameters, db, access_mode, bookmarks, **kwparameters):
+        log.debug("Result._run")
         query_text = str(query)
         query_metadata = getattr(query, "metadata", None)
         query_timeout = getattr(query, "timeout", None)
@@ -60,10 +65,11 @@ class Result:
             "timeout": query_timeout,
         }
 
-        def on_attached(iterable):
-            self._metadata.update(iterable)
-            self._qid = iterable.get("qid")
-            self._keys = iterable.get("fields")
+        def on_attached(metadata):
+            self._metadata.update(metadata)
+            self._qid = metadata.get("qid")
+            self._keys = metadata.get("fields")
+            log.debug("RESULT qid={} ATTACHED".format(self._qid))
             self._attached = True
 
         def on_failed_attach(metadata):
@@ -82,15 +88,23 @@ class Result:
         )
         self._pull()
         self._connection.send_all()
-        self._connection.fetch_message() # Receive response to run
+        ix = self._connection.fetch_message()  # Receive response to run
+        log.debug("RESULT._run {}".format(ix))
+        # ix = self._connection.fetch_message()  # Receive response to pull, this will attach the result
+        # log.debug("RESULT._run {}".format(ix))
 
     def _pull(self):
-        # TODO:
-        fetch_size = 10
 
         def on_records(records):
             if not self._discarding:
-                self._records.extend(self._hydrant.hydrate_records(self._keys, records))
+                self._record_buffer.extend(self._hydrant.hydrate_records(self._keys, records))
+
+        def on_summary():
+            log.debug("RESULT qid={} DETACHED".format(self._qid))
+            self._attached = False
+
+        def on_failure():
+            pass
 
         def on_success(summary_metadata):
             has_more = summary_metadata.get("has_more")
@@ -119,15 +133,16 @@ class Result:
             pass
 
         self._connection.pull(
-            n=fetch_size,
+            n=self._fetch_size,
             qid=self._qid,
             on_records=on_records,
             on_success=on_success,
             on_failure=on_failure,
-            on_summary=on_summary)
+            on_summary=on_summary,
+        )
 
     def __iter__(self):
-        return self.records()
+        return self._records()
 
     # TODO: Better name!
     def _detach(self):
@@ -146,19 +161,34 @@ class Result:
         """
         return self._keys
 
-    def records(self):
+    def _records(self):
         """Generator for records obtained from this result.
 
         :yields: iterable of :class:`.Record` objects
         """
-        while self._records:
-            yield self._records.popleft()
+        # while self._records:
+        #     yield self._record_buffer.popleft()
+        #
+        # # Set to False when summary received
+        # while self._attached:
+        #     self._connection.fetch_message()
+        #     if self._attached:
+        #         yield self._record_buffer.popleft()
+
+        log.debug("RESULT qid={} RECORDS INIT".format(self._qid))
+        while self._record_buffer:
+            yield self._record_buffer.popleft()
 
         # Set to False when summary received
         while self._attached:
-            self._connection.fetch_message()
-            if self._attached:
-                yield self._records.popleft()
+            self._connection.fetch_message()  # get a record or detach
+            if self._attached and self._record_buffer:
+                record = self._record_buffer.popleft()
+                log.debug("RESULT qid={} {}".format(self._qid, record))
+                yield record
+
+        log.debug("RESULT qid={} RECORDS EXIT".format(self._qid))
+
 
     def _obtain_summary(self):
         """Obtain the summary of this result, buffering any remaining records.
@@ -204,14 +234,14 @@ class Result:
 
         :returns: the next :class:`.Record` or :const:`None` if none remain
         """
-        if self._records:
-            return self._records[0]
+        if self._record_buffer:
+            return self._record_buffer[0]
         if not self._attached:
             return None
         while self._attached:
             self._connection.fetch_message()
-            if self._records:
-                return self._records[0]
+            if self._record_buffer:
+                return self._record_buffer[0]
 
         return None
 
