@@ -1,4 +1,22 @@
-# TODO: Add copyright
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+
+# Copyright (c) 2002-2020 "Neo4j,"
+# Neo4j Sweden AB [http://neo4j.com]
+#
+# This file is part of Neo4j.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 from neo4j.work.result import Result
@@ -36,17 +54,17 @@ class Transaction:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exception_type, exception_value, traceback):
+        # log.debug("Transaction.__exit__")
         if self._closed:
             return
-        log.debug("Transaction.__exit__")
-        success = not bool(exc_type)
+        success = not bool(exception_type)
         if success:
             self.commit()
         self._close()
 
     def _begin(self, database, bookmarks, access_mode, metadata, timeout):
-        log.debug("Transaction._begin")
+        # log.debug("Transaction._begin")
         self._connection.begin(bookmarks=bookmarks, metadata=metadata, timeout=timeout, mode=access_mode, db=database)
 
     def run(self, query, parameters=None, **kwparameters):
@@ -78,7 +96,7 @@ class Transaction:
         :returns: :class:`neo4j.Result` object
         :raise TransactionError: if the transaction is closed
         """
-        log.debug("Transaction.run")
+        # log.debug("Transaction.run")
         self._assert_open()
         if self._result:
             if not self._connection.supports_multiple_results:
@@ -88,7 +106,7 @@ class Transaction:
             self._result = None
 
         self._result = Result(self._connection, DataHydrator(), self._fetch_size, self._result_closed)
-        self._result._run(query, parameters, None, None, None, **kwparameters)
+        self._result._tx_ready_run(query, parameters, **kwparameters)
         return self._result
 
     def _result_closed(self):
@@ -110,18 +128,20 @@ class Transaction:
         :raise TransactionError: if already closed
         """
         metadata = {}
+        self._consume_results()  # Consume and discard pending records then do a commit.
         try:
-            log.debug("TRANSACTION COMMIT START")
+            # log.debug("TRANSACTION COMMIT START")
             self._connection.commit(on_success=metadata.update)
             self._connection.send_all()
             self._connection.fetch_all()
-            log.debug("TRANSACTION COMMIT END")
+            # log.debug("TRANSACTION COMMIT END")
         except BoltIncompleteCommitError:
             raise ServiceUnavailable("Connection closed during commit")
         self._bookmark = metadata.get("bookmark")
         self._closed = True
         self._consume_results()
         self._on_closed()
+
         return self._bookmark
 
     def rollback(self):
@@ -131,7 +151,7 @@ class Transaction:
         :raise TransactionError: if already closed
         """
         metadata = {}
-        log.debug("TRANSACTION ROLLBACK")
+        self._consume_results()  # Consume and discard pending records then do a rollback.
         self._connection.rollback(on_success=metadata.update)
         self._connection.send_all()
         self._connection.fetch_all()

@@ -97,7 +97,7 @@ class Session(Workspace):
 
     def __exit__(self, exception_type, exception_value, traceback):
         # TODO: Fix better state logic
-        log.debug("session.__EXIT__")
+        # log.debug("session.__exit__")
         if exception_type is None:
             self._state = "graceful_close_state"
         else:
@@ -134,9 +134,9 @@ class Session(Workspace):
                         self._state = "error_state"
 
             if self._transaction:
-                log.debug("session.close")
-                log.debug("RESULTS {}".format([result._qid for result in self._transaction._results]))
-                # self._connection.rollback()
+                # log.debug("session.close")
+                if self._transaction.closed() is False:
+                    self._connection.rollback()  # roll back the transaction if it is not closed
                 self._transaction = None
 
             try:
@@ -200,8 +200,10 @@ class Session(Workspace):
         server_info = cx.server_info
 
         hydrant = DataHydrator()
+
         self._autoResult = Result(cx, hydrant, self._config.fetch_size, self._result_closed)
         self._autoResult._run(query, parameters, self._config.database, self._config.default_access_mode, self._bookmarks, **kwparameters)
+
         return self._autoResult
 
     def _result_closed(self):
@@ -244,7 +246,7 @@ class Session(Workspace):
         :raises TransactionError: :class:`neo4j.exceptions.TransactionError` if a transaction is already open.
         """
         # TODO: Implement TransactionConfig consumption
-        log.debug("Session.begin_transaction")
+        # log.debug("Session.begin_transaction")
 
         if self._autoResult:
             self._autoResult._detach()

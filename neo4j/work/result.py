@@ -41,18 +41,28 @@ class Result:
         self._metadata = None
         self._record_buffer = deque()
         self._summary = None
-        self._discarding = False
-        self._attached = False
         self._bookmark = None
         self._qid = -1
         self._fetch_size = fetch_size
 
+        # states
+        self._discarding = False    # discard the remainder of records
+        self._attached = False      # attached to a connection
+        self._streaming = False     # there is still more records to buffer upp on the wire
+        self._has_more = False      # there is more records available to pull from the server
+        self._closed = False        # the result have been properly iterated or consumed fully
+
+    def _tx_ready_run(self, query, parameters, **kwparameters):
+        # BEGIN+RUN does not carry any extra on the RUN message.
+        # BEGIN {extra}
+        # RUN "query" {parameters} {extra}
+        self._run(query, parameters, None, None, None, **kwparameters)
 
     def _run(self, query, parameters, db, access_mode, bookmarks, **kwparameters):
-        log.debug("Result._run")
-        query_text = str(query)
+        query_text = str(query)  # Query or string object
         query_metadata = getattr(query, "metadata", None)
         query_timeout = getattr(query, "timeout", None)
+
         parameters = DataDehydrator.fix_parameters(dict(parameters or {}, **kwparameters))
 
         self._metadata = {
@@ -91,50 +101,34 @@ class Result:
         )
         self._pull()
         self._connection.send_all()
-        # ix = self._connection.fetch_message()  # Receive response to run
-        # log.debug("RESULT._run qid={} {}".format(self._qid, ix))
-        # ix = self._connection.fetch_message()  # Receive response to pull, this will attach the result
-        # log.debug("RESULT._run {}".format(ix))
+        # self._connection.fetch_all()  # Receive response to pull etc, this will attach the result
+        self._attach()
 
     def _pull(self):
 
         def on_records(records):
+            self._streaming = True
             if not self._discarding:
                 self._record_buffer.extend(self._hydrant.hydrate_records(self._keys, records))
 
         def on_summary():
-            log.debug("RESULT qid={} DETACHED".format(self._qid))
+            # log.debug("RESULT qid={} DETACHED".format(self._qid))
             self._attached = False
 
-        def on_failure():
+        def on_failure(metadata):
             pass
 
         def on_success(summary_metadata):
             has_more = summary_metadata.get("has_more")
             if has_more:
-                if self._discarding:
-                    # This was the last page received, discard the rest
-                    self._connection.discard(
-                        n=-1,
-                        on_success=on_success,
-                        on_failure=on_failure,
-                        on_summary=on_summary)
-                    self._connection.send_all()
-                else:
-                    self._pull()
-                    self._connection.send_all()
-                    self._connection.fetch_message()
+                self._has_more = True
+                self._streaming = False
                 return
+            else:
+                self._has_more = False
 
             self._metadata.update(summary_metadata)
             self._bookmark = summary_metadata.get("bookmark")
-
-        def on_summary():
-            self._attached = False
-            self._on_closed()
-
-        def on_failure():
-            pass
 
         self._connection.pull(
             n=self._fetch_size,
@@ -145,18 +139,84 @@ class Result:
             on_summary=on_summary,
         )
 
+    def _discard(self):
+        def on_records(records):
+            pass
+
+        def on_summary():
+            # log.debug("RESULT qid={} DETACHED".format(self._qid))
+            self._attached = False
+            self._on_closed()
+
+        def on_failure(metadata):
+            pass
+
+        def on_success(summary_metadata):
+            has_more = summary_metadata.get("has_more")
+            if has_more:
+                self._has_more = True
+                self._streaming = False
+            else:
+                self._has_more = False
+                self._discarding = False
+
+            self._metadata.update(summary_metadata)
+            self._bookmark = summary_metadata.get("bookmark")
+
+        # This was the last page received, discard the rest
+        self._connection.discard(
+            n=-1,
+            qid=self._qid,
+            on_records=on_records,
+            on_success=on_success,
+            on_failure=on_failure,
+            on_summary=on_summary,
+        )
+
     def __iter__(self):
-        return self._records()
-
-    # TODO: Better name!
-    def _detach(self):
-        """Detach this result from its parent session by fetching the
-        remainder of this result from the network into the buffer.
-
-        :returns: number of records fetched
+        """Iterator returning Records.
+        :returns: Record, it is an immutable ordered collection of key-value pairs.
+        :rtype: :class:`neo4j.Record`
         """
-        while self._attached:
+        # log.debug("init result generator qid={} attached {}".format(self._qid, self._attached))
+        while self._record_buffer or self._attached:
+            while self._record_buffer:
+                yield self._record_buffer.popleft()
+
+            while self._attached is True:  # _attached is set to False for _pull on_summary and _discard on_summary
+                fetched_detail_messages, fetched_summary_messages = self._connection.fetch_message()  # Receive at least one message from the server, if available.
+                if self._attached and self._record_buffer:
+                    yield self._record_buffer.popleft()
+                elif self._discarding and self._streaming is False:
+                    self._discard()
+                    self._connection.send_all()
+                elif self._has_more and self._streaming is False:
+                    self._pull()
+                    self._connection.send_all()
+
+        self._closed = True
+
+    def _attach(self):
+        """Sets the Result object in an attached state by fetching messages from the connection to the buffer.
+        """
+        if self._closed is False:
+            while self._attached is False:
+                self._connection.fetch_message()
+
+    def _detach(self):
+        """Sets the Result object in an detached state by fetching messages from the connection to the buffer.
+        """
+        while self._attached is True:
             self._connection.fetch_message()
+
+    def _obtain_summary(self):
+        """Obtain the summary of this result, buffering any remaining records.
+
+        :returns: The :class:`neo4j.ResultSummary` for this result
+        """
+        if self._summary is None:
+            self._summary = ResultSummary(**self._metadata)
+        return self._summary
 
     def keys(self):
         """The keys for the records in this result.
@@ -165,66 +225,21 @@ class Result:
         """
         return self._keys
 
-    def _records(self):
-        """Generator for records obtained from this result.
-
-        :yields: iterable of :class:`.Record` objects
-        """
-        # while self._records:
-        #     yield self._record_buffer.popleft()
-        #
-        # # Set to False when summary received
-        # while self._attached:
-        #     self._connection.fetch_message()
-        #     if self._attached:
-        #         yield self._record_buffer.popleft()
-
-        log.debug("RESULT qid={} RECORDS INIT".format(self._qid))
-        while self._record_buffer:
-            yield self._record_buffer.popleft()
-
-        nbr = 0
-        while not self._attached:
-            fetched_detail_messages, fetched_summary_messages = self._connection.fetch_message()  # Receive at least one message from the server, if available.
-            log.debug("fetched_detail_messages {}, fetched_summary_messages {}".format(fetched_detail_messages, fetched_summary_messages))
-            nbr += 1
-            if nbr > 3:
-                break
-
-        # Set to False when summary received
-        while self._attached:
-            self._connection.fetch_message()  # get a record or detach
-            if self._attached and self._record_buffer:
-                record = self._record_buffer.popleft()
-                log.debug("RESULT qid={} {}".format(self._qid, record))
-                yield record
-
-        log.debug("RESULT qid={} RECORDS EXIT".format(self._qid))
-
-
-    def _obtain_summary(self):
-        """Obtain the summary of this result, buffering any remaining records.
-
-        :returns: The :class:`neo4j.ResultSummary` for this result
-        """
-        #self.detach()
-        if self._summary is None:
-            self._summary = ResultSummary(**self._metadata)
-        return self._summary
-
     def consume(self):
         """Consume the remainder of this result and return a ResultSummary.
 
         :returns: The :class:`neo4j.ResultSummary` for this result
         """
-        self._discarding = True
-        while self._attached:
-            self._connection.fetch_message()
+        if self._closed is False:
+            self._discarding = True
+            for _ in self:
+                pass
 
         return self._obtain_summary()
 
     def single(self):
         """Obtain the next and only remaining record from this result.
+        Calling this method always exhausts the result.
 
         A warning is generated if more than one record is available but
         the first of these is still returned.
@@ -232,7 +247,7 @@ class Result:
         :returns: the next :class:`.Record` or :const:`None` if none remain
         :warns: if more than one record is available
         """
-        records = list(self)
+        records = list(self)  # TODO: exhausts the result with self.consume if there are more records.
         size = len(records)
         if size == 0:
             return None
@@ -256,6 +271,9 @@ class Result:
                 return self._record_buffer[0]
 
         return None
+
+    # NOT IN THE JAVA API
+    # Each Record also have access to the same functionality
 
     def graph(self):
         """Return a Graph instance containing all the graph objects
