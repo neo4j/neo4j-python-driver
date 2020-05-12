@@ -200,9 +200,15 @@ class Session(Workspace):
         server_info = cx.server_info
 
         hydrant = DataHydrator()
-        self._autoResult = Result(cx, hydrant)
+        self._autoResult = Result(cx, hydrant, self._config.fetch_size, self._result_closed)
         self._autoResult._run(query, parameters, self._config.database, self._config.default_access_mode, self._bookmarks, **kwparameters)
         return self._autoResult
+
+    def _result_closed(self):
+        if self._autoResult:
+            self._collect_bookmark(self._autoResult._bookmark)
+            self._autoResult = None
+            self._disconnect()
 
     def next_bookmarks(self):
         """ The set of bookmarks to be passed into the next
@@ -225,12 +231,6 @@ class Session(Workspace):
     def _collect_bookmark(self, bookmark):
         if bookmark:
             self._bookmarks = [bookmark]
-
-    def _close_transaction(self):
-        if self._transaction:
-            self._transaction._close()
-            self._collect_bookmark(self._transaction._bookmark)
-            self._transaction = None
 
     def begin_transaction(self, metadata=None, timeout=None):
         """ Begin a new unmanaged transaction. Creates a new :class:`.Transaction` within this session.
@@ -260,9 +260,15 @@ class Session(Workspace):
 
         return self._transaction
 
+    def _transaction_closed(self):
+        if self._transaction:
+            self._collect_bookmark(self._transaction._bookmark)
+            self._transaction = None
+            self._disconnect()
+
     def _open_transaction(self, *, access_mode, database, metadata=None, timeout=None):
         self._connect(access_mode=access_mode, database=database)
-        self._transaction = Transaction(self._connection, self._config.fetch_size)
+        self._transaction = Transaction(self._connection, self._config.fetch_size, self._transaction_closed)
         self._transaction._begin(database, self._bookmarks, access_mode, metadata, timeout)
 
     def commit_transaction(self):
@@ -278,8 +284,7 @@ class Session(Workspace):
         try:
             bookmark = self._transaction.commit()
         finally:
-            self._close_transaction()
-            self._disconnect()
+            self._transaction_closed()
 
         return bookmark
 
@@ -294,8 +299,7 @@ class Session(Workspace):
         try:
             self._transaction.rollback()
         finally:
-            self._close_transaction()
-            self._disconnect()
+            self._transaction_closed()
 
     def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):
 

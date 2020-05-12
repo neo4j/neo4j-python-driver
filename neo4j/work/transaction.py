@@ -24,22 +24,21 @@ class Transaction:
 
     """
 
-    def __init__(self, connection, fetch_size):
+    def __init__(self, connection, fetch_size, on_closed):
         self._connection = connection
         self._bookmark = None
         self._result = None
         self._results = []
         self._closed = False
         self._fetch_size = fetch_size
+        self._on_closed = on_closed
 
     def __enter__(self):
         return self
 
-    def __exit__(self, exv_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback):
         if self._closed:
             return
-        #if self._success is None:
-        #    self._success = not bool(exc_type)
         log.debug("Transaction.__exit__")
         success = not bool(exc_type)
         if success:
@@ -90,11 +89,12 @@ class Transaction:
                 self._results.append(self._result)
             self._result = None
 
-        self._result = Result(self._connection, DataHydrator(), self._fetch_size)
+        self._result = Result(self._connection, DataHydrator(), self._fetch_size, self._result_closed)
         self._result._run(query, parameters, None, None, None, **kwparameters)
         return self._result
 
-        return self._result
+    def _result_closed(self):
+        pass
 
     def sync(self):
         """ Force any queued queries to be sent to the server and
@@ -123,6 +123,7 @@ class Transaction:
         self._bookmark = metadata.get("bookmark")
         self._closed = True
         self._consume_results()
+        self._on_closed()
         return self._bookmark
 
     def rollback(self):
@@ -138,6 +139,7 @@ class Transaction:
         self._connection.fetch_all()
         self._closed = True
         self._consume_results()
+        self._on_closed()
 
     def _consume_results(self):
         for result in self._results:

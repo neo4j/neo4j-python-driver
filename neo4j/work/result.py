@@ -34,9 +34,10 @@ class Result:
     :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
 
-    def __init__(self, connection, hydrant, fetch_size):
+    def __init__(self, connection, hydrant, fetch_size, on_closed):
         self._connection = connection
         self._hydrant = hydrant
+        self._on_closed = on_closed
         self._metadata = None
         self._record_buffer = deque()
         self._summary = None
@@ -75,6 +76,7 @@ class Result:
 
         def on_failed_attach(metadata):
             self._attached = False
+            self._on_closed()
 
         self._connection.run(
             query_text,
@@ -129,6 +131,7 @@ class Result:
 
         def on_summary():
             self._attached = False
+            self._on_closed()
 
         def on_failure():
             pass
