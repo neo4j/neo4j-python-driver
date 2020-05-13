@@ -47,6 +47,12 @@ from tests.stub.conftest import StubCluster
 
 # python -m pytest tests/stub/test_routingdriver.py -s -v
 
+import logging
+from neo4j.debug import watch
+watch("neo4j")
+
+log = logging.getLogger("neo4j")
+
 
 @pytest.mark.parametrize(
     "test_script",

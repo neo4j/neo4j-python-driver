@@ -45,7 +45,7 @@ class Transaction:
     def __init__(self, connection, fetch_size, on_closed):
         self._connection = connection
         self._bookmark = None
-        self._result = None
+        # self._result = None
         self._results = []
         self._closed = False
         self._fetch_size = fetch_size
@@ -98,16 +98,18 @@ class Transaction:
         """
         # log.debug("Transaction.run")
         self._assert_open()
-        if self._result:
-            if not self._connection.supports_multiple_results:
-                self._result._detach()
-            else:
-                self._results.append(self._result)
-            self._result = None
+        if self._results and self._connection.supports_multiple_results is False:
+            # Autocommit
+            self._results[0]._detach()  # Buffer up the records for the result object
+            self._results.pop(0)
+            assert len(self._results) == 0
 
-        self._result = Result(self._connection, DataHydrator(), self._fetch_size, self._result_closed)
-        self._result._tx_ready_run(query, parameters, **kwparameters)
-        return self._result
+        result = Result(self._connection, DataHydrator(), self._fetch_size, self._result_closed)
+        self._results.append(result)
+
+        result._tx_ready_run(query, parameters, **kwparameters)
+
+        return result
 
     def _result_closed(self):
         pass
@@ -128,18 +130,15 @@ class Transaction:
         :raise TransactionError: if already closed
         """
         metadata = {}
-        self._consume_results()  # Consume and discard pending records then do a commit.
+        self._consume_results()  # DISCARD pending records then do a commit.
         try:
-            # log.debug("TRANSACTION COMMIT START")
             self._connection.commit(on_success=metadata.update)
             self._connection.send_all()
             self._connection.fetch_all()
-            # log.debug("TRANSACTION COMMIT END")
         except BoltIncompleteCommitError:
             raise ServiceUnavailable("Connection closed during commit")
         self._bookmark = metadata.get("bookmark")
         self._closed = True
-        self._consume_results()
         self._on_closed()
 
         return self._bookmark
@@ -151,12 +150,12 @@ class Transaction:
         :raise TransactionError: if already closed
         """
         metadata = {}
-        self._consume_results()  # Consume and discard pending records then do a rollback.
+        self._consume_results()  # DISCARD pending records then do a rollback.
         self._connection.rollback(on_success=metadata.update)
         self._connection.send_all()
         self._connection.fetch_all()
         self._closed = True
-        self._consume_results()
+        # self._consume_results()
         self._on_closed()
 
     def _consume_results(self):

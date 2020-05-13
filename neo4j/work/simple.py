@@ -140,9 +140,10 @@ class Session(Workspace):
                 self._transaction = None
 
             try:
-                self._connection.send_all()
-                self._connection.fetch_all()
-                # TODO: Investigate potential non graceful close states
+                if self._connection:
+                    self._connection.send_all()
+                    self._connection.fetch_all()
+                    # TODO: Investigate potential non graceful close states
             except Neo4jError:
                 pass
             except TransactionError:
