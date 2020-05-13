@@ -69,7 +69,6 @@ class Result:
             "query": query_text,
             "parameters": parameters,
             "server": self._connection.server_info,
-            # "protocol_version": self._connection.PROTOCOL_VERSION,  # This information is also available in the _connection.server_info object
         }
 
         run_metadata = {
@@ -79,7 +78,7 @@ class Result:
 
         def on_attached(metadata):
             self._metadata.update(metadata)
-            self._qid = metadata.get("qid")
+            self._qid = metadata.get("qid", -1) # For auto-commit there is no qid
             self._keys = metadata.get("fields")
             log.debug("RESULT qid={} ATTACHED".format(self._qid))
             self._attached = True
@@ -114,6 +113,7 @@ class Result:
         def on_summary():
             # log.debug("RESULT qid={} DETACHED".format(self._qid))
             self._attached = False
+            self._on_closed()
 
         def on_failure(metadata):
             pass
@@ -308,5 +308,5 @@ class Result:
         :param items: fields to return for each remaining record
         :returns: list of dictionaries
         """
-        return [record.data(*items) for record in self._records()]
+        return [record.data(*items) for record in self]
 

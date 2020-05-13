@@ -13,7 +13,7 @@ C: PULL {"n": 2}
 S: RECORD [1]
    RECORD [2]
    SUCCESS {"has_more": true}
-C: DISCARD {"n": -1}
+C: DISCARD {"n": -1, "qid": 0}
 S: SUCCESS {"type": "r", "t_last": 500, "db": "test"}
 C: COMMIT
 S: SUCCESS {"bookmark": "neo4j:bookmark-test-1"}
