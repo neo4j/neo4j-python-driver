@@ -20,6 +20,7 @@
 
 
 from collections import deque
+from warnings import warn
 
 from neo4j.data import DataDehydrator
 from neo4j.work.summary import ResultSummary
@@ -241,7 +242,7 @@ class Result:
         return self._obtain_summary()
 
     def single(self):
-        """Obtain the next and only remaining record from this result.
+        """Obtain the next and only remaining record from this result if available else return None.
         Calling this method always exhausts the result.
 
         A warning is generated if more than one record is available but

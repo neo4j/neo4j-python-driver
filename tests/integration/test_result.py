@@ -38,13 +38,13 @@ def test_can_consume_result_from_buffer(session):
 
     def f(tx):
         result = tx.run("UNWIND range(1, 3) AS n RETURN n")
-        result.detach()
+        result._detach()
         assert [record[0] for record in result] == [1, 2, 3]
 
     session.read_transaction(f)
 
 
-@pytest.mark.skip(reason="This behaviour have changed. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
+@pytest.mark.skip(reason="This behaviour have changed in 4.0. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
 def test_can_consume_result_after_commit(session):
     tx = session.begin_transaction()
     result = tx.run("UNWIND range(1, 3) AS n RETURN n")
@@ -52,7 +52,7 @@ def test_can_consume_result_after_commit(session):
     assert [record[0] for record in result] == [1, 2, 3]
 
 
-@pytest.mark.skip(reason="This behaviour have changed. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
+@pytest.mark.skip(reason="This behaviour have changed in 4.0. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
 def test_can_consume_result_after_rollback(session):
     tx = session.begin_transaction()
     result = tx.run("UNWIND range(1, 3) AS n RETURN n")
@@ -85,7 +85,6 @@ def test_can_consume_result_after_session_reuse(bolt_driver):
     assert [record[0] for record in result_b] == [4, 5, 6]
 
 
-@pytest.mark.skip(reason="This behaviour have changed. transaction.commit/rollback -> DISCARD n=-1, COMMIT/ROLL_BACK")
 def test_can_consume_results_after_harsh_session_death(bolt_driver):
     session = bolt_driver.session()
     result_a = session.run("UNWIND range(1, 3) AS n RETURN n")
@@ -117,14 +116,14 @@ def test_single_with_exactly_one_record(session):
     assert list(record.values()) == [1]
 
 
-def test_value_with_no_records(session):
-    result = session.run("CREATE ()")
-    assert result.value() == []
-
-
-def test_values_with_no_records(session):
-    result = session.run("CREATE ()")
-    assert result.values() == []
+# def test_value_with_no_records(session):
+#     result = session.run("CREATE ()")
+#     assert result.value() == []
+#
+#
+# def test_values_with_no_records(session):
+#     result = session.run("CREATE ()")
+#     assert result.values() == []
 
 
 def test_peek_can_look_one_ahead(session):
@@ -173,92 +172,95 @@ def test_can_safely_exit_session_without_consuming_result(session):
     assert True
 
 
-def test_multiple_value(session):
+def test_multiple_record_value_case_a(session):
     result = session.run("UNWIND range(1, 3) AS n "
                          "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-    assert result.value() == [1, 2, 3]
+    values = []
+    for record in result:
+        values.append(record.value(key=0, default=None))
+    assert values == [1, 2, 3]
 
 
-def test_multiple_indexed_value(session):
+def test_multiple_record_value_case_b(session):
     result = session.run("UNWIND range(1, 3) AS n "
                          "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-    assert result.value(2) == [3, 6, 9]
+    values = []
+    for record in result:
+        values.append(record.value(key=2, default=None))
+    assert values == [3, 6, 9]
 
 
-def test_multiple_keyed_value(session):
+def test_multiple_record_value_case_c(session):
     result = session.run("UNWIND range(1, 3) AS n "
                          "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-    assert result.value("z") == [3, 6, 9]
+    values = []
+    for record in result:
+        values.append(record.value(key="z", default=None))
+    assert values == [3, 6, 9]
 
 
-def test_multiple_values(session):
+def test_record_values_case_a(session):
     result = session.run("UNWIND range(1, 3) AS n "
                          "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-    assert result.values() == [[1, 2, 3],
-                               [2, 4, 6],
-                               [3, 6, 9]]
+    values = []
+    for record in result:
+        values.append(record.values())
+    assert values == [[1, 2, 3], [2, 4, 6], [3, 6, 9]]
 
 
-def test_multiple_indexed_values(session):
+def test_record_values_case_b(session):
     result = session.run("UNWIND range(1, 3) AS n "
                          "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-    assert result.values(2, 0), [[3, 1],
-                                 [6, 2],
-                                 [9, 3]]
+    values = []
+    for record in result:
+        values.append(record.values(2, 0))
+    assert values == [[3, 1], [6, 2], [9, 3]]
 
 
-def test_multiple_keyed_values(session):
+def test_record_values_case_c(session):
     result = session.run("UNWIND range(1, 3) AS n "
                          "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
-    assert result.values("z", "x") == [[3, 1],
-                                       [6, 2],
-                                       [9, 3]]
+    values = []
+    for record in result:
+        values.append(record.values("z", "x"))
+    assert values == [[3, 1], [6, 2], [9, 3]]
 
 
-def test_value_with_no_keys_and_no_records(neo4j_driver):
+def test_no_records(neo4j_driver):
     with neo4j_driver.session() as session:
         result = session.run("CREATE ()")
-        assert result.value() == []
+        values = []
+        for record in result:
+            values.append(record.value())
+        assert values == []
 
 
-def test_values_with_one_key_and_no_records(session):
-    result = session.run("UNWIND range(1, 0) AS n RETURN n")
-    assert result.values() == []
-
-
-def test_single_with_no_keys_and_no_records(session):
+def test_result_single_with_no_records(session):
     result = session.run("CREATE ()")
     record = result.single()
     assert record is None
 
 
-def test_single_with_one_key_and_no_records(session):
-    result = session.run("UNWIND range(1, 0) AS n RETURN n")
+def test_result_single_with_one_record(session):
+    result = session.run("UNWIND [1] AS n RETURN n")
     record = result.single()
-    assert record is None
+    assert record["n"] == 1
 
 
-def test_single_with_multiple_records(session):
+def test_result_single_with_multiple_records(session):
     import warnings
-    result = session.run("UNWIND range(1, 3) AS n RETURN n")
-    with warnings.catch_warnings(record=True) as warning_list:
-        warnings.simplefilter("always")
+    result = session.run("UNWIND [1, 2, 3] AS n RETURN n")
+    with pytest.warns(UserWarning, match="Expected a result with a single record"):
         record = result.single()
-        assert len(warning_list) == 1
         assert record[0] == 1
 
 
-def test_single_consumes_entire_result_if_one_record(session):
-    result = session.run("UNWIND range(1, 1) AS n RETURN n")
-    _ = result.single()
-    assert not result.session
-
-
-def test_single_consumes_entire_result_if_multiple_records(session):
-    result = session.run("UNWIND range(1, 3) AS n RETURN n")
-    with pytest.warns(UserWarning):
+def test_result_single_consumes_the_result(session):
+    result = session.run("UNWIND [1, 2, 3] AS n RETURN n")
+    with pytest.warns(UserWarning, match="Expected a result with a single record"):
         _ = result.single()
-    assert not result.session
+        records = list(result)
+        assert records == []
 
 
 def test_single_value(session):
