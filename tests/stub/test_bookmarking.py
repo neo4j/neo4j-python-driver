@@ -60,7 +60,7 @@ def test_should_be_able_to_set_bookmark(driver_info, test_script):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(bookmarks=["X"], fetch_size=-1) as session:
-                assert session.next_bookmarks() == ("X",)
+                assert session._bookmarks == ("X",)
 
 
 @pytest.mark.parametrize(
@@ -76,7 +76,7 @@ def test_should_be_able_to_set_multiple_bookmarks(driver_info, test_script):
         uri = "neo4j://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"]) as driver:
             with driver.session(bookmarks=[":1", ":2"], fetch_size=-1) as session:
-                assert session.next_bookmarks() == (":1", ":2")
+                assert session._bookmarks == (":1", ":2")
 
 
 @pytest.mark.parametrize(

@@ -213,7 +213,7 @@ class Session(Workspace):
             self._autoResult = None
             self._disconnect()
 
-    def next_bookmarks(self):
+    def last_bookmark(self):
         """ The set of bookmarks to be passed into the next
         :class:`.Transaction`.
         """
@@ -224,7 +224,9 @@ class Session(Workspace):
             self._collect_bookmark(self._transaction._bookmark)
             self._transaction = None
 
-        return self._bookmarks
+        if len(self._bookmarks):
+            return self._bookmarks[len(self._bookmarks)-1]
+        return None
 
     def has_transaction(self):
         return bool(self._transaction)
