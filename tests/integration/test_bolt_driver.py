@@ -26,6 +26,7 @@ from neo4j import (
     BoltDriver,
     Version,
     READ_ACCESS,
+    WRITE_ACCESS,
     ResultSummary,
     unit_of_work,
     Transaction,
@@ -347,6 +348,17 @@ def test_bolt_driver_multiple_results_case_3(bolt_uri, auth):
 
                 assert values1 == [1, ]
 
+    except ServiceUnavailable as error:
+        if isinstance(error.__cause__, BoltHandshakeError):
+            pytest.skip(error.args[0])
+
+
+def test_bolt_driver_case_pull_no_records(driver):
+    # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_bolt_driver_case_pull_no_records
+    try:
+        with driver.session(default_access_mode=WRITE_ACCESS) as session:
+            with session.begin_transaction() as tx:
+                result = tx.run("CREATE (a:Thing {uuid:$uuid})", uuid=123)
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])

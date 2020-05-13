@@ -111,12 +111,13 @@ class Result:
                 self._record_buffer.extend(self._hydrant.hydrate_records(self._keys, records))
 
         def on_summary():
-            # log.debug("RESULT qid={} DETACHED".format(self._qid))
+            log.debug("RESULT qid={} DETACHED".format(self._qid))
             self._attached = False
             self._on_closed()
 
         def on_failure(metadata):
-            pass
+            self._attached = False
+            self._on_closed()
 
         def on_success(summary_metadata):
             has_more = summary_metadata.get("has_more")
@@ -149,7 +150,8 @@ class Result:
             self._on_closed()
 
         def on_failure(metadata):
-            pass
+            self._attached = False
+            self._on_closed()
 
         def on_success(summary_metadata):
             has_more = summary_metadata.get("has_more")
@@ -185,14 +187,15 @@ class Result:
 
             while self._attached is True:  # _attached is set to False for _pull on_summary and _discard on_summary
                 fetched_detail_messages, fetched_summary_messages = self._connection.fetch_message()  # Receive at least one message from the server, if available.
-                if self._attached and self._record_buffer:
-                    yield self._record_buffer.popleft()
-                elif self._discarding and self._streaming is False:
-                    self._discard()
-                    self._connection.send_all()
-                elif self._has_more and self._streaming is False:
-                    self._pull()
-                    self._connection.send_all()
+                if self._attached:
+                    if self._record_buffer:
+                        yield self._record_buffer.popleft()
+                    elif self._discarding and self._streaming is False:
+                        self._discard()
+                        self._connection.send_all()
+                    elif self._has_more and self._streaming is False:
+                        self._pull()
+                        self._connection.send_all()
 
         self._closed = True
 
