@@ -187,7 +187,7 @@ class Result:
                 yield self._record_buffer.popleft()
 
             while self._attached is True:  # _attached is set to False for _pull on_summary and _discard on_summary
-                fetched_detail_messages, fetched_summary_messages = self._connection.fetch_message()  # Receive at least one message from the server, if available.
+                self._connection.fetch_message()  # Receive at least one message from the server, if available.
                 if self._attached:
                     if self._record_buffer:
                         yield self._record_buffer.popleft()
