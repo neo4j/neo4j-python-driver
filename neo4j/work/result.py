@@ -219,7 +219,11 @@ class Result:
         :returns: The :class:`neo4j.ResultSummary` for this result
         """
         if self._summary is None:
-            self._summary = ResultSummary(**self._metadata)
+            if self._metadata:
+                self._summary = ResultSummary(**self._metadata)
+            elif self._connection:
+                self._summary = ResultSummary(server=self._connection.server_info)
+
         return self._summary
 
     def keys(self):
