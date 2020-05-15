@@ -26,7 +26,6 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     TransactionError,
 )
-
 from logging import getLogger
 log = getLogger("neo4j")
 
@@ -102,6 +101,10 @@ class Transaction:
             self._results[0]._detach()  # Buffer up the records for the result object
             self._results.pop(0)
             assert len(self._results) == 0
+        else:
+            from neo4j.work.simple import Query
+            if isinstance(query, Query):
+                raise ValueError("Query object is only supported for session.run")
 
         result = Result(self._connection, DataHydrator(), self._fetch_size, self._result_closed)
         self._results.append(result)
