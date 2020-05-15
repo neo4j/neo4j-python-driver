@@ -45,7 +45,6 @@ class Transaction:
     def __init__(self, connection, fetch_size, on_closed):
         self._connection = connection
         self._bookmark = None
-        # self._result = None
         self._results = []
         self._closed = False
         self._fetch_size = fetch_size
@@ -150,12 +149,12 @@ class Transaction:
         :raise TransactionError: if already closed
         """
         metadata = {}
-        self._consume_results()  # DISCARD pending records then do a rollback.
-        self._connection.rollback(on_success=metadata.update)
-        self._connection.send_all()
-        self._connection.fetch_all()
+        if not self._connection._is_reset:
+            self._consume_results()  # DISCARD pending records then do a rollback.
+            self._connection.rollback(on_success=metadata.update)
+            self._connection.send_all()
+            self._connection.fetch_all()
         self._closed = True
-        # self._consume_results()
         self._on_closed()
 
     def _consume_results(self):

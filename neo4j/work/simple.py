@@ -136,7 +136,7 @@ class Session(Workspace):
             if self._transaction:
                 # log.debug("session.close")
                 if self._transaction.closed() is False:
-                    self._connection.rollback()  # roll back the transaction if it is not closed
+                    self._transaction.rollback()  # roll back the transaction if it is not closed
                 self._transaction = None
 
             try:
