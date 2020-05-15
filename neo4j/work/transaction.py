@@ -138,6 +138,8 @@ class Transaction:
             self._connection.send_all()
             self._connection.fetch_all()
         except BoltIncompleteCommitError:
+            self._closed = True
+            self._on_closed()
             raise ServiceUnavailable("Connection closed during commit")
         self._bookmark = metadata.get("bookmark")
         self._closed = True

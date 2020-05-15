@@ -326,10 +326,9 @@ class Session(Workspace):
                     raise
                 else:
                     tx.commit()
-                finally:
-                    tx._close()
             except (ServiceUnavailable, SessionExpired) as error:
                 errors.append(error)
+                self._disconnect()
             except TransientError as error:
                 if is_retriable_transient_error(error):
                     errors.append(error)
