@@ -94,17 +94,14 @@ class Transaction:
         :returns: :class:`neo4j.Result` object
         :raise TransactionError: if the transaction is closed
         """
-        # log.debug("Transaction.run")
+        from neo4j.work.simple import Query
+        if isinstance(query, Query):
+            raise ValueError("Query object is only supported for session.run")
+
         self._assert_open()
         if self._results and self._connection.supports_multiple_results is False:
-            # Autocommit
-            self._results[0]._detach()  # Buffer up the records for the result object
-            self._results.pop(0)
-            assert len(self._results) == 0
-        else:
-            from neo4j.work.simple import Query
-            if isinstance(query, Query):
-                raise ValueError("Query object is only supported for session.run")
+            # Bolt 3 Support
+            self._results[-1]._detach()  # Buffer upp all records for the previous Result because it does not have any qid to fetch in batches.
 
         result = Result(self._connection, DataHydrator(), self._fetch_size, self._result_closed)
         self._results.append(result)

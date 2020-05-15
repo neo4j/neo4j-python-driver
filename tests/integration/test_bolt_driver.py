@@ -341,12 +341,22 @@ def test_bolt_driver_multiple_results_case_3(bolt_uri, auth):
                     values2.append(ix["x"])
                 transaction.commit()  # Should discard the rest of records in result1 and result2 -> then set mode discard.
                 assert values2 == [5, 6, 7, 8]
+                assert result2._closed is True
                 assert values1 == [1, ]
 
-                with pytest.raises(StopIteration):
+                try:
                     values1.append(next(result1_iter)["x"])
+                except StopIteration as e:
+                    # Bolt 4.0
+                    assert values1 == [1, ]
+                    assert result1._closed is True
+                else:
+                    # Bolt 3 only have PULL ALL and no qid so it will behave like autocommit r1=session.run rs2=session.run
+                    values1.append(next(result1_iter)["x"])
+                    assert values1 == [1, 2, 3]
+                    assert result1._closed is False
 
-                assert values1 == [1, ]
+        assert result1._closed is True
 
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
