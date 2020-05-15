@@ -87,6 +87,7 @@ class Bolt4x0(Bolt):
         self._max_connection_lifetime = max_connection_lifetime  # self.pool_config.max_connection_lifetime
         self._creation_timestamp = perf_counter()
         self.supports_multiple_results = True
+        self._is_reset = True
 
         # Determine the user agent
         if user_agent:
@@ -171,6 +172,7 @@ class Bolt4x0(Bolt):
             self._append(b"\x10", fields, CommitResponse(self, **handlers))
         else:
             self._append(b"\x10", fields, Response(self, **handlers))
+        self._is_reset = False
 
     def discard(self, n=-1, qid=-1, **handlers):
         extra = {"n": n}
@@ -185,6 +187,7 @@ class Bolt4x0(Bolt):
             extra["qid"] = qid
         log.debug("[#%04X]  C: PULL %r", self.local_port, extra)
         self._append(b"\x3F", (extra,), Response(self, **handlers))
+        self._is_reset = False
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
               db=None, **handlers):
@@ -210,6 +213,7 @@ class Bolt4x0(Bolt):
                 raise TypeError("Timeout must be specified as a number of seconds")
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,), Response(self, **handlers))
+        self._is_reset = False
 
     def commit(self, **handlers):
         log.debug("[#%04X]  C: COMMIT", self.local_port)
@@ -243,6 +247,7 @@ class Bolt4x0(Bolt):
         self._append(b"\x0F", response=Response(self, on_failure=fail))
         self.send_all()
         self.fetch_all()
+        self._is_reset = True
 
     def _send_all(self):
         data = self.outbox.view()
