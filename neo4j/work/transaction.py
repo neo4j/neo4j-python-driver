@@ -56,10 +56,18 @@ class Transaction:
         success = not bool(exception_type)
         if success:
             self.commit()
-        self._close()
+        self.close()
 
     def _begin(self, database, bookmarks, access_mode, metadata, timeout):
         self._connection.begin(bookmarks=bookmarks, metadata=metadata, timeout=timeout, mode=access_mode, db=database)
+
+    def _result_on_closed_handler(self):
+        pass
+
+    def _consume_results(self):
+        for result in self._results:
+            result.consume()
+        self._results = []
 
     def run(self, query, parameters=None, **kwparameters):
         """ Run a Cypher query within the context of this transaction.
@@ -94,29 +102,19 @@ class Transaction:
         if isinstance(query, Query):
             raise ValueError("Query object is only supported for session.run")
 
-        self._assert_open()
+        if self._closed:
+            raise TransactionError("Transaction closed")
+
         if self._results and self._connection.supports_multiple_results is False:
             # Bolt 3 Support
             self._results[-1]._detach()  # Buffer upp all records for the previous Result because it does not have any qid to fetch in batches.
 
-        result = Result(self._connection, DataHydrator(), self._fetch_size, self._result_closed)
+        result = Result(self._connection, DataHydrator(), self._fetch_size, self._result_on_closed_handler)
         self._results.append(result)
 
         result._tx_ready_run(query, parameters, **kwparameters)
 
         return result
-
-    def _result_closed(self):
-        pass
-
-    def sync(self):
-        """ Force any queued queries to be sent to the server and
-        all related results to be fetched and buffered.
-
-        :raise TransactionError: if the transaction is closed
-        """
-        self._assert_open()
-        self._connection.send_all()
 
     def commit(self):
         """ Mark this transaction as successful and close in order to
@@ -155,12 +153,7 @@ class Transaction:
         self._closed = True
         self._on_closed()
 
-    def _consume_results(self):
-        for result in self._results:
-            result.consume()
-        self._results = []
-
-    def _close(self):
+    def close(self):
         """ Close this transaction, triggering either a ROLLBACK if not committed.
 
         :raise TransactionError: if already closed
@@ -174,8 +167,3 @@ class Transaction:
         :returns: :const:`True` if closed, :const:`False` otherwise.
         """
         return self._closed
-
-    def _assert_open(self):
-        if self._closed:
-            raise TransactionError("Transaction closed")
-
