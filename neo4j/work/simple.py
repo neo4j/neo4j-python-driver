@@ -99,10 +99,6 @@ class Session(Workspace):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        # if exception_type is None:
-        #     self._state_failed = False
-        # else:
-        #     self._state_failed = True
         if exception_type:
             self._state_failed = True
         self.close()
