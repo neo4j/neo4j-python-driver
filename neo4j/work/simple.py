@@ -34,6 +34,7 @@ from neo4j.exceptions import (
     TransientError,
     SessionExpired,
     TransactionError,
+    ClientError,
 )
 from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.work import Workspace
@@ -186,13 +187,10 @@ class Session(Workspace):
             raise TypeError("query must be a string or a Query instance")
 
         if self._transaction:
-            # Explicit transactions must be handled explicitly
-            raise "hell"
+            raise ClientError("Explicit Transaction must be handled explicitly")
 
         if self._autoResult:
-            self._autoResult._detach()
-            #self._collect_bookmark(self._autoResult._bookmark)
-            #self._autoResult = None
+            self._autoResult._detach()  # This will buffer upp all records for the previous auto-transaction
 
         if not self._connection:
             self._connect(self._config.default_access_mode, database=self._config.database)
