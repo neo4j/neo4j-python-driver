@@ -111,7 +111,8 @@ class Session(Workspace):
         if access_mode is None:
             access_mode = self._config.default_access_mode
         if self._connection:
-            log.warning("FIXME: should always disconnect before connect")
+            # TODO: Investigate this
+            # log.warning("FIXME: should always disconnect before connect")
             self._connection.send_all()
             self._connection.fetch_all()
             self._disconnect()

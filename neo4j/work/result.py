@@ -25,9 +25,6 @@ from warnings import warn
 from neo4j.data import DataDehydrator
 from neo4j.work.summary import ResultSummary
 
-from logging import getLogger
-log = getLogger("neo4j")
-
 
 class Result:
     """A handler for the result of Cypher query execution. Instances

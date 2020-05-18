@@ -26,8 +26,6 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     TransactionError,
 )
-from logging import getLogger
-log = getLogger("neo4j")
 
 
 class Transaction:
@@ -53,7 +51,6 @@ class Transaction:
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        # log.debug("Transaction.__exit__")
         if self._closed:
             return
         success = not bool(exception_type)
@@ -62,7 +59,6 @@ class Transaction:
         self._close()
 
     def _begin(self, database, bookmarks, access_mode, metadata, timeout):
-        # log.debug("Transaction._begin")
         self._connection.begin(bookmarks=bookmarks, metadata=metadata, timeout=timeout, mode=access_mode, db=database)
 
     def run(self, query, parameters=None, **kwparameters):
