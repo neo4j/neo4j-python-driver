@@ -282,41 +282,42 @@ class Result:
 
         return None
 
-    # NOT IN THE JAVA API
-    # Each Record also have access to the same functionality
+    # See Record class for available methods.
 
-    def graph(self):
-        """Return a Graph instance containing all the graph objects
-        in the result. After calling this method, the result becomes
-        detached, buffering all remaining records.
+    # NOT IN THE API
 
-        :returns: result graph
-        """
-        self.detach()
-        return self._hydrant.graph
+    # def graph(self):
+    #     """Return a Graph instance containing all the graph objects
+    #     in the result. After calling this method, the result becomes
+    #     detached, buffering all remaining records.
+    #
+    #     :returns: result graph
+    #     """
+    #     self.detach()
+    #     return self._hydrant.graph
 
-    def value(self, item=0, default=None):
-        """Return the remainder of the result as a list of values.
+    # def value(self, item=0, default=None):
+    #     """Return the remainder of the result as a list of values.
+    #
+    #     :param item: field to return for each remaining record
+    #     :param default: default value, used if the index of key is unavailable
+    #     :returns: list of individual values
+    #     """
+    #     return [record.value(item, default) for record in self._records()]
 
-        :param item: field to return for each remaining record
-        :param default: default value, used if the index of key is unavailable
-        :returns: list of individual values
-        """
-        return [record.value(item, default) for record in self._records()]
+    # def values(self, *items):
+    #     """Return the remainder of the result as a list of tuples.
+    #
+    #     :param items: fields to return for each remaining record
+    #     :returns: list of value tuples
+    #     """
+    #     return [record.values(*items) for record in self._records()]
 
-    def values(self, *items):
-        """Return the remainder of the result as a list of tuples.
-
-        :param items: fields to return for each remaining record
-        :returns: list of value tuples
-        """
-        return [record.values(*items) for record in self._records()]
-
-    def data(self, *items):
-        """Return the remainder of the result as a list of dictionaries.
-
-        :param items: fields to return for each remaining record
-        :returns: list of dictionaries
-        """
-        return [record.data(*items) for record in self]
+    # def data(self, *items):
+    #     """Return the remainder of the result as a list of dictionaries.
+    #
+    #     :param items: fields to return for each remaining record
+    #     :returns: list of dictionaries
+    #     """
+    #     return [record.data(*items) for record in self]
 
