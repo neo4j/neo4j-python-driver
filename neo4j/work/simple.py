@@ -120,6 +120,16 @@ class Session(Workspace):
             self._connection.in_use = False
             self._connection = None
 
+    def _collect_bookmark(self, bookmark):
+        if bookmark:
+            self._bookmarks = [bookmark]
+
+    def _result_closed(self):
+        if self._autoResult:
+            self._collect_bookmark(self._autoResult._bookmark)
+            self._autoResult = None
+            self._disconnect()
+
     def close(self):
         """Close the session. This will release any borrowed resources, such as connections, and will roll back any outstanding transactions.
         """
@@ -205,16 +215,12 @@ class Session(Workspace):
 
         return self._autoResult
 
-    def _result_closed(self):
-        if self._autoResult:
-            self._collect_bookmark(self._autoResult._bookmark)
-            self._autoResult = None
-            self._disconnect()
-
     def last_bookmark(self):
-        """ The set of bookmarks to be passed into the next
-        :class:`.Transaction`.
+        """Return the bookmark received following the last completed transaction.
+        :returns: :class:`neo4j.Bookmark` object
         """
+        # The set of bookmarks to be passed into the next transaction.
+
         if self._autoResult:
             self._autoResult._detach()
 
@@ -226,12 +232,16 @@ class Session(Workspace):
             return self._bookmarks[len(self._bookmarks)-1]
         return None
 
-    def has_transaction(self):
-        return bool(self._transaction)
+    def _transaction_closed_handler(self):
+        if self._transaction:
+            self._collect_bookmark(self._transaction._bookmark)
+            self._transaction = None
+            self._disconnect()
 
-    def _collect_bookmark(self, bookmark):
-        if bookmark:
-            self._bookmarks = [bookmark]
+    def _open_transaction(self, *, access_mode, database, metadata=None, timeout=None):
+        self._connect(access_mode=access_mode, database=database)
+        self._transaction = Transaction(self._connection, self._config.fetch_size, self._transaction_closed_handler)
+        self._transaction._begin(database, self._bookmarks, access_mode, metadata, timeout)
 
     def begin_transaction(self, metadata=None, timeout=None):
         """ Begin a new unmanaged transaction. Creates a new :class:`.Transaction` within this session.
@@ -257,47 +267,6 @@ class Session(Workspace):
         self._open_transaction(access_mode=self._config.default_access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
 
         return self._transaction
-
-    def _transaction_closed(self):
-        if self._transaction:
-            self._collect_bookmark(self._transaction._bookmark)
-            self._transaction = None
-            self._disconnect()
-
-    def _open_transaction(self, *, access_mode, database, metadata=None, timeout=None):
-        self._connect(access_mode=access_mode, database=database)
-        self._transaction = Transaction(self._connection, self._config.fetch_size, self._transaction_closed)
-        self._transaction._begin(database, self._bookmarks, access_mode, metadata, timeout)
-
-    def commit_transaction(self):
-        """ Commit the current transaction.
-
-        :returns: the bookmark returned from the server, if any
-        :rtype: :class: `neo4j.Bookmark`
-
-        :raises TransactionError: :class:`neo4j.exceptions.TransactionError` if no transaction is currently open
-        """
-        if not self._transaction:
-            raise TransactionError("No transaction to commit")
-        try:
-            bookmark = self._transaction.commit()
-        finally:
-            self._transaction_closed()
-
-        return bookmark
-
-    def rollback_transaction(self):
-        """ Rollback the current transaction.
-
-        :raise: :class:`.TransactionError` if no transaction is currently open
-        """
-        if not self._transaction:
-            raise TransactionError("No transaction to rollback")
-
-        try:
-            self._transaction.rollback()
-        finally:
-            self._transaction_closed()
 
     def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):
 
