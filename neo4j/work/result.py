@@ -210,11 +210,10 @@ class Result:
     def _buffer_all(self):
         """Sets the Result object in an detached state by fetching all records from the connection to the buffer.
         """
-        while self._attached is True:
-            self._connection.fetch_message()
-            if self._has_more:
-                self._pull()
-                self._connection.send_all()
+        record_buffer = deque()
+        for record in self:
+            record_buffer.append(record)
+        self._record_buffer = record_buffer
 
     def _obtain_summary(self):
         """Obtain the summary of this result, buffering any remaining records.
