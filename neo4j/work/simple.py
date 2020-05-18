@@ -190,7 +190,7 @@ class Session(Workspace):
             raise ClientError("Explicit Transaction must be handled explicitly")
 
         if self._autoResult:
-            self._autoResult._detach()  # This will buffer upp all records for the previous auto-transaction
+            self._autoResult._buffer_all()  # This will buffer upp all records for the previous auto-transaction
 
         if not self._connection:
             self._connect(self._config.default_access_mode, database=self._config.database)
