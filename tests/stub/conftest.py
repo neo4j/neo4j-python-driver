@@ -28,6 +28,12 @@ from time import sleep
 from boltkit.server.stub import BoltStubService
 from pytest import fixture
 
+# import logging
+# from neo4j.debug import watch
+# watch("neo4j")
+#
+# log = logging.getLogger("neo4j")
+
 
 class StubServer():
 

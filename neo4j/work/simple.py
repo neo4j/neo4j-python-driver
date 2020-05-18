@@ -79,7 +79,10 @@ class Session(Workspace):
     _bookmarks = None
 
     # The state this session is in.
-    _state = None
+    _state_failed = False
+
+    # Session have been properly closed.
+    _closed = False
 
     def __init__(self, pool, session_config):
         super().__init__(pool, session_config)
@@ -96,12 +99,12 @@ class Session(Workspace):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        # TODO: Fix better state logic
-        # log.debug("session.__exit__")
-        if exception_type is None:
-            self._state = "graceful_close_state"
-        else:
-            self._state = "error_state"
+        # if exception_type is None:
+        #     self._state_failed = False
+        # else:
+        #     self._state_failed = True
+        if exception_type:
+            self._state_failed = True
         self.close()
 
     def _connect(self, access_mode, database):
@@ -124,17 +127,16 @@ class Session(Workspace):
         """
         if self._connection:
             if self._autoResult:
-                if self._state != "error_state":
+                if self._state_failed is False:
                     try:
                         self._autoResult.consume()
                         self._collect_bookmark(self._autoResult._bookmark)
-                    except Exception as e:
+                    except Exception as error:
                         # TODO: Investigate potential non graceful close states
                         self._autoResult = None
-                        self._state = "error_state"
+                        self._state_failed = True
 
             if self._transaction:
-                # log.debug("session.close")
                 if self._transaction.closed() is False:
                     self._transaction.rollback()  # roll back the transaction if it is not closed
                 self._transaction = None
@@ -155,7 +157,8 @@ class Session(Workspace):
             finally:
                 self._disconnect()
 
-            self._state = None
+            self._state_failed = False
+            self._closed = True
 
     def run(self, query, parameters=None, **kwparameters):
         """Run a Cypher query within an auto-commit transaction.
@@ -249,7 +252,6 @@ class Session(Workspace):
         :raises TransactionError: :class:`neo4j.exceptions.TransactionError` if a transaction is already open.
         """
         # TODO: Implement TransactionConfig consumption
-        # log.debug("Session.begin_transaction")
 
         if self._autoResult:
             self._autoResult._detach()

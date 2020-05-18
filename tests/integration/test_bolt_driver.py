@@ -42,12 +42,6 @@ from neo4j._exceptions import BoltHandshakeError
 
 # python -m pytest tests/integration/test_bolt_driver.py -s -v
 
-import logging
-from neo4j.debug import watch
-watch("neo4j")
-
-log = logging.getLogger("neo4j")
-
 
 def test_bolt_uri(bolt_uri, auth):
     # python -m pytest tests/integration/test_bolt_driver.py -s -v -k test_bolt_uri

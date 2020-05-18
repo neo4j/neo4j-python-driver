@@ -50,11 +50,6 @@ from tests.stub.conftest import (
 
 # python -m pytest tests/stub/test_directdriver.py -s -v
 
-import logging
-from neo4j.debug import watch
-watch("neo4j")
-
-log = logging.getLogger("neo4j")
 
 driver_config = {
     "encrypted": False,

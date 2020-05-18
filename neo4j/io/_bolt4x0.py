@@ -309,8 +309,7 @@ class Bolt4x0(Bolt):
             raise
 
         if details:
-            # log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))
-            log.debug("[#{:04X}]  S: RECORD {}".format(self.local_port, details))  # SECURITY
+            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # Do not log any data
             self.responses[0].on_records(details)
 
         if summary_signature is None:

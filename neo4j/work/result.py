@@ -79,12 +79,12 @@ class Result:
 
         def on_attached(metadata):
             self._metadata.update(metadata)
-            self._qid = metadata.get("qid", -1) # For auto-commit there is no qid
+            self._qid = metadata.get("qid", -1)  # For auto-commit there is no qid and Bolt 3 do not support qid
             self._keys = metadata.get("fields")
-            log.debug("RESULT qid={} ATTACHED".format(self._qid))
             self._attached = True
 
         def on_failed_attach(metadata):
+            self._metadata.update(metadata)
             self._attached = False
             self._on_closed()
 
@@ -101,7 +101,6 @@ class Result:
         )
         self._pull()
         self._connection.send_all()
-        # self._connection.fetch_all()  # Receive response to pull etc, this will attach the result
         self._attach()
 
     def _pull(self):
@@ -112,7 +111,6 @@ class Result:
                 self._record_buffer.extend(self._hydrant.hydrate_records(self._keys, records))
 
         def on_summary():
-            log.debug("RESULT qid={} DETACHED".format(self._qid))
             self._attached = False
             self._on_closed()
 
@@ -146,11 +144,11 @@ class Result:
             pass
 
         def on_summary():
-            # log.debug("RESULT qid={} DETACHED".format(self._qid))
             self._attached = False
             self._on_closed()
 
         def on_failure(metadata):
+            self._metadata.update(metadata)
             self._attached = False
             self._on_closed()
 
@@ -181,7 +179,6 @@ class Result:
         :returns: Record, it is an immutable ordered collection of key-value pairs.
         :rtype: :class:`neo4j.Record`
         """
-        # log.debug("init result generator qid={} attached {}".format(self._qid, self._attached))
         while self._record_buffer or self._attached:
             while self._record_buffer:
                 yield self._record_buffer.popleft()
