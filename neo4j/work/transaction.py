@@ -107,7 +107,7 @@ class Transaction:
 
         if self._results and self._connection.supports_multiple_results is False:
             # Bolt 3 Support
-            self._results[-1]._detach()  # Buffer upp all records for the previous Result because it does not have any qid to fetch in batches.
+            self._results[-1]._buffer_all()  # Buffer upp all records for the previous Result because it does not have any qid to fetch in batches.
 
         result = Result(self._connection, DataHydrator(), self._fetch_size, self._result_on_closed_handler)
         self._results.append(result)

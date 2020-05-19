@@ -201,18 +201,13 @@ class Result:
             while self._attached is False:
                 self._connection.fetch_message()
 
-    def _detach(self):
-        """Sets the Result object in an detached state by fetching messages from the connection to the buffer.
-        """
-        while self._attached is True:
-            self._connection.fetch_message()
-
     def _buffer_all(self):
         """Sets the Result object in an detached state by fetching all records from the connection to the buffer.
         """
         record_buffer = deque()
         for record in self:
             record_buffer.append(record)
+        self._closed = False
         self._record_buffer = record_buffer
 
     def _obtain_summary(self):

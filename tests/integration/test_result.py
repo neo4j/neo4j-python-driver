@@ -38,7 +38,7 @@ def test_can_consume_result_from_buffer(session):
 
     def f(tx):
         result = tx.run("UNWIND range(1, 3) AS n RETURN n")
-        result._detach()
+        result._buffer_all()
         assert [record[0] for record in result] == [1, 2, 3]
 
     session.read_transaction(f)

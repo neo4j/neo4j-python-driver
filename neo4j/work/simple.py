@@ -217,12 +217,14 @@ class Session(Workspace):
 
     def last_bookmark(self):
         """Return the bookmark received following the last completed transaction.
+        Note: For auto-transaction (Session.run) this will trigger an consume for the current result.
+
         :returns: :class:`neo4j.Bookmark` object
         """
         # The set of bookmarks to be passed into the next transaction.
 
         if self._autoResult:
-            self._autoResult._detach()
+            self._autoResult.consume()
 
         if self._transaction and self._transaction._closed:
             self._collect_bookmark(self._transaction._bookmark)
@@ -248,6 +250,8 @@ class Session(Workspace):
             At most one transaction may exist in a session at any point in time.
             To maintain multiple concurrent transactions, use multiple concurrent sessions.
 
+            Note: For auto-transaction (Session.run) this will trigger an consume for the current result.
+
         :param metadata:
         :param timeout:
 
@@ -259,7 +263,7 @@ class Session(Workspace):
         # TODO: Implement TransactionConfig consumption
 
         if self._autoResult:
-            self._autoResult._detach()
+            self._autoResult.consume()
 
         if self._transaction:
             raise TransactionError("Explicit transaction already open")
