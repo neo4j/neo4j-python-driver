@@ -34,6 +34,11 @@ from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
 from neo4j.io import Bolt
 
+# import logging
+# from neo4j.debug import watch
+# watch("neo4j")
+#
+# log = logging.getLogger("neo4j")
 
 NEO4J_RELEASES = getenv("NEO4J_RELEASES", "snapshot-enterprise 3.5-enterprise").split()
 NEO4J_HOST = "localhost"
@@ -50,7 +55,6 @@ NEO4J_AUTH = (NEO4J_USER, NEO4J_PASSWORD)
 NEO4J_LOCK = RLock()
 NEO4J_SERVICE = None
 NEO4J_DEBUG = getenv("NEO4J_DEBUG", "")
-
 
 # TODO: re-enable when Docker is feasible
 # from boltkit.server import Neo4jService, Neo4jClusterService

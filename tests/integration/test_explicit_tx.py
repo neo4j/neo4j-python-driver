@@ -128,6 +128,11 @@ def test_broken_transaction_should_not_break_session(session):
         tx.run("RETURN 1")
 
 
+def test_begin_transaction_time_out_metadata(session):
+    with session.begin_transaction(timeout=2, metadata={"foo": "bar"}) as transaction:
+        _ = transaction.run("RETURN 1").single()
+
+
 def test_statement_object_not_supported(session):
     with session.begin_transaction() as tx:
         with pytest.raises(ValueError):

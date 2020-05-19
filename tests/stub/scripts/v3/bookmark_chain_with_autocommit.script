@@ -11,8 +11,8 @@ S: SUCCESS {"bookmark": "bookmark:2"}
 
 C: RUN "RETURN 1" {} {"bookmarks": ["bookmark:2"], "mode": "r"}
    PULL_ALL
-S: SUCCESS {"bookmark": "bookmark:3"}
-   SUCCESS {}
+S: SUCCESS {}
+   SUCCESS {"bookmark": "bookmark:3"}
 
 C: BEGIN {"bookmarks": ["bookmark:3"], "mode": "r"}
 S: SUCCESS {}

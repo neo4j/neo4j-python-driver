@@ -58,8 +58,7 @@ session_config = {
 }
 
 
-def create_bob(tx):
-    tx.run("CREATE (n {name:'Bob'})").data()
+
 
 
 @pytest.mark.parametrize(
@@ -76,7 +75,8 @@ def test_connection_error_on_explicit_commit(driver_info, test_script):
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
             with driver.session(**session_config) as session:
                 tx = session.begin_transaction()
-                tx.run("CREATE (n {name:'Bob'})").data()
+                result = tx.run("CREATE (n {name:'Bob'})")
+                _ = list(result)
                 with pytest.raises(ServiceUnavailable):
                     tx.commit()
 
@@ -90,6 +90,10 @@ def test_connection_error_on_explicit_commit(driver_info, test_script):
 )
 def test_connection_error_on_commit(driver_info, test_script):
     # python -m pytest tests/stub/test_transactions.py -s -v -k test_connection_error_on_commit
+    def create_bob(tx):
+        result = tx.run("CREATE (n {name:'Bob'})")
+        return list(result)
+
     with StubCluster(test_script):
         uri = "bolt://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:

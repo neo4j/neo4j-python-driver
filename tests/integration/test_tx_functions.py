@@ -49,12 +49,6 @@ def test_read_with_arg(session):
 
 def test_read_with_arg_and_metadata(session):
 
-    # TODO: Investigate the Query object work pattern
-    # from neo4j import Query
-    # def work(tx, *args, **kwargs):
-    #     query = Query("CALL dbms.getTXMetaData", timeout=10, metadata={"foo": "bar"})
-    #     return tx.run(query).single().value()
-
     @unit_of_work(timeout=25, metadata={"foo": "bar"})
     def work(tx):
         return tx.run("CALL dbms.getTXMetaData").single().value()
@@ -86,13 +80,6 @@ def test_write_with_arg(session):
 
 
 def test_write_with_arg_and_metadata(session):
-
-    # TODO: Investigate the Query object work pattern
-    # TODO: Raise TypeError you are doing it wrong dont input a Query instance use a string query.
-    # from neo4j import Query
-    # def work(tx, x, **kwargs):
-    #     query = Query("CREATE (a {x: $x}) RETURN a.x", timeout=10, metadata={"foo": "bar"})  # Session.run(Query, )
-    #     return tx.run(query, x=x).single().value()
 
     @unit_of_work(timeout=25, metadata={"foo": "bar"})
     def work(tx, x):

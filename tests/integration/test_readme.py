@@ -49,5 +49,6 @@ def test_should_run_readme(uri, auth):
         session.run("CREATE (a:Person {name:'Alice'})-[:KNOWS]->({name:'Bob'})")
         session.read_transaction(print_friends, "Alice")
 
+    driver.close()
     assert len(names) == 1
     assert "Bob" in names

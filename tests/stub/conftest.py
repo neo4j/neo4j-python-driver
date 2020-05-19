@@ -28,16 +28,38 @@ from time import sleep
 from boltkit.server.stub import BoltStubService
 from pytest import fixture
 
+# import logging
+# from neo4j.debug import watch
+# watch("neo4j")
+#
+# log = logging.getLogger("neo4j")
 
-class StubServer(Thread):
+
+class StubServer():
 
     def __init__(self, port, script):
-        super(StubServer, self).__init__()
         self.port = port
         self.script = os.path.join(os.path.dirname(__file__), "scripts", script)
 
     def run(self):
-        subprocess.check_call(["python", "-m", "boltkit", "stub", "-l", ":{}".format(str(self.port)), "-t", "10", self.script])
+        self._process = subprocess.Popen(["python", "-m", "boltkit", "stub", "-v", "-l", ":{}".format(str(self.port)), "-t", "10", self.script], stdout=subprocess.PIPE)
+        # Need verbose for this to work
+        line =self._process.stdout.readline()
+
+    def wait(self):
+        try:
+            returncode = self._process.wait(2)
+            if returncode != 0:
+                print("Stubserver failed with error")
+            return returncode == 0
+        except subprocess.TimeoutExpired:
+            print("Stubserver timeout!")
+            return False
+
+    def kill(self):
+        # Kill process if not already dead
+        if self._process.poll() is None:
+            self._process.kill()
 
 
 class StubCluster(object):
@@ -53,12 +75,17 @@ class StubCluster(object):
 
     def start(self):
         for port, server in self.servers.items():
-            server.start()
-        sleep(2)  # sleep to let the servers start up properly
+            server.run()
 
     def wait(self):
+        success = True
         for port, server in self.servers.items():
-            server.join()
+            if not server.wait():
+                success = False
+            server.kill()
+
+        if not success:
+            raise Exception("Stub server failed")
 
 
 class LegacyStubServer(Thread):

@@ -118,13 +118,16 @@ def test_neo4j_multi_database_support_create(neo4j_uri, auth, target):
                 databases = set()
                 for record in result:
                     databases.add(record.get("name"))
-                assert databases == {"system", "neo4j"}
+                assert "system" in databases
+                assert "neo4j" in databases
 
                 session.run("CREATE DATABASE test").consume()
                 result = session.run("SHOW DATABASES")
                 for record in result:
                     databases.add(record.get("name"))
-                assert databases == {"system", "neo4j", "test"}
+                assert "system" in databases
+                assert "neo4j" in databases
+                assert "test" in databases
             with driver.session(database="system") as session:
                 session.run("DROP DATABASE test IF EXISTS").consume()
     except ServiceUnavailable as error:

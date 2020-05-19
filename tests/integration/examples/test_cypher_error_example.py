@@ -35,16 +35,16 @@ class Neo4jErrorExample:
     # tag::cypher-error[]
     def get_employee_number(self, name):
         with self.driver.session() as session:
-            return session.read_transaction(self.select_employee, name)
+            try:
+                session.read_transaction(self.select_employee, name)
+            except ClientError as error:
+                print(error.message)
+                return -1
 
     @staticmethod
     def select_employee(tx, name):
-        try:
-            result = tx.run("SELECT * FROM Employees WHERE name = $name", name=name)
-            return result.single()["employee_number"]
-        except ClientError as error:
-            print(error.message)
-            return -1
+        result = tx.run("SELECT * FROM Employees WHERE name = $name", name=name)
+        return result.single()["employee_number"]
     # end::cypher-error[]
 
 

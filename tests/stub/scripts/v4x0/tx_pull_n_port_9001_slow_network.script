@@ -13,7 +13,7 @@ C: PULL {"n": 2}
 S: RECORD [1]
    RECORD [2]
    SUCCESS {"has_more": true}
-C: PULL {"n": 2}
+C: PULL {"n": 2, "qid": 0}
 S: <SLEEP> 1
 S: RECORD [3]
    RECORD [4]
