@@ -531,11 +531,24 @@ class Neo4jPool(IOPool):
             return pool
 
     def __init__(self, opener, pool_config, workspace_config, routing_context, addresses):
+        """
+
+        :param opener:
+        :param pool_config:
+        :param workspace_config:
+        :param routing_context: Dictionary with routing information
+        :param addresses:
+        """
         super(Neo4jPool, self).__init__(opener, pool_config, workspace_config)
         # Each database have a routing table, the default database is a special case.
         log.debug("[#0000]  C: <NEO4J POOL> routing addresses %r", addresses)
+        self.init_address = addresses[0]
         self.routing_tables = {workspace_config.database: RoutingTable(database=workspace_config.database, routers=addresses)}
         self.routing_context = routing_context
+        if "address" in routing_context:
+            raise ConfigurationError("The key 'address' is reserved for internal routing context.")
+        self.routing_context["address"] = str(self.init_address)
+        log.debug("routing_context", self.routing_context)
         # self.missing_writer = False
         self.refresh_lock = Lock()
 
@@ -580,6 +593,8 @@ class Neo4jPool(IOPool):
         :param address: router address
         :param timeout: seconds
         :param database: the data base name to get routing table for
+        :param init_address: the address by which the client initially contacted the server as a hint for inclusion in the returned routing table.
+
         :return: list of routing records or
                  None if no connection could be established
         :raise ServiceUnavailable: if the server does not support routing or
