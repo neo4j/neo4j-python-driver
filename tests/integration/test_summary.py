@@ -20,6 +20,11 @@
 
 import pytest
 
+def get_operator_type(op):
+    # Fabric will suffix with db name, remove this to handle fabric on/off
+    op = op.split("@")
+    return op[0]
+
 
 def test_can_obtain_summary_after_consuming_result(session):
     # python -m pytest tests/integration/test_summary.py -s -v -k test_can_obtain_summary_after_consuming_result
@@ -43,7 +48,7 @@ def test_can_obtain_plan_info(session):
     result = session.run("EXPLAIN CREATE (n) RETURN n")
     summary = result.consume()
     plan = summary.plan
-    assert plan.operator_type == "ProduceResults"
+    assert get_operator_type(plan.operator_type) == "ProduceResults"
     assert plan.identifiers == ["n"]
     assert len(plan.children) == 1
 
@@ -54,7 +59,7 @@ def test_can_obtain_profile_info(session):
     profile = summary.profile
     assert profile.db_hits == 0
     assert profile.rows == 1
-    assert profile.operator_type == "ProduceResults"
+    assert get_operator_type(profile.operator_type) == "ProduceResults"
     assert profile.identifiers == ["n"]
     assert len(profile.children) == 1
 
