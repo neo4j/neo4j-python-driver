@@ -28,11 +28,11 @@ from time import sleep
 from boltkit.server.stub import BoltStubService
 from pytest import fixture
 
-# import logging
-# from neo4j.debug import watch
-# watch("neo4j")
-#
-# log = logging.getLogger("neo4j")
+import logging
+from neo4j.debug import watch
+watch("neo4j")
+
+log = logging.getLogger("neo4j")
 
 
 class StubServer():
@@ -157,8 +157,8 @@ def driver_info():
     """ Base class for test cases that integrate with a server.
     """
     return {
-        "uri": "bolt://localhost:7687",
-        "bolt_routing_uri": "neo4j://localhost:7687",
+        "uri_bolt": "bolt://localhost:9001",
+        "uri_neo4j": "neo4j://localhost:9001",
         "user": "test",
         "password": "test",
         "auth_token": ("test", "test")

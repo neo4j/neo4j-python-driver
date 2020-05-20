@@ -48,7 +48,7 @@ def test_dbms_cluster_routing_get_routing_table(driver_info, test_script, test_d
     }
 
     with StubCluster(test_script):
-        uri = "neo4j://127.0.0.1:9001"
+        uri = "neo4j://localhost:9001"
         driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **test_config)
         assert isinstance(driver, Neo4jDriver)
         driver.close()

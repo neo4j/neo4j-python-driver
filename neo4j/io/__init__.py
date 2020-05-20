@@ -548,7 +548,7 @@ class Neo4jPool(IOPool):
         if "address" in routing_context:
             raise ConfigurationError("The key 'address' is reserved for internal routing context.")
         self.routing_context["address"] = str(self.init_address)
-        log.debug("routing_context", self.routing_context)
+        log.debug("routing_context {}".format(self.routing_context))
         # self.missing_writer = False
         self.refresh_lock = Lock()
 
