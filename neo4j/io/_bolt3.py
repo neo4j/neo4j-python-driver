@@ -88,6 +88,7 @@ class Bolt3(Bolt):
         self._max_connection_lifetime = max_connection_lifetime
         self._creation_timestamp = perf_counter()
         self.supports_multiple_results = False
+        self.supports_multiple_databases = False
         self._is_reset = True
 
         # Determine the user agent
