@@ -160,8 +160,16 @@ def test_transaction_timeout(driver):
             tx1 = s1.begin_transaction()
             tx1.run("MATCH (a:Node) SET a.property = 1").consume()
             tx2 = s2.begin_transaction(timeout=0.25)
-            with pytest.raises(TransientError):
+            try:
                 tx2.run("MATCH (a:Node) SET a.property = 2").consume()
+            # On 4.0 and older
+            except TransientError:
+                pass
+            # On 4.1 and forward
+            except ClientError:
+                pass
+            else:
+                raise
 
 
 # TODO: Re-enable and test when TC is available again

@@ -196,9 +196,17 @@ def test_autocommit_transactions_should_support_timeout(neo4j_driver):
         with neo4j_driver.session() as s2:
             tx1 = s1.begin_transaction()
             tx1.run("MATCH (a:Node) SET a.property = 1").consume()
-            with pytest.raises(TransientError):
+            try:
                 result = s2.run(Query("MATCH (a:Node) SET a.property = 2", timeout=0.25))
                 result.consume()
+            # On 4.0 and older
+            except TransientError:
+                pass
+            # On 4.1 and forward
+            except ClientError:
+                pass
+            else:
+                raise
 
 
 def test_regex_in_parameter(session):
