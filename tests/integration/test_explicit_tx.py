@@ -20,8 +20,8 @@
 
 
 import pytest
+import time
 from uuid import uuid4
-
 
 from neo4j.work.simple import (
     Query,
@@ -166,7 +166,10 @@ def test_transaction_timeout(driver):
 
         tx2 = session.begin_transaction(timeout=0.25)
         try:
+            tx2.run("RETURN 1").consume()  # This could run happen
+            time.sleep(1)
             tx2.run("MATCH (a:Node) WHERE ID(a) = $node_id SET a.property1 = 2", node_id=node_id).consume()
+            tx2.commit()
         # On 4.0 and older
         except TransientError:
             failed = True
@@ -174,7 +177,7 @@ def test_transaction_timeout(driver):
         except ClientError:
             failed = True
         else:
-            raise
+            pytest.fail("The transaction did not timeout on the server.")
 
     with driver.session() as session:
         _ = session.run("MATCH (a:Node) WHERE ID(a) = $node_id DETACH DELETE a", node_id=node_id).consume()
