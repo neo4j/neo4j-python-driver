@@ -23,6 +23,7 @@ from urllib.parse import (
     parse_qs,
 )
 from.exceptions import (
+    DriverError,
     ConfigurationError,
 )
 
@@ -149,12 +150,38 @@ class ServerInfo:
 
     @property
     def agent(self):
+        """The server agent string the server responded with.
+
+        :return: Server agent string
+        :rtype: string
+        """
+        # Example "Neo4j/4.0.5"
+        # Example "Neo4j/4"
         return self.metadata.get("server")
 
     def version_info(self):
+        """Return the server version if available.
+
+        :return: Server Version or None
+        :rtype: tuple
+        """
         if not self.agent:
             return None
-        _, _, value = self.agent.partition("/")
+        # Note: Confirm that the server agent string begins with "Neo4j/" and fail gracefully if not.
+        # This is intended to help prevent drivers working for non-genuine Neo4j instances.
+
+        neo4j, _, value = self.agent.partition("/")
+        try:
+            assert neo4j == "Neo4j"
+        except AssertionError:
+            raise DriverError("Server name does not start with Neo4j/")
+
+        try:
+            if self.protocol_version >= (4, 0):
+                return self.protocol_version
+        except TypeError:
+            pass
+
         value = value.replace("-", ".").split(".")
         for i, v in enumerate(value):
             try:

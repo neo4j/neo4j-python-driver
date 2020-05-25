@@ -348,18 +348,11 @@ class Driver:
         :return: Returns true if the server or cluster the driver connects to supports multi-databases, otherwise false.
         :rtype: bool
         """
-        from neo4j.io._bolt4x0 import Bolt4x0
-
-        multi_database = False
         cx = self._pool.acquire(access_mode=READ_ACCESS, timeout=self._pool.workspace_config.connection_acquisition_timeout, database=self._pool.workspace_config.database)
-
-        # TODO: This logic should be inside the Bolt subclasses, because it can change depending on Bolt Protocol Version.
-        if cx.PROTOCOL_VERSION >= Bolt4x0.PROTOCOL_VERSION and cx.server_info.version_info() >= Version(4, 0, 0):
-            multi_database = True
-
+        support = cx.supports_multiple_databases
         self._pool.release(cx)
 
-        return multi_database
+        return support
 
 
 class BoltDriver(Direct, Driver):

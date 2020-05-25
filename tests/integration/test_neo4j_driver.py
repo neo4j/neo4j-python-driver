@@ -27,6 +27,7 @@ from neo4j import (
     Version,
     READ_ACCESS,
     ResultSummary,
+    ServerInfo,
 )
 from neo4j.exceptions import (
     ServiceUnavailable,
@@ -39,6 +40,7 @@ from neo4j._exceptions import (
 from neo4j.conf import (
     RoutingConfig,
 )
+from neo4j.io._bolt3 import Bolt3
 
 # python -m pytest tests/integration/test_neo4j_driver.py -s -v
 
@@ -72,20 +74,27 @@ def test_supports_multi_db(neo4j_uri, auth, target):
 
     with driver.session() as session:
         result = session.run("RETURN 1")
-        value = result.single().value()   # Consumes the result
+        _ = result.single().value()   # Consumes the result
         summary = result.consume()
         server_info = summary.server
+
+    assert isinstance(summary, ResultSummary)
+    assert isinstance(server_info, ServerInfo)
+    assert server_info.version_info() is not None
+    assert isinstance(server_info.protocol_version, Version)
 
     result = driver.supports_multi_db()
     driver.close()
 
-    if server_info.version_info() >= Version(4, 0, 0) and server_info.protocol_version >= Version(4, 0):
-        assert result is True
-        assert summary.database == "neo4j"  # This is the default database name if not set explicitly on the Neo4j Server
-        assert summary.query_type == "r"
-    else:
+    if server_info.protocol_version == Bolt3.PROTOCOL_VERSION:
         assert result is False
         assert summary.database is None
+        assert summary.query_type == "r"
+    else:
+        assert result is True
+        assert server_info.version_info() >= Version(4, 0)
+        assert server_info.protocol_version >= Version(4, 0)
+        assert summary.database == "neo4j"  # This is the default database name if not set explicitly on the Neo4j Server
         assert summary.query_type == "r"
 
 

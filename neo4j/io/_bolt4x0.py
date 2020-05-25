@@ -87,6 +87,7 @@ class Bolt4x0(Bolt):
         self._max_connection_lifetime = max_connection_lifetime  # self.pool_config.max_connection_lifetime
         self._creation_timestamp = perf_counter()
         self.supports_multiple_results = True
+        self.supports_multiple_databases = True
         self._is_reset = True
 
         # Determine the user agent
