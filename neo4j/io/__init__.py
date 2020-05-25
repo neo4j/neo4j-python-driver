@@ -545,11 +545,11 @@ class Neo4jPool(IOPool):
         self.init_address = addresses[0]
         self.routing_tables = {workspace_config.database: RoutingTable(database=workspace_config.database, routers=addresses)}
         self.routing_context = routing_context
-        if "address" in routing_context:
-            raise ConfigurationError("The key 'address' is reserved for internal routing context.")
+        if self.routing_context is None:
+            self.routing_context = {}
+        elif "address" in self.routing_context:
+            raise ConfigurationError("The key 'address' is reserved for routing context.")
         self.routing_context["address"] = str(self.init_address)
-        log.debug("routing_context {}".format(self.routing_context))
-        # self.missing_writer = False
         self.refresh_lock = Lock()
 
     def __repr__(self):
