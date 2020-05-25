@@ -6,7 +6,7 @@
 C: HELLO {"user_agent": "test", "scheme": "basic", "principal": "test", "credentials": "test"}
 S: SUCCESS {"server": "Neo4j/4.0.0", "connection_id": "123e4567-e89b-12d3-a456-426655440000"}
 
-C: RUN "CALL dbms.routing.getRoutingTable($context)" {"context":{}} {"mode": "r", "db": "system"}
+C: RUN "CALL dbms.routing.getRoutingTable($context)" {"context": {"address": "localhost:9001"}} {"mode": "r", "db": "system"}
    PULL {"n": -1}
 S: SUCCESS {"fields": ["ttl", "servers"]}
    RECORD [300, [{"role":"ROUTE", "addresses":["127.0.0.1:9001", "127.0.0.1:9002"]}, {"role":"READ", "addresses":["127.0.0.1:9004"]}, {"role":"WRITE", "addresses":["127.0.0.1:9006"]}]]

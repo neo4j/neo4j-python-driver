@@ -35,7 +35,7 @@ from pytest import fixture
 # log = logging.getLogger("neo4j")
 
 
-class StubServer():
+class StubServer:
 
     def __init__(self, port, script):
         self.port = port
@@ -62,7 +62,7 @@ class StubServer():
             self._process.kill()
 
 
-class StubCluster(object):
+class StubCluster:
 
     def __init__(self, servers):
         self.servers = {port: StubServer(port, script) for port, script in dict(servers).items()}
@@ -99,7 +99,7 @@ class LegacyStubServer(Thread):
         check_call(["python", "-m", "boltkit.legacy.stub", "-v", str(self.port), self.script])
 
 
-class LegacyStubCluster(object):
+class LegacyStubCluster:
 
     def __init__(self, servers):
         self.servers = {port: LegacyStubServer(port, script) for port, script in dict(servers).items()}
@@ -157,8 +157,8 @@ def driver_info():
     """ Base class for test cases that integrate with a server.
     """
     return {
-        "uri": "bolt://localhost:7687",
-        "bolt_routing_uri": "neo4j://localhost:7687",
+        "uri_bolt": "bolt://localhost:9001",
+        "uri_neo4j": "neo4j://localhost:9001",
         "user": "test",
         "password": "test",
         "auth_token": ("test", "test")
