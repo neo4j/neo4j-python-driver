@@ -28,14 +28,14 @@ from time import sleep
 from boltkit.server.stub import BoltStubService
 from pytest import fixture
 
-import logging
-from neo4j.debug import watch
-watch("neo4j")
+# import logging
+# from neo4j.debug import watch
+# watch("neo4j")
+#
+# log = logging.getLogger("neo4j")
 
-log = logging.getLogger("neo4j")
 
-
-class StubServer():
+class StubServer:
 
     def __init__(self, port, script):
         self.port = port
@@ -62,7 +62,7 @@ class StubServer():
             self._process.kill()
 
 
-class StubCluster(object):
+class StubCluster:
 
     def __init__(self, servers):
         self.servers = {port: StubServer(port, script) for port, script in dict(servers).items()}
@@ -99,7 +99,7 @@ class LegacyStubServer(Thread):
         check_call(["python", "-m", "boltkit.legacy.stub", "-v", str(self.port), self.script])
 
 
-class LegacyStubCluster(object):
+class LegacyStubCluster:
 
     def __init__(self, servers):
         self.servers = {port: LegacyStubServer(port, script) for port, script in dict(servers).items()}
