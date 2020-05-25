@@ -154,23 +154,32 @@ def test_transaction_metadata(session):
 
 
 def test_transaction_timeout(driver):
-    with driver.session() as s1:
-        s1.run("CREATE (a:Node)").consume()
-        with driver.session() as s2:
-            tx1 = s1.begin_transaction()
-            tx1.run("MATCH (a:Node) SET a.property = 1").consume()
-            tx2 = s2.begin_transaction(timeout=0.25)
-            try:
-                tx2.run("MATCH (a:Node) SET a.property = 2").consume()
-            # On 4.0 and older
-            except TransientError:
-                pass
-            # On 4.1 and forward
-            except ClientError:
-                pass
-            else:
-                raise
+    failed = False
 
+    with driver.session() as session:
+        node_id = session.run("CREATE (a:Node) RETURN ID(a)").single().value()
+
+    with driver.session() as session:
+        tx1 = session.begin_transaction()
+        tx1.run("MATCH (a:Node) WHERE ID(a) = $node_id SET a.property1 = 1", node_id=node_id).consume()
+        tx1.commit()
+
+        tx2 = session.begin_transaction(timeout=0.25)
+        try:
+            tx2.run("MATCH (a:Node) WHERE ID(a) = $node_id SET a.property1 = 2", node_id=node_id).consume()
+        # On 4.0 and older
+        except TransientError:
+            failed = True
+        # On 4.1 and forward
+        except ClientError:
+            failed = True
+        else:
+            raise
+
+    with driver.session() as session:
+        _ = session.run("MATCH (a:Node) WHERE ID(a) = $node_id DETACH DELETE a", node_id=node_id).consume()
+
+    assert failed is True
 
 # TODO: Re-enable and test when TC is available again
 # def test_exit_after_explicit_close_should_be_silent(bolt_driver):
