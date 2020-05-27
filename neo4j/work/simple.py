@@ -272,13 +272,13 @@ class Session(Workspace):
 
         return self._transaction
 
-    def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):
+    def _run_transaction(self, access_mode, transaction_function, *args, **kwargs):
 
-        if not callable(unit_of_work):
+        if not callable(transaction_function):
             raise TypeError("Unit of work is not callable")
 
-        metadata = getattr(unit_of_work, "metadata", None)
-        timeout = getattr(unit_of_work, "timeout", None)
+        metadata = getattr(transaction_function, "metadata", None)
+        timeout = getattr(transaction_function, "timeout", None)
 
         retry_delay = retry_delay_generator(self._config.initial_retry_delay, self._config.retry_delay_multiplier, self._config.retry_delay_jitter_factor)
 
@@ -291,7 +291,7 @@ class Session(Workspace):
                 self._open_transaction(access_mode=access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
                 tx = self._transaction
                 try:
-                    result = unit_of_work(tx, *args, **kwargs)
+                    result = transaction_function(tx, *args, **kwargs)
                 except Exception:
                     tx.rollback()
                     raise
@@ -320,51 +320,49 @@ class Session(Workspace):
         else:
             raise ServiceUnavailable("Transaction failed")
 
-    def read_transaction(self, unit_of_work, *args, **kwargs):
-        """
-        Execute a unit of work in a managed read transaction.
+    def read_transaction(self, transaction_function, *args, **kwargs):
+        """Execute a unit of work in a managed read transaction.
         This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
 
         Managed transactions should not generally be explicitly committed (via tx.commit()).
 
-        Example:
+        Example::
 
-        def do_cypher(tx, cypher):
-            result = tx.run(cypher)
-            # consume result
-            return 1
+            def do_cypher(tx, cypher):
+                result = tx.run(cypher)
+                result.consume()
+                return 1
 
-        session.read_transaction(do_cypher, "RETURN 1")
+            session.read_transaction(do_cypher, "RETURN 1")
 
-        :param unit_of_work: A function that takes a transaction as an argument and do work with the transaction. unit_of_work(tx, *args, **kwargs)
-        :param args: arguments for the unit_of_work function
-        :param kwargs: key word arguments for the unit_of_work function
+        :param transaction_function: A function that takes a transaction as an argument and do work with the transaction. tx_function(tx, \*args, \*\*kwargs)
+        :param args: arguments for the transaction_function
+        :param kwargs: key word arguments for the transaction_function
         :return: a result as returned by the given unit of work
         """
-        return self._run_transaction(READ_ACCESS, unit_of_work, *args, **kwargs)
+        return self._run_transaction(READ_ACCESS, transaction_function, *args, **kwargs)
 
-    def write_transaction(self, unit_of_work, *args, **kwargs):
-        """
-        Execute a unit of work in a managed write transaction.
+    def write_transaction(self, transaction_function, *args, **kwargs):
+        """Execute a unit of work in a managed write transaction.
         This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
 
         Managed transactions should not generally be explicitly committed (via tx.commit()).
 
-        Example:
+        Example::
 
-        def do_cypher(tx, cypher):
-            result = tx.run(cypher)
-            # consume result
-            return 1
+            def do_cypher(tx, cypher):
+                result = tx.run(cypher)
+                result.consume()
+                return 1
 
-        session.write_transaction(do_cypher, "RETURN 1")
+            session.write_transaction(do_cypher, "RETURN 1")
 
-        :param unit_of_work: A function that takes a transaction as an argument and do work with the transaction. unit_of_work(tx, *args, **kwargs)
-        :param args: key word arguments for the unit_of_work function
-        :param kwargs: key word arguments for the unit_of_work function
+        :param transaction_function: A function that takes a transaction as an argument and do work with the transaction. tx_function(tx, \*args, \*\*kwargs)
+        :param args: key word arguments for the transaction_function
+        :param kwargs: key word arguments for the transaction_function
         :return: a result as returned by the given unit of work
         """
-        return self._run_transaction(WRITE_ACCESS, unit_of_work, *args, **kwargs)
+        return self._run_transaction(WRITE_ACCESS, transaction_function, *args, **kwargs)
 
 
 class Query:

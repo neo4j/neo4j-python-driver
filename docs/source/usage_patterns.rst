@@ -16,7 +16,7 @@ Simple Application
 
 
     def print_friends_of(tx, name):
-        query = "MATCH (a:Person)-[:KNOWS]->(f) WHERE a.name = {name} RETURN f.name"
+        query = "MATCH (a:Person)-[:KNOWS]->(f) WHERE a.name = $name RETURN f.name"
 
         result = tx.run(query, name=name)
 

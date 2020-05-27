@@ -113,11 +113,12 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
 
 
 class Bookmark:
+    """A Bookmark object contains an immutable list of bookmark string values.
+
+    :param values: ASCII string values
+    """
 
     def __init__(self, *values):
-        """
-        :param values: ASCII string values
-        """
         if values:
             bookmarks = []
             for ix in values:
@@ -127,19 +128,26 @@ class Bookmark:
                         bookmarks.append(ix)
                 except UnicodeEncodeError as e:
                     raise ValueError("The value {} is not ASCII".format(ix))
-            self.values = frozenset(bookmarks)
+            self._values = frozenset(bookmarks)
         else:
-            self.values = frozenset()
+            self._values = frozenset()
 
     def __repr__(self):
         """
         :return: repr string with sorted values
         """
-        return "<Bookmark values={{{}}}>".format(", ".join(["'{}'".format(ix) for ix in sorted(self.values)]))
+        return "<Bookmark values={{{}}}>".format(", ".join(["'{}'".format(ix) for ix in sorted(self._values)]))
 
     def __bool__(self):
-        return bool(self.values)
+        return bool(self._values)
 
+    @property
+    def values(self):
+        """
+        :return: immutable list of bookmark string values
+        :rtype: frozenset
+        """
+        return self._values
 
 class ServerInfo:
 
@@ -153,7 +161,7 @@ class ServerInfo:
         """The server agent string the server responded with.
 
         :return: Server agent string
-        :rtype: string
+        :rtype: str
         """
         # Example "Neo4j/4.0.5"
         # Example "Neo4j/4"

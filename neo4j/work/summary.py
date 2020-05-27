@@ -90,7 +90,7 @@ class ResultSummary:
 
 
 class SummaryCounters:
-    """ Set of statistics from a Cypher statement execution.
+    """ Contains counters for various operations that a query triggered.
     """
 
     #:

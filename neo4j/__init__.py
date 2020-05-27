@@ -149,7 +149,7 @@ class GraphDatabase:
             **Settings:** Neo4jDriver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.
 
         :param auth:
-        :param config: connection configuration settings
+        :param config: driver configuration
         """
 
         from neo4j.api import (
@@ -311,11 +311,11 @@ class Driver:
         return bool(self._pool.pool_config.encrypted)
 
     def session(self, **config):
-        """ Create a simple session.
+        """ Create a session.
 
         :param config: session configuration
-                       (see :class:`.SessionConfig` for details)
-        :returns: new :class:`.Session` object
+
+        :returns: new :class:`neo4j.Session` object
         """
         raise NotImplementedError
 

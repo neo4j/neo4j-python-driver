@@ -281,15 +281,15 @@ class Result:
 
     # NOT IN THE API
 
-    # def graph(self):
-    #     """Return a Graph instance containing all the graph objects
-    #     in the result. After calling this method, the result becomes
-    #     detached, buffering all remaining records.
-    #
-    #     :returns: result graph
-    #     """
-    #     self.detach()
-    #     return self._hydrant.graph
+    def graph(self):
+        """Return a Graph instance containing all the graph objects
+        in the result. After calling this method, the result becomes
+        detached, buffering all remaining records.
+
+        :returns: result graph
+        """
+        self._buffer_all()
+        return self._hydrant.graph
 
     # def value(self, item=0, default=None):
     #     """Return the remainder of the result as a list of values.
