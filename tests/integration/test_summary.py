@@ -20,6 +20,16 @@
 
 import pytest
 
+from neo4j import (
+    ResultSummary,
+    SummaryCounters,
+    Plan,
+    ProfiledPlan,
+    Notification,
+    Position,
+)
+
+
 def get_operator_type(op):
     # Fabric will suffix with db name, remove this to handle fabric on/off
     op = op.split("@")
@@ -72,28 +82,22 @@ def test_no_notification_info(session):
 
 
 def test_can_obtain_notification_info(session):
+    # python -m pytest tests/integration/test_summary.py -s -v -k test_can_obtain_notification_info
     result = session.run("EXPLAIN MATCH (n), (m) RETURN n, m")
     summary = result.consume()
-    notifications = summary.notifications
+    assert isinstance(summary, ResultSummary)
 
+    notifications = summary.notifications
+    assert isinstance(notifications, list)
     assert len(notifications) == 1
+
     notification = notifications[0]
-    assert notification.code == "Neo.ClientNotification.Statement.CartesianProductWarning"
-    assert notification.title == "This query builds a cartesian product between " \
-                                 "disconnected patterns."
-    assert notification.severity == "WARNING"
-    assert notification.description == "If a part of a query contains multiple " \
-                                       "disconnected patterns, this will build a " \
-                                       "cartesian product between all those parts. This " \
-                                       "may produce a large amount of data and slow down " \
-                                       "query processing. While occasionally intended, " \
-                                       "it may often be possible to reformulate the " \
-                                       "query that avoids the use of this cross product, " \
-                                       "perhaps by adding a relationship between the " \
-                                       "different parts or by using OPTIONAL MATCH " \
-                                       "(identifier is: (m))"
-    position = notification.position
-    assert position
+    assert isinstance(notification, Notification)
+    assert notification.code.startswith("Neo.ClientNotification")           # "Neo.ClientNotification.Statement.CartesianProductWarning"
+    assert isinstance(notification.title, str)                              # "This query builds a cartesian product between disconnected patterns."
+    assert isinstance(notification.severity, str)                           # "WARNING"
+    assert isinstance(notification.description, str)
+    assert isinstance(notification.position, Position)
 
 
 def test_contains_time_information(session):
