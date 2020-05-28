@@ -121,3 +121,29 @@ def test_protocol_version_information(session):
     assert isinstance(summary.server.protocol_version[1], int)
 
 
+def test_summary_counters(session):
+    # python -m pytest tests/integration/test_summary.py -s -v -k test_summary_counters
+
+    result = session.run("RETURN $number AS x", number=3)
+    summary = result.consume()
+
+    assert summary.query == "RETURN $number AS x"
+    assert summary.parameters == {"number": 3}
+
+    assert isinstance(summary.query_type, str)
+
+    counters = summary.counters
+
+    assert isinstance(counters, SummaryCounters)
+    assert counters.nodes_created == 0
+    assert counters.nodes_deleted == 0
+    assert counters.relationships_created == 0
+    assert counters.relationships_deleted == 0
+    assert counters.properties_set == 0
+    assert counters.labels_added == 0
+    assert counters.labels_removed == 0
+    assert counters.indexes_added == 0
+    assert counters.indexes_removed == 0
+    assert counters.constraints_added == 0
+    assert counters.constraints_removed == 0
+    assert counters.contains_updates is False

@@ -145,6 +145,7 @@ class SummaryCounters:
 
     @property
     def contains_updates(self):
+        """Whether there were any updates at all."""
         return bool(self.nodes_created or self.nodes_deleted or
                     self.relationships_created or self.relationships_deleted or
                     self.properties_set or self.labels_added or self.labels_removed or
