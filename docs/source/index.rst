@@ -873,12 +873,6 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`n
     .. automethod:: graph
 
        **This is experimental.**
-..
-   .. automethod:: value
-
-   .. automethod:: values
-
-   .. automethod:: data
 
 
 Graph
