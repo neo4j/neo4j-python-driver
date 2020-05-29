@@ -753,7 +753,7 @@ Neo4j supports three kinds of transaction: `auto-commit transactions`, `explicit
 Each has pros and cons but if in doubt, use a transaction function.
 
 Auto-commit Transactions
-------------------------
+========================
 Auto-commit transactions are the simplest form of transaction, available via :meth:`.Session.run`.
 These are easy to use but support only one statement per transaction and are not automatically retried on failure.
 Auto-commit transactions are also the only way to run ``PERIODIC COMMIT`` statements, since this Cypher clause manages its own transactions internally.
@@ -766,7 +766,7 @@ Auto-commit transactions are also the only way to run ``PERIODIC COMMIT`` statem
                                "RETURN id(a)", name=name).single().value()
 
 Explicit Transactions
----------------------
+=====================
 Explicit transactions support multiple statements and must be created with an explicit :meth:`neo4j.Session.begin_transaction` call.
 
 This creates a new :class:`neo4j.Transaction` object that can be used to run Cypher.
@@ -805,7 +805,7 @@ Explicit transactions are most useful for applications that need to distribute C
                "SET a.name = $name", id=node_id, name=name)
 
 Transaction Functions
----------------------
+=====================
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
 These allow a function object representing the transactional unit of work to be passed as a parameter.
 This function is called one or more times, within a configurable time limit, until it succeeds.

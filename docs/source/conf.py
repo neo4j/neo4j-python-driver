@@ -313,3 +313,13 @@ autodoc_default_options = {
     'undoc-members': True,
     'exclude-members': '__weakref__'
 }
+
+# Do not warn about files not included
+exclude_patterns = [
+    'driver.rst',
+    'errors.rst',
+    'results.rst',
+    'transactions.rst',
+    'usage_patterns.rst',
+    'types/*.rst',
+]
