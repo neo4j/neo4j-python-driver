@@ -50,10 +50,6 @@ __all__ = [
     "Result",
     "ResultSummary",
     "SummaryCounters",
-    "Plan",
-    "ProfiledPlan",
-    "Notification",
-    "Position",
     "Query",
     "Session",
     "unit_of_work",
@@ -111,10 +107,6 @@ from neo4j.work.result import (
 from neo4j.work.summary import (
     ResultSummary,
     SummaryCounters,
-    Plan,
-    ProfiledPlan,
-    Notification,
-    Position,
 )
 
 

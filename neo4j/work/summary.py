@@ -45,16 +45,16 @@ class ResultSummary:
     #: Dictionary of parameters passed with the statement.
     parameters = None
 
-    #: The type of query (``'r'`` = read-only, ``'rw'`` = read/write).
+    #: A string that describes the type of query (``'r'`` = read-only, ``'rw'`` = read/write).
     query_type = None
 
-    #: A :class:`.Counters` instance. Counters for operations the query triggered.
+    #: A :class:`neo4j.SummaryCounters` instance. Counters for operations the query triggered.
     counters = None
 
-    #: A :class:`.Plan` instance. This describes how the database will execute the query.
+    #: Dictionary that describes how the database will execute the query.
     plan = None
 
-    #: A :class:`.ProfiledPlan` instance
+    #: Dictionary that describes how the database executed the query.
     profile = None
 
     #: The time it took for the server to have the result available. (milliseconds)
@@ -63,7 +63,7 @@ class ResultSummary:
     #: The time it took for the server to consume the result. (milliseconds)
     result_consumed_after = None
 
-    #: A list of :class: `.Notification` instances
+    #: A list of Dictionaries containing notification information.
     #: Notifications provide extra information for a user executing a statement.
     #: They can be warnings about problematic queries or other valuable information that can be
     #: presented in a client.
@@ -77,6 +77,9 @@ class ResultSummary:
         self.query = metadata.get("query")
         self.parameters = metadata.get("parameters")
         self.query_type = metadata.get("type")
+        self.plan = metadata.get("plan")
+        self.profile = metadata.get("profile")
+        self.notifications = metadata.get("notifications")
         self.counters = SummaryCounters(metadata.get("stats", {}))
         if self.server.protocol_version[0] < BOLT_VERSION_3:
             self.result_available_after = metadata.get("result_available_after")
@@ -84,18 +87,6 @@ class ResultSummary:
         else:
             self.result_available_after = metadata.get("t_first")
             self.result_consumed_after = metadata.get("t_last")
-        if "plan" in metadata:
-            self.plan = _make_plan(metadata["plan"])
-        if "profile" in metadata:
-            self.profile = _make_plan(metadata["profile"])
-            self.plan = self.profile
-        self.notifications = []
-        for notification in metadata.get("notifications", []):
-            position = notification.get("position")
-            if position is not None:
-                position = Position(position["offset"], position["line"], position["column"])
-            self.notifications.append(Notification(notification["code"], notification["title"],
-                                                   notification["description"], notification["severity"], position))
 
 
 class SummaryCounters:
@@ -159,68 +150,3 @@ class SummaryCounters:
     def contains_system_updates(self):
         """True if the system database was updated, otherwise False."""
         return self.system_updates > 0
-
-
-#: A plan describes how the database will execute your statement.
-#:
-#: operator_type:
-#:   the name of the operation performed by the plan
-#: identifiers:
-#:   the list of identifiers used by this plan
-#: arguments:
-#:   a dictionary of arguments used in the specific operation performed by the plan
-#: children:
-#:   a list of sub-plans
-Plan = namedtuple("Plan", ("operator_type", "identifiers", "arguments", "children"))
-
-#: A profiled plan describes how the database executed your statement.
-#:
-#: db_hits:
-#:   the number of times this part of the plan touched the underlying data stores
-#: rows:
-#:   the number of records this part of the plan produced
-ProfiledPlan = namedtuple("ProfiledPlan", Plan._fields + ("db_hits", "rows"))
-
-#: Representation for notifications found when executing a statement. A
-#: notification can be visualized in a client pinpointing problems or
-#: other information about the statement.
-#:
-#: code:
-#:   a notification code for the discovered issue.
-#: title:
-#:   a short summary of the notification
-#: description:
-#:   a long description of the notification
-#: severity:
-#:   the severity level of the notification
-#: position:
-#:   the position in the statement where this notification points to, if relevant.
-Notification = namedtuple("Notification", ("code", "title", "description", "severity", "position"))
-
-#: A position within a statement, consisting of offset, line and column.
-#:
-#: offset:
-#:   the character offset referred to by this position; offset numbers start at 0
-#: line:
-#:   the line number referred to by the position; line numbers start at 1
-#: column:
-#:   the column number referred to by the position; column numbers start at 1
-Position = namedtuple("Position", ("offset", "line", "column"))
-
-
-def _make_plan(plan_dict):
-    """ Construct a Plan or ProfiledPlan from a dictionary of metadata values.
-
-    :param plan_dict:
-    :return:
-    """
-    operator_type = plan_dict["operatorType"]
-    identifiers = plan_dict.get("identifiers", [])
-    arguments = plan_dict.get("args", [])
-    children = [_make_plan(child) for child in plan_dict.get("children", [])]
-    if "dbHits" in plan_dict or "rows" in plan_dict:
-        db_hits = plan_dict.get("dbHits", 0)
-        rows = plan_dict.get("rows", 0)
-        return ProfiledPlan(operator_type, identifiers, arguments, children, db_hits, rows)
-    else:
-        return Plan(operator_type, identifiers, arguments, children)
