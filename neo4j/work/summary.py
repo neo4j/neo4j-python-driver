@@ -135,6 +135,9 @@ class SummaryCounters:
     #:
     constraints_removed = 0
 
+    #:
+    system_updates = 0
+
     def __init__(self, statistics):
         for key, value in dict(statistics).items():
             key = key.replace("-", "_")
@@ -145,12 +148,17 @@ class SummaryCounters:
 
     @property
     def contains_updates(self):
-        """Whether there were any updates at all."""
+        """True if any of the counters except for system_updates, are greater than 0. Otherwise False."""
         return bool(self.nodes_created or self.nodes_deleted or
                     self.relationships_created or self.relationships_deleted or
                     self.properties_set or self.labels_added or self.labels_removed or
                     self.indexes_added or self.indexes_removed or
                     self.constraints_added or self.constraints_removed)
+
+    @property
+    def contains_system_updates(self):
+        """True if the system database was updated, otherwise False."""
+        return self.system_updates > 0
 
 
 #: A plan describes how the database will execute your statement.
