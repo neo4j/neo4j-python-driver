@@ -3,13 +3,14 @@ Neo4j Python Driver |version|
 #############################
 
 .. warning::
-    This API docs is not production ready!
+    This version of the API Documentation is a draft.
 
 
 The Official Neo4j Driver for Python.
 
 Neo4j versions supported:
 
+* Neo4j 4.1 - Using the Bolt Protocol Version 4.0
 * Neo4j 4.0 - Using the Bolt Protocol Version 4.0
 * Neo4j 3.5 - Using the Bolt Protocol Version 3
 
