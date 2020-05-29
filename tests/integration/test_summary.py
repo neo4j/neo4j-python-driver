@@ -23,10 +23,6 @@ import pytest
 from neo4j import (
     ResultSummary,
     SummaryCounters,
-    Plan,
-    ProfiledPlan,
-    Notification,
-    Position,
     GraphDatabase,
 )
 from neo4j.exceptions import (
@@ -35,12 +31,6 @@ from neo4j.exceptions import (
 from neo4j._exceptions import (
     BoltHandshakeError,
 )
-
-
-def get_operator_type(op):
-    # Fabric will suffix with db name, remove this to handle fabric on/off
-    op = op.split("@")
-    return op[0]
 
 
 def test_can_obtain_summary_after_consuming_result(session):
@@ -62,30 +52,24 @@ def test_no_plan_info(session):
 
 
 def test_can_obtain_plan_info(session):
+    # python -m pytest tests/integration/test_summary.py -s -v -k test_can_obtain_plan_info
     result = session.run("EXPLAIN CREATE (n) RETURN n")
     summary = result.consume()
-    plan = summary.plan
-    assert get_operator_type(plan.operator_type) == "ProduceResults"
-    assert plan.identifiers == ["n"]
-    assert len(plan.children) == 1
+    assert isinstance(summary.plan, dict)
 
 
 def test_can_obtain_profile_info(session):
+    # python -m pytest tests/integration/test_summary.py -s -v -k test_can_obtain_profile_info
     result = session.run("PROFILE CREATE (n) RETURN n")
     summary = result.consume()
-    profile = summary.profile
-    assert profile.db_hits == 0
-    assert profile.rows == 1
-    assert get_operator_type(profile.operator_type) == "ProduceResults"
-    assert profile.identifiers == ["n"]
-    assert len(profile.children) == 1
+    assert isinstance(summary.profile, dict)
 
 
 def test_no_notification_info(session):
+    # python -m pytest tests/integration/test_summary.py -s -v -k test_no_notification_info
     result = session.run("CREATE (n) RETURN n")
     summary = result.consume()
-    notifications = summary.notifications
-    assert notifications == []
+    assert summary.notifications is None
 
 
 def test_can_obtain_notification_info(session):
@@ -97,14 +81,7 @@ def test_can_obtain_notification_info(session):
     notifications = summary.notifications
     assert isinstance(notifications, list)
     assert len(notifications) == 1
-
-    notification = notifications[0]
-    assert isinstance(notification, Notification)
-    assert notification.code.startswith("Neo.ClientNotification")           # "Neo.ClientNotification.Statement.CartesianProductWarning"
-    assert isinstance(notification.title, str)                              # "This query builds a cartesian product between disconnected patterns."
-    assert isinstance(notification.severity, str)                           # "WARNING"
-    assert isinstance(notification.description, str)
-    assert isinstance(notification.position, Position)
+    assert isinstance(notifications[0], dict)
 
 
 def test_contains_time_information(session):
