@@ -335,6 +335,7 @@ class Session(Workspace):
     def read_transaction(self, transaction_function, *args, **kwargs):
         """Execute a unit of work in a managed read transaction.
         This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
+        Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
 
         Managed transactions should not generally be explicitly committed (via tx.commit()).
 
@@ -357,6 +358,7 @@ class Session(Workspace):
     def write_transaction(self, transaction_function, *args, **kwargs):
         """Execute a unit of work in a managed write transaction.
         This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
+        Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
 
         Managed transactions should not generally be explicitly committed (via tx.commit()).
 

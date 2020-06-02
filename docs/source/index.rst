@@ -555,7 +555,7 @@ Sessions automatically provide guarantees of causal consistency within a cluster
 Sessions provide the top-level of containment for database activity.
 Session creation is a lightweight operation and *sessions are not thread safe*.
 
-Connections are drawn from the :class:`neo4j.Driver` connection pool as required; an idle session will not hold onto a connection.
+Connections are drawn from the :class:`neo4j.Driver` connection pool as required.
 
 A :class:`neo4j.Transaction` is a unit of work that is either committed in its entirety or is rolled back on failure.
 

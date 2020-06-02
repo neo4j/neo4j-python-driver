@@ -14,7 +14,7 @@ Sessions
 Sessions provide the top-level of containment for database activity.
 Session creation is a lightweight operation and sessions are `not` thread safe.
 
-Connections are drawn from the :class:`.Driver` connection pool as required; an idle session will not hold onto a connection.
+Connections are drawn from the :class:`neo4j.Driver` connection pool as required; an idle session will not hold onto a connection.
 
 Sessions will often be created and destroyed using a `with` block context.
 For example::
