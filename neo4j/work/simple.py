@@ -402,16 +402,26 @@ class Query:
 def unit_of_work(metadata=None, timeout=None):
     """This function is a decorator for transaction functions that allows extra control over how the transaction is carried out.
 
-    For example, a timeout (in seconds) may be applied::
+    For example, a timeout may be applied::
 
-        @unit_of_work(timeout=25.0)
+        @unit_of_work(timeout=100)
         def count_people(tx):
             return tx.run("MATCH (a:Person) RETURN count(a)").single().value()
 
-    :param metadata: metadata attached to the query.
-    :type dict:
-    :param timeout: seconds.
-    :type int:
+    :param metadata:
+        a dictionary with metadata.
+        Specified metadata will be attached to the executing transaction and visible in the output of ``dbms.listQueries`` and ``dbms.listTransactions`` procedures.
+        It will also get logged to the ``query.log``.
+        This functionality makes it easier to tag transactions and is equivalent to ``dbms.setTXMetaData`` procedure, see https://neo4j.com/docs/operations-manual/current/reference/procedures/ for procedure reference.
+    :type metadata: dict
+
+    :param timeout:
+        the transaction timeout in milliseconds.
+        Transactions that execute longer than the configured timeout will be terminated by the database.
+        This functionality allows to limit query/transaction execution time.
+        Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
+        Value should not represent a duration of zero or negative duration.
+    :type timeout: int
     """
 
     def wrapper(f):

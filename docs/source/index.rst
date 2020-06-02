@@ -602,7 +602,7 @@ Sessions will often be created with some configuration settings, see :ref:`sessi
 Session
 *******
 
-.. class:: neo4j.Session
+.. autoclass:: neo4j.Session
 
     .. automethod:: close
 
@@ -676,6 +676,19 @@ Name of the database to query.
 -----------------------
 The default access mode.
 
+A session can be given a default access mode on construction.
+
+This applies only in clustered environments and determines whether transactions carried out within that session should be routed to a `read` or `write` server by default.
+
+Transactions (see :ref:`managed-transactions-ref`) within a session can override the access mode passed to that session on construction.
+
+.. note::
+    The driver does not parse Cypher queries and cannot determine whether the access mode should be ``neo4j.ACCESS_WRITE`` or ``neo4j.ACCESS_READ``.
+    Since the access mode is not passed to the server, this can allow a ``neo4j.ACCESS_WRITE`` statement to be executed for a ``neo4j.ACCESS_READ`` call on a single instance.
+    Clustered environments are not susceptible to this loophole as cluster roles prevent it.
+    This behaviour should not be relied upon as the loophole may be closed in a future release.
+
+
 :Type: ``neo4j.WRITE_ACCESS``, ``neo4j.READ_ACCESS``
 :Default: ``neo4j.WRITE_ACCESS``
 
@@ -690,16 +703,27 @@ The fetch size used for requesting messages from Neo4j.
 :Default: ``1000``
 
 
+
+
 ***********
 Transaction
 ***********
 
-Neo4j supports three kinds of transaction: `auto-commit transactions`, `explicit transactions` and `transaction functions`.
-Each has pros and cons but if in doubt, use a transaction function.
+Neo4j supports three kinds of transaction:
+
++ :ref:`auto-commit-transactions-ref`
++ :ref:`explicit-transactions-ref`
++ :ref:`managed-transactions-ref`
+
+Each has pros and cons but if in doubt, use a managed transaction with a `transaction function`.
+
+
+.. _auto-commit-transactions-ref:
 
 Auto-commit Transactions
 ========================
-Auto-commit transactions are the simplest form of transaction, available via :meth:`neo4j.Session.run`.
+Auto-commit transactions are the simplest form of transaction, available via :py:meth:`neo4j.Session.run`.
+
 These are easy to use but support only one statement per transaction and are not automatically retried on failure.
 Auto-commit transactions are also the only way to run ``PERIODIC COMMIT`` statements, since this Cypher clause manages its own transactions internally.
 
@@ -710,15 +734,18 @@ Auto-commit transactions are also the only way to run ``PERIODIC COMMIT`` statem
             return session.run("CREATE (a:Person {name:$name}) "
                                "RETURN id(a)", name=name).single().value()
 
+
+.. _explicit-transactions-ref:
+
 Explicit Transactions
 =====================
-Explicit transactions support multiple statements and must be created with an explicit :meth:`neo4j.Session.begin_transaction` call.
+Explicit transactions support multiple statements and must be created with an explicit :py:meth:`neo4j.Session.begin_transaction` call.
 
 This creates a new :class:`neo4j.Transaction` object that can be used to run Cypher.
 
 It also gives applications the ability to directly control `commit` and `rollback` activity.
 
-.. class:: neo4j.Transaction
+.. autoclass:: neo4j.Transaction
 
     .. automethod:: run
 
@@ -729,7 +756,7 @@ It also gives applications the ability to directly control `commit` and `rollbac
     .. automethod:: rollback
 
 Closing an explicit transaction can either happen automatically at the end of a ``with`` block,
-or can be explicitly controlled through the :meth:`neo4j.Transaction.commit` and :meth:`neo4j.Transaction.rollback` methods.
+or can be explicitly controlled through the :py:meth:`neo4j.Transaction.commit` and :py:meth:`neo4j.Transaction.rollback` methods.
 Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction.
 
 .. code-block:: python
@@ -749,13 +776,21 @@ Explicit transactions are most useful for applications that need to distribute C
         tx.run("MATCH (a:Person) WHERE id(a) = $id "
                "SET a.name = $name", id=node_id, name=name)
 
-Transaction Functions
-=====================
+
+.. _managed-transactions-ref:
+
+Managed Transactions (`transaction functions`)
+==============================================
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
+
++ :py:meth:`neo4j.Session.write_transaction`
++ :py:meth:`neo4j.Session.read_transaction`
+
 These allow a function object representing the transactional unit of work to be passed as a parameter.
 This function is called one or more times, within a configurable time limit, until it succeeds.
 Results should be fully consumed within the function and only aggregate or status values should be returned.
 Returning a live result object would prevent the driver from correctly managing connections and would break retry guarantees.
+
 
 .. code-block:: python
 
@@ -771,20 +806,7 @@ To exert more control over how a transaction function is carried out, the :func:
 .. autofunction:: neo4j.unit_of_work
 
 
-Access modes
-============
 
-A session can be given a default `access mode` on construction.
-This applies only in clustered environments and determines whether transactions carried out within that session should be routed to a `read` or `write` server by default.
-
-Note that this mode is simply a default and not a constraint.
-This means that transaction functions within a session can override the access mode passed to that session on construction.
-
-.. note::
-    The driver does not parse Cypher queries and cannot determine whether the access mode should be :code:`ACCESS_READ` or :code:`ACCESS_WRITE`.
-    Since the access mode is not passed to the server, this can allow a :code:`ACCESS_WRITE` statement to be executed for a :code:`ACCESS_READ` call on a single instance.
-    Clustered environments are not susceptible to this loophole as cluster roles prevent it.
-    This behaviour should not be relied upon as the loophole may be closed in a future release.
 
 
 
@@ -803,7 +825,7 @@ Results also contain a buffer that automatically stores unconsumed records when 
 
 A :class:`neo4j.Result` is attached to an active connection, through a :class:`neo4j.Session`, until all its content has been buffered or consumed.
 
-.. class:: neo4j.Result
+.. autoclass:: neo4j.Result
 
     .. describe:: iter(result)
 
@@ -823,7 +845,7 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`n
 Graph
 =====
 
-.. class:: neo4j.graph.Graph
+.. autoclass:: neo4j.graph.Graph
 
     A local, self-contained graph object that acts as a container for :class:`.Node` and :class:`neo4j.Relationship` instances.
     This is typically obtained via the :meth:`neo4j.Result.graph` method.
@@ -841,7 +863,7 @@ Graph
 Record
 ******
 
-.. class:: neo4j.Record
+.. autoclass:: neo4j.Record
 
     A :class:`neo4j.Record` is an immutable ordered collection of key-value
     pairs. It is generally closer to a :py:class:`namedtuple` than to an
@@ -990,7 +1012,7 @@ Path           :class:`neo4j.graph.Path`
 Node
 ====
 
-.. class:: neo4j.graph.Node
+.. autoclass:: neo4j.graph.Node
 
     .. describe:: node == other
 
@@ -1039,7 +1061,7 @@ Node
 Relationship
 ============
 
-.. class:: neo4j.graph.Relationship
+.. autoclass:: neo4j.graph.Relationship
 
     .. describe:: relationship == other
 
@@ -1100,7 +1122,7 @@ Relationship
 Path
 ====
 
-.. class:: neo4j.graph.Path
+.. autoclass:: neo4j.graph.Path
 
     .. describe:: path == other
 
@@ -1202,7 +1224,7 @@ Errors
 Connectivity errors
 ===================
 
-.. class:: neo4j.exceptions.ServiceUnavailable
+.. autoclass:: neo4j.exceptions.ServiceUnavailable
 
     Raised when a database server or service is not available.
     This may be due to incorrect configuration or could indicate a runtime failure of a database service that the driver is unable to route around.
@@ -1211,7 +1233,7 @@ Connectivity errors
 Neo4j execution errors
 =======================
 
-.. class:: neo4j.exceptions.Neo4jError
+.. autoclass:: neo4j.exceptions.Neo4jError
 
     Raised when the Cypher engine returns an error to the client.
     There are many possible types of Cypher error, each identified by a unique `status code <https://neo4j.com/docs/status-codes/current/>`_.
