@@ -333,11 +333,11 @@ class Session(Workspace):
                 result.consume()
                 return 1
 
-            session.read_transaction(do_cypher, "RETURN 1")
+            value = session.read_transaction(do_cypher, "RETURN 1")
 
-        :param transaction_function: A function that takes a transaction as an argument and do work with the transaction. tx_function(tx, \*args, \*\*kwargs)
-        :param args: arguments for the transaction_function
-        :param kwargs: key word arguments for the transaction_function
+        :param transaction_function: A function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, \*args, \*\*kwargs)`
+        :param args: arguments for the `transaction_function`
+        :param kwargs: key word arguments for the `transaction_function`
         :return: a result as returned by the given unit of work
         """
         return self._run_transaction(READ_ACCESS, transaction_function, *args, **kwargs)
@@ -355,11 +355,11 @@ class Session(Workspace):
                 result.consume()
                 return 1
 
-            session.write_transaction(do_cypher, "RETURN 1")
+            value = session.write_transaction(do_cypher, "RETURN 1")
 
-        :param transaction_function: A function that takes a transaction as an argument and do work with the transaction. tx_function(tx, \*args, \*\*kwargs)
-        :param args: key word arguments for the transaction_function
-        :param kwargs: key word arguments for the transaction_function
+        :param transaction_function: A function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, \*args, \*\*kwargs)`
+        :param args: key word arguments for the `transaction_function`
+        :param kwargs: key word arguments for the `transaction_function`
         :return: a result as returned by the given unit of work
         """
         return self._run_transaction(WRITE_ACCESS, transaction_function, *args, **kwargs)

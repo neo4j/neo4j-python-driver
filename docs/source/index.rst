@@ -10,9 +10,8 @@ The Official Neo4j Driver for Python.
 
 Neo4j versions supported:
 
-* Neo4j 4.1 - Using the Bolt Protocol Version 4.0
-* Neo4j 4.0 - Using the Bolt Protocol Version 4.0
-* Neo4j 3.5 - Using the Bolt Protocol Version 3
+* Neo4j 4.0
+* Neo4j 3.5
 
 Python versions supported:
 
@@ -25,7 +24,7 @@ Python versions supported:
    Python 2.7 support has been dropped.
 
    The previous driver `Python Driver 1.7`_ supports older versions of python,
-   the **Neo4j 4.0** will work in fallback mode (using Bolt Protocol Version 3) with that driver.
+   the **Neo4j 4.0** will work in fallback mode with that driver.
 
 *************
 Quick Example
@@ -35,7 +34,7 @@ Quick Example
 
     from neo4j import GraphDatabase
 
-    uri = "bolt://localhost:7687"
+    uri = "neo4j://localhost:7687"
     driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
 
     def create_friend_of(tx, name, friend):
@@ -55,7 +54,7 @@ Quick Example
 
     from neo4j import GraphDatabase
 
-    uri = "bolt://localhost:7687"
+    uri = "neo4j://localhost:7687"
     driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
 
     def get_friends_of(tx, name):
@@ -79,11 +78,19 @@ Quick Example
 Installation
 ************
 
-To install the latest stable driver release, use:
+To install the latest stable release, use:
 
 .. code:: bash
 
     python -m pip install neo4j
+
+
+To install the latest pre-release, use:
+
+.. code:: bash
+
+    python -m pip install --pre neo4j
+
 
 .. note::
 
@@ -119,7 +126,7 @@ Breaking Changes
 Version Scheme Changes
 ======================
 
-The version number have jumped from **Python Driver 1.7** to **Python Driver 4.0** to align with the Neo4j Database version scheme.
+The version number has jumped from **Python Driver 1.7** to **Python Driver 4.0** to align with the Neo4j Database version scheme.
 
 
 Namespace Changes
@@ -129,7 +136,7 @@ Namespace Changes
 
     import neo4j.v1
 
-Have changed to
+Has changed to
 
 .. code-block:: python
 
@@ -162,13 +169,13 @@ Bookmarks is now a Bookmark class instead of a string.
 Exceptions Changes
 ==================
 
-The exceptions in :code:`neo4j.exceptions` have been updated and there is internal exceptions starting with the naming :code:`Bolt` that should be propagated into the exceptions API.
+The exceptions in :code:`neo4j.exceptions` have been updated and there are internal exceptions starting with the naming :code:`Bolt` that should be propagated into the exceptions API.
 
 
 URI Scheme Changes
 ==================
 
-**bolt+routing** have been renamed to **neo4j**.
+**bolt+routing** has been renamed to **neo4j**.
 
 
 Class Renaming Changes
@@ -200,9 +207,9 @@ API Changes
 Dependency Changes
 ==================
 
-* The dependency :code:`neobolt` have been removed.
-* The dependency :code:`neotime` have been removed.
-
+* The dependency :code:`neobolt` has been removed.
+* The dependency :code:`neotime` has been removed.
+* The :code:`pytz` is now a dependency.
 
 Configuration Name Changes
 ==========================
@@ -226,48 +233,60 @@ The :class:`neo4j.Driver` construction is via a `classmethod` on the :class:`neo
 .. autoclass:: neo4j.GraphDatabase
    :members: driver
 
-See :ref:`driver-configuration-ref` for available config values.
-
 
 .. code-block:: python
 
    from neo4j import GraphDatabase
 
-   driver = GraphDatabase.driver(uri, auth=(user, password))
+   driver = GraphDatabase.driver(uri=neo4j://example.com:7676, auth=("neo4j", "password"), max_connection_lifetime=1000)
 
    driver.close()
+
+
+.. _uri-ref:
 
 URI
 ===
 
 On construction, the `scheme` of the URI determines the type of :class:`neo4j.Driver` object created.
 
+Available valid URIs:
+
++ ``bolt://host[:port]``
++ ``bolt+ssc://host[:port]``
++ ``bolt+s://host[:port]``
++ ``neo4j://host[:port][?routing_context]``
++ ``neo4j+ssc://host[:port][?routing_context]``
++ ``neo4j+s://host[:port][?routing_context]``
+
 .. code-block:: python
 
-    uri = bolt://localhost:7676
+    uri = bolt://example.com:7676
 
 .. code-block:: python
 
-    uri = neo4j://localhost:7676
+    uri = neo4j://example.com:7676
 
 Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that implements a specific behaviour.
 
-+------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| URI Scheme             | Driver Object and Setting                                                                                                 |
-+========================+===========================================================================================================================+
-| bolt                   | BoltDriver with no encryption.                                                                                            |
-+------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| bolt+ssc               | BoltDriver with encryption (accepts self signed certificates).                                                            |
-+------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| bolt+s                 | BoltDriver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.       |
-+------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| neo4j                  | Neo4jDriver with no encryption.                                                                                           |
-+------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| neo4j+ssc              | Neo4jDriver with encryption (accepts self signed certificates).                                                           |
-+------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| neo4j+s                | Neo4jDriver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.      |
-+------------------------+---------------------------------------------------------------------------------------------------------------------------+
++------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| URI Scheme             | Driver Object and Setting                                                                                                             |
++========================+=======================================================================================================================================+
+| bolt                   | :ref:`bolt-driver-ref` with no encryption.                                                                                            |
++------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| bolt+ssc               | :ref:`bolt-driver-ref` with encryption (accepts self signed certificates).                                                            |
++------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| bolt+s                 | :ref:`bolt-driver-ref` with encryption (accepts only certificates signed by a certificate authority), full certificate checks.        |
++------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| neo4j                  | :ref:`neo4j-driver-ref` with no encryption.                                                                                           |
++------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| neo4j+ssc              | :ref:`neo4j-driver-ref` with encryption (accepts self signed certificates).                                                           |
++------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| neo4j+s                | :ref:`neo4j-driver-ref` with encryption (accepts only certificates signed by a certificate authority), full certificate checks.       |
++------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
 
+
+.. _auth-ref:
 
 Auth
 ====
@@ -300,15 +319,13 @@ Closing a driver will immediately shut down all connections in the pool.
 .. autoclass:: neo4j.Driver()
    :members: session, close
 
-See :ref:`session-configuration-ref` for available config values.
-
 
 .. _driver-configuration-ref:
 
 Driver Configuration
 ====================
 
-Additional configuration, can be provided via the :class:`neo4j.Driver` constructor.
+Additional configuration can be provided via the :class:`neo4j.Driver` constructor.
 
 
 ``max_connection_lifetime``
@@ -404,19 +421,19 @@ Specify the client agent name.
 :Type: ``str``
 :Default: *The Python Driver will generate a user agent name.*
 
+..
+    ``protocol_version``
+    --------------------
+    Specify a specific Bolt Protocol Version.
 
-``protocol_version``
---------------------
-Specify a specific Bolt Protocol Version.
+    .. code-block:: python
 
-.. code-block:: python
+       protocol_version = (4, 0)
 
-   protocol_version = (4, 0)
+    :Type: ``tuple``
+    :Default: ``None``
 
-:Type: ``tuple``
-:Default: ``None``
-
-**This is experimental.**
+    **This is experimental.**
 
 
 ``init_size``
@@ -556,6 +573,8 @@ Therefore, ``multithreading`` should generally be preferred over ``multiprocessi
 If using ``multiprocessing`` however, each process will require its own :class:`neo4j.Driver` object.
 
 
+.. _bolt-driver-ref:
+
 BoltDriver
 ==========
 
@@ -568,6 +587,8 @@ Driver subclass:
 ..
    .. autoclass:: neo4j.BoltDriver
 
+
+.. _neo4j-driver-ref:
 
 Neo4jDriver
 ===========
@@ -589,12 +610,15 @@ All database activity is co-ordinated through two mechanisms: the :class:`neo4j.
 
 A :class:`neo4j.Session` is a logical container for any number of causally-related transactional units of work.
 Sessions automatically provide guarantees of causal consistency within a clustered environment but multiple sessions can also be causally chained if required.
-Session provide the top-level of containment for database activity.
+Sessions provide the top-level of containment for database activity.
 Session creation is a lightweight operation and *sessions are not thread safe*.
 
 Connections are drawn from the :class:`neo4j.Driver` connection pool as required; an idle session will not hold onto a connection.
 
 A :class:`neo4j.Transaction` is a unit of work that is either committed in its entirety or is rolled back on failure.
+
+
+.. _session-construction-ref:
 
 ********************
 Session Construction
@@ -900,7 +924,7 @@ Record
 .. class:: neo4j.Record
 
     A :class:`neo4j.Record` is an immutable ordered collection of key-value
-    pairs. It is generally closer to a :py:class:`namedtuple` than to a
+    pairs. It is generally closer to a :py:class:`namedtuple` than to an
     :py:class:`OrderedDict` inasmuch as iteration of the collection will
     yield values rather than keys.
 
