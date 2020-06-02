@@ -35,7 +35,6 @@ from neo4j.exceptions import (
     SessionExpired,
     TransactionError,
     ClientError,
-    is_retriable_transient_error,
 )
 from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.work import Workspace
@@ -301,10 +300,10 @@ class Session(Workspace):
             except (ServiceUnavailable, SessionExpired) as error:
                 errors.append(error)
                 self._disconnect()
-            except TransientError as error:
-                if is_retriable_transient_error(error) is False:
+            except TransientError as transient_error:
+                if not transient_error.is_retriable():
                     raise
-                errors.append(error)
+                errors.append(transient_error)
             else:
                 return result
             if t0 == -1:
