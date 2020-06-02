@@ -35,6 +35,7 @@ from neo4j.exceptions import (
     SessionExpired,
     TransactionError,
     ClientError,
+    is_retriable_transient_error,
 )
 from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.work import Workspace
@@ -280,11 +281,12 @@ class Session(Workspace):
         metadata = getattr(unit_of_work, "metadata", None)
         timeout = getattr(unit_of_work, "timeout", None)
 
-        retry_delay = retry_delay_generator(self._config.initial_retry_delay,
-                                            self._config.retry_delay_multiplier,
-                                            self._config.retry_delay_jitter_factor)
+        retry_delay = retry_delay_generator(self._config.initial_retry_delay, self._config.retry_delay_multiplier, self._config.retry_delay_jitter_factor)
+
         errors = []
-        t0 = perf_counter()
+
+        t0 = -1  # Timer
+
         while True:
             try:
                 self._open_transaction(access_mode=access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
@@ -300,19 +302,20 @@ class Session(Workspace):
                 errors.append(error)
                 self._disconnect()
             except TransientError as error:
-                if is_retriable_transient_error(error):
-                    errors.append(error)
-                else:
+                if is_retriable_transient_error(error) is False:
                     raise
+                errors.append(error)
             else:
                 return result
+            if t0 == -1:
+                t0 = perf_counter()  # The timer should be started after the first attempt
             t1 = perf_counter()
             if t1 - t0 > self._config.max_transaction_retry_time:
                 break
             delay = next(retry_delay)
-            log.warning("Transaction failed and will be retried in {}s "
-                        "({})".format(delay, "; ".join(errors[-1].args)))
+            log.warning("Transaction failed and will be retried in {}s ({})".format(delay, "; ".join(errors[-1].args)))
             sleep(delay)
+
         if errors:
             raise errors[-1]
         else:
@@ -418,10 +421,3 @@ def retry_delay_generator(initial_delay, multiplier, jitter_factor):
         jitter = jitter_factor * delay
         yield delay - jitter + (2 * jitter * random())
         delay *= multiplier
-
-
-def is_retriable_transient_error(error):
-    """
-    :type error: TransientError
-    """
-    return not (error.code in ("Neo.TransientError.Transaction.Terminated", "Neo.TransientError.Transaction.LockClientStopped"))

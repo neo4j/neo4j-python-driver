@@ -290,3 +290,18 @@ class AuthConfigurationError(ConfigurationError):
 class CertificateConfigurationError(ConfigurationError):
     """ Raised when there is an error with the authentication configuration.
     """
+
+
+def is_retriable_transient_error(error):
+    """These are really client errors but classification on the server is not entirely correct and they are classified as transient.
+
+    :param error: A TransientError object
+    :type error: TransientError
+
+    :return: True if it is a retriable TransientError, otherwise False.
+    :rtype: bool
+    """
+    return not (error.code in (
+        "Neo.TransientError.Transaction.Terminated",
+        "Neo.TransientError.Transaction.LockClientStopped",
+    ))
