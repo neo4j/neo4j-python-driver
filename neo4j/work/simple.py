@@ -253,7 +253,19 @@ class Session(Workspace):
             Note: For auto-transaction (Session.run) this will trigger an consume for the current result.
 
         :param metadata:
+            a dictionary with metadata.
+            Specified metadata will be attached to the executing transaction and visible in the output of ``dbms.listQueries`` and ``dbms.listTransactions`` procedures.
+            It will also get logged to the ``query.log``.
+            This functionality makes it easier to tag transactions and is equivalent to ``dbms.setTXMetaData`` procedure, see https://neo4j.com/docs/operations-manual/current/reference/procedures/ for procedure reference.
+        :type metadata: dict
+
         :param timeout:
+            the transaction timeout in milliseconds.
+            Transactions that execute longer than the configured timeout will be terminated by the database.
+            This functionality allows to limit query/transaction execution time.
+            Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
+            Value should not represent a duration of zero or negative duration.
+        :type timeout: int
 
         :returns: A new transaction instance.
         :rtype: :class:`neo4j.Transaction`
@@ -335,7 +347,7 @@ class Session(Workspace):
 
             value = session.read_transaction(do_cypher, "RETURN 1")
 
-        :param transaction_function: A function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, \*args, \*\*kwargs)`
+        :param transaction_function: a function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, \*args, \*\*kwargs)`
         :param args: arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
         :return: a result as returned by the given unit of work
@@ -357,7 +369,7 @@ class Session(Workspace):
 
             value = session.write_transaction(do_cypher, "RETURN 1")
 
-        :param transaction_function: A function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, \*args, \*\*kwargs)`
+        :param transaction_function: a function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, \*args, \*\*kwargs)`
         :param args: key word arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
         :return: a result as returned by the given unit of work

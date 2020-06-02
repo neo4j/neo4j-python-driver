@@ -146,7 +146,7 @@ Has changed to
 Secure Connection
 =================
 
-**Neo4j 4.0** is by default configured to use a **non secure connection**.
+**Neo4j 4.0** is by default configured to use a **unsecured connection**.
 
 The driver configuration argument :code:`encrypted` is by default set to :code:`False`.
 
@@ -163,7 +163,7 @@ The driver configuration argument :code:`encrypted` is by default set to :code:`
 Bookmark Changes
 ================
 
-Bookmarks is now a Bookmark class instead of a string.
+Introduced :class:`neo4j.Bookmark`
 
 
 Exceptions Changes
@@ -171,6 +171,7 @@ Exceptions Changes
 
 The exceptions in :code:`neo4j.exceptions` have been updated and there are internal exceptions starting with the naming :code:`Bolt` that should be propagated into the exceptions API.
 
+See :ref:`errors-ref` for more about errors.
 
 URI Scheme Changes
 ==================
@@ -238,7 +239,7 @@ The :class:`neo4j.Driver` construction is via a `classmethod` on the :class:`neo
 
    from neo4j import GraphDatabase
 
-   driver = GraphDatabase.driver(uri=neo4j://example.com:7676, auth=("neo4j", "password"), max_connection_lifetime=1000)
+   driver = GraphDatabase.driver(uri=neo4j://example.com:7687, auth=("neo4j", "password"), max_connection_lifetime=1000)
 
    driver.close()
 
@@ -261,11 +262,11 @@ Available valid URIs:
 
 .. code-block:: python
 
-    uri = bolt://example.com:7676
+    uri = bolt://example.com:7687
 
 .. code-block:: python
 
-    uri = neo4j://example.com:7676
+    uri = neo4j://example.com:7687
 
 Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that implements a specific behaviour.
 
@@ -284,6 +285,10 @@ Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that i
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
 | neo4j+s                | :ref:`neo4j-driver-ref` with encryption (accepts only certificates signed by a certificate authority), full certificate checks.       |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------------------+
+
+.. note::
+
+    See https://neo4j.com/docs/operations-manual/current/configuration/ports/ for Neo4j ports.
 
 
 .. _auth-ref:
@@ -328,22 +333,30 @@ Driver Configuration
 Additional configuration can be provided via the :class:`neo4j.Driver` constructor.
 
 
-``max_connection_lifetime``
----------------------------
++ :ref:`connection-acquisition-timeout-ref`
++ :ref:`connection-timeout-ref`
++ :ref:`encrypted-ref`
++ :ref:`keep-alive-ref`
++ :ref:`max-connection-lifetime-ref`
++ :ref:`max-connection-pool-size-ref`
++ :ref:`max-transaction-retry-time-ref`
++ :ref:`resolver-ref`
++ :ref:`trust-ref`
++ :ref:`user-agent-ref`
 
-The maximum duration in seconds that the driver will keep a connection for before being removed from the pool.
+
+.. _connection-acquisition-timeout-ref:
+
+``connection_acquisition_timeout``
+----------------------------------
+The maximum amount of time in seconds a session will wait when requesting a connection from the connection pool.
+Since the process of acquiring a connection may involve creating a new connection, ensure that the value of this configuration is higher than the configured :ref:`connection-timeout-ref`.
 
 :Type: ``float``
-:Default: ``3600``
+:Default: ``60.0``
 
 
-``max_connection_pool_size``
-----------------------------
-The maximum total number of connections allowed, per host (i.e. cluster nodes), to be managed by the connection pool.
-
-:Type: ``int``
-:Default: ``100``
-
+.. _connection-timeout-ref:
 
 ``connection_timeout``
 ----------------------
@@ -353,29 +366,60 @@ The maximum amount of time in seconds to wait for a TCP connection to be establi
 :Default: ``30.0``
 
 
-``trust``
----------
-Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
+.. _encrypted-ref:
 
-This setting does not have any effect if ``encrypted`` is set to ``False``.
+``encrypted``
+-------------
+Specify whether to use an encrypted connection between the driver and server.
 
-:Type: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``, ``neo4j.TRUST_ALL_CERTIFICATES``
+:Type: ``bool``
+:Default: ``False``
 
-.. py:attribute:: neo4j.TRUST_ALL_CERTIFICATES
 
-   Trust any server certificate (default). This ensures that communication
-   is encrypted but does not verify the server certificate against a
-   certificate authority. This option is primarily intended for use with
-   the default auto-generated server certificate.
+.. _keep-alive-ref:
 
-.. py:attribute:: neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+``keep_alive``
+--------------
+Specify whether TCP keep-alive should be enabled.
 
-   Trust server certificates that can be verified against the system
-   certificate authority. This option is primarily intended for use with
-   full certificates.
+:Type: ``bool``
+:Default: ``True``
 
-:Default: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``.
+**This is experimental.**
 
+
+.. _max-connection-lifetime-ref:
+
+``max_connection_lifetime``
+---------------------------
+
+The maximum duration in seconds that the driver will keep a connection for before being removed from the pool.
+
+:Type: ``float``
+:Default: ``3600``
+
+
+.. _max-connection-pool-size-ref:
+
+``max_connection_pool_size``
+----------------------------
+The maximum total number of connections allowed, per host (i.e. cluster nodes), to be managed by the connection pool.
+
+:Type: ``int``
+:Default: ``100``
+
+
+.. _max-transaction-retry-time-ref:
+
+``max_transaction_retry_time``
+------------------------------
+ The maximum amount of time in seconds that a managed transaction will retry before failing.
+
+:Type: ``float``
+:Default: ``30.0``
+
+
+.. _resolver-ref:
 
 ``resolver``
 ------------
@@ -406,13 +450,33 @@ For example:
 :Default: ``None``
 
 
-``encrypted``
--------------
-Specify whether to use an encrypted connection between the driver and server.
+.. _trust-ref:
 
-:Type: ``bool``
-:Default: ``False``
+``trust``
+---------
+Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
 
+This setting does not have any effect if ``encrypted`` is set to ``False``.
+
+:Type: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``, ``neo4j.TRUST_ALL_CERTIFICATES``
+
+.. py:attribute:: neo4j.TRUST_ALL_CERTIFICATES
+
+   Trust any server certificate (default). This ensures that communication
+   is encrypted but does not verify the server certificate against a
+   certificate authority. This option is primarily intended for use with
+   the default auto-generated server certificate.
+
+.. py:attribute:: neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+
+   Trust server certificates that can be verified against the system
+   certificate authority. This option is primarily intended for use with
+   full certificates.
+
+:Default: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``.
+
+
+.. _user-agent-ref:
 
 ``user_agent``
 --------------
@@ -421,128 +485,6 @@ Specify the client agent name.
 :Type: ``str``
 :Default: *The Python Driver will generate a user agent name.*
 
-..
-    ``protocol_version``
-    --------------------
-    Specify a specific Bolt Protocol Version.
-
-    .. code-block:: python
-
-       protocol_version = (4, 0)
-
-    :Type: ``tuple``
-    :Default: ``None``
-
-    **This is experimental.**
-
-
-``init_size``
--------------
-This will seed the pool with the specified number of connections.
-
-:Type: ``int``
-:Default: ``1``
-
-**This is experimental.**
-
-
-``keep_alive``
---------------
-Specify whether TCP keep-alive should be enabled.
-
-:Type: ``bool``
-:Default: ``True``
-
-**This is experimental.**
-
-
-``connection_acquisition_timeout``
-----------------------------------
-The maximum amount of time in seconds a session will wait when requesting a connection from the connection pool.
-Since the process of acquiring a connection may involve creating a new connection, ensure that the value of this configuration is higher than the configured `connection_timeout`.
-
-:Type: ``float``
-:Default: ``60.0``
-
-
-``max_transaction_retry_time``
-------------------------------
- The maximum amount of time in seconds that a managed transaction will retry before failing.
-
-:Type: ``float``
-:Default: ``30.0``
-
-
-``initial_retry_delay``
------------------------
-Time in seconds.
-
-:Type: ``float``
-:Default: ``1.0``
-
-**This is experimental.**
-
-
-``retry_delay_multiplier``
---------------------------
-Time in seconds.
-
-:Type: ``float``
-:Default: ``2.0``
-
-**This is experimental.**
-
-
-``retry_delay_jitter_factor``
------------------------------
-Time in seconds.
-
-:Type: ``float``
-:Default: ``0.2``
-
-**This is experimental.**
-
-
-``database``
-------------
-Name of the database to query.
-
-:Type: ``str``, ``neo4j.DEFAULT_DATABASE``
-
-
-.. py:attribute:: neo4j.DEFAULT_DATABASE
-
-   This will use the default database on the Neo4j instance.
-
-
-.. Note::
-
-   The default database can be set on the Neo4j instance settings.
-
-
-.. code-block:: python
-
-   from neo4j import GraphDatabase
-   driver = GraphDatabase.driver(uri, auth=(user, password), database="system")
-
-
-:Default: ``neo4j.DEFAULT_DATABASE``
-
-
-``fetch_size``
---------------
-The fetch size used for requesting messages from Neo4j.
-
-:Type: ``int``
-:Default: ``1000``
-
-
-``default_access_mode``
------------------------
-The default access mode.
-
-:Type: ``neo4j.WRITE_ACCESS``, ``neo4j.READ_ACCESS``
-:Default: ``neo4j.WRITE_ACCESS``
 
 
 Driver Object Lifetime
@@ -670,53 +612,19 @@ Session
 Session Configuration
 =====================
 
-If the value is not set for the session, then the session will inherit the configured value from the driver object.
+To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` method. This section describes the session configuration key-word arguments.
 
-``connection_acquisition_timeout``
-----------------------------------
-The maximum amount of time in seconds a session will wait when requesting a connection from the connection pool.
-Since the process of acquiring a connection may involve creating a new connection, ensure that the value of this configuration is higher than the configured `connection_timeout`.
-
-:Type: ``float``
-:Default: ``60.0``
++ bookmarks
++ database
++ default_access_mode
++ fetch_size
 
 
-``max_transaction_retry_time``
-------------------------------
- The maximum amount of time in seconds that a managed transaction will retry before failing.
+``bookmarks``
+-------------
+An iterable containing :class:`neo4j.Bookmark`
 
-:Type: ``float``
-:Default: ``30.0``
-
-
-``initial_retry_delay``
------------------------
-Time in seconds.
-
-:Type: ``float``
-:Default: ``1.0``
-
-**This is experimental.**
-
-
-``retry_delay_multiplier``
---------------------------
-Time in seconds.
-
-:Type: ``float``
-:Default: ``2.0``
-
-**This is experimental.**
-
-
-``retry_delay_jitter_factor``
------------------------------
-Time in seconds.
-
-:Type: ``float``
-:Default: ``0.2``
-
-**This is experimental.**
+:Default: ``()``
 
 
 ``database``
@@ -746,6 +654,13 @@ Name of the database to query.
 
 :Default: ``neo4j.DEFAULT_DATABASE``
 
+``default_access_mode``
+-----------------------
+The default access mode.
+
+:Type: ``neo4j.WRITE_ACCESS``, ``neo4j.READ_ACCESS``
+:Default: ``neo4j.WRITE_ACCESS``
+
 
 ``fetch_size``
 --------------
@@ -753,21 +668,6 @@ The fetch size used for requesting messages from Neo4j.
 
 :Type: ``int``
 :Default: ``1000``
-
-
-``bookmarks``
--------------
-An iterable containing ``neo4j.Bookmark``.
-
-:Default: ``()``
-
-
-``default_access_mode``
------------------------
-The default access mode.
-
-:Type: ``neo4j.WRITE_ACCESS``, ``neo4j.READ_ACCESS``
-:Default: ``neo4j.WRITE_ACCESS``
 
 
 ***********
@@ -779,7 +679,7 @@ Each has pros and cons but if in doubt, use a transaction function.
 
 Auto-commit Transactions
 ========================
-Auto-commit transactions are the simplest form of transaction, available via :meth:`.Session.run`.
+Auto-commit transactions are the simplest form of transaction, available via :meth:`neo4j.Session.run`.
 These are easy to use but support only one statement per transaction and are not automatically retried on failure.
 Auto-commit transactions are also the only way to run ``PERIODIC COMMIT`` statements, since this Cypher clause manages its own transactions internally.
 
@@ -1272,6 +1172,8 @@ Duration       :class:`neo4j.time.Duration`  :class:`python:datetime.timedelta`
 =============  ============================  ==================================  ============
 
 
+.. _errors-ref:
+
 ******
 Errors
 ******
@@ -1306,18 +1208,18 @@ Neo4j execution errors
 Internal Driver Errors
 =======================
 
-If users see an internal error, in particular a protocol error (BoltError*), they should open an issue on github.
+If an internal error (BoltError), in particular a protocol error (BoltProtocolError) is surfaced please open an issue on github.
 
 https://github.com/neo4j/neo4j-python-driver/issues
 
 Please provide details about your running environment,
 
-Operating System:
-Python Version:
-Python Driver Version:
-Neo4j Version:
-
-the code block with a description that produced the error and the error message.
++ Operating System:
++ Python Version:
++ Python Driver Version:
++ Neo4j Version:
++ The code block with a description that produced the error:
++ The error message:
 
 
 ********
