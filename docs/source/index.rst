@@ -588,6 +588,16 @@ Sessions will often be created and destroyed using a *with block context*.
         result = session.run("MATCH (a:Person) RETURN a.name AS name")
         # do something with the result...
 
+
+Sessions will often be created with some configuration settings, see :ref:`session-configuration-ref`.
+
+.. code-block:: python
+
+    with driver.session(database="example_database", fetch_size=100) as session:
+        result = session.run("MATCH (a:Person) RETURN a.name AS name")
+        # do something with the result...
+
+
 *******
 Session
 *******
@@ -614,11 +624,14 @@ Session Configuration
 
 To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` method. This section describes the session configuration key-word arguments.
 
-+ bookmarks
-+ database
-+ default_access_mode
-+ fetch_size
 
++ :ref:`bookmarks-ref`
++ :ref:`database-ref`
++ :ref:`default-access-mode-ref`
++ :ref:`fetch-size-ref`
+
+
+.. _bookmarks-ref:
 
 ``bookmarks``
 -------------
@@ -626,6 +639,8 @@ An iterable containing :class:`neo4j.Bookmark`
 
 :Default: ``()``
 
+
+.. _database-ref:
 
 ``database``
 ------------
@@ -654,6 +669,9 @@ Name of the database to query.
 
 :Default: ``neo4j.DEFAULT_DATABASE``
 
+
+.. _default-access-mode-ref:
+
 ``default_access_mode``
 -----------------------
 The default access mode.
@@ -661,6 +679,8 @@ The default access mode.
 :Type: ``neo4j.WRITE_ACCESS``, ``neo4j.READ_ACCESS``
 :Default: ``neo4j.WRITE_ACCESS``
 
+
+.. _fetch-size-ref:
 
 ``fetch_size``
 --------------
