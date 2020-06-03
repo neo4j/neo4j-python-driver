@@ -22,9 +22,11 @@
 import pytest
 from uuid import uuid4
 
-
 from neo4j.work.simple import unit_of_work
-from neo4j.exceptions import ClientError
+from neo4j.exceptions import (
+    Neo4jError,
+    ClientError,
+)
 
 # python -m pytest tests/integration/test_tx_functions.py -s -v
 
@@ -100,3 +102,27 @@ def test_error_on_write_transaction(session):
 
     with pytest.raises(TypeError):
         session.write_transaction(f)
+
+
+def test_retry_logic(driver):
+    # python -m pytest tests/integration/test_tx_functions.py -s -v -k test_retry_logic
+
+    pytest.global_counter = 0
+
+    def get_one(tx):
+        result = tx.run("UNWIND [1,2,3,4] AS x RETURN x")
+        records = list(result)
+        pytest.global_counter += 1
+
+        if pytest.global_counter < 3:
+            database_unavailable = Neo4jError.hydrate(message="The database is not currently available to serve your request, refer to the database logs for more details. Retrying your request at a later time may succeed.", code="Neo.TransientError.Database.DatabaseUnavailable")
+            raise database_unavailable
+
+        return records
+
+    with driver.session() as session:
+        records = session.read_transaction(get_one)
+
+        assert pytest.global_counter == 3
+
+    del pytest.global_counter

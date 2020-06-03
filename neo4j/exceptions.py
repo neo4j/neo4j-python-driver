@@ -139,6 +139,17 @@ class TransientError(Neo4jError):
     """ The database cannot service the request right now, retrying later might yield a successful outcome.
     """
 
+    def is_retriable(self):
+        """These are really client errors but classification on the server is not entirely correct and they are classified as transient.
+
+        :return: True if it is a retriable TransientError, otherwise False.
+        :rtype: bool
+        """
+        return not (self.code in (
+            "Neo.TransientError.Transaction.Terminated",
+            "Neo.TransientError.Transaction.LockClientStopped",
+        ))
+
 
 class DatabaseUnavailable(TransientError):
     """

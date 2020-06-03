@@ -217,3 +217,24 @@ def test_neo4jerror_hydrate_with_message_and_code_client():
     assert error.metadata == {}
     assert error.message == "Test error message"
     assert error.code == "Neo.{}.General.TestError".format(CLASSIFICATION_CLIENT)
+
+
+def test_transient_error_is_retriable_case_1():
+    error = Neo4jError.hydrate(message="Test error message", code="Neo.TransientError.Transaction.Terminated")
+
+    assert isinstance(error, TransientError)
+    assert error.is_retriable() is False
+
+
+def test_transient_error_is_retriable_case_2():
+    error = Neo4jError.hydrate(message="Test error message", code="Neo.TransientError.Transaction.LockClientStopped")
+
+    assert isinstance(error, TransientError)
+    assert error.is_retriable() is False
+
+
+def test_transient_error_is_retriable_case_3():
+    error = Neo4jError.hydrate(message="Test error message", code="Neo.TransientError.General.TestError")
+
+    assert isinstance(error, TransientError)
+    assert error.is_retriable() is True
