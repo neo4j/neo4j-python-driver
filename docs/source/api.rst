@@ -941,15 +941,26 @@ Path
 Spatial Data Types
 ******************
 
-=============  ============================
-Cypher Type    Python Type
-=============  ============================
-Point          :class:`neo4j.spatial.Point`
-=============  ============================
+
+Cypher has built-in support for handling spatial values (points),
+and the underlying database supports storing these point values as properties on nodes and relationships.
+
+https://neo4j.com/docs/cypher-manual/current/syntax/spatial/
+
+
+=================  =====================================
+Cypher Type        Python Type
+=================  =====================================
+Point              :class:`neo4j.spatial.Point`
+
+Point (Cartesian)  :class:`neo4j.spatial.CartesianPoint`
+Point (WGS-84)     :class:`neo4j.spatial.WGS84Point`
+=================  =====================================
 
 
 Point
 =====
+
 
 .. autoclass:: neo4j.spatial.Point
    :members:
@@ -959,17 +970,72 @@ CartesianPoint
 ==============
 
 .. autoclass:: neo4j.spatial.CartesianPoint
-   :members:
-   :inherited-members:
+    :show-inheritance:
+
+    .. autoproperty:: srid
+
+    .. autoproperty:: x
+
+    .. autoproperty:: y
+
+    .. autoproperty:: z
+
+    .. automethod:: count
+
+    .. automethod:: index
+
+
+.. code-block:: python
+
+    point=CartesianPoint((1.23, 4.56)
+
+    print(point.x, point.y)
+
+
+.. code-block:: python
+
+    point=CartesianPoint((1.23, 4.56, 7.89)
+
+    print(point.x, point.y, point.z)
 
 
 WGS84Point
 ==========
 
 .. autoclass:: neo4j.spatial.WGS84Point
-   :members:
-   :inherited-members:
+    :show-inheritance:
 
+    .. autoproperty:: srid
+
+    .. autoproperty:: x
+
+    .. autoproperty:: y
+
+    .. autoproperty:: z
+
+    .. autoproperty:: longitude
+
+    .. autoproperty:: latitude
+
+    .. autoproperty:: height
+
+    .. automethod:: count
+
+    .. automethod:: index
+
+
+
+
+.. code-block:: python
+
+    point=WGS84Point((1.23, 4.56))
+    print(point.longitude, point.latitude)
+
+
+.. code-block:: python
+
+    point=WGS84Point((1.23, 4.56, 7.89))
+    print(point.longitude, point.latitude, point.height)
 
 
 *******************
