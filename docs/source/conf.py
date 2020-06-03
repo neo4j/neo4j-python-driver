@@ -102,7 +102,8 @@ exclude_patterns = []
 #show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+# pygments_style = 'sphinx'
+pygments_style = 'friendly'
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
@@ -116,9 +117,21 @@ todo_include_todos = True
 
 # -- Options for HTML output ----------------------------------------------
 
+# Add any paths that contain custom static files (such as style sheets) here,
+# relative to this directory. They are copied after the builtin static files,
+# so a file named "default.css" will overwrite the builtin "default.css".
+html_static_path = ['_static']
+
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 html_theme = 'nature'
+
+# _static/nature_custom.css_t
+html_style = 'nature_custom.css'
+
+html_js_files = [
+    'anchor_new_target.js',
+]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -143,11 +156,6 @@ html_title = "Neo4j Python Driver {}".format(version)
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
 #html_favicon = None
-
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -293,13 +301,25 @@ texinfo_documents = [
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
 
-
-def setup(app):
-    app.add_stylesheet('custom.css')
-
-
 # -- Options for Intersphinx
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
 }
+
+autodoc_default_options = {
+    'member-order': 'bysource',
+    # 'special-members': '__init__',
+    'undoc-members': True,
+    'exclude-members': '__weakref__',
+}
+
+# Do not warn about files not included
+exclude_patterns = [
+    'driver.rst',
+    'errors.rst',
+    'results.rst',
+    'transactions.rst',
+    'usage_patterns.rst',
+    'types/*.rst',
+]

@@ -26,11 +26,11 @@ On construction, the `scheme` of the URI determines the type of :class:`neo4j.Dr
 
 Example URI::
 
-    uri = bolt://localhost:7676
+    uri = bolt://localhost:7687
 
 Example URI::
 
-    uri = neo4j://localhost:7676
+    uri = neo4j://localhost:7687
 
 Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that implements a specific behaviour.
 

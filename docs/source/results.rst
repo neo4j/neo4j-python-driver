@@ -43,7 +43,7 @@ A :class:`.Result` is attached to an active connection, through a :class:`.Sessi
 .. class:: .Record
 
     A :class:`.Record` is an immutable ordered collection of key-value
-    pairs. It is generally closer to a :py:class:`namedtuple` than to a
+    pairs. It is generally closer to a :py:class:`namedtuple` than to an
     :py:class:`OrderedDict` inasmuch as iteration of the collection will
     yield values rather than keys.
 

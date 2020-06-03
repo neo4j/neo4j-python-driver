@@ -114,42 +114,18 @@ log = getLogger("neo4j")
 
 
 class GraphDatabase:
-    """ Accessor for :class:`.Driver` construction.
+    """Accessor for :class:`neo4j.Driver` construction.
     """
 
     @classmethod
     def driver(cls, uri, *, auth=None, **config):
-        """ Create a Neo4j driver that uses socket I/O and thread-based
-        concurrency.
+        """Create a driver.
 
-        :param uri:
+        :param uri: the connection URI for the driver, see :ref:`uri-ref` for available URIs.
+        :param auth: the authentication details, see :ref:`auth-ref` for available authentication details.
+        :param config: driver configuration key-word arguments, see :ref:`driver-configuration-ref` for available key-word arguments.
 
-            ``bolt://host[:port]``
-
-            **Settings:** BoltDriver with no encryption.
-
-            ``bolt+ssc://host[:port]``
-
-            **Settings:** BoltDriver with encryption (accepts self signed certificates).
-
-            ``bolt+s://host[:port]``
-
-            **Settings:** BoltDriver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.
-
-            ``neo4j://host[:port][?routing_context]``
-
-            **Settings:** Neo4jDriver with no encryption.
-
-            ``neo4j+ssc://host[:port][?routing_context]``
-
-            **Settings:** Neo4jDriver with encryption (accepts self signed certificates).
-
-            ``neo4j+s://host[:port][?routing_context]``
-
-            **Settings:** Neo4jDriver with encryption (accepts only certificates signed by an certificate authority), full certificate checks.
-
-        :param auth:
-        :param config: connection configuration settings
+        :return: :ref:`neo4j-driver-ref` or :ref:`bolt-driver-ref`
         """
 
         from neo4j.api import (
@@ -286,7 +262,7 @@ class Routing:
 
 
 class Driver:
-    """ Base class for all types of :class:`.Driver`, instances of which are
+    """ Base class for all types of :class:`neo4j.Driver`, instances of which are
     used as the primary access point to Neo4j.
     """
 
@@ -311,16 +287,15 @@ class Driver:
         return bool(self._pool.pool_config.encrypted)
 
     def session(self, **config):
-        """ Create a simple session.
+        """Create a session, see :ref:`session-construction-ref`
 
-        :param config: session configuration
-                       (see :class:`.SessionConfig` for details)
-        :returns: new :class:`.Session` object
+        :param config: session configuration key-word arguments, see :ref:`session-configuration-ref` for available key-word arguments.
+
+        :returns: new :class:`neo4j.Session` object
         """
         raise NotImplementedError
 
-    @experimental("The pipeline API is experimental and may be removed or "
-                  "changed in a future release")
+    @experimental("The pipeline API is experimental and may be removed or changed in a future release")
     def pipeline(self, **config):
         """ Create a pipeline.
         """

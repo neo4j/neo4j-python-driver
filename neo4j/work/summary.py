@@ -33,7 +33,7 @@ class ResultSummary:
     """ A summary of execution returned with a :class:`.Result` object.
     """
 
-    #: A :class: `neo4j.ServerInfo` instance. Provides some basic information of the server where the result is obtained from.
+    #: A :class:`neo4j.ServerInfo` instance. Provides some basic information of the server where the result is obtained from.
     server = None
 
     #: The database name where this summary is obtained from.
@@ -90,7 +90,7 @@ class ResultSummary:
 
 
 class SummaryCounters:
-    """ Set of statistics from a Cypher statement execution.
+    """ Contains counters for various operations that a query triggered.
     """
 
     #:

@@ -253,7 +253,19 @@ class Session(Workspace):
             Note: For auto-transaction (Session.run) this will trigger an consume for the current result.
 
         :param metadata:
+            a dictionary with metadata.
+            Specified metadata will be attached to the executing transaction and visible in the output of ``dbms.listQueries`` and ``dbms.listTransactions`` procedures.
+            It will also get logged to the ``query.log``.
+            This functionality makes it easier to tag transactions and is equivalent to ``dbms.setTXMetaData`` procedure, see https://neo4j.com/docs/operations-manual/current/reference/procedures/ for procedure reference.
+        :type metadata: dict
+
         :param timeout:
+            the transaction timeout in milliseconds.
+            Transactions that execute longer than the configured timeout will be terminated by the database.
+            This functionality allows to limit query/transaction execution time.
+            Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
+            Value should not represent a duration of zero or negative duration.
+        :type timeout: int
 
         :returns: A new transaction instance.
         :rtype: :class:`neo4j.Transaction`
@@ -272,13 +284,13 @@ class Session(Workspace):
 
         return self._transaction
 
-    def _run_transaction(self, access_mode, unit_of_work, *args, **kwargs):
+    def _run_transaction(self, access_mode, transaction_function, *args, **kwargs):
 
-        if not callable(unit_of_work):
+        if not callable(transaction_function):
             raise TypeError("Unit of work is not callable")
 
-        metadata = getattr(unit_of_work, "metadata", None)
-        timeout = getattr(unit_of_work, "timeout", None)
+        metadata = getattr(transaction_function, "metadata", None)
+        timeout = getattr(transaction_function, "timeout", None)
 
         retry_delay = retry_delay_generator(self._config.initial_retry_delay, self._config.retry_delay_multiplier, self._config.retry_delay_jitter_factor)
 
@@ -291,7 +303,7 @@ class Session(Workspace):
                 self._open_transaction(access_mode=access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
                 tx = self._transaction
                 try:
-                    result = unit_of_work(tx, *args, **kwargs)
+                    result = transaction_function(tx, *args, **kwargs)
                 except Exception:
                     tx.rollback()
                     raise
@@ -320,51 +332,51 @@ class Session(Workspace):
         else:
             raise ServiceUnavailable("Transaction failed")
 
-    def read_transaction(self, unit_of_work, *args, **kwargs):
-        """
-        Execute a unit of work in a managed read transaction.
+    def read_transaction(self, transaction_function, *args, **kwargs):
+        """Execute a unit of work in a managed read transaction.
         This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
+        Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
 
         Managed transactions should not generally be explicitly committed (via tx.commit()).
 
-        Example:
+        Example::
 
-        def do_cypher(tx, cypher):
-            result = tx.run(cypher)
-            # consume result
-            return 1
+            def do_cypher(tx, cypher):
+                result = tx.run(cypher)
+                result.consume()
+                return 1
 
-        session.read_transaction(do_cypher, "RETURN 1")
+            value = session.read_transaction(do_cypher, "RETURN 1")
 
-        :param unit_of_work: A function that takes a transaction as an argument and do work with the transaction. unit_of_work(tx, *args, **kwargs)
-        :param args: arguments for the unit_of_work function
-        :param kwargs: key word arguments for the unit_of_work function
+        :param transaction_function: a function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, \*args, \*\*kwargs)`
+        :param args: arguments for the `transaction_function`
+        :param kwargs: key word arguments for the `transaction_function`
         :return: a result as returned by the given unit of work
         """
-        return self._run_transaction(READ_ACCESS, unit_of_work, *args, **kwargs)
+        return self._run_transaction(READ_ACCESS, transaction_function, *args, **kwargs)
 
-    def write_transaction(self, unit_of_work, *args, **kwargs):
-        """
-        Execute a unit of work in a managed write transaction.
+    def write_transaction(self, transaction_function, *args, **kwargs):
+        """Execute a unit of work in a managed write transaction.
         This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
+        Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
 
         Managed transactions should not generally be explicitly committed (via tx.commit()).
 
-        Example:
+        Example::
 
-        def do_cypher(tx, cypher):
-            result = tx.run(cypher)
-            # consume result
-            return 1
+            def do_cypher(tx, cypher):
+                result = tx.run(cypher)
+                result.consume()
+                return 1
 
-        session.write_transaction(do_cypher, "RETURN 1")
+            value = session.write_transaction(do_cypher, "RETURN 1")
 
-        :param unit_of_work: A function that takes a transaction as an argument and do work with the transaction. unit_of_work(tx, *args, **kwargs)
-        :param args: key word arguments for the unit_of_work function
-        :param kwargs: key word arguments for the unit_of_work function
+        :param transaction_function: a function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, \*args, \*\*kwargs)`
+        :param args: key word arguments for the `transaction_function`
+        :param kwargs: key word arguments for the `transaction_function`
         :return: a result as returned by the given unit of work
         """
-        return self._run_transaction(WRITE_ACCESS, unit_of_work, *args, **kwargs)
+        return self._run_transaction(WRITE_ACCESS, transaction_function, *args, **kwargs)
 
 
 class Query:
@@ -390,16 +402,26 @@ class Query:
 def unit_of_work(metadata=None, timeout=None):
     """This function is a decorator for transaction functions that allows extra control over how the transaction is carried out.
 
-    For example, a timeout (in seconds) may be applied::
+    For example, a timeout may be applied::
 
-        @unit_of_work(timeout=25.0)
+        @unit_of_work(timeout=100)
         def count_people(tx):
             return tx.run("MATCH (a:Person) RETURN count(a)").single().value()
 
-    :param metadata: metadata attached to the query.
-    :type dict:
-    :param timeout: seconds.
-    :type int:
+    :param metadata:
+        a dictionary with metadata.
+        Specified metadata will be attached to the executing transaction and visible in the output of ``dbms.listQueries`` and ``dbms.listTransactions`` procedures.
+        It will also get logged to the ``query.log``.
+        This functionality makes it easier to tag transactions and is equivalent to ``dbms.setTXMetaData`` procedure, see https://neo4j.com/docs/operations-manual/current/reference/procedures/ for procedure reference.
+    :type metadata: dict
+
+    :param timeout:
+        the transaction timeout in milliseconds.
+        Transactions that execute longer than the configured timeout will be terminated by the database.
+        This functionality allows to limit query/transaction execution time.
+        Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
+        Value should not represent a duration of zero or negative duration.
+    :type timeout: int
     """
 
     def wrapper(f):
