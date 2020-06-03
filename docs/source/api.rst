@@ -1003,30 +1003,119 @@ Errors
 ******
 
 
-Connectivity errors
-===================
+Neo4j Errors
+============
 
-.. autoclass:: neo4j.exceptions.ServiceUnavailable
-
-    Raised when a database server or service is not available.
-    This may be due to incorrect configuration or could indicate a runtime failure of a database service that the driver is unable to route around.
+Neo4j Execution Errors
 
 
-Neo4j execution errors
-=======================
+* :class:`neo4j.exceptions.Neo4jError`
+
+  * :class:`neo4j.exceptions.ClientError`
+
+  * :class:`neo4j.exceptions.DatabaseError`
+
+  * :class:`neo4j.exceptions.TransientError`
+
 
 .. autoclass:: neo4j.exceptions.Neo4jError
 
     Raised when the Cypher engine returns an error to the client.
     There are many possible types of Cypher error, each identified by a unique `status code <https://neo4j.com/docs/status-codes/current/>`_.
 
-    The three classifications of status code are supported by the three subclasses of :class:`.Neo4jError`, listed below:
-
 .. autoclass:: neo4j.exceptions.ClientError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.CypherSyntaxError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.CypherTypeError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.ConstraintError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.AuthError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.Forbidden
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.ForbiddenOnReadOnlyDatabase
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.NotALeader
+    :show-inheritance:
 
 .. autoclass:: neo4j.exceptions.DatabaseError
+    :show-inheritance:
 
 .. autoclass:: neo4j.exceptions.TransientError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.DatabaseUnavailable
+    :show-inheritance:
+
+
+
+Driver Errors
+=============
+
+Connectivity Errors
+
+
+* :class:`neo4j.exceptions.DriverError`
+
+  * :class:`neo4j.exceptions.TransactionError`
+
+  * :class:`neo4j.exceptions.SessionExpired`
+
+  * :class:`neo4j.exceptions.ServiceUnavailable`
+
+  * :class:`neo4j.exceptions.ConfigurationError`
+
+  * :class:`neo4j.exceptions.ResultConsumedError`
+
+
+.. autoclass:: neo4j.exceptions.DriverError
+
+
+.. autoclass:: neo4j.exceptions.TransactionError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.TransactionNestingError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.SessionExpired
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.ServiceUnavailable
+    :show-inheritance:
+
+    Raised when a database server or service is not available.
+    This may be due to incorrect configuration or could indicate a runtime failure of a database service that the driver is unable to route around.
+
+.. autoclass:: neo4j.exceptions.RoutingServiceUnavailable
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.WriteServiceUnavailable
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.ReadServiceUnavailable
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.ConfigurationError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.AuthConfigurationError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.CertificateConfigurationError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.ResultConsumedError
+    :show-inheritance:
+
 
 
 Internal Driver Errors
