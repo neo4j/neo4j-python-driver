@@ -85,6 +85,10 @@ from neo4j.conf import (
     PoolConfig,
     WorkspaceConfig,
 )
+from neo4j.api import (
+    READ_ACCESS,
+    WRITE_ACCESS,
+)
 
 # Set up logger
 log = getLogger("neo4j")
@@ -413,11 +417,12 @@ class IOPool:
                     raise ClientError("Failed to obtain a connection from pool "
                                       "within {!r}s".format(timeout))
 
-    def acquire(self, access_mode=None, timeout=None):
+    def acquire(self, access_mode=None, timeout=None, database=None):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
         :param access_mode:
         :param timeout:
+        :param database:
         """
 
     def release(self, *connections):
@@ -505,7 +510,7 @@ class BoltPool(IOPool):
     def __repr__(self):
         return "<{} address={!r}>".format(self.__class__.__name__, self.address)
 
-    def acquire(self, *, access_mode=None, timeout=None, database=None):
+    def acquire(self, access_mode=None, timeout=None, database=None):
         # The access_mode and database is not needed for a direct connection, its just there for consistency.
         return self._acquire(self.address, timeout)
 
@@ -842,7 +847,12 @@ class Neo4jPool(IOPool):
                 raise WriteServiceUnavailable("No write service currently available")
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
-    def acquire(self, *, access_mode, timeout, database):
+    def acquire(self, access_mode=None, timeout=None, database=None):
+        if access_mode not in (WRITE_ACCESS, READ_ACCESS):
+            raise ClientError("Non valid 'access_mode'; {}".format(access_mode))
+        if not timeout:
+            raise ClientError("'timeout' must be a float larger than 0; {}".format(timeout))
+
         from neo4j.api import check_access_mode
         access_mode = check_access_mode(access_mode)
         while True:
