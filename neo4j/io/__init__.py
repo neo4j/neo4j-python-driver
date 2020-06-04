@@ -869,7 +869,7 @@ class Neo4jPool(IOPool):
             else:
                 return connection
 
-    def deactivate(self, *, address):
+    def deactivate(self, address):
         """ Deactivate an address from the connection pool,
         if present, remove from the routing table and also closing
         all idle connections to that address.
