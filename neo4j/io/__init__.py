@@ -464,7 +464,7 @@ class IOPool:
             if not connections:
                 self.remove(address)
 
-    def on_write_failure(self, *, address):
+    def on_write_failure(self, address):
         raise WriteServiceUnavailable("No write service available for pool {}".format(self))
 
     def remove(self, address):
@@ -493,7 +493,15 @@ class IOPool:
 class BoltPool(IOPool):
 
     @classmethod
-    def open(cls, address, *, auth=None, pool_config, workspace_config):
+    def open(cls, address, *, auth, pool_config, workspace_config):
+        """Create a new BoltPool
+
+        :param address:
+        :param auth:
+        :param pool_config:
+        :param workspace_config:
+        :return: BoltPool
+        """
 
         def opener(addr, timeout):
             return Bolt.open(addr, auth=auth, timeout=timeout, **pool_config)
@@ -520,7 +528,16 @@ class Neo4jPool(IOPool):
     """
 
     @classmethod
-    def open(cls, *addresses, auth=None, routing_context=None, pool_config=None, workspace_config=None):
+    def open(cls, *addresses, auth, pool_config, workspace_config, routing_context=None):
+        """Create a new Neo4jPool
+
+        :param addresses: one or more address as positional argument
+        :param auth:
+        :param pool_config:
+        :param workspace_config:
+        :param routing_context:
+        :return: Neo4jPool
+        """
 
         def opener(addr, timeout):
             return Bolt.open(addr, auth=auth, timeout=timeout, **pool_config)
@@ -884,7 +901,7 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_tables)
         super(Neo4jPool, self).deactivate(address)
 
-    def on_write_failure(self, *, address):
+    def on_write_failure(self, address):
         """ Remove a writer address from the routing table, if present.
         """
         log.debug("[#0000]  C: <ROUTING> Removing writer %r", address)
