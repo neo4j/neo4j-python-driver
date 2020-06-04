@@ -272,7 +272,7 @@ class Bolt3(Bolt):
                              self.server_info.address,
                              "; ".join(map(repr, error.args))))
             if self.pool:
-                self.pool.deactivate(self.unresolved_address)
+                self.pool.deactivate(address=self.unresolved_address)
             raise
 
     def fetch_message(self):
@@ -302,7 +302,7 @@ class Bolt3(Bolt):
                              self.server_info.address,
                              "; ".join(map(repr, error.args))))
             if self.pool:
-                self.pool.deactivate(self.unresolved_address)
+                self.pool.deactivate(address=self.unresolved_address)
             raise
 
         if details:
