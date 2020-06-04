@@ -28,12 +28,16 @@ Topics
 
 + :ref:`api-documentation`
 
++ :ref:`temporal-data-types`
+
 + :ref:`breaking-changes`
+
 
 .. toctree::
    :hidden:
 
    api.rst
+   temporal_types.rst
    breaking_changes.rst
 
 
