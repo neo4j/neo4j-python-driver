@@ -38,8 +38,10 @@ MIN_INT64 = -(2 ** 63)
 MAX_INT64 = (2 ** 63) - 1
 
 MIN_YEAR = 1
-MAX_YEAR = 9999
+"""The smallest year number allowed in a :class:`neo4j.time.Date` or :class:`neo4j.time.DateTime` object to be compatible with :class:`python:datetime.date` and :class:`python:datetime.datetime`."""
 
+MAX_YEAR = 9999
+"""The largest year number allowed in a :class:`neo4j.time.Date` or :class:`neo4j.time.DateTime` object to be compatible with :class:`python:datetime.date` and :class:`python:datetime.datetime`."""
 
 DATE_ISO_PATTERN = re_compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 TIME_ISO_PATTERN = re_compile(r"^(\d{2})(:(\d{2})(:((\d{2})"
@@ -252,10 +254,12 @@ class Clock:
 
 
 class Duration(tuple):
-    """ A :class:`.Duration` object...
-
-    i64:i64:i64:i32
+    """A Duration represents the difference between two points in time.
+    Duration objects store a composite value of months, days and seconds.
+    Unlike :class:`datetime.timedelta` however, days and seconds are never interchanged and are applied separately in calculations.
     """
+
+    # i64: i64:i64: i32
 
     min = None
     max = None
@@ -455,9 +459,12 @@ Duration.max = Duration(months=MAX_INT64, days=MAX_INT64, seconds=MAX_INT64, sub
 
 class Date(metaclass=DateType):
     """
+    A Date object represents a date (year, month and day) in an idealized calendar, the current Gregorian calendar indefinitely extended in both directions.
 
-    0xxxxxxx xxxxxxxx           -- Date(1970-01-01..2059-09-18) -- 719163..
-    10xxxxxx xxxxxxxx xxxxxxxx  -- Date(0001-01-01..9999-12-31) -- 0..
+    For example::
+
+        0xxxxxxx xxxxxxxx           -- Date(1970-01-01..2059-09-18) -- 719163..
+        10xxxxxx xxxxxxxx xxxxxxxx  -- Date(0001-01-01..9999-12-31) -- 0..
     """
 
     # CONSTRUCTOR #

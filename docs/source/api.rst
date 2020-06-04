@@ -1042,6 +1042,11 @@ WGS84Point
 Temporal Data Types
 *******************
 
+Cypher has built-in support for handling temporal values,
+and the underlying database supports storing these temporal values as properties on nodes and relationships.
+
+https://neo4j.com/docs/cypher-manual/current/syntax/temporal/
+
 Temporal data types are implemented by the ``neo4j.time``
 
 These provide a set of types compliant with ISO-8601 and Cypher, which are similar to those found in the built-in ``datetime`` module.
@@ -1060,6 +1065,9 @@ DateTime       :class:`neo4j.time.DateTime`  :class:`python:datetime.datetime`  
 LocalDateTime  :class:`neo4j.time.DateTime`  :class:`python:datetime.datetime`   ``None``
 Duration       :class:`neo4j.time.Duration`  :class:`python:datetime.timedelta`
 =============  ============================  ==================================  ============
+
+
+See topic :ref:`temporal-data-types` for more details.
 
 
 .. _errors-ref:
