@@ -50,7 +50,7 @@ Introduced :class:`neo4j.Bookmark`
 Exceptions Changes
 ==================
 
-The exceptions in :code:`neo4j.exceptions` have been updated and there are internal exceptions starting with the naming :code:`Bolt` that should be propagated into the exceptions API.
+The exceptions in :code:`neo4j.exceptions` has been updated and there are internal exceptions starting with the naming :code:`Bolt` that should be propagated into the exceptions API.
 
 See :ref:`errors-ref` for more about errors.
 
@@ -83,7 +83,24 @@ Argument Renaming Changes
 API Changes
 =========================
 
-* :code:`Result.summary()` have been replaced with :code:`Result.consume()`, this behaviour is to consume all remaining records in the buffer and returns the ResultSummary.
+* :code:`Result.summary()` has been replaced with :code:`Result.consume()`, this behaviour is to consume all remaining records in the buffer and returns the ResultSummary.
+
+* :code:`Transaction.sync()` has been removed. Use :code:`Result.consume()` if the behaviour is to exhaust the result object.
+
+* :code:`Transaction.success` has been removed.
+
+* :code:`Transaction.close()` behaviour changed. Will now only perform rollback if no commit have been performed.
+
+* :code:`Session.sync()` has been removed. Use :code:`Result.consume()` if the behaviour is to exhaust the result object.
+
+* :code:`Session.detach()` has been removed. Use :code:`Result.consume()` if the behaviour is to exhaust the result object.
+
+* :code:`Session.next_bookmarks()` has been removed.
+
+* :code:`Session.has_transaction()` has been removed.
+
+* :code:`Session.closed()` has been removed.
+
 * :code:`Session.write_transaction` and :code:`Session.read_transaction` will start the retry timer after the first failed attempt.
 
 Dependency Changes
