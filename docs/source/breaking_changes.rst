@@ -85,6 +85,8 @@ API Changes
 
 * :code:`Result.summary()` has been replaced with :code:`Result.consume()`, this behaviour is to consume all remaining records in the buffer and returns the ResultSummary.
 
+* :code:`Result.data()` has been removed. Use :code:`Record.data()` for each Record when iterating the Result object.
+
 * :code:`Transaction.sync()` has been removed. Use :code:`Result.consume()` if the behaviour is to exhaust the result object.
 
 * :code:`Transaction.success` has been removed.
