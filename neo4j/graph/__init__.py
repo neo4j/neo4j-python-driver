@@ -84,7 +84,7 @@ class Graph:
                 # a relationship, it won't have any labels or properties.
                 # Therefore, we need to add the ones we have here.
                 if n_labels:
-                    inst._labels = frozenset(inst._labels & set(n_labels))
+                    inst._labels = inst._labels.union(n_labels)  # frozen_set
                 if properties:
                     inst._properties.update(properties)
             return inst
