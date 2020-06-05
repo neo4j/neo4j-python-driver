@@ -186,10 +186,13 @@ class Session(Workspace):
 
         For more usage details, see :meth:`.Transaction.run`.
 
-        :param query: Cypher query
+        :param query: cypher query
+        :type query: str, neo4j.Query
         :param parameters: dictionary of parameters
+        :type parameters: dict
         :param kwparameters: additional keyword parameters
-        :returns: :class:`neo4j.Result` object
+        :returns: a new :class:`neo4j.Result` object
+        :type: :class:`neo4j.Result`
         """
         if not query:
             raise ValueError("Cannot run an empty query")
@@ -383,11 +386,11 @@ class Query:
     """ Create a new query.
 
     :param text: The query text.
-    :type str:
+    :type text: str
     :param metadata: metadata attached to the query.
-    :type dict:
+    :type metadata: dict
     :param timeout: seconds.
-    :type int:
+    :type timeout: int
     """
     def __init__(self, text, metadata=None, timeout=None):
         self.text = text

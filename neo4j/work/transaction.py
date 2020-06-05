@@ -92,11 +92,14 @@ class Transaction:
         :class:`str`, :class:`list` and :class:`dict`. Note however that
         :class:`list` properties must be homogenous.
 
-        :param query: template Cypher query
+        :param query: cypher query
+        :type query: str
         :param parameters: dictionary of parameters
+        :type parameters: dict
         :param kwparameters: additional keyword parameters
-        :returns: :class:`neo4j.Result` object
-        :raise TransactionError: if the transaction is closed
+        :returns: a new :class:`neo4j.Result` object
+        :rtype: :class:`neo4j.Result`
+        :raise TransactionError: if the transaction is already closed
         """
         from neo4j.work.simple import Query
         if isinstance(query, Query):
@@ -117,11 +120,12 @@ class Transaction:
         return result
 
     def commit(self):
-        """ Mark this transaction as successful and close in order to
-        trigger a COMMIT. This is functionally equivalent to::
+        """Mark this transaction as successful and close in order to trigger a COMMIT.
 
-        :raise TransactionError: if already closed
+        :raise TransactionError: if the transaction is already closed
         """
+        if self._closed:
+            raise TransactionError("Transaction closed")
         metadata = {}
         self._consume_results()  # DISCARD pending records then do a commit.
         try:
@@ -139,11 +143,12 @@ class Transaction:
         return self._bookmark
 
     def rollback(self):
-        """ Mark this transaction as unsuccessful and close in order to
-        trigger a ROLLBACK. This is functionally equivalent to::
+        """Mark this transaction as unsuccessful and close in order to trigger a ROLLBACK.
 
-        :raise TransactionError: if already closed
+        :raise TransactionError: if the transaction is already closed
         """
+        if self._closed:
+            raise TransactionError("Transaction closed")
         metadata = {}
         if not self._connection._is_reset:
             self._consume_results()  # DISCARD pending records then do a rollback.
@@ -154,16 +159,18 @@ class Transaction:
         self._on_closed()
 
     def close(self):
-        """ Close this transaction, triggering either a ROLLBACK if not committed.
+        """Close this transaction, triggering a ROLLBACK if not closed.
 
-        :raise TransactionError: if already closed
+        :raise TransactionError: if the transaction could not perform a ROLLBACK.
         """
         if self._closed:
             return
         self.rollback()
 
     def closed(self):
-        """ Indicator to show whether the transaction has been closed.
-        :returns: :const:`True` if closed, :const:`False` otherwise.
+        """Indicator to show whether the transaction has been closed.
+
+        :return: :const:`True` if closed, :const:`False` otherwise.
+        :rtype: bool
         """
         return self._closed

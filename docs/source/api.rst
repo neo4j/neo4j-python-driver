@@ -384,7 +384,7 @@ Sessions will often be created with some configuration settings, see :ref:`sessi
 Session
 *******
 
-.. autoclass:: neo4j.Session
+.. autoclass:: neo4j.Session()
 
     .. automethod:: close
 
@@ -397,6 +397,13 @@ Session
     .. automethod:: read_transaction
 
     .. automethod:: write_transaction
+
+
+Query
+=====
+
+.. autoclass:: neo4j.Query
+
 
 
 .. _session-configuration-ref:
@@ -527,9 +534,11 @@ This creates a new :class:`neo4j.Transaction` object that can be used to run Cyp
 
 It also gives applications the ability to directly control `commit` and `rollback` activity.
 
-.. autoclass:: neo4j.Transaction
+.. autoclass:: neo4j.Transaction()
 
     .. automethod:: run
+
+    .. automethod:: close
 
     .. automethod:: closed
 
@@ -538,7 +547,8 @@ It also gives applications the ability to directly control `commit` and `rollbac
     .. automethod:: rollback
 
 Closing an explicit transaction can either happen automatically at the end of a ``with`` block,
-or can be explicitly controlled through the :py:meth:`neo4j.Transaction.commit` and :py:meth:`neo4j.Transaction.rollback` methods.
+or can be explicitly controlled through the :py:meth:`neo4j.Transaction.commit`, :py:meth:`neo4j.Transaction.rollback` or :py:meth:`neo4j.Transaction.close` methods.
+
 Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction.
 
 .. code-block:: python
@@ -607,7 +617,7 @@ Results also contain a buffer that automatically stores unconsumed records when 
 
 A :class:`neo4j.Result` is attached to an active connection, through a :class:`neo4j.Session`, until all its content has been buffered or consumed.
 
-.. autoclass:: neo4j.Result
+.. autoclass:: neo4j.Result()
 
     .. describe:: iter(result)
 
@@ -624,10 +634,13 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`n
        **This is experimental.**
 
 
+See https://neo4j.com/docs/driver-manual/current/cypher-workflow/#driver-type-mapping for more about type mapping.
+
+
 Graph
 =====
 
-.. autoclass:: neo4j.graph.Graph
+.. autoclass:: neo4j.graph.Graph()
 
     A local, self-contained graph object that acts as a container for :class:`.Node` and :class:`neo4j.Relationship` instances.
     This is typically obtained via the :meth:`neo4j.Result.graph` method.
@@ -645,7 +658,7 @@ Graph
 Record
 ******
 
-.. autoclass:: neo4j.Record
+.. autoclass:: neo4j.Record()
 
     A :class:`neo4j.Record` is an immutable ordered collection of key-value
     pairs. It is generally closer to a :py:class:`namedtuple` than to an
@@ -710,20 +723,20 @@ Record
 ResultSummary
 *************
 
-.. autoclass:: neo4j.ResultSummary
+.. autoclass:: neo4j.ResultSummary()
    :members:
 
 SummaryCounters
 ===============
 
-.. autoclass:: neo4j.SummaryCounters
+.. autoclass:: neo4j.SummaryCounters()
     :members:
 
 
 ServerInfo
 ==========
 
-.. autoclass:: neo4j.ServerInfo
+.. autoclass:: neo4j.ServerInfo()
    :members:
 
 
@@ -794,7 +807,7 @@ Path           :class:`neo4j.graph.Path`
 Node
 ====
 
-.. autoclass:: neo4j.graph.Node
+.. autoclass:: neo4j.graph.Node()
 
     .. describe:: node == other
 
@@ -843,7 +856,7 @@ Node
 Relationship
 ============
 
-.. autoclass:: neo4j.graph.Relationship
+.. autoclass:: neo4j.graph.Relationship()
 
     .. describe:: relationship == other
 
@@ -904,7 +917,7 @@ Relationship
 Path
 ====
 
-.. autoclass:: neo4j.graph.Path
+.. autoclass:: neo4j.graph.Path()
 
     .. describe:: path == other
 
