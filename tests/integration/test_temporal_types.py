@@ -20,6 +20,8 @@
 
 
 import pytest
+import datetime
+
 from pytz import (
     FixedOffset,
     timezone,
@@ -330,3 +332,74 @@ def test_nanosecond_resolution_duration_output(cypher_eval):
     assert isinstance(value, Duration)
     assert value == Duration(years=1, months=2, days=3, hours=4,
                              minutes=5, seconds=6.789123456)
+
+
+def test_datetime_parameter_case1(session):
+    # python -m pytest tests/integration/test_temporal_types.py -s -v -k test_datetime_parameter_case1
+    dt1 = session.run("RETURN datetime('2019-10-30T07:54:02.129790001+00:00')").single().value()
+    assert isinstance(dt1, DateTime)
+
+    dt2 = session.run("RETURN $date_time", date_time=dt1).single().value()
+    assert isinstance(dt2, DateTime)
+
+    assert dt1 == dt2
+
+
+def test_datetime_parameter_case2(session):
+    # python -m pytest tests/integration/test_temporal_types.py -s -v -k test_datetime_parameter_case2
+    dt1 = session.run("RETURN datetime('2019-10-30T07:54:02.129790999[UTC]')").single().value()
+    assert isinstance(dt1, DateTime)
+    assert dt1.iso_format() == "2019-10-30T07:54:02.129790999+00:00"
+
+    dt2 = session.run("RETURN $date_time", date_time=dt1).single().value()
+    assert isinstance(dt2, DateTime)
+
+    assert dt1 == dt2
+
+
+def test_datetime_parameter_case3(session):
+    # python -m pytest tests/integration/test_temporal_types.py -s -v -k test_datetime_parameter_case1
+    dt1 = session.run("RETURN datetime('2019-10-30T07:54:02.129790+00:00')").single().value()
+    assert isinstance(dt1, DateTime)
+
+    dt2 = session.run("RETURN $date_time", date_time=dt1).single().value()
+    assert isinstance(dt2, DateTime)
+
+    assert dt1 == dt2
+
+
+def test_time_parameter_case1(session):
+    # python -m pytest tests/integration/test_temporal_types.py -s -v -k test_time_parameter_case1
+    t1 = session.run("RETURN time('07:54:02.129790001+00:00')").single().value()
+    assert isinstance(t1, Time)
+
+    t2 = session.run("RETURN $time", time=t1).single().value()
+    assert isinstance(t2, Time)
+
+    assert t1 == t2
+
+
+def test_time_parameter_case2(session):
+    # python -m pytest tests/integration/test_temporal_types.py -s -v -k test_time_parameter_case2
+    t1 = session.run("RETURN time('07:54:02.129790999+00:00')").single().value()
+    assert isinstance(t1, Time)
+    # assert t1.iso_format() == "07:54:02.129790999+00:00"  # TODO: Broken, does not show time_zone_delta +00:00
+    time_zone_delta = t1.utc_offset()
+    assert isinstance(time_zone_delta, datetime.timedelta)
+    assert time_zone_delta == datetime.timedelta(0)
+
+    t2 = session.run("RETURN $time", time=t1).single().value()
+    assert isinstance(t2, Time)
+
+    assert t1 == t2
+
+
+def test_time_parameter_case3(session):
+    # python -m pytest tests/integration/test_temporal_types.py -s -v -k test_time_parameter_case3
+    t1 = session.run("RETURN time('07:54:02.129790+00:00')").single().value()
+    assert isinstance(t1, Time)
+
+    t2 = session.run("RETURN $time", time=t1).single().value()
+    assert isinstance(t2, Time)
+
+    assert t1 == t2

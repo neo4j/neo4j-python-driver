@@ -142,7 +142,9 @@ def dehydrate_datetime(value):
         if isinstance(dt, datetime):
             dt = DateTime.from_native(dt)
         zone_epoch = DateTime(1970, 1, 1, tzinfo=dt.tzinfo)
-        t = dt.to_clock_time() - zone_epoch.to_clock_time()
+        dt_clock_time = dt.to_clock_time()
+        zone_epoch_clock_time = zone_epoch.to_clock_time()
+        t = dt_clock_time - zone_epoch_clock_time
         return t.seconds, t.nanoseconds
 
     tz = value.tzinfo

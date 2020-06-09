@@ -19,17 +19,44 @@
 # limitations under the License.
 
 
-from datetime import datetime, timedelta
 from unittest import TestCase
+from datetime import (
+    datetime,
+    timedelta,
+)
+from pytz import (
+    timezone,
+    FixedOffset,
+)
 
-from pytz import timezone, FixedOffset
+from neo4j.time import (
+    DateTime,
+    MIN_YEAR,
+    MAX_YEAR,
+    Duration,
+)
+from neo4j.time.arithmetic import (
+    nano_add,
+    nano_div,
+)
+from neo4j.time.clock_implementations import (
+    Clock,
+    ClockTime,
+)
+from neo4j.time.hydration import (
+    hydrate_date,
+    dehydrate_date,
+    hydrate_time,
+    dehydrate_time,
+    hydrate_datetime,
+    dehydrate_datetime,
+    hydrate_duration,
+    dehydrate_duration,
+    dehydrate_timedelta,
+)
 
-from neo4j.time import DateTime, MIN_YEAR, MAX_YEAR, Duration
-from neo4j.time.arithmetic import nano_add, nano_div
-from neo4j.time.clock_implementations import Clock, ClockTime
-
-
-eastern = timezone("US/Eastern")
+timezone_us_eastern = timezone("US/Eastern")
+timezone_utc = timezone("UTC")
 
 
 class FixedClock(Clock):
@@ -132,7 +159,7 @@ class DateTimeTestCase(TestCase):
         self.assertIsNone(t.tzinfo)
 
     def test_now_with_tz(self):
-        t = DateTime.now(eastern)
+        t = DateTime.now(timezone_us_eastern)
         self.assertEqual(t.year, 1970)
         self.assertEqual(t.month, 1)
         self.assertEqual(t.day, 1)
@@ -168,7 +195,7 @@ class DateTimeTestCase(TestCase):
             _ = DateTime.from_timestamp(999999999999999999)
 
     def test_from_timestamp_with_tz(self):
-        t = DateTime.from_timestamp(0, eastern)
+        t = DateTime.from_timestamp(0, timezone_us_eastern)
         self.assertEqual(t.year, 1969)
         self.assertEqual(t.month, 12)
         self.assertEqual(t.day, 31)
@@ -215,13 +242,13 @@ class DateTimeTestCase(TestCase):
         self.assertEqual(t, timedelta(days=65, hours=23, seconds=17.914390409))
 
     def test_normalization(self):
-        ndt1 = eastern.normalize(DateTime(2018, 4, 27, 23, 0, 17, tzinfo=eastern))
-        ndt2 = eastern.normalize(datetime(2018, 4, 27, 23, 0, 17, tzinfo=eastern))
+        ndt1 = timezone_us_eastern.normalize(DateTime(2018, 4, 27, 23, 0, 17, tzinfo=timezone_us_eastern))
+        ndt2 = timezone_us_eastern.normalize(datetime(2018, 4, 27, 23, 0, 17, tzinfo=timezone_us_eastern))
         self.assertEqual(ndt1, ndt2)
 
     def test_localization(self):
-        ldt1 = eastern.localize(datetime(2018, 4, 27, 23, 0, 17))
-        ldt2 = eastern.localize(DateTime(2018, 4, 27, 23, 0, 17))
+        ldt1 = timezone_us_eastern.localize(datetime(2018, 4, 27, 23, 0, 17))
+        ldt2 = timezone_us_eastern.localize(DateTime(2018, 4, 27, 23, 0, 17))
         self.assertEqual(ldt1, ldt2)
 
     def test_from_native(self):
@@ -253,11 +280,11 @@ class DateTimeTestCase(TestCase):
         self.assertEqual("2018-10-01T12:34:56.789000000", dt.iso_format())
 
     def test_iso_format_with_tz(self):
-        dt = eastern.localize(DateTime(2018, 10, 1, 12, 34, 56.789123456))
+        dt = timezone_us_eastern.localize(DateTime(2018, 10, 1, 12, 34, 56.789123456))
         self.assertEqual("2018-10-01T12:34:56.789123456-04:00", dt.iso_format())
 
     def test_iso_format_with_tz_and_trailing_zeroes(self):
-        dt = eastern.localize(DateTime(2018, 10, 1, 12, 34, 56.789))
+        dt = timezone_us_eastern.localize(DateTime(2018, 10, 1, 12, 34, 56.789))
         self.assertEqual("2018-10-01T12:34:56.789000000-04:00", dt.iso_format())
 
     def test_from_iso_format_hour_only(self):
@@ -309,3 +336,12 @@ class DateTimeTestCase(TestCase):
         expected = DateTime(2018, 10, 1, 12, 34, 56.123456789, tzinfo=FixedOffset(-754))
         actual = DateTime.from_iso_format("2018-10-01T12:34:56.123456789-12:34:56.123456")
         self.assertEqual(expected, actual)
+
+
+def test_potential_rounding_error():
+    # python -m pytest tests/unit/time/test_datetime.py -s -v -k test_potential_rounding_error
+    expected = DateTime(2019, 10, 30, 7, 54, 2.129790999, tzinfo=timezone_utc)
+    assert expected.iso_format() == "2019-10-30T07:54:02.129790999+00:00"
+
+    actual = DateTime.from_iso_format("2019-10-30T07:54:02.129790999+00:00")
+    assert expected == actual

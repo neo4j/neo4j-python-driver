@@ -23,15 +23,42 @@
 a number of utility functions.
 """
 
-from datetime import timedelta, date, time, datetime
+from datetime import (
+    timedelta,
+    date,
+    time,
+    datetime,
+)
 from functools import total_ordering
 from re import compile as re_compile
-from time import gmtime, mktime, struct_time
+from time import (
+    gmtime,
+    mktime,
+    struct_time,
+)
+from decimal import Decimal
 
-from neo4j.time.arithmetic import (nano_add, nano_sub, nano_mul, nano_div,
-                                   nano_mod, nano_divmod,
-                                   symmetric_divmod, round_half_to_even)
-from neo4j.time.metaclasses import DateType, TimeType, DateTimeType
+from neo4j.time.arithmetic import (
+    nano_add,
+    nano_sub,
+    nano_mul,
+    nano_div,
+    nano_mod,
+    nano_divmod,
+    symmetric_divmod,
+    round_half_to_even,
+)
+from neo4j.time.metaclasses import (
+    DateType,
+    TimeType,
+    DateTimeType,
+)
+
+import logging
+from neo4j.debug import watch
+watch("neo4j")
+
+log = logging.getLogger("neo4j")
 
 
 MIN_INT64 = -(2 ** 63)
@@ -48,6 +75,8 @@ TIME_ISO_PATTERN = re_compile(r"^(\d{2})(:(\d{2})(:((\d{2})"
                               r"(\.\d*)?))?)?(([+-])(\d{2}):(\d{2})(:((\d{2})(\.\d*)?))?)?$")
 DURATION_ISO_PATTERN = re_compile(r"^P((\d+)Y)?((\d+)M)?((\d+)D)?"
                                   r"(T((\d+)H)?((\d+)M)?((\d+(\.\d+)?)?S)?)?$")
+
+NANO_SECONDS = 1000000000
 
 
 def _is_leap_year(year):
@@ -1118,8 +1147,9 @@ class Time(metaclass=TimeType):
         return self.tzinfo.tzname(self)
 
     def to_clock_time(self):
-        seconds, nanoseconds = nano_divmod(self.ticks, 1)
-        return ClockTime(seconds, 1000000000 * nanoseconds)
+        seconds, nanoseconds = nano_divmod(self.ticks, 1)  # int, float
+        nanoseconds_int = int(Decimal(str(nanoseconds)) * NANO_SECONDS)  # Convert fractions to an integer without losing precision
+        return ClockTime(seconds, nanoseconds_int)
 
     def to_native(self):
         """ Convert to a native Python `datetime.time` value.
@@ -1437,8 +1467,9 @@ class DateTime(metaclass=DateTimeType):
         for month in range(1, self.month):
             total_seconds += 86400 * Date.days_in_month(self.year, month)
         total_seconds += 86400 * (self.day - 1)
-        seconds, nanoseconds = nano_divmod(self.__time.ticks, 1)
-        return ClockTime(total_seconds + seconds, 1000000000 * nanoseconds)
+        seconds, nanoseconds = nano_divmod(self.__time.ticks, 1)  # int, float
+        nanoseconds_int = int(Decimal(str(nanoseconds)) * NANO_SECONDS)  # Convert fractions to an integer without losing precision
+        return ClockTime(total_seconds + seconds, nanoseconds_int)
 
     def to_native(self):
         """ Convert to a native Python `datetime.datetime` value.
