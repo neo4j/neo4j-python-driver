@@ -54,13 +54,6 @@ from neo4j.time.metaclasses import (
     DateTimeType,
 )
 
-import logging
-from neo4j.debug import watch
-watch("neo4j")
-
-log = logging.getLogger("neo4j")
-
-
 MIN_INT64 = -(2 ** 63)
 MAX_INT64 = (2 ** 63) - 1
 
@@ -1157,10 +1150,15 @@ class Time(metaclass=TimeType):
         h, m, s = self.hour_minute_second
         s, ns = nano_divmod(s, 1)
         ms = int(nano_mul(ns, 1000000))
-        return time(h, m, s, ms)
+        tz = self.tzinfo
+        return time(h, m, s, ms, tz)
 
     def iso_format(self):
-        return "%02d:%02d:%012.9f" % self.hour_minute_second
+        s = "%02d:%02d:%012.9f" % self.hour_minute_second
+        if self.tzinfo is not None:
+            offset = self.tzinfo.utcoffset(self)
+            s += "%+03d:%02d" % divmod(offset.total_seconds() // 60, 60)
+        return s
 
     def __repr__(self):
         if self.tzinfo is None:
@@ -1423,12 +1421,27 @@ class DateTime(metaclass=DateTimeType):
     # INSTANCE METHODS #
 
     def date(self):
+        """The the date
+
+        :return: the date
+        :rtype: :class:`neo4j.time.Date`
+        """
         return self.__date
 
     def time(self):
+        """The the time without time zone info
+
+        :return: the time without time zone info
+        :rtype: :class:`neo4j.time.Time`
+        """
         return self.__time.replace(tzinfo=None)
 
     def timetz(self):
+        """The the time with time zone info
+
+        :return: the time with time zone info
+        :rtype: :class:`neo4j.time.Time`
+        """
         return self.__time
 
     def replace(self, **kwargs):
@@ -1478,7 +1491,8 @@ class DateTime(metaclass=DateTimeType):
         h, m, s = self.hour_minute_second
         s, ns = nano_divmod(s, 1)
         ms = int(nano_mul(ns, 1000000))
-        return datetime(y, mo, d, h, m, s, ms)
+        tz = self.tzinfo
+        return datetime(y, mo, d, h, m, s, ms, tz)
 
     def weekday(self):
         return self.__date.weekday()
@@ -1490,11 +1504,7 @@ class DateTime(metaclass=DateTimeType):
         return self.__date.iso_calendar()
 
     def iso_format(self, sep="T"):
-        s = "%s%s%s" % (self.date().iso_format(), sep, self.time().iso_format())
-        if self.tzinfo is not None:
-            offset = self.tzinfo.utcoffset(self)
-            s += "%+03d:%02d" % divmod(offset.total_seconds() // 60, 60)
-        return s
+        return "%s%s%s" % (self.date().iso_format(), sep, self.timetz().iso_format())
 
     def __repr__(self):
         if self.tzinfo is None:

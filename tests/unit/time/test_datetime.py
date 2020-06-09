@@ -338,10 +338,39 @@ class DateTimeTestCase(TestCase):
         self.assertEqual(expected, actual)
 
 
-def test_potential_rounding_error():
-    # python -m pytest tests/unit/time/test_datetime.py -s -v -k test_potential_rounding_error
+def test_iso_format_with_time_zone_case_1():
+    # python -m pytest tests/unit/time/test_datetime.py -s -v -k test_iso_format_with_time_zone_case_1
     expected = DateTime(2019, 10, 30, 7, 54, 2.129790999, tzinfo=timezone_utc)
     assert expected.iso_format() == "2019-10-30T07:54:02.129790999+00:00"
-
+    assert expected.tzinfo == FixedOffset(0)
     actual = DateTime.from_iso_format("2019-10-30T07:54:02.129790999+00:00")
     assert expected == actual
+
+
+def test_iso_format_with_time_zone_case_2():
+    # python -m pytest tests/unit/time/test_datetime.py -s -v -k test_iso_format_with_time_zone_case_2
+    expected = DateTime.from_iso_format("2019-10-30T07:54:02.129790999+01:00")
+    assert expected.tzinfo == FixedOffset(60)
+    assert expected.iso_format() == "2019-10-30T07:54:02.129790999+01:00"
+
+
+def test_to_native_case_1():
+    # python -m pytest tests/unit/time/test_datetime.py -s -v -k test_to_native_case_1
+    dt = DateTime.from_iso_format("2019-10-30T12:34:56.789123456")
+    native = dt.to_native()
+    assert native.hour == dt.hour
+    assert native.minute == dt.minute
+    assert nano_add(native.second, nano_div(native.microsecond, 1000000)) == 56.789123
+    assert native.tzinfo is None
+    assert native.isoformat() == "2019-10-30T12:34:56.789123"
+
+
+def test_to_native_case_2():
+    # python -m pytest tests/unit/time/test_datetime.py -s -v -k test_to_native_case_2
+    dt = DateTime.from_iso_format("2019-10-30T12:34:56.789123456+00:00")
+    native = dt.to_native()
+    assert native.hour == dt.hour
+    assert native.minute == dt.minute
+    assert nano_add(native.second, nano_div(native.microsecond, 1000000)) == 56.789123
+    assert native.tzinfo == FixedOffset(0)
+    assert native.isoformat() == "2019-10-30T12:34:56.789123+00:00"
