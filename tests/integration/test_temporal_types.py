@@ -383,7 +383,7 @@ def test_time_parameter_case2(session):
     # python -m pytest tests/integration/test_temporal_types.py -s -v -k test_time_parameter_case2
     t1 = session.run("RETURN time('07:54:02.129790999+00:00')").single().value()
     assert isinstance(t1, Time)
-    # assert t1.iso_format() == "07:54:02.129790999+00:00"  # TODO: Broken, does not show time_zone_delta +00:00
+    assert t1.iso_format() == "07:54:02.129790999+00:00"
     time_zone_delta = t1.utc_offset()
     assert isinstance(time_zone_delta, datetime.timedelta)
     assert time_zone_delta == datetime.timedelta(0)

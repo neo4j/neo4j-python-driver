@@ -22,13 +22,20 @@
 from datetime import time
 from unittest import TestCase
 
-from pytz import timezone, FixedOffset
+from pytz import (
+    timezone,
+    FixedOffset,
+)
 
 from neo4j.time import Time
-from neo4j.time.arithmetic import nano_add, nano_div
+from neo4j.time.arithmetic import (
+    nano_add,
+    nano_div,
+)
 
 
-eastern = timezone("US/Eastern")
+timezone_us_eastern = timezone("US/Eastern")
+timezone_utc = timezone("UTC")
 
 
 class TimeTestCase(TestCase):
@@ -71,9 +78,9 @@ class TimeTestCase(TestCase):
         self.assertIsInstance(t, Time)
 
     def test_now_with_tz(self):
-        t = Time.now(tz=eastern)
+        t = Time.now(tz=timezone_us_eastern)
         self.assertIsInstance(t, Time)
-        self.assertEqual(t.tzinfo, eastern)
+        self.assertEqual(t.tzinfo, timezone_us_eastern)
 
     def test_utc_now(self):
         t = Time.utc_now()
@@ -150,3 +157,61 @@ class TimeTestCase(TestCase):
         expected = Time(12, 34, 56.123456789, tzinfo=FixedOffset(-754))
         actual = Time.from_iso_format("12:34:56.123456789-12:34:56.123456")
         self.assertEqual(expected, actual)
+
+
+def test_iso_format_with_time_zone_case_1():
+    # python -m pytest tests/unit/time/test_time.py -s -v -k test_iso_format_with_time_zone_case_1
+    expected = Time(7, 54, 2.129790999, tzinfo=timezone_utc)
+    assert expected.iso_format() == "07:54:02.129790999+00:00"
+    assert expected.tzinfo == FixedOffset(0)
+    actual = Time.from_iso_format("07:54:02.129790999+00:00")
+    assert expected == actual
+
+
+def test_iso_format_with_time_zone_case_2():
+    # python -m pytest tests/unit/time/test_time.py -s -v -k test_iso_format_with_time_zone_case_2
+    expected = Time.from_iso_format("07:54:02.129790999+01:00")
+    assert expected.tzinfo == FixedOffset(60)
+    assert expected.iso_format() == "07:54:02.129790999+01:00"
+
+
+def test_to_native_case_1():
+    # python -m pytest tests/unit/time/test_time.py -s -v -k test_to_native_case_1
+    t = Time(12, 34, 56.789123456)
+    native = t.to_native()
+    assert native.hour == t.hour
+    assert native.minute == t.minute
+    assert nano_add(native.second, nano_div(native.microsecond, 1000000)) == 56.789123
+    assert native.tzinfo is None
+    assert native.isoformat() == "12:34:56.789123"
+
+
+def test_to_native_case_2():
+    # python -m pytest tests/unit/time/test_time.py -s -v -k test_to_native_case_2
+    t = Time(12, 34, 56.789123456, tzinfo=timezone_utc)
+    native = t.to_native()
+    assert native.hour == t.hour
+    assert native.minute == t.minute
+    assert nano_add(native.second, nano_div(native.microsecond, 1000000)) == 56.789123
+    assert native.tzinfo == FixedOffset(0)
+    assert native.isoformat() == "12:34:56.789123+00:00"
+
+
+def test_from_native_case_1():
+    # python -m pytest tests/unit/time/test_time.py -s -v -k test_from_native_case_1
+    native = time(12, 34, 56, 789123)
+    t = Time.from_native(native)
+    assert t.hour == native.hour
+    assert t.minute == native.minute
+    assert t.second == nano_add(native.second, nano_div(native.microsecond, 1000000))
+    assert t.tzinfo is None
+
+
+def test_from_native_case_2():
+    # python -m pytest tests/unit/time/test_time.py -s -v -k test_from_native_case_2
+    native = time(12, 34, 56, 789123, FixedOffset(0))
+    t = Time.from_native(native)
+    assert t.hour == native.hour
+    assert t.minute == native.minute
+    assert t.second == nano_add(native.second, nano_div(native.microsecond, 1000000))
+    assert t.tzinfo == FixedOffset(0)
