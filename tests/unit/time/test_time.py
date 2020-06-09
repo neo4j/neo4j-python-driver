@@ -195,3 +195,23 @@ def test_to_native_case_2():
     assert nano_add(native.second, nano_div(native.microsecond, 1000000)) == 56.789123
     assert native.tzinfo == FixedOffset(0)
     assert native.isoformat() == "12:34:56.789123+00:00"
+
+
+def test_from_native_case_1():
+    # python -m pytest tests/unit/time/test_time.py -s -v -k test_from_native_case_1
+    native = time(12, 34, 56, 789123)
+    t = Time.from_native(native)
+    assert t.hour == native.hour
+    assert t.minute == native.minute
+    assert t.second == nano_add(native.second, nano_div(native.microsecond, 1000000))
+    assert t.tzinfo is None
+
+
+def test_from_native_case_2():
+    # python -m pytest tests/unit/time/test_time.py -s -v -k test_from_native_case_2
+    native = time(12, 34, 56, 789123, FixedOffset(0))
+    t = Time.from_native(native)
+    assert t.hour == native.hour
+    assert t.minute == native.minute
+    assert t.second == nano_add(native.second, nano_div(native.microsecond, 1000000))
+    assert t.tzinfo == FixedOffset(0)

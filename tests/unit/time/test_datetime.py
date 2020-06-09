@@ -374,3 +374,29 @@ def test_to_native_case_2():
     assert nano_add(native.second, nano_div(native.microsecond, 1000000)) == 56.789123
     assert native.tzinfo == FixedOffset(0)
     assert native.isoformat() == "2019-10-30T12:34:56.789123+00:00"
+
+
+def test_from_native_case_1():
+    # python -m pytest tests/unit/time/test_datetime.py -s -v -k test_from_native_case_1
+    native = datetime(2018, 10, 1, 12, 34, 56, 789123)
+    dt = DateTime.from_native(native)
+    assert dt.year == native.year
+    assert dt.month == native.month
+    assert dt.day == native.day
+    assert dt.hour == native.hour
+    assert dt.minute == native.minute
+    assert dt.second == nano_add(native.second, nano_div(native.microsecond, 1000000))
+    assert dt.tzinfo is None
+
+
+def test_from_native_case_2():
+    # python -m pytest tests/unit/time/test_datetime.py -s -v -k test_from_native_case_2
+    native = datetime(2018, 10, 1, 12, 34, 56, 789123, FixedOffset(0))
+    dt = DateTime.from_native(native)
+    assert dt.year == native.year
+    assert dt.month == native.month
+    assert dt.day == native.day
+    assert dt.hour == native.hour
+    assert dt.minute == native.minute
+    assert dt.second == nano_add(native.second, nano_div(native.microsecond, 1000000))
+    assert dt.tzinfo == FixedOffset(0)
