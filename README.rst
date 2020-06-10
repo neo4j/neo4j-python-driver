@@ -31,7 +31,7 @@ Quick Example
 
     from neo4j import GraphDatabase
 
-    driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "password"))
+    driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "password"))
 
     def add_friend(tx, name, friend_name):
         tx.run("MERGE (a:Person {name: $name}) "
@@ -52,15 +52,71 @@ Quick Example
     driver.close()
 
 
+Connection Settings Breaking Change
+===================================
+
++ The driver’s default configuration for encrypted is now false (meaning that driver will only attempt plain text connections by default).
+
++ Connections to encrypted services (such as Neo4j Aura) should now explicitly be set to encrypted.
+
++ When encryption is explicitly enabled, the default trust mode is to trust the CAs that are trusted by operating system and use hostname verification.
+
++ This means that encrypted connections to servers holding self-signed certificates will now fail on certificate verification by default.
+
++ Using the new `neo4j+ssc` scheme will allow to connect to servers holding self-signed certificates and not use hostname verification.
+
++ The `neo4j://` scheme replaces `bolt+routing://` and can be used for both clustered and single-instance configurations with Neo4j 4.0.
+
+
+
+See, https://neo4j.com/docs/migration-guide/4.0/upgrade-driver/#upgrade-driver-breakingchanges
+
+
+See, https://neo4j.com/docs/driver-manual/current/client-applications/#driver-connection-uris for changes in default security settings between 3.x and 4.x
+
+
+Connecting with Python Driver 4.0 against Neo4j 3.5
+---------------------------------------------------
+
+Using the Python Driver 4.0 and connecting to Neo4j 3.5 with default connection settings for Neo4j 3.5.
+
+.. code-block:: python
+
+    # the preferred form
+
+    driver = GraphDatabase.driver("neo4j+ssc://localhost:7687", auth=("neo4j", "password"))
+
+    # is equivalent to
+
+    driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "password"), encrypted=True, trust=False)
+
+
+Connecting with Python Driver 1.7 against Neo4j 4.0
+---------------------------------------------------
+
+Using the Python Driver 1.7 and connecting to Neo4j 4.0 with default connection settings for Neo4j 4.0.
+
+.. code-block:: python
+
+    driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "password"), encrypted=False)
+
+
+
 Other Information
 =================
 
-* `Neo4j Manual`_
-* `Neo4j Quick Reference Card`_
+* `The Neo4j Operations Manual`_
+* `The Neo4j Drivers Manual`_
+* `Python Driver API Documentation`_
+* `Neo4j Cypher Refcard`_
 * `Example Project`_
 * `Driver Wiki`_ (includes change logs)
+* `Neo4j 4.0 Migration Guide`_
 
-.. _`Neo4j Manual`: https://neo4j.com/docs/developer-manual/current/
-.. _`Neo4j Quick Reference Card`: https://neo4j.com/docs/cypher-refcard/current/
+.. _`The Neo4j Operations Manual`: https://neo4j.com/docs/operations-manual/current/
+.. _`The Neo4j Drivers Manual`: https://neo4j.com/docs/driver-manual/current/
+.. _`Python Driver API Documentation`: https://neo4j.com/docs/api/python-driver/current/
+.. _`Neo4j Cypher Refcard`: https://neo4j.com/docs/cypher-refcard/current/
 .. _`Example Project`: https://github.com/neo4j-examples/movies-python-bolt
 .. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki
+.. _`Neo4j 4.0 Migration Guide`: https://neo4j.com/docs/migration-guide/4.0/
