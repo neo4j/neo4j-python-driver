@@ -59,29 +59,34 @@ Connection Settings Breaking Change
 
 + Connections to encrypted services (such as Neo4j Aura) should now explicitly be set to encrypted.
 
-+ When encryption is explicitly enabled, the default trust mode is to trust the CAs that are trusted by operating system.
++ When encryption is explicitly enabled, the default trust mode is to trust the CAs that are trusted by operating system and use hostname verification.
 
 + This means that encrypted connections to servers holding self-signed certificates will now fail on certificate verification by default.
 
-+ Hostname verification is turned on by default when encryption is turned on.
++ Using the new `neo4j+ssc` scheme will allow to connect to servers holding self-signed certificates and not use hostname verification.
 
 + The `neo4j://` scheme replaces `bolt+routing://` and can be used for both clustered and single-instance configurations with Neo4j 4.0.
+
 
 
 See, https://neo4j.com/docs/migration-guide/4.0/upgrade-driver/#upgrade-driver-breakingchanges
 
 
+See, https://neo4j.com/docs/driver-manual/current/client-applications/#driver-connection-uris for changes in default security settings between 3.x and 4.x
+
 
 Connecting with Python Driver 4.0 against Neo4j 3.5
 ---------------------------------------------------
 
-Using the Python Driver 4.0 and connecting against Neo4j 3.5 with default connection settings for Neo4j 3.5.
+Using the Python Driver 4.0 and connecting to Neo4j 3.5 with default connection settings for Neo4j 3.5.
 
 .. code-block:: python
 
+    # the preferred form
+
     driver = GraphDatabase.driver("neo4j+ssc://localhost:7687", auth=("neo4j", "password"))
 
-    # or
+    # is equivalent to
 
     driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "password"), encrypted=True, trust=False)
 
@@ -89,7 +94,7 @@ Using the Python Driver 4.0 and connecting against Neo4j 3.5 with default connec
 Connecting with Python Driver 1.7 against Neo4j 4.0
 ---------------------------------------------------
 
-Using the Python Driver 1.7 and connecting against Neo4j 4.0 with default connection settings for Neo4j 4.0.
+Using the Python Driver 1.7 and connecting to Neo4j 4.0 with default connection settings for Neo4j 4.0.
 
 .. code-block:: python
 
