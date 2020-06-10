@@ -100,15 +100,16 @@ Using the Python Driver 1.7 and connecting against Neo4j 4.0 with default connec
 Other Information
 =================
 
-* `Neo4j Manual`_
+* `The Neo4j Operations Manual`_
+* `The Neo4j Drivers Manual`_
 * `Python Driver API Documentation`_
 * `Neo4j Cypher Refcard`_
 * `Example Project`_
 * `Driver Wiki`_ (includes change logs)
 * `Neo4j 4.0 Migration Guide`_
 
-
-.. _`Neo4j Manual`: https://neo4j.com/docs/developer-manual/current/
+.. _`The Neo4j Operations Manual`: https://neo4j.com/docs/operations-manual/current/
+.. _`The Neo4j Drivers Manual`: https://neo4j.com/docs/driver-manual/current/
 .. _`Python Driver API Documentation`: https://neo4j.com/docs/api/python-driver/current/
 .. _`Neo4j Cypher Refcard`: https://neo4j.com/docs/cypher-refcard/current/
 .. _`Example Project`: https://github.com/neo4j-examples/movies-python-bolt
