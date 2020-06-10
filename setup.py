@@ -51,7 +51,7 @@ setup_args = {
     "description": "Neo4j Bolt driver for Python",
     "license": "Apache License, Version 2.0",
     "long_description": readme,
-    "author": "Neo Technology",
+    "author": "Neo4j",
     "author_email": "drivers@neo4j.com",
     "keywords": "neo4j graph database",
     "url": "https://github.com/neo4j/neo4j-python-driver",
