@@ -56,8 +56,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Neo4j Python Driver'
-copyright = '2002-2020, Neo Technology'
-author = 'Neo Technology'
+copyright = '2002-2020, Neo4j'
+author = 'Neo4j'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -241,7 +241,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
   (master_doc, 'Neo4jBoltDriverforPython.tex', 'Neo4j Bolt Driver for Python Documentation',
-   'Neo Technology', 'manual'),
+   'Neo4j', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
