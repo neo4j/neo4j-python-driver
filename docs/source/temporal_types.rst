@@ -73,11 +73,15 @@ Constructors and other class methods
 
 .. classmethod:: Date.today()
 
+    :raises OverflowError: if the timestamp is out of the range of values supported by the platform C localtime() function. It’s common for this to be restricted to years from 1970 through 2038.
+
 .. classmethod:: Date.utc_today()
 
     Return the current :class:`.Date` according to UTC.
 
 .. classmethod:: Date.from_timestamp(timestamp, tz=None)
+
+    :raises OverflowError: if the timestamp is out of the range of values supported by the platform C localtime() function. It’s common for this to be restricted to years from 1970 through 2038.
 
 .. classmethod:: Date.utc_from_timestamp(timestamp)
 
@@ -190,15 +194,17 @@ Constructors and other class methods
 
 .. class:: neo4j.time.Time(hour, minute, second, tzinfo=None)
 
-.. py:classmethod:: Time.now()
+.. classmethod:: Time.now()
 
-.. py:classmethod:: Time.utc_now()
+    :raises OverflowError: if the timestamp is out of the range of values supported by the platform C localtime() function. It’s common for this to be restricted to years from 1970 through 2038.
 
-.. py:classmethod:: Time.from_ticks(ticks)
+.. classmethod:: Time.utc_now()
 
-.. py:classmethod:: Time.from_native(time)
+.. classmethod:: Time.from_ticks(ticks)
 
-.. py:classmethod:: Time.from_clock_time(t, epoch)
+.. classmethod:: Time.from_native(time)
+
+.. classmethod:: Time.from_clock_time(t, epoch)
 
 
 Class attributes
@@ -312,23 +318,29 @@ Constructors and other class methods
 
 .. autoclass:: neo4j.time.DateTime(year, month, day, hour=0, minute=0, second=0.0, tzinfo=None)
 
-.. py:classmethod:: DateTime.now()
+.. classmethod:: DateTime.now()
 
-.. py:classmethod:: DateTime.utc_now()
+    :raises OverflowError: if the timestamp is out of the range of values supported by the platform C localtime() function. It’s common for this to be restricted to years from 1970 through 2038.
 
-.. py:classmethod:: DateTime.from_timestamp(timestamp, tz=None)
+.. classmethod:: DateTime.utc_now()
 
-.. py:classmethod:: DateTime.utc_from_timestamp(timestamp)
+.. classmethod:: DateTime.from_timestamp(timestamp, tz=None)
 
-.. py:classmethod:: DateTime.from_ordinal(ordinal)
+    :raises OverflowError: if the timestamp is out of the range of values supported by the platform C localtime() function. It’s common for this to be restricted to years from 1970 through 2038.
 
-.. py:classmethod:: DateTime.combine(date, time)
+.. classmethod:: DateTime.utc_from_timestamp(timestamp)
 
-.. py:classmethod:: DateTime.parse(timestamp, tz=None)
+.. classmethod:: DateTime.from_ordinal(ordinal)
 
-.. py:classmethod:: DateTime.from_native(datetime)
+.. classmethod:: DateTime.combine(date, time)
 
-.. py:classmethod:: DateTime.from_clock_time(t, epoch)
+..
+    NotImplementedError
+    .. classmethod:: DateTime.parse(timestamp, tz=None)
+
+.. classmethod:: DateTime.from_native(datetime)
+
+.. classmethod:: DateTime.from_clock_time(t, epoch)
 
 
 Class attributes
