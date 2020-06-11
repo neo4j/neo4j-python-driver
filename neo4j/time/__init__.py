@@ -258,13 +258,24 @@ class Clock:
 
     @classmethod
     def local_offset(cls):
-        """ The offset from UTC for local time read from this clock.
+        """The offset from UTC for local time read from this clock.
+        This may raise OverflowError if not supported, because of platform depending C libraries.
+
+        :returns:
+        :rtype:
+
+        :raises OverflowError:
         """
         return ClockTime(-int(mktime(gmtime(0))))
 
     def local_time(self):
-        """ Read and return the current local time from this clock, measured
-        relative to the Unix Epoch.
+        """ Read and return the current local time from this clock, measured relative to the Unix Epoch.
+        This may raise OverflowError if not supported, because of platform depending C libraries.
+
+        :returns:
+        :rtype:
+
+        :raises OverflowError:
         """
         return self.utc_time() + self.local_offset()
 
@@ -397,7 +408,9 @@ class Duration(tuple):
     def iso_format(self, sep="T"):
         """
 
-        :return:
+        :param sep: the seperation string
+        :returns:
+        :rtype: str
         """
         parts = []
         hours, minutes, seconds = self.hours_minutes_seconds
@@ -527,6 +540,14 @@ class Date(metaclass=DateType):
 
     @classmethod
     def today(cls, tz=None):
+        """This may raise OverflowError if not supported, because of platform depending C libraries.
+
+        :param tz: time zone
+        :returns:
+        :rtype:
+
+        :raises OverflowError:
+        """
         if tz is None:
             return cls.from_clock_time(Clock().local_time(), UnixEpoch)
         else:
@@ -538,6 +559,16 @@ class Date(metaclass=DateType):
 
     @classmethod
     def from_timestamp(cls, timestamp, tz=None):
+        """This may raise OverflowError, if the timestamp is out of the range of values supported by the platform C localtime() function.
+        It’s common for this to be restricted to years from 1970 through 2038.
+
+        :param timestamp:
+        :param tz: time zone
+        :returns:
+        :rtype:
+
+        :raises OverflowError:
+        """
         if tz is None:
             return cls.from_clock_time(ClockTime(timestamp) + Clock().local_offset(), UnixEpoch)
         else:
@@ -916,6 +947,14 @@ class Time(metaclass=TimeType):
 
     @classmethod
     def now(cls, tz=None):
+        """This may raise OverflowError if not supported, because of platform depending C libraries.
+
+        :param tz:
+        :returns:
+        :rtype:
+
+        :raises OverflowError:
+        """
         if tz is None:
             return cls.from_clock_time(Clock().local_time(), UnixEpoch)
         else:
@@ -1227,6 +1266,14 @@ class DateTime(metaclass=DateTimeType):
 
     @classmethod
     def now(cls, tz=None):
+        """This may raise OverflowError if not supported, because of platform depending C libraries.
+
+        :param tz: time zone
+        :returns:
+        :rtype:
+
+        :raises OverflowError:
+        """
         if tz is None:
             return cls.from_clock_time(Clock().local_time(), UnixEpoch)
         else:
@@ -1245,6 +1292,15 @@ class DateTime(metaclass=DateTimeType):
 
     @classmethod
     def from_timestamp(cls, timestamp, tz=None):
+        """This may raise OverflowError, if the timestamp is out of the range of values supported by the platform C localtime() function,
+        and OverflowError on localtime() failure. It’s common for this to be restricted to years from 1970 through 2038.
+
+        :param timestamp:
+        :param tz:
+        :returns:
+
+        :raises OverflowError:
+        """
         if tz is None:
             return cls.from_clock_time(ClockTime(timestamp) + Clock().local_offset(), UnixEpoch)
         else:
