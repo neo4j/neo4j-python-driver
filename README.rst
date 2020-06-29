@@ -75,10 +75,10 @@ See, https://neo4j.com/docs/migration-guide/4.0/upgrade-driver/#upgrade-driver-b
 See, https://neo4j.com/docs/driver-manual/current/client-applications/#driver-connection-uris for changes in default security settings between 3.x and 4.x
 
 
-Connecting with Python Driver 4.0 against Neo4j 3.5
+Connecting with Python Driver 4.1 against Neo4j 3.5
 ---------------------------------------------------
 
-Using the Python Driver 4.0 and connecting to Neo4j 3.5 with default connection settings for Neo4j 3.5.
+Using the Python Driver 4.1 and connecting to Neo4j 3.5 with default connection settings for Neo4j 3.5.
 
 .. code-block:: python
 
@@ -91,10 +91,10 @@ Using the Python Driver 4.0 and connecting to Neo4j 3.5 with default connection 
     driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "password"), encrypted=True, trust=False)
 
 
-Connecting with Python Driver 1.7 against Neo4j 4.0
+Connecting with Python Driver 1.7 against Neo4j 4.1
 ---------------------------------------------------
 
-Using the Python Driver 1.7 and connecting to Neo4j 4.0 with default connection settings for Neo4j 4.0.
+Using the Python Driver 1.7 and connecting to Neo4j 4.1 with default connection settings for Neo4j 4.1.
 
 .. code-block:: python
 
