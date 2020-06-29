@@ -39,10 +39,11 @@ from neo4j._exceptions import BoltHandshakeError
 class App:
 
     def __init__(self, uri, user, password):
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+        # Aura queries use an encrypted connection
+        self.driver = GraphDatabase.driver(uri, auth=(user, password), encrypted=True)
 
-    # Don't forget to close the driver connection when you are finished with it
     def close(self):
+        # Don't forget to close the driver connection when you are finished with it
         self.driver.close()
 
     def create_friendship(self, person1_name, person2_name):
@@ -58,11 +59,11 @@ class App:
         # To learn more about the Cypher syntax, see https://neo4j.com/docs/cypher-manual/current/
         # The Reference Card is also a good resource for keywords https://neo4j.com/docs/cypher-refcard/current/
         query = """
-        MERGE (p1:Person { name: $person1_name })
-        MERGE (p2:Person { name: $person2_name })
-        MERGE (p1)-[:KNOWS]->(p2)
+        CREATE (p1:Person { name: $person1_name })
+        CREATE (p2:Person { name: $person2_name })
+        CREATE (p1)-[:KNOWS]->(p2)
         RETURN p1, p2
-        """ 
+        """
         result = tx.run(query, person1_name=person1_name, person2_name=person2_name)
         try:
             return [{"p1": row["p1"]["name"], "p2": row["p2"]["name"]}
@@ -90,9 +91,11 @@ class App:
 
 
 if __name__ == "__main__":
-    # Aura requires you to use the "bolt+routing" protocol, and process your queries using an encrypted connection
-    # (You may need to replace your connection details, username and password)
-    app = App("bolt://localhost:7687", "neo4j", "password")
+    # Aura uses the "neo4j" protocol
+    bolt_url = "%%BOLT_URL_PLACEHOLDER%%"
+    user = "<Username for Neo4j Aura database>"
+    password = "<Password for Neo4j Aura database>"
+    app = App(bolt_url, user, password)
     app.create_friendship("Alice", "David")
     app.find_person("Alice")
     app.close()
@@ -100,20 +103,22 @@ if __name__ == "__main__":
 
 # end::aura[]
 
-# tag::hello-world-output[]
-# hello, world, from node 1234
-# end::hello-world-output[]
+# tag::aura-output[]
+# Created friendship between: Alice, David
+# Found person: Alice
+# end::aura-output[]
 
 
-def test_hello_world_example(uri, auth):
+def test_aura_example(uri, auth):
     try:
         s = StringIO()
         with redirect_stdout(s):
             example = App(uri, auth[0], auth[1])
-            example.create_friendship("hello, world")
+            app.create_friendship("Alice", "David")
+            app.find_person("Alice")
             example.close()
 
-        assert s.getvalue().startswith("hello, world, from node ")
+        assert s.getvalue().startswith("Created friendship between: Alice, David")
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
