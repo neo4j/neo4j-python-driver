@@ -62,7 +62,7 @@ class App:
         MERGE (p2:Person { name: $person2_name })
         MERGE (p1)-[:KNOWS]->(p2)
         RETURN p1, p2
-        """
+        """ 
         result = tx.run(query, person1_name=person1_name, person2_name=person2_name)
         try:
             return [{"p1": row["p1"]["name"], "p2": row["p2"]["name"]}
