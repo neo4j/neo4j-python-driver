@@ -33,7 +33,7 @@ from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
 
 
-# python -m pytest tests/integration/examples/test_hello_world_example.py -s -v
+# python -m pytest tests/integration/examples/test_aura_example.py -s -v
 
 # tag::aura[]
 class App:
