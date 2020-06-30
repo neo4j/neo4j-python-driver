@@ -67,7 +67,8 @@ class App:
                     for row in result]
         # Capture any errors along with the query and data for traceability
         except ServiceUnavailable as exception:
-            logging.error(f"{query} raised an error: \n {exception}")
+            logging.error("{query} raised an error: \n {exception}".format(
+                query=query, exception=exception))
             raise
 
     def find_person(self, person_name):
@@ -88,7 +89,7 @@ class App:
 
 
 if __name__ == "__main__":
-    # Aura uses the "neo4j" protocol
+    # Aura uses the "bolt+routing" protocol
     bolt_url = "%%BOLT_URL_PLACEHOLDER%%"
     user = "<Username for Neo4j Aura database>"
     password = "<Password for Neo4j Aura database>"
@@ -96,6 +97,7 @@ if __name__ == "__main__":
     app.create_friendship("Alice", "David")
     app.find_person("Alice")
     app.close()
+
 
 def test_aura_example(uri, auth):
     try:
