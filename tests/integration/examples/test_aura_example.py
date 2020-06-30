@@ -24,11 +24,9 @@ import pytest
 from contextlib import redirect_stdout
 from io import StringIO
 
-# tag::aura-import[]
 from neo4j import GraphDatabase
 import logging
 from neo4j.exceptions import ServiceUnavailable
-# end::aura-import[]
 
 from neo4j._exceptions import BoltHandshakeError
 
