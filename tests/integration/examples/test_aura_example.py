@@ -35,7 +35,6 @@ from neo4j._exceptions import BoltHandshakeError
 
 # python -m pytest tests/integration/examples/test_aura_example.py -s -v
 
-# tag::aura[]
 class App:
 
     def __init__(self, uri, user, password):
@@ -52,7 +51,7 @@ class App:
             result = session.write_transaction(self._create_and_return_friendship,
                                                person1_name, person2_name)
             for row in result:
-                print(f"Created friendship between: {row['p1']}, {row['p2']}")
+                print("Created friendship between: {p1}, {p2}".format(p1=row['p1'], p2=row['p2']))
 
     @staticmethod
     def _create_and_return_friendship(tx, person1_name, person2_name):
@@ -77,7 +76,7 @@ class App:
         with self.driver.session() as session:
             result = session.read_transaction(self._find_and_return_person, person_name)
             for row in result:
-                print(f"Found person: {row}")
+                print("Found person: {row}".format(row=row))
 
     @staticmethod
     def _find_and_return_person(tx, person_name):
@@ -100,25 +99,16 @@ if __name__ == "__main__":
     app.find_person("Alice")
     app.close()
 
-
-# end::aura[]
-
-# tag::aura-output[]
-# Created friendship between: Alice, David
-# Found person: Alice
-# end::aura-output[]
-
-
 def test_aura_example(uri, auth):
     try:
         s = StringIO()
         with redirect_stdout(s):
-            example = App(uri, auth[0], auth[1])
+            app = App(uri, auth[0], auth[1])
             app.create_friendship("Alice", "David")
             app.find_person("Alice")
-            example.close()
+            app.close()
 
-        assert s.getvalue().startswith("Created friendship between: Alice, David")
+        assert s.getvalue().startswith("Found person: Alice")
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
