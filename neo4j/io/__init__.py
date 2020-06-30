@@ -135,10 +135,12 @@ class Bolt:
         # Carry out Bolt subclass imports locally to avoid circular dependency issues.
         from neo4j.io._bolt3 import Bolt3
         from neo4j.io._bolt4x0 import Bolt4x0
+        from neo4j.io._bolt4x1 import Bolt4x1
 
         handlers = {
             Bolt3.PROTOCOL_VERSION: Bolt3,
-            Bolt4x0.PROTOCOL_VERSION: Bolt4x0
+            Bolt4x0.PROTOCOL_VERSION: Bolt4x0,
+            Bolt4x1.PROTOCOL_VERSION: Bolt4x1,
         }
 
         if protocol_version is None:
@@ -203,6 +205,10 @@ class Bolt:
             # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt4x0 import Bolt4x0
             connection = Bolt4x0(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent)
+        elif pool_config.protocol_version == (4, 1):
+            # Carry out Bolt subclass imports locally to avoid circular dependency issues.
+            from neo4j.io._bolt4x1 import Bolt4x1
+            connection = Bolt4x1(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent)
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
             s.shutdown(SHUT_RDWR)
@@ -650,6 +656,7 @@ class Neo4jPool(IOPool):
         # Carry out Bolt subclass imports locally to avoid circular dependency issues.
         from neo4j.io._bolt3 import Bolt3
         from neo4j.io._bolt4x0 import Bolt4x0
+        from neo4j.io._bolt4x1 import Bolt4x1
 
         from neo4j.api import (
             SYSTEM_DATABASE,
@@ -686,7 +693,7 @@ class Neo4jPool(IOPool):
                         on_success=metadata.update,
                         on_failure=fail,
                     )
-                elif cx.PROTOCOL_VERSION == Bolt4x0.PROTOCOL_VERSION:
+                elif cx.PROTOCOL_VERSION in (Bolt4x0.PROTOCOL_VERSION, Bolt4x1.PROTOCOL_VERSION):
                     if database == DEFAULT_DATABASE:
                         cx.run(
                             "CALL dbms.routing.getRoutingTable($context)",
