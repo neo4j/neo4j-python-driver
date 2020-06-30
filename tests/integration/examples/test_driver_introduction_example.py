@@ -24,15 +24,18 @@ import pytest
 from contextlib import redirect_stdout
 from io import StringIO
 
+# tag::driver-introduction-example-import[]
 from neo4j import GraphDatabase
 import logging
 from neo4j.exceptions import ServiceUnavailable
+# end::driver-introduction-example-import[]
 
 from neo4j._exceptions import BoltHandshakeError
 
 
 # python -m pytest tests/integration/examples/test_aura_example.py -s -v
 
+# tag::driver-introduction-example[]
 class App:
 
     def __init__(self, uri, user, password):
@@ -87,7 +90,6 @@ class App:
         result = tx.run(query, person_name=person_name)
         return [row["name"] for row in result]
 
-
 if __name__ == "__main__":
     # Aura uses the "bolt+routing" protocol
     bolt_url = "%%BOLT_URL_PLACEHOLDER%%"
@@ -97,6 +99,7 @@ if __name__ == "__main__":
     app.create_friendship("Alice", "David")
     app.find_person("Alice")
     app.close()
+# end::driver-introduction-example[]
 
 
 def test_driver_introduction_example(uri, auth):
