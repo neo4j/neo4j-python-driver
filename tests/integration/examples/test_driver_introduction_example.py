@@ -46,8 +46,8 @@ class App:
     def create_friendship(self, person1_name, person2_name):
         with self.driver.session() as session:
             # Write transactions allow the driver to handle retries and transient errors
-            result = session.write_transaction(self._create_and_return_friendship,
-                                               person1_name, person2_name)
+            result = session.write_transaction(
+                self._create_and_return_friendship, person1_name, person2_name)
             for row in result:
                 print("Created friendship between: {p1}, {p2}".format(p1=row['p1'], p2=row['p2']))
 
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     app.close()
 
 
-def test_aura_example(uri, auth):
+def test_driver_introduction_example(uri, auth):
     try:
         s = StringIO()
         with redirect_stdout(s):
