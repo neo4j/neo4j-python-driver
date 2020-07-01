@@ -543,7 +543,7 @@ def test_bolt_driver_read_transaction_fetch_size_config_normal_case(driver_info,
 @pytest.mark.parametrize(
     "test_script, database",
     [
-        ("v4x0/tx_pull_2_discard_all_port_9001.script", "test"),  # TODO: Fix correct new behaviour with qid
+        ("v4x0/tx_pull_2_discard_all_port_9001.script", "test"),
     ]
 )
 def test_bolt_driver_explicit_transaction_consume_result_case_a(driver_info, test_script, database):
@@ -561,7 +561,7 @@ def test_bolt_driver_explicit_transaction_consume_result_case_a(driver_info, tes
 @pytest.mark.parametrize(
     "test_script, database",
     [
-        ("v4x0/tx_pull_2_discard_all_port_9001.script", "test"),  # TODO: Fix correct new behaviour with qid
+        ("v4x0/tx_pull_2_discard_all_port_9001.script", "test"),
     ]
 )
 def test_bolt_driver_explicit_transaction_consume_result_case_b(driver_info, test_script, database):
@@ -575,3 +575,21 @@ def test_bolt_driver_explicit_transaction_consume_result_case_b(driver_info, tes
                 result = transaction.run("UNWIND [1,2,3,4] AS x RETURN x")
                 result.consume()
                 transaction.commit()
+
+
+@pytest.mark.parametrize(
+    "test_script",
+    [
+        "v4x1/return_1_noop_port_9001.script",
+    ]
+)
+def test_direct_can_handle_noop(driver_info, test_script):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_can_handle_noop
+    with StubCluster(test_script):
+        uri = "bolt://127.0.0.1:9001"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
+            assert isinstance(driver, BoltDriver)
+            with driver.session(fetch_size=2, default_access_mode=READ_ACCESS) as session:
+                result = session.run("RETURN 1 AS x")
+                value = result.single().value()
+                assert value == 1

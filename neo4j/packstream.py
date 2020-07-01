@@ -23,7 +23,6 @@ from codecs import decode
 from io import BytesIO
 from struct import pack as struct_pack, unpack as struct_unpack
 
-
 PACKED_UINT_8 = [struct_pack(">B", value) for value in range(0x100)]
 PACKED_UINT_16 = [struct_pack(">H", value) for value in range(0x10000)]
 

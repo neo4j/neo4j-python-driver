@@ -24,6 +24,9 @@ from neo4j.packstream import (
     Unpacker,
 )
 
+import logging
+log = logging.getLogger("neo4j")
+
 
 class MessageInbox:
 
@@ -53,6 +56,9 @@ class MessageInbox:
                 while chunk_size != 0:
                     chunk_size = next(chunk_loader)
                 size, tag = unpacker.unpack_structure_header()
+                if tag is None:
+                    log.debug("[#%04X]  S: <NOOP>", sock.getsockname()[1])
+                    continue
                 fields = [unpacker.unpack() for _ in range(size)]
                 yield tag, fields
         except OSError as error:

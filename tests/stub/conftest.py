@@ -28,11 +28,11 @@ from time import sleep
 from boltkit.server.stub import BoltStubService
 from pytest import fixture
 
-# import logging
+import logging
+log = logging.getLogger("neo4j")
+
 # from neo4j.debug import watch
 # watch("neo4j")
-#
-# log = logging.getLogger("neo4j")
 
 
 class StubServer:
@@ -44,16 +44,17 @@ class StubServer:
     def run(self):
         self._process = subprocess.Popen(["python", "-m", "boltkit", "stub", "-v", "-l", ":{}".format(str(self.port)), "-t", "10", self.script], stdout=subprocess.PIPE)
         # Need verbose for this to work
-        line =self._process.stdout.readline()
+        line = self._process.stdout.readline()
 
     def wait(self):
         try:
             returncode = self._process.wait(2)
             if returncode != 0:
-                print("Stubserver failed with error")
+                log.debug("stubserver return code {}".format(returncode))
+                log.debug("check for miss match in script")
             return returncode == 0
         except subprocess.TimeoutExpired:
-            print("Stubserver timeout!")
+            log.debug("stubserver timeout!")
             return False
 
     def kill(self):

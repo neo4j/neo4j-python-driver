@@ -35,10 +35,10 @@ from neo4j._exceptions import BoltHandshakeError
 from neo4j.io import Bolt
 
 # import logging
+# log = logging.getLogger("neo4j")
+#
 # from neo4j.debug import watch
 # watch("neo4j")
-#
-# log = logging.getLogger("neo4j")
 
 NEO4J_RELEASES = getenv("NEO4J_RELEASES", "snapshot-enterprise 3.5-enterprise").split()
 NEO4J_HOST = "localhost"
