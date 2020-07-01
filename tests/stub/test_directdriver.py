@@ -94,6 +94,7 @@ def test_bolt_uri_constructs_bolt_driver(driver_info, test_script):
         # ("v2/empty_explicit_hello_goodbye.script", ServiceUnavailable), # skip: cant close stub server gracefully
         ("v3/empty_explicit_hello_goodbye.script", None),
         ("v4x0/empty_explicit_hello_goodbye.script", None),
+        ("v4x1/empty_explicit_hello_goodbye.script", None),
     ]
 )
 def test_direct_driver_handshake_negotiation(driver_info, test_script, test_expected):
