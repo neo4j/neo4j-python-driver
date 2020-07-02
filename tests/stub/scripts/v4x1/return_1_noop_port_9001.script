@@ -1,0 +1,15 @@
+!: BOLT 4.1
+!: AUTO GOODBYE
+!: AUTO RESET
+!: PORT 9001
+
+C: HELLO {"user_agent": "test", "scheme": "basic", "principal": "test", "credentials": "test"}
+S: SUCCESS {"server": "Neo4j/4.1.0", "connection_id": "123e4567-e89b-12d3-a456-426655440000"}
+C: RUN "RETURN 1 AS x" {} {"mode": "r"}
+   PULL {"n": 2}
+S: SUCCESS {"fields": ["x"]}
+   <NOOP>
+   <NOOP>
+   RECORD [1]
+   <NOOP>
+   SUCCESS {"bookmark": "neo4j:bookmark-test-1", "type": "r", "t_last": 5, "db": "neo4j"}

@@ -24,6 +24,9 @@ from neo4j.packstream import (
     Unpacker,
 )
 
+import logging
+log = logging.getLogger("neo4j")
+
 
 class MessageInbox:
 
@@ -31,30 +34,31 @@ class MessageInbox:
         self.on_error = on_error
         self._messages = self._yield_messages(s)
 
-    @classmethod
-    def _load_chunks(cls, sock, buffer):
-        chunk_size = 0
-        while True:
-            if chunk_size == 0:
-                buffer.receive(sock, 2)
-            chunk_size = buffer.pop_u16()
-            if chunk_size > 0:
-                buffer.receive(sock, chunk_size + 2)
-            yield chunk_size
-
     def _yield_messages(self, sock):
         try:
             buffer = UnpackableBuffer()
-            chunk_loader = self._load_chunks(sock, buffer)
             unpacker = Unpacker(buffer)
+            chunk_size = 0
             while True:
-                unpacker.reset()
-                chunk_size = -1
-                while chunk_size != 0:
-                    chunk_size = next(chunk_loader)
-                size, tag = unpacker.unpack_structure_header()
-                fields = [unpacker.unpack() for _ in range(size)]
-                yield tag, fields
+
+                while chunk_size == 0:
+                    # Determine the chunk size and skip noop
+                    buffer.receive(sock, 2)
+                    chunk_size = buffer.pop_u16()
+                    if chunk_size == 0:
+                        log.debug("[#%04X]  S: <NOOP>", sock.getsockname()[1])
+
+                buffer.receive(sock, chunk_size + 2)
+                chunk_size = buffer.pop_u16()
+
+                if chunk_size == 0:
+                    # chunk_size was the end marker for the message
+                    size, tag = unpacker.unpack_structure_header()
+                    fields = [unpacker.unpack() for _ in range(size)]
+                    yield tag, fields
+                    # Reset for new message
+                    unpacker.reset()
+
         except OSError as error:
             self.on_error(error)
 
