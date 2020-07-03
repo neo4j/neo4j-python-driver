@@ -110,9 +110,9 @@ class Record(tuple, Mapping):
         """ Obtain a value from the record by key, returning a default
         value if the key does not exist.
 
-        :param key:
-        :param default:
-        :return:
+        :param key: a key
+        :param default: default value
+        :return: a value
         """
         try:
             index = self.__keys.index(str(key))
@@ -126,8 +126,9 @@ class Record(tuple, Mapping):
     def index(self, key):
         """ Return the index of the given item.
 
-        :param key:
-        :return:
+        :param key: a key
+        :return: index
+        :rtype: int
         """
         if isinstance(key, int):
             if 0 <= key < len(self.__keys):
@@ -146,9 +147,9 @@ class Record(tuple, Mapping):
         index or key is specified, the first value is returned. If the
         specified item does not exist, the default value is returned.
 
-        :param key:
-        :param default:
-        :return:
+        :param key: an index or key
+        :param default: default value
+        :return: a single value
         """
         try:
             index = self.index(key)
@@ -171,6 +172,7 @@ class Record(tuple, Mapping):
         :param keys: indexes or keys of the items to include; if none
                      are provided, all values will be included
         :return: list of values
+        :rtype: list
         """
         if keys:
             d = []
@@ -187,7 +189,8 @@ class Record(tuple, Mapping):
     def items(self, *keys):
         """ Return the fields of the record as a list of key and value tuples
 
-        :return:
+        :return: a list of value tuples
+        :rtype: list
         """
         if keys:
             d = []

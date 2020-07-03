@@ -291,3 +291,21 @@ def test_single_indexed_values(session):
 def test_single_keyed_values(session):
     result = session.run("RETURN 1 AS x, 2 AS y, 3 AS z")
     assert result.single().values("z", "x") == [3, 1]
+
+
+def test_result_with_helper_function_value(session):
+
+    def f(tx):
+        result = tx.run("UNWIND range(1, 3) AS n RETURN n")
+        assert result.value(0) == [1, 2, 3]
+
+    session.read_transaction(f)
+
+
+def test_result_with_helper_function_values(session):
+
+    def f(tx):
+        result = tx.run("UNWIND range(1, 3) AS n RETURN n, 0")
+        assert result.values(0, 1) == [[1, 0], [2, 0], [3, 0]]
+
+    session.read_transaction(f)
