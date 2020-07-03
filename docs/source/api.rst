@@ -633,6 +633,11 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`n
 
        **This is experimental.**
 
+    .. automethod:: value
+
+    .. automethod:: values
+
+    .. automethod:: data
 
 See https://neo4j.com/docs/driver-manual/current/cypher-workflow/#driver-type-mapping for more about type mapping.
 
@@ -698,6 +703,8 @@ Record
         Derive a sub-record based on a start and end index.
         All keys and values within those bounds will be copied across in the same order as in the original record.
 
+    .. automethod:: keys
+
     .. describe:: record[key]
 
         Obtain a value from the record by key.
@@ -705,15 +712,13 @@ Record
 
     .. automethod:: get(key, default=None)
 
-    .. automethod:: value(key=0, default=None)
-
     .. automethod:: index(key)
 
-    .. automethod:: keys
+    .. automethod:: items
+
+    .. automethod:: value(key=0, default=None)
 
     .. automethod:: values
-
-    .. automethod:: items
 
     .. automethod:: data
 

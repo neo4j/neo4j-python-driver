@@ -227,6 +227,7 @@ class Result:
         """The keys for the records in this result.
 
         :returns: tuple of key names
+        :rtype: tuple
         """
         return self._keys
 
@@ -249,7 +250,7 @@ class Result:
         A warning is generated if more than one record is available but
         the first of these is still returned.
 
-        :returns: the next :class:`.Record` or :const:`None` if none remain
+        :returns: the next :class:`neo4j.Record` or :const:`None` if none remain
         :warns: if more than one record is available
         """
         records = list(self)  # TODO: exhausts the result with self.consume if there are more records.
@@ -277,42 +278,47 @@ class Result:
 
         return None
 
-    # See Record class for available methods.
-
-    # NOT IN THE API
-
     def graph(self):
-        """Return a Graph instance containing all the graph objects
+        """Return a :class:`neo4j.graph.Graph` instance containing all the graph objects
         in the result. After calling this method, the result becomes
         detached, buffering all remaining records.
 
-        :returns: result graph
+        :returns: a result graph
+        :rtype: :class:`neo4j.graph.Graph`
         """
         self._buffer_all()
         return self._hydrant.graph
 
-    # def value(self, item=0, default=None):
-    #     """Return the remainder of the result as a list of values.
-    #
-    #     :param item: field to return for each remaining record
-    #     :param default: default value, used if the index of key is unavailable
-    #     :returns: list of individual values
-    #     """
-    #     return [record.value(item, default) for record in self._records()]
+    def value(self, key=0, default=None):
+        """Helper function that return the remainder of the result as a list of values.
 
-    # def values(self, *items):
-    #     """Return the remainder of the result as a list of tuples.
-    #
-    #     :param items: fields to return for each remaining record
-    #     :returns: list of value tuples
-    #     """
-    #     return [record.values(*items) for record in self._records()]
+        See :class:`neo4j.Record.value`
 
-    # def data(self, *items):
-    #     """Return the remainder of the result as a list of dictionaries.
-    #
-    #     :param items: fields to return for each remaining record
-    #     :returns: list of dictionaries
-    #     """
-    #     return [record.data(*items) for record in self]
+        :param key: field to return for each remaining record. Obtain a single value from the record by index or key.
+        :param default: default value, used if the index of key is unavailable
+        :returns: list of individual values
+        :rtype: list
+        """
+        return [record.value(key, default) for record in self]
 
+    def values(self, *keys):
+        """Helper function that return the remainder of the result as a list of tuples.
+
+        See :class:`neo4j.Record.values`
+
+        :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
+        :returns: list of value tuples
+        :rtype: list
+        """
+        return [record.values(*keys) for record in self]
+
+    def data(self, *keys):
+        """Helper function that return the remainder of the result as a list of dictionaries.
+
+        See :class:`neo4j.Record.data`
+
+        :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
+        :returns: list of dictionaries
+        :rtype: list
+        """
+        return [record.data(*keys) for record in self]

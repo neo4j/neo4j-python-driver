@@ -25,6 +25,11 @@ def test_data_with_one_key_and_no_records(session):
     assert data == []
 
 
+def test_data_with_one_key_and_no_records_with_helper_function(session):
+    result = session.run("UNWIND range(1, 0) AS n RETURN n")
+    assert result.data() == []
+
+
 def test_multiple_data(session):
     result = session.run("UNWIND range(1, 3) AS n "
                          "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
@@ -32,11 +37,23 @@ def test_multiple_data(session):
     assert data == [{"x": 1, "y": 2, "z": 3}, {"x": 2, "y": 4, "z": 6}, {"x": 3, "y": 6, "z": 9}]
 
 
+def test_multiple_data_with_helper_function(session):
+    result = session.run("UNWIND range(1, 3) AS n "
+                         "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
+    assert result.data() == [{"x": 1, "y": 2, "z": 3}, {"x": 2, "y": 4, "z": 6}, {"x": 3, "y": 6, "z": 9}]
+
+
 def test_multiple_indexed_data(session):
     result = session.run("UNWIND range(1, 3) AS n "
                          "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
     data = [record.data(2, 0) for record in result]
     assert data == [{"x": 1, "z": 3}, {"x": 2, "z": 6}, {"x": 3, "z": 9}]
+
+
+def test_multiple_indexed_data_with_helper_function(session):
+    result = session.run("UNWIND range(1, 3) AS n "
+                         "RETURN 1 * n AS x, 2 * n AS y, 3 * n AS z")
+    assert result.data(2, 0) == [{"x": 1, "z": 3}, {"x": 2, "z": 6}, {"x": 3, "z": 9}]
 
 
 def test_multiple_keyed_data(session):
