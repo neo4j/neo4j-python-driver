@@ -302,12 +302,12 @@ class Result:
         return [record.value(key, default) for record in self]
 
     def values(self, *keys):
-        """Helper function that return the remainder of the result as a list of tuples.
+        """Helper function that return the remainder of the result as a list of values lists.
 
         See :class:`neo4j.Record.values`
 
         :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
-        :returns: list of value tuples
+        :returns: list of values lists
         :rtype: list
         """
         return [record.values(*keys) for record in self]
