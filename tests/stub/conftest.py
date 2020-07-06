@@ -21,6 +21,7 @@
 
 import subprocess
 import os
+import time
 
 from threading import Thread
 from time import sleep
@@ -44,18 +45,20 @@ class StubServer:
     def run(self):
         self._process = subprocess.Popen(["python", "-m", "boltkit", "stub", "-v", "-l", ":{}".format(str(self.port)), "-t", "10", self.script], stdout=subprocess.PIPE)
         # Need verbose for this to work
-        line = self._process.stdout.readline()
+        line = self._process.stdout.readline().decode("utf-8")
+        log.debug("started stub server {}".format(self.port))
+        log.debug(line.strip("\n"))
 
     def wait(self):
-        try:
-            returncode = self._process.wait(2)
-            if returncode != 0:
-                log.debug("stubserver return code {}".format(returncode))
-                log.debug("check for miss match in script")
-            return returncode == 0
-        except subprocess.TimeoutExpired:
-            log.debug("stubserver timeout!")
-            return False
+        while True:
+            return_code = self._process.poll()
+            if return_code is not None:
+                line = self._process.stdout.readline().decode("utf-8")
+                if line == "":
+                    break
+                log.debug(line.strip("\n"))
+
+        return True
 
     def kill(self):
         # Kill process if not already dead
@@ -129,6 +132,7 @@ class DefaultBoltStubService(BoltStubService):
 class StubCluster(StubCluster):
 
     def __init__(self, *servers):
+        print("")
         scripts = [os.path.join(os.path.dirname(__file__), "scripts", server) for server in servers]
 
         bss = DefaultBoltStubService.load(*scripts)

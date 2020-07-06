@@ -1,0 +1,12 @@
+!: BOLT 4.1
+!: AUTO GOODBYE
+!: AUTO RESET
+!: PORT 9001
+
+C: HELLO {"scheme": "basic", "principal": "test", "credentials": "test", "user_agent": "test", "routing": {"address": "localhost:9001", "policy": "my_policy", "region": "china"}}
+S: SUCCESS {"server": "Neo4j/4.1.0", "connection_id": "bolt-123456789"}
+C: RUN "CALL dbms.routing.getRoutingTable($context)" {"context": {"address": "localhost:9001", "policy": "my_policy", "region": "china"}} {"mode": "r", "db": "system"}
+   PULL {"n": -1}
+S: SUCCESS {"fields": ["ttl", "servers"]}
+   RECORD [4321, [{"addresses": ["127.0.0.1:9001"],"role": "WRITE"}, {"addresses": ["127.0.0.1:9001", "127.0.0.1:9002"], "role": "READ"}, {"addresses": ["127.0.0.1:9001", "127.0.0.1:9002"], "role": "ROUTE"}]]
+   SUCCESS {"bookmark": "neo4j:bookmark-test-1", "type": "r", "t_last": 5, "db": "system"}

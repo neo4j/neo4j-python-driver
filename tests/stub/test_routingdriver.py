@@ -648,3 +648,23 @@ def test_forgets_address_on_database_unavailable_error(driver_info, test_scripts
                 # reader 127.0.0.1:9004 should've been forgotten because of an raised
                 assert not table.readers
                 assert table.writers == {('127.0.0.1', 9006)}
+
+
+@pytest.mark.parametrize(
+    "test_scripts",
+    [
+        ("v4x1/router_get_routing_table_with_context.script", "v4x1/hello_with_routing_context_return_1_port_9002.script",),
+    ]
+)
+def test_hello_routing(driver_info, test_scripts):
+    # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_hello_routing
+    with StubCluster(*test_scripts):
+        uri = "neo4j://localhost:9001/?region=china&policy=my_policy"
+        with GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test") as driver:
+            with driver.session(default_access_mode=READ_ACCESS, fetch_size=-1) as session:
+                result = session.run("RETURN 1 AS x")
+                for record in result:
+                    assert record["x"] == 1
+                address = result.consume().server.address
+                assert address.host == "127.0.0.1"
+                assert address.port == 9002

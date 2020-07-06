@@ -75,7 +75,7 @@ class Bolt4x0(Bolt):
     #: The pool of which this connection is a member
     pool = None
 
-    def __init__(self, unresolved_address, sock, max_connection_lifetime, *, auth=None, user_agent=None):
+    def __init__(self, unresolved_address, sock, max_connection_lifetime, *, auth=None, user_agent=None, routing_context=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
         self.server_info = ServerInfo(Address(sock.getpeername()), Bolt4x0.PROTOCOL_VERSION)
@@ -89,6 +89,7 @@ class Bolt4x0(Bolt):
         self.supports_multiple_results = True
         self.supports_multiple_databases = True
         self._is_reset = True
+        self.routing_context = routing_context
 
         # Determine the user agent
         if user_agent:
