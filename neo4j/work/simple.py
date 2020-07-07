@@ -192,7 +192,7 @@ class Session(Workspace):
         :type parameters: dict
         :param kwparameters: additional keyword parameters
         :returns: a new :class:`neo4j.Result` object
-        :type: :class:`neo4j.Result`
+        :rtype: :class:`neo4j.Result`
         """
         if not query:
             raise ValueError("Cannot run an empty query")

@@ -1,0 +1,10 @@
+!: BOLT 4.1
+!: PORT 9001
+
+C: HELLO {"user_agent": "test", "scheme": "basic", "principal": "test", "credentials": "test", "routing": {"address": "localhost:9001"}}
+S: SUCCESS {"server": "Bogus/4.1.0", "connection_id": "123e4567-e89b-12d3-a456-426655440000"}
+C: RUN "RETURN 1 AS x" {} {"mode": "r"}
+   PULL {"n": -1}
+S: SUCCESS {"fields": ["x"]}
+   RECORD [1]
+   SUCCESS {"bookmark": "neo4j:bookmark-test-1", "type": "r", "t_last": 5, "db": "neo4j"}

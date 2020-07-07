@@ -143,8 +143,7 @@ class Bolt4x1(Bolt):
         if "credentials" in logged_headers:
             logged_headers["credentials"] = "*******"
         log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
-        self._append(b"\x01", (headers,),
-                     response=InitResponse(self, on_success=self.server_info.metadata.update))
+        self._append(b"\x01", (headers,), response=InitResponse(self, on_success=self.server_info._update_metadata))
         self.send_all()
         self.fetch_all()
 

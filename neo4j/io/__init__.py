@@ -218,7 +218,14 @@ class Bolt:
             supported_versions = Bolt.protocol_handlers().keys()
             raise BoltHandshakeError("The Neo4J server does not support communication with this driver. This driver have support for Bolt Protocols {}".format(supported_versions), address=address, request_data=handshake, response_data=data)
 
-        connection.hello()
+        try:
+            connection.hello()
+        except Exception as error:
+            log.debug("[#%04X]  C: <CLOSE> %s", s.getsockname()[1], str(error))
+            s.shutdown(SHUT_RDWR)
+            s.close()
+            raise error
+
         return connection
 
     @property
