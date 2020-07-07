@@ -27,6 +27,7 @@ from neo4j.api import (
     Version,
     READ_ACCESS,
     WRITE_ACCESS,
+    DEFAULT_DATABASE,
 )
 from neo4j.io._courier import MessageInbox
 from neo4j.meta import get_user_agent
@@ -176,6 +177,17 @@ class Bolt3(Bolt):
         else:
             self._append(b"\x10", fields, Response(self, **handlers))
         self._is_reset = False
+
+    def run_get_routing_table(self, on_success, on_failure, database=DEFAULT_DATABASE):
+        if database != DEFAULT_DATABASE:
+            raise ConfigurationError("Database name parameter for selecting database is not supported in Bolt Protocol {!r}. Database name {!r}. Server Agent {!r}.".format(Bolt3.PROTOCOL_VERSION, database, self.server_info.agent))
+        self.run(
+            "CALL dbms.cluster.routing.getRoutingTable($context)",  # This is an internal procedure call. Only available if the Neo4j 3.5 is setup with clustering.
+            {"context": self.routing_context},
+            mode="r",                                               # Bolt Protocol Version(3, 0) supports mode="r"
+            on_success=on_success,
+            on_failure=on_failure,
+        )
 
     def discard(self, n=-1, qid=-1, **handlers):
         # Just ignore n and qid, it is not supported in the Bolt 3 Protocol.

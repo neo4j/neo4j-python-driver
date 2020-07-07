@@ -27,6 +27,8 @@ from neo4j.api import (
     Version,
     READ_ACCESS,
     WRITE_ACCESS,
+    DEFAULT_DATABASE,
+    SYSTEM_DATABASE,
 )
 from neo4j.io._courier import MessageInbox
 from neo4j.meta import get_user_agent
@@ -175,6 +177,26 @@ class Bolt4x0(Bolt):
         else:
             self._append(b"\x10", fields, Response(self, **handlers))
         self._is_reset = False
+
+    def run_get_routing_table(self, on_success, on_failure, database=DEFAULT_DATABASE):
+        if database == DEFAULT_DATABASE:
+            self.run(
+                "CALL dbms.routing.getRoutingTable($context)",
+                {"context": self.routing_context},
+                mode="r",
+                db=SYSTEM_DATABASE,
+                on_success=on_success,
+                on_failure=on_failure,
+            )
+        else:
+            self.run(
+                "CALL dbms.routing.getRoutingTable($context, $database)",
+                {"context": self.routing_context, "database": database},
+                mode="r",
+                db=SYSTEM_DATABASE,
+                on_success=on_success,
+                on_failure=on_failure,
+            )
 
     def discard(self, n=-1, qid=-1, **handlers):
         extra = {"n": n}
