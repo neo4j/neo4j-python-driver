@@ -686,43 +686,12 @@ class Neo4jPool(IOPool):
 
         try:
             with self._acquire(address, timeout) as cx:
-                _, _, server_version = (cx.server_info.agent or "").partition("/")
                 log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
 
                 if database is None:
                     database = self.workspace_config.database
 
-                # TODO: This logic should be inside the Bolt subclasses, because it can change depending on Bolt Protocol Version.
-                if cx.PROTOCOL_VERSION == Bolt3.PROTOCOL_VERSION:
-                    if database != DEFAULT_DATABASE:
-                        raise ConfigurationError("Database name parameter for selecting database is not supported in Bolt Protocol {!r}. Database name {!r}. Server Agent {!r}.".format(
-                                Bolt3.PROTOCOL_VERSION, database, cx.server_info.agent))
-                    cx.run(
-                        "CALL dbms.cluster.routing.getRoutingTable($context)",  # This is an internal procedure call. Only available if the Neo4j 3.5 is setup with clustering.
-                        {"context": self.routing_context},
-                        mode="r",  # Bolt Protocol Version(3, 0) supports mode
-                        on_success=metadata.update,
-                        on_failure=fail,
-                    )
-                elif cx.PROTOCOL_VERSION in (Bolt4x0.PROTOCOL_VERSION, Bolt4x1.PROTOCOL_VERSION):
-                    if database == DEFAULT_DATABASE:
-                        cx.run(
-                            "CALL dbms.routing.getRoutingTable($context)",
-                            {"context": self.routing_context},
-                            mode="r",
-                            db=SYSTEM_DATABASE,
-                            on_success=metadata.update,
-                            on_failure=fail,
-                        )
-                    else:
-                        cx.run(
-                            "CALL dbms.routing.getRoutingTable($context, $database)",
-                            {"context": self.routing_context, "database": database},
-                            mode="r",
-                            db=SYSTEM_DATABASE,
-                            on_success=metadata.update,
-                            on_failure=fail,
-                        )
+                cx.run_get_routing_table(on_success=metadata.update, on_failure=fail, database=database)
                 cx.pull(on_success=metadata.update, on_records=records.extend)
                 cx.send_all()
                 cx.fetch_all()
