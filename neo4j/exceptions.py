@@ -124,6 +124,9 @@ class Neo4jError(Exception):
         else:
             return cls
 
+    def __str__(self):
+        return "{{code: {code}}} {{message: {message}}}".format(code=self.code, message=self.message)
+
 
 class ClientError(Neo4jError):
     """ The Client sent a bad request - changing the request might yield a successful outcome.
