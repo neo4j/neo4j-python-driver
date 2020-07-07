@@ -1,4 +1,5 @@
 !: BOLT 4
+!: PORT 9001
 
 C: HELLO {"user_agent": "test", "scheme": "basic", "principal": "test", "credentials": "test"}
 S: SUCCESS {"server": "Neo4j/4.0.0", "connection_id": "123e4567-e89b-12d3-a456-426655440000"}

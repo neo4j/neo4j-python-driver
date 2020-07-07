@@ -177,12 +177,13 @@ class Bolt:
             return protocol_version
 
     @classmethod
-    def open(cls, address, *, auth=None, timeout=None, **pool_config):
+    def open(cls, address, *, auth=None, timeout=None, routing_context=None, **pool_config):
         """ Open a new Bolt connection to a given server address.
 
         :param address:
         :param auth:
-        :param timeout: The connection timeout
+        :param timeout: the connection timeout in seconds
+        :param routing_context: dict containing routing context
         :param pool_config:
         :return:
         :raise BoltHandshakeError: raised if the Bolt Protocol can not negotiate a protocol version.
@@ -200,15 +201,15 @@ class Bolt:
         if pool_config.protocol_version == (3, 0):
             # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt3 import Bolt3
-            connection = Bolt3(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent)
+            connection = Bolt3(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
         elif pool_config.protocol_version == (4, 0):
             # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt4x0 import Bolt4x0
-            connection = Bolt4x0(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent)
+            connection = Bolt4x0(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
         elif pool_config.protocol_version == (4, 1):
             # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt4x1 import Bolt4x1
-            connection = Bolt4x1(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent)
+            connection = Bolt4x1(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
             s.shutdown(SHUT_RDWR)
@@ -499,27 +500,35 @@ class IOPool:
 class BoltPool(IOPool):
 
     @classmethod
-    def open(cls, address, *, auth, pool_config, workspace_config):
+    def open(cls, address, *, auth, pool_config, workspace_config, routing_context=None):
         """Create a new BoltPool
 
         :param address:
         :param auth:
         :param pool_config:
         :param workspace_config:
+        :param routing_context:
         :return: BoltPool
         """
 
-        def opener(addr, timeout):
-            return Bolt.open(addr, auth=auth, timeout=timeout, **pool_config)
+        if routing_context is None:
+            routing_context = {}
+        elif "address" in routing_context:
+            raise ConfigurationError("The key 'address' is reserved for routing context.")
+        routing_context["address"] = str(address)
 
-        pool = cls(opener, pool_config, workspace_config, address)
+        def opener(addr, timeout):
+            return Bolt.open(addr, auth=auth, timeout=timeout, routing_context=routing_context, **pool_config)
+
+        pool = cls(opener, pool_config, workspace_config, routing_context, address)
         seeds = [pool.acquire() for _ in range(pool_config.init_size)]
         pool.release(*seeds)
         return pool
 
-    def __init__(self, opener, pool_config, workspace_config, address):
+    def __init__(self, opener, pool_config, workspace_config, routing_context, address):
         super(BoltPool, self).__init__(opener, pool_config, workspace_config)
         self.address = address
+        self.routing_context = routing_context
 
     def __repr__(self):
         return "<{} address={!r}>".format(self.__class__.__name__, self.address)
@@ -545,10 +554,17 @@ class Neo4jPool(IOPool):
         :return: Neo4jPool
         """
 
-        def opener(addr, timeout):
-            return Bolt.open(addr, auth=auth, timeout=timeout, **pool_config)
+        address = addresses[0]
+        if routing_context is None:
+            routing_context = {}
+        elif "address" in routing_context:
+            raise ConfigurationError("The key 'address' is reserved for routing context.")
+        routing_context["address"] = str(address)
 
-        pool = cls(opener, pool_config, workspace_config, routing_context, addresses)
+        def opener(addr, timeout):
+            return Bolt.open(addr, auth=auth, timeout=timeout, routing_context=routing_context, **pool_config)
+
+        pool = cls(opener, pool_config, workspace_config, routing_context, address)
 
         try:
             pool.update_routing_table(database=workspace_config.database)
@@ -558,7 +574,7 @@ class Neo4jPool(IOPool):
         else:
             return pool
 
-    def __init__(self, opener, pool_config, workspace_config, routing_context, addresses):
+    def __init__(self, opener, pool_config, workspace_config, routing_context, address):
         """
 
         :param opener:
@@ -569,15 +585,10 @@ class Neo4jPool(IOPool):
         """
         super(Neo4jPool, self).__init__(opener, pool_config, workspace_config)
         # Each database have a routing table, the default database is a special case.
-        log.debug("[#0000]  C: <NEO4J POOL> routing addresses %r", addresses)
-        self.init_address = addresses[0]
-        self.routing_tables = {workspace_config.database: RoutingTable(database=workspace_config.database, routers=addresses)}
+        log.debug("[#0000]  C: <NEO4J POOL> routing address %r", address)
+        self.address = address
+        self.routing_tables = {workspace_config.database: RoutingTable(database=workspace_config.database, routers=[address])}
         self.routing_context = routing_context
-        if self.routing_context is None:
-            self.routing_context = {}
-        elif "address" in self.routing_context:
-            raise ConfigurationError("The key 'address' is reserved for routing context.")
-        self.routing_context["address"] = str(self.init_address)
         self.refresh_lock = Lock()
 
     def __repr__(self):
@@ -621,7 +632,7 @@ class Neo4jPool(IOPool):
         :param address: router address
         :param timeout: seconds
         :param database: the data base name to get routing table for
-        :param init_address: the address by which the client initially contacted the server as a hint for inclusion in the returned routing table.
+        :param address: the address by which the client initially contacted the server as a hint for inclusion in the returned routing table.
 
         :return: list of routing records or
                  None if no connection could be established

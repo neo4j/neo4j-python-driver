@@ -100,7 +100,7 @@ def test_bolt_uri_constructs_bolt_driver(driver_info, test_script):
 def test_direct_driver_handshake_negotiation(driver_info, test_script, test_expected):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_driver_handshake_negotiation
     with StubCluster(test_script):
-        uri = "bolt://127.0.0.1:9001"
+        uri = "bolt://localhost:9001"
         if test_expected:
             with pytest.raises(test_expected) as error:
                 driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
@@ -586,7 +586,7 @@ def test_bolt_driver_explicit_transaction_consume_result_case_b(driver_info, tes
 def test_direct_can_handle_noop(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_can_handle_noop
     with StubCluster(test_script):
-        uri = "bolt://127.0.0.1:9001"
+        uri = "bolt://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
             assert isinstance(driver, BoltDriver)
             with driver.session(fetch_size=2, default_access_mode=READ_ACCESS) as session:
