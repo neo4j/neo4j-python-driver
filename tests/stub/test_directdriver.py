@@ -24,6 +24,7 @@ import pytest
 from neo4j.exceptions import (
     ServiceUnavailable,
     ConfigurationError,
+    DriverError,
 )
 from neo4j._exceptions import (
     BoltHandshakeError,
@@ -88,27 +89,47 @@ def test_bolt_uri_constructs_bolt_driver(driver_info, test_script):
 
 
 @pytest.mark.parametrize(
-    "test_script, test_expected",
+    "test_script",
     [
-        # ("v1/empty_explicit_hello_goodbye.script", ServiceUnavailable), # skip: cant close stub server gracefully
-        # ("v2/empty_explicit_hello_goodbye.script", ServiceUnavailable), # skip: cant close stub server gracefully
-        ("v3/empty_explicit_hello_goodbye.script", None),
-        ("v4x0/empty_explicit_hello_goodbye.script", None),
-        ("v4x1/empty_explicit_hello_goodbye.script", None),
+        "v3/empty_explicit_hello_goodbye.script",
+        "v4x0/empty_explicit_hello_goodbye.script",
+        "v4x1/empty_explicit_hello_goodbye.script",
     ]
 )
-def test_direct_driver_handshake_negotiation(driver_info, test_script, test_expected):
+def test_direct_driver_handshake_negotiation(driver_info, test_script):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_driver_handshake_negotiation
     with StubCluster(test_script):
         uri = "bolt://localhost:9001"
-        if test_expected:
-            with pytest.raises(test_expected) as error:
-                driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
-            assert isinstance(error.value.__cause__, BoltHandshakeError)
-        else:
-            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
+        driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
+        assert isinstance(driver, BoltDriver)
+        driver.close()
+
+
+@pytest.mark.parametrize(
+    "test_script, test_expected",
+    [
+        ("v3/return_1_port_9001.script", "Neo4j/3.0.0"),
+        ("v4x0/return_1_port_9001.script", "Neo4j/4.0.0"),
+        ("v4x1/return_1_port_9001_bogus_server.script", DriverError),
+    ]
+)
+def test_return_1_as_x(driver_info, test_script, test_expected):
+    # python -m pytest tests/stub/test_directdriver.py -s -v -k test_return_1_as_x
+    with StubCluster(test_script):
+        uri = "bolt://localhost:9001"
+        try:
+            driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], user_agent="test")
             assert isinstance(driver, BoltDriver)
+            with driver.session(default_access_mode=READ_ACCESS, fetch_size=-1) as session:
+                result = session.run("RETURN 1 AS x")
+                value = result.single().value()
+                assert value == 1
+                summary = result.consume()
+                assert summary.server.agent == test_expected
+                assert summary.server.agent.startswith("Neo4j")
             driver.close()
+        except DriverError as error:
+            assert isinstance(error, test_expected)
 
 
 def test_direct_driver_with_wrong_port(driver_info):
@@ -128,7 +149,7 @@ def test_direct_driver_with_wrong_port(driver_info):
 def test_direct_verify_connectivity(driver_info, test_script, test_expected):
     # python -m pytest tests/stub/test_directdriver.py -s -v -k test_direct_verify_connectivity
     with StubCluster(test_script):
-        uri = "bolt://127.0.0.1:9001"
+        uri = "bolt://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
             assert isinstance(driver, BoltDriver)
             assert driver.verify_connectivity(default_access_mode=READ_ACCESS) == test_expected

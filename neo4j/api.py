@@ -149,6 +149,7 @@ class Bookmark:
         """
         return self._values
 
+
 class ServerInfo:
 
     def __init__(self, address, protocol_version):
@@ -178,9 +179,9 @@ class ServerInfo:
         # Note: Confirm that the server agent string begins with "Neo4j/" and fail gracefully if not.
         # This is intended to help prevent drivers working for non-genuine Neo4j instances.
 
-        neo4j, _, value = self.agent.partition("/")
+        prefix, _, value = self.agent.partition("/")
         try:
-            assert neo4j == "Neo4j"
+            assert prefix in ["Neo4j"]
         except AssertionError:
             raise DriverError("Server name does not start with Neo4j/")
 
@@ -197,6 +198,15 @@ class ServerInfo:
             except ValueError:
                 pass
         return tuple(value)
+
+    def _update_metadata(self, metadata):
+        """Internal, update the metadata and perform check that the prefix is whitelisted by calling self.version()
+
+        :param metadata: metadata from the server
+        :type metadata: dict
+        """
+        self.metadata.update(metadata)
+        _ = self.version_info()
 
 
 class Version(tuple):
