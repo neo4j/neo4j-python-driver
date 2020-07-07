@@ -1112,8 +1112,18 @@ Neo4j Execution Errors
 
 .. autoclass:: neo4j.exceptions.Neo4jError
 
-    Raised when the Cypher engine returns an error to the client.
-    There are many possible types of Cypher error, each identified by a unique `status code <https://neo4j.com/docs/status-codes/current/>`_.
+    .. autoproperty:: message
+
+    .. autoproperty:: code
+
+    There are many Neo4j status codes, see `status code <https://neo4j.com/docs/status-codes/current/>`_.
+
+    .. autoproperty:: classification
+
+    .. autoproperty:: category
+
+    .. autoproperty:: title
+
 
 .. autoclass:: neo4j.exceptions.ClientError
     :show-inheritance:
