@@ -39,8 +39,7 @@ from neo4j._exceptions import BoltHandshakeError
 class App:
 
     def __init__(self, uri, user, password):
-        # Aura queries use an encrypted connection
-        self.driver = GraphDatabase.driver(uri, auth=(user, password), encrypted=True)
+        self.driver = GraphDatabase.driver(uri, auth=(user, password))
 
     def close(self):
         # Don't forget to close the driver connection when you are finished with it
@@ -90,8 +89,9 @@ class App:
         result = tx.run(query, person_name=person_name)
         return [row["name"] for row in result]
 
+
 if __name__ == "__main__":
-    # Aura uses the "bolt+routing" protocol
+    # Aura queries use an encrypted connection using the "neo4j+s" protocol
     bolt_url = "%%BOLT_URL_PLACEHOLDER%%"
     user = "<Username for Neo4j Aura database>"
     password = "<Password for Neo4j Aura database>"
