@@ -18,9 +18,8 @@ Python versions supported:
 * Python 3.5
 
 .. note::
-    Python 2.7 support has been dropped.
 
-    The previous driver `Python Driver 1.7`_ supports older versions of python, **Neo4j 4.1** will work in fallback mode with that driver.
+    The `Python Driver 1.7`_ supports older versions of python, **Neo4j 4.1** will work in fallback mode with that driver.
 
 
 ******
