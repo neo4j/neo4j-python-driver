@@ -4,10 +4,17 @@
 Breaking Changes
 ****************
 
+This describes the breaking changes between Python Driver 1.7 and Python Driver 4.0
+
 Version Scheme Changes
 ======================
 
 The version number has jumped from **Python Driver 1.7** to **Python Driver 4.0** to align with the Neo4j Database version scheme.
+
+Python Versions
+===============
+
+Python 2.7 is no longer supported.
 
 
 Namespace Changes
@@ -79,13 +86,16 @@ Argument Renaming Changes
 * :code:`StatementResultSummary.statement_type` is now :code:`ResultSummary.query_type`
 * :code:`StatementResultSummary.protocol_version` is now :code:`ResultSummary.server.protocol_version`
 
-
 API Changes
 =========================
 
 * :code:`Result.summary()` has been replaced with :code:`Result.consume()`, this behaviour is to consume all remaining records in the buffer and returns the ResultSummary.
 
-* :code:`Result.data()` has been removed. Use :code:`Record.data()` for each Record when iterating the Result object.
+* :code:`Result.data(*items)` has been changed to :code:`Result.data(*keys)` for alignment with :code:`Record.data(*keys)`.
+
+* :code:`Result.value(item=0, default=None)` has been changed to :code:`Result.value(key=0, default=None)` for alignment with :code:`Record.value(key=0, default=None)`.
+
+* :code:`Result.values(*items)` has been changed to :code:`Result.values(*keys)` for alignment with :code:`Record.values(*keys)`.
 
 * :code:`Transaction.sync()` has been removed. Use :code:`Result.consume()` if the behaviour is to exhaust the result object.
 
