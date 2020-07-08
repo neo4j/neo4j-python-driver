@@ -91,7 +91,7 @@ class App:
 
 
 if __name__ == "__main__":
-    # Aura queries use an encrypted connection using the "neo4j+s" protocol
+    # Aura queries use an encrypted connection using the "neo4j+s" URI scheme
     bolt_url = "%%BOLT_URL_PLACEHOLDER%%"
     user = "<Username for Neo4j Aura database>"
     password = "<Password for Neo4j Aura database>"
