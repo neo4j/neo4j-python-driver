@@ -152,8 +152,7 @@ Example Application
     class App:
 
         def __init__(self, uri, user, password):
-            # Aura queries use an encrypted connection
-            self.driver = GraphDatabase.driver(uri, auth=(user, password), encrypted=True)
+            self.driver = GraphDatabase.driver(uri, auth=(user, password))
 
         def close(self):
             # Don't forget to close the driver connection when you are finished with it
@@ -211,7 +210,7 @@ Example Application
 
     if __name__ == "__main__":
         # See https://neo4j.com/developer/aura-connect-driver/ for Aura specific connection URL.
-        scheme = "neo4j"
+        scheme = "neo4j"  # Connecting to Aura, use the "neo4j+s" URI scheme
         host_name = "example.com"
         port = 7687
         url = "{scheme}://{host_name}:{port}".format(scheme=scheme, host_name=host_name, port=port)
