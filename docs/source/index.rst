@@ -176,12 +176,12 @@ Example Application
             # The Reference Card is also a good resource for keywords,
             # see https://neo4j.com/docs/cypher-refcard/current/
 
-            query = """
-            CREATE (p1:Person { name: $person1_name })
-            CREATE (p2:Person { name: $person2_name })
-            CREATE (p1)-[:KNOWS]->(p2)
-            RETURN p1, p2
-            """
+            query = (
+                "CREATE (p1:Person { name: $person1_name }) "
+                "CREATE (p2:Person { name: $person2_name }) "
+                "CREATE (p1)-[:KNOWS]->(p2) "
+                "RETURN p1, p2"
+            )
             result = tx.run(query, person1_name=person1_name, person2_name=person2_name)
             try:
                 return [{"p1": record["p1"]["name"], "p2": record["p2"]["name"]}
@@ -200,11 +200,11 @@ Example Application
 
         @staticmethod
         def _find_and_return_person(tx, person_name):
-            query = """
-            MATCH (p:Person)
-            WHERE p.name = $person_name
-            RETURN p.name AS name
-            """
+            query = (
+                "MATCH (p:Person) "
+                "WHERE p.name = $person_name "
+                "RETURN p.name AS name"
+            )
             result = tx.run(query, person_name=person_name)
             return [record["name"] for record in result]
 
