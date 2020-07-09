@@ -152,8 +152,7 @@ Example Application
     class App:
 
         def __init__(self, uri, user, password):
-            # Aura queries use an encrypted connection
-            self.driver = GraphDatabase.driver(uri, auth=(user, password), encrypted=True)
+            self.driver = GraphDatabase.driver(uri, auth=(user, password))
 
         def close(self):
             # Don't forget to close the driver connection when you are finished with it
@@ -177,12 +176,12 @@ Example Application
             # The Reference Card is also a good resource for keywords,
             # see https://neo4j.com/docs/cypher-refcard/current/
 
-            query = """
-            CREATE (p1:Person { name: $person1_name })
-            CREATE (p2:Person { name: $person2_name })
-            CREATE (p1)-[:KNOWS]->(p2)
-            RETURN p1, p2
-            """
+            query = (
+                "CREATE (p1:Person { name: $person1_name }) "
+                "CREATE (p2:Person { name: $person2_name }) "
+                "CREATE (p1)-[:KNOWS]->(p2) "
+                "RETURN p1, p2"
+            )
             result = tx.run(query, person1_name=person1_name, person2_name=person2_name)
             try:
                 return [{"p1": record["p1"]["name"], "p2": record["p2"]["name"]}
@@ -201,17 +200,17 @@ Example Application
 
         @staticmethod
         def _find_and_return_person(tx, person_name):
-            query = """
-            MATCH (p:Person)
-            WHERE p.name = $person_name
-            RETURN p.name AS name
-            """
+            query = (
+                "MATCH (p:Person) "
+                "WHERE p.name = $person_name "
+                "RETURN p.name AS name"
+            )
             result = tx.run(query, person_name=person_name)
             return [record["name"] for record in result]
 
     if __name__ == "__main__":
         # See https://neo4j.com/developer/aura-connect-driver/ for Aura specific connection URL.
-        scheme = "neo4j"
+        scheme = "neo4j"  # Connecting to Aura, use the "neo4j+s" URI scheme
         host_name = "example.com"
         port = 7687
         url = "{scheme}://{host_name}:{port}".format(scheme=scheme, host_name=host_name, port=port)
