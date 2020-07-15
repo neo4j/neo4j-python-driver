@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from os.path import dirname, join as path_join
+import os
 from setuptools import find_packages, setup
 
 from neo4j.meta import package, version
@@ -44,7 +44,11 @@ entry_points = {
     ],
 }
 packages = find_packages(exclude=["tests"])
-readme = open(path_join(dirname(__file__), "README.rst")).read()
+
+readme_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "README.rst"))
+with open(readme_path, mode="r", encoding="utf-8") as fr:
+    readme = fr.read()
+
 setup_args = {
     "name": package,
     "version": version,
