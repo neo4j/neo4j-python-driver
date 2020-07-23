@@ -53,6 +53,7 @@ __all__ = [
     "Query",
     "Session",
     "unit_of_work",
+    "ExperimentalWarning",
 ]
 
 from logging import getLogger
@@ -87,6 +88,7 @@ from neo4j.conf import (
 )
 from neo4j.meta import (
     experimental,
+    ExperimentalWarning,
     get_user_agent,
     version as __version__,
 )
