@@ -1238,6 +1238,30 @@ Please provide details about your running environment,
 
 
 ********
+Warnings
+********
+
+The Python Driver uses the built-in :class:`python:DeprecationWarning` class to warn about deprecations.
+
+The Python Driver uses the :class:`neo4j.ExperimentalWarning` class to warn about experimental features.
+
+.. autoclass:: neo4j.ExperimentalWarning
+
+
+Filter Warnings
+===============
+
+This example shows how to suppress the :class:`neo4j.ExperimentalWarning` using the :func:`python:warnings.filterwarnings` function.
+
+.. code-block:: python
+
+    import warnings
+    from neo4j import ExperimentalWarning
+
+    warnings.filterwarnings("ignore", category=ExperimentalWarning)
+
+
+********
 Bookmark
 ********
 
