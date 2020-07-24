@@ -19,11 +19,12 @@ The :class:`neo4j.Driver` construction is via a `classmethod` on the :class:`neo
 
 .. code-block:: python
 
-   from neo4j import GraphDatabase
+    from neo4j import GraphDatabase
 
-   driver = GraphDatabase.driver(uri=neo4j://example.com:7687, auth=("neo4j", "password"), max_connection_lifetime=1000)
+    uri = neo4j://example.com:7687
+    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"), max_connection_lifetime=1000)
 
-   driver.close()
+    driver.close()  # close the driver object
 
 
 For basic auth, this can be a simple tuple, for example:
