@@ -26,6 +26,15 @@ The :class:`neo4j.Driver` construction is via a `classmethod` on the :class:`neo
    driver.close()
 
 
+For basic auth, this can be a simple tuple, for example:
+
+.. code-block:: python
+
+   auth = ("neo4j", "password")
+
+This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``
+
+
 .. _uri-ref:
 
 URI
@@ -78,17 +87,29 @@ Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that i
 Auth
 ====
 
-An authentication token for the server.
+An authentication token class for the server.
 
-For basic auth, this can be a simple tuple, for example:
+.. autoclass:: neo4j.Auth
+
+
+
+Example:
 
 .. code-block:: python
 
-   auth = ("neo4j", "password")
+    import neo4j
 
-Alternatively, one of the auth token functions can be used.
+    auth = neo4j.Auth(scheme="basic", principal="neo4j", credentials="password")
+
+
+Auth Token Helper Functions
+---------------------------
+
+Alternatively, one of the auth token helper functions can be used.
 
 .. autofunction:: neo4j.basic_auth
+
+.. autofunction:: neo4j.kerberos_auth
 
 .. autofunction:: neo4j.custom_auth
 
