@@ -59,7 +59,7 @@ class Session(Workspace):
     context. For example::
 
         with driver.session() as session:
-            result = session.run("MATCH (a:Person) RETURN a.name")
+            result = session.run("MATCH (n:Person) RETURN n.name AS name")
             # do something with the result...
 
     :param pool: connection pool instance
@@ -344,12 +344,31 @@ class Session(Workspace):
 
         Example::
 
-            def do_cypher(tx, cypher):
+            def do_cypher_tx(tx, cypher):
                 result = tx.run(cypher)
-                result.consume()
-                return 1
+                values = []
+                for record in result:
+                    values.append(record.values())
+                return values
 
-            value = session.read_transaction(do_cypher, "RETURN 1")
+            with driver.session() as session:
+                values = session.read_transaction(do_cypher_tx, "RETURN 1 AS x")
+
+        Example::
+
+            def get_two_tx(tx):
+                result = tx.run("UNWIND [1,2,3,4] AS x RETURN x")
+                values = []
+                for ix, record in enumerate(result):
+                    if x > 1:
+                        break
+                    values.append(record.values())
+                info = result.consume()  # discard the remaining records if there are any
+                # use the info for logging etc.
+                return values
+
+            with driver.session() as session:
+                values = session.read_transaction(get_two_tx)
 
         :param transaction_function: a function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, \*args, \*\*kwargs)`
         :param args: arguments for the `transaction_function`
@@ -367,12 +386,14 @@ class Session(Workspace):
 
         Example::
 
-            def do_cypher(tx, cypher):
-                result = tx.run(cypher)
-                result.consume()
-                return 1
+            def create_node_tx(tx, name):
+                result = tx.run("CREATE (n:NodeExample { name: $name }) RETURN id(n) AS node_id", name=name)
+                record = result.single()
+                return record["node_id"]
 
-            value = session.write_transaction(do_cypher, "RETURN 1")
+            with driver.session() as session:
+                node_id = session.write_transaction(create_node_tx, "example")
+
 
         :param transaction_function: a function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, \*args, \*\*kwargs)`
         :param args: key word arguments for the `transaction_function`
@@ -408,8 +429,10 @@ def unit_of_work(metadata=None, timeout=None):
     For example, a timeout may be applied::
 
         @unit_of_work(timeout=100)
-        def count_people(tx):
-            return tx.run("MATCH (a:Person) RETURN count(a)").single().value()
+        def count_people_tx(tx):
+            result = tx.run("MATCH (a:Person) RETURN count(a) AS persons")
+            record = result.single()
+            return record["persons"]
 
     :param metadata:
         a dictionary with metadata.

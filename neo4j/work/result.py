@@ -232,7 +232,35 @@ class Result:
         return self._keys
 
     def consume(self):
-        """Consume the remainder of this result and return a ResultSummary.
+        """Consume the remainder of this result and return a :class:`neo4j.ResultSummary`.
+
+        Example::
+
+            def create_node_tx(tx, name):
+                result = tx.run("CREATE (n:ExampleNode { name: $name }) RETURN n", name=name)
+                record = result.single()
+                value = record.value()
+                info = result.consume()
+                return value, info
+
+            with driver.session() as session:
+                node_id, info = session.write_transaction(create_node_tx, "example")
+
+        Example::
+
+            def get_two_tx(tx):
+                result = tx.run("UNWIND [1,2,3,4] AS x RETURN x")
+                values = []
+                for ix, record in enumerate(result):
+                    if x > 1:
+                        break
+                    values.append(record.values())
+                info = result.consume()  # discard the remaining records if there are any
+                # use the info for logging etc.
+                return values, info
+
+            with driver.session() as session:
+                values, info = session.read_transaction(get_two_tx)
 
         :returns: The :class:`neo4j.ResultSummary` for this result
         """

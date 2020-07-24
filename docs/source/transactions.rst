@@ -66,7 +66,7 @@ Auto-commit transactions are also the only way to run ``PERIODIC COMMIT`` statem
 
     def create_person(driver, name):
         with driver.session() as session:
-            return session.run("CREATE (a:Person {name:$name}) "
+            return session.run("CREATE (a:Person { name: $name }) "
                                "RETURN id(a)", name=name).single().value()
 
 Explicit Transactions
@@ -119,7 +119,7 @@ Returning a live result object would prevent the driver from correctly managing 
 .. code-block:: python
 
     def create_person(tx, name):
-        return tx.run("CREATE (a:Person {name:$name}) "
+        return tx.run("CREATE (a:Person { name: $name }) "
                       "RETURN id(a)", name=name).single().value()
 
     with driver.session() as session:
