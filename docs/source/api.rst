@@ -516,6 +516,8 @@ Auto-commit transactions are the simplest form of transaction, available via :py
 These are easy to use but support only one statement per transaction and are not automatically retried on failure.
 Auto-commit transactions are also the only way to run ``PERIODIC COMMIT`` statements, since this Cypher clause manages its own transactions internally.
 
+Example:
+
 .. code-block:: python
 
     import neo4j
@@ -525,6 +527,20 @@ Auto-commit transactions are also the only way to run ``PERIODIC COMMIT`` statem
             result = session.run("CREATE (a:Person { name: $name }) RETURN id(a) AS node_id", name=name)
             record = result.single()
             return record["node_id"]
+
+Example:
+
+.. code-block:: python
+
+    import neo4j
+
+    def get_numbers(driver):
+        numbers = []
+        with driver.session(default_access_mode=neo4j.READ_ACCESS) as session:
+            result = session.run("UNWIND [1, 2, 3] AS x RETURN x")
+            for record in result:
+                numbers.append(record["x"])
+        return numbers
 
 
 .. _explicit-transactions-ref:
@@ -553,6 +569,8 @@ Closing an explicit transaction can either happen automatically at the end of a 
 or can be explicitly controlled through the :py:meth:`neo4j.Transaction.commit`, :py:meth:`neo4j.Transaction.rollback` or :py:meth:`neo4j.Transaction.close` methods.
 
 Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction.
+
+Example:
 
 .. code-block:: python
 
@@ -591,6 +609,7 @@ This function is called one or more times, within a configurable time limit, unt
 Results should be fully consumed within the function and only aggregate or status values should be returned.
 Returning a live result object would prevent the driver from correctly managing connections and would break retry guarantees.
 
+Example:
 
 .. code-block:: python
 

@@ -59,7 +59,7 @@ class Session(Workspace):
     context. For example::
 
         with driver.session() as session:
-            result = session.run("MATCH (a:Person) RETURN a.name")
+            result = session.run("MATCH (n:Person) RETURN n.name AS name")
             # do something with the result...
 
     :param pool: connection pool instance
