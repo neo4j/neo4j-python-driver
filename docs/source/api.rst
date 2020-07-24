@@ -167,7 +167,7 @@ Specify whether TCP keep-alive should be enabled.
 :Type: ``bool``
 :Default: ``True``
 
-**This is experimental.**
+**This is experimental.** (See :ref:`filter-warnings-ref`)
 
 
 .. _max-connection-lifetime-ref:
@@ -631,7 +631,7 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`n
 
     .. automethod:: graph
 
-       **This is experimental.**
+       **This is experimental.** (See :ref:`filter-warnings-ref`)
 
     .. automethod:: value
 
@@ -656,7 +656,7 @@ Graph
 
     .. automethod:: relationship_type
 
-**This is experimental.**
+**This is experimental.** (See :ref:`filter-warnings-ref`)
 
 
 ******
@@ -1247,6 +1247,8 @@ The Python Driver uses the :class:`neo4j.ExperimentalWarning` class to warn abou
 
 .. autoclass:: neo4j.ExperimentalWarning
 
+
+.. _filter-warnings-ref:
 
 Filter Warnings
 ===============
