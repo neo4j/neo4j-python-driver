@@ -87,7 +87,9 @@ Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that i
 Auth
 ====
 
-An authentication token class for the server.
+To authenticate with Neo4j the authentication details are supplied at driver creation.
+
+The auth token is an object of the class :class:`neo4j.Auth` containing the details.
 
 .. autoclass:: neo4j.Auth
 
