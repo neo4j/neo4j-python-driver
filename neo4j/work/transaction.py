@@ -82,10 +82,10 @@ class Transaction:
         arguments, or as a mixture of both. For example, the `run`
         queries below are all equivalent::
 
-            >>> query = "CREATE (a:Person {name:{name}, age:{age}})"
-            >>> tx.run(query, {"name": "Alice", "age": 33})
-            >>> tx.run(query, {"name": "Alice"}, age=33)
-            >>> tx.run(query, name="Alice", age=33)
+            >>> query = "CREATE (a:Person { name: $name, age: $age })"
+            >>> result = tx.run(query, {"name": "Alice", "age": 33})
+            >>> result = tx.run(query, {"name": "Alice"}, age=33)
+            >>> result = tx.run(query, name="Alice", age=33)
 
         Parameter values can be of any type supported by the Neo4j type
         system. In Python, this includes :class:`bool`, :class:`int`,

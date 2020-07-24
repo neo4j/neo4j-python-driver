@@ -518,10 +518,13 @@ Auto-commit transactions are also the only way to run ``PERIODIC COMMIT`` statem
 
 .. code-block:: python
 
+    import neo4j
+
     def create_person(driver, name):
-        with driver.session() as session:
-            return session.run("CREATE (a:Person {name:$name}) "
-                               "RETURN id(a)", name=name).single().value()
+        with driver.session(default_access_mode=neo4j.WRITE_ACCESS) as session:
+            result = session.run("CREATE (a:Person { name: $name }) RETURN id(a) AS node_id", name=name)
+            record = result.single()
+            return record["node_id"]
 
 
 .. _explicit-transactions-ref:
@@ -553,21 +556,26 @@ Explicit transactions are most useful for applications that need to distribute C
 
 .. code-block:: python
 
+    import neo4j
+
     def create_person(driver, name):
-        with driver.session() as session:
+        with driver.session(default_access_mode=neo4j.WRITE_ACCESS) as session:
             tx = session.begin_transaction()
             node_id = create_person_node(tx)
             set_person_name(tx, node_id, name)
             tx.commit()
+            tx.close()
 
     def create_person_node(tx):
-        return tx.run("CREATE (a:Person)"
-                      "RETURN id(a)", name=name).single().value()
+        name = "default_name"
+        result = tx.run("CREATE (a:Person { name: $name }) RETURN id(a) AS node_id", name=name)
+        record = result.single()
+        return record["node_id"]
 
     def set_person_name(tx, node_id, name):
-        tx.run("MATCH (a:Person) WHERE id(a) = $id "
-               "SET a.name = $name", id=node_id, name=name)
-
+        result = tx.run("MATCH (a:Person) WHERE id(a) = $id SET a.name = $name", id=node_id, name=name)
+        info = result.consume()
+        # use the info for logging etc.
 
 .. _managed-transactions-ref:
 
@@ -586,12 +594,14 @@ Returning a live result object would prevent the driver from correctly managing 
 
 .. code-block:: python
 
-    def create_person(tx, name):
-        return tx.run("CREATE (a:Person {name:$name}) "
-                      "RETURN id(a)", name=name).single().value()
+    def create_person(driver, name)
+        with driver.session() as session:
+            node_id = session.write_transaction(create_person_tx, name)
 
-    with driver.session() as session:
-        node_id = session.write_transaction(create_person, "Alice")
+    def create_person_tx(tx, name):
+        result = tx.run("CREATE (a:Person { name: $name }) RETURN id(a) AS node_id", name=name)
+        record = result.single()
+        return record["node_id"]
 
 To exert more control over how a transaction function is carried out, the :func:`neo4j.unit_of_work` decorator can be used.
 
