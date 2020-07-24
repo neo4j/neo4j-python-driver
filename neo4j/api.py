@@ -60,6 +60,17 @@ DEFAULT_DATABASE = None  # Must be a non string hashable value
 # TODO: This class is not tested
 class Auth:
     """ Container for auth details.
+
+    :param scheme: specifies the type of authentication, examples: "basic", "kerberos"
+    :type scheme: str
+    :param principal: specifies who is being authenticated
+    :type principal: str
+    :param credentials: authenticates the principal
+    :type credentials: str
+    :param realm: specifies the authentication provider
+    :type realm: str
+    :param parameters: extra key word parameters passed along to the authentication provider
+    :type parameters: str
     """
 
     #: By default we should not send any realm
@@ -82,10 +93,14 @@ AuthToken = Auth
 def basic_auth(user, password, realm=None):
     """ Generate a basic auth token for a given user and password.
 
-    :param user: user name
-    :param password: current password
+    This will set the scheme to "basic" for the auth token.
+
+    :param user: user name, this will set the principal
+    :param password: current password, this will set the credentials
     :param realm: specifies the authentication provider
+
     :return: auth token for use with :meth:`GraphDatabase.driver`
+    :rtype: :class:`neo4j.Auth`
     """
     return Auth("basic", user, password, realm)
 
@@ -93,21 +108,27 @@ def basic_auth(user, password, realm=None):
 def kerberos_auth(base64_encoded_ticket):
     """ Generate a kerberos auth token with the base64 encoded ticket
 
-    :param base64_encoded_ticket: a base64 encoded service ticket
-    :return: an authentication token that can be used to connect to Neo4j
+    This will set the scheme to "kerberos" for the auth token.
+
+    :param base64_encoded_ticket: a base64 encoded service ticket, this will set the credentials
+
+    :return: auth token for use with :meth:`GraphDatabase.driver`
+    :rtype: :class:`neo4j.Auth`
     """
     return Auth("kerberos", "", base64_encoded_ticket)
 
 
 def custom_auth(principal, credentials, realm, scheme, **parameters):
-    """ Generate a basic auth token for a given user and password.
+    """ Generate a custom auth token.
 
     :param principal: specifies who is being authenticated
     :param credentials: authenticates the principal
     :param realm: specifies the authentication provider
     :param scheme: specifies the type of authentication
-    :param parameters: parameters passed along to the authentication provider
+    :param parameters: extra key word parameters passed along to the authentication provider
+
     :return: auth token for use with :meth:`GraphDatabase.driver`
+    :rtype: :class:`neo4j.Auth`
     """
     return Auth(scheme, principal, credentials, realm, **parameters)
 

@@ -17,13 +17,38 @@ The :class:`neo4j.Driver` construction is via a `classmethod` on the :class:`neo
    :members: driver
 
 
+Example, driver creation:
+
 .. code-block:: python
 
-   from neo4j import GraphDatabase
+    from neo4j import GraphDatabase
 
-   driver = GraphDatabase.driver(uri=neo4j://example.com:7687, auth=("neo4j", "password"), max_connection_lifetime=1000)
+    uri = neo4j://example.com:7687
+    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"), max_connection_lifetime=1000)
 
-   driver.close()
+    driver.close()  # close the driver object
+
+
+For basic auth, this can be a simple tuple, for example:
+
+.. code-block:: python
+
+   auth = ("neo4j", "password")
+
+This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``
+
+
+Example, with block context:
+
+.. code-block:: python
+
+    from neo4j import GraphDatabase
+
+    uri = neo4j://example.com:7687
+
+    with GraphDatabase.driver(uri, auth=("neo4j", "password")) as driver:
+        # use the driver
+
 
 
 .. _uri-ref:
@@ -78,17 +103,31 @@ Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that i
 Auth
 ====
 
-An authentication token for the server.
+To authenticate with Neo4j the authentication details are supplied at driver creation.
 
-For basic auth, this can be a simple tuple, for example:
+The auth token is an object of the class :class:`neo4j.Auth` containing the details.
+
+.. autoclass:: neo4j.Auth
+
+
+
+Example:
 
 .. code-block:: python
 
-   auth = ("neo4j", "password")
+    import neo4j
 
-Alternatively, one of the auth token functions can be used.
+    auth = neo4j.Auth(scheme="basic", principal="neo4j", credentials="password")
+
+
+Auth Token Helper Functions
+---------------------------
+
+Alternatively, one of the auth token helper functions can be used.
 
 .. autofunction:: neo4j.basic_auth
+
+.. autofunction:: neo4j.kerberos_auth
 
 .. autofunction:: neo4j.custom_auth
 
