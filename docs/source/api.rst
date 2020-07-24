@@ -17,6 +17,8 @@ The :class:`neo4j.Driver` construction is via a `classmethod` on the :class:`neo
    :members: driver
 
 
+Example, driver creation:
+
 .. code-block:: python
 
     from neo4j import GraphDatabase
@@ -34,6 +36,19 @@ For basic auth, this can be a simple tuple, for example:
    auth = ("neo4j", "password")
 
 This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``
+
+
+Example, with block context:
+
+.. code-block:: python
+
+    from neo4j import GraphDatabase
+
+    uri = neo4j://example.com:7687
+
+    with GraphDatabase.driver(uri, auth=("neo4j", "password")) as driver:
+        # use the driver
+
 
 
 .. _uri-ref:
