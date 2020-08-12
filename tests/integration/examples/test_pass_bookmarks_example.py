@@ -21,7 +21,7 @@
 
 import pytest
 
-# tag:pass-bookmarks-import[]
+# tag::pass-bookmarks-import[]
 from neo4j import GraphDatabase
 # end::pass-bookmarks-import[]
 
