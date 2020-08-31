@@ -347,6 +347,8 @@ class Bolt4x0(Bolt):
         message = ("Failed to read from defunct connection {!r} ({!r})".format(
             self.unresolved_address, self.server_info.address))
 
+        if error:
+            log.error(str(error))
         log.error(message)
         # We were attempting to receive data but the connection
         # has unexpectedly terminated. So, we need to close the
@@ -361,12 +363,21 @@ class Bolt4x0(Bolt):
         # unable to confirm that the COMMIT completed successfully.
         for response in self.responses:
             if isinstance(response, CommitResponse):
-                raise BoltIncompleteCommitError(message, address=None)
+                if error:
+                    raise BoltIncompleteCommitError(message, address=None) from error
+                else:
+                    raise BoltIncompleteCommitError(message, address=None)
 
         if direct_driver:
-            raise ServiceUnavailable(message)
+            if error:
+                raise ServiceUnavailable(message) from error
+            else:
+                raise ServiceUnavailable(message)
         else:
-            raise SessionExpired(message)
+            if error:
+                raise SessionExpired(message) from error
+            else:
+                raise SessionExpired(message)
 
     def timedout(self):
         return 0 <= self._max_connection_lifetime <= perf_counter() - self._creation_timestamp
