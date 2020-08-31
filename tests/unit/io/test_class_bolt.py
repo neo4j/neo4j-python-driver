@@ -28,7 +28,7 @@ from neo4j.io import Bolt
 def test_class_method_protocol_handlers():
     # python -m pytest tests/unit/io/test_class_bolt.py -s -v -k test_class_method_protocol_handlers
     protocol_handlers = Bolt.protocol_handlers()
-    assert len(protocol_handlers) == 3
+    assert len(protocol_handlers) == 4
 
 
 @pytest.mark.parametrize(
@@ -53,7 +53,7 @@ def test_class_method_protocol_handlers_with_invalid_protocol_version():
 def test_class_method_get_handshake():
     # python -m pytest tests/unit/io/test_class_bolt.py -s -v -k test_class_method_get_handshake
     handshake = Bolt.get_handshake()
-    assert handshake == b"\x00\x00\x01\x04\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x00"
+    assert handshake == b"\x00\x00\x02\x04\x00\x00\x01\x04\x00\x00\x00\x04\x00\x00\x00\x03"
 
 
 def test_magic_preamble():
