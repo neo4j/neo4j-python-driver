@@ -61,7 +61,7 @@ from logging import getLogger
 log = getLogger("neo4j")
 
 
-class Bolt4x1(Bolt):
+class Bolt4x2(Bolt):
 
     PROTOCOL_VERSION = Version(4, 2)
 
