@@ -1,5 +1,15 @@
 # Neo4j Driver Change Log
 
+## Version 4.2
+
+- No driver changes have been made for Neo4j 4.2
+
+
+## Version 4.1
+
+- Routing context is now forwarded to the server for when required by server-side routing
+
+
 ## Version 4.0 - Breaking Changes
 
 - The package version has jumped from `1.7` directly to `4.0`, in order to bring the version in line with Neo4j itself.

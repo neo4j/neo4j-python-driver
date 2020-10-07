@@ -65,7 +65,7 @@ log = getLogger("neo4j")
 class Bolt4x0(Bolt):
     """ Protocol handler for Bolt 4.0.
 
-    This is supported by Neo4j versions 4.0 and 4.1.
+    This is supported by Neo4j versions 4.0, 4.1 and 4.2.
     """
 
     PROTOCOL_VERSION = Version(4, 0)
@@ -370,7 +370,8 @@ class Bolt4x0(Bolt):
                     self.pool.on_write_failure(address=self.unresolved_address),
                 raise
         else:
-            raise BoltProtocolError("Unexpected response message with signature %02X" % summary_signature, self.unresolved_address)
+            raise BoltProtocolError("Unexpected response message with signature "
+                                    "%02X" % ord(summary_signature), self.unresolved_address)
 
         return len(details), 1
 
@@ -459,7 +460,7 @@ class Bolt4x0(Bolt):
 class Bolt4x1(Bolt4x0):
     """ Protocol handler for Bolt 4.1.
 
-    This is supported by Neo4j version 4.1.
+    This is supported by Neo4j versions 4.1 and 4.2.
     """
 
     PROTOCOL_VERSION = Version(4, 1)
@@ -474,3 +475,12 @@ class Bolt4x1(Bolt4x0):
             "user_agent": self.user_agent,
             "routing": self.routing_context,
         }
+
+
+class Bolt4x2(Bolt4x1):
+    """ Protocol handler for Bolt 4.2.
+
+    This is supported by Neo4j version 4.2.
+    """
+
+    PROTOCOL_VERSION = Version(4, 2)

@@ -94,6 +94,7 @@ def test_bolt_uri_constructs_bolt_driver(driver_info, test_script):
         "v3/empty_explicit_hello_goodbye.script",
         "v4x0/empty_explicit_hello_goodbye.script",
         "v4x1/empty_explicit_hello_goodbye.script",
+        "v4x2/empty_explicit_hello_goodbye.script",
     ]
 )
 def test_direct_driver_handshake_negotiation(driver_info, test_script):
@@ -111,6 +112,7 @@ def test_direct_driver_handshake_negotiation(driver_info, test_script):
         ("v3/return_1_port_9001.script", "Neo4j/3.0.0"),
         ("v4x0/return_1_port_9001.script", "Neo4j/4.0.0"),
         ("v4x1/return_1_port_9001_bogus_server.script", DriverError),
+        ("v4x2/return_1_port_9001_bogus_server.script", DriverError),
     ]
 )
 def test_return_1_as_x(driver_info, test_script, test_expected):
@@ -602,6 +604,7 @@ def test_bolt_driver_explicit_transaction_consume_result_case_b(driver_info, tes
     "test_script",
     [
         "v4x1/return_1_noop_port_9001.script",
+        "v4x2/return_1_noop_port_9001.script",
     ]
 )
 def test_direct_can_handle_noop(driver_info, test_script):

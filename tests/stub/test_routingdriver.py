@@ -653,7 +653,8 @@ def test_forgets_address_on_database_unavailable_error(driver_info, test_scripts
 @pytest.mark.parametrize(
     "test_scripts",
     [
-        ("v4x1/router_get_routing_table_with_context.script", "v4x1/hello_with_routing_context_return_1_port_9002.script",),
+        ("v4x1/router_get_routing_table_with_context.script", "v4x2/hello_with_routing_context_return_1_port_9002.script",),
+        ("v4x1/router_get_routing_table_with_context.script", "v4x2/hello_with_routing_context_return_1_port_9002.script",),
     ]
 )
 def test_hello_routing(driver_info, test_scripts):
