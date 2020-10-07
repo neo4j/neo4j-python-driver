@@ -134,8 +134,7 @@ class Bolt:
 
         # Carry out Bolt subclass imports locally to avoid circular dependency issues.
         from neo4j.io._bolt3 import Bolt3
-        from neo4j.io._bolt4x0 import Bolt4x0
-        from neo4j.io._bolt4x1 import Bolt4x1
+        from neo4j.io._bolt4 import Bolt4x0, Bolt4x1
 
         handlers = {
             Bolt3.PROTOCOL_VERSION: Bolt3,
@@ -204,11 +203,11 @@ class Bolt:
             connection = Bolt3(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
         elif pool_config.protocol_version == (4, 0):
             # Carry out Bolt subclass imports locally to avoid circular dependency issues.
-            from neo4j.io._bolt4x0 import Bolt4x0
+            from neo4j.io._bolt4 import Bolt4x0
             connection = Bolt4x0(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
         elif pool_config.protocol_version == (4, 1):
             # Carry out Bolt subclass imports locally to avoid circular dependency issues.
-            from neo4j.io._bolt4x1 import Bolt4x1
+            from neo4j.io._bolt4 import Bolt4x1
             connection = Bolt4x1(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
@@ -673,8 +672,7 @@ class Neo4jPool(IOPool):
 
         # Carry out Bolt subclass imports locally to avoid circular dependency issues.
         from neo4j.io._bolt3 import Bolt3
-        from neo4j.io._bolt4x0 import Bolt4x0
-        from neo4j.io._bolt4x1 import Bolt4x1
+        from neo4j.io._bolt4 import Bolt4x0, Bolt4x1
 
         from neo4j.api import (
             SYSTEM_DATABASE,

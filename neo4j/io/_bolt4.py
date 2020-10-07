@@ -63,6 +63,10 @@ log = getLogger("neo4j")
 
 
 class Bolt4x0(Bolt):
+    """ Protocol handler for Bolt 4.0.
+
+    This is supported by Neo4j versions 4.0 and 4.1.
+    """
 
     PROTOCOL_VERSION = Version(4, 0)
 
@@ -81,7 +85,7 @@ class Bolt4x0(Bolt):
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *, auth=None, user_agent=None, routing_context=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
-        self.server_info = ServerInfo(Address(sock.getpeername()), Bolt4x0.PROTOCOL_VERSION)
+        self.server_info = ServerInfo(Address(sock.getpeername()), self.PROTOCOL_VERSION)
         self.outbox = Outbox()
         self.inbox = Inbox(self.socket, on_error=self._set_defunct)
         self.packer = Packer(self.outbox)
@@ -136,8 +140,13 @@ class Bolt4x0(Bolt):
         except IOError:
             return 0
 
+    def get_base_headers(self):
+        return {
+            "user_agent": self.user_agent,
+        }
+
     def hello(self):
-        headers = {"user_agent": self.user_agent}
+        headers = self.get_base_headers()
         headers.update(self.auth_dict)
         logged_headers = dict(headers)
         if "credentials" in logged_headers:
@@ -445,3 +454,23 @@ class Bolt4x0(Bolt):
 
     def defunct(self):
         return self._defunct
+
+
+class Bolt4x1(Bolt4x0):
+    """ Protocol handler for Bolt 4.1.
+
+    This is supported by Neo4j version 4.1.
+    """
+
+    PROTOCOL_VERSION = Version(4, 1)
+
+    def get_base_headers(self):
+        """ Bolt 4.1 passes the routing context, originally taken from
+        the URI, into the connection initialisation message. This
+        enables server-side routing to propagate the same behaviour
+        through its driver.
+        """
+        return {
+            "user_agent": self.user_agent,
+            "routing": self.routing_context,
+        }

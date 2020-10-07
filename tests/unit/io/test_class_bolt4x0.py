@@ -21,7 +21,7 @@
 
 import pytest
 
-from neo4j.io._bolt4x0 import Bolt4x0
+from neo4j.io._bolt4 import Bolt4x0
 from neo4j.conf import PoolConfig
 
 
