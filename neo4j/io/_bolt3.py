@@ -19,20 +19,22 @@
 # limitations under the License.
 
 from collections import deque
-from select import select
 from ssl import SSLSocket
-from struct import pack as struct_pack
 from time import perf_counter
 from neo4j.api import (
     Version,
     READ_ACCESS,
-    WRITE_ACCESS,
     DEFAULT_DATABASE,
 )
-from neo4j.io._courier import MessageInbox
+from neo4j.io._common import (
+    Inbox,
+    Outbox,
+    Response,
+    InitResponse,
+    CommitResponse,
+)
 from neo4j.meta import get_user_agent
 from neo4j.exceptions import (
-    Neo4jError,
     AuthError,
     ServiceUnavailable,
     DatabaseUnavailable,
@@ -53,7 +55,6 @@ from neo4j.io import (
     Bolt,
     BoltPool,
 )
-from neo4j.conf import PoolConfig
 from neo4j.api import ServerInfo
 from neo4j.addressing import Address
 
@@ -430,133 +431,3 @@ class Bolt3(Bolt):
 
     def defunct(self):
         return self._defunct
-
-
-class Outbox:
-
-    def __init__(self, capacity=8192, max_chunk_size=16384):
-        self._max_chunk_size = max_chunk_size
-        self._header = 0
-        self._start = 2
-        self._end = 2
-        self._data = bytearray(capacity)
-
-    def max_chunk_size(self):
-        return self._max_chunk_size
-
-    def clear(self):
-        self._header = 0
-        self._start = 2
-        self._end = 2
-        self._data[0:2] = b"\x00\x00"
-
-    def write(self, b):
-        to_write = len(b)
-        max_chunk_size = self._max_chunk_size
-        pos = 0
-        while to_write > 0:
-            chunk_size = self._end - self._start
-            remaining = max_chunk_size - chunk_size
-            if remaining == 0 or remaining < to_write <= max_chunk_size:
-                self.chunk()
-            else:
-                wrote = min(to_write, remaining)
-                new_end = self._end + wrote
-                self._data[self._end:new_end] = b[pos:pos+wrote]
-                self._end = new_end
-                pos += wrote
-                new_chunk_size = self._end - self._start
-                self._data[self._header:(self._header + 2)] = struct_pack(">H", new_chunk_size)
-                to_write -= wrote
-
-    def chunk(self):
-        self._header = self._end
-        self._start = self._header + 2
-        self._end = self._start
-        self._data[self._header:self._start] = b"\x00\x00"
-
-    def view(self):
-        end = self._end
-        chunk_size = end - self._start
-        if chunk_size == 0:
-            return memoryview(self._data[:self._header])
-        else:
-            return memoryview(self._data[:end])
-
-
-class Inbox(MessageInbox):
-
-    def __next__(self):
-        tag, fields = self.pop()
-        if tag == b"\x71":
-            return fields, None, None
-        elif fields:
-            return [], tag, fields[0]
-        else:
-            return [], tag, None
-
-
-class Response:
-    """ Subscriber object for a full response (zero or
-    more detail messages followed by one summary message).
-    """
-
-    def __init__(self, connection, **handlers):
-        self.connection = connection
-        self.handlers = handlers
-        self.complete = False
-
-    def on_records(self, records):
-        """ Called when one or more RECORD messages have been received.
-        """
-        handler = self.handlers.get("on_records")
-        if callable(handler):
-            handler(records)
-
-    def on_success(self, metadata):
-        """ Called when a SUCCESS message has been received.
-        """
-        handler = self.handlers.get("on_success")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
-
-    def on_failure(self, metadata):
-        """ Called when a FAILURE message has been received.
-        """
-        self.connection.reset()
-        handler = self.handlers.get("on_failure")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
-        raise Neo4jError.hydrate(**metadata)
-
-    def on_ignored(self, metadata=None):
-        """ Called when an IGNORED message has been received.
-        """
-        handler = self.handlers.get("on_ignored")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
-
-
-class InitResponse(Response):
-
-    def on_failure(self, metadata):
-        code = metadata.get("code")
-        message = metadata.get("message", "Connection initialisation failed")
-        if code == "Neo.ClientError.Security.Unauthorized":
-            raise AuthError(message)
-        else:
-            raise ServiceUnavailable(message)
-
-
-class CommitResponse(Response):
-
-    pass

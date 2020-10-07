@@ -21,7 +21,7 @@
 
 import pytest
 
-from neo4j.io._courier import MessageInbox
+from neo4j.io._common import MessageInbox
 
 
 class FakeSocket:
