@@ -1,4 +1,4 @@
-git+https://github.com/neo4j-drivers/boltkit@4.1#egg=boltkit
+git+https://github.com/neo4j-drivers/boltkit@4.2#egg=boltkit
 coverage
 pytest
 pytest-benchmark
