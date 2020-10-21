@@ -23,6 +23,7 @@ import subprocess
 import os
 import time
 
+from platform import system
 from threading import Thread
 from time import sleep
 
@@ -43,7 +44,8 @@ class StubServer:
         self.script = os.path.join(os.path.dirname(__file__), "scripts", script)
 
     def run(self):
-        self._process = subprocess.Popen(["python", "-m", "boltkit", "stub", "-v", "-l", ":{}".format(str(self.port)), "-t", "10", self.script], stdout=subprocess.PIPE)
+        shell = system() == "Windows"  # I hate myself for doing this
+        self._process = subprocess.Popen(["python", "-m", "boltkit", "stub", "-v", "-l", ":{}".format(str(self.port)), "-t", "10", self.script], stdout=subprocess.PIPE, shell=shell)
         # Need verbose for this to work
         line = self._process.stdout.readline().decode("utf-8")
         log.debug("started stub server {}".format(self.port))
