@@ -261,7 +261,10 @@ class PoolConfig(Config):
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE     # https://docs.python.org/3.5/library/ssl.html#ssl.CERT_NONE
 
-        ssl_context.set_default_verify_paths()  # https://docs.python.org/3.5/library/ssl.html#ssl.SSLContext.set_default_verify_paths
+        # Must be load_default_certs, not set_default_verify_paths to work
+        # on Windows with system CAs.
+        ssl_context.load_default_certs()
+
         return ssl_context
 
 
