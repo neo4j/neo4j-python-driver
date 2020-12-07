@@ -100,9 +100,9 @@ Creating nodes.
     driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
 
     def create_friend_of(tx, name, friend):
-        tx.run("CREATE (a:Person)-[:KNOWS]->(f:Person {name: $friend}) "
-               "WHERE a.name = $name "
-               "RETURN f.name AS friend", name=name, friend=friend)
+        tx.run("MATCH (a:Person) WHERE a.name = $name "
+               "CREATE (a)-[:KNOWS]->(:Person {name: $friend})",
+               name=name, friend=friend)
 
     with driver.session() as session:
         session.write_transaction(create_friend_of, "Alice", "Bob")
