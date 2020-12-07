@@ -40,7 +40,6 @@ classifiers = [
 ]
 entry_points = {
     "console_scripts": [
-        "pybolt = neo4j.bolt.__main__:main",
     ],
 }
 packages = find_packages(exclude=["tests"])
