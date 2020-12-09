@@ -30,6 +30,7 @@ __all__ = [
     "Bolt",
     "BoltPool",
     "Neo4jPool",
+    "check_supported_server_product",
 ]
 
 
@@ -79,6 +80,7 @@ from neo4j.exceptions import (
     ReadServiceUnavailable,
     WriteServiceUnavailable,
     ConfigurationError,
+    UnsupportedServerProduct,
 )
 from neo4j.routing import RoutingTable
 from neo4j.conf import (
@@ -1050,3 +1052,14 @@ def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
         raise ServiceUnavailable("Failed to resolve addresses for %s" % address)
     else:
         raise last_error
+
+
+def check_supported_server_product(agent):
+    """ Checks that a server product is supported by the driver by
+    looking at the server agent string.
+
+    :param agent: server agent string to check for validity
+    :raises UnsupportedServerProduct: if the product is not supported
+    """
+    if not agent.startswith("Neo4j/"):
+        raise UnsupportedServerProduct(agent)

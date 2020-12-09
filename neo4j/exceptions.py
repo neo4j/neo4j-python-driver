@@ -304,3 +304,8 @@ class AuthConfigurationError(ConfigurationError):
 class CertificateConfigurationError(ConfigurationError):
     """ Raised when there is an error with the authentication configuration.
     """
+
+
+class UnsupportedServerProduct(Exception):
+    """ Raised when an unsupported server product is detected.
+    """
