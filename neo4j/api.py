@@ -191,7 +191,9 @@ class ServerInfo:
     @property
     def protocol_version(self):
         """ Bolt protocol version with which the remote server
-        communicates.
+        communicates. This is returned as a :class:`.Version`
+        object, which itself extends a simple 2-tuple of
+        (major, minor) integers.
         """
         return self._protocol_version
 
