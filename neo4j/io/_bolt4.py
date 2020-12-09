@@ -54,6 +54,7 @@ from neo4j.packstream import (
 from neo4j.io import (
     Bolt,
     BoltPool,
+    check_supported_server_product,
 )
 from neo4j.api import ServerInfo
 from neo4j.addressing import Address
@@ -153,9 +154,10 @@ class Bolt4x0(Bolt):
             logged_headers["credentials"] = "*******"
         log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
         self._append(b"\x01", (headers,),
-                     response=InitResponse(self, on_success=self.server_info._update_metadata))
+                     response=InitResponse(self, on_success=self.server_info.update))
         self.send_all()
         self.fetch_all()
+        check_supported_server_product(self.server_info.agent)
 
     def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
         if not parameters:
