@@ -17,6 +17,7 @@
 from json import loads, dumps
 from inspect import getmembers, isfunction
 import testkitbackend.requests as requests
+from neo4j.exceptions import AuthError, ClientError
 
 
 class Backend:
@@ -26,6 +27,7 @@ class Backend:
         self.drivers = {}
         self.sessions = {}
         self.results = {}
+        self.errors = {}
         self.key = 0
         # Collect all request handlers
         self._requestHandlers = dict(
@@ -65,7 +67,13 @@ class Backend:
         if not handler:
             raise Exception("No request handler for " + name)
         data = request["data"]
-        handler(self, data)
+        try:
+            handler(self, data)
+        except (AuthError, ClientError) as e:
+            # Track all driver errors, might be referenced in retry
+            key = self.next_key()
+            self.errors[key] = e
+            self.send_response("DriverError", {"id": key})
 
     def send_response(self, name, data):
         """ Sends a response to backend.
