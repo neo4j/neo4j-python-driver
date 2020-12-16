@@ -115,6 +115,15 @@ from neo4j.work.summary import (
 log = getLogger("neo4j")
 
 
+def same_address_resolver(server_address, **config):
+    provided_resolver = config.get("resolver", lambda x: x)
+
+    def resolver(routing_table_address):
+        return provided_resolver(server_address)
+
+    return resolver
+
+
 class GraphDatabase:
     """Accessor for :class:`neo4j.Driver` construction.
     """
@@ -183,6 +192,8 @@ class GraphDatabase:
             return cls.bolt_driver(parsed.netloc, auth=auth, **config)
         elif driver_type == DRIVER_NEO4j:
             routing_context = parse_routing_context(parsed.query)
+            if routing_context.get("routing") == "server":
+                config.resolver = same_address_resolver(parsed.netloc, **config)
             return cls.neo4j_driver(parsed.netloc, auth=auth, routing_context=routing_context, **config)
 
     @classmethod
