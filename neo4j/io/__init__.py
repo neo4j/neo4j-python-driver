@@ -1009,7 +1009,7 @@ def _handshake(s, resolved_address):
         # response, the server has closed the connection
         log.debug("[#%04X]  S: <CLOSE>", local_port)
         s.close()
-        raise BoltHandshakeError("Connection to {address} closed without handshake response".format(address=resolved_address), address=resolved_address, request_data=handshake, response_data=None)
+        raise ServiceUnavailable("Connection to {address} closed without handshake response".format(address=resolved_address))
     if data_size != 4:
         # Some garbled data has been received
         log.debug("[#%04X]  S: @*#!", local_port)
