@@ -544,7 +544,7 @@ def test_forgets_address_on_not_a_leader_error(driver_info, test_scripts, test_r
     with StubCluster(*test_scripts):
         with GraphDatabase.driver(driver_info["uri_neo4j"], auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=WRITE_ACCESS, fetch_size=-1) as session:
-                with pytest.raises(ClientError):
+                with pytest.raises(TransientError):
                     _ = session.run(*test_run_args)
 
                 pool = driver._pool
@@ -570,7 +570,7 @@ def test_forgets_address_on_forbidden_on_read_only_database_error(driver_info, t
     with StubCluster(*test_scripts):
         with GraphDatabase.driver(driver_info["uri_neo4j"], auth=driver_info["auth_token"]) as driver:
             with driver.session(default_access_mode=WRITE_ACCESS, fetch_size=-1) as session:
-                with pytest.raises(ClientError):
+                with pytest.raises(TransientError):
                     _ = session.run(*test_run_args)
 
                 pool = driver._pool

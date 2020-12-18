@@ -31,11 +31,11 @@ Driver API Errors
     + ConstraintError
     + AuthError
     + Forbidden
-      + ForbiddenOnReadOnlyDatabase
-    + NotALeader
   + DatabaseError
   + TransientError
     + DatabaseUnavailable
+    + NotALeader
+    + ForbiddenOnReadOnlyDatabase
 
 + DriverError
   + TransactionError
@@ -174,7 +174,7 @@ class CypherTypeError(ClientError):
     """
 
 
-class NotALeader(ClientError):
+class NotALeader(TransientError):
     """
     """
 
@@ -184,7 +184,7 @@ class Forbidden(ClientError):
     """
 
 
-class ForbiddenOnReadOnlyDatabase(Forbidden):
+class ForbiddenOnReadOnlyDatabase(TransientError):
     """
     """
 
