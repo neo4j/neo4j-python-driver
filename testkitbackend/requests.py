@@ -68,7 +68,6 @@ def NewSession(backend, data):
 
 def SessionRun(backend, data):
     session = backend.sessions[data["sessionId"]].session
-    print(data)
     cypher, params = fromtestkit.toCypherAndParams(data)
     # TODO: txMeta, timeout
     result = session.run(cypher, parameters=params)
@@ -85,6 +84,19 @@ def SessionClose(backend, data):
     backend.send_response("Session", {"id": key})
 
 
+def SessionBeginTransaction(backend, data):
+    key = data["sessionId"]
+    session = backend.sessions[key].session
+    metadata = data.get('txMeta', None)
+    timeout = data.get('timeout', None)
+    if timeout:
+        timeout = int(timeout)
+    tx = session.begin_transaction(metadata=metadata, timeout=timeout)
+    key = backend.next_key()
+    backend.transactions[key] = tx
+    backend.send_response("Transaction", {"id": key})
+
+
 def ResultNext(backend, data):
     result = backend.results[data["resultId"]]
     try:
@@ -92,3 +104,27 @@ def ResultNext(backend, data):
     except StopIteration:
         backend.send_response("NullRecord", {})
     backend.send_response("Record", totestkit.record(record))
+
+
+def TransactionRun(backend, data):
+    key = data["txId"]
+    tx = backend.transactions[key]
+    cypher, params = fromtestkit.toCypherAndParams(data)
+    result = tx.run(cypher, parameters=params)
+    key = backend.next_key()
+    backend.results[key] = result
+    backend.send_response("Result", {"id": key})
+
+
+def TransactionCommit(backend, data):
+    key = data["txId"]
+    tx = backend.transactions[key]
+    tx.commit()
+    backend.send_response("Transaction", {"id": key})
+
+
+def TransactionRollback(backend, data):
+    key = data["txId"]
+    tx = backend.transactions[key]
+    tx.rollback()
+    backend.send_response("Transaction", {"id": key})

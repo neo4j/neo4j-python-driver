@@ -26,6 +26,7 @@ class Backend:
         self.drivers = {}
         self.sessions = {}
         self.results = {}
+        self.transactions = {}
         self.key = 0
         # Collect all request handlers
         self._requestHandlers = dict(
