@@ -91,7 +91,7 @@ def SessionBeginTransaction(backend, data):
     metadata = data.get('txMeta', None)
     timeout = data.get('timeout', None)
     if timeout:
-        timeout = int(timeout)
+        timeout = float(timeout) / 1000
     tx = session.begin_transaction(metadata=metadata, timeout=timeout)
     key = backend.next_key()
     backend.transactions[key] = tx
