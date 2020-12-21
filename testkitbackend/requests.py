@@ -98,6 +98,13 @@ def SessionBeginTransaction(backend, data):
     backend.send_response("Transaction", {"id": key})
 
 
+def SessionLastBookmarks(backend, data):
+    key = data["sessionId"]
+    session = backend.sessions[key].session
+    bookmark = session.last_bookmark()
+    backend.send_response("Bookmarks", {"bookmarks": [bookmark]})
+
+
 def ResultNext(backend, data):
     result = backend.results[data["resultId"]]
     try:
