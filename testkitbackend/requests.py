@@ -58,6 +58,7 @@ def NewSession(backend, data):
             "default_access_mode": access_mode,
             "bookmarks": data["bookmarks"],
             "database": data["database"],
+            "fetch_size": data.get("fetchSize", None)
     }
     # TODO: fetchSize, database
     session = driver.session(**config)
@@ -103,6 +104,7 @@ def ResultNext(backend, data):
         record = next(iter(result))
     except StopIteration:
         backend.send_response("NullRecord", {})
+        return
     backend.send_response("Record", totestkit.record(record))
 
 
