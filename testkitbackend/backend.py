@@ -28,6 +28,7 @@ class Backend:
         self.sessions = {}
         self.results = {}
         self.errors = {}
+        self.transactions = {}
         self.key = 0
         # Collect all request handlers
         self._requestHandlers = dict(
