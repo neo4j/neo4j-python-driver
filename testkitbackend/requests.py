@@ -37,12 +37,14 @@ def DriverClose(backend, data):
     backend.send_response("Driver", {"id": key})
 
 
-class SessionState:
+class SessionTracker:
     """ Keeps some extra state about the tracked session
     """
 
     def __init__(self, session):
         self.session = session
+        self.state = ""
+        self.error_id = ""
 
 
 def NewSession(backend, data):
@@ -63,7 +65,7 @@ def NewSession(backend, data):
     # TODO: fetchSize, database
     session = driver.session(**config)
     key = backend.next_key()
-    backend.sessions[key] = SessionState(session)
+    backend.sessions[key] = SessionTracker(session)
     backend.send_response("Session", {"id": key})
 
 
@@ -96,6 +98,56 @@ def SessionBeginTransaction(backend, data):
     key = backend.next_key()
     backend.transactions[key] = tx
     backend.send_response("Transaction", {"id": key})
+
+
+def SessionReadTransaction(backend, data):
+    transactionFunc(backend, data, True)
+
+
+def SessionWriteTransaction(backend, data):
+    transactionFunc(backend, data, False)
+
+
+def transactionFunc(backend, data, is_read):
+    key = data["sessionId"]
+    session_tracker = backend.sessions[key]
+    session = session_tracker.session
+
+    def func(tx):
+        txkey = backend.next_key()
+        backend.transactions[txkey] = tx
+        session_tracker.state = ''
+        backend.send_response("RetryableTry", {"id": txkey})
+
+        cont = True
+        while cont:
+            cont = backend.process_request()
+            if session_tracker.state == '+':
+                cont = False
+            elif session_tracker.state == '-':
+                if session_tracker.error_id:
+                    raise backend.Errors[session_tracker.error_id]
+                else:
+                    raise Exception("Client said no")
+
+    if is_read:
+        session.read_transaction(func)
+    else:
+        session.write_transaction(func)
+    backend.send_response("RetryableDone", {})
+
+
+def RetryablePositive(backend, data):
+    key = data["sessionId"]
+    session_tracker = backend.sessions[key]
+    session_tracker.state = '+'
+
+
+def RetryableNegative(backend, data):
+    key = data["sessionId"]
+    session_tracker = backend.sessions[key]
+    session_tracker.state = '-'
+    session_tracker.error_id = data.get('errorId', '')
 
 
 def SessionLastBookmarks(backend, data):
