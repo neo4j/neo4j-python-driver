@@ -154,7 +154,10 @@ def SessionLastBookmarks(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
     bookmark = session.last_bookmark()
-    backend.send_response("Bookmarks", {"bookmarks": [bookmark]})
+    bookmarks = []
+    if bookmark:
+        bookmarks.append(bookmark)
+    backend.send_response("Bookmarks", {"bookmarks": bookmarks})
 
 
 def ResultNext(backend, data):
