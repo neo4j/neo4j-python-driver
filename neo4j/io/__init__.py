@@ -111,6 +111,14 @@ class Bolt:
     PROTOCOL_VERSION = None
 
     @classmethod
+    def supported_versions(cls, limit=4):
+        """ Return a list of supported protocol versions in order of
+        preference. The number of protocol versions returned is limited
+        by the `limit` argument, and defaults to 4.
+        """
+        return sorted(cls.protocol_handlers().keys(), reverse=True)[:limit]
+
+    @classmethod
     def get_handshake(cls):
         """ Return the supported Bolt versions as bytes.
         The length is 16 bytes as specified in the Bolt version negotiation.
