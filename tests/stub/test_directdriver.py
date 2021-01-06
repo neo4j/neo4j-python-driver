@@ -139,6 +139,7 @@ def test_direct_driver_with_wrong_port(driver_info):
     uri = "bolt://127.0.0.1:9002"
     with pytest.raises(ServiceUnavailable):
         driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
+        driver.verify_connectivity()
 
 
 @pytest.mark.parametrize(
