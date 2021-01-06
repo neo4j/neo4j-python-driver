@@ -303,6 +303,7 @@ def bolt_driver(target, auth):
 def neo4j_driver(target, auth):
     try:
         driver = GraphDatabase.neo4j_driver(target, auth=auth)
+        driver.update_routing_table()
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
@@ -315,6 +316,24 @@ def neo4j_driver(target, auth):
             yield driver
         finally:
             driver.close()
+
+
+@pytest.fixture(scope="session")
+def server_info(bolt_driver):
+    with bolt_driver.session() as session:
+        summary = session.run("RETURN 1").consume()
+        return summary.server
+
+
+@pytest.fixture(scope="session")
+def bolt_protocol_version(server_info):
+    return server_info.protocol_version
+
+
+@pytest.fixture(scope="session")
+def requires_bolt_4x(bolt_protocol_version):
+    if bolt_protocol_version < (4, 0):
+        pytest.skip("Requires Bolt 4.0 or above")
 
 
 @pytest.fixture(scope="session")
@@ -333,7 +352,7 @@ def session(bolt_driver):
 
 @pytest.fixture()
 def protocol_version(session):
-    result = session.run("RETURN 1")
+    result = session.run("RETURN 1 AS x")
     yield session._connection.server_info.protocol_version
     result.consume()
 

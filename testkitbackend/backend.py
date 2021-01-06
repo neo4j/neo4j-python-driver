@@ -17,6 +17,7 @@
 from json import loads, dumps
 from inspect import getmembers, isfunction
 import testkitbackend.requests as requests
+from neo4j.exceptions import Neo4jError, DriverError, ServiceUnavailable
 
 
 class Backend:
@@ -27,6 +28,7 @@ class Backend:
         self.sessions = {}
         self.results = {}
         self.transactions = {}
+        self.errors = {}
         self.key = 0
         # Collect all request handlers
         self._requestHandlers = dict(
@@ -66,7 +68,14 @@ class Backend:
         if not handler:
             raise Exception("No request handler for " + name)
         data = request["data"]
-        handler(self, data)
+        try:
+            handler(self, data)
+        except Neo4jError or DriverError or ServiceUnavailable as e:
+            key = self.next_key()
+            self.errors[key] = e
+            self.send_response("DriverError", {"id": key})
+        except Exception as e:
+            self.send_response("BackendError", {"msg": str(e)})
 
     def send_response(self, name, data):
         """ Sends a response to backend.

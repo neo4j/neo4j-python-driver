@@ -89,7 +89,8 @@ def test_fail_nicely_when_using_http_port(service):
     address = service.addresses[0]
     uri = "bolt://{}:{}".format(address[0], NEO4J_PORTS["http"])
     with pytest.raises(ServiceUnavailable):
-        _ = GraphDatabase.driver(uri, auth=service.auth)
+        driver = GraphDatabase.driver(uri, auth=service.auth)
+        driver.verify_connectivity()
 
 
 def test_custom_resolver(service):
