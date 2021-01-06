@@ -534,8 +534,6 @@ class BoltPool(IOPool):
             return Bolt.open(addr, auth=auth, timeout=timeout, routing_context=routing_context, **pool_config)
 
         pool = cls(opener, pool_config, workspace_config, routing_context, address)
-        seeds = [pool.acquire() for _ in range(pool_config.init_size)]
-        pool.release(*seeds)
         return pool
 
     def __init__(self, opener, pool_config, workspace_config, routing_context, address):
@@ -578,14 +576,7 @@ class Neo4jPool(IOPool):
             return Bolt.open(addr, auth=auth, timeout=timeout, routing_context=routing_context, **pool_config)
 
         pool = cls(opener, pool_config, workspace_config, routing_context, address)
-
-        try:
-            pool.update_routing_table(database=workspace_config.database)
-        except Exception:
-            pool.close()
-            raise
-        else:
-            return pool
+        return pool
 
     def __init__(self, opener, pool_config, workspace_config, routing_context, address):
         """

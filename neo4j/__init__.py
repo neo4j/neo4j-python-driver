@@ -450,3 +450,8 @@ class Neo4jDriver(Routing, Driver):
             if val is not None:
                 return routing_info
         raise ServiceUnavailable("Could not connect to any routing servers.")
+
+    def update_routing_table(self, database=None):
+        if database is None:
+            database = self._pool.workspace_config.database
+        self._pool.update_routing_table(database=database)

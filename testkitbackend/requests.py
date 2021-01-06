@@ -37,12 +37,14 @@ def DriverClose(backend, data):
     backend.send_response("Driver", {"id": key})
 
 
-class SessionState:
+class SessionTracker:
     """ Keeps some extra state about the tracked session
     """
 
     def __init__(self, session):
         self.session = session
+        self.state = ""
+        self.error_id = ""
 
 
 def NewSession(backend, data):
@@ -58,11 +60,12 @@ def NewSession(backend, data):
             "default_access_mode": access_mode,
             "bookmarks": data["bookmarks"],
             "database": data["database"],
+            "fetch_size": data.get("fetchSize", None)
     }
     # TODO: fetchSize, database
     session = driver.session(**config)
     key = backend.next_key()
-    backend.sessions[key] = SessionState(session)
+    backend.sessions[key] = SessionTracker(session)
     backend.send_response("Session", {"id": key})
 
 
@@ -90,11 +93,71 @@ def SessionBeginTransaction(backend, data):
     metadata = data.get('txMeta', None)
     timeout = data.get('timeout', None)
     if timeout:
-        timeout = int(timeout)
+        timeout = float(timeout) / 1000
     tx = session.begin_transaction(metadata=metadata, timeout=timeout)
     key = backend.next_key()
     backend.transactions[key] = tx
     backend.send_response("Transaction", {"id": key})
+
+
+def SessionReadTransaction(backend, data):
+    transactionFunc(backend, data, True)
+
+
+def SessionWriteTransaction(backend, data):
+    transactionFunc(backend, data, False)
+
+
+def transactionFunc(backend, data, is_read):
+    key = data["sessionId"]
+    session_tracker = backend.sessions[key]
+    session = session_tracker.session
+
+    def func(tx):
+        txkey = backend.next_key()
+        backend.transactions[txkey] = tx
+        session_tracker.state = ''
+        backend.send_response("RetryableTry", {"id": txkey})
+
+        cont = True
+        while cont:
+            cont = backend.process_request()
+            if session_tracker.state == '+':
+                cont = False
+            elif session_tracker.state == '-':
+                if session_tracker.error_id:
+                    raise backend.errors[session_tracker.error_id]
+                else:
+                    raise Exception("Client said no")
+
+    if is_read:
+        session.read_transaction(func)
+    else:
+        session.write_transaction(func)
+    backend.send_response("RetryableDone", {})
+
+
+def RetryablePositive(backend, data):
+    key = data["sessionId"]
+    session_tracker = backend.sessions[key]
+    session_tracker.state = '+'
+
+
+def RetryableNegative(backend, data):
+    key = data["sessionId"]
+    session_tracker = backend.sessions[key]
+    session_tracker.state = '-'
+    session_tracker.error_id = data.get('errorId', '')
+
+
+def SessionLastBookmarks(backend, data):
+    key = data["sessionId"]
+    session = backend.sessions[key].session
+    bookmark = session.last_bookmark()
+    bookmarks = []
+    if bookmark:
+        bookmarks.append(bookmark)
+    backend.send_response("Bookmarks", {"bookmarks": bookmarks})
 
 
 def ResultNext(backend, data):
@@ -103,6 +166,7 @@ def ResultNext(backend, data):
         record = next(iter(result))
     except StopIteration:
         backend.send_response("NullRecord", {})
+        return
     backend.send_response("Record", totestkit.record(record))
 
 
