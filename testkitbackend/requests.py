@@ -126,7 +126,7 @@ def transactionFunc(backend, data, is_read):
                 cont = False
             elif session_tracker.state == '-':
                 if session_tracker.error_id:
-                    raise backend.Errors[session_tracker.error_id]
+                    raise backend.errors[session_tracker.error_id]
                 else:
                     raise Exception("Client said no")
 
