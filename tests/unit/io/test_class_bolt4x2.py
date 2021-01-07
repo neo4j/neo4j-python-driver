@@ -177,8 +177,7 @@ def test_n_and_qid_extras_in_pull(fake_socket):
 def test_hello_passes_routing_metadata(fake_socket_pair):
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address)
-    # TODO helper method for encoding messages
-    sockets.server.sendall(b"\x00\x03\xB1\x70\xA0\x00\x00")
+    sockets.server.send_message(0x70, {"server": "Neo4j/4.2.0"})
     connection = Bolt4x2(address, sockets.client, PoolConfig.max_connection_lifetime,
                          routing_context={"foo": "bar"})
     connection.hello()

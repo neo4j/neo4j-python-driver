@@ -24,7 +24,7 @@ import pytest
 from neo4j.exceptions import (
     ServiceUnavailable,
     ConfigurationError,
-    DriverError,
+    UnsupportedServerProduct,
 )
 from neo4j._exceptions import (
     BoltHandshakeError,
@@ -111,8 +111,8 @@ def test_direct_driver_handshake_negotiation(driver_info, test_script):
     [
         ("v3/return_1_port_9001.script", "Neo4j/3.0.0"),
         ("v4x0/return_1_port_9001.script", "Neo4j/4.0.0"),
-        ("v4x1/return_1_port_9001_bogus_server.script", DriverError),
-        ("v4x2/return_1_port_9001_bogus_server.script", DriverError),
+        ("v4x1/return_1_port_9001_bogus_server.script", UnsupportedServerProduct),
+        ("v4x2/return_1_port_9001_bogus_server.script", UnsupportedServerProduct),
     ]
 )
 def test_return_1_as_x(driver_info, test_script, test_expected):
@@ -130,7 +130,7 @@ def test_return_1_as_x(driver_info, test_script, test_expected):
                 assert summary.server.agent == test_expected
                 assert summary.server.agent.startswith("Neo4j")
             driver.close()
-        except DriverError as error:
+        except UnsupportedServerProduct as error:
             assert isinstance(error, test_expected)
 
 

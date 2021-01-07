@@ -336,10 +336,8 @@ def test_serverinfo_initialization():
     server_info = neo4j.api.ServerInfo(address, version)
     assert server_info.address is address
     assert server_info.protocol_version is version
-    assert server_info.metadata == {}
-
     assert server_info.agent is None
-    assert server_info.version_info() is None
+    assert server_info.connection_id is None
 
 
 @pytest.mark.parametrize(
@@ -358,7 +356,7 @@ def test_serverinfo_with_metadata(test_input, expected_agent, expected_version_i
 
     server_info = neo4j.api.ServerInfo(address, version)
 
-    server_info.metadata = test_input
+    server_info.update(test_input)
 
     assert server_info.agent == expected_agent
     assert server_info.version_info() == expected_version_info

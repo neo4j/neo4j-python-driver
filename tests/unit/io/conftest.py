@@ -19,13 +19,13 @@
 # limitations under the License.
 
 
-from collections import deque
-from struct import unpack as struct_unpack
+from io import BytesIO
+from struct import pack as struct_pack, unpack as struct_unpack
 
 import pytest
 
 from neo4j.io._common import MessageInbox
-from neo4j.packstream import UnpackableBuffer, Unpacker
+from neo4j.packstream import Packer, UnpackableBuffer, Unpacker
 
 
 class FakeSocket:
@@ -114,6 +114,18 @@ class FakeSocket2:
         unpacker = Unpacker(buffer)
         fields = [unpacker.unpack() for _ in range(n_fields)]
         return tag, fields
+
+    def send_message(self, tag, *fields):
+        data = self.encode_message(tag, *fields)
+        self.sendall(struct_pack(">H", len(data)) + data + b"\x00\x00")
+
+    @classmethod
+    def encode_message(cls, tag, *fields):
+        b = BytesIO()
+        packer = Packer(b)
+        for field in fields:
+            packer.pack(field)
+        return bytearray([0xB0 + len(fields), tag]) + b.getvalue()
 
 
 class FakeSocketPair:
