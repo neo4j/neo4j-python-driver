@@ -1,5 +1,11 @@
 # Neo4j Driver Change Log
 
+
+## Version 4.3
+
+- Python 3.9 support added
+
+
 ## Version 4.2
 
 - No driver changes have been made for Neo4j 4.2
