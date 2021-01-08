@@ -128,13 +128,14 @@ class Bolt:
 
         # Carry out Bolt subclass imports locally to avoid circular dependency issues.
         from neo4j.io._bolt3 import Bolt3
-        from neo4j.io._bolt4 import Bolt4x0, Bolt4x1, Bolt4x2
+        from neo4j.io._bolt4 import Bolt4x0, Bolt4x1, Bolt4x2, Bolt4x3
 
         handlers = {
             Bolt3.PROTOCOL_VERSION: Bolt3,
             Bolt4x0.PROTOCOL_VERSION: Bolt4x0,
             Bolt4x1.PROTOCOL_VERSION: Bolt4x1,
             Bolt4x2.PROTOCOL_VERSION: Bolt4x2,
+            Bolt4x3.PROTOCOL_VERSION: Bolt4x3,
         }
 
         if protocol_version is None:
