@@ -269,9 +269,11 @@ class Version(tuple):
         for i, v in enumerate(self):
             if not 0 <= i < 2:
                 raise ValueError("Too many version components")
-            if not 0 <= v < 256:
-                raise ValueError("Version component {} is out of range".format(v))
-            b[-i - 1] = v
+            if isinstance(v, list):
+                b[-i - 1] = int(v[0] % 0x100)
+                b[-i - 2] = int((v[0] - v[-1]) % 0x100)
+            else:
+                b[-i - 1] = int(v % 0x100)
         return bytes(b)
 
     @classmethod

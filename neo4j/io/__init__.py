@@ -90,6 +90,7 @@ from neo4j.conf import (
 from neo4j.api import (
     READ_ACCESS,
     WRITE_ACCESS,
+    Version,
 )
 
 # Set up logger
@@ -111,15 +112,6 @@ class Bolt:
     PROTOCOL_VERSION = None
 
     @classmethod
-    def get_handshake(cls):
-        """ Return the supported Bolt versions as bytes.
-        The length is 16 bytes as specified in the Bolt version negotiation.
-        :return: bytes
-        """
-        offered_versions = sorted(cls.protocol_handlers().keys(), reverse=True)[:4]
-        return b"".join(version.to_bytes() for version in offered_versions).ljust(16, b"\x00")
-
-    @classmethod
     def protocol_handlers(cls, protocol_version=None):
         """ Return a dictionary of available Bolt protocol handlers,
         keyed by version tuple. If an explicit protocol version is
@@ -136,13 +128,14 @@ class Bolt:
 
         # Carry out Bolt subclass imports locally to avoid circular dependency issues.
         from neo4j.io._bolt3 import Bolt3
-        from neo4j.io._bolt4 import Bolt4x0, Bolt4x1, Bolt4x2
+        from neo4j.io._bolt4 import Bolt4x0, Bolt4x1, Bolt4x2, Bolt4x3
 
         handlers = {
             Bolt3.PROTOCOL_VERSION: Bolt3,
             Bolt4x0.PROTOCOL_VERSION: Bolt4x0,
             Bolt4x1.PROTOCOL_VERSION: Bolt4x1,
             Bolt4x2.PROTOCOL_VERSION: Bolt4x2,
+            Bolt4x3.PROTOCOL_VERSION: Bolt4x3,
         }
 
         if protocol_version is None:
@@ -155,6 +148,41 @@ class Bolt:
             return {protocol_version: handlers[protocol_version]}
 
         return {}
+
+    @classmethod
+    def version_list(cls, versions, limit=4):
+        """ Return a list of supported protocol versions in order of
+        preference. The number of protocol versions (or ranges)
+        returned is limited to four.
+        """
+        ranges_supported = versions[0] >= Version(4, 3)
+        if versions and ranges_supported:
+            start, end = 0, 0
+            first_major = versions[start][0]
+            minors = []
+            for end, version in enumerate(versions):
+                if version[0] == first_major:
+                    minors.append(version[1])
+                else:
+                    break
+            new_versions = ([Version(first_major, minors)] + versions[1:end])[:(limit - 1)]
+            try:
+                new_versions.append(versions[end])
+            except IndexError:
+                pass
+            return new_versions
+        else:
+            return versions[:limit]
+
+    @classmethod
+    def get_handshake(cls):
+        """ Return the supported Bolt versions as bytes.
+        The length is 16 bytes as specified in the Bolt version negotiation.
+        :return: bytes
+        """
+        supported_versions = sorted(cls.protocol_handlers().keys(), reverse=True)
+        offered_versions = cls.version_list(supported_versions)
+        return b"".join(version.to_bytes() for version in offered_versions).ljust(16, b"\x00")
 
     @classmethod
     def ping(cls, address, *, timeout=None, **config):

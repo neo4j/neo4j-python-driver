@@ -486,3 +486,12 @@ class Bolt4x2(Bolt4x1):
     """
 
     PROTOCOL_VERSION = Version(4, 2)
+
+
+class Bolt4x3(Bolt4x2):
+    """ Protocol handler for Bolt 4.3.
+
+    This is supported by Neo4j version 4.3.
+    """
+
+    PROTOCOL_VERSION = Version(4, 3)

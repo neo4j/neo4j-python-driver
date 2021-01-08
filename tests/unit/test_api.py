@@ -308,23 +308,6 @@ def test_version_to_bytes_with_valid_bolt_version(test_input, expected):
     assert version.to_bytes() == expected
 
 
-@pytest.mark.parametrize(
-    "test_input, expected",
-    [
-        ((0, 0, 0), ValueError),
-        ((-1, -1), ValueError),
-        ((256, 256), ValueError),
-        ((None, None), TypeError),
-        (("0", "0"), TypeError),
-    ]
-)
-def test_version_to_bytes_with_not_valid_bolt_version(test_input, expected):
-    # python -m pytest tests/unit/test_api.py -s -k test_version_to_bytes_with_valid_bolt_version
-    version = neo4j.api.Version(*test_input)
-    with pytest.raises(expected):
-        byte_version = version.to_bytes()
-
-
 def test_serverinfo_initialization():
     # python -m pytest tests/unit/test_api.py -s -k test_serverinfo_initialization
 
