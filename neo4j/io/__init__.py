@@ -244,6 +244,10 @@ class Bolt:
             # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt4 import Bolt4x2
             connection = Bolt4x2(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
+        elif pool_config.protocol_version == (4, 3):
+            # Carry out Bolt subclass imports locally to avoid circular dependency issues.
+            from neo4j.io._bolt4 import Bolt4x3
+            connection = Bolt4x3(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
             s.shutdown(SHUT_RDWR)
