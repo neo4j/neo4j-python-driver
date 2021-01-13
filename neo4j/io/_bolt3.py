@@ -24,7 +24,6 @@ from time import perf_counter
 from neo4j.api import (
     Version,
     READ_ACCESS,
-    DEFAULT_DATABASE,
 )
 from neo4j.io._common import (
     Inbox,
@@ -160,6 +159,35 @@ class Bolt3(Bolt):
         self.fetch_all()
         check_supported_server_product(self.server_info.agent)
 
+    def route(self, database):
+        if database is not None:  # default database
+            raise ConfigurationError("Database name parameter for selecting database is not "
+                                     "supported in Bolt Protocol {!r}. Database name {!r}. "
+                                     "Server Agent {!r}.".format(Bolt3.PROTOCOL_VERSION, database,
+                                                                 self.server_info.agent))
+
+        metadata = {}
+        records = []
+
+        def fail(md):
+            from neo4j._exceptions import BoltRoutingError
+            if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
+                raise BoltRoutingError("Server does not support routing", self.unresolved_address)
+            else:
+                raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
+
+        self.run(
+            "CALL dbms.cluster.routing.getRoutingTable($context)",  # This is an internal procedure call. Only available if the Neo4j 3.5 is setup with clustering.
+            {"context": self.routing_context},
+            mode="r",                                               # Bolt Protocol Version(3, 0) supports mode="r"
+            on_success=metadata.update, on_failure=fail
+        )
+        self.pull(on_success=metadata.update, on_records=records.extend)
+        self.send_all()
+        self.fetch_all()
+        routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
+        return routing_info
+
     def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
         if db is not None:
             raise ConfigurationError("Database name parameter for selecting database is not supported in Bolt Protocol {!r}. Database name {!r}.".format(Bolt3.PROTOCOL_VERSION, db))
@@ -190,17 +218,6 @@ class Bolt3(Bolt):
         else:
             self._append(b"\x10", fields, Response(self, **handlers))
         self._is_reset = False
-
-    def run_get_routing_table(self, on_success, on_failure, database=DEFAULT_DATABASE):
-        if database != DEFAULT_DATABASE:
-            raise ConfigurationError("Database name parameter for selecting database is not supported in Bolt Protocol {!r}. Database name {!r}. Server Agent {!r}.".format(Bolt3.PROTOCOL_VERSION, database, self.server_info.agent))
-        self.run(
-            "CALL dbms.cluster.routing.getRoutingTable($context)",  # This is an internal procedure call. Only available if the Neo4j 3.5 is setup with clustering.
-            {"context": self.routing_context},
-            mode="r",                                               # Bolt Protocol Version(3, 0) supports mode="r"
-            on_success=on_success,
-            on_failure=on_failure,
-        )
 
     def discard(self, n=-1, qid=-1, **handlers):
         # Just ignore n and qid, it is not supported in the Bolt 3 Protocol.

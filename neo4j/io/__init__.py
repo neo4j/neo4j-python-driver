@@ -244,6 +244,10 @@ class Bolt:
             # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt4 import Bolt4x2
             connection = Bolt4x2(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
+        elif pool_config.protocol_version == (4, 3):
+            # Carry out Bolt subclass imports locally to avoid circular dependency issues.
+            from neo4j.io._bolt4 import Bolt4x3
+            connection = Bolt4x3(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
             s.shutdown(SHUT_RDWR)
@@ -288,6 +292,10 @@ class Bolt:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+    def route(self, database):
+        """ Fetch a routing table from the server.
+        """
 
     def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None,
             timeout=None, db=None, **handlers):
@@ -671,64 +679,9 @@ class Neo4jPool(IOPool):
         :raise ServiceUnavailable: if the server does not support routing or
                                    if routing support is broken
         """
-
-        # The name of system database is fixed and named as "system".
-        # It cannot be changed for a single instance or a cluster. (We can reliably assume that the system db exists on each instance.)
-        #
-        # Database name is NOT case sensitive.
-        #
-        # Each cluster member will host the exact same databases. For example, if a cluster member A has databases "foo" and
-        # "system", then all other members in the cluster should also have and only have "foo" and "system".
-        # However at a certain time, the cluster members may or may not up-to-date, as a result, cluster members may contain different databases.
-        #
-        # Maintain a routing table for each database.
-        #
-        # Default database is named "neo4j", (this can be renamed on the Neo4j server).
-        #
-        # Any core member in a cluster can provide a routing table for any database inside the cluster.
-        # The seed_url can be used to find all databases in the cluster.
-        #
-        # If the driver failed to refresh routing table with all known routers, then the driver should retry a few times before it raises a ServiceUnavailable.
-        #
-        # A valid routing table should at least have one router and one reader.
-        #
-        # To prevent the routing tables from growing infinitely.
-        # Stale/Aged routing tables is removed when there is a failure to obtain a routing table.
-        # Remove a routing table if it have been aged, timeout = TTL + RoutingConfig.routing_table_purge_delay
-
-        # Carry out Bolt subclass imports locally to avoid circular dependency issues.
-        from neo4j.io._bolt3 import Bolt3
-        from neo4j.io._bolt4 import Bolt4x0, Bolt4x1, Bolt4x2
-
-        from neo4j.api import (
-            SYSTEM_DATABASE,
-            DEFAULT_DATABASE,
-            READ_ACCESS,
-        )
-
-        metadata = {}
-        records = []
-
-        def fail(md):
-            if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
-                raise BoltRoutingError("Server does not support routing", address)
-            else:
-                raise BoltRoutingError("Routing support broken on server", address)
-
         try:
             with self._acquire(address, timeout) as cx:
-                log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
-
-                if database is None:
-                    database = self.workspace_config.database
-
-                cx.run_get_routing_table(on_success=metadata.update, on_failure=fail, database=database)
-                cx.pull(on_success=metadata.update, on_records=records.extend)
-                cx.send_all()
-                cx.fetch_all()
-                routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
-                log.debug("[#%04X]  S: <ROUTING> info=%r", cx.local_port, routing_info)
-            return routing_info
+                return cx.route(database or self.workspace_config.database)
         except BoltRoutingError as error:
             raise ServiceUnavailable(*error.args)
         except ServiceUnavailable:

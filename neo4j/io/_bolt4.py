@@ -24,7 +24,6 @@ from time import perf_counter
 from neo4j.api import (
     Version,
     READ_ACCESS,
-    DEFAULT_DATABASE,
     SYSTEM_DATABASE,
 )
 from neo4j.io._common import (
@@ -159,6 +158,39 @@ class Bolt4x0(Bolt):
         self.fetch_all()
         check_supported_server_product(self.server_info.agent)
 
+    def route(self, database):
+        metadata = {}
+        records = []
+
+        def fail(md):
+            from neo4j._exceptions import BoltRoutingError
+            if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
+                raise BoltRoutingError("Server does not support routing", self.unresolved_address)
+            else:
+                raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
+
+        if database is None:  # default database
+            self.run(
+                "CALL dbms.routing.getRoutingTable($context)",
+                {"context": self.routing_context},
+                mode="r",
+                db=SYSTEM_DATABASE,
+                on_success=metadata.update, on_failure=fail
+            )
+        else:
+            self.run(
+                "CALL dbms.routing.getRoutingTable($context, $database)",
+                {"context": self.routing_context, "database": database},
+                mode="r",
+                db=SYSTEM_DATABASE,
+                on_success=metadata.update, on_failure=fail
+            )
+        self.pull(on_success=metadata.update, on_records=records.extend)
+        self.send_all()
+        self.fetch_all()
+        routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
+        return routing_info
+
     def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
         if not parameters:
             parameters = {}
@@ -189,26 +221,6 @@ class Bolt4x0(Bolt):
         else:
             self._append(b"\x10", fields, Response(self, **handlers))
         self._is_reset = False
-
-    def run_get_routing_table(self, on_success, on_failure, database=DEFAULT_DATABASE):
-        if database == DEFAULT_DATABASE:
-            self.run(
-                "CALL dbms.routing.getRoutingTable($context)",
-                {"context": self.routing_context},
-                mode="r",
-                db=SYSTEM_DATABASE,
-                on_success=on_success,
-                on_failure=on_failure,
-            )
-        else:
-            self.run(
-                "CALL dbms.routing.getRoutingTable($context, $database)",
-                {"context": self.routing_context, "database": database},
-                mode="r",
-                db=SYSTEM_DATABASE,
-                on_success=on_success,
-                on_failure=on_failure,
-            )
 
     def discard(self, n=-1, qid=-1, **handlers):
         extra = {"n": n}
