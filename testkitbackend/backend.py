@@ -76,7 +76,9 @@ class Backend:
             self.errors[key] = e
             self.send_response("DriverError", {"id": key})
         except Exception as e:
-            self.send_response("BackendError", {"msg": str(e)})
+            from traceback import print_exception
+            print_exception(type(e), e, e.__traceback__)
+            self.send_response("BackendError", {"msg": "%s: %s" % (e.__class__.__name__, e)})
 
     def send_response(self, name, data):
         """ Sends a response to backend.
