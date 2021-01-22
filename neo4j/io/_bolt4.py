@@ -507,3 +507,21 @@ class Bolt4x3(Bolt4x2):
     """
 
     PROTOCOL_VERSION = Version(4, 3)
+
+    def route(self, database):
+
+        def fail(md):
+            from neo4j._exceptions import BoltRoutingError
+            if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
+                raise BoltRoutingError("Server does not support routing", self.unresolved_address)
+            else:
+                raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
+
+        routing_context = self.routing_context or {}
+        log.debug("[#%04X]  C: ROUTE %r %r", self.local_port, routing_context, database)
+        metadata = {}
+        self._append(b"\x66", (routing_context, database),
+                     response=Response(self, on_success=metadata.update, on_failure=fail))
+        self.send_all()
+        self.fetch_all()
+        return [metadata.get("rt")]

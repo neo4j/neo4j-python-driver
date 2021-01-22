@@ -294,7 +294,14 @@ class Bolt:
         self.close()
 
     def route(self, database):
-        """ Fetch a routing table from the server.
+        """ Fetch a routing table from the server for the given
+        `database`. For Bolt 4.3 and above, this appends a ROUTE
+        message; for earlier versions, a procedure call is made via
+        the regular Cypher execution mechanism. In all cases, this is
+        sent to the network, and a response is fetched.
+
+        :param database: database for which to fetch a routing table
+        :return: dictionary of raw routing data
         """
 
     def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None,
@@ -666,27 +673,41 @@ class Neo4jPool(IOPool):
         if database not in self.routing_tables:
             self.routing_tables[database] = RoutingTable(database=database, routers=self.get_default_database_initial_router_addresses())
 
-    def fetch_routing_info(self, *, address, timeout, database):
+    def fetch_routing_info(self, address, database, timeout):
         """ Fetch raw routing info from a given router address.
 
         :param address: router address
-        :param timeout: seconds
-        :param database: the data base name to get routing table for
-        :param address: the address by which the client initially contacted the server as a hint for inclusion in the returned routing table.
+        :param database: the database name to get routing table for
+        :param timeout: connection acquisition timeout in seconds
 
-        :return: list of routing records or
-                 None if no connection could be established
-        :raise ServiceUnavailable: if the server does not support routing or
-                                   if routing support is broken
+        :return: list of routing records, or None if no connection
+            could be established or if no readers or writers are present
+        :raise ServiceUnavailable: if the server does not support
+            routing, or if routing support is broken or outdated
         """
         try:
             with self._acquire(address, timeout) as cx:
-                return cx.route(database or self.workspace_config.database)
+                routing_table = cx.route(database or self.workspace_config.database)
         except BoltRoutingError as error:
+            # Connection was successful, but routing support is
+            # broken. This may indicate that the routing procedure
+            # does not exist (for protocol versions prior to 4.3).
+            # This error is converted into ServiceUnavailable,
+            # therefore surfacing to the application as a signal that
+            # routing is broken.
+            log.debug("Routing is broken (%s)", error)
             raise ServiceUnavailable(*error.args)
-        except ServiceUnavailable:
-            self.deactivate(address=address)
-            return None
+        except ServiceUnavailable as error:
+            # The routing table request suffered a connection
+            # failure. This should return a null routing table,
+            # signalling to the caller to retry the request
+            # elsewhere.
+            log.debug("Routing is unavailable (%s)", error)
+            routing_table = None
+        # If the routing table is empty, deactivate the address.
+        if not routing_table:
+            self.deactivate(address)
+        return routing_table
 
     def fetch_routing_table(self, *, address, timeout, database):
         """ Fetch a routing table from a given router address.
@@ -702,7 +723,7 @@ class Neo4jPool(IOPool):
         :raise neo4j.exceptions.ServiceUnavailable: if no writers are available
         :raise neo4j._exceptions.BoltProtocolError: if the routing information received is unusable
         """
-        new_routing_info = self.fetch_routing_info(address=address, timeout=timeout, database=database)
+        new_routing_info = self.fetch_routing_info(address, database, timeout)
         if new_routing_info is None:
             return None
         elif not new_routing_info:

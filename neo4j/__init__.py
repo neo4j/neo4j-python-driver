@@ -442,7 +442,9 @@ class Neo4jDriver(Routing, Driver):
         routing_info = {}
         for ix in list(table.routers):
             try:
-                routing_info[ix] = self._pool.fetch_routing_info(address=table.routers[0], timeout=self._default_workspace_config.connection_acquisition_timeout, database=self._default_workspace_config.database)
+                routing_info[ix] = self._pool.fetch_routing_info(address=table.routers[0],
+                                                                 database=self._default_workspace_config.database,
+                                                                 timeout=self._default_workspace_config.connection_acquisition_timeout)
             except BoltHandshakeError as error:
                 routing_info[ix] = None
 
