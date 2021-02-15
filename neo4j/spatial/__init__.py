@@ -53,7 +53,7 @@ class Point(tuple):
     srid = None
 
     def __new__(cls, iterable):
-        return tuple.__new__(cls, iterable)
+        return tuple.__new__(cls, map(float, iterable))
 
     def __repr__(self):
         return "POINT(%s)" % " ".join(map(str, self))
