@@ -370,7 +370,7 @@ class Session(Workspace):
             with driver.session() as session:
                 values = session.read_transaction(get_two_tx)
 
-        :param transaction_function: a function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, \*args, \*\*kwargs)`
+        :param transaction_function: a function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, *args, **kwargs)`
         :param args: arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
         :return: a result as returned by the given unit of work
@@ -395,7 +395,7 @@ class Session(Workspace):
                 node_id = session.write_transaction(create_node_tx, "example")
 
 
-        :param transaction_function: a function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, \*args, \*\*kwargs)`
+        :param transaction_function: a function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, *args, **kwargs)`
         :param args: key word arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
         :return: a result as returned by the given unit of work
