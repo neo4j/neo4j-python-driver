@@ -189,12 +189,8 @@ def service(request):
         if existing_service:
             NEO4J_SERVICE = existing_service
         else:
-            try:
-                NEO4J_SERVICE = Neo4jService(auth=NEO4J_AUTH, image=request.param, n_cores=NEO4J_CORES, n_replicas=NEO4J_REPLICAS)
-                NEO4J_SERVICE.start(timeout=300)
-            except urllib.error.HTTPError as error:
-                # pytest.skip(str(error))
-                pytest.xfail(str(error) + " " + request.param)
+            NEO4J_SERVICE = Neo4jService(auth=NEO4J_AUTH, image=request.param, n_cores=NEO4J_CORES, n_replicas=NEO4J_REPLICAS)
+            NEO4J_SERVICE.start(timeout=300)
         yield NEO4J_SERVICE
         if NEO4J_SERVICE is not None:
             NEO4J_SERVICE.stop(timeout=300)
