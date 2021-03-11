@@ -33,7 +33,7 @@ from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
 
 
-# python -m pytest tests/integration/examples/test_aura_example.py -s -v
+# python -m pytest tests/integration/examples/test_driver_introduction_example.py -s -v
 
 # tag::driver-introduction-example[]
 class App:
@@ -91,10 +91,9 @@ class App:
 
 
 if __name__ == "__main__":
-    # Aura queries use an encrypted connection using the "neo4j+s" URI scheme
     bolt_url = "%%BOLT_URL_PLACEHOLDER%%"
-    user = "<Username for Neo4j Aura database>"
-    password = "<Password for Neo4j Aura database>"
+    user = "<Username for database>"
+    password = "<Password for database>"
     app = App(bolt_url, user, password)
     app.create_friendship("Alice", "David")
     app.find_person("Alice")
