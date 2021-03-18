@@ -23,7 +23,7 @@ Example, driver creation:
 
     from neo4j import GraphDatabase
 
-    uri = neo4j://example.com:7687
+    uri = "neo4j://example.com:7687"
     driver = GraphDatabase.driver(uri, auth=("neo4j", "password"), max_connection_lifetime=1000)
 
     driver.close()  # close the driver object
@@ -44,8 +44,7 @@ Example, with block context:
 
     from neo4j import GraphDatabase
 
-    uri = neo4j://example.com:7687
-
+    uri = "neo4j://example.com:7687"
     with GraphDatabase.driver(uri, auth=("neo4j", "password")) as driver:
         # use the driver
 
@@ -69,11 +68,11 @@ Available valid URIs:
 
 .. code-block:: python
 
-    uri = bolt://example.com:7687
+    uri = "bolt://example.com:7687"
 
 .. code-block:: python
 
-    uri = neo4j://example.com:7687
+    uri = "neo4j://example.com:7687"
 
 Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that implements a specific behaviour.
 
