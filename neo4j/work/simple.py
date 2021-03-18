@@ -263,7 +263,7 @@ class Session(Workspace):
         :type metadata: dict
 
         :param timeout:
-            the transaction timeout in milliseconds.
+            the transaction timeout in seconds.
             Transactions that execute longer than the configured timeout will be terminated by the database.
             This functionality allows to limit query/transaction execution time.
             Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
@@ -442,7 +442,7 @@ def unit_of_work(metadata=None, timeout=None):
     :type metadata: dict
 
     :param timeout:
-        the transaction timeout in milliseconds.
+        the transaction timeout in seconds.
         Transactions that execute longer than the configured timeout will be terminated by the database.
         This functionality allows to limit query/transaction execution time.
         Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
