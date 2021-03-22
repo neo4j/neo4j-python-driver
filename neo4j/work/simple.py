@@ -302,6 +302,7 @@ class Session(Workspace):
         t0 = -1  # Timer
 
         while True:
+            committing = False
             try:
                 self._open_transaction(access_mode=access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
                 tx = self._transaction
@@ -311,8 +312,13 @@ class Session(Workspace):
                     tx.rollback()
                     raise
                 else:
+                    committing = True
                     tx.commit()
             except (ServiceUnavailable, SessionExpired) as error:
+                if committing:
+                    # Failed commit might have been executed on the server
+                    # => no retry
+                    raise
                 errors.append(error)
                 self._disconnect()
             except TransientError as transient_error:
