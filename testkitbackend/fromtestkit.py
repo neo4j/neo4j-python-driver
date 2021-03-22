@@ -15,19 +15,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-def toCypherAndParams(data):
-    cypher = data["cypher"]
+from neo4j.work.simple import Query
+
+
+def to_cypher_and_params(data):
+    from .backend import Request
     params = data["params"]
     # Optional
     if params is None:
-        return cypher, None
+        return data["cypher"], None
     # Transform the params to Python native
     for p in params:
-        params[p] = toParam(params[p])
-    return cypher, params
+        if isinstance(params[p], Request):
+            params[p].mark_all_as_read(recursive=True)
+        params[p] = to_param(params[p])
+    return data["cypher"], params
 
 
-def toParam(m):
+def to_meta_and_timeout(data):
+    from .backend import Request
+    metadata = data.get('txMeta', None)
+    if isinstance(metadata, Request):
+        metadata.mark_all_as_read()
+    timeout = data.get('timeout', None)
+    if timeout:
+        timeout = float(timeout) / 1000
+    return metadata, timeout
+
+
+def to_query_and_params(data):
+    cypher, param = to_cypher_and_params(data)
+    metadata, timeout = to_meta_and_timeout(data)
+    query = Query(cypher, metadata=metadata, timeout=timeout)
+    return query, param
+
+
+def to_param(m):
     """ Converts testkit parameter format to driver (python) parameter
     """
     data = m["data"]
@@ -47,11 +70,11 @@ def toParam(m):
     if name == "CypherList":
         ls = []
         for x in data["value"]:
-            ls.append(toParam(x))
+            ls.append(to_param(x))
         return ls
     if name == "CypherMap":
         mp = {}
         for k, v in data["value"].items():
-            mp[k] = toParam(v)
+            mp[k] = to_param(v)
         return mp
     raise Exception("Unknown param type " + name)
