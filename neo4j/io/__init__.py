@@ -258,6 +258,8 @@ class Bolt:
 
         try:
             connection.hello()
+        except (SessionExpired, ServiceUnavailable):
+            raise
         except Exception as error:
             log.debug("[#%04X]  C: <CLOSE> %s", s.getsockname()[1], str(error))
             s.shutdown(SHUT_RDWR)
