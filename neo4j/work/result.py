@@ -20,10 +20,39 @@
 
 
 from collections import deque
+from contextlib import contextmanager
 from warnings import warn
 
+from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.data import DataDehydrator
+from neo4j.exceptions import (
+    ServiceUnavailable,
+    SessionExpired,
+)
 from neo4j.work.summary import ResultSummary
+
+
+class _ConnectionErrorHandler:
+    def __init__(self, connection, on_network_error):
+        self._connection = connection
+        self._on_network_error = on_network_error
+
+    def __getattr__(self, item):
+        connection_attr = getattr(self._connection, item)
+        if not callable(connection_attr):
+            return connection_attr
+
+        def outer(func):
+            def inner(*args, **kwargs):
+                try:
+                    func(*args, **kwargs)
+                except (SessionExpired, ServiceUnavailable,
+                        BoltIncompleteCommitError) as error:
+                    self._on_network_error(error)
+                    raise
+            return inner
+
+        return outer(connection_attr)
 
 
 class Result:
@@ -32,8 +61,9 @@ class Result:
     :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
 
-    def __init__(self, connection, hydrant, fetch_size, on_closed):
-        self._connection = connection
+    def __init__(self, connection, hydrant, fetch_size, on_closed,
+                 on_network_error):
+        self._connection = _ConnectionErrorHandler(connection, on_network_error)
         self._hydrant = hydrant
         self._on_closed = on_closed
         self._metadata = None
@@ -97,7 +127,7 @@ class Result:
             on_failure=on_failed_attach,
         )
         self._pull()
-        self._connection.send_all()
+        self._connection._send_all()
         self._attach()
 
     def _pull(self):
@@ -187,10 +217,10 @@ class Result:
                         yield self._record_buffer.popleft()
                     elif self._discarding and self._streaming is False:
                         self._discard()
-                        self._connection.send_all()
+                        self._connection._send_all()
                     elif self._has_more and self._streaming is False:
                         self._pull()
-                        self._connection.send_all()
+                        self._connection._send_all()
 
         self._closed = True
 
