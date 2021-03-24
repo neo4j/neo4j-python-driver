@@ -38,60 +38,52 @@ from collections import deque
 from logging import getLogger
 from random import choice
 from select import select
-from time import perf_counter
-
 from socket import (
-    socket,
-    SOL_SOCKET,
-    SO_KEEPALIVE,
-    SHUT_RDWR,
-    timeout as SocketTimeout,
     AF_INET,
     AF_INET6,
+    SHUT_RDWR,
+    SO_KEEPALIVE,
+    socket,
+    SOL_SOCKET,
+    timeout as SocketTimeout,
 )
-
 from ssl import (
     HAS_SNI,
     SSLError,
 )
-
-from struct import (
-    pack as struct_pack,
-)
-
 from threading import (
+    Condition,
     Lock,
     RLock,
-    Condition,
 )
+from time import perf_counter
 
-from neo4j.addressing import Address
-from neo4j.conf import PoolConfig
 from neo4j._exceptions import (
+    BoltHandshakeError,
+    BoltProtocolError,
     BoltRoutingError,
     BoltSecurityError,
-    BoltProtocolError,
-    BoltHandshakeError,
 )
-from neo4j.exceptions import (
-    ServiceUnavailable,
-    ClientError,
-    SessionExpired,
-    ReadServiceUnavailable,
-    WriteServiceUnavailable,
-    ConfigurationError,
-    UnsupportedServerProduct,
+from neo4j.addressing import Address
+from neo4j.api import (
+    READ_ACCESS,
+    Version,
+    WRITE_ACCESS,
 )
-from neo4j.routing import RoutingTable
 from neo4j.conf import (
     PoolConfig,
     WorkspaceConfig,
 )
-from neo4j.api import (
-    READ_ACCESS,
-    WRITE_ACCESS,
-    Version,
+from neo4j.exceptions import (
+    ClientError,
+    ConfigurationError,
+    ReadServiceUnavailable,
+    ServiceUnavailable,
+    SessionExpired,
+    UnsupportedServerProduct,
+    WriteServiceUnavailable,
 )
+from neo4j.routing import RoutingTable
 
 # Set up logger
 log = getLogger("neo4j")
@@ -262,7 +254,7 @@ class Bolt:
             log.debug("[#%04X]  C: <CLOSE> %s", s.getsockname()[1], str(error))
             s.shutdown(SHUT_RDWR)
             s.close()
-            raise error
+            raise
 
         return connection
 
@@ -522,7 +514,7 @@ class IOPool:
                     connections.remove(conn)
                     try:
                         conn.close()
-                    except IOError:
+                    except OSError:
                         pass
             if not connections:
                 self.remove(address)
@@ -538,7 +530,7 @@ class IOPool:
             for connection in self.connections.pop(address, ()):
                 try:
                     connection.close()
-                except IOError:
+                except OSError:
                     pass
 
     def close(self):

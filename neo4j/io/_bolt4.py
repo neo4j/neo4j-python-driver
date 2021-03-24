@@ -19,46 +19,50 @@
 # limitations under the License.
 
 from collections import deque
+from logging import getLogger
 from ssl import SSLSocket
 from time import perf_counter
-from neo4j.api import (
-    Version,
-    READ_ACCESS,
-    SYSTEM_DATABASE,
-)
-from neo4j.io._common import (
-    Inbox,
-    Outbox,
-    Response,
-    InitResponse,
-    CommitResponse,
-)
-from neo4j.meta import get_user_agent
-from neo4j.exceptions import (
-    AuthError,
-    ServiceUnavailable,
-    DatabaseUnavailable,
-    NotALeader,
-    ForbiddenOnReadOnlyDatabase,
-    SessionExpired,
-)
+
 from neo4j._exceptions import (
+    BoltError,
     BoltIncompleteCommitError,
     BoltProtocolError,
 )
-from neo4j.packstream import (
-    Unpacker,
-    Packer,
+from neo4j.addressing import Address
+from neo4j.api import (
+    READ_ACCESS,
+    SYSTEM_DATABASE,
+    Version,
+)
+from neo4j.api import ServerInfo
+from neo4j.exceptions import (
+    AuthError,
+    DatabaseUnavailable,
+    DriverError,
+    ForbiddenOnReadOnlyDatabase,
+    NotALeader,
+    ServiceUnavailable,
+    SessionExpired,
 )
 from neo4j.io import (
     Bolt,
     BoltPool,
     check_supported_server_product,
 )
-from neo4j.api import ServerInfo
-from neo4j.addressing import Address
+from neo4j.io._common import (
+    CommitResponse,
+    Inbox,
+    InitResponse,
+    Outbox,
+    Response,
+)
+from neo4j.meta import get_user_agent
+from neo4j.packstream import (
+    Unpacker,
+    Packer,
+)
 
-from logging import getLogger
+
 log = getLogger("neo4j")
 
 
@@ -87,7 +91,7 @@ class Bolt4x0(Bolt):
         self.socket = sock
         self.server_info = ServerInfo(Address(sock.getpeername()), self.PROTOCOL_VERSION)
         self.outbox = Outbox()
-        self.inbox = Inbox(self.socket, on_error=self._set_defunct)
+        self.inbox = Inbox(self.socket, on_error=self._set_defunct_read)
         self.packer = Packer(self.outbox)
         self.unpacker = Unpacker(self.inbox)
         self.responses = deque()
@@ -137,7 +141,7 @@ class Bolt4x0(Bolt):
     def local_port(self):
         try:
             return self.socket.getsockname()[1]
-        except IOError:
+        except OSError:
             return 0
 
     def get_base_headers(self):
@@ -300,7 +304,10 @@ class Bolt4x0(Bolt):
     def _send_all(self):
         data = self.outbox.view()
         if data:
-            self.socket.sendall(data)
+            try:
+                self.socket.sendall(data)
+            except OSError as error:
+                self._set_defunct_write(error)
             self.outbox.clear()
 
     def send_all(self):
@@ -314,17 +321,7 @@ class Bolt4x0(Bolt):
             raise ServiceUnavailable("Failed to write to defunct connection {!r} ({!r})".format(
                 self.unresolved_address, self.server_info.address))
 
-        try:
-            self._send_all()
-        except (IOError, OSError) as error:
-            log.error("Failed to write data to connection "
-                      "{!r} ({!r}); ({!r})".
-                      format(self.unresolved_address,
-                             self.server_info.address,
-                             "; ".join(map(repr, error.args))))
-            if self.pool:
-                self.pool.deactivate(address=self.unresolved_address)
-            raise
+        self._send_all()
 
     def fetch_message(self):
         """ Receive at least one message from the server, if available.
@@ -344,17 +341,7 @@ class Bolt4x0(Bolt):
             return 0, 0
 
         # Receive exactly one message
-        try:
-            details, summary_signature, summary_metadata = next(self.inbox)
-        except (IOError, OSError) as error:
-            log.error("Failed to read data from connection "
-                      "{!r} ({!r}); ({!r})".
-                      format(self.unresolved_address,
-                             self.server_info.address,
-                             "; ".join(map(repr, error.args))))
-            if self.pool:
-                self.pool.deactivate(address=self.unresolved_address)
-            raise
+        details, summary_signature, summary_metadata = next(self.inbox)
 
         if details:
             log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # Do not log any data
@@ -389,11 +376,20 @@ class Bolt4x0(Bolt):
 
         return len(details), 1
 
-    def _set_defunct(self, error=None):
-        direct_driver = isinstance(self.pool, BoltPool)
+    def _set_defunct_read(self, error=None):
+        message = "Failed to read from defunct connection {!r} ({!r})".format(
+            self.unresolved_address, self.server_info.address
+        )
+        self._set_defunct(message, error=error)
 
-        message = ("Failed to read from defunct connection {!r} ({!r})".format(
-            self.unresolved_address, self.server_info.address))
+    def _set_defunct_write(self, error=None):
+        message = "Failed to write data to connection {!r} ({!r})".format(
+            self.unresolved_address, self.server_info.address
+        )
+        self._set_defunct(message, error=error)
+
+    def _set_defunct(self, message, error=None):
+        direct_driver = isinstance(self.pool, BoltPool)
 
         if error:
             log.error(str(error))
@@ -454,12 +450,12 @@ class Bolt4x0(Bolt):
                 self._append(b"\x02", ())
                 try:
                     self._send_all()
-                except:
+                except (OSError, BoltError, DriverError):
                     pass
             log.debug("[#%04X]  C: <CLOSE>", self.local_port)
             try:
                 self.socket.close()
-            except IOError:
+            except OSError:
                 pass
             finally:
                 self._closed = True
