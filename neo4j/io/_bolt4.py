@@ -164,7 +164,10 @@ class Bolt4x0(Bolt):
 
         def fail(md):
             from neo4j._exceptions import BoltRoutingError
-            if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
+            code = md.get("code")
+            if code == "Neo.ClientError.Database.DatabaseNotFound":
+                return  # surface this error to the user
+            elif code == "Neo.ClientError.Procedure.ProcedureNotFound":
                 raise BoltRoutingError("Server does not support routing", self.unresolved_address)
             else:
                 raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
@@ -512,7 +515,10 @@ class Bolt4x3(Bolt4x2):
 
         def fail(md):
             from neo4j._exceptions import BoltRoutingError
-            if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
+            code = md.get("code")
+            if code == "Neo.ClientError.Database.DatabaseNotFound":
+                return  # surface this error to the user
+            elif code == "Neo.ClientError.Procedure.ProcedureNotFound":
                 raise BoltRoutingError("Server does not support routing", self.unresolved_address)
             else:
                 raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
