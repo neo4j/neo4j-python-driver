@@ -145,10 +145,10 @@ class Backend:
 
             key = self.next_key()
             self.errors[key] = e
-            self.send_response(
-                "DriverError",
-                {"id": key, "errorType": str(type(e)), "msg": msg}
-            )
+            payload = {"id": key, "errorType": str(type(e)), "msg": msg}
+            if isinstance(e, Neo4jError):
+                payload["code"] = e.code
+            self.send_response("DriverError", payload)
         except Exception as e:
             traceback.print_exception(type(e), e, e.__traceback__)
             self.send_response("BackendError",
