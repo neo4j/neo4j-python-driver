@@ -36,18 +36,22 @@ def StartTest(backend, data):
 
 
 def NewDriver(backend, data):
-    authToken = data["authorizationToken"]["data"]
+    auth_token = data["authorizationToken"]["data"]
     data["authorizationToken"].mark_item_as_read_if_equals(
         "name", "AuthorizationToken"
     )
     auth = neo4j.Auth(
-            authToken["scheme"], authToken["principal"],
-            authToken["credentials"], realm=authToken["realm"])
-    authToken.mark_item_as_read_if_equals("ticket", "")
+            auth_token["scheme"], auth_token["principal"],
+            auth_token["credentials"], realm=auth_token["realm"])
+    auth_token.mark_item_as_read_if_equals("ticket", "")
     resolver = resolution_func(backend) if data["resolverRegistered"] else None
+    connection_timeout = data.get("connectionTimeoutMs", None)
+    if connection_timeout is not None:
+        connection_timeout /= 1000
+    data.mark_item_as_read_if_equals("domainNameResolverRegistered", False)
     driver = neo4j.GraphDatabase.driver(
-        data["uri"], auth=auth, user_agent=data.get("userAgent", None),
-        resolver=resolver
+        data["uri"], auth=auth, user_agent=data["userAgent"],
+        resolver=resolver, connection_timeout=connection_timeout
     )
     key = backend.next_key()
     backend.drivers[key] = driver
