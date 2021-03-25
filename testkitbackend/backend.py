@@ -30,6 +30,8 @@ logging.getLogger("neo4j").addHandler(handler)
 logging.getLogger("neo4j").setLevel(logging.DEBUG)
 
 log = logging.getLogger("testkitbackend")
+log.addHandler(handler)
+log.setLevel(logging.DEBUG)
 
 
 class Request(dict):
@@ -129,6 +131,7 @@ class Backend:
             if not handler:
                 raise Exception("No request handler for " + name)
             data = request["data"]
+            log.info("<<< " + name + dumps(data))
             handler(self, data)
             unsused_keys = request.unseen_keys
             if unsused_keys:
@@ -137,7 +140,7 @@ class Backend:
                     " request: " + ", ".join(unsused_keys)
                 )
         except (Neo4jError, DriverError) as e:
-            log.debug(traceback.print_exc())
+            log.debug(traceback.format_exc())
             if isinstance(e, Neo4jError):
                 msg = "" if e.message is None else str(e.message)
             else:
@@ -159,6 +162,7 @@ class Backend:
         """
         response = {"name": name, "data": data}
         response = dumps(response)
+        log.info(">>> " + name + dumps(data))
         self._wr.write(b"#response begin\n")
         self._wr.write(bytes(response+"\n", "utf-8"))
         self._wr.write(b"#response end\n")
