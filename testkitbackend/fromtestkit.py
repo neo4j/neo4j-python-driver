@@ -25,11 +25,8 @@ def to_cypher_and_params(data):
     if params is None:
         return data["cypher"], None
     # Transform the params to Python native
-    for p in params:
-        if isinstance(params[p], Request):
-            params[p].mark_all_as_read(recursive=True)
-        params[p] = to_param(params[p])
-    return data["cypher"], params
+    params_dict = {p: to_param(params[p]) for p in params}
+    return data["cypher"], params_dict
 
 
 def to_meta_and_timeout(data):
@@ -53,28 +50,22 @@ def to_query_and_params(data):
 def to_param(m):
     """ Converts testkit parameter format to driver (python) parameter
     """
-    data = m["data"]
+    value = m["data"]["value"]
     name = m["name"]
     if name == "CypherString":
-        return str(data["value"])
+        return str(value)
     if name == "CypherBool":
-        return bool(data["value"])
+        return bool(value)
     if name == "CypherInt":
-        return int(data["value"])
+        return int(value)
     if name == "CypherFloat":
-        return float(data["value"])
+        return float(value)
     if name == "CypherString":
-        return str(data["value"])
+        return str(value)
     if name == "CypherNull":
         return None
     if name == "CypherList":
-        ls = []
-        for x in data["value"]:
-            ls.append(to_param(x))
-        return ls
+        return [to_param(v) for v in value]
     if name == "CypherMap":
-        mp = {}
-        for k, v in data["value"].items():
-            mp[k] = to_param(v)
-        return mp
+        return {k: to_param(value[k]) for k in value}
     raise Exception("Unknown param type " + name)
