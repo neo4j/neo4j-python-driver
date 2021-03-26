@@ -117,7 +117,7 @@ class Session(Workspace):
 
     def _disconnect(self):
         if self._connection:
-            self._connection.in_use = False
+            self._pool.release(self._connection)
             self._connection = None
 
     def _collect_bookmark(self, bookmark):
