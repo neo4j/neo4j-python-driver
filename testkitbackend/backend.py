@@ -14,10 +14,70 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from json import loads, dumps
 from inspect import getmembers, isfunction
-import testkitbackend.requests as requests
+from json import loads, dumps
+import logging
+import sys
+import traceback
+
 from neo4j.exceptions import Neo4jError, DriverError, ServiceUnavailable
+
+import testkitbackend.requests as requests
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.DEBUG)
+logging.getLogger("neo4j").addHandler(handler)
+logging.getLogger("neo4j").setLevel(logging.DEBUG)
+
+log = logging.getLogger("testkitbackend")
+log.addHandler(handler)
+log.setLevel(logging.DEBUG)
+
+
+class Request(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._seen_keys = set()
+
+    def __getitem__(self, item):
+        self._seen_keys.add(item)
+        return super().__getitem__(item)
+
+    def get(self, item, default=None):
+        self._seen_keys.add(item)
+        return super(Request, self).get(item, default)
+
+    def mark_all_as_read(self, recursive=False):
+        self._seen_keys = set(self.keys())
+        if recursive:
+            for val in self.values():
+                if isinstance(val, Request):
+                    val.mark_all_as_read(recursive=True)
+
+    def mark_item_as_read(self, item, recursive=False):
+        self._seen_keys.add(item)
+        if recursive:
+            value = super().__getitem__(item)
+            if isinstance(value, Request):
+                value.mark_all_as_read(recursive=True)
+
+    def mark_item_as_read_if_equals(self, item, value, recursive=False):
+        if super().__getitem__(item) == value:
+            self.mark_item_as_read(item, recursive=recursive)
+
+    @property
+    def unseen_keys(self):
+        assert not any(isinstance(v, dict) and not isinstance(v, Request)
+                       for v in self.values())
+        unseen = set(self.keys()) - self._seen_keys
+        for k, v in self.items():
+            if isinstance(v, Request):
+                unseen.update(k + "." + u for u in v.unseen_keys)
+        return unseen
+
+    @property
+    def seen_all_keys(self):
+        return not self.unseen_keys
 
 
 class Backend:
@@ -25,6 +85,7 @@ class Backend:
         self._rd = rd
         self._wr = wr
         self.drivers = {}
+        self.address_resolutions = {}
         self.sessions = {}
         self.results = {}
         self.errors = {}
@@ -61,30 +122,47 @@ class Backend:
         """ Process a received request by retrieving handler that
         corresponds to the request name.
         """
-        request = loads(request)
-        if not isinstance(request, dict):
-            raise Exception("Request is not an object")
-        name = request.get('name', 'invalid')
-        handler = self._requestHandlers.get(name)
-        if not handler:
-            raise Exception("No request handler for " + name)
-        data = request["data"]
         try:
+            request = loads(request, object_pairs_hook=Request)
+            if not isinstance(request, Request):
+                raise Exception("Request is not an object")
+            name = request.get('name', 'invalid')
+            handler = self._requestHandlers.get(name)
+            if not handler:
+                raise Exception("No request handler for " + name)
+            data = request["data"]
+            log.info("<<< " + name + dumps(data))
             handler(self, data)
-        except Neo4jError or DriverError or ServiceUnavailable as e:
+            unsused_keys = request.unseen_keys
+            if unsused_keys:
+                raise NotImplementedError(
+                    "Backend does not support some properties of the " + name +
+                    " request: " + ", ".join(unsused_keys)
+                )
+        except (Neo4jError, DriverError) as e:
+            log.debug(traceback.format_exc())
+            if isinstance(e, Neo4jError):
+                msg = "" if e.message is None else str(e.message)
+            else:
+                msg = str(e.args[0]) if e.args else ""
+
             key = self.next_key()
             self.errors[key] = e
-            self.send_response("DriverError", {"id": key})
+            payload = {"id": key, "errorType": str(type(e)), "msg": msg}
+            if isinstance(e, Neo4jError):
+                payload["code"] = e.code
+            self.send_response("DriverError", payload)
         except Exception as e:
-            from traceback import print_exception
-            print_exception(type(e), e, e.__traceback__)
-            self.send_response("BackendError", {"msg": "%s: %s" % (e.__class__.__name__, e)})
+            traceback.print_exception(type(e), e, e.__traceback__)
+            self.send_response("BackendError",
+                               {"msg": "%s: %s" % (type(e), e)})
 
     def send_response(self, name, data):
         """ Sends a response to backend.
         """
         response = {"name": name, "data": data}
         response = dumps(response)
+        log.info(">>> " + name + dumps(data))
         self._wr.write(b"#response begin\n")
         self._wr.write(bytes(response+"\n", "utf-8"))
         self._wr.write(b"#response end\n")
