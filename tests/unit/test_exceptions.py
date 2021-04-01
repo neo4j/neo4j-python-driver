@@ -42,6 +42,7 @@ from neo4j.exceptions import (
     RoutingServiceUnavailable,
     WriteServiceUnavailable,
     ReadServiceUnavailable,
+    IncompleteCommit,
     ConfigurationError,
     AuthConfigurationError,
     CertificateConfigurationError,
@@ -60,7 +61,6 @@ from neo4j._exceptions import (
     BoltConnectionBroken,
     BoltConnectionClosed,
     BoltFailure,
-    BoltIncompleteCommitError,
     BoltProtocolError,
 )
 

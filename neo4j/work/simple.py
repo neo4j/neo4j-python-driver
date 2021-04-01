@@ -19,29 +19,31 @@
 # limitations under the License.
 
 
-from collections import deque
 from logging import getLogger
 from random import random
-from time import perf_counter, sleep
-from warnings import warn
+from time import (
+    perf_counter,
+    sleep,
+)
 
 from neo4j.conf import SessionConfig
-from neo4j.api import READ_ACCESS, WRITE_ACCESS
-from neo4j.data import DataHydrator, DataDehydrator
+from neo4j.api import (
+    READ_ACCESS,
+    WRITE_ACCESS,
+)
+from neo4j.data import DataHydrator
 from neo4j.exceptions import (
+    ClientError,
+    IncompleteCommit,
     Neo4jError,
     ServiceUnavailable,
-    TransientError,
     SessionExpired,
+    TransientError,
     TransactionError,
-    ClientError,
 )
-from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.work import Workspace
-from neo4j.work.summary import ResultSummary
-from neo4j.work.transaction import Transaction
 from neo4j.work.result import Result
-from neo4j.io._bolt3 import Bolt3
+from neo4j.work.transaction import Transaction
 
 log = getLogger("neo4j")
 
@@ -302,7 +304,6 @@ class Session(Workspace):
         t0 = -1  # Timer
 
         while True:
-            committing = False
             try:
                 self._open_transaction(access_mode=access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
                 tx = self._transaction
@@ -312,13 +313,10 @@ class Session(Workspace):
                     tx.rollback()
                     raise
                 else:
-                    committing = True
                     tx.commit()
+            except IncompleteCommit:
+                raise
             except (ServiceUnavailable, SessionExpired) as error:
-                if committing:
-                    # Failed commit might have been executed on the server
-                    # => no retry
-                    raise
                 errors.append(error)
                 self._disconnect()
             except TransientError as transient_error:
