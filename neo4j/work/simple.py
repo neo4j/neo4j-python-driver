@@ -265,7 +265,8 @@ class Session(Workspace):
         self._transaction = Transaction(
             self._connection, self._config.fetch_size,
             self._transaction_closed_handler,
-            self._transaction_network_error_handler)
+            self._transaction_network_error_handler
+        )
         self._transaction._begin(database, self._bookmarks, access_mode,
                                  metadata, timeout)
 
