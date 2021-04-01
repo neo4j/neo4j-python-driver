@@ -201,7 +201,7 @@ def test_cannot_discover_servers_on_non_router(driver_info, test_script):
         with pytest.raises(ServiceUnavailable):
             with GraphDatabase.driver(driver_info["uri_neo4j"], auth=driver_info["auth_token"]) as driver:
                 assert isinstance(driver, Neo4jDriver)
-                driver.update_routing_table()
+                driver._pool.update_routing_table(database=None, bookmarks=None)
 
 
 @pytest.mark.parametrize(
@@ -217,7 +217,7 @@ def test_cannot_discover_servers_on_silent_router(driver_info, test_script):
         with pytest.raises(BoltRoutingError):
             with GraphDatabase.driver(driver_info["uri_neo4j"], auth=driver_info["auth_token"]) as driver:
                 assert isinstance(driver, Neo4jDriver)
-                driver.update_routing_table()
+                driver._pool.update_routing_table(database=None, bookmarks=None)
 
 
 @pytest.mark.parametrize(
@@ -232,7 +232,7 @@ def test_should_discover_servers_on_driver_construction(driver_info, test_script
     with StubCluster(test_script):
         with GraphDatabase.driver(driver_info["uri_neo4j"], auth=driver_info["auth_token"]) as driver:
             assert isinstance(driver, Neo4jDriver)
-            driver.update_routing_table()
+            driver._pool.update_routing_table(database=None, bookmarks=None)
             table = driver._pool.routing_tables[DEFAULT_DATABASE]
             assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002),
                                      ('127.0.0.1', 9003)}
@@ -535,7 +535,7 @@ def test_should_error_when_missing_reader(driver_info, test_script):
         with pytest.raises(BoltRoutingError):
             with GraphDatabase.driver(driver_info["uri_neo4j"], auth=driver_info["auth_token"]) as driver:
                 assert isinstance(driver, Neo4jDriver)
-                driver.update_routing_table()
+                driver._pool.update_routing_table(database=None, bookmarks=None)
 
 
 @pytest.mark.parametrize(
@@ -602,7 +602,7 @@ def test_forgets_address_on_service_unavailable_error(driver_info, test_scripts,
     with StubCluster(*test_scripts):
         with GraphDatabase.driver(driver_info["uri_neo4j"], auth=driver_info["auth_token"]) as driver:
             assert isinstance(driver, Neo4jDriver)
-            driver.update_routing_table()
+            driver._pool.update_routing_table(database=None, bookmarks=None)
             with driver.session(default_access_mode=READ_ACCESS, fetch_size=-1) as session:
 
                 pool = driver._pool
@@ -638,7 +638,7 @@ def test_forgets_address_on_database_unavailable_error(driver_info, test_scripts
     with StubCluster(*test_scripts):
         with GraphDatabase.driver(driver_info["uri_neo4j"], auth=driver_info["auth_token"]) as driver:
             assert isinstance(driver, Neo4jDriver)
-            driver.update_routing_table()
+            driver._pool.update_routing_table(database=None, bookmarks=None)
             with driver.session(default_access_mode=READ_ACCESS, fetch_size=-1) as session:
 
                 pool = driver._pool
