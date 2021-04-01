@@ -55,7 +55,6 @@ def test_can_run_simple_statement_with_params(session):
     assert count == 1
 
 
-@pytest.mark.skip(reason="BOOKMARK, AttributeError: 'Session' object has no attribute 'last_bookmark'")
 def test_autocommit_transactions_use_bookmarks(neo4j_driver):
     bookmarks = []
     # Generate an initial bookmark
@@ -66,7 +65,7 @@ def test_autocommit_transactions_use_bookmarks(neo4j_driver):
         bookmarks.append(bookmark)
     # Propagate into another session
     with neo4j_driver.session(bookmarks=bookmarks) as session:
-        assert list(session.next_bookmarks()) == bookmarks
+        assert list(session._bookmarks) == bookmarks
         session.run("CREATE ()").consume()
         bookmark = session.last_bookmark()
         assert bookmark is not None

@@ -162,13 +162,16 @@ class Bolt4x0(Bolt):
         self.fetch_all()
         check_supported_server_product(self.server_info.agent)
 
-    def route(self, database):
+    def route(self, database=None, bookmarks=None):
         metadata = {}
         records = []
 
         def fail(md):
             from neo4j._exceptions import BoltRoutingError
-            if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
+            code = md.get("code")
+            if code == "Neo.ClientError.Database.DatabaseNotFound":
+                return  # surface this error to the user
+            elif code == "Neo.ClientError.Procedure.ProcedureNotFound":
                 raise BoltRoutingError("Server does not support routing", self.unresolved_address)
             else:
                 raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
@@ -178,6 +181,7 @@ class Bolt4x0(Bolt):
                 "CALL dbms.routing.getRoutingTable($context)",
                 {"context": self.routing_context},
                 mode="r",
+                bookmarks=bookmarks,
                 db=SYSTEM_DATABASE,
                 on_success=metadata.update, on_failure=fail
             )
@@ -186,6 +190,7 @@ class Bolt4x0(Bolt):
                 "CALL dbms.routing.getRoutingTable($context, $database)",
                 {"context": self.routing_context, "database": database},
                 mode="r",
+                bookmarks=bookmarks,
                 db=SYSTEM_DATABASE,
                 on_success=metadata.update, on_failure=fail
             )
@@ -504,11 +509,14 @@ class Bolt4x3(Bolt4x2):
 
     PROTOCOL_VERSION = Version(4, 3)
 
-    def route(self, database):
+    def route(self, database=None, bookmarks=None):
 
         def fail(md):
             from neo4j._exceptions import BoltRoutingError
-            if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
+            code = md.get("code")
+            if code == "Neo.ClientError.Database.DatabaseNotFound":
+                return  # surface this error to the user
+            elif code == "Neo.ClientError.Procedure.ProcedureNotFound":
                 raise BoltRoutingError("Server does not support routing", self.unresolved_address)
             else:
                 raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
@@ -516,7 +524,11 @@ class Bolt4x3(Bolt4x2):
         routing_context = self.routing_context or {}
         log.debug("[#%04X]  C: ROUTE %r %r", self.local_port, routing_context, database)
         metadata = {}
-        self._append(b"\x66", (routing_context, database),
+        if bookmarks is None:
+            bookmarks = []
+        else:
+            bookmarks = list(bookmarks)
+        self._append(b"\x66", (routing_context, bookmarks, database),
                      response=Response(self, on_success=metadata.update, on_failure=fail))
         self.send_all()
         self.fetch_all()
