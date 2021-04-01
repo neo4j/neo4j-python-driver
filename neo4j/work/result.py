@@ -144,7 +144,7 @@ class Result:
             on_failure=on_failed_attach,
         )
         self._pull()
-        self._connection._send_all()
+        self._connection.send_all()
         self._attach()
 
     def _pull(self):
@@ -234,10 +234,10 @@ class Result:
                         yield self._record_buffer.popleft()
                     elif self._discarding and self._streaming is False:
                         self._discard()
-                        self._connection._send_all()
+                        self._connection.send_all()
                     elif self._has_more and self._streaming is False:
                         self._pull()
-                        self._connection._send_all()
+                        self._connection.send_all()
 
         self._closed = True
 
