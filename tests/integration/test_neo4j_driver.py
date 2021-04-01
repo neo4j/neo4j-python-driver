@@ -81,7 +81,8 @@ def test_test_multi_db_specify_database(neo4j_uri, auth, target):
         assert "Database name parameter for selecting database is not supported in Bolt Protocol Version(3, 0)." in error.args[0]
     except ClientError as error:
         # FAILURE {'code': 'Neo.ClientError.Database.DatabaseNotFound' - This message is sent from the server
-        assert error.args[0] == "Unable to get a routing table for database 'test_database' because this database does not exist"
+        assert error.code == "Neo.ClientError.Database.DatabaseNotFound"
+        assert "test_database" in error.message
 
 
 def test_neo4j_multi_database_support_create(neo4j_uri, auth, target, requires_bolt_4x):

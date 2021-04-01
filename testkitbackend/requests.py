@@ -65,6 +65,15 @@ def VerifyConnectivity(backend, data):
     backend.send_response("Driver", {"id": driver_id})
 
 
+def CheckMultiDBSupport(backend, data):
+    driver_id = data["driverId"]
+    driver = backend.drivers[driver_id]
+    backend.send_response(
+        "MultiDBSupport",
+        {"id": backend.next_key(), "available": driver.supports_multi_db()}
+    )
+
+
 def resolution_func(backend):
     def resolve(address):
         key = backend.next_key()

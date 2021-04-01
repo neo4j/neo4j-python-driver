@@ -115,7 +115,12 @@ class Session(Workspace):
             self._connection.send_all()
             self._connection.fetch_all()
             self._disconnect()
-        self._connection = self._pool.acquire(access_mode=access_mode, timeout=self._config.connection_acquisition_timeout, database=database)
+        self._connection = self._pool.acquire(
+            access_mode=access_mode,
+            timeout=self._config.connection_acquisition_timeout,
+            database=database,
+            bookmarks=self._bookmarks
+        )
 
     def _disconnect(self):
         if self._connection:
@@ -265,7 +270,7 @@ class Session(Workspace):
         :type metadata: dict
 
         :param timeout:
-            the transaction timeout in milliseconds.
+            the transaction timeout in seconds.
             Transactions that execute longer than the configured timeout will be terminated by the database.
             This functionality allows to limit query/transaction execution time.
             Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
@@ -446,7 +451,7 @@ def unit_of_work(metadata=None, timeout=None):
     :type metadata: dict
 
     :param timeout:
-        the transaction timeout in milliseconds.
+        the transaction timeout in seconds.
         Transactions that execute longer than the configured timeout will be terminated by the database.
         This functionality allows to limit query/transaction execution time.
         Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.

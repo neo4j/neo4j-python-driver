@@ -442,9 +442,13 @@ class Neo4jDriver(Routing, Driver):
         routing_info = {}
         for ix in list(table.routers):
             try:
-                routing_info[ix] = self._pool.fetch_routing_info(address=table.routers[0],
-                                                                 database=self._default_workspace_config.database,
-                                                                 timeout=self._default_workspace_config.connection_acquisition_timeout)
+                routing_info[ix] = self._pool.fetch_routing_info(
+                    address=table.routers[0],
+                    database=self._default_workspace_config.database,
+                    bookmarks=None,
+                    timeout=self._default_workspace_config
+                                .connection_acquisition_timeout
+                )
             except BoltHandshakeError as error:
                 routing_info[ix] = None
 
@@ -452,8 +456,3 @@ class Neo4jDriver(Routing, Driver):
             if val is not None:
                 return routing_info
         raise ServiceUnavailable("Could not connect to any routing servers.")
-
-    def update_routing_table(self, database=None):
-        if database is None:
-            database = self._pool.workspace_config.database
-        self._pool.update_routing_table(database=database)
