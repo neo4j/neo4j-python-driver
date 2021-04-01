@@ -159,7 +159,7 @@ class Bolt3(Bolt):
         self.fetch_all()
         check_supported_server_product(self.server_info.agent)
 
-    def route(self, database):
+    def route(self, database=None, bookmarks=None):
         if database is not None:  # default database
             raise ConfigurationError("Database name parameter for selecting database is not "
                                      "supported in Bolt Protocol {!r}. Database name {!r}. "
@@ -176,6 +176,9 @@ class Bolt3(Bolt):
             else:
                 raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
 
+        # Ignoring database and bookmarks because there is no multi-db support.
+        # The bookmarks are only relevant for making sure a previously created
+        # db exists before querying a routing table for it.
         self.run(
             "CALL dbms.cluster.routing.getRoutingTable($context)",  # This is an internal procedure call. Only available if the Neo4j 3.5 is setup with clustering.
             {"context": self.routing_context},

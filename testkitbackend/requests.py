@@ -14,20 +14,93 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
+from os import path
+
 import neo4j
 import testkitbackend.fromtestkit as fromtestkit
 import testkitbackend.totestkit as totestkit
+from testkitbackend.fromtestkit import to_meta_and_timeout
+
+
+with open(path.join(path.dirname(__file__), "skipped_tests.json"), "r") as fd:
+    SKIPPED_TESTS = json.load(fd)
+
+
+def StartTest(backend, data):
+    if data["testName"] in SKIPPED_TESTS:
+        backend.send_response("SkipTest",
+                              {"reason": SKIPPED_TESTS[data["testName"]]})
+    else:
+        backend.send_response("RunTest", {})
 
 
 def NewDriver(backend, data):
-    authToken = data["authorizationToken"]["data"]
+    auth_token = data["authorizationToken"]["data"]
+    data["authorizationToken"].mark_item_as_read_if_equals(
+        "name", "AuthorizationToken"
+    )
     auth = neo4j.Auth(
-            authToken["scheme"], authToken["principal"],
-            authToken["credentials"], realm=authToken["realm"])
-    driver = neo4j.GraphDatabase.driver(data["uri"], auth=auth)
+            auth_token["scheme"], auth_token["principal"],
+            auth_token["credentials"], realm=auth_token["realm"])
+    auth_token.mark_item_as_read_if_equals("ticket", "")
+    resolver = resolution_func(backend) if data["resolverRegistered"] else None
+    connection_timeout = data.get("connectionTimeoutMs", None)
+    if connection_timeout is not None:
+        connection_timeout /= 1000
+    data.mark_item_as_read_if_equals("domainNameResolverRegistered", False)
+    driver = neo4j.GraphDatabase.driver(
+        data["uri"], auth=auth, user_agent=data["userAgent"],
+        resolver=resolver, connection_timeout=connection_timeout
+    )
     key = backend.next_key()
     backend.drivers[key] = driver
     backend.send_response("Driver", {"id": key})
+
+
+def VerifyConnectivity(backend, data):
+    driver_id = data["driverId"]
+    driver = backend.drivers[driver_id]
+    driver.verify_connectivity()
+    backend.send_response("Driver", {"id": driver_id})
+
+
+def CheckMultiDBSupport(backend, data):
+    driver_id = data["driverId"]
+    driver = backend.drivers[driver_id]
+    backend.send_response(
+        "MultiDBSupport",
+        {"id": backend.next_key(), "available": driver.supports_multi_db()}
+    )
+
+
+def resolution_func(backend):
+    def resolve(address):
+        key = backend.next_key()
+        address = ":".join(map(str, address))
+        backend.send_response("ResolverResolutionRequired", {
+            "id": key,
+            "address": address
+        })
+        if not backend.process_request():
+            # connection was closed before end of next message
+            return []
+        if key not in backend.address_resolutions:
+            raise RuntimeError(
+                "Backend did not receive expected ResolverResolutionCompleted "
+                "message for id %s" % key
+            )
+        resolution = backend.address_resolutions[key]
+        resolution = list(map(neo4j.Address.parse, resolution))
+        # won't be needed anymore -> conserve memory
+        del backend.address_resolutions[key]
+        return resolution
+
+    return resolve
+
+
+def ResolverResolutionCompleted(backend, data):
+    backend.address_resolutions[data["requestId"]] = data["addresses"]
 
 
 def DriverClose(backend, data):
@@ -62,7 +135,6 @@ def NewSession(backend, data):
             "database": data["database"],
             "fetch_size": data.get("fetchSize", None)
     }
-    # TODO: fetchSize, database
     session = driver.session(**config)
     key = backend.next_key()
     backend.sessions[key] = SessionTracker(session)
@@ -71,9 +143,8 @@ def NewSession(backend, data):
 
 def SessionRun(backend, data):
     session = backend.sessions[data["sessionId"]].session
-    cypher, params = fromtestkit.toCypherAndParams(data)
-    # TODO: txMeta, timeout
-    result = session.run(cypher, parameters=params)
+    query, params = fromtestkit.to_query_and_params(data)
+    result = session.run(query, parameters=params)
     key = backend.next_key()
     backend.results[key] = result
     backend.send_response("Result", {"id": key})
@@ -90,10 +161,7 @@ def SessionClose(backend, data):
 def SessionBeginTransaction(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
-    metadata = data.get('txMeta', None)
-    timeout = data.get('timeout', None)
-    if timeout:
-        timeout = float(timeout) / 1000
+    metadata, timeout = to_meta_and_timeout(data)
     tx = session.begin_transaction(metadata=metadata, timeout=timeout)
     key = backend.next_key()
     backend.transactions[key] = tx
@@ -112,7 +180,9 @@ def transactionFunc(backend, data, is_read):
     key = data["sessionId"]
     session_tracker = backend.sessions[key]
     session = session_tracker.session
+    metadata, timeout = to_meta_and_timeout(data)
 
+    @neo4j.unit_of_work(metadata=metadata, timeout=timeout)
     def func(tx):
         txkey = backend.next_key()
         backend.transactions[txkey] = tx
@@ -137,19 +207,6 @@ def transactionFunc(backend, data, is_read):
     backend.send_response("RetryableDone", {})
 
 
-def RetryablePositive(backend, data):
-    key = data["sessionId"]
-    session_tracker = backend.sessions[key]
-    session_tracker.state = '+'
-
-
-def RetryableNegative(backend, data):
-    key = data["sessionId"]
-    session_tracker = backend.sessions[key]
-    session_tracker.state = '-'
-    session_tracker.error_id = data.get('errorId', '')
-
-
 def SessionLastBookmarks(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
@@ -160,20 +217,10 @@ def SessionLastBookmarks(backend, data):
     backend.send_response("Bookmarks", {"bookmarks": bookmarks})
 
 
-def ResultNext(backend, data):
-    result = backend.results[data["resultId"]]
-    try:
-        record = next(iter(result))
-    except StopIteration:
-        backend.send_response("NullRecord", {})
-        return
-    backend.send_response("Record", totestkit.record(record))
-
-
 def TransactionRun(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
-    cypher, params = fromtestkit.toCypherAndParams(data)
+    cypher, params = fromtestkit.to_cypher_and_params(data)
     result = tx.run(cypher, parameters=params)
     key = backend.next_key()
     backend.results[key] = result
@@ -192,3 +239,32 @@ def TransactionRollback(backend, data):
     tx = backend.transactions[key]
     tx.rollback()
     backend.send_response("Transaction", {"id": key})
+
+
+def ResultNext(backend, data):
+    result = backend.results[data["resultId"]]
+    try:
+        record = next(iter(result))
+    except StopIteration:
+        backend.send_response("NullRecord", {})
+        return
+    backend.send_response("Record", totestkit.record(record))
+
+
+def ResultConsume(backend, data):
+    result = backend.results[data["resultId"]]
+    result.consume()
+    backend.send_response("Summary", {})
+
+
+def RetryablePositive(backend, data):
+    key = data["sessionId"]
+    session_tracker = backend.sessions[key]
+    session_tracker.state = '+'
+
+
+def RetryableNegative(backend, data):
+    key = data["sessionId"]
+    session_tracker = backend.sessions[key]
+    session_tracker.state = '-'
+    session_tracker.error_id = data.get('errorId', '')
