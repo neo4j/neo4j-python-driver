@@ -489,6 +489,7 @@ class IOPool:
         :param access_mode:
         :param timeout:
         :param database:
+        :param bookmarks:
         """
 
     def release(self, *connections):
