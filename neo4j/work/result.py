@@ -33,7 +33,24 @@ from neo4j.work.summary import ResultSummary
 
 
 class _ConnectionErrorHandler:
+    """
+    Wrapper class for handling connection errors.
+
+    The class will wrap each method to invoke a callback if the method raises
+    SessionExpired, ServiceUnavailable, or BoltIncompleteCommitError.
+    The error will be re-raised after the callback.
+    """
+
     def __init__(self, connection, on_network_error):
+        """
+        :param connection the connection object to warp
+        :type connection Bolt
+        :param on_network_error the function to be called when a method of
+            connection raises of of the caught errors. The callback takes the
+            error as argument.
+        :type on_network_error callable
+
+        """
         self._connection = connection
         self._on_network_error = on_network_error
 
