@@ -233,17 +233,12 @@ def test_address_resolve_with_custom_resolver():
     custom_resolver = lambda a: [("127.0.0.1", 7687), ("localhost", 1234)]
 
     address = Address(("127.0.0.1", 7687))
-    resolved = address.resolve(resolver=custom_resolver)
+    resolved = address.resolve(family=AF_INET, resolver=custom_resolver)
     assert isinstance(resolved, Address) is False
     assert isinstance(resolved, list) is True
     if len(resolved) == 2:
         # IPv4 only
         assert resolved[0] == IPv4Address(('127.0.0.1', 7687))
         assert resolved[1] == IPv4Address(('127.0.0.1', 1234))
-    elif len(resolved) == 3:
-        # IPv4 and IPv6
-        assert resolved[0] == IPv4Address(('127.0.0.1', 7687))
-        assert resolved[1] == IPv6Address(('::1', 1234, 0, 0))
-        assert resolved[2] == IPv4Address(('127.0.0.1', 1234))
     else:
         assert False

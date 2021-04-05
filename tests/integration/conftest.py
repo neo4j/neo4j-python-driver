@@ -189,12 +189,8 @@ def service(request):
         if existing_service:
             NEO4J_SERVICE = existing_service
         else:
-            try:
-                NEO4J_SERVICE = Neo4jService(auth=NEO4J_AUTH, image=request.param, n_cores=NEO4J_CORES, n_replicas=NEO4J_REPLICAS)
-                NEO4J_SERVICE.start(timeout=300)
-            except urllib.error.HTTPError as error:
-                # pytest.skip(str(error))
-                pytest.xfail(str(error) + " " + request.param)
+            NEO4J_SERVICE = Neo4jService(auth=NEO4J_AUTH, image=request.param, n_cores=NEO4J_CORES, n_replicas=NEO4J_REPLICAS)
+            NEO4J_SERVICE.start(timeout=300)
         yield NEO4J_SERVICE
         if NEO4J_SERVICE is not None:
             NEO4J_SERVICE.stop(timeout=300)
@@ -303,6 +299,7 @@ def bolt_driver(target, auth):
 def neo4j_driver(target, auth):
     try:
         driver = GraphDatabase.neo4j_driver(target, auth=auth)
+        driver._pool.update_routing_table(database=None, bookmarks=None)
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
@@ -315,6 +312,24 @@ def neo4j_driver(target, auth):
             yield driver
         finally:
             driver.close()
+
+
+@pytest.fixture(scope="session")
+def server_info(bolt_driver):
+    with bolt_driver.session() as session:
+        summary = session.run("RETURN 1").consume()
+        return summary.server
+
+
+@pytest.fixture(scope="session")
+def bolt_protocol_version(server_info):
+    return server_info.protocol_version
+
+
+@pytest.fixture(scope="session")
+def requires_bolt_4x(bolt_protocol_version):
+    if bolt_protocol_version < (4, 0):
+        pytest.skip("Requires Bolt 4.0 or above")
 
 
 @pytest.fixture(scope="session")
@@ -333,7 +348,7 @@ def session(bolt_driver):
 
 @pytest.fixture()
 def protocol_version(session):
-    result = session.run("RETURN 1")
+    result = session.run("RETURN 1 AS x")
     yield session._connection.server_info.protocol_version
     result.consume()
 

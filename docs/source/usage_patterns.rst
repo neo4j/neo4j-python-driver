@@ -199,7 +199,7 @@ unit_of_work
     from neo4j import unit_of_work
 
 
-    @unit_of_work(timeout=10)
+    @unit_of_work(timeout=10)  # don't wait longer than 10 seconds for a result
     def test_work(tx, *args, **kwargs):
         query = "RETURN $tag AS $name"
 

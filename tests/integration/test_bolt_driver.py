@@ -20,6 +20,7 @@
 
 
 import pytest
+from pytest import fixture
 
 from neo4j import (
     GraphDatabase,
@@ -89,7 +90,8 @@ def test_fail_nicely_when_using_http_port(service):
     address = service.addresses[0]
     uri = "bolt://{}:{}".format(address[0], NEO4J_PORTS["http"])
     with pytest.raises(ServiceUnavailable):
-        _ = GraphDatabase.driver(uri, auth=service.auth)
+        driver = GraphDatabase.driver(uri, auth=service.auth)
+        driver.verify_connectivity()
 
 
 def test_custom_resolver(service):
@@ -375,3 +377,30 @@ def test_bolt_driver_case_pull_no_records(driver):
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
+
+
+@fixture
+def server_info(driver):
+    """ Simple fixture to provide quick and easy access to a
+    :class:`.ServerInfo` object.
+    """
+    with driver.session() as session:
+        summary = session.run("RETURN 1").consume()
+        yield summary.server
+
+
+def test_server_address(server_info):
+    assert server_info.address == ("127.0.0.1", 7687)
+
+
+def test_server_protocol_version(server_info):
+    assert server_info.protocol_version >= (3, 0)
+
+
+def test_server_agent(server_info):
+    assert server_info.agent.startswith("Neo4j/")
+
+
+def test_server_connection_id(server_info):
+    cid = server_info.connection_id
+    assert cid.startswith("bolt-") and cid[5:].isdigit()

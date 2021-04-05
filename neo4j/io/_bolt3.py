@@ -19,20 +19,21 @@
 # limitations under the License.
 
 from collections import deque
-from select import select
 from ssl import SSLSocket
-from struct import pack as struct_pack
 from time import perf_counter
 from neo4j.api import (
     Version,
     READ_ACCESS,
-    WRITE_ACCESS,
-    DEFAULT_DATABASE,
 )
-from neo4j.io._courier import MessageInbox
+from neo4j.io._common import (
+    Inbox,
+    Outbox,
+    Response,
+    InitResponse,
+    CommitResponse,
+)
 from neo4j.meta import get_user_agent
 from neo4j.exceptions import (
-    Neo4jError,
     AuthError,
     ServiceUnavailable,
     DatabaseUnavailable,
@@ -40,6 +41,7 @@ from neo4j.exceptions import (
     ForbiddenOnReadOnlyDatabase,
     SessionExpired,
     ConfigurationError,
+    UnsupportedServerProduct,
 )
 from neo4j._exceptions import (
     BoltIncompleteCommitError,
@@ -52,8 +54,8 @@ from neo4j.packstream import (
 from neo4j.io import (
     Bolt,
     BoltPool,
+    check_supported_server_product,
 )
-from neo4j.conf import PoolConfig
 from neo4j.api import ServerInfo
 from neo4j.addressing import Address
 
@@ -62,6 +64,10 @@ log = getLogger("neo4j")
 
 
 class Bolt3(Bolt):
+    """ Protocol handler for Bolt 3.
+
+    This is supported by Neo4j versions 3.5, 4.0, 4.1 and 4.2.
+    """
 
     PROTOCOL_VERSION = Version(3, 0)
 
@@ -80,7 +86,7 @@ class Bolt3(Bolt):
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *, auth=None, user_agent=None, routing_context=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
-        self.server_info = ServerInfo(Address(sock.getpeername()), Bolt3.PROTOCOL_VERSION)
+        self.server_info = ServerInfo(Address(sock.getpeername()), self.PROTOCOL_VERSION)
         self.outbox = Outbox()
         self.inbox = Inbox(self.socket, on_error=self._set_defunct)
         self.packer = Packer(self.outbox)
@@ -135,17 +141,55 @@ class Bolt3(Bolt):
         except IOError:
             return 0
 
+    def get_base_headers(self):
+        return {
+            "user_agent": self.user_agent,
+        }
+
     def hello(self):
-        headers = {"user_agent": self.user_agent}
+        headers = self.get_base_headers()
         headers.update(self.auth_dict)
         logged_headers = dict(headers)
         if "credentials" in logged_headers:
             logged_headers["credentials"] = "*******"
         log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
         self._append(b"\x01", (headers,),
-                     response=InitResponse(self, on_success=self.server_info._update_metadata))
+                     response=InitResponse(self, on_success=self.server_info.update))
         self.send_all()
         self.fetch_all()
+        check_supported_server_product(self.server_info.agent)
+
+    def route(self, database=None, bookmarks=None):
+        if database is not None:  # default database
+            raise ConfigurationError("Database name parameter for selecting database is not "
+                                     "supported in Bolt Protocol {!r}. Database name {!r}. "
+                                     "Server Agent {!r}.".format(Bolt3.PROTOCOL_VERSION, database,
+                                                                 self.server_info.agent))
+
+        metadata = {}
+        records = []
+
+        def fail(md):
+            from neo4j._exceptions import BoltRoutingError
+            if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
+                raise BoltRoutingError("Server does not support routing", self.unresolved_address)
+            else:
+                raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
+
+        # Ignoring database and bookmarks because there is no multi-db support.
+        # The bookmarks are only relevant for making sure a previously created
+        # db exists before querying a routing table for it.
+        self.run(
+            "CALL dbms.cluster.routing.getRoutingTable($context)",  # This is an internal procedure call. Only available if the Neo4j 3.5 is setup with clustering.
+            {"context": self.routing_context},
+            mode="r",                                               # Bolt Protocol Version(3, 0) supports mode="r"
+            on_success=metadata.update, on_failure=fail
+        )
+        self.pull(on_success=metadata.update, on_records=records.extend)
+        self.send_all()
+        self.fetch_all()
+        routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
+        return routing_info
 
     def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
         if db is not None:
@@ -177,17 +221,6 @@ class Bolt3(Bolt):
         else:
             self._append(b"\x10", fields, Response(self, **handlers))
         self._is_reset = False
-
-    def run_get_routing_table(self, on_success, on_failure, database=DEFAULT_DATABASE):
-        if database != DEFAULT_DATABASE:
-            raise ConfigurationError("Database name parameter for selecting database is not supported in Bolt Protocol {!r}. Database name {!r}. Server Agent {!r}.".format(Bolt3.PROTOCOL_VERSION, database, self.server_info.agent))
-        self.run(
-            "CALL dbms.cluster.routing.getRoutingTable($context)",  # This is an internal procedure call. Only available if the Neo4j 3.5 is setup with clustering.
-            {"context": self.routing_context},
-            mode="r",                                               # Bolt Protocol Version(3, 0) supports mode="r"
-            on_success=on_success,
-            on_failure=on_failure,
-        )
 
     def discard(self, n=-1, qid=-1, **handlers):
         # Just ignore n and qid, it is not supported in the Bolt 3 Protocol.
@@ -430,133 +463,3 @@ class Bolt3(Bolt):
 
     def defunct(self):
         return self._defunct
-
-
-class Outbox:
-
-    def __init__(self, capacity=8192, max_chunk_size=16384):
-        self._max_chunk_size = max_chunk_size
-        self._header = 0
-        self._start = 2
-        self._end = 2
-        self._data = bytearray(capacity)
-
-    def max_chunk_size(self):
-        return self._max_chunk_size
-
-    def clear(self):
-        self._header = 0
-        self._start = 2
-        self._end = 2
-        self._data[0:2] = b"\x00\x00"
-
-    def write(self, b):
-        to_write = len(b)
-        max_chunk_size = self._max_chunk_size
-        pos = 0
-        while to_write > 0:
-            chunk_size = self._end - self._start
-            remaining = max_chunk_size - chunk_size
-            if remaining == 0 or remaining < to_write <= max_chunk_size:
-                self.chunk()
-            else:
-                wrote = min(to_write, remaining)
-                new_end = self._end + wrote
-                self._data[self._end:new_end] = b[pos:pos+wrote]
-                self._end = new_end
-                pos += wrote
-                new_chunk_size = self._end - self._start
-                self._data[self._header:(self._header + 2)] = struct_pack(">H", new_chunk_size)
-                to_write -= wrote
-
-    def chunk(self):
-        self._header = self._end
-        self._start = self._header + 2
-        self._end = self._start
-        self._data[self._header:self._start] = b"\x00\x00"
-
-    def view(self):
-        end = self._end
-        chunk_size = end - self._start
-        if chunk_size == 0:
-            return memoryview(self._data[:self._header])
-        else:
-            return memoryview(self._data[:end])
-
-
-class Inbox(MessageInbox):
-
-    def __next__(self):
-        tag, fields = self.pop()
-        if tag == b"\x71":
-            return fields, None, None
-        elif fields:
-            return [], tag, fields[0]
-        else:
-            return [], tag, None
-
-
-class Response:
-    """ Subscriber object for a full response (zero or
-    more detail messages followed by one summary message).
-    """
-
-    def __init__(self, connection, **handlers):
-        self.connection = connection
-        self.handlers = handlers
-        self.complete = False
-
-    def on_records(self, records):
-        """ Called when one or more RECORD messages have been received.
-        """
-        handler = self.handlers.get("on_records")
-        if callable(handler):
-            handler(records)
-
-    def on_success(self, metadata):
-        """ Called when a SUCCESS message has been received.
-        """
-        handler = self.handlers.get("on_success")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
-
-    def on_failure(self, metadata):
-        """ Called when a FAILURE message has been received.
-        """
-        self.connection.reset()
-        handler = self.handlers.get("on_failure")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
-        raise Neo4jError.hydrate(**metadata)
-
-    def on_ignored(self, metadata=None):
-        """ Called when an IGNORED message has been received.
-        """
-        handler = self.handlers.get("on_ignored")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
-
-
-class InitResponse(Response):
-
-    def on_failure(self, metadata):
-        code = metadata.get("code")
-        message = metadata.get("message", "Connection initialisation failed")
-        if code == "Neo.ClientError.Security.Unauthorized":
-            raise AuthError(message)
-        else:
-            raise ServiceUnavailable(message)
-
-
-class CommitResponse(Response):
-
-    pass

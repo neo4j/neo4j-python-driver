@@ -83,7 +83,10 @@ def test_should_be_able_to_set_multiple_bookmarks(driver_info, test_script):
     "test_scripts",
     [
         ("v3/router.script", "v3/bookmark_chain.script"),
-        ("v4x0/router.script", "v4x0/tx_bookmark_chain.script"),
+        (
+            "v4x0/router_with_two_bookmarks.script",
+            "v4x0/tx_bookmark_chain.script"
+        ),
     ]
 )
 def test_should_automatically_chain_bookmarks(driver_info, test_scripts):
@@ -104,7 +107,10 @@ def test_should_automatically_chain_bookmarks(driver_info, test_scripts):
     "test_scripts",
     [
         ("v3/router.script", "v3/bookmark_chain_with_autocommit.script"),
-        ("v4x0/router.script", "v4x0/tx_bookmark_chain_with_autocommit.script"),
+        (
+            "v4x0/router_with_one_bookmark.script",
+            "v4x0/tx_bookmark_chain_with_autocommit.script"
+        ),
     ]
 )
 def test_autocommit_transaction_included_in_chain(driver_info, test_scripts):

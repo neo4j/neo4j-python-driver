@@ -30,6 +30,7 @@ __all__ = [
     "Bolt",
     "BoltPool",
     "Neo4jPool",
+    "check_supported_server_product",
 ]
 
 
@@ -79,6 +80,7 @@ from neo4j.exceptions import (
     ReadServiceUnavailable,
     WriteServiceUnavailable,
     ConfigurationError,
+    UnsupportedServerProduct,
 )
 from neo4j.routing import RoutingTable
 from neo4j.conf import (
@@ -88,6 +90,7 @@ from neo4j.conf import (
 from neo4j.api import (
     READ_ACCESS,
     WRITE_ACCESS,
+    Version,
 )
 
 # Set up logger
@@ -109,15 +112,6 @@ class Bolt:
     PROTOCOL_VERSION = None
 
     @classmethod
-    def get_handshake(cls):
-        """ Return the supported Bolt versions as bytes.
-        The length is 16 bytes as specified in the Bolt version negotiation.
-        :return: bytes
-        """
-        offered_versions = sorted(cls.protocol_handlers().keys(), reverse=True)[:4]
-        return b"".join(version.to_bytes() for version in offered_versions).ljust(16, b"\x00")
-
-    @classmethod
     def protocol_handlers(cls, protocol_version=None):
         """ Return a dictionary of available Bolt protocol handlers,
         keyed by version tuple. If an explicit protocol version is
@@ -134,13 +128,14 @@ class Bolt:
 
         # Carry out Bolt subclass imports locally to avoid circular dependency issues.
         from neo4j.io._bolt3 import Bolt3
-        from neo4j.io._bolt4x0 import Bolt4x0
-        from neo4j.io._bolt4x1 import Bolt4x1
+        from neo4j.io._bolt4 import Bolt4x0, Bolt4x1, Bolt4x2, Bolt4x3
 
         handlers = {
             Bolt3.PROTOCOL_VERSION: Bolt3,
             Bolt4x0.PROTOCOL_VERSION: Bolt4x0,
             Bolt4x1.PROTOCOL_VERSION: Bolt4x1,
+            Bolt4x2.PROTOCOL_VERSION: Bolt4x2,
+            Bolt4x3.PROTOCOL_VERSION: Bolt4x3,
         }
 
         if protocol_version is None:
@@ -153,6 +148,41 @@ class Bolt:
             return {protocol_version: handlers[protocol_version]}
 
         return {}
+
+    @classmethod
+    def version_list(cls, versions, limit=4):
+        """ Return a list of supported protocol versions in order of
+        preference. The number of protocol versions (or ranges)
+        returned is limited to four.
+        """
+        ranges_supported = versions[0] >= Version(4, 3)
+        if versions and ranges_supported:
+            start, end = 0, 0
+            first_major = versions[start][0]
+            minors = []
+            for end, version in enumerate(versions):
+                if version[0] == first_major:
+                    minors.append(version[1])
+                else:
+                    break
+            new_versions = ([Version(first_major, minors)] + versions[1:end])[:(limit - 1)]
+            try:
+                new_versions.append(versions[end])
+            except IndexError:
+                pass
+            return new_versions
+        else:
+            return versions[:limit]
+
+    @classmethod
+    def get_handshake(cls):
+        """ Return the supported Bolt versions as bytes.
+        The length is 16 bytes as specified in the Bolt version negotiation.
+        :return: bytes
+        """
+        supported_versions = sorted(cls.protocol_handlers().keys(), reverse=True)
+        offered_versions = cls.version_list(supported_versions)
+        return b"".join(version.to_bytes() for version in offered_versions).ljust(16, b"\x00")
 
     @classmethod
     def ping(cls, address, *, timeout=None, **config):
@@ -204,12 +234,20 @@ class Bolt:
             connection = Bolt3(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
         elif pool_config.protocol_version == (4, 0):
             # Carry out Bolt subclass imports locally to avoid circular dependency issues.
-            from neo4j.io._bolt4x0 import Bolt4x0
+            from neo4j.io._bolt4 import Bolt4x0
             connection = Bolt4x0(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
         elif pool_config.protocol_version == (4, 1):
             # Carry out Bolt subclass imports locally to avoid circular dependency issues.
-            from neo4j.io._bolt4x1 import Bolt4x1
+            from neo4j.io._bolt4 import Bolt4x1
             connection = Bolt4x1(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
+        elif pool_config.protocol_version == (4, 2):
+            # Carry out Bolt subclass imports locally to avoid circular dependency issues.
+            from neo4j.io._bolt4 import Bolt4x2
+            connection = Bolt4x2(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
+        elif pool_config.protocol_version == (4, 3):
+            # Carry out Bolt subclass imports locally to avoid circular dependency issues.
+            from neo4j.io._bolt4 import Bolt4x3
+            connection = Bolt4x3(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
             s.shutdown(SHUT_RDWR)
@@ -254,6 +292,19 @@ class Bolt:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+    def route(self, database=None, bookmarks=None):
+        """ Fetch a routing table from the server for the given
+        `database`. For Bolt 4.3 and above, this appends a ROUTE
+        message; for earlier versions, a procedure call is made via
+        the regular Cypher execution mechanism. In all cases, this is
+        sent to the network, and a response is fetched.
+
+        :param database: database for which to fetch a routing table
+        :param bookmarks: iterable of bookmark values after which this
+                          transaction should begin
+        :return: dictionary of raw routing data
+        """
 
     def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None,
             timeout=None, db=None, **handlers):
@@ -431,12 +482,14 @@ class IOPool:
                     raise ClientError("Failed to obtain a connection from pool "
                                       "within {!r}s".format(timeout))
 
-    def acquire(self, access_mode=None, timeout=None, database=None):
+    def acquire(self, access_mode=None, timeout=None, database=None,
+                bookmarks=None):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
         :param access_mode:
         :param timeout:
         :param database:
+        :param bookmarks:
         """
 
     def release(self, *connections):
@@ -528,8 +581,6 @@ class BoltPool(IOPool):
             return Bolt.open(addr, auth=auth, timeout=timeout, routing_context=routing_context, **pool_config)
 
         pool = cls(opener, pool_config, workspace_config, routing_context, address)
-        seeds = [pool.acquire() for _ in range(pool_config.init_size)]
-        pool.release(*seeds)
         return pool
 
     def __init__(self, opener, pool_config, workspace_config, routing_context, address):
@@ -540,7 +591,8 @@ class BoltPool(IOPool):
     def __repr__(self):
         return "<{} address={!r}>".format(self.__class__.__name__, self.address)
 
-    def acquire(self, access_mode=None, timeout=None, database=None):
+    def acquire(self, access_mode=None, timeout=None, database=None,
+                bookmarks=None):
         # The access_mode and database is not needed for a direct connection, its just there for consistency.
         return self._acquire(self.address, timeout)
 
@@ -572,14 +624,7 @@ class Neo4jPool(IOPool):
             return Bolt.open(addr, auth=auth, timeout=timeout, routing_context=routing_context, **pool_config)
 
         pool = cls(opener, pool_config, workspace_config, routing_context, address)
-
-        try:
-            pool.update_routing_table(database=workspace_config.database)
-        except Exception:
-            pool.close()
-            raise
-        else:
-            return pool
+        return pool
 
     def __init__(self, opener, pool_config, workspace_config, routing_context, address):
         """
@@ -633,91 +678,54 @@ class Neo4jPool(IOPool):
         if database not in self.routing_tables:
             self.routing_tables[database] = RoutingTable(database=database, routers=self.get_default_database_initial_router_addresses())
 
-    def fetch_routing_info(self, *, address, timeout, database):
+    def fetch_routing_info(self, address, database, bookmarks, timeout):
         """ Fetch raw routing info from a given router address.
 
         :param address: router address
-        :param timeout: seconds
-        :param database: the data base name to get routing table for
-        :param address: the address by which the client initially contacted the server as a hint for inclusion in the returned routing table.
+        :param database: the database name to get routing table for
+        :param bookmarks: iterable of bookmark values after which the routing
+                          info should be fetched
+        :param timeout: connection acquisition timeout in seconds
 
-        :return: list of routing records or
-                 None if no connection could be established
-        :raise ServiceUnavailable: if the server does not support routing or
-                                   if routing support is broken
+        :return: list of routing records, or None if no connection
+            could be established or if no readers or writers are present
+        :raise ServiceUnavailable: if the server does not support
+            routing, or if routing support is broken or outdated
         """
-
-        # The name of system database is fixed and named as "system".
-        # It cannot be changed for a single instance or a cluster. (We can reliably assume that the system db exists on each instance.)
-        #
-        # Database name is NOT case sensitive.
-        #
-        # Each cluster member will host the exact same databases. For example, if a cluster member A has databases "foo" and
-        # "system", then all other members in the cluster should also have and only have "foo" and "system".
-        # However at a certain time, the cluster members may or may not up-to-date, as a result, cluster members may contain different databases.
-        #
-        # Maintain a routing table for each database.
-        #
-        # Default database is named "neo4j", (this can be renamed on the Neo4j server).
-        #
-        # Any core member in a cluster can provide a routing table for any database inside the cluster.
-        # The seed_url can be used to find all databases in the cluster.
-        #
-        # If the driver failed to refresh routing table with all known routers, then the driver should retry a few times before it raises a ServiceUnavailable.
-        #
-        # A valid routing table should at least have one router and one reader.
-        #
-        # To prevent the routing tables from growing infinitely.
-        # Stale/Aged routing tables is removed when there is a failure to obtain a routing table.
-        # Remove a routing table if it have been aged, timeout = TTL + RoutingConfig.routing_table_purge_delay
-
-        # Carry out Bolt subclass imports locally to avoid circular dependency issues.
-        from neo4j.io._bolt3 import Bolt3
-        from neo4j.io._bolt4x0 import Bolt4x0
-        from neo4j.io._bolt4x1 import Bolt4x1
-
-        from neo4j.api import (
-            SYSTEM_DATABASE,
-            DEFAULT_DATABASE,
-            READ_ACCESS,
-        )
-
-        metadata = {}
-        records = []
-
-        def fail(md):
-            if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
-                raise BoltRoutingError("Server does not support routing", address)
-            else:
-                raise BoltRoutingError("Routing support broken on server", address)
-
         try:
             with self._acquire(address, timeout) as cx:
-                log.debug("[#%04X]  C: <ROUTING> query=%r", cx.local_port, self.routing_context or {})
-
-                if database is None:
-                    database = self.workspace_config.database
-
-                cx.run_get_routing_table(on_success=metadata.update, on_failure=fail, database=database)
-                cx.pull(on_success=metadata.update, on_records=records.extend)
-                cx.send_all()
-                cx.fetch_all()
-                routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
-                log.debug("[#%04X]  S: <ROUTING> info=%r", cx.local_port, routing_info)
-            return routing_info
+                routing_table = cx.route(
+                    database or self.workspace_config.database, bookmarks
+                )
         except BoltRoutingError as error:
+            # Connection was successful, but routing support is
+            # broken. This may indicate that the routing procedure
+            # does not exist (for protocol versions prior to 4.3).
+            # This error is converted into ServiceUnavailable,
+            # therefore surfacing to the application as a signal that
+            # routing is broken.
+            log.debug("Routing is broken (%s)", error)
             raise ServiceUnavailable(*error.args)
-        except ServiceUnavailable:
-            self.deactivate(address=address)
-            return None
+        except ServiceUnavailable as error:
+            # The routing table request suffered a connection
+            # failure. This should return a null routing table,
+            # signalling to the caller to retry the request
+            # elsewhere.
+            log.debug("Routing is unavailable (%s)", error)
+            routing_table = None
+        # If the routing table is empty, deactivate the address.
+        if not routing_table:
+            self.deactivate(address)
+        return routing_table
 
-    def fetch_routing_table(self, *, address, timeout, database):
+    def fetch_routing_table(self, *, address, timeout, database, bookmarks):
         """ Fetch a routing table from a given router address.
 
         :param address: router address
         :param timeout: seconds
         :param database: the database name
         :type: str
+        :param bookmarks: bookmarks used when fetching routing table
 
         :return: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
@@ -725,7 +733,8 @@ class Neo4jPool(IOPool):
         :raise neo4j.exceptions.ServiceUnavailable: if no writers are available
         :raise neo4j._exceptions.BoltProtocolError: if the routing information received is unusable
         """
-        new_routing_info = self.fetch_routing_info(address=address, timeout=timeout, database=database)
+        new_routing_info = self.fetch_routing_info(address, database, bookmarks,
+                                                   timeout)
         if new_routing_info is None:
             return None
         elif not new_routing_info:
@@ -754,7 +763,8 @@ class Neo4jPool(IOPool):
         # At least one of each is fine, so return this table
         return new_routing_table
 
-    def update_routing_table_from(self, *routers, database=None):
+    def update_routing_table_from(self, *routers, database=None,
+                                  bookmarks=None):
         """ Try to update routing tables with the given routers.
 
         :return: True if the routing table is successfully updated,
@@ -762,18 +772,22 @@ class Neo4jPool(IOPool):
         """
         log.debug("Attempting to update routing table from {}".format(", ".join(map(repr, routers))))
         for router in routers:
-            new_routing_table = self.fetch_routing_table(address=router, timeout=self.pool_config.connection_timeout, database=database)
+            new_routing_table = self.fetch_routing_table(
+                address=router, timeout=self.pool_config.connection_timeout,
+                database=database, bookmarks=bookmarks
+            )
             if new_routing_table is not None:
                 self.routing_tables[database].update(new_routing_table)
                 log.debug("[#0000]  C: <UPDATE ROUTING TABLE> address={!r} ({!r})".format(router, self.routing_tables[database]))
                 return True
         return False
 
-    def update_routing_table(self, *, database):
+    def update_routing_table(self, *, database, bookmarks):
         """ Update the routing table from the first router able to provide
         valid routing information.
 
         :param database: The database name
+        :param bookmarks: bookmarks used when fetching routing table
 
         :raise neo4j.exceptions.ServiceUnavailable:
         """
@@ -784,15 +798,22 @@ class Neo4jPool(IOPool):
         if self.routing_tables[database].missing_fresh_writer():
             # TODO: Test this state
             has_tried_initial_routers = True
-            if self.update_routing_table_from(self.first_initial_routing_address, database=database):
+            if self.update_routing_table_from(
+                    self.first_initial_routing_address, database=database,
+                    bookmarks=bookmarks
+            ):
                 # Why is only the first initial routing address used?
                 return
-
-        if self.update_routing_table_from(*existing_routers, database=database):
+        if self.update_routing_table_from(*existing_routers, database=database,
+                                          bookmarks=bookmarks):
             return
 
-        if not has_tried_initial_routers and self.first_initial_routing_address not in existing_routers:
-            if self.update_routing_table_from(self.first_initial_routing_address, database=database):
+        if (not has_tried_initial_routers
+                and self.first_initial_routing_address not in existing_routers):
+            if self.update_routing_table_from(
+                self.first_initial_routing_address, database=database,
+                bookmarks=bookmarks
+            ):
                 # Why is only the first initial routing address used?
                 return
 
@@ -806,7 +827,8 @@ class Neo4jPool(IOPool):
             if address not in servers:
                 super(Neo4jPool, self).deactivate(address)
 
-    def ensure_routing_table_is_fresh(self, *, access_mode, database):
+    def ensure_routing_table_is_fresh(self, *, access_mode, database,
+                                      bookmarks):
         """ Update the routing table if stale.
 
         This method performs two freshness checks, before and after acquiring
@@ -825,7 +847,7 @@ class Neo4jPool(IOPool):
             return False
         with self.refresh_lock:
 
-            self.update_routing_table(database=database)
+            self.update_routing_table(database=database, bookmarks=bookmarks)
             self.update_connection_pool(database=database)
 
             for database in list(self.routing_tables.keys()):
@@ -837,12 +859,14 @@ class Neo4jPool(IOPool):
 
             return True
 
-    def _select_address(self, *, access_mode, database):
+    def _select_address(self, *, access_mode, database, bookmarks):
         from neo4j.api import READ_ACCESS
         """ Selects the address with the fewest in-use connections.
         """
         self.create_routing_table(database)
-        self.ensure_routing_table_is_fresh(access_mode=access_mode, database=database)
+        self.ensure_routing_table_is_fresh(
+            access_mode=access_mode, database=database, bookmarks=bookmarks
+        )
         log.debug("[#0000]  C: <ROUTING TABLE ENSURE FRESH> %r", self.routing_tables)
         if access_mode == READ_ACCESS:
             addresses = self.routing_tables[database].readers
@@ -858,7 +882,8 @@ class Neo4jPool(IOPool):
                 raise WriteServiceUnavailable("No write service currently available")
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
-    def acquire(self, access_mode=None, timeout=None, database=None):
+    def acquire(self, access_mode=None, timeout=None, database=None,
+                bookmarks=None):
         if access_mode not in (WRITE_ACCESS, READ_ACCESS):
             raise ClientError("Non valid 'access_mode'; {}".format(access_mode))
         if not timeout:
@@ -869,7 +894,10 @@ class Neo4jPool(IOPool):
         while True:
             try:
                 # Get an address for a connection that have the fewest in-use connections.
-                address = self._select_address(access_mode=access_mode, database=database)
+                address = self._select_address(
+                    access_mode=access_mode, database=database,
+                    bookmarks=bookmarks
+                )
                 log.debug("[#0000]  C: <ACQUIRE ADDRESS> database=%r address=%r", database, address)
             except (ReadServiceUnavailable, WriteServiceUnavailable) as err:
                 raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode) from err
@@ -1047,3 +1075,14 @@ def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
         raise ServiceUnavailable("Failed to resolve addresses for %s" % address)
     else:
         raise last_error
+
+
+def check_supported_server_product(agent):
+    """ Checks that a server product is supported by the driver by
+    looking at the server agent string.
+
+    :param agent: server agent string to check for validity
+    :raises UnsupportedServerProduct: if the product is not supported
+    """
+    if not agent.startswith("Neo4j/"):
+        raise UnsupportedServerProduct(agent)

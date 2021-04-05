@@ -26,6 +26,8 @@ from.exceptions import (
     DriverError,
     ConfigurationError,
 )
+from .meta import deprecated
+
 
 """ Base classes and helpers.
 """
@@ -172,23 +174,46 @@ class Bookmark:
 
 
 class ServerInfo:
+    """ Represents a package of information relating to a Neo4j server.
+    """
 
     def __init__(self, address, protocol_version):
-        self.address = address
-        self.protocol_version = protocol_version
-        self.metadata = {}
+        self._address = address
+        self._protocol_version = protocol_version
+        self._metadata = {}
+
+    @property
+    def address(self):
+        """ Network address of the remote server.
+        """
+        return self._address
+
+    @property
+    def protocol_version(self):
+        """ Bolt protocol version with which the remote server
+        communicates. This is returned as a :class:`.Version`
+        object, which itself extends a simple 2-tuple of
+        (major, minor) integers.
+        """
+        return self._protocol_version
 
     @property
     def agent(self):
-        """The server agent string the server responded with.
-
-        :return: Server agent string
-        :rtype: str
+        """ Server agent string by which the remote server identifies
+        itself.
         """
-        # Example "Neo4j/4.0.5"
-        # Example "Neo4j/4"
-        return self.metadata.get("server")
+        return self._metadata.get("server")
 
+    @property
+    def connection_id(self):
+        """ Unique identifier for the remote server connection.
+        """
+        return self._metadata.get("connection_id")
+
+    # TODO in 5.0: remove this method
+    @deprecated("The version_info method is deprecated, please use "
+                "ServerInfo.agent, ServerInfo.protocol_version, or "
+                "call the dbms.components procedure instead")
     def version_info(self):
         """Return the server version if available.
 
@@ -220,14 +245,12 @@ class ServerInfo:
                 pass
         return tuple(value)
 
-    def _update_metadata(self, metadata):
-        """Internal, update the metadata and perform check that the prefix is whitelisted by calling self.version()
-
-        :param metadata: metadata from the server
-        :type metadata: dict
+    def update(self, metadata):
+        """ Update server information with extra metadata. This is
+        typically drawn from the metadata received after successful
+        connection initialisation.
         """
-        self.metadata.update(metadata)
-        _ = self.version_info()
+        self._metadata.update(metadata)
 
 
 class Version(tuple):
@@ -246,9 +269,11 @@ class Version(tuple):
         for i, v in enumerate(self):
             if not 0 <= i < 2:
                 raise ValueError("Too many version components")
-            if not 0 <= v < 256:
-                raise ValueError("Version component {} is out of range".format(v))
-            b[-i - 1] = v
+            if isinstance(v, list):
+                b[-i - 1] = int(v[0] % 0x100)
+                b[-i - 2] = int((v[0] - v[-1]) % 0x100)
+            else:
+                b[-i - 1] = int(v % 0x100)
         return bytes(b)
 
     @classmethod

@@ -19,21 +19,22 @@
 # limitations under the License.
 
 from collections import deque
-from select import select
 from ssl import SSLSocket
-from struct import pack as struct_pack
 from time import perf_counter
 from neo4j.api import (
     Version,
     READ_ACCESS,
-    WRITE_ACCESS,
-    DEFAULT_DATABASE,
     SYSTEM_DATABASE,
 )
-from neo4j.io._courier import MessageInbox
+from neo4j.io._common import (
+    Inbox,
+    Outbox,
+    Response,
+    InitResponse,
+    CommitResponse,
+)
 from neo4j.meta import get_user_agent
 from neo4j.exceptions import (
-    Neo4jError,
     AuthError,
     ServiceUnavailable,
     DatabaseUnavailable,
@@ -52,8 +53,8 @@ from neo4j.packstream import (
 from neo4j.io import (
     Bolt,
     BoltPool,
+    check_supported_server_product,
 )
-from neo4j.conf import PoolConfig
 from neo4j.api import ServerInfo
 from neo4j.addressing import Address
 
@@ -61,9 +62,13 @@ from logging import getLogger
 log = getLogger("neo4j")
 
 
-class Bolt4x1(Bolt):
+class Bolt4x0(Bolt):
+    """ Protocol handler for Bolt 4.0.
 
-    PROTOCOL_VERSION = Version(4, 1)
+    This is supported by Neo4j versions 4.0, 4.1 and 4.2.
+    """
+
+    PROTOCOL_VERSION = Version(4, 0)
 
     # The socket
     in_use = False
@@ -80,7 +85,7 @@ class Bolt4x1(Bolt):
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *, auth=None, user_agent=None, routing_context=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
-        self.server_info = ServerInfo(Address(sock.getpeername()), Bolt4x1.PROTOCOL_VERSION)
+        self.server_info = ServerInfo(Address(sock.getpeername()), self.PROTOCOL_VERSION)
         self.outbox = Outbox()
         self.inbox = Inbox(self.socket, on_error=self._set_defunct)
         self.packer = Packer(self.outbox)
@@ -135,17 +140,61 @@ class Bolt4x1(Bolt):
         except IOError:
             return 0
 
+    def get_base_headers(self):
+        return {
+            "user_agent": self.user_agent,
+        }
+
     def hello(self):
-        headers = {"user_agent": self.user_agent}
+        headers = self.get_base_headers()
         headers.update(self.auth_dict)
-        headers["routing"] = self.routing_context
         logged_headers = dict(headers)
         if "credentials" in logged_headers:
             logged_headers["credentials"] = "*******"
         log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
-        self._append(b"\x01", (headers,), response=InitResponse(self, on_success=self.server_info._update_metadata))
+        self._append(b"\x01", (headers,),
+                     response=InitResponse(self, on_success=self.server_info.update))
         self.send_all()
         self.fetch_all()
+        check_supported_server_product(self.server_info.agent)
+
+    def route(self, database=None, bookmarks=None):
+        metadata = {}
+        records = []
+
+        def fail(md):
+            from neo4j._exceptions import BoltRoutingError
+            code = md.get("code")
+            if code == "Neo.ClientError.Database.DatabaseNotFound":
+                return  # surface this error to the user
+            elif code == "Neo.ClientError.Procedure.ProcedureNotFound":
+                raise BoltRoutingError("Server does not support routing", self.unresolved_address)
+            else:
+                raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
+
+        if database is None:  # default database
+            self.run(
+                "CALL dbms.routing.getRoutingTable($context)",
+                {"context": self.routing_context},
+                mode="r",
+                bookmarks=bookmarks,
+                db=SYSTEM_DATABASE,
+                on_success=metadata.update, on_failure=fail
+            )
+        else:
+            self.run(
+                "CALL dbms.routing.getRoutingTable($context, $database)",
+                {"context": self.routing_context, "database": database},
+                mode="r",
+                bookmarks=bookmarks,
+                db=SYSTEM_DATABASE,
+                on_success=metadata.update, on_failure=fail
+            )
+        self.pull(on_success=metadata.update, on_records=records.extend)
+        self.send_all()
+        self.fetch_all()
+        routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
+        return routing_info
 
     def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
         if not parameters:
@@ -177,26 +226,6 @@ class Bolt4x1(Bolt):
         else:
             self._append(b"\x10", fields, Response(self, **handlers))
         self._is_reset = False
-
-    def run_get_routing_table(self, on_success, on_failure, database=DEFAULT_DATABASE):
-        if database == DEFAULT_DATABASE:
-            self.run(
-                "CALL dbms.routing.getRoutingTable($context)",
-                {"context": self.routing_context},
-                mode="r",
-                db=SYSTEM_DATABASE,
-                on_success=on_success,
-                on_failure=on_failure,
-            )
-        else:
-            self.run(
-                "CALL dbms.routing.getRoutingTable($context, $database)",
-                {"context": self.routing_context, "database": database},
-                mode="r",
-                db=SYSTEM_DATABASE,
-                on_success=on_success,
-                on_failure=on_failure,
-            )
 
     def discard(self, n=-1, qid=-1, **handlers):
         extra = {"n": n}
@@ -360,7 +389,8 @@ class Bolt4x1(Bolt):
                     self.pool.on_write_failure(address=self.unresolved_address),
                 raise
         else:
-            raise BoltProtocolError("Unexpected response message with signature %02X" % summary_signature, self.unresolved_address)
+            raise BoltProtocolError("Unexpected response message with signature "
+                                    "%02X" % ord(summary_signature), self.unresolved_address)
 
         return len(details), 1
 
@@ -446,133 +476,64 @@ class Bolt4x1(Bolt):
         return self._defunct
 
 
-class Outbox:
+class Bolt4x1(Bolt4x0):
+    """ Protocol handler for Bolt 4.1.
 
-    def __init__(self, capacity=8192, max_chunk_size=16384):
-        self._max_chunk_size = max_chunk_size
-        self._header = 0
-        self._start = 2
-        self._end = 2
-        self._data = bytearray(capacity)
-
-    def max_chunk_size(self):
-        return self._max_chunk_size
-
-    def clear(self):
-        self._header = 0
-        self._start = 2
-        self._end = 2
-        self._data[0:2] = b"\x00\x00"
-
-    def write(self, b):
-        to_write = len(b)
-        max_chunk_size = self._max_chunk_size
-        pos = 0
-        while to_write > 0:
-            chunk_size = self._end - self._start
-            remaining = max_chunk_size - chunk_size
-            if remaining == 0 or remaining < to_write <= max_chunk_size:
-                self.chunk()
-            else:
-                wrote = min(to_write, remaining)
-                new_end = self._end + wrote
-                self._data[self._end:new_end] = b[pos:pos+wrote]
-                self._end = new_end
-                pos += wrote
-                new_chunk_size = self._end - self._start
-                self._data[self._header:(self._header + 2)] = struct_pack(">H", new_chunk_size)
-                to_write -= wrote
-
-    def chunk(self):
-        self._header = self._end
-        self._start = self._header + 2
-        self._end = self._start
-        self._data[self._header:self._start] = b"\x00\x00"
-
-    def view(self):
-        end = self._end
-        chunk_size = end - self._start
-        if chunk_size == 0:
-            return memoryview(self._data[:self._header])
-        else:
-            return memoryview(self._data[:end])
-
-
-class Inbox(MessageInbox):
-
-    def __next__(self):
-        tag, fields = self.pop()
-        if tag == b"\x71":
-            return fields, None, None
-        elif fields:
-            return [], tag, fields[0]
-        else:
-            return [], tag, None
-
-
-class Response:
-    """ Subscriber object for a full response (zero or
-    more detail messages followed by one summary message).
+    This is supported by Neo4j versions 4.1 and 4.2.
     """
 
-    def __init__(self, connection, **handlers):
-        self.connection = connection
-        self.handlers = handlers
-        self.complete = False
+    PROTOCOL_VERSION = Version(4, 1)
 
-    def on_records(self, records):
-        """ Called when one or more RECORD messages have been received.
+    def get_base_headers(self):
+        """ Bolt 4.1 passes the routing context, originally taken from
+        the URI, into the connection initialisation message. This
+        enables server-side routing to propagate the same behaviour
+        through its driver.
         """
-        handler = self.handlers.get("on_records")
-        if callable(handler):
-            handler(records)
-
-    def on_success(self, metadata):
-        """ Called when a SUCCESS message has been received.
-        """
-        handler = self.handlers.get("on_success")
-        if callable(handler):
-            handler(metadata)
-
-        if not metadata.get("has_more"):
-            handler = self.handlers.get("on_summary")
-            if callable(handler):
-                handler()
-
-    def on_failure(self, metadata):
-        """ Called when a FAILURE message has been received.
-        """
-        self.connection.reset()
-        handler = self.handlers.get("on_failure")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
-        raise Neo4jError.hydrate(**metadata)
-
-    def on_ignored(self, metadata=None):
-        """ Called when an IGNORED message has been received.
-        """
-        handler = self.handlers.get("on_ignored")
-        if callable(handler):
-            handler(metadata)
-        handler = self.handlers.get("on_summary")
-        if callable(handler):
-            handler()
+        return {
+            "user_agent": self.user_agent,
+            "routing": self.routing_context,
+        }
 
 
-class InitResponse(Response):
+class Bolt4x2(Bolt4x1):
+    """ Protocol handler for Bolt 4.2.
 
-    def on_failure(self, metadata):
-        code = metadata.get("code")
-        message = metadata.get("message", "Connection initialisation failed")
-        if code == "Neo.ClientError.Security.Unauthorized":
-            raise AuthError(message)
+    This is supported by Neo4j version 4.2.
+    """
+
+    PROTOCOL_VERSION = Version(4, 2)
+
+
+class Bolt4x3(Bolt4x2):
+    """ Protocol handler for Bolt 4.3.
+
+    This is supported by Neo4j version 4.3.
+    """
+
+    PROTOCOL_VERSION = Version(4, 3)
+
+    def route(self, database=None, bookmarks=None):
+
+        def fail(md):
+            from neo4j._exceptions import BoltRoutingError
+            code = md.get("code")
+            if code == "Neo.ClientError.Database.DatabaseNotFound":
+                return  # surface this error to the user
+            elif code == "Neo.ClientError.Procedure.ProcedureNotFound":
+                raise BoltRoutingError("Server does not support routing", self.unresolved_address)
+            else:
+                raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
+
+        routing_context = self.routing_context or {}
+        log.debug("[#%04X]  C: ROUTE %r %r", self.local_port, routing_context, database)
+        metadata = {}
+        if bookmarks is None:
+            bookmarks = []
         else:
-            raise ServiceUnavailable(message)
-
-
-class CommitResponse(Response):
-
-    pass
+            bookmarks = list(bookmarks)
+        self._append(b"\x66", (routing_context, bookmarks, database),
+                     response=Response(self, on_success=metadata.update, on_failure=fail))
+        self.send_all()
+        self.fetch_all()
+        return [metadata.get("rt")]

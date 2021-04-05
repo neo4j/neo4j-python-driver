@@ -136,148 +136,141 @@ def test_summary_counters_case_1(session):
     assert counters.contains_system_updates is False
 
 
-def test_summary_counters_case_2(neo4j_uri, auth, target):
+def test_summary_counters_case_2(neo4j_uri, auth, target, requires_bolt_4x):
     # python -m pytest tests/integration/test_summary.py -s -v -k test_summary_counters_case_2
-    try:
-        with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
+    with GraphDatabase.driver(neo4j_uri, auth=auth) as driver:
 
-            with driver.session(database="system") as session:
-                session.run("DROP DATABASE test IF EXISTS").consume()
+        with driver.session(database="system") as session:
+            session.run("DROP DATABASE test IF EXISTS").consume()
 
-                # SHOW DATABASES
+            # SHOW DATABASES
 
-                result = session.run("SHOW DATABASES")
-                databases = set()
-                for record in result:
-                    databases.add(record.get("name"))
-                assert "system" in databases
-                assert "neo4j" in databases
+            result = session.run("SHOW DATABASES")
+            databases = set()
+            for record in result:
+                databases.add(record.get("name"))
+            assert "system" in databases
+            assert "neo4j" in databases
 
-                summary = result.consume()
+            summary = result.consume()
 
-                assert summary.query == "SHOW DATABASES"
-                assert summary.parameters == {}
+            assert summary.query == "SHOW DATABASES"
+            assert summary.parameters == {}
 
-                assert isinstance(summary.query_type, str)
+            assert isinstance(summary.query_type, str)
 
-                counters = summary.counters
+            counters = summary.counters
 
-                assert isinstance(counters, SummaryCounters)
-                assert counters.nodes_created == 0
-                assert counters.nodes_deleted == 0
-                assert counters.relationships_created == 0
-                assert counters.relationships_deleted == 0
-                assert counters.properties_set == 0
-                assert counters.labels_added == 0
-                assert counters.labels_removed == 0
-                assert counters.indexes_added == 0
-                assert counters.indexes_removed == 0
-                assert counters.constraints_added == 0
-                assert counters.constraints_removed == 0
-                assert counters.contains_updates is False
+            assert isinstance(counters, SummaryCounters)
+            assert counters.nodes_created == 0
+            assert counters.nodes_deleted == 0
+            assert counters.relationships_created == 0
+            assert counters.relationships_deleted == 0
+            assert counters.properties_set == 0
+            assert counters.labels_added == 0
+            assert counters.labels_removed == 0
+            assert counters.indexes_added == 0
+            assert counters.indexes_removed == 0
+            assert counters.constraints_added == 0
+            assert counters.constraints_removed == 0
+            assert counters.contains_updates is False
 
-                assert counters.system_updates == 0
-                assert counters.contains_system_updates is False
+            assert counters.system_updates == 0
+            assert counters.contains_system_updates is False
 
-                # CREATE DATABASE test
+            # CREATE DATABASE test
 
-                summary = session.run("CREATE DATABASE test").consume()
+            summary = session.run("CREATE DATABASE test").consume()
 
-                assert summary.query == "CREATE DATABASE test"
-                assert summary.parameters == {}
+            assert summary.query == "CREATE DATABASE test"
+            assert summary.parameters == {}
 
-                assert isinstance(summary.query_type, str)
+            assert isinstance(summary.query_type, str)
 
-                counters = summary.counters
+            counters = summary.counters
 
-                assert isinstance(counters, SummaryCounters)
-                assert counters.nodes_created == 0
-                assert counters.nodes_deleted == 0
-                assert counters.relationships_created == 0
-                assert counters.relationships_deleted == 0
-                assert counters.properties_set == 0
-                assert counters.labels_added == 0
-                assert counters.labels_removed == 0
-                assert counters.indexes_added == 0
-                assert counters.indexes_removed == 0
-                assert counters.constraints_added == 0
-                assert counters.constraints_removed == 0
-                assert counters.contains_updates is False
+            assert isinstance(counters, SummaryCounters)
+            assert counters.nodes_created == 0
+            assert counters.nodes_deleted == 0
+            assert counters.relationships_created == 0
+            assert counters.relationships_deleted == 0
+            assert counters.properties_set == 0
+            assert counters.labels_added == 0
+            assert counters.labels_removed == 0
+            assert counters.indexes_added == 0
+            assert counters.indexes_removed == 0
+            assert counters.constraints_added == 0
+            assert counters.constraints_removed == 0
+            assert counters.contains_updates is False
 
-                assert counters.system_updates == 1
-                assert counters.contains_system_updates is True
+            assert counters.system_updates == 1
+            assert counters.contains_system_updates is True
 
-            with driver.session(database="test") as session:
-                summary = session.run("CREATE (n)").consume()
-                assert summary.counters.contains_updates is True
-                assert summary.counters.contains_system_updates is False
-                assert summary.counters.nodes_created == 1
+        with driver.session(database="test") as session:
+            summary = session.run("CREATE (n)").consume()
+            assert summary.counters.contains_updates is True
+            assert summary.counters.contains_system_updates is False
+            assert summary.counters.nodes_created == 1
 
-            with driver.session(database="test") as session:
-                summary = session.run("MATCH (n) DELETE (n)").consume()
-                assert summary.counters.contains_updates is True
-                assert summary.counters.contains_system_updates is False
-                assert summary.counters.nodes_deleted == 1
+        with driver.session(database="test") as session:
+            summary = session.run("MATCH (n) DELETE (n)").consume()
+            assert summary.counters.contains_updates is True
+            assert summary.counters.contains_system_updates is False
+            assert summary.counters.nodes_deleted == 1
 
-            with driver.session(database="test") as session:
-                summary = session.run("CREATE ()-[:KNOWS]->()").consume()
-                assert summary.counters.contains_updates is True
-                assert summary.counters.contains_system_updates is False
-                assert summary.counters.relationships_created == 1
+        with driver.session(database="test") as session:
+            summary = session.run("CREATE ()-[:KNOWS]->()").consume()
+            assert summary.counters.contains_updates is True
+            assert summary.counters.contains_system_updates is False
+            assert summary.counters.relationships_created == 1
 
-            with driver.session(database="test") as session:
-                summary = session.run("MATCH ()-[r:KNOWS]->() DELETE r").consume()
-                assert summary.counters.contains_updates is True
-                assert summary.counters.contains_system_updates is False
-                assert summary.counters.relationships_deleted == 1
+        with driver.session(database="test") as session:
+            summary = session.run("MATCH ()-[r:KNOWS]->() DELETE r").consume()
+            assert summary.counters.contains_updates is True
+            assert summary.counters.contains_system_updates is False
+            assert summary.counters.relationships_deleted == 1
 
-            with driver.session(database="test") as session:
-                summary = session.run("CREATE (n:ALabel)").consume()
-                assert summary.counters.contains_updates is True
-                assert summary.counters.contains_system_updates is False
-                assert summary.counters.labels_added == 1
+        with driver.session(database="test") as session:
+            summary = session.run("CREATE (n:ALabel)").consume()
+            assert summary.counters.contains_updates is True
+            assert summary.counters.contains_system_updates is False
+            assert summary.counters.labels_added == 1
 
-            with driver.session(database="test") as session:
-                summary = session.run("MATCH (n:ALabel) REMOVE n:ALabel").consume()
-                assert summary.counters.contains_updates is True
-                assert summary.counters.contains_system_updates is False
-                assert summary.counters.labels_removed == 1
+        with driver.session(database="test") as session:
+            summary = session.run("MATCH (n:ALabel) REMOVE n:ALabel").consume()
+            assert summary.counters.contains_updates is True
+            assert summary.counters.contains_system_updates is False
+            assert summary.counters.labels_removed == 1
 
-            with driver.session(database="test") as session:
-                summary = session.run("CREATE (n {magic: 42})").consume()
-                assert summary.counters.contains_updates is True
-                assert summary.counters.contains_system_updates is False
-                assert summary.counters.properties_set == 1
+        with driver.session(database="test") as session:
+            summary = session.run("CREATE (n {magic: 42})").consume()
+            assert summary.counters.contains_updates is True
+            assert summary.counters.contains_system_updates is False
+            assert summary.counters.properties_set == 1
 
-            with driver.session(database="test") as session:
-                summary = session.run("CREATE INDEX ON :ALabel(prop)").consume()
-                assert summary.counters.contains_updates is True
-                assert summary.counters.contains_system_updates is False
-                assert summary.counters.indexes_added == 1
+        with driver.session(database="test") as session:
+            summary = session.run("CREATE INDEX ON :ALabel(prop)").consume()
+            assert summary.counters.contains_updates is True
+            assert summary.counters.contains_system_updates is False
+            assert summary.counters.indexes_added == 1
 
-            with driver.session(database="test") as session:
-                summary = session.run("DROP INDEX ON :ALabel(prop)").consume()
-                assert summary.counters.contains_updates is True
-                assert summary.counters.contains_system_updates is False
-                assert summary.counters.indexes_removed == 1
+        with driver.session(database="test") as session:
+            summary = session.run("DROP INDEX ON :ALabel(prop)").consume()
+            assert summary.counters.contains_updates is True
+            assert summary.counters.contains_system_updates is False
+            assert summary.counters.indexes_removed == 1
 
-            with driver.session(database="test") as session:
-                summary = session.run("CREATE CONSTRAINT ON (book:Book) ASSERT book.isbn IS UNIQUE").consume()
-                assert summary.counters.contains_updates is True
-                assert summary.counters.contains_system_updates is False
-                assert summary.counters.constraints_added == 1
+        with driver.session(database="test") as session:
+            summary = session.run("CREATE CONSTRAINT ON (book:Book) ASSERT book.isbn IS UNIQUE").consume()
+            assert summary.counters.contains_updates is True
+            assert summary.counters.contains_system_updates is False
+            assert summary.counters.constraints_added == 1
 
-            with driver.session(database="test") as session:
-                summary = session.run("DROP CONSTRAINT ON (book:Book) ASSERT book.isbn IS UNIQUE").consume()
-                assert summary.counters.contains_updates is True
-                assert summary.counters.contains_system_updates is False
-                assert summary.counters.constraints_removed == 1
+        with driver.session(database="test") as session:
+            summary = session.run("DROP CONSTRAINT ON (book:Book) ASSERT book.isbn IS UNIQUE").consume()
+            assert summary.counters.contains_updates is True
+            assert summary.counters.contains_system_updates is False
+            assert summary.counters.constraints_removed == 1
 
-            with driver.session(database="system") as session:
-                session.run("DROP DATABASE test IF EXISTS").consume()
-    except ServiceUnavailable as error:
-        if error.args[0] == "Server does not support routing":
-            # This is because a single instance Neo4j 3.5 does not have dbms.routing.cluster.getRoutingTable() call
-            pytest.skip(error.args[0])
-        elif isinstance(error.__cause__, BoltHandshakeError):
-            pytest.skip(error.args[0])
+        with driver.session(database="system") as session:
+            session.run("DROP DATABASE test IF EXISTS").consume()
