@@ -389,6 +389,12 @@ class Duration(tuple):
     def __str__(self):
         return self.iso_format()
 
+    def __copy__(self):
+        return self.__new(self.ticks, self.hour, self.minute, self.second, self.tzinfo)
+
+    def __deepcopy__(self, memodict={}):
+        return self.__copy__()
+
     @classmethod
     def from_iso_format(cls, s):
         m = DURATION_ISO_PATTERN.match(s)
@@ -845,6 +851,12 @@ class Date(metaclass=DateType):
         except TypeError:
             return NotImplemented
 
+    def __copy__(self):
+        return self.__new(self.__ordinal, self.__year, self.__month, self.__day)
+
+    def __deepcopy__(self, *args, **kwargs):
+        return self.__copy__()
+
     # INSTANCE METHODS #
 
     def replace(self, **kwargs):
@@ -1132,6 +1144,12 @@ class Time(metaclass=TimeType):
 
     def __sub__(self, other):
         return NotImplemented
+
+    def __copy__(self):
+        return self.__new(self.__ticks, self.__hour, self.__minute, self.__second, self.__tzinfo)
+
+    def __deepcopy__(self, *args, **kwargs):
+        return self.__copy__()
 
     # INSTANCE METHODS #
 
@@ -1473,6 +1491,12 @@ class DateTime(metaclass=DateTimeType):
         if isinstance(other, timedelta):
             return self.__add__(-other)
         return NotImplemented
+
+    def __copy__(self):
+        return self.combine(self.__date, self.__time)
+
+    def __deepcopy__(self, *args, **kwargs):
+        return self.__copy__()
 
     # INSTANCE METHODS #
 

@@ -24,6 +24,7 @@ from time import struct_time
 from unittest import TestCase
 
 import pytz
+import copy
 
 from neo4j.time import Duration, Date, UnixEpoch, ZeroDate
 
@@ -532,3 +533,15 @@ class DateTestCase(TestCase):
         expected = Date(2018, 10, 1)
         actual = Date.from_iso_format("2018-10-01")
         self.assertEqual(expected, actual)
+
+    def test_date_copy(self):
+        d = Date(2010, 10, 1)
+        d2 = copy.copy(d)
+        self.assertIsNot(d, d2)
+        self.assertEqual(d, d2)
+
+    def test_date_deep_copy(self):
+        d = Date(2010, 10, 1)
+        d2 = copy.deepcopy(d)
+        self.assertIsNot(d, d2)
+        self.assertEqual(d, d2)
