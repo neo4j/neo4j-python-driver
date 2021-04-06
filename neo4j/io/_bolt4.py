@@ -488,10 +488,12 @@ class Bolt4x1(Bolt4x0):
         enables server-side routing to propagate the same behaviour
         through its driver.
         """
-        return {
+        headers = {
             "user_agent": self.user_agent,
-            "routing": self.routing_context,
         }
+        if self.routing_context is not None:
+            headers["routing"] = self.routing_context
+        return headers
 
 
 class Bolt4x2(Bolt4x1):
