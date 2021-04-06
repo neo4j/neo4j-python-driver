@@ -20,10 +20,8 @@
 
 
 from collections import deque
-from contextlib import contextmanager
 from warnings import warn
 
-from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.data import DataDehydrator
 from neo4j.exceptions import (
     ServiceUnavailable,
@@ -37,7 +35,7 @@ class _ConnectionErrorHandler:
     Wrapper class for handling connection errors.
 
     The class will wrap each method to invoke a callback if the method raises
-    SessionExpired, ServiceUnavailable, or BoltIncompleteCommitError.
+    SessionExpired or ServiceUnavailable.
     The error will be re-raised after the callback.
     """
 
@@ -63,8 +61,7 @@ class _ConnectionErrorHandler:
             def inner(*args, **kwargs):
                 try:
                     func(*args, **kwargs)
-                except (SessionExpired, ServiceUnavailable,
-                        BoltIncompleteCommitError) as error:
+                except (SessionExpired, ServiceUnavailable) as error:
                     self._on_network_error(error)
                     raise
             return inner
