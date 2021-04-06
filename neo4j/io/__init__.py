@@ -198,12 +198,10 @@ class Bolt:
                 ssl_context=config.get_ssl_context(),
                 keep_alive=config.keep_alive,
             )
-        except ServiceUnavailable:
-            return None
-        except BoltHandshakeError as e:
+        except (ServiceUnavailable, SessionExpired, BoltHandshakeError):
             return None
         else:
-            s.close()
+            _close_socket(s)
             return protocol_version
 
     @classmethod
@@ -250,8 +248,7 @@ class Bolt:
             connection = Bolt4x3(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
-            s.shutdown(SHUT_RDWR)
-            s.close()
+            _close_socket(s)
 
             supported_versions = Bolt.protocol_handlers().keys()
             raise BoltHandshakeError("The Neo4J server does not support communication with this driver. This driver have support for Bolt Protocols {}".format(supported_versions), address=address, request_data=handshake, response_data=data)
@@ -260,8 +257,7 @@ class Bolt:
             connection.hello()
         except Exception as error:
             log.debug("[#%04X]  C: <CLOSE> %s", s.getsockname()[1], str(error))
-            s.shutdown(SHUT_RDWR)
-            s.close()
+            _close_socket(s)
             raise error
 
         return connection
@@ -955,7 +951,7 @@ def _connect(resolved_address, timeout, keep_alive):
     except SocketTimeout:
         log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
         log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-        s.close()
+        _close_socket(s)
         raise ServiceUnavailable("Timed out trying to establish connection to {!r}".format(resolved_address))
     except OSError as error:
         log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
@@ -976,7 +972,7 @@ def _secure(s, host, ssl_context):
             sni_host = host if HAS_SNI and host else None
             s = ssl_context.wrap_socket(s, server_hostname=sni_host)
         except (SSLError, OSError) as cause:
-            s.close()
+            _close_socket(s)
             error = BoltSecurityError(message="Failed to establish encrypted connection.", address=(host, local_port))
             error.__cause__ = cause
             raise error
@@ -1027,7 +1023,7 @@ def _handshake(s, resolved_address):
         # If no data is returned after a successful select
         # response, the server has closed the connection
         log.debug("[#%04X]  S: <CLOSE>", local_port)
-        s.close()
+        _close_socket(s)
         raise ServiceUnavailable("Connection to {address} closed without handshake response".format(address=resolved_address))
     if data_size != 4:
         # Some garbled data has been received
@@ -1036,12 +1032,20 @@ def _handshake(s, resolved_address):
         raise BoltProtocolError("Expected four byte Bolt handshake response from %r, received %r instead; check for incorrect port number" % (resolved_address, data), address=resolved_address)
     elif data == b"HTTP":
         log.debug("[#%04X]  S: <CLOSE>", local_port)
-        s.close()
+        _close_socket(s)
         raise ServiceUnavailable("Cannot to connect to Bolt service on {!r} "
                                  "(looks like HTTP)".format(resolved_address))
     agreed_version = data[-1], data[-2]
     log.debug("[#%04X]  S: <HANDSHAKE> 0x%06X%02X", local_port, agreed_version[1], agreed_version[0])
     return s, agreed_version, handshake, data
+
+
+def _close_socket(socket_):
+    try:
+        socket_.shutdown(SHUT_RDWR)
+        socket_.close()
+    except OSError:
+        pass
 
 
 def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
@@ -1063,7 +1067,7 @@ def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
             return _handshake(s, address)
         except Exception as error:
             if s:
-                s.close()
+                _close_socket(s)
             last_error = error
     if last_error is None:
         raise ServiceUnavailable("Failed to resolve addresses for %s" % address)
