@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import copy
 from unittest import TestCase
 from datetime import (
     datetime,
@@ -336,6 +336,18 @@ class DateTimeTestCase(TestCase):
         expected = DateTime(2018, 10, 1, 12, 34, 56.123456789, tzinfo=FixedOffset(-754))
         actual = DateTime.from_iso_format("2018-10-01T12:34:56.123456789-12:34:56.123456")
         self.assertEqual(expected, actual)
+
+    def test_datetime_copy(self):
+        d = DateTime(2010, 10, 1, 10, 0, 10)
+        d2 = copy.copy(d)
+        self.assertIsNot(d, d2)
+        self.assertEqual(d, d2)
+
+    def test_datetime_deep_copy(self):
+        d = DateTime(2010, 10, 1, 10, 0, 12)
+        d2 = copy.deepcopy(d)
+        self.assertIsNot(d, d2)
+        self.assertEqual(d, d2)
 
 
 def test_iso_format_with_time_zone_case_1():
