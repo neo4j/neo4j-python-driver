@@ -25,13 +25,12 @@ from time import perf_counter
 
 from neo4j._exceptions import (
     BoltError,
-    BoltIncompleteCommitError,
     BoltProtocolError,
 )
 from neo4j.addressing import Address
-from neo4j.api import ServerInfo
 from neo4j.api import (
     READ_ACCESS,
+    ServerInfo,
     Version,
 )
 from neo4j.exceptions import (
@@ -40,6 +39,7 @@ from neo4j.exceptions import (
     DatabaseUnavailable,
     DriverError,
     ForbiddenOnReadOnlyDatabase,
+    IncompleteCommit,
     NotALeader,
     ServiceUnavailable,
     SessionExpired,
@@ -400,9 +400,9 @@ class Bolt3(Bolt):
         for response in self.responses:
             if isinstance(response, CommitResponse):
                 if error:
-                    raise BoltIncompleteCommitError(message, address=None) from error
+                    raise IncompleteCommit(message) from error
                 else:
-                    raise BoltIncompleteCommitError(message, address=None)
+                    raise IncompleteCommit(message)
 
         if direct_driver:
             if error:

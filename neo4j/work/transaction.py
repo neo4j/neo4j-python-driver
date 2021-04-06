@@ -21,9 +21,8 @@
 
 from neo4j.work.result import Result
 from neo4j.data import DataHydrator
-from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.exceptions import (
-    ServiceUnavailable,
+    IncompleteCommit,
     TransactionError,
 )
 
@@ -145,13 +144,10 @@ class Transaction:
             self._connection.commit(on_success=metadata.update)
             self._connection.send_all()
             self._connection.fetch_all()
-        except BoltIncompleteCommitError:
+            self._bookmark = metadata.get("bookmark")
+        finally:
             self._closed = True
             self._on_closed()
-            raise ServiceUnavailable("Connection closed during commit")
-        self._bookmark = metadata.get("bookmark")
-        self._closed = True
-        self._on_closed()
 
         return self._bookmark
 

@@ -25,7 +25,6 @@ from time import perf_counter
 
 from neo4j._exceptions import (
     BoltError,
-    BoltIncompleteCommitError,
     BoltProtocolError,
 )
 from neo4j.addressing import Address
@@ -40,6 +39,7 @@ from neo4j.exceptions import (
     DatabaseUnavailable,
     DriverError,
     ForbiddenOnReadOnlyDatabase,
+    IncompleteCommit,
     NotALeader,
     ServiceUnavailable,
     SessionExpired,
@@ -61,7 +61,6 @@ from neo4j.packstream import (
     Unpacker,
     Packer,
 )
-
 
 log = getLogger("neo4j")
 
@@ -413,9 +412,9 @@ class Bolt4x0(Bolt):
         for response in self.responses:
             if isinstance(response, CommitResponse):
                 if error:
-                    raise BoltIncompleteCommitError(message, address=None) from error
+                    raise IncompleteCommit(message) from error
                 else:
-                    raise BoltIncompleteCommitError(message, address=None)
+                    raise IncompleteCommit(message)
 
         if direct_driver:
             if error:
@@ -486,10 +485,12 @@ class Bolt4x1(Bolt4x0):
         enables server-side routing to propagate the same behaviour
         through its driver.
         """
-        return {
+        headers = {
             "user_agent": self.user_agent,
-            "routing": self.routing_context,
         }
+        if self.routing_context is not None:
+            headers["routing"] = self.routing_context
+        return headers
 
 
 class Bolt4x2(Bolt4x1):
