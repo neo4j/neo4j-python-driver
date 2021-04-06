@@ -617,7 +617,8 @@ def test_forgets_address_on_service_unavailable_error(driver_info, test_scripts,
                 conns = pool.connections[('127.0.0.1', 9004)]
                 conn = conns[0]
                 assert conn._closed is True
-                assert conn.in_use is True
+                assert conn.in_use is False
+                assert session._connection is None
                 assert table.routers == {('127.0.0.1', 9001), ('127.0.0.1', 9002), ('127.0.0.1', 9003)}
                 # reader 127.0.0.1:9004 should've been forgotten because of an error
                 assert not table.readers

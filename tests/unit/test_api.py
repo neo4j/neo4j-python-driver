@@ -23,7 +23,7 @@ import pytest
 from uuid import uuid4
 
 import neo4j.api
-from neo4j.work.simple import DataDehydrator
+from neo4j.data import DataDehydrator
 from neo4j.exceptions import (
     ConfigurationError,
 )

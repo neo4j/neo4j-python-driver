@@ -21,9 +21,8 @@
 
 from neo4j.work.result import Result
 from neo4j.data import DataHydrator
-from neo4j._exceptions import BoltIncompleteCommitError
 from neo4j.exceptions import (
-    ServiceUnavailable,
+    IncompleteCommit,
     TransactionError,
 )
 
@@ -39,13 +38,14 @@ class Transaction:
 
     """
 
-    def __init__(self, connection, fetch_size, on_closed):
+    def __init__(self, connection, fetch_size, on_closed, on_network_error):
         self._connection = connection
         self._bookmark = None
         self._results = []
         self._closed = False
         self._fetch_size = fetch_size
         self._on_closed = on_closed
+        self._on_network_error = on_network_error
 
     def __enter__(self):
         return self
@@ -59,10 +59,15 @@ class Transaction:
         self.close()
 
     def _begin(self, database, bookmarks, access_mode, metadata, timeout):
-        self._connection.begin(bookmarks=bookmarks, metadata=metadata, timeout=timeout, mode=access_mode, db=database)
+        self._connection.begin(bookmarks=bookmarks, metadata=metadata,
+                               timeout=timeout, mode=access_mode, db=database)
 
     def _result_on_closed_handler(self):
         pass
+
+    def _result_on_network_error_handler(self, error):
+        self._closed = True
+        self._on_network_error(error)
 
     def _consume_results(self):
         for result in self._results:
@@ -108,11 +113,18 @@ class Transaction:
         if self._closed:
             raise TransactionError("Transaction closed")
 
-        if self._results and self._connection.supports_multiple_results is False:
+        if (self._results
+                and self._connection.supports_multiple_results is False):
             # Bolt 3 Support
-            self._results[-1]._buffer_all()  # Buffer upp all records for the previous Result because it does not have any qid to fetch in batches.
+            # Buffer up all records for the previous Result because it does not
+            # have any qid to fetch in batches.
+            self._results[-1]._buffer_all()
 
-        result = Result(self._connection, DataHydrator(), self._fetch_size, self._result_on_closed_handler)
+        result = Result(
+            self._connection, DataHydrator(), self._fetch_size,
+            self._result_on_closed_handler,
+            self._result_on_network_error_handler
+        )
         self._results.append(result)
 
         result._tx_ready_run(query, parameters, **kwparameters)
@@ -132,13 +144,10 @@ class Transaction:
             self._connection.commit(on_success=metadata.update)
             self._connection.send_all()
             self._connection.fetch_all()
-        except BoltIncompleteCommitError:
+            self._bookmark = metadata.get("bookmark")
+        finally:
             self._closed = True
             self._on_closed()
-            raise ServiceUnavailable("Connection closed during commit")
-        self._bookmark = metadata.get("bookmark")
-        self._closed = True
-        self._on_closed()
 
         return self._bookmark
 

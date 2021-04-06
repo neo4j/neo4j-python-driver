@@ -45,6 +45,7 @@ Driver API Errors
     + RoutingServiceUnavailable
     + WriteServiceUnavailable
     + ReadServiceUnavailable
+    + IncompleteCommit
   + ConfigurationError
     + AuthConfigurationError
     + CertificateConfigurationError
@@ -60,7 +61,6 @@ Connector API Errors
       + BoltConnectionBroken
       + BoltConnectionClosed
   + BoltFailure
-  + BoltIncompleteCommitError
   + BoltProtocolError
   + Bolt*
 
@@ -283,6 +283,16 @@ class WriteServiceUnavailable(ServiceUnavailable):
 
 class ReadServiceUnavailable(ServiceUnavailable):
     """ Raised when no read service is available.
+    """
+
+
+class IncompleteCommit(ServiceUnavailable):
+    """ Raised when the client looses connection while committing a transaction
+
+    Raised when a disconnection occurs while still waiting for a commit
+    response. For non-idempotent write transactions, this leaves the data
+    in an unknown state with regard to whether the transaction completed
+    successfully or not.
     """
 
 

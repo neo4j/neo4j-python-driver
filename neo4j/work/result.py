@@ -23,7 +23,50 @@ from collections import deque
 from warnings import warn
 
 from neo4j.data import DataDehydrator
+from neo4j.exceptions import (
+    ServiceUnavailable,
+    SessionExpired,
+)
 from neo4j.work.summary import ResultSummary
+
+
+class _ConnectionErrorHandler:
+    """
+    Wrapper class for handling connection errors.
+
+    The class will wrap each method to invoke a callback if the method raises
+    SessionExpired or ServiceUnavailable.
+    The error will be re-raised after the callback.
+    """
+
+    def __init__(self, connection, on_network_error):
+        """
+        :param connection the connection object to warp
+        :type connection Bolt
+        :param on_network_error the function to be called when a method of
+            connection raises of of the caught errors. The callback takes the
+            error as argument.
+        :type on_network_error callable
+
+        """
+        self._connection = connection
+        self._on_network_error = on_network_error
+
+    def __getattr__(self, item):
+        connection_attr = getattr(self._connection, item)
+        if not callable(connection_attr):
+            return connection_attr
+
+        def outer(func):
+            def inner(*args, **kwargs):
+                try:
+                    func(*args, **kwargs)
+                except (SessionExpired, ServiceUnavailable) as error:
+                    self._on_network_error(error)
+                    raise
+            return inner
+
+        return outer(connection_attr)
 
 
 class Result:
@@ -32,8 +75,9 @@ class Result:
     :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
 
-    def __init__(self, connection, hydrant, fetch_size, on_closed):
-        self._connection = connection
+    def __init__(self, connection, hydrant, fetch_size, on_closed,
+                 on_network_error):
+        self._connection = _ConnectionErrorHandler(connection, on_network_error)
         self._hydrant = hydrant
         self._on_closed = on_closed
         self._metadata = None

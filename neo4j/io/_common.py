@@ -22,8 +22,8 @@
 from struct import pack as struct_pack
 
 from neo4j.exceptions import (
-    Neo4jError,
     AuthError,
+    Neo4jError,
     ServiceUnavailable,
 )
 from neo4j.packstream import (
