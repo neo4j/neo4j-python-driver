@@ -560,33 +560,28 @@ class IOPool:
 class BoltPool(IOPool):
 
     @classmethod
-    def open(cls, address, *, auth, pool_config, workspace_config, routing_context=None):
+    def open(cls, address, *, auth, pool_config, workspace_config):
         """Create a new BoltPool
 
         :param address:
         :param auth:
         :param pool_config:
         :param workspace_config:
-        :param routing_context:
         :return: BoltPool
         """
 
-        if routing_context is None:
-            routing_context = {}
-        elif "address" in routing_context:
-            raise ConfigurationError("The key 'address' is reserved for routing context.")
-        routing_context["address"] = str(address)
-
         def opener(addr, timeout):
-            return Bolt.open(addr, auth=auth, timeout=timeout, routing_context=routing_context, **pool_config)
+            return Bolt.open(
+                addr, auth=auth, timeout=timeout, routing_context=None,
+                **pool_config
+            )
 
-        pool = cls(opener, pool_config, workspace_config, routing_context, address)
+        pool = cls(opener, pool_config, workspace_config, address)
         return pool
 
-    def __init__(self, opener, pool_config, workspace_config, routing_context, address):
+    def __init__(self, opener, pool_config, workspace_config, address):
         super(BoltPool, self).__init__(opener, pool_config, workspace_config)
         self.address = address
-        self.routing_context = routing_context
 
     def __repr__(self):
         return "<{} address={!r}>".format(self.__class__.__name__, self.address)
@@ -621,18 +616,18 @@ class Neo4jPool(IOPool):
         routing_context["address"] = str(address)
 
         def opener(addr, timeout):
-            return Bolt.open(addr, auth=auth, timeout=timeout, routing_context=routing_context, **pool_config)
+            return Bolt.open(addr, auth=auth, timeout=timeout,
+                             routing_context=routing_context, **pool_config)
 
-        pool = cls(opener, pool_config, workspace_config, routing_context, address)
+        pool = cls(opener, pool_config, workspace_config, address)
         return pool
 
-    def __init__(self, opener, pool_config, workspace_config, routing_context, address):
+    def __init__(self, opener, pool_config, workspace_config, address):
         """
 
         :param opener:
         :param pool_config:
         :param workspace_config:
-        :param routing_context: Dictionary with routing information
         :param addresses:
         """
         super(Neo4jPool, self).__init__(opener, pool_config, workspace_config)
@@ -640,7 +635,6 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  C: <NEO4J POOL> routing address %r", address)
         self.address = address
         self.routing_tables = {workspace_config.database: RoutingTable(database=workspace_config.database, routers=[address])}
-        self.routing_context = routing_context
         self.refresh_lock = Lock()
 
     def __repr__(self):
