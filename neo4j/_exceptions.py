@@ -174,14 +174,6 @@ class BoltFailure(BoltError):
             return None
 
 
-class BoltIncompleteCommitError(BoltError):
-    """ Raised when a disconnection occurs while still waiting for a commit
-    response. For non-idempotent write transactions, this leaves the data
-    in an unknown state with regard to whether the transaction completed
-    successfully or not.
-    """
-
-
 class BoltProtocolError(BoltError):
     """ Raised when an unexpected or unsupported protocol event occurs.
     """

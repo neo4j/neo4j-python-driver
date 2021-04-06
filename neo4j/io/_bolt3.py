@@ -35,18 +35,15 @@ from neo4j.io._common import (
 from neo4j.meta import get_user_agent
 from neo4j.exceptions import (
     AuthError,
-    ServiceUnavailable,
     DatabaseUnavailable,
-    NotALeader,
-    ForbiddenOnReadOnlyDatabase,
-    SessionExpired,
     ConfigurationError,
-    UnsupportedServerProduct,
+    ForbiddenOnReadOnlyDatabase,
+    IncompleteCommit,
+    NotALeader,
+    ServiceUnavailable,
+    SessionExpired,
 )
-from neo4j._exceptions import (
-    BoltIncompleteCommitError,
-    BoltProtocolError,
-)
+from neo4j._exceptions import BoltProtocolError
 from neo4j.packstream import (
     Unpacker,
     Packer,
@@ -406,9 +403,9 @@ class Bolt3(Bolt):
         for response in self.responses:
             if isinstance(response, CommitResponse):
                 if error:
-                    raise BoltIncompleteCommitError(message, address=None) from error
+                    raise IncompleteCommit(message) from error
                 else:
-                    raise BoltIncompleteCommitError(message, address=None)
+                    raise IncompleteCommit(message)
 
         if direct_driver:
             if error:
