@@ -124,7 +124,7 @@ class Session(Workspace):
 
     def _disconnect(self):
         if self._connection:
-            self._connection.in_use = False
+            self._pool.release(self._connection)
             self._connection = None
 
     def _collect_bookmark(self, bookmark):
@@ -134,6 +134,11 @@ class Session(Workspace):
     def _result_closed(self):
         if self._autoResult:
             self._collect_bookmark(self._autoResult._bookmark)
+            self._autoResult = None
+            self._disconnect()
+
+    def _result_network_error(self, error):
+        if self._autoResult:
             self._autoResult = None
             self._disconnect()
 
@@ -220,8 +225,14 @@ class Session(Workspace):
 
         hydrant = DataHydrator()
 
-        self._autoResult = Result(cx, hydrant, self._config.fetch_size, self._result_closed)
-        self._autoResult._run(query, parameters, self._config.database, self._config.default_access_mode, self._bookmarks, **kwparameters)
+        self._autoResult = Result(
+            cx, hydrant, self._config.fetch_size, self._result_closed,
+            self._result_network_error
+        )
+        self._autoResult._run(
+            query, parameters, self._config.database,
+            self._config.default_access_mode, self._bookmarks, **kwparameters
+        )
 
         return self._autoResult
 
@@ -250,10 +261,21 @@ class Session(Workspace):
             self._transaction = None
             self._disconnect()
 
-    def _open_transaction(self, *, access_mode, database, metadata=None, timeout=None):
+    def _transaction_network_error_handler(self, error):
+        if self._transaction:
+            self._transaction = None
+            self._disconnect()
+
+    def _open_transaction(self, *, access_mode, database, metadata=None,
+                          timeout=None):
         self._connect(access_mode=access_mode, database=database)
-        self._transaction = Transaction(self._connection, self._config.fetch_size, self._transaction_closed_handler)
-        self._transaction._begin(database, self._bookmarks, access_mode, metadata, timeout)
+        self._transaction = Transaction(
+            self._connection, self._config.fetch_size,
+            self._transaction_closed_handler,
+            self._transaction_network_error_handler
+        )
+        self._transaction._begin(database, self._bookmarks, access_mode,
+                                 metadata, timeout)
 
     def begin_transaction(self, metadata=None, timeout=None):
         """ Begin a new unmanaged transaction. Creates a new :class:`.Transaction` within this session.

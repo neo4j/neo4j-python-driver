@@ -61,7 +61,7 @@ class Workspace:
                 except (WorkspaceError, ServiceUnavailable):
                     pass
             if self._connection:
-                self._connection.in_use = False
+                self._pool.release(self._connection)
                 self._connection = None
             self._connection_access_mode = None
 
