@@ -47,7 +47,6 @@ class _ConnectionErrorHandler:
             connection raises of of the caught errors. The callback takes the
             error as argument.
         :type on_network_error callable
-
         """
         self._connection = connection
         self._on_network_error = on_network_error
