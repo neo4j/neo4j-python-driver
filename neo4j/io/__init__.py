@@ -754,10 +754,13 @@ class Neo4jPool(IOPool):
         """
         log.debug("Attempting to update routing table from {}".format(", ".join(map(repr, routers))))
         for router in routers:
-            new_routing_table = self.fetch_routing_table(
-                address=router, timeout=self.pool_config.connection_timeout,
-                database=database, bookmarks=bookmarks
-            )
+            try:
+                new_routing_table = self.fetch_routing_table(
+                    address=router, timeout=self.pool_config.connection_timeout,
+                    database=database, bookmarks=bookmarks
+                )
+            except BoltRoutingError:
+                continue
             if new_routing_table is not None:
                 self.routing_tables[database].update(new_routing_table)
                 log.debug("[#0000]  C: <UPDATE ROUTING TABLE> address={!r} ({!r})".format(router, self.routing_tables[database]))
@@ -786,8 +789,12 @@ class Neo4jPool(IOPool):
             ):
                 # Why is only the first initial routing address used?
                 return
-        if self.update_routing_table_from(*existing_routers, database=database,
-                                          bookmarks=bookmarks):
+        if self.update_routing_table_from(
+                *[r for r in existing_routers
+                  if (not has_tried_initial_routers
+                      or r != self.first_initial_routing_address)],
+                database=database, bookmarks=bookmarks
+        ):
             return
 
         if (not has_tried_initial_routers
