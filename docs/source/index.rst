@@ -6,8 +6,8 @@ The Official Neo4j Driver for Python.
 
 Neo4j versions supported:
 
+* Neo4j 4.2
 * Neo4j 4.1
-* Neo4j 4.0
 * Neo4j 3.5
 
 Python versions supported:
