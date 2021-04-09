@@ -1072,7 +1072,8 @@ def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
         raise ServiceUnavailable("Failed to resolve addresses for %s" %
                                  str(address))
     else:
-        raise last_error
+        raise ServiceUnavailable("Failed to resolve addresses for %s" %
+                                 str(address)) from last_error
 
 
 def check_supported_server_product(agent):
