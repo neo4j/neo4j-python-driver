@@ -711,16 +711,15 @@ class Neo4jPool(IOPool):
 
         :return: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
-
-        :raise neo4j.exceptions.ServiceUnavailable: if no writers are available
-        :raise neo4j._exceptions.BoltProtocolError: if the routing information received is unusable
         """
-        new_routing_info = self.fetch_routing_info(address, database, bookmarks,
-                                                   timeout)
-        if new_routing_info is None:
+        try:
+            new_routing_info = self.fetch_routing_info(address, database,
+                                                       bookmarks, timeout)
+        except ServiceUnavailable:
+            new_routing_info = None
+        if not new_routing_info:
+            log.debug("Failed to fetch routing info %s", address)
             return None
-        elif not new_routing_info:
-            raise BoltRoutingError("Invalid routing table", address)
         else:
             servers = new_routing_info[0]["servers"]
             ttl = new_routing_info[0]["ttl"]
@@ -736,11 +735,13 @@ class Neo4jPool(IOPool):
 
         # No routers
         if num_routers == 0:
-            raise BoltRoutingError("No routing servers returned from server", address)
+            log.debug("No routing servers returned from server %s", address)
+            return None
 
         # No readers
         if num_readers == 0:
-            raise BoltRoutingError("No read servers returned from server", address)
+            log.debug("No read servers returned from server %s", address)
+            return None
 
         # At least one of each is fine, so return this table
         return new_routing_table
@@ -754,14 +755,19 @@ class Neo4jPool(IOPool):
         """
         log.debug("Attempting to update routing table from {}".format(", ".join(map(repr, routers))))
         for router in routers:
-            new_routing_table = self.fetch_routing_table(
-                address=router, timeout=self.pool_config.connection_timeout,
-                database=database, bookmarks=bookmarks
-            )
-            if new_routing_table is not None:
-                self.routing_tables[database].update(new_routing_table)
-                log.debug("[#0000]  C: <UPDATE ROUTING TABLE> address={!r} ({!r})".format(router, self.routing_tables[database]))
-                return True
+            for address in router.resolve(resolver=self.pool_config.resolver):
+                new_routing_table = self.fetch_routing_table(
+                    address=address,
+                    timeout=self.pool_config.connection_timeout,
+                    database=database, bookmarks=bookmarks
+                )
+                if new_routing_table is not None:
+                    self.routing_tables[database].update(new_routing_table)
+                    log.debug(
+                        "[#0000]  C: <UPDATE ROUTING TABLE> address=%r (%r)",
+                        address, self.routing_tables[database]
+                    )
+                    return True
         return False
 
     def update_routing_table(self, *, database, bookmarks):
@@ -1048,21 +1054,21 @@ def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
     # Establish a connection to the host and port specified
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
-    log.debug("[#0000]  C: <RESOLVE> %s", address)
 
     for resolved_address in Address(address).resolve(resolver=custom_resolver):
         s = None
         try:
-            host = address[0]
+            host = resolved_address[0]
             s = _connect(resolved_address, timeout, keep_alive)
             s = _secure(s, host, ssl_context)
-            return _handshake(s, address)
+            return _handshake(s, resolved_address)
         except Exception as error:
             if s:
                 _close_socket(s)
             last_error = error
     if last_error is None:
-        raise ServiceUnavailable("Failed to resolve addresses for %s" % address)
+        raise ServiceUnavailable("Failed to resolve addresses for %s" %
+                                 str(address))
     else:
         raise last_error
 
