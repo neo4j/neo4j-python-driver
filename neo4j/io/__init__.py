@@ -275,12 +275,6 @@ class Bolt:
         except OSError:
             pass
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-
     def route(self, database=None, bookmarks=None):
         """ Fetch a routing table from the server for the given
         `database`. For Bolt 4.3 and above, this appends a ROUTE
@@ -675,10 +669,13 @@ class Neo4jPool(IOPool):
             routing, or if routing support is broken or outdated
         """
         try:
-            with self._acquire(address, timeout) as cx:
+            cx = self._acquire(address, timeout)
+            try:
                 routing_table = cx.route(
                     database or self.workspace_config.database, bookmarks
                 )
+            finally:
+                self.release(cx)
         except BoltRoutingError as error:
             # Connection was successful, but routing support is
             # broken. This may indicate that the routing procedure
