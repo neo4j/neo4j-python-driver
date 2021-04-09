@@ -780,24 +780,26 @@ class Neo4jPool(IOPool):
         :raise neo4j.exceptions.ServiceUnavailable:
         """
         # copied because it can be modified
-        existing_routers = list(self.routing_tables[database].routers)
+        existing_routers = set(self.routing_tables[database].routers)
 
-        has_tried_initial_routers = False
-        if self.routing_tables[database].missing_fresh_writer():
+        prefer_initial_routing_address = \
+            self.routing_tables[database].missing_fresh_writer()
+
+        if prefer_initial_routing_address:
             # TODO: Test this state
-            has_tried_initial_routers = True
             if self.update_routing_table_from(
                     self.first_initial_routing_address, database=database,
                     bookmarks=bookmarks
             ):
                 # Why is only the first initial routing address used?
                 return
-        if self.update_routing_table_from(*existing_routers, database=database,
-                                          bookmarks=bookmarks):
+        if self.update_routing_table_from(
+                *(existing_routers - {self.first_initial_routing_address}),
+                database=database, bookmarks=bookmarks
+        ):
             return
 
-        if (not has_tried_initial_routers
-                and self.first_initial_routing_address not in existing_routers):
+        if not prefer_initial_routing_address:
             if self.update_routing_table_from(
                 self.first_initial_routing_address, database=database,
                 bookmarks=bookmarks
