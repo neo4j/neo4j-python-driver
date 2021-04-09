@@ -85,7 +85,8 @@ class Backend:
         self._rd = rd
         self._wr = wr
         self.drivers = {}
-        self.address_resolutions = {}
+        self.custom_resolutions = {}
+        self.dns_resolutions = {}
         self.sessions = {}
         self.results = {}
         self.errors = {}
