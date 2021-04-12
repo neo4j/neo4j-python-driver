@@ -48,6 +48,7 @@ from socket import (
     timeout as SocketTimeout,
 )
 from ssl import (
+    CertificateError,
     HAS_SNI,
     SSLError,
 )
@@ -59,6 +60,7 @@ from threading import (
 from time import perf_counter
 
 from neo4j._exceptions import (
+    BoltError,
     BoltHandshakeError,
     BoltProtocolError,
     BoltRoutingError,
@@ -77,6 +79,7 @@ from neo4j.conf import (
 from neo4j.exceptions import (
     ClientError,
     ConfigurationError,
+    DriverError,
     ReadServiceUnavailable,
     ServiceUnavailable,
     SessionExpired,
@@ -768,6 +771,7 @@ class Neo4jPool(IOPool):
                         address, self.routing_tables[database]
                     )
                     return True
+            self.deactivate(router)
         return False
 
     def update_routing_table(self, *, database, bookmarks):
@@ -963,25 +967,34 @@ def _connect(resolved_address, timeout, keep_alive):
         return s
 
 
-def _secure(s, host, ssl_context):
+def _secure(s, hosts, ssl_context):
     local_port = s.getsockname()[1]
     # Secure the connection if an SSL context has been provided
+    if not hosts:
+        hosts = [None]
     if ssl_context:
-        log.debug("[#%04X]  C: <SECURE> %s", local_port, host)
-        try:
-            sni_host = host if HAS_SNI and host else None
-            s = ssl_context.wrap_socket(s, server_hostname=sni_host)
-        except (SSLError, OSError) as cause:
-            _close_socket(s)
-            error = BoltSecurityError(message="Failed to establish encrypted connection.", address=(host, local_port))
-            error.__cause__ = cause
-            raise error
-        else:
-            # Check that the server provides a certificate
-            der_encoded_server_certificate = s.getpeercert(binary_form=True)
-            if der_encoded_server_certificate is None:
-                s.close()
-                raise BoltProtocolError("When using an encrypted socket, the server should always provide a certificate", address=(host, local_port))
+        last_error = None
+        for host in hosts:
+            log.debug("[#%04X]  C: <SECURE> %s", local_port, host)
+            try:
+                sni_host = host if HAS_SNI and host else None
+                s = ssl_context.wrap_socket(s, server_hostname=sni_host)
+            except (SSLError, CertificateError) as cause:
+                last_error = cause
+                continue
+            except OSError as cause:
+                # No sense in trying another host name with a broken socket
+                last_error = cause
+                break
+            else:
+                # Check that the server provides a certificate
+                der_encoded_server_certificate = s.getpeercert(binary_form=True)
+                if der_encoded_server_certificate is None:
+                    raise BoltProtocolError("When using an encrypted socket, the server should always provide a certificate", address=(host, local_port))
+                return s
+        raise BoltSecurityError(
+            message="Failed to establish encrypted connection.",
+            address=(hosts[0], local_port)) from last_error
     return s
 
 
@@ -1057,23 +1070,31 @@ def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
 
-    for resolved_address in Address(address).resolve(resolver=custom_resolver):
+    resolved_addresses = Address(address).resolve(resolver=custom_resolver)
+    for resolved_address in resolved_addresses:
         s = None
         try:
-            host = resolved_address[0]
             s = _connect(resolved_address, timeout, keep_alive)
-            s = _secure(s, host, ssl_context)
+            s = _secure(s, resolved_address.host_names, ssl_context)
             return _handshake(s, resolved_address)
-        except Exception as error:
+        except (BoltError, DriverError, OSError) as error:
             if s:
                 _close_socket(s)
             last_error = error
+        except Exception:
+            if s:
+                _close_socket(s)
+            raise
     if last_error is None:
-        raise ServiceUnavailable("Failed to resolve addresses for %s" %
-                                 str(address))
+        raise ServiceUnavailable(
+            "Couldn't connect to %s (resolved to %s)" % (
+                str(address), tuple(map(str, resolved_addresses)))
+        )
     else:
-        raise ServiceUnavailable("Failed to resolve addresses for %s" %
-                                 str(address)) from last_error
+        raise ServiceUnavailable(
+            "Couldn't connect to %s (resolved to %s)" % (
+                str(address), tuple(map(str, resolved_addresses)))
+        ) from last_error
 
 
 def check_supported_server_product(agent):

@@ -127,6 +127,10 @@ class Address(tuple, metaclass=_AddressMeta):
         return "{}({!r})".format(self.__class__.__name__, tuple(self))
 
     @property
+    def host_names(self):
+        return self[0],
+
+    @property
     def host(self):
         return self[0]
 
@@ -155,7 +159,9 @@ class Address(tuple, metaclass=_AddressMeta):
                     # as these appear to cause problems on some platforms
                     continue
                 if addr not in resolved:
-                    resolved.append(ResolvedAddress(addr))
+                    resolved.append(ResolvedAddress(
+                        addr, host_names=address.host_names)
+                    )
             return resolved
 
     def resolve(self, family=0, resolver=None):
@@ -179,7 +185,10 @@ class Address(tuple, metaclass=_AddressMeta):
         log.debug("[#0000]  C: <RESOLVE> %s", self)
         resolved = []
         if resolver:
-            for address in map(Address, resolver(self)):
+            for address in resolver(self):
+                address = ResolvedAddress(
+                    address, host_names={self.host_names}
+                )
                 resolved.extend(self._dns_resolve(address, family))
         else:
             resolved.extend(self._dns_resolve(self, family))
@@ -215,8 +224,18 @@ class IPv6Address(Address):
 
 
 class ResolvedAddress(Address):
+
+    @property
+    def host_names(self):
+        return tuple(self._host_names)
+
     def resolve(self, family=0, resolver=None):
         return [self]
+
+    def __new__(cls, iterable, host_names=None):
+        new = super().__new__(cls, iterable)
+        new._host_names = set() if host_names is None else set(host_names)
+        return new
 
 
 class ResolvedIPv4Address(IPv4Address, ResolvedAddress):
