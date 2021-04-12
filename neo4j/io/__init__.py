@@ -1065,7 +1065,7 @@ def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
     """ Connect and perform a handshake and return a valid Connection object,
     assuming a protocol version can be agreed.
     """
-    last_error = None
+    errors = []
     # Establish a connection to the host and port specified
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
@@ -1080,21 +1080,23 @@ def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
         except (BoltError, DriverError, OSError) as error:
             if s:
                 _close_socket(s)
-            last_error = error
+            errors.append(error)
         except Exception:
             if s:
                 _close_socket(s)
             raise
-    if last_error is None:
+    if not errors:
         raise ServiceUnavailable(
             "Couldn't connect to %s (resolved to %s)" % (
                 str(address), tuple(map(str, resolved_addresses)))
         )
     else:
         raise ServiceUnavailable(
-            "Couldn't connect to %s (resolved to %s)" % (
-                str(address), tuple(map(str, resolved_addresses)))
-        ) from last_error
+            "Couldn't connect to %s (resolved to %s):\n%s" % (
+                str(address), tuple(map(str, resolved_addresses)),
+                "\n".join(map(str, errors))
+            )
+        ) from errors[0]
 
 
 def check_supported_server_product(agent):
