@@ -133,9 +133,7 @@ def NewSession(backend, data):
             "default_access_mode": access_mode,
             "bookmarks": data["bookmarks"],
             "database": data["database"],
-            "fetch_size": data.get("fetchSize", None),
-            # testkit breaks up connection after 10 seconds
-            "max_transaction_retry_time": 5,
+            "fetch_size": data.get("fetchSize", None)
     }
     session = driver.session(**config)
     key = backend.next_key()
