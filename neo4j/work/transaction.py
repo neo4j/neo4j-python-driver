@@ -139,8 +139,8 @@ class Transaction:
         if self._closed:
             raise TransactionError("Transaction closed")
         metadata = {}
-        self._consume_results()  # DISCARD pending records then do a commit.
         try:
+            self._consume_results()  # DISCARD pending records then do a commit.
             self._connection.commit(on_success=metadata.update)
             self._connection.send_all()
             self._connection.fetch_all()
@@ -159,18 +159,19 @@ class Transaction:
         if self._closed:
             raise TransactionError("Transaction closed")
         metadata = {}
-        if not self._connection._is_reset:
-            self._consume_results()  # DISCARD pending records then do a rollback.
-            self._connection.rollback(on_success=metadata.update)
-            self._connection.send_all()
-            self._connection.fetch_all()
-        self._closed = True
-        self._on_closed()
+        try:
+            if not self._connection._is_reset:
+                # DISCARD pending records then do a rollback.
+                self._consume_results()
+                self._connection.rollback(on_success=metadata.update)
+                self._connection.send_all()
+                self._connection.fetch_all()
+        finally:
+            self._closed = True
+            self._on_closed()
 
     def close(self):
         """Close this transaction, triggering a ROLLBACK if not closed.
-
-        :raise TransactionError: if the transaction could not perform a ROLLBACK.
         """
         if self._closed:
             return

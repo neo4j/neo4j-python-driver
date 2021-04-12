@@ -26,11 +26,11 @@ from time import (
     sleep,
 )
 
-from neo4j.conf import SessionConfig
 from neo4j.api import (
     READ_ACCESS,
     WRITE_ACCESS,
 )
+from neo4j.conf import SessionConfig
 from neo4j.data import DataHydrator
 from neo4j.exceptions import (
     ClientError,
@@ -337,7 +337,7 @@ class Session(Workspace):
                 try:
                     result = transaction_function(tx, *args, **kwargs)
                 except Exception:
-                    tx.rollback()
+                    tx.close()
                     raise
                 else:
                     tx.commit()

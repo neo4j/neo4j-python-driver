@@ -88,6 +88,7 @@ from neo4j.exceptions import (
 )
 from neo4j.routing import RoutingTable
 
+
 # Set up logger
 log = getLogger("neo4j")
 
@@ -250,9 +251,8 @@ class Bolt:
 
         try:
             connection.hello()
-        except Exception as error:
-            log.debug("[#%04X]  C: <CLOSE> %s", s.getsockname()[1], str(error))
-            _close_socket(s)
+        except Exception:
+            connection.close()
             raise
 
         return connection
