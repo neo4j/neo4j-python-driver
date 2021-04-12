@@ -1,1 +1,68 @@
-{}
+{
+  "stub.retry.TestRetryClustering.test_retry_ForbiddenOnReadOnlyDatabase_ChangingWriter":
+    "Closes connection to router after ROUTE",
+  "stub.routing.Routing.test_should_use_resolver_during_rediscovery_when_existing_routers_fail":
+    "DNS resolver not implemented",
+  "stub.routing.RoutingV3.test_should_use_resolver_during_rediscovery_when_existing_routers_fail":
+    "DNS resolver not implemented",
+  "stub.routing.RoutingV4.test_should_use_resolver_during_rediscovery_when_existing_routers_fail":
+    "DNS resolver not implemented",
+  "stub.routing.NoRouting.test_should_use_resolver_during_rediscovery_when_existing_routers_fail":
+    "DNS resolver not implemented",
+  "stub.routing.Routing.test_should_request_rt_from_all_initial_routers_until_successful":
+    "DNS resolver not implemented",
+  "stub.routing.RoutingV3.test_should_request_rt_from_all_initial_routers_until_successful":
+    "DNS resolver not implemented",
+  "stub.routing.RoutingV4.test_should_request_rt_from_all_initial_routers_until_successful":
+    "DNS resolver not implemented",
+  "stub.routing.NoRouting.test_should_request_rt_from_all_initial_routers_until_successful":
+    "DNS resolver not implemented",
+  "stub.routing.Routing.test_should_successfully_acquire_rt_when_router_ip_changes":
+    "DNS resolver not implemented",
+  "stub.routing.RoutingV3.test_should_successfully_acquire_rt_when_router_ip_changes":
+    "DNS resolver not implemented",
+  "stub.routing.RoutingV4.test_should_successfully_acquire_rt_when_router_ip_changes":
+    "DNS resolver not implemented",
+  "stub.routing.NoRouting.test_should_successfully_acquire_rt_when_router_ip_changes":
+    "DNS resolver not implemented",
+  "stub.routing.Routing.test_should_read_successfully_on_empty_discovery_result_using_session_run":
+    "Driver iterates over results of custom resolver and settles on first connection yielding a successful handshake",
+  "stub.routing.RoutingV3.test_should_read_successfully_on_empty_discovery_result_using_session_run":
+    "Driver iterates over results of custom resolver and settles on first connection yielding a successful handshake",
+  "stub.routing.RoutingV4.test_should_read_successfully_on_empty_discovery_result_using_session_run":
+    "Driver iterates over results of custom resolver and settles on first connection yielding a successful handshake",
+  "stub.routing.NoRouting.test_should_read_successfully_on_empty_discovery_result_using_session_run":
+    "Driver iterates over results of custom resolver and settles on first connection yielding a successful handshake",
+  "stub.routing.Routing.test_should_retry_read_tx_and_rediscovery_until_success":
+    "Driver iterates over results of custom resolver and settles on first connection yielding a successful handshake",
+  "stub.routing.RoutingV3.test_should_retry_read_tx_and_rediscovery_until_success":
+    "Driver iterates over results of custom resolver and settles on first connection yielding a successful handshake",
+  "stub.routing.RoutingV4.test_should_retry_read_tx_and_rediscovery_until_success":
+    "Driver iterates over results of custom resolver and settles on first connection yielding a successful handshake",
+  "stub.routing.NoRouting.test_should_retry_read_tx_and_rediscovery_until_success":
+    "Driver iterates over results of custom resolver and settles on first connection yielding a successful handshake",
+  "stub.routing.Routing.test_should_retry_write_until_success_with_leader_change_using_tx_function":
+    "Driver opens a new connection each time to get a fresh routing table",
+  "stub.routing.RoutingV3.test_should_retry_write_until_success_with_leader_change_using_tx_function":
+    "Driver opens a new connection each time to get a fresh routing table",
+  "stub.routing.RoutingV4.test_should_retry_write_until_success_with_leader_change_using_tx_function":
+    "Driver opens a new connection each time to get a fresh routing table",
+  "stub.routing.NoRouting.test_should_retry_write_until_success_with_leader_change_using_tx_function":
+    "Driver opens a new connection each time to get a fresh routing table",
+  "stub.routing.Routing.test_should_retry_write_until_success_with_leader_shutdown_during_tx_using_tx_function":
+    "Driver opens a new connection each time to get a fresh routing table",
+  "stub.routing.RoutingV3.test_should_retry_write_until_success_with_leader_shutdown_during_tx_using_tx_function":
+    "Driver opens a new connection each time to get a fresh routing table",
+  "stub.routing.RoutingV4.test_should_retry_write_until_success_with_leader_shutdown_during_tx_using_tx_function":
+    "Driver opens a new connection each time to get a fresh routing table",
+  "stub.routing.NoRouting.test_should_retry_write_until_success_with_leader_shutdown_during_tx_using_tx_function":
+    "Driver opens a new connection each time to get a fresh routing table",
+  "stub.routing.Routing.test_should_revert_to_initial_router_if_known_router_throws_protocol_errors":
+    "Driver uses custom resolver for each connection, not only initial seeding",
+  "stub.routing.RoutingV3.test_should_revert_to_initial_router_if_known_router_throws_protocol_errors":
+    "Driver uses custom resolver for each connection, not only initial seeding",
+  "stub.routing.RoutingV4.test_should_revert_to_initial_router_if_known_router_throws_protocol_errors":
+    "Driver uses custom resolver for each connection, not only initial seeding",
+  "stub.routing.NoRouting.test_should_revert_to_initial_router_if_known_router_throws_protocol_errors":
+    "Driver uses custom resolver for each connection, not only initial seeding"
+}
