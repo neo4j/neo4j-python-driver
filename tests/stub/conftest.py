@@ -55,10 +55,15 @@ class StubServer:
         while True:
             return_code = self._process.poll()
             if return_code is not None:
-                line = self._process.stdout.readline().decode("utf-8")
-                if line == "":
+                line = self._process.stdout.readline()
+                if not line:
                     break
-                log.debug(line.strip("\n"))
+                try:
+                    line = line.decode("utf-8")
+                    line = line.strip("\n")
+                except UnicodeDecodeError:
+                    pass
+                log.debug(line)
 
         return True
 
