@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 ROOT=$(dirname "$0")/..
 SCRIPT=$(basename "$0")
@@ -10,5 +11,7 @@ then
     exit 1
 else
     source "${ROOT}/bin/dist-functions"
-    setup "${VERSION}" sdist upload -r pypi --show-response
+    twine upload --repository testpypi \
+        "${DIST}/neo4j-driver-${VERSION}.tar.gz" \
+        "${DIST}/neo4j-${VERSION}.tar.gz"
 fi
