@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 ROOT=$(dirname "$0")/..
 DIST="${ROOT}/dist"
@@ -52,6 +53,18 @@ function set_metadata_and_setup
     grep "version\s\+=" neo4j/meta.py
     echo "----------------------------------------"
 
+    function cleanup() {
+      # Reset to original package metadata
+      set_package "${ORIGINAL_PACKAGE}"
+      set_version "${ORIGINAL_VERSION}"
+      echo "Source code reconfigured back to original package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}"
+      echo "----------------------------------------"
+      grep "package\s\+=" neo4j/meta.py
+      grep "version\s\+=" neo4j/meta.py
+      echo "----------------------------------------"
+    }
+    trap cleanup EXIT
+
     # Temporarily override package metadata
     set_package "${PACKAGE}"
     set_version "${VERSION}"
@@ -67,15 +80,8 @@ function set_metadata_and_setup
     python setup.py $*
     check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"
 
-    # Reset to original package metadata
-    set_package "${ORIGINAL_PACKAGE}"
-    set_version "${ORIGINAL_VERSION}"
-    echo "Source code reconfigured back to original package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}"
-    echo "----------------------------------------"
-    grep "package\s\+=" neo4j/meta.py
-    grep "version\s\+=" neo4j/meta.py
-    echo "----------------------------------------"
-
+  trap - EXIT
+  cleanup
 }
 
 function setup
