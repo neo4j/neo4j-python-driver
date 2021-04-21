@@ -44,11 +44,14 @@ def NewDriver(backend, data):
             auth_token["scheme"], auth_token["principal"],
             auth_token["credentials"], realm=auth_token["realm"])
     auth_token.mark_item_as_read_if_equals("ticket", "")
-    resolver = resolution_func(backend) if data["resolverRegistered"] else None
+    resolver = None
+    if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
+        resolver = resolution_func(backend, data["resolverRegistered"],
+                                   data["domainNameResolverRegistered"])
     connection_timeout = data.get("connectionTimeoutMs", None)
     if connection_timeout is not None:
         connection_timeout /= 1000
-    data.mark_item_as_read_if_equals("domainNameResolverRegistered", False)
+    data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.GraphDatabase.driver(
         data["uri"], auth=auth, user_agent=data["userAgent"],
         resolver=resolver, connection_timeout=connection_timeout
@@ -74,33 +77,66 @@ def CheckMultiDBSupport(backend, data):
     )
 
 
-def resolution_func(backend):
+def resolution_func(backend, custom_resolver=False, custom_dns_resolver=False):
+    # This solution (putting custom resolution together with DNS resolution into
+    # one function only works because the Python driver calls the custom
+    # resolver function for every connection, which is not true for all drivers.
+    # Properly exposing a way to change the DNS lookup behavior is not possible
+    # without changing the driver's code.
+    assert custom_resolver or custom_dns_resolver
+
     def resolve(address):
-        key = backend.next_key()
-        address = ":".join(map(str, address))
-        backend.send_response("ResolverResolutionRequired", {
-            "id": key,
-            "address": address
-        })
-        if not backend.process_request():
-            # connection was closed before end of next message
-            return []
-        if key not in backend.address_resolutions:
-            raise RuntimeError(
-                "Backend did not receive expected ResolverResolutionCompleted "
-                "message for id %s" % key
-            )
-        resolution = backend.address_resolutions[key]
-        resolution = list(map(neo4j.Address.parse, resolution))
-        # won't be needed anymore -> conserve memory
-        del backend.address_resolutions[key]
-        return resolution
+        addresses = [":".join(map(str, address))]
+        if custom_resolver:
+            key = backend.next_key()
+            backend.send_response("ResolverResolutionRequired", {
+                "id": key,
+                "address": addresses[0]
+            })
+            if not backend.process_request():
+                # connection was closed before end of next message
+                return []
+            if key not in backend.custom_resolutions:
+                raise RuntimeError(
+                    "Backend did not receive expected "
+                    "ResolverResolutionCompleted message for id %s" % key
+                )
+            addresses = backend.custom_resolutions.pop(key)
+        if custom_dns_resolver:
+            dns_resolved_addresses = []
+            for address in addresses:
+                key = backend.next_key()
+                address = address.rsplit(":", 1)
+                backend.send_response("DomainNameResolutionRequired", {
+                    "id": key,
+                    "name": address[0]
+                })
+                if not backend.process_request():
+                    # connection was closed before end of next message
+                    return []
+                if key not in backend.dns_resolutions:
+                    raise RuntimeError(
+                        "Backend did not receive expected "
+                        "DomainNameResolutionCompleted message for id %s" % key
+                    )
+                dns_resolved_addresses += list(map(
+                    lambda a: ":".join((a, *address[1:])),
+                    backend.dns_resolutions.pop(key)
+                ))
+
+            addresses = dns_resolved_addresses
+
+        return list(map(neo4j.Address.parse, addresses))
 
     return resolve
 
 
 def ResolverResolutionCompleted(backend, data):
-    backend.address_resolutions[data["requestId"]] = data["addresses"]
+    backend.custom_resolutions[data["requestId"]] = data["addresses"]
+
+
+def DomainNameResolutionCompleted(backend, data):
+    backend.dns_resolutions[data["requestId"]] = data["addresses"]
 
 
 def DriverClose(backend, data):

@@ -34,13 +34,11 @@ from neo4j.api import (
 )
 from neo4j.exceptions import (
     ServiceUnavailable,
-    ClientError,
     TransientError,
     SessionExpired,
     ConfigurationError,
 )
 from neo4j._exceptions import (
-    BoltRoutingError,
     BoltSecurityError,
 )
 from tests.stub.conftest import StubCluster
@@ -214,7 +212,7 @@ def test_cannot_discover_servers_on_non_router(driver_info, test_script):
 def test_cannot_discover_servers_on_silent_router(driver_info, test_script):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_cannot_discover_servers_on_silent_router
     with StubCluster(test_script):
-        with pytest.raises(BoltRoutingError):
+        with pytest.raises(ServiceUnavailable, match="routing"):
             with GraphDatabase.driver(driver_info["uri_neo4j"], auth=driver_info["auth_token"]) as driver:
                 assert isinstance(driver, Neo4jDriver)
                 driver._pool.update_routing_table(database=None, bookmarks=None)
@@ -532,7 +530,7 @@ def test_should_serve_read_when_missing_writer(driver_info, test_scripts, test_r
 def test_should_error_when_missing_reader(driver_info, test_script):
     # python -m pytest tests/stub/test_routingdriver.py -s -v -k test_should_error_when_missing_reader
     with StubCluster(test_script):
-        with pytest.raises(BoltRoutingError):
+        with pytest.raises(ServiceUnavailable, match="routing"):
             with GraphDatabase.driver(driver_info["uri_neo4j"], auth=driver_info["auth_token"]) as driver:
                 assert isinstance(driver, Neo4jDriver)
                 driver._pool.update_routing_table(database=None, bookmarks=None)

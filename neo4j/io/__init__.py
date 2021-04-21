@@ -48,6 +48,7 @@ from socket import (
     timeout as SocketTimeout,
 )
 from ssl import (
+    CertificateError,
     HAS_SNI,
     SSLError,
 )
@@ -59,6 +60,7 @@ from threading import (
 from time import perf_counter
 
 from neo4j._exceptions import (
+    BoltError,
     BoltHandshakeError,
     BoltProtocolError,
     BoltRoutingError,
@@ -77,6 +79,7 @@ from neo4j.conf import (
 from neo4j.exceptions import (
     ClientError,
     ConfigurationError,
+    DriverError,
     ReadServiceUnavailable,
     ServiceUnavailable,
     SessionExpired,
@@ -708,16 +711,15 @@ class Neo4jPool(IOPool):
 
         :return: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
-
-        :raise neo4j.exceptions.ServiceUnavailable: if no writers are available
-        :raise neo4j._exceptions.BoltProtocolError: if the routing information received is unusable
         """
-        new_routing_info = self.fetch_routing_info(address, database, bookmarks,
-                                                   timeout)
-        if new_routing_info is None:
+        try:
+            new_routing_info = self.fetch_routing_info(address, database,
+                                                       bookmarks, timeout)
+        except ServiceUnavailable:
+            new_routing_info = None
+        if not new_routing_info:
+            log.debug("Failed to fetch routing info %s", address)
             return None
-        elif not new_routing_info:
-            raise BoltRoutingError("Invalid routing table", address)
         else:
             servers = new_routing_info[0]["servers"]
             ttl = new_routing_info[0]["ttl"]
@@ -733,11 +735,13 @@ class Neo4jPool(IOPool):
 
         # No routers
         if num_routers == 0:
-            raise BoltRoutingError("No routing servers returned from server", address)
+            log.debug("No routing servers returned from server %s", address)
+            return None
 
         # No readers
         if num_readers == 0:
-            raise BoltRoutingError("No read servers returned from server", address)
+            log.debug("No read servers returned from server %s", address)
+            return None
 
         # At least one of each is fine, so return this table
         return new_routing_table
@@ -751,14 +755,20 @@ class Neo4jPool(IOPool):
         """
         log.debug("Attempting to update routing table from {}".format(", ".join(map(repr, routers))))
         for router in routers:
-            new_routing_table = self.fetch_routing_table(
-                address=router, timeout=self.pool_config.connection_timeout,
-                database=database, bookmarks=bookmarks
-            )
-            if new_routing_table is not None:
-                self.routing_tables[database].update(new_routing_table)
-                log.debug("[#0000]  C: <UPDATE ROUTING TABLE> address={!r} ({!r})".format(router, self.routing_tables[database]))
-                return True
+            for address in router.resolve(resolver=self.pool_config.resolver):
+                new_routing_table = self.fetch_routing_table(
+                    address=address,
+                    timeout=self.pool_config.connection_timeout,
+                    database=database, bookmarks=bookmarks
+                )
+                if new_routing_table is not None:
+                    self.routing_tables[database].update(new_routing_table)
+                    log.debug(
+                        "[#0000]  C: <UPDATE ROUTING TABLE> address=%r (%r)",
+                        address, self.routing_tables[database]
+                    )
+                    return True
+            self.deactivate(router)
         return False
 
     def update_routing_table(self, *, database, bookmarks):
@@ -771,24 +781,26 @@ class Neo4jPool(IOPool):
         :raise neo4j.exceptions.ServiceUnavailable:
         """
         # copied because it can be modified
-        existing_routers = list(self.routing_tables[database].routers)
+        existing_routers = set(self.routing_tables[database].routers)
 
-        has_tried_initial_routers = False
-        if self.routing_tables[database].missing_fresh_writer():
+        prefer_initial_routing_address = \
+            self.routing_tables[database].missing_fresh_writer()
+
+        if prefer_initial_routing_address:
             # TODO: Test this state
-            has_tried_initial_routers = True
             if self.update_routing_table_from(
                     self.first_initial_routing_address, database=database,
                     bookmarks=bookmarks
             ):
                 # Why is only the first initial routing address used?
                 return
-        if self.update_routing_table_from(*existing_routers, database=database,
-                                          bookmarks=bookmarks):
+        if self.update_routing_table_from(
+                *(existing_routers - {self.first_initial_routing_address}),
+                database=database, bookmarks=bookmarks
+        ):
             return
 
-        if (not has_tried_initial_routers
-                and self.first_initial_routing_address not in existing_routers):
+        if not prefer_initial_routing_address:
             if self.update_routing_table_from(
                 self.first_initial_routing_address, database=database,
                 bookmarks=bookmarks
@@ -956,21 +968,24 @@ def _secure(s, host, ssl_context):
     local_port = s.getsockname()[1]
     # Secure the connection if an SSL context has been provided
     if ssl_context:
+        last_error = None
         log.debug("[#%04X]  C: <SECURE> %s", local_port, host)
         try:
             sni_host = host if HAS_SNI and host else None
             s = ssl_context.wrap_socket(s, server_hostname=sni_host)
-        except (SSLError, OSError) as cause:
-            _close_socket(s)
-            error = BoltSecurityError(message="Failed to establish encrypted connection.", address=(host, local_port))
-            error.__cause__ = cause
-            raise error
-        else:
-            # Check that the server provides a certificate
-            der_encoded_server_certificate = s.getpeercert(binary_form=True)
-            if der_encoded_server_certificate is None:
-                s.close()
-                raise BoltProtocolError("When using an encrypted socket, the server should always provide a certificate", address=(host, local_port))
+        except (OSError, SSLError, CertificateError) as cause:
+            raise BoltSecurityError(
+                message="Failed to establish encrypted connection.",
+                address=(host, local_port)
+            ) from cause
+        # Check that the server provides a certificate
+        der_encoded_server_certificate = s.getpeercert(binary_form=True)
+        if der_encoded_server_certificate is None:
+            raise BoltProtocolError(
+                "When using an encrypted socket, the server should always "
+                "provide a certificate", address=(host, local_port)
+            )
+        return s
     return s
 
 
@@ -1041,27 +1056,38 @@ def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
     """ Connect and perform a handshake and return a valid Connection object,
     assuming a protocol version can be agreed.
     """
-    last_error = None
+    errors = []
     # Establish a connection to the host and port specified
     # Catches refused connections see:
     # https://docs.python.org/2/library/errno.html
-    log.debug("[#0000]  C: <RESOLVE> %s", address)
 
-    for resolved_address in Address(address).resolve(resolver=custom_resolver):
+    resolved_addresses = Address(address).resolve(resolver=custom_resolver)
+    for resolved_address in resolved_addresses:
         s = None
         try:
-            host = address[0]
             s = _connect(resolved_address, timeout, keep_alive)
-            s = _secure(s, host, ssl_context)
-            return _handshake(s, address)
-        except Exception as error:
+            s = _secure(s, resolved_address.host_name, ssl_context)
+            return _handshake(s, resolved_address)
+        except (BoltError, DriverError, OSError) as error:
             if s:
                 _close_socket(s)
-            last_error = error
-    if last_error is None:
-        raise ServiceUnavailable("Failed to resolve addresses for %s" % address)
+            errors.append(error)
+        except Exception:
+            if s:
+                _close_socket(s)
+            raise
+    if not errors:
+        raise ServiceUnavailable(
+            "Couldn't connect to %s (resolved to %s)" % (
+                str(address), tuple(map(str, resolved_addresses)))
+        )
     else:
-        raise last_error
+        raise ServiceUnavailable(
+            "Couldn't connect to %s (resolved to %s):\n%s" % (
+                str(address), tuple(map(str, resolved_addresses)),
+                "\n".join(map(str, errors))
+            )
+        ) from errors[0]
 
 
 def check_supported_server_product(agent):

@@ -303,7 +303,7 @@ def neo4j_driver(target, auth):
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
-        elif error.args[0] == "Server does not support routing":
+        elif error.args[0] == "Unable to retrieve routing information":
             pytest.skip(error.args[0])
         else:
             raise
