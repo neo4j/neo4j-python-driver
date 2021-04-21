@@ -127,8 +127,8 @@ class Address(tuple, metaclass=_AddressMeta):
         return "{}({!r})".format(self.__class__.__name__, tuple(self))
 
     @property
-    def host_names(self):
-        return self[0],
+    def host_name(self):
+        return self[0]
 
     @property
     def host(self):
@@ -160,7 +160,7 @@ class Address(tuple, metaclass=_AddressMeta):
                     continue
                 if addr not in resolved:
                     resolved.append(ResolvedAddress(
-                        addr, host_names=address.host_names)
+                        addr, host_name=address.host_name)
                     )
             return resolved
 
@@ -185,10 +185,7 @@ class Address(tuple, metaclass=_AddressMeta):
         log.debug("[#0000]  C: <RESOLVE> %s", self)
         resolved = []
         if resolver:
-            for address in resolver(self):
-                address = ResolvedAddress(
-                    address, host_names={self.host_names}
-                )
+            for address in map(Address, resolver(self)):
                 resolved.extend(self._dns_resolve(address, family))
         else:
             resolved.extend(self._dns_resolve(self, family))
@@ -226,15 +223,15 @@ class IPv6Address(Address):
 class ResolvedAddress(Address):
 
     @property
-    def host_names(self):
-        return tuple(self._host_names)
+    def host_name(self):
+        return self._host_name
 
     def resolve(self, family=0, resolver=None):
         return [self]
 
-    def __new__(cls, iterable, host_names=None):
+    def __new__(cls, iterable, host_name=None):
         new = super().__new__(cls, iterable)
-        new._host_names = set() if host_names is None else set(host_names)
+        new._host_name = host_name
         return new
 
 
