@@ -41,7 +41,7 @@ class _AddressMeta(type(tuple)):
     def _subclass_by_family(self, family):
         subclasses = [
             sc for sc in self.__subclasses__()
-            if (sc.__module__ == "neo4j.addressing"
+            if (sc.__module__ == self.__module__
                 and getattr(sc, "family", None) == family)
         ]
         if len(subclasses) != 1:
