@@ -45,9 +45,9 @@ from neo4j.exceptions import (
     SessionExpired,
 )
 from neo4j.io import (
-    check_supported_server_product,
     Bolt,
     BoltPool,
+    check_supported_server_product,
 )
 from neo4j.io._common import (
     CommitResponse,
@@ -61,6 +61,7 @@ from neo4j.packstream import (
     Packer,
     Unpacker,
 )
+
 
 log = getLogger("neo4j")
 
