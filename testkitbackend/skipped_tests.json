@@ -62,5 +62,7 @@
   "stub.routing.RoutingV4.test_should_revert_to_initial_router_if_known_router_throws_protocol_errors":
     "Driver uses custom resolver for each connection, not only initial seeding",
   "stub.routing.NoRouting.test_should_revert_to_initial_router_if_known_router_throws_protocol_errors":
-    "Driver uses custom resolver for each connection, not only initial seeding"
+    "Driver uses custom resolver for each connection, not only initial seeding",
+  "stub.retry.TestRetryClustering.test_retry_ForbiddenOnReadOnlyDatabase_ChangingWriter":
+    "Test makes assumptions about how verify_connectivity is implemented"
 }
