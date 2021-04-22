@@ -289,8 +289,14 @@ def ResultNext(backend, data):
 
 def ResultConsume(backend, data):
     result = backend.results[data["resultId"]]
-    result.consume()
-    backend.send_response("Summary", {})
+    summary = result.consume()
+    backend.send_response("Summary", {
+        "serverInfo": {
+            "protocolVersion":
+                ".".join(map(str, summary.server.protocol_version)),
+            "agent": summary.server.agent
+        }
+    })
 
 
 def RetryablePositive(backend, data):

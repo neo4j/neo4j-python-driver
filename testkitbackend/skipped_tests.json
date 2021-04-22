@@ -1,6 +1,4 @@
 {
-  "stub.retry.TestRetryClustering.test_retry_ForbiddenOnReadOnlyDatabase_ChangingWriter":
-    "Closes connection to router after ROUTE",
   "stub.routing.Routing.test_should_use_resolver_during_rediscovery_when_existing_routers_fail":
     "DNS resolver not implemented",
   "stub.routing.RoutingV3.test_should_use_resolver_during_rediscovery_when_existing_routers_fail":
