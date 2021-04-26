@@ -435,24 +435,9 @@ class Neo4jDriver(Routing, Driver):
         return self._verify_routing_connectivity()
 
     def _verify_routing_connectivity(self):
-        from neo4j.exceptions import ServiceUnavailable
-        from neo4j._exceptions import BoltHandshakeError
-
-        table = self._pool.get_routing_table_for_default_database()
-        routing_info = {}
-        for ix in list(table.routers):
-            try:
-                routing_info[ix] = self._pool.fetch_routing_info(
-                    address=table.routers[0],
-                    database=self._default_workspace_config.database,
-                    bookmarks=None,
-                    timeout=self._default_workspace_config
-                                .connection_acquisition_timeout
-                )
-            except BoltHandshakeError as error:
-                routing_info[ix] = None
-
-        for key, val in routing_info.items():
-            if val is not None:
-                return routing_info
-        raise ServiceUnavailable("Could not connect to any routing servers.")
+        with self._pool.refresh_lock:
+            self._pool.update_routing_table(
+                database=self._default_workspace_config.database,
+                bookmarks=None
+            )
+        return True

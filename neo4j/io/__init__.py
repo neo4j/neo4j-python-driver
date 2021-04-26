@@ -715,7 +715,7 @@ class Neo4jPool(IOPool):
         try:
             new_routing_info = self.fetch_routing_info(address, database,
                                                        bookmarks, timeout)
-        except ServiceUnavailable:
+        except (ServiceUnavailable, SessionExpired):
             new_routing_info = None
         if not new_routing_info:
             log.debug("Failed to fetch routing info %s", address)
