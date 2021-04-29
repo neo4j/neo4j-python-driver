@@ -65,8 +65,6 @@
     "Driver uses custom resolver for each connection, not only initial seeding",
   "stub.retry.TestRetryClustering.test_retry_ForbiddenOnReadOnlyDatabase_ChangingWriter":
     "Test makes assumptions about how verify_connectivity is implemented",
-  "stub.disconnected.SessionRunDisconnected.test_fail_on_reset":
-    "It is not reseting connection when putting back to pool",
   "stub.authorization.AuthorizationTests.test_should_retry_on_auth_expired_on_begin_using_tx_function":
     "Flaky: test requires the driver to contact servers in a specific order",
   "stub.authorization.AuthorizationTestsV3.test_should_retry_on_auth_expired_on_begin_using_tx_function":

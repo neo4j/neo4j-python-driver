@@ -61,18 +61,6 @@ class Bolt4x0(Bolt):
 
     PROTOCOL_VERSION = Version(4, 0)
 
-    # The socket
-    in_use = False
-
-    # The socket
-    _closed = False
-
-    # The socket
-    _defunct = False
-
-    #: The pool of which this connection is a member
-    pool = None
-
     supports_multiple_results = True
 
     supports_multiple_databases = True

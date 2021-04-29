@@ -160,7 +160,7 @@ class Transaction:
             raise TransactionError("Transaction closed")
         metadata = {}
         try:
-            if not self._connection._is_reset:
+            if not self._connection.is_reset:
                 # DISCARD pending records then do a rollback.
                 self._consume_results()
                 self._connection.rollback(on_success=metadata.update)

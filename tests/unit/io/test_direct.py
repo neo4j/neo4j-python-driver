@@ -19,7 +19,10 @@
 # limitations under the License.
 
 
-from unittest import TestCase
+from unittest import (
+    mock,
+    TestCase,
+)
 import pytest
 from threading import (
     Condition,
@@ -276,6 +279,26 @@ class ConnectionPoolTestCase(TestCase):
                 t.join(timeout=1)
             # The pool size is still 5, but all are free
             self.assert_pool_size(address, 0, 5, pool)
+
+    def test_reset_when_released(self):
+        def test(is_reset):
+            with mock.patch(__name__ + ".QuickConnection.is_reset",
+                            new_callable=mock.PropertyMock) as is_reset_mock:
+                with mock.patch(__name__ + ".QuickConnection.reset",
+                                new_callable=mock.MagicMock) as reset_mock:
+                    is_reset_mock.return_value = is_reset
+                    connection = self.pool._acquire(address, timeout=3)
+                    self.assertIsInstance(connection, QuickConnection)
+                    self.assertEqual(is_reset_mock.call_count, 0)
+                    self.assertEqual(reset_mock.call_count, 0)
+                    self.pool.release(connection)
+                    self.assertEqual(is_reset_mock.call_count, 1)
+                    self.assertEqual(reset_mock.call_count, int(not is_reset))
+
+        address = ("127.0.0.1", 7687)
+        for is_reset in (True, False):
+            with self.subTest():
+                test(is_reset)
 
 
 def acquire_release_conn(pool, address, acquired_counter, release_event):
