@@ -177,11 +177,18 @@ class Bolt(abc.ABC):
     @property
     @abc.abstractmethod
     def supports_multiple_results(self):
+        """ Boolean flag to indicate if the connection version supports multiple
+        queries to be buffered on the server side (True) or if all results need
+        to be eagerly pulled before sending the next RUN (False).
+        """
         pass
 
     @property
     @abc.abstractmethod
     def supports_multiple_databases(self):
+        """ Boolean flag to indicate if the connection version supports multiple
+        databases.
+        """
         pass
 
     @classmethod
@@ -351,6 +358,9 @@ class Bolt(abc.ABC):
 
     @abc.abstractmethod
     def hello(self):
+        """ Appends a HELLO message to the outgoing queue, sends it and consumes
+         all remaining messages.
+        """
         pass
 
     def __del__(self):
@@ -377,7 +387,7 @@ class Bolt(abc.ABC):
     @abc.abstractmethod
     def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None,
             timeout=None, db=None, **handlers):
-        """ Appends a RUN message to the output stream.
+        """ Appends a RUN message to the output queue.
 
         :param query: Cypher query string
         :param parameters: dictionary of Cypher parameters
@@ -393,7 +403,7 @@ class Bolt(abc.ABC):
 
     @abc.abstractmethod
     def discard(self, n=-1, qid=-1, **handlers):
-        """ Appends a DISCARD message to the output stream.
+        """ Appends a DISCARD message to the output queue.
 
         :param n: number of records to discard, default = -1 (ALL)
         :param qid: query ID to discard for, default = -1 (last query)
@@ -404,7 +414,7 @@ class Bolt(abc.ABC):
 
     @abc.abstractmethod
     def pull(self, n=-1, qid=-1, **handlers):
-        """ Appends a PULL message to the output stream.
+        """ Appends a PULL message to the output queue.
 
         :param n: number of records to pull, default = -1 (ALL)
         :param qid: query ID to pull for, default = -1 (last query)
@@ -415,7 +425,7 @@ class Bolt(abc.ABC):
 
     @abc.abstractmethod
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
-        """ Appends a BEGIN message to the output stream.
+        """ Appends a BEGIN message to the output queue.
 
         :param mode: access mode for routing - "READ" or "WRITE" (default)
         :param bookmarks: iterable of bookmark values after which this transaction should begin
@@ -429,25 +439,27 @@ class Bolt(abc.ABC):
 
     @abc.abstractmethod
     def commit(self, **handlers):
+        """ Appends a COMMIT message to the output queue."""
         pass
 
     @abc.abstractmethod
     def rollback(self, **handlers):
+        """ Appends a ROLLBACK message to the output queue."""
         pass
 
     @abc.abstractmethod
     def reset(self):
-        """ Add a RESET message to the outgoing queue, send
-        it and consume all remaining messages.
+        """ Appends a RESET message to the outgoing queue, sends it and consumes
+         all remaining messages.
         """
         pass
 
     def _append(self, signature, fields=(), response=None):
-        """ Add a message to the outgoing queue.
+        """ Appends a message to the outgoing queue.
 
-        :arg signature: the signature of the message
-        :arg fields: the fields of the message as a tuple
-        :arg response: a response object to handle callbacks
+        :param signature: the signature of the message
+        :param fields: the fields of the message as a tuple
+        :param response: a response object to handle callbacks
         """
         self.packer.pack_struct(signature, fields)
         self.outbox.chunk()
