@@ -18,48 +18,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import deque
 from logging import getLogger
 from ssl import SSLSocket
-from time import perf_counter
 
 from neo4j._exceptions import (
     BoltError,
     BoltProtocolError,
 )
-from neo4j.addressing import Address
 from neo4j.api import (
     READ_ACCESS,
     SYSTEM_DATABASE,
     Version,
 )
-from neo4j.api import ServerInfo
 from neo4j.exceptions import (
-    AuthError,
     DatabaseUnavailable,
     DriverError,
     ForbiddenOnReadOnlyDatabase,
-    IncompleteCommit,
+    Neo4jError,
     NotALeader,
     ServiceUnavailable,
     SessionExpired,
 )
 from neo4j.io import (
     Bolt,
-    BoltPool,
     check_supported_server_product,
 )
 from neo4j.io._common import (
     CommitResponse,
-    Inbox,
     InitResponse,
-    Outbox,
     Response,
-)
-from neo4j.meta import get_user_agent
-from neo4j.packstream import (
-    Unpacker,
-    Packer,
 )
 
 
@@ -86,48 +73,9 @@ class Bolt4x0(Bolt):
     #: The pool of which this connection is a member
     pool = None
 
-    def __init__(self, unresolved_address, sock, max_connection_lifetime, *, auth=None, user_agent=None, routing_context=None):
-        self.unresolved_address = unresolved_address
-        self.socket = sock
-        self.server_info = ServerInfo(Address(sock.getpeername()), self.PROTOCOL_VERSION)
-        self.outbox = Outbox()
-        self.inbox = Inbox(self.socket, on_error=self._set_defunct_read)
-        self.packer = Packer(self.outbox)
-        self.unpacker = Unpacker(self.inbox)
-        self.responses = deque()
-        self._max_connection_lifetime = max_connection_lifetime  # self.pool_config.max_connection_lifetime
-        self._creation_timestamp = perf_counter()
-        self.supports_multiple_results = True
-        self.supports_multiple_databases = True
-        self._is_reset = True
-        self.routing_context = routing_context
+    supports_multiple_results = True
 
-        # Determine the user agent
-        if user_agent:
-            self.user_agent = user_agent
-        else:
-            self.user_agent = get_user_agent()
-
-        # Determine auth details
-        if not auth:
-            self.auth_dict = {}
-        elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
-            from neo4j import Auth
-            self.auth_dict = vars(Auth("basic", *auth))
-        else:
-            try:
-                self.auth_dict = vars(auth)
-            except (KeyError, TypeError):
-                raise AuthError("Cannot determine auth details from %r" % auth)
-
-        # Check for missing password
-        try:
-            credentials = self.auth_dict["credentials"]
-        except KeyError:
-            pass
-        else:
-            if credentials is None:
-                raise AuthError("Password cannot be None")
+    supports_multiple_databases = True
 
     @property
     def encrypted(self):
@@ -280,18 +228,6 @@ class Bolt4x0(Bolt):
         log.debug("[#%04X]  C: ROLLBACK", self.local_port)
         self._append(b"\x13", (), Response(self, **handlers))
 
-    def _append(self, signature, fields=(), response=None):
-        """ Add a message to the outgoing queue.
-
-        :arg signature: the signature of the message
-        :arg fields: the fields of the message as a tuple
-        :arg response: a response object to handle callbacks
-        """
-        self.packer.pack_struct(signature, fields)
-        self.outbox.chunk()
-        self.outbox.chunk()
-        self.responses.append(response)
-
     def reset(self):
         """ Add a RESET message to the outgoing queue, send
         it and consume all remaining messages.
@@ -305,28 +241,6 @@ class Bolt4x0(Bolt):
         self.send_all()
         self.fetch_all()
         self._is_reset = True
-
-    def _send_all(self):
-        data = self.outbox.view()
-        if data:
-            try:
-                self.socket.sendall(data)
-            except OSError as error:
-                self._set_defunct_write(error)
-            self.outbox.clear()
-
-    def send_all(self):
-        """ Send all queued messages to the server.
-        """
-        if self.closed():
-            raise ServiceUnavailable("Failed to write to closed connection {!r} ({!r})".format(
-                self.unresolved_address, self.server_info.address))
-
-        if self.defunct():
-            raise ServiceUnavailable("Failed to write to defunct connection {!r} ({!r})".format(
-                self.unresolved_address, self.server_info.address))
-
-        self._send_all()
 
     def fetch_message(self):
         """ Receive at least one message from the server, if available.
@@ -375,76 +289,15 @@ class Bolt4x0(Bolt):
                 if self.pool:
                     self.pool.on_write_failure(address=self.unresolved_address),
                 raise
+            except Neo4jError as e:
+                if self.pool and e.invalidates_all_connections():
+                    self.pool.mark_all_stale()
+                raise
         else:
             raise BoltProtocolError("Unexpected response message with signature "
                                     "%02X" % ord(summary_signature), self.unresolved_address)
 
         return len(details), 1
-
-    def _set_defunct_read(self, error=None):
-        message = "Failed to read from defunct connection {!r} ({!r})".format(
-            self.unresolved_address, self.server_info.address
-        )
-        self._set_defunct(message, error=error)
-
-    def _set_defunct_write(self, error=None):
-        message = "Failed to write data to connection {!r} ({!r})".format(
-            self.unresolved_address, self.server_info.address
-        )
-        self._set_defunct(message, error=error)
-
-    def _set_defunct(self, message, error=None):
-        direct_driver = isinstance(self.pool, BoltPool)
-
-        if error:
-            log.error(str(error))
-        log.error(message)
-        # We were attempting to receive data but the connection
-        # has unexpectedly terminated. So, we need to close the
-        # connection from the client side, and remove the address
-        # from the connection pool.
-        self._defunct = True
-        self.close()
-        if self.pool:
-            self.pool.deactivate(address=self.unresolved_address)
-        # Iterate through the outstanding responses, and if any correspond
-        # to COMMIT requests then raise an error to signal that we are
-        # unable to confirm that the COMMIT completed successfully.
-        for response in self.responses:
-            if isinstance(response, CommitResponse):
-                if error:
-                    raise IncompleteCommit(message) from error
-                else:
-                    raise IncompleteCommit(message)
-
-        if direct_driver:
-            if error:
-                raise ServiceUnavailable(message) from error
-            else:
-                raise ServiceUnavailable(message)
-        else:
-            if error:
-                raise SessionExpired(message) from error
-            else:
-                raise SessionExpired(message)
-
-    def timedout(self):
-        return 0 <= self._max_connection_lifetime <= perf_counter() - self._creation_timestamp
-
-    def fetch_all(self):
-        """ Fetch all outstanding messages.
-
-        :return: 2-tuple of number of detail messages and number of summary
-                 messages fetched
-        """
-        detail_count = summary_count = 0
-        while self.responses:
-            response = self.responses[0]
-            while not response.complete:
-                detail_delta, summary_delta = self.fetch_message()
-                detail_count += detail_delta
-                summary_count += summary_delta
-        return detail_count, summary_count
 
     def close(self):
         """ Close the connection.

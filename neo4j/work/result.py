@@ -60,9 +60,9 @@ class _ConnectionErrorHandler:
             def inner(*args, **kwargs):
                 try:
                     func(*args, **kwargs)
-                except (SessionExpired, ServiceUnavailable) as error:
-                    self._on_network_error(error)
-                    raise
+                finally:
+                    if self._connection.defunct():
+                        self._on_network_error()
             return inner
 
         return outer(connection_attr)

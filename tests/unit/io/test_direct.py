@@ -61,6 +61,13 @@ class QuickConnection:
         self.socket = socket
         self.address = socket.getpeername()
 
+    @property
+    def is_reset(self):
+        return True
+
+    def stale(self):
+        return False
+
     def reset(self):
         pass
 
