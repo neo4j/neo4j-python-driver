@@ -25,25 +25,34 @@ from neo4j.io._bolt4 import Bolt4x0
 from neo4j.conf import PoolConfig
 
 
-def test_conn_timed_out(fake_socket):
+@pytest.mark.parametrize("set_stale", (True, False))
+def test_conn_is_stale(fake_socket, set_stale):
     address = ("127.0.0.1", 7687)
     max_connection_lifetime = 0
     connection = Bolt4x0(address, fake_socket(address), max_connection_lifetime)
-    assert connection.timedout() is True
+    if set_stale:
+        connection.set_stale()
+    assert connection.stale() is True
 
 
-def test_conn_not_timed_out_if_not_enabled(fake_socket):
+@pytest.mark.parametrize("set_stale", (True, False))
+def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
     address = ("127.0.0.1", 7687)
     max_connection_lifetime = -1
     connection = Bolt4x0(address, fake_socket(address), max_connection_lifetime)
-    assert connection.timedout() is False
+    if set_stale:
+        connection.set_stale()
+    assert connection.stale() is set_stale
 
 
-def test_conn_not_timed_out(fake_socket):
+@pytest.mark.parametrize("set_stale", (True, False))
+def test_conn_is_not_stale(fake_socket, set_stale):
     address = ("127.0.0.1", 7687)
     max_connection_lifetime = 999999999
     connection = Bolt4x0(address, fake_socket(address), max_connection_lifetime)
-    assert connection.timedout() is False
+    if set_stale:
+        connection.set_stale()
+    assert connection.stale() is set_stale
 
 
 def test_db_extra_in_begin(fake_socket):
