@@ -893,7 +893,7 @@ class Neo4jPool(IOPool):
             # routing is broken.
             log.debug("Routing is broken (%s)", error)
             raise ServiceUnavailable(*error.args)
-        except ServiceUnavailable as error:
+        except (ServiceUnavailable, SessionExpired) as error:
             # The routing table request suffered a connection
             # failure. This should return a null routing table,
             # signalling to the caller to retry the request
