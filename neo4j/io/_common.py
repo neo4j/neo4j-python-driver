@@ -25,6 +25,7 @@ from neo4j.exceptions import (
     AuthError,
     Neo4jError,
     ServiceUnavailable,
+    SessionExpired,
 )
 from neo4j.packstream import (
     UnpackableBuffer,
@@ -169,7 +170,10 @@ class Response:
     def on_failure(self, metadata):
         """ Called when a FAILURE message has been received.
         """
-        self.connection.reset()
+        try:
+            self.connection.reset()
+        except (SessionExpired, ServiceUnavailable):
+            pass
         handler = self.handlers.get("on_failure")
         if callable(handler):
             handler(metadata)

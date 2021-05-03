@@ -88,6 +88,8 @@ class Neo4jError(Exception):
         code = code or "Neo.DatabaseError.General.UnknownError"
         try:
             _, classification, category, title = code.split(".")
+            if code == "Neo.ClientError.Security.AuthorizationExpired":
+                classification = CLASSIFICATION_TRANSIENT
         except ValueError:
             classification = CLASSIFICATION_DATABASE
             category = "General"
@@ -123,6 +125,9 @@ class Neo4jError(Exception):
 
         else:
             return cls
+
+    def invalidates_all_connections(self):
+        return self.code == "Neo.ClientError.Security.AuthorizationExpired"
 
     def __str__(self):
         return "{{code: {code}}} {{message: {message}}}".format(code=self.code, message=self.message)

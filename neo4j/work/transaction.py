@@ -65,9 +65,9 @@ class Transaction:
     def _result_on_closed_handler(self):
         pass
 
-    def _result_on_network_error_handler(self, error):
+    def _result_on_network_error_handler(self):
         self._closed = True
-        self._on_network_error(error)
+        self._on_network_error()
 
     def _consume_results(self):
         for result in self._results:

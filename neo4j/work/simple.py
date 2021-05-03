@@ -137,7 +137,7 @@ class Session(Workspace):
             self._autoResult = None
             self._disconnect()
 
-    def _result_network_error(self, error):
+    def _result_network_error(self):
         if self._autoResult:
             self._autoResult = None
             self._disconnect()
@@ -261,7 +261,7 @@ class Session(Workspace):
             self._transaction = None
             self._disconnect()
 
-    def _transaction_network_error_handler(self, error):
+    def _transaction_network_error_handler(self):
         if self._transaction:
             self._transaction = None
             self._disconnect()
