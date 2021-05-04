@@ -697,7 +697,7 @@ class IOPool:
                         connection.reset()
                     except (Neo4jError, DriverError, BoltError) as e:
                         log.debug(
-                            "Reset on IOPool.release failed: {}".format(e)
+                            "Failed to reset connection on release: %s", e
                         )
                 connection.in_use = False
             self.cond.notify_all()
