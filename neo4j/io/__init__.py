@@ -83,6 +83,7 @@ from neo4j.exceptions import (
     ConfigurationError,
     DriverError,
     IncompleteCommit,
+    Neo4jError,
     ReadServiceUnavailable,
     ServiceUnavailable,
     SessionExpired,
@@ -121,6 +122,9 @@ class Bolt(abc.ABC):
 
     PROTOCOL_VERSION = None
 
+    # flag if connection needs RESET to go back to READY state
+    _is_reset = True
+
     # The socket
     in_use = False
 
@@ -144,7 +148,6 @@ class Bolt(abc.ABC):
         self.responses = deque()
         self._max_connection_lifetime = max_connection_lifetime
         self._creation_timestamp = perf_counter()
-        self._is_reset = True
         self.routing_context = routing_context
 
         # Determine the user agent
@@ -447,6 +450,10 @@ class Bolt(abc.ABC):
         """ Appends a ROLLBACK message to the output queue."""
         pass
 
+    @property
+    def is_reset(self):
+        return self._is_reset
+
     @abc.abstractmethod
     def reset(self):
         """ Appends a RESET message to the outgoing queue, sends it and consumes
@@ -564,23 +571,26 @@ class Bolt(abc.ABC):
     def stale(self):
         return (self._stale
                 or (0 <= self._max_connection_lifetime
-                    <= perf_counter()- self._creation_timestamp))
+                    <= perf_counter() - self._creation_timestamp))
 
     _stale = False
 
     def set_stale(self):
         self._stale = True
 
+    @abc.abstractmethod
     def close(self):
         """ Close the connection.
         """
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def closed(self):
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def defunct(self):
-        raise NotImplementedError
+        pass
 
 
 class IOPool:
@@ -682,6 +692,13 @@ class IOPool:
         """
         with self.lock:
             for connection in connections:
+                if not connection.is_reset:
+                    try:
+                        connection.reset()
+                    except (Neo4jError, DriverError, BoltError) as e:
+                        log.debug(
+                            "Failed to reset connection on release: %s", e
+                        )
                 connection.in_use = False
             self.cond.notify_all()
 
@@ -920,7 +937,7 @@ class Neo4jPool(IOPool):
         try:
             new_routing_info = self.fetch_routing_info(address, database,
                                                        bookmarks, timeout)
-        except ServiceUnavailable:
+        except (ServiceUnavailable, SessionExpired):
             new_routing_info = None
         if not new_routing_info:
             log.debug("Failed to fetch routing info %s", address)
