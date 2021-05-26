@@ -20,7 +20,11 @@ import logging
 import sys
 import traceback
 
-from neo4j.exceptions import Neo4jError, DriverError, ServiceUnavailable
+from neo4j.exceptions import (
+    DriverError,
+    Neo4jError,
+    UnsupportedServerProduct,
+)
 
 import testkitbackend.requests as requests
 
@@ -140,7 +144,7 @@ class Backend:
                     "Backend does not support some properties of the " + name +
                     " request: " + ", ".join(unsused_keys)
                 )
-        except (Neo4jError, DriverError) as e:
+        except (Neo4jError, DriverError, UnsupportedServerProduct) as e:
             log.debug(traceback.format_exc())
             if isinstance(e, Neo4jError):
                 msg = "" if e.message is None else str(e.message)
