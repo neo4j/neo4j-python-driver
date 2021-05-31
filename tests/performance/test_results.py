@@ -36,7 +36,9 @@ class ReadWorkload(object):
     def setup_class(cls):
         cls.server = server = RemoteGraphDatabaseServer()
         server.start()
-        cls.driver = GraphDatabase.driver(server.server_uri, auth=server.auth_token, encrypted=server.encrypted)
+        cls.driver = GraphDatabase.driver(server.server_uri,
+                                          auth=server.auth_token,
+                                          encrypted=server.encrypted)
 
     @classmethod
     def teardown_class(cls):

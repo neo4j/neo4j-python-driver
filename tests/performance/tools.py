@@ -19,26 +19,17 @@
 # limitations under the License.
 
 
-from test.integration.tools import IntegrationTestCase
-
-from os import makedirs, remove
-from os.path import basename, dirname, join as path_join, realpath, isfile, expanduser
-import platform
 from unittest import TestCase, SkipTest
-from shutil import copyfile
-from sys import exit, stderr
 
 try:
     from urllib.request import urlretrieve
 except ImportError:
     from urllib import urlretrieve
 
-from boltkit.controller import WindowsController, UnixController
-
 from neo4j import GraphDatabase
 from neo4j.exceptions import AuthError
 
-from test.env import NEO4J_USER, NEO4J_PASSWORD, NEO4J_SERVER_URI
+from tests.env import NEO4J_USER, NEO4J_PASSWORD, NEO4J_SERVER_URI
 
 
 def is_listening(address):
