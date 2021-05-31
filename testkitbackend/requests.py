@@ -23,8 +23,14 @@ import testkitbackend.totestkit as totestkit
 from testkitbackend.fromtestkit import to_meta_and_timeout
 
 
-with open(path.join(path.dirname(__file__), "skipped_tests.json"), "r") as fd:
-    SKIPPED_TESTS = json.load(fd)
+def load_config():
+    with open(path.join(path.dirname(__file__), "test_config.json"), "r") as fd:
+        config = json.load(fd)
+    return (config["skips"],
+            [k for k, v in config["features"].items() if v is True])
+
+
+SKIPPED_TESTS, FEATURES = load_config()
 
 
 def StartTest(backend, data):
@@ -33,6 +39,10 @@ def StartTest(backend, data):
                               {"reason": SKIPPED_TESTS[data["testName"]]})
     else:
         backend.send_response("RunTest", {})
+
+
+def GetFeatures(backend, data):
+    backend.send_response("FeatureList", {"features": FEATURES})
 
 
 def NewDriver(backend, data):
@@ -310,3 +320,30 @@ def RetryableNegative(backend, data):
     session_tracker = backend.sessions[key]
     session_tracker.state = '-'
     session_tracker.error_id = data.get('errorId', '')
+
+
+def ForcedRoutingTableUpdate(backend, data):
+    driver_id = data["driverId"]
+    driver = backend.drivers[driver_id]
+    database = data["database"]
+    bookmarks = data["bookmarks"]
+    with driver._pool.refresh_lock:
+        driver._pool.create_routing_table(database)
+        driver._pool.update_routing_table(database=database,
+                                          bookmarks=bookmarks)
+    backend.send_response("Driver", {"id": driver_id})
+
+
+def GetRoutingTable(backend, data):
+    driver_id = data["driverId"]
+    database = data["database"]
+    driver = backend.drivers[driver_id]
+    routing_table = driver._pool.routing_tables[database]
+    response_data = {
+        "database": routing_table.database,
+        "ttl": routing_table.ttl,
+    }
+    for role in ("routers", "readers", "writers"):
+        addresses = routing_table.__getattribute__(role)
+        response_data[role] = list(map(str, addresses))
+    backend.send_response("RoutingTable", response_data)
