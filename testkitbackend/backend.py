@@ -14,7 +14,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from inspect import getmembers, isfunction
+from inspect import (
+    getmembers,
+    isfunction,
+)
+import io
 from json import loads, dumps
 import logging
 import sys
@@ -28,9 +32,13 @@ from neo4j.exceptions import (
 
 import testkitbackend.requests as requests
 
+buffer_handler = logging.StreamHandler(io.StringIO())
+buffer_handler.setLevel(logging.DEBUG)
+
 handler = logging.StreamHandler(sys.stdout)
 handler.setLevel(logging.DEBUG)
 logging.getLogger("neo4j").addHandler(handler)
+logging.getLogger("neo4j").addHandler(buffer_handler)
 logging.getLogger("neo4j").setLevel(logging.DEBUG)
 
 log = logging.getLogger("testkitbackend")
@@ -165,6 +173,14 @@ class Backend:
     def send_response(self, name, data):
         """ Sends a response to backend.
         """
+        buffer_handler.acquire()
+        log_output = buffer_handler.stream.getvalue()
+        buffer_handler.stream.truncate(0)
+        buffer_handler.stream.seek(0)
+        buffer_handler.release()
+        if not log_output.endswith("\n"):
+            log_output += "\n"
+        self._wr.write(log_output.encode("utf-8"))
         response = {"name": name, "data": data}
         response = dumps(response)
         log.info(">>> " + name + dumps(data))
