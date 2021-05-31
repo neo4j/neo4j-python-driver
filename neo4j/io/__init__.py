@@ -639,7 +639,13 @@ class IOPool:
             while True:
                 # try to find a free connection in pool
                 for connection in list(connections):
-                    if connection.closed() or connection.defunct() or connection.stale():
+                    if (connection.closed() or connection.defunct()
+                            or connection.stale()):
+                        # `close` is a noop on already closed connections.
+                        # This is to make sure that the connection is gracefully
+                        # closed, e.g. if it's just marked as `stale` but still
+                        # alive.
+                        connection.close()
                         connections.remove(connection)
                         continue
                     if not connection.in_use:
