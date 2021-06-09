@@ -3,4 +3,5 @@ coverage
 pytest
 pytest-benchmark
 pytest-cov
+pytest-mock
 teamcity-messages
