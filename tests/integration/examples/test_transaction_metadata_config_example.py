@@ -24,9 +24,9 @@ from neo4j import unit_of_work, Query
 # python -m pytest tests/integration/examples/test_transaction_metadata_config_example.py -s -v
 
 # tag::transaction-metadata-config[]
-@unit_of_work(timeout=5)
+@unit_of_work(timeout=5, metadata={"applicationId": "123"})
 def create_person(tx, name):
-    return tx.run(Query("CREATE (a:Person {name: $name}) RETURN id(a)", metadata={"applicationId": "123"}), name=name).single().value()
+    return tx.run("CREATE (a:Person {name: $name}) RETURN id(a)", name=name).single().value()
 
 
 def add_person(driver, name):
