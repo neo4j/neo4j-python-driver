@@ -77,8 +77,7 @@ def hydrate_time(nanoseconds, tz=None):
     seconds, nanoseconds = map(int, divmod(nanoseconds, 1000000000))
     minutes, seconds = map(int, divmod(seconds, 60))
     hours, minutes = map(int, divmod(minutes, 60))
-    seconds = (1000000000 * seconds + nanoseconds) / 1000000000
-    t = Time(hours, minutes, seconds)
+    t = Time(hours, minutes, seconds, nanoseconds)
     if tz is None:
         return t
     tz_offset_minutes, tz_offset_seconds = divmod(tz, 60)
@@ -94,7 +93,7 @@ def dehydrate_time(value):
     :return:
     """
     if isinstance(value, Time):
-        nanoseconds = int(value.ticks * 1000000000)
+        nanoseconds = value.ticks_ns
     elif isinstance(value, time):
         nanoseconds = (3600000000000 * value.hour + 60000000000 * value.minute +
                        1000000000 * value.second + 1000 * value.microsecond)
@@ -118,8 +117,11 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):
     minutes, seconds = map(int, divmod(seconds, 60))
     hours, minutes = map(int, divmod(minutes, 60))
     days, hours = map(int, divmod(hours, 24))
-    seconds = (1000000000 * seconds + nanoseconds) / 1000000000
-    t = DateTime.combine(Date.from_ordinal(get_date_unix_epoch_ordinal() + days), Time(hours, minutes, seconds))
+    # TODO: ask Greg if ns is bound between 0..999999999
+    t = DateTime.combine(
+        Date.from_ordinal(get_date_unix_epoch_ordinal() + days),
+        Time(hours, minutes, seconds, nanoseconds)
+    )
     if tz is None:
         return t
     if isinstance(tz, int):
@@ -183,7 +185,7 @@ def dehydrate_duration(value):
     :type value: Duration
     :return:
     """
-    return Structure(b"E", value.months, value.days, value.seconds, int(1000000000 * value.subseconds))
+    return Structure(b"E", value.months, value.days, value.seconds, value.nanoseconds)
 
 
 def dehydrate_timedelta(value):
