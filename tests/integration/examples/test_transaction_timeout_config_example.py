@@ -26,7 +26,9 @@ from neo4j import unit_of_work, Query
 # tag::transaction-timeout-config[]
 @unit_of_work(timeout=5)
 def create_person(tx, name):
-    return tx.run("CREATE (a:Person {name: $name}) RETURN id(a)", name=name).single().value()
+    return tx.run(
+        "CREATE (a:Person {name: $name}) RETURN id(a)", name=name
+    ).single().value()
 
 
 def add_person(driver, name):
