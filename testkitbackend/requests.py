@@ -305,7 +305,7 @@ def ResultConsume(backend, data):
             "protocolVersion":
                 ".".join(map(str, summary.server.protocol_version)),
             "agent": summary.server.agent,
-            # "address": ":".join(map(str, summary.server.address))
+            "address": ":".join(map(str, summary.server.address)),
         }
     })
 
