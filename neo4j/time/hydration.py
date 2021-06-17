@@ -117,7 +117,6 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):
     minutes, seconds = map(int, divmod(seconds, 60))
     hours, minutes = map(int, divmod(minutes, 60))
     days, hours = map(int, divmod(hours, 24))
-    # TODO: ask Greg if ns is bound between 0..999999999
     t = DateTime.combine(
         Date.from_ordinal(get_date_unix_epoch_ordinal() + days),
         Time(hours, minutes, seconds, nanoseconds)

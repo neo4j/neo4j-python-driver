@@ -51,11 +51,7 @@ from neo4j.meta import (
 )
 from neo4j.time.arithmetic import (
     nano_add,
-    nano_sub,
-    nano_mul,
     nano_div,
-    nano_mod,
-    nano_divmod,
     symmetric_divmod,
     round_half_to_even,
 )
@@ -334,18 +330,16 @@ class Duration(tuple):
     max = None
 
     def __new__(cls, years=0, months=0, weeks=0, days=0, hours=0, minutes=0,
-                seconds=0, milliseconds=0, microseconds=0, nanoseconds=0,
-                subseconds=0):
+                seconds=0, subseconds=0, milliseconds=0, microseconds=0,
+                nanoseconds=0):
 
-        if subseconds and nanoseconds:
-            raise ValueError("Specify either subseconds or nanoseconds")
         if subseconds:
-            deprecation_warn("subseconds will be removed in 5.0."
+            deprecation_warn("`subseconds` will be removed in 5.0. "
                              "Use `nanoseconds` instead.")
             with _decimal_context(prec=9, rounding=ROUND_HALF_EVEN):
                 nanoseconds = int(Decimal(subseconds) * NANO_SECONDS)
 
-        mo = round_half_to_even(12 * years + months)
+        mo = int(12 * years + months)
         if mo < MIN_INT64 or mo > MAX_INT64:
             raise ValueError("Months value out of range")
         d = int(7 * weeks + days)
@@ -360,8 +354,8 @@ class Duration(tuple):
             raise ValueError("Days value out of range")
         if s < MIN_INT64 or s > MAX_INT64:
             raise ValueError("Seconds value out of range")
-        if ns < MIN_INT64 or s > MAX_INT64:
-            raise ValueError("Nanoseconds value out of range")
+        if s < MIN_INT64 or s > MAX_INT64:
+            raise ValueError("Seconds value out of range")
         return tuple.__new__(cls, (mo, d, s, ns))
 
     def __bool__(self):
@@ -369,17 +363,13 @@ class Duration(tuple):
 
     __nonzero__ = __bool__
 
-    def _check_composite(self):
-        if sum((self[0], self[1], self[2] or self[3])) > 1:
-            deprecation_warn(
-                "Dividing composite durations will cause an error in 5.0"
-            )
-
     def __add__(self, other):
         if isinstance(other, Duration):
             return Duration(
-                months=self[0] + other[0], days=self[1] + other[1],
-                seconds=self[2] + other[2], nanoseconds=self[3] + other[3]
+                months=self[0] + int(other.months),
+                days=self[1] + int(other.days),
+                seconds=self[2] + int(other.seconds),
+                nanoseconds=self[3] + int(other.nanoseconds)
             )
         if isinstance(other, timedelta):
             return Duration(
@@ -392,19 +382,24 @@ class Duration(tuple):
     def __sub__(self, other):
         if isinstance(other, Duration):
             return Duration(
-                months=self[0] - other[0], days=self[1] - other[1],
-                seconds=self[2] - other[2],
-                nanoseconds=self[3] - other[3]
+                months=self[0] - int(other.months),
+                days=self[1] - int(other.days),
+                seconds=self[2] - int(other.seconds),
+                nanoseconds=self[3] - int(other.nanoseconds)
             )
         if isinstance(other, timedelta):
             return Duration(
-                months=self[0], days=self[1] - other.days,
+                months=self[0],
+                days=self[1] - other.days,
                 seconds=self[2] - other.seconds,
                 nanoseconds=self[3] - other.microseconds * 1000
             )
         return NotImplemented
 
     def __mul__(self, other):
+        if isinstance(other, float):
+            deprecation_warn("Multiplication with float will be deprecated in "
+                             "5.0.")
         if isinstance(other, (int, float)):
             return Duration(
                 months=self[0] * other, days=self[1] * other,
@@ -412,10 +407,10 @@ class Duration(tuple):
             )
         return NotImplemented
 
+    @deprecated("Will be removed in 5.0.")
     def __floordiv__(self, other):
-        self._check_composite()
         if isinstance(other, int):
-            # TODO 5.0: new method (floor months, days, nanoseconds)
+            # TODO 5.0: new method (floor months, days, nanoseconds) or remove
             # return Duration(
             #     months=self[0] // other, days=self[1] // other,
             #     nanoseconds=(self[2] * NANO_SECONDS + self[3]) // other
@@ -426,10 +421,10 @@ class Duration(tuple):
                             seconds=int(seconds // other))
         return NotImplemented
 
+    @deprecated("Will be removed in 5.0.")
     def __mod__(self, other):
-        self._check_composite()
         if isinstance(other, int):
-            # TODO 5.0: new method (mod months, days, nanoseconds)
+            # TODO 5.0: new method (mod months, days, nanoseconds) or remove
             # return Duration(
             #     months=self[0] % other, days=self[1] % other,
             #     nanoseconds=(self[2] * NANO_SECONDS + self[3]) % other
@@ -441,13 +436,14 @@ class Duration(tuple):
                             seconds=seconds, subseconds=subseconds)
         return NotImplemented
 
+    @deprecated("Will be removed in 5.0.")
     def __divmod__(self, other):
         if isinstance(other, int):
             return self.__floordiv__(other), self.__mod__(other)
         return NotImplemented
 
+    @deprecated("Will be removed in 5.0.")
     def __truediv__(self, other):
-        self._check_composite()
         if isinstance(other, (int, float)):
             return Duration(
                 months=round_half_to_even(self[0] / other),
@@ -1141,9 +1137,10 @@ class Time(metaclass=TimeType):
     @classmethod
     def from_ticks(cls, ticks, tz=None):
         if 0 <= ticks < 86400:
-            minute, second = nano_divmod(ticks, 60)
-            hour, minute = divmod(minute, 60)
-            return cls.__new(ticks, hour, minute, second, tz)
+            ticks = Decimal(ticks) * NANO_SECONDS
+            ticks = int(ticks.quantize(Decimal("1."), rounding=ROUND_HALF_EVEN))
+            assert 0 <= ticks < 86400000000000
+            return cls.from_ticks_ns(ticks, tz=tz)
         raise ValueError("Ticks out of range (0..86400)")
 
     @classmethod
@@ -1249,7 +1246,7 @@ class Time(metaclass=TimeType):
     def ticks_ns(self):
         """ Return the total number of seconds since midnight.
         """
-        # TODO 5.0: this will replace  self.__ticks
+        # TODO 5.0: this will replace self.ticks
         return self.__ticks
 
     @property
@@ -1408,9 +1405,9 @@ class Time(metaclass=TimeType):
         """ Convert to a native Python `datetime.time` value.
         """
         h, m, s, ns = self.hour_minute_second_nanoseconds
-        mic_s = round_half_to_even(ns / 1000)
+        µs = round_half_to_even(ns / 1000)
         tz = self.tzinfo
-        return time(h, m, s, mic_s, tz)
+        return time(h, m, s, µs, tz)
 
     def iso_format(self):
         s = "%02d:%02d:%02d.%09d" % self.hour_minute_second_nanoseconds
@@ -1568,8 +1565,8 @@ class DateTime(metaclass=DateTimeType):
         else:
             ordinal, seconds = divmod(seconds, 86400)
             ticks = epoch.time().ticks_ns + seconds * NANO_SECONDS + nanoseconds
-            ticks_overflow, ticks = divmod(ticks, 86400 * NANO_SECONDS)
-            ordinal += ticks_overflow
+            days, ticks = divmod(ticks, 86400 * NANO_SECONDS)
+            ordinal += days
             date_ = Date.from_ordinal(ordinal + epoch.date().to_ordinal())
             time_ = Time.from_ticks_ns(ticks)
             return cls.combine(date_, time_)
