@@ -190,10 +190,13 @@ class AsyncSession(AsyncWorkspace):
         :returns: a new :class:`neo4j.AsyncResult` object
         :rtype: AsyncResult
         """
+        if isinstance(query, str):
+            query = Query(query)
+        elif not isinstance(query, Query):
+            raise TypeError("query must be a str or a Query, got %s"
+                            % type(query))
         if not query:
             raise ValueError("Cannot run an empty query")
-        if not isinstance(query, (str, Query)):
-            raise TypeError("query must be a string or a Query instance")
 
         if self._transaction:
             raise ClientError("Explicit Transaction must be handled explicitly")

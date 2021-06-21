@@ -35,6 +35,9 @@ class Query:
     def __str__(self):
         return str(self.text)
 
+    def __bool__(self):
+        return bool(self.text)
+
 
 def unit_of_work(metadata=None, timeout=None):
     """This function is a decorator for transaction functions that allows extra control over how the transaction is carried out.

@@ -23,6 +23,7 @@ import pytest
 from neo4j import (
     AsyncSession,
     AsyncTransaction,
+    Query,
     SessionConfig,
     unit_of_work,
 )
@@ -38,8 +39,14 @@ from ._fake_connection import AsyncFakeConnection
 
 @pytest.fixture()
 def pool():
+    def acquire_side_effect(*args, **kwargs):
+        con = AsyncFakeConnection(*args, **kwargs)
+        pool.__mock_connections.append(con)
+        return con
+
     pool = AsyncMock(spec=AsyncIOPool)
-    pool.acquire.side_effect = iter(AsyncFakeConnection, 0)
+    pool.__mock_connections = []
+    pool.acquire = AsyncMock(side_effect=acquire_side_effect)
     return pool
 
 
@@ -182,13 +189,24 @@ async def test_session_returns_bookmark_directly(pool, bookmarks):
 
 
 @pytest.mark.parametrize(("query", "error_type"), (
-    (None, ValueError),
+    (None, TypeError),
     (1234, TypeError),
     ({"how about": "no?"}, TypeError),
     (["I don't", "think so"], TypeError),
 ))
 @mark_async_test
 async def test_session_run_wrong_types(pool, query, error_type):
+    async with AsyncSession(pool, SessionConfig()) as session:
+        with pytest.raises(error_type):
+            await session.run(query)
+
+
+@pytest.mark.parametrize(("query", "error_type"), (
+    ("", ValueError),
+    (Query(""), ValueError),
+))
+@mark_async_test
+async def test_session_run_wrong_values(pool, query, error_type):
     async with AsyncSession(pool, SessionConfig()) as session:
         with pytest.raises(error_type):
             await session.run(query)
@@ -283,3 +301,34 @@ async def test_session_run_with_parameters(
                 await session.write_transaction(work)
         else:
             raise ValueError(run_type)
+
+
+@pytest.mark.parametrize("as_string", (True, False))
+@mark_async_test
+async def test_session_run_query_argument(pool, as_string, mocker):
+    query_str = "foobar"
+    orig_init = Query.__init__
+    init_calls = []
+
+    def init(self, *args, **kwargs):
+        init_calls.append((args, kwargs))
+        orig_init(self, *args, **kwargs)
+
+    mocker.patch.object(Query, "__init__", init)
+    query = query_str if as_string else Query(query_str)
+    init_calls = []
+    async with AsyncSession(pool, SessionConfig()) as session:
+        assert not init_calls
+        await session.run(query)
+
+        if as_string:
+            # assert str gets wrapped as Query
+            assert len(init_calls) == 1
+            assert init_calls[0][0] == (query_str,)
+        else:
+            assert not init_calls
+
+        assert len(pool.__mock_connections) == 1
+        con = pool.__mock_connections[0]
+        assert con.method_calls
+        assert con.method_calls[0][:2] == ("run", (query_str,))
