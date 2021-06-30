@@ -328,6 +328,7 @@ def test_serverinfo_initialization():
     [
         ({"server": "Neo4j/3.0.0"}, "Neo4j/3.0.0", (3, 0, 0)),
         ({"server": "Neo4j/3.X.Y"}, "Neo4j/3.X.Y", (3, "X", "Y")),
+        ({"server": "Neo4j/4.3.1"}, "Neo4j/4.3.1", (4, 3, 1)),
     ]
 )
 def test_serverinfo_with_metadata(test_input, expected_agent, expected_version_info):
@@ -342,7 +343,8 @@ def test_serverinfo_with_metadata(test_input, expected_agent, expected_version_i
     server_info.update(test_input)
 
     assert server_info.agent == expected_agent
-    assert server_info.version_info() == expected_version_info
+    with pytest.warns(DeprecationWarning):
+        assert server_info.version_info() == expected_version_info
 
 
 @pytest.mark.parametrize(

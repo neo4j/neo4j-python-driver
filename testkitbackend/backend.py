@@ -165,6 +165,8 @@ class Backend:
             if isinstance(e, Neo4jError):
                 payload["code"] = e.code
             self.send_response("DriverError", payload)
+        except requests.FrontendError as e:
+            self.send_response("FrontendError", {"msg": str(e)})
         except Exception:
             tb = traceback.format_exc()
             log.error(tb)
