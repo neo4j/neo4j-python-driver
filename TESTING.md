@@ -44,7 +44,7 @@ Tests **require** the latest [Testkit 4.3](https://github.com/neo4j-drivers/test
 
 Testkit is needed to be cloned and configured to run against the Python Driver. Use the following steps to configure Testkit.
 
-1. Clone the Testkit repository
+1. Clone the Testkit repository—preferably not inside this project's folder
 
 ```
 git clone https://github.com/neo4j-drivers/testkit.git
