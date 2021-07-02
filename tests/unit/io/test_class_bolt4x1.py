@@ -18,6 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -194,3 +195,18 @@ def test_hello_passes_routing_metadata(fake_socket_pair):
     assert tag == 0x01
     assert len(fields) == 1
     assert fields[0]["routing"] == {"foo": "bar"}
+
+
+@pytest.mark.parametrize("recv_timeout", (1, -1))
+def test_hint_recv_timeout_seconds_gets_ignored(fake_socket_pair, recv_timeout):
+    address = ("127.0.0.1", 7687)
+    sockets = fake_socket_pair(address)
+    sockets.client.settimeout = MagicMock()
+    sockets.server.send_message(0x70, {
+        "server": "Neo4j/4.1.0",
+        "hints": {"connection.recv_timeout_seconds": recv_timeout},
+    })
+    connection = Bolt4x1(address, sockets.client,
+                         PoolConfig.max_connection_lifetime)
+    connection.hello()
+    sockets.client.settimeout.assert_not_called()
