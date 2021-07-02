@@ -377,6 +377,33 @@ class Bolt4x3(Bolt4x2):
         self.fetch_all()
         return [metadata.get("rt")]
 
+    def hello(self):
+        def on_success(metadata):
+            self.configuration_hints.update(metadata.pop("hints", {}))
+            self.server_info.update(metadata)
+            recv_timeout = self.configuration_hints.get(
+                "connection.recv_timeout_seconds"
+            )
+            if isinstance(recv_timeout, int) and recv_timeout > 0:
+                self.socket.settimeout(recv_timeout)
+            else:
+                log.info("[#%04X]  Server supplied an invalid value for "
+                         "connection.recv_timeout_seconds (%r). Make sure the "
+                         "server and network is set up correctly.",
+                         self.local_port, recv_timeout)
+
+        headers = self.get_base_headers()
+        headers.update(self.auth_dict)
+        logged_headers = dict(headers)
+        if "credentials" in logged_headers:
+            logged_headers["credentials"] = "*******"
+        log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
+        self._append(b"\x01", (headers,),
+                     response=InitResponse(self, on_success=on_success))
+        self.send_all()
+        self.fetch_all()
+        check_supported_server_product(self.server_info.agent)
+
 
 class Bolt4x4(Bolt4x3):
     """ Protocol handler for Bolt 4.4.

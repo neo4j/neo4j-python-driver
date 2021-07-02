@@ -141,6 +141,10 @@ class Bolt(abc.ABC):
         self.unresolved_address = unresolved_address
         self.socket = sock
         self.server_info = ServerInfo(Address(sock.getpeername()), self.PROTOCOL_VERSION)
+        # so far `connection.recv_timeout_seconds` is the only available
+        # configuration hint that exists. Therefore, all hints can be stored at
+        # connection level. This might change in the future.
+        self.configuration_hints = {}
         self.outbox = Outbox()
         self.inbox = Inbox(self.socket, on_error=self._set_defunct_read)
         self.packer = Packer(self.outbox)
