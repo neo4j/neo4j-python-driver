@@ -219,6 +219,11 @@ class ServerInfo:
 
         :return: Server Version or None
         :rtype: tuple
+
+        .. deprecated:: 4.3
+            `version_info` will be removed in version 5.0. Use
+            :meth:`~ServerInfo.agent`, :meth:`~ServerInfo.protocol_version`,
+            or call the `dbms.components` procedure instead.
         """
         if not self.agent:
             return None
