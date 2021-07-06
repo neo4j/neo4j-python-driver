@@ -10,7 +10,6 @@ These drivers will also be compatible with the previous Neo4j release, although 
 + Python 3.8 supported.
 + Python 3.7 supported.
 + Python 3.6 supported.
-+ Python 3.5 supported.
 
 Python 2.7 support has been dropped as of the Neo4j 4.0 release.
 

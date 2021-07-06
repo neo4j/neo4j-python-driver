@@ -316,7 +316,7 @@ class Bolt4x0(Bolt):
 class Bolt4x1(Bolt4x0):
     """ Protocol handler for Bolt 4.1.
 
-    This is supported by Neo4j versions 4.1 and 4.2.
+    This is supported by Neo4j versions 4.1 - 4.4.
     """
 
     PROTOCOL_VERSION = Version(4, 1)
@@ -338,7 +338,7 @@ class Bolt4x1(Bolt4x0):
 class Bolt4x2(Bolt4x1):
     """ Protocol handler for Bolt 4.2.
 
-    This is supported by Neo4j version 4.2.
+    This is supported by Neo4j version 4.2 - 4.4.
     """
 
     PROTOCOL_VERSION = Version(4, 2)
@@ -347,7 +347,7 @@ class Bolt4x2(Bolt4x1):
 class Bolt4x3(Bolt4x2):
     """ Protocol handler for Bolt 4.3.
 
-    This is supported by Neo4j version 4.3.
+    This is supported by Neo4j version 4.3 - 4.4.
     """
 
     PROTOCOL_VERSION = Version(4, 3)
@@ -376,3 +376,12 @@ class Bolt4x3(Bolt4x2):
         self.send_all()
         self.fetch_all()
         return [metadata.get("rt")]
+
+
+class Bolt4x4(Bolt4x3):
+    """ Protocol handler for Bolt 4.4.
+
+    This is supported by Neo4j version 4.4.
+    """
+
+    PROTOCOL_VERSION = Version(4, 4)

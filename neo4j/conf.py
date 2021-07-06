@@ -232,30 +232,14 @@ class PoolConfig(Config):
         # TLS 1.1 - Released in 2006, published as RFC 4346. (Disabled)
         # TLS 1.2 - Released in 2008, published as RFC 5246.
 
-        try:
-            # python 3.6+
-            # https://docs.python.org/3.6/library/ssl.html#ssl.PROTOCOL_TLS_CLIENT
-            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        # https://docs.python.org/3.6/library/ssl.html#ssl.PROTOCOL_TLS_CLIENT
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
-            # For recommended security options see
-            # https://docs.python.org/3.6/library/ssl.html#protocol-versions
-            ssl_context.options |= ssl.OP_NO_TLSv1      # Python 3.2
-            ssl_context.options |= ssl.OP_NO_TLSv1_1    # Python 3.4
+        # For recommended security options see
+        # https://docs.python.org/3.6/library/ssl.html#protocol-versions
+        ssl_context.options |= ssl.OP_NO_TLSv1      # Python 3.2
+        ssl_context.options |= ssl.OP_NO_TLSv1_1    # Python 3.4
 
-        except AttributeError:
-            # python 3.5
-            # https://docs.python.org/3.5/library/ssl.html#ssl.PROTOCOL_TLS
-            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
-
-            # For recommended security options see
-            # https://docs.python.org/3.5/library/ssl.html#protocol-versions
-            ssl_context.options |= ssl.OP_NO_SSLv2      # Python 3.2
-            ssl_context.options |= ssl.OP_NO_SSLv3      # Python 3.2
-            ssl_context.options |= ssl.OP_NO_TLSv1      # Python 3.2
-            ssl_context.options |= ssl.OP_NO_TLSv1_1    # Python 3.4
-
-            ssl_context.verify_mode = ssl.CERT_REQUIRED     # https://docs.python.org/3.5/library/ssl.html#ssl.SSLContext.verify_mode
-            ssl_context.check_hostname = True               # https://docs.python.org/3.5/library/ssl.html#ssl.SSLContext.check_hostname
 
         if self.trust == TRUST_ALL_CERTIFICATES:
             ssl_context.check_hostname = False
