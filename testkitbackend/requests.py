@@ -23,6 +23,10 @@ import testkitbackend.totestkit as totestkit
 from testkitbackend.fromtestkit import to_meta_and_timeout
 
 
+class FrontendError(Exception):
+    pass
+
+
 def load_config():
     with open(path.join(path.dirname(__file__), "test_config.json"), "r") as fd:
         config = json.load(fd)
@@ -193,7 +197,7 @@ def SessionRun(backend, data):
     result = session.run(query, parameters=params)
     key = backend.next_key()
     backend.results[key] = result
-    backend.send_response("Result", {"id": key})
+    backend.send_response("Result", {"id": key, "keys": result.keys()})
 
 
 def SessionClose(backend, data):
@@ -244,7 +248,7 @@ def transactionFunc(backend, data, is_read):
                 if session_tracker.error_id:
                     raise backend.errors[session_tracker.error_id]
                 else:
-                    raise Exception("Client said no")
+                    raise FrontendError("Client said no")
 
     if is_read:
         session.read_transaction(func)
@@ -270,7 +274,7 @@ def TransactionRun(backend, data):
     result = tx.run(cypher, parameters=params)
     key = backend.next_key()
     backend.results[key] = result
-    backend.send_response("Result", {"id": key})
+    backend.send_response("Result", {"id": key, "keys": result.keys()})
 
 
 def TransactionCommit(backend, data):
@@ -300,13 +304,43 @@ def ResultNext(backend, data):
 def ResultConsume(backend, data):
     result = backend.results[data["resultId"]]
     summary = result.consume()
+    from neo4j.work.summary import ResultSummary
+    assert isinstance(summary, ResultSummary)
     backend.send_response("Summary", {
         "serverInfo": {
+            "address": ":".join(map(str, summary.server.address)),
+            "agent": summary.server.agent,
             "protocolVersion":
                 ".".join(map(str, summary.server.protocol_version)),
-            "agent": summary.server.agent,
-            "address": ":".join(map(str, summary.server.address)),
-        }
+        },
+        "counters": None if not summary.counters else {
+            "constraintsAdded": summary.counters.constraints_added,
+            "constraintsRemoved": summary.counters.constraints_removed,
+            "containsSystemUpdates": summary.counters.contains_system_updates,
+            "containsUpdates": summary.counters.contains_updates,
+            "indexesAdded": summary.counters.indexes_added,
+            "indexesRemoved": summary.counters.indexes_removed,
+            "labelsAdded": summary.counters.labels_added,
+            "labelsRemoved": summary.counters.labels_removed,
+            "nodesCreated": summary.counters.nodes_created,
+            "nodesDeleted": summary.counters.nodes_deleted,
+            "propertiesSet": summary.counters.properties_set,
+            "relationshipsCreated": summary.counters.relationships_created,
+            "relationshipsDeleted": summary.counters.relationships_deleted,
+            "systemUpdates": summary.counters.system_updates,
+        },
+        "database": summary.database,
+        "notifications": summary.notifications,
+        "plan": summary.plan,
+        "profile": summary.profile,
+        "query": {
+            "text": summary.query,
+            "parameters": {k: totestkit.field(v)
+                           for k, v in summary.parameters.items()},
+        },
+        "queryType": summary.query_type,
+        "resultAvailableAfter": summary.result_available_after,
+        "resultConsumedAfter": summary.result_consumed_after,
     })
 
 

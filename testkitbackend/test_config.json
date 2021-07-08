@@ -32,6 +32,9 @@
     "Optimization:ImplicitDefaultArguments": true,
     "Optimization:MinimalResets": "Driver resets some clean connections when put back into pool",
     "Optimization:ConnectionReuse": true,
-    "Optimization:PullPipelining": true
+    "Optimization:PullPipelining": true,
+    "Temporary:ResultKeys": true,
+    "Temporary:FullSummary": true,
+    "Temporary:CypherPathAndRelationship": true
   }
 }

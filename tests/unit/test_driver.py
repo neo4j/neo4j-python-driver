@@ -56,8 +56,10 @@ def test_routing_driver_constructor(protocol, host, port, auth_token):
 @pytest.mark.parametrize("test_uri", (
     "bolt+ssc://127.0.0.1:9001",
     "bolt+s://127.0.0.1:9001",
+    "bolt://127.0.0.1:9001",
     "neo4j+ssc://127.0.0.1:9001",
     "neo4j+s://127.0.0.1:9001",
+    "neo4j://127.0.0.1:9001",
 ))
 @pytest.mark.parametrize(
     ("test_config", "expected_failure", "expected_failure_message"),
@@ -81,8 +83,23 @@ def test_routing_driver_constructor(protocol, host, port, auth_token):
 def test_driver_config_error(
     test_uri, test_config, expected_failure, expected_failure_message
 ):
-    with pytest.raises(expected_failure, match=expected_failure_message):
+    if "+" in test_uri:
+        # `+s` and `+ssc` are short hand syntax for not having to configure the
+        # encryption behavior of the driver. Specifying both is invalid.
+        with pytest.raises(expected_failure, match=expected_failure_message):
+            GraphDatabase.driver(test_uri, **test_config)
+    else:
         GraphDatabase.driver(test_uri, **test_config)
+
+
+@pytest.mark.parametrize("test_uri", (
+    "http://localhost:9001",
+    "ftp://localhost:9001",
+    "x://localhost:9001",
+))
+def test_invalid_protocol(test_uri):
+    with pytest.raises(ConfigurationError, match="scheme"):
+        GraphDatabase.driver(test_uri)
 
 
 @pytest.mark.parametrize(

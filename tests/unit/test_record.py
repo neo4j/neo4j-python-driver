@@ -180,3 +180,25 @@ def test_record_get_by_name():
 def test_record_get_by_out_of_bounds_index():
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert r[9] is None
+
+
+def test_record_get_item():
+    r = Record(zip(["x", "y"], ["foo", "bar"]))
+    assert r["x"] == "foo"
+    assert r["y"] == "bar"
+    with pytest.raises(KeyError):
+        _ = r["z"]
+    with pytest.raises(TypeError):
+        _ = r[object()]
+
+
+@pytest.mark.parametrize("len_", (0, 1, 2, 42))
+def test_record_len(len_):
+    r = Record(("key_%i" % i, "val_%i" % i) for i in range(len_))
+    assert len(r) == len_
+
+
+@pytest.mark.parametrize("len_", range(3))
+def test_record_repr(len_):
+    r = Record(("key_%i" % i, "val_%i" % i) for i in range(len_))
+    assert repr(r)

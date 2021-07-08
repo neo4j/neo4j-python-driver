@@ -23,8 +23,9 @@ import pytest
 from unittest.mock import NonCallableMagicMock
 
 from neo4j import (
+    ServerInfo,
     Session,
-    SessionConfig, ServerInfo,
+    SessionConfig,
 )
 
 
@@ -193,3 +194,24 @@ def test_closes_connection_after_tx_commit(pool, test_run_args):
             tx.commit()
             assert session._connection is None
         assert session._connection is None
+
+
+@pytest.mark.parametrize("bookmarks", (None, [], ["abc"], ["foo", "bar"]))
+def test_session_returns_bookmark_directly(pool, bookmarks):
+    with Session(pool, SessionConfig(bookmarks=bookmarks)) as session:
+        if bookmarks:
+            assert session.last_bookmark() == bookmarks[-1]
+        else:
+            assert session.last_bookmark() is None
+
+
+@pytest.mark.parametrize(("query", "error_type"), (
+    (None, ValueError),
+    (1234, TypeError),
+    ({"how about": "no?"}, TypeError),
+    (["I don't", "think so"], TypeError),
+))
+def test_session_run_wrong_types(pool, query, error_type):
+    with Session(pool, SessionConfig()) as session:
+        with pytest.raises(error_type):
+            session.run(query)

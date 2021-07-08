@@ -36,7 +36,7 @@ def to_meta_and_timeout(data):
         metadata.mark_all_as_read()
     timeout = data.get('timeout', None)
     if timeout:
-        timeout = float(timeout) / 1000
+        timeout = timeout / 1000
     return metadata, timeout
 
 

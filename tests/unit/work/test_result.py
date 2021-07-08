@@ -21,7 +21,14 @@
 
 import pytest
 
-from neo4j import Record
+from neo4j import (
+    Address,
+    Record,
+    ResultSummary,
+    ServerInfo,
+    SummaryCounters,
+    Version,
+)
 from neo4j.data import DataHydrator
 from neo4j.work.result import Result
 
@@ -71,13 +78,16 @@ class ConnectionStub:
         def __repr__(self):
             return "Message(%s)" % self.message
 
-    def __init__(self, records=None):
+    def __init__(self, records=None, run_meta=None, summary_meta=None):
         self._records = records
         self.fetch_idx = 0
         self.record_idx = 0
         self.to_pull = None
         self.queued = []
         self.sent = []
+        self.run_meta = run_meta
+        self.summary_meta = summary_meta
+        ConnectionStub.server_info.update({"server": "Neo4j/4.3.0"})
 
     def send_all(self):
         self.sent += self.queued
@@ -89,11 +99,13 @@ class ConnectionStub:
         msg = self.sent[self.fetch_idx]
         if msg == "RUN":
             self.fetch_idx += 1
-            msg.on_success({"fields": self._records.fields})
+            msg.on_success({"fields": self._records.fields,
+                            **(self.run_meta or {})})
         elif msg == "DISCARD":
             self.fetch_idx += 1
             self.record_idx = len(self._records)
-            msg.on_success()
+            msg.on_success(self.summary_meta or {})
+            msg.on_summary()
         elif msg == "PULL":
             if self.to_pull is None:
                 n = msg.kwargs.get("n", -1)
@@ -113,7 +125,8 @@ class ConnectionStub:
                 if self.record_idx < len(self._records):
                     msg.on_success({"has_more": True})
                 else:
-                    msg.on_success({"bookmark": "foo"})
+                    msg.on_success({"bookmark": "foo",
+                                    **(self.summary_meta or {})})
                     msg.on_summary()
 
     def run(self, *args, **kwargs):
@@ -125,7 +138,7 @@ class ConnectionStub:
     def pull(self, *args, **kwargs):
         self.queued.append(ConnectionStub.Message("PULL", *args, **kwargs))
 
-    server_info = "ServerInfo"
+    server_info = ServerInfo(Address(("bolt://localhost", 7687)), Version(4, 3))
 
     def defunct(self):
         return False
@@ -142,11 +155,11 @@ def noop(*_, **__):
 
 def test_result_iteration():
     records = [[1], [2], [3], [4], [5]]
-    connection = ConnectionStub(records=Records("x", records))
+    connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, HydratorStub(), 2, noop, noop)
     result._run("CYPHER", {}, None, "r", None)
     received = []
-    for i, record in enumerate(result):
+    for record in result:
         assert isinstance(record, Record)
         received.append([record.data().get("x", None)])
     assert received == records
@@ -154,7 +167,7 @@ def test_result_iteration():
 
 def test_result_next():
     records = [[1], [2], [3], [4], [5]]
-    connection = ConnectionStub(records=Records("x", records))
+    connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, HydratorStub(), 2, noop, noop)
     result._run("CYPHER", {}, None, "r", None)
     iter_ = iter(result)
@@ -169,7 +182,7 @@ def test_result_next():
 @pytest.mark.parametrize("records", ([[1], [2]], [[1]], []))
 @pytest.mark.parametrize("fetch_size", (1, 2))
 def test_result_peek(records, fetch_size):
-    connection = ConnectionStub(records=Records("x", records))
+    connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, HydratorStub(), fetch_size, noop, noop)
     result._run("CYPHER", {}, None, "r", None)
     record = result.peek()
@@ -183,7 +196,7 @@ def test_result_peek(records, fetch_size):
 @pytest.mark.parametrize("records", ([[1], [2]], [[1]], []))
 @pytest.mark.parametrize("fetch_size", (1, 2))
 def test_result_single(records, fetch_size):
-    connection = ConnectionStub(records=Records("x", records))
+    connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, HydratorStub(), fetch_size, noop, noop)
     result._run("CYPHER", {}, None, "r", None)
     with pytest.warns(None) as warning_record:
@@ -198,3 +211,92 @@ def test_result_single(records, fetch_size):
             assert not warning_record
         assert isinstance(record, Record)
         assert record.get("x") == records[0][0]
+
+
+def test_keys_are_available_before_and_after_stream():
+    connection = ConnectionStub(records=Records(["x"], [[1], [2]]))
+    result = Result(connection, HydratorStub(), 1, noop, noop)
+    result._run("CYPHER", {}, None, "r", None)
+    assert list(result.keys()) == ["x"]
+    list(result)
+    assert list(result.keys()) == ["x"]
+
+
+@pytest.mark.parametrize("records", ([[1], [2]], [[1]], []))
+@pytest.mark.parametrize("consume_one", (True, False))
+@pytest.mark.parametrize("summary_meta", (None, {"database": "foobar"}))
+def test_consume(records, consume_one, summary_meta):
+    connection = ConnectionStub(records=Records(["x"], records),
+                                summary_meta=summary_meta)
+    result = Result(connection, HydratorStub(), 1, noop, noop)
+    result._run("CYPHER", {}, None, "r", None)
+    if consume_one:
+        try:
+            next(iter(result))
+        except StopIteration:
+            pass
+    summary = result.consume()
+    assert isinstance(summary, ResultSummary)
+    if summary_meta and "db" in summary_meta:
+        assert summary.database == summary_meta["db"]
+    else:
+        assert summary.database is None
+    server_info = summary.server
+    assert isinstance(server_info, ServerInfo)
+    assert server_info.version_info() == Version(4, 3)
+    assert server_info.protocol_version == Version(4, 3)
+    assert isinstance(summary.counters, SummaryCounters)
+
+
+@pytest.mark.parametrize("t_first", (None, 0, 1, 123456789))
+@pytest.mark.parametrize("t_last", (None, 0, 1, 123456789))
+def test_time_in_summary(t_first, t_last):
+    run_meta = None
+    if t_first is not None:
+        run_meta = {"t_first": t_first}
+    summary_meta = None
+    if t_last is not None:
+        summary_meta = {"t_last": t_last}
+    connection = ConnectionStub(records=Records(["n"],
+                                                [[i] for i in range(100)]),
+                                run_meta=run_meta, summary_meta=summary_meta)
+
+    result = Result(connection, HydratorStub(), 1, noop, noop)
+    result._run("CYPHER", {}, None, "r", None)
+    summary = result.consume()
+
+    if t_first is not None:
+        assert isinstance(summary.result_available_after, int)
+        assert summary.result_available_after == t_first
+    else:
+        assert summary.result_available_after is None
+    if t_last is not None:
+        assert isinstance(summary.result_consumed_after, int)
+        assert summary.result_consumed_after == t_last
+    else:
+        assert summary.result_consumed_after is None
+    assert not hasattr(summary, "t_first")
+    assert not hasattr(summary, "t_last")
+
+
+def test_counts_in_summary():
+    connection = ConnectionStub(records=Records(["n"], [[1], [2]]))
+
+    result = Result(connection, HydratorStub(), 1, noop, noop)
+    result._run("CYPHER", {}, None, "r", None)
+    summary = result.consume()
+
+    assert isinstance(summary.counters, SummaryCounters)
+
+
+@pytest.mark.parametrize("query_type", ("r", "w", "rw", "s"))
+def test_query_type(query_type):
+    connection = ConnectionStub(records=Records(["n"], [[1], [2]]),
+                                summary_meta={"type": query_type})
+
+    result = Result(connection, HydratorStub(), 1, noop, noop)
+    result._run("CYPHER", {}, None, "r", None)
+    summary = result.consume()
+
+    assert isinstance(summary.query_type, str)
+    assert summary.query_type == query_type

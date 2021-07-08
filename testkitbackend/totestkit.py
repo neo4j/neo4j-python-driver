@@ -14,7 +14,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from neo4j.graph import Node
+from neo4j.graph import (
+    Node,
+    Path,
+    Relationship,
+)
 
 
 def record(rec):
@@ -55,5 +59,20 @@ def field(v):
             "props": field(v._properties),
         }
         return {"name": "Node", "data": node}
+    if isinstance(v, Relationship):
+        rel = {
+            "id": field(v.id),
+            "startNodeId": field(v.start_node.id),
+            "endNodeId": field(v.end_node.id),
+            "type": field(v.type),
+            "props": field(v._properties),
+        }
+        return {"name": "Relationship", "data": rel}
+    if isinstance(v, Path):
+        path = {
+            "nodes": field(list(v.nodes)),
+            "relationships": field(list(v.relationships)),
+        }
+        return {"name": "Path", "data": path}
 
     raise Exception("Unhandled type:" + str(type(v)))
