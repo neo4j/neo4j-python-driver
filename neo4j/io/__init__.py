@@ -239,23 +239,24 @@ class Bolt(abc.ABC):
         returned is limited to four.
         """
         ranges_supported = versions[0] >= Version(4, 3)
+        without_changes = {Version(4, 2)}
         if versions and ranges_supported:
             start, end = 0, 0
             first_major = versions[start][0]
             minors = []
-            for end, version in enumerate(versions):
+            for version in versions:
                 if version[0] == first_major:
                     minors.append(version[1])
                 else:
                     break
-            new_versions = ([Version(first_major, minors)] + versions[1:end])[:(limit - 1)]
-            try:
-                new_versions.append(versions[end])
-            except IndexError:
-                pass
-            return new_versions
+            new_versions = [
+                Version(first_major, minors),
+                *(v for v in versions[1:] if v not in without_changes)
+            ]
         else:
-            return versions[:limit]
+            new_versions = [v for v in versions if v not in without_changes]
+        new_versions = [*new_versions[:(limit - 1)], versions[-1]]
+        return new_versions
 
     @classmethod
     def get_handshake(cls):
