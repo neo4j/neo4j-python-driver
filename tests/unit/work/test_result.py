@@ -78,11 +78,20 @@ class ConnectionStub:
         def __repr__(self):
             return "Message(%s)" % self.message
 
-    def __init__(self, records=None, run_meta=None, summary_meta=None):
-        self._records = records
+    def __init__(self, records=None, run_meta=None, summary_meta=None,
+                 force_qid=False):
+        self._multi_result = isinstance(records, (list, tuple))
+        if self._multi_result:
+            self._records = records
+            self._use_qid = True
+        else:
+            self._records = records,
+            self._use_qid = force_qid
         self.fetch_idx = 0
-        self.record_idx = 0
-        self.to_pull = None
+        self._qid = -1
+        self.record_idxs = [0] * len(self._records)
+        self.to_pull = [None] * len(self._records)
+        self._exhausted = [False] * len(self._records)
         self.queued = []
         self.sent = []
         self.run_meta = run_meta
@@ -99,35 +108,53 @@ class ConnectionStub:
         msg = self.sent[self.fetch_idx]
         if msg == "RUN":
             self.fetch_idx += 1
-            msg.on_success({"fields": self._records.fields,
-                            **(self.run_meta or {})})
+            self._qid += 1
+            meta = {"fields": self._records[self._qid].fields,
+                    **(self.run_meta or {})}
+            if self._use_qid:
+                meta.update(qid=self._qid)
+            msg.on_success(meta)
         elif msg == "DISCARD":
             self.fetch_idx += 1
-            self.record_idx = len(self._records)
+            qid = msg.kwargs.get("qid", -1)
+            if qid < 0:
+                qid = self._qid
+            self.record_idxs[qid] = len(self._records[qid])
             msg.on_success(self.summary_meta or {})
             msg.on_summary()
         elif msg == "PULL":
-            if self.to_pull is None:
+            qid = msg.kwargs.get("qid", -1)
+            if qid < 0:
+                qid = self._qid
+            if self._exhausted[qid]:
+                pytest.fail("PULLing exhausted result")
+            if self.to_pull[qid] is None:
                 n = msg.kwargs.get("n", -1)
                 if n < 0:
-                    n = len(self._records)
-                self.to_pull = min(n, len(self._records) - self.record_idx)
+                    n = len(self._records[qid])
+                self.to_pull[qid] = \
+                    min(n, len(self._records[qid]) - self.record_idxs[qid])
                 # if to == len(self._records):
                 #     self.fetch_idx += 1
-            if self.to_pull > 0:
-                record = self._records[self.record_idx]
-                self.record_idx += 1
-                self.to_pull -= 1
+            if self.to_pull[qid] > 0:
+                record = self._records[qid][self.record_idxs[qid]]
+                self.record_idxs[qid] += 1
+                self.to_pull[qid] -= 1
                 msg.on_records([record])
-            elif self.to_pull == 0:
-                self.to_pull = None
+            elif self.to_pull[qid] == 0:
+                self.to_pull[qid] = None
                 self.fetch_idx += 1
-                if self.record_idx < len(self._records):
+                if self.record_idxs[qid] < len(self._records[qid]):
                     msg.on_success({"has_more": True})
                 else:
                     msg.on_success({"bookmark": "foo",
                                     **(self.summary_meta or {})})
+                    self._exhausted[qid] = True
                     msg.on_summary()
+
+    def fetch_all(self):
+        while self.fetch_idx < len(self.sent):
+            self.fetch_message()
 
     def run(self, *args, **kwargs):
         self.queued.append(ConnectionStub.Message("RUN", *args, **kwargs))
@@ -153,30 +180,90 @@ def noop(*_, **__):
     pass
 
 
-def test_result_iteration():
+def _fetch_and_compare_all_records(result, key, expected_records, method,
+                                   limit=None):
+    received_records = []
+    if method == "for loop":
+        for record in result:
+            assert isinstance(record, Record)
+            received_records.append([record.data().get(key, None)])
+            if limit is not None and len(received_records) == limit:
+                break
+    elif method == "next":
+        iter_ = iter(result)
+        n = len(expected_records) if limit is None else limit
+        for _ in range(n):
+            received_records.append([next(iter_).get(key, None)])
+        if limit is None:
+            with pytest.raises(StopIteration):
+                received_records.append([next(iter_).get(key, None)])
+    elif method == "new iter":
+        n = len(expected_records) if limit is None else limit
+        for _ in range(n):
+            received_records.append([next(iter(result)).get(key, None)])
+        if limit is None:
+            with pytest.raises(StopIteration):
+                received_records.append([next(iter(result)).get(key, None)])
+    else:
+        raise ValueError()
+    assert received_records == expected_records
+
+
+@pytest.mark.parametrize("method", ("for loop", "next", "new iter"))
+def test_result_iteration(method):
     records = [[1], [2], [3], [4], [5]]
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, HydratorStub(), 2, noop, noop)
     result._run("CYPHER", {}, None, "r", None)
-    received = []
-    for record in result:
-        assert isinstance(record, Record)
-        received.append([record.data().get("x", None)])
-    assert received == records
+    _fetch_and_compare_all_records(result, "x", records, method)
 
 
-def test_result_next():
-    records = [[1], [2], [3], [4], [5]]
-    connection = ConnectionStub(records=Records(["x"], records))
-    result = Result(connection, HydratorStub(), 2, noop, noop)
-    result._run("CYPHER", {}, None, "r", None)
-    iter_ = iter(result)
-    received = []
-    for _ in range(len(records)):
-        received.append([next(iter_).get("x", None)])
-    with pytest.raises(StopIteration):
-        received.append([next(iter_).get("x", None)])
-    assert received == records
+@pytest.mark.parametrize("method", ("for loop", "next", "new iter"))
+@pytest.mark.parametrize("invert_fetch", (True, False))
+def test_parallel_result_iteration(method, invert_fetch):
+    records1 = [[i] for i in range(1, 6)]
+    records2 = [[i] for i in range(6, 11)]
+    connection = ConnectionStub(
+        records=(Records(["x"], records1), Records(["x"], records2))
+    )
+    result1 = Result(connection, HydratorStub(), 2, noop, noop)
+    result1._run("CYPHER1", {}, None, "r", None)
+    result2 = Result(connection, HydratorStub(), 2, noop, noop)
+    result2._run("CYPHER2", {}, None, "r", None)
+    if invert_fetch:
+        _fetch_and_compare_all_records(result2, "x", records2, method)
+        _fetch_and_compare_all_records(result1, "x", records1, method)
+    else:
+        _fetch_and_compare_all_records(result1, "x", records1, method)
+        _fetch_and_compare_all_records(result2, "x", records2, method)
+
+
+@pytest.mark.parametrize("method", ("for loop", "next", "new iter"))
+@pytest.mark.parametrize("invert_fetch", (True, False))
+def test_interwoven_result_iteration(method, invert_fetch):
+    records1 = [[i] for i in range(1, 10)]
+    records2 = [[i] for i in range(11, 20)]
+    connection = ConnectionStub(
+        records=(Records(["x"], records1), Records(["y"], records2))
+    )
+    result1 = Result(connection, HydratorStub(), 2, noop, noop)
+    result1._run("CYPHER1", {}, None, "r", None)
+    result2 = Result(connection, HydratorStub(), 2, noop, noop)
+    result2._run("CYPHER2", {}, None, "r", None)
+    start = 0
+    for n in (1, 2, 3, 1, None):
+        end = n if n is None else start + n
+        if invert_fetch:
+            _fetch_and_compare_all_records(result2, "y", records2[start:end],
+                                           method, n)
+            _fetch_and_compare_all_records(result1, "x", records1[start:end],
+                                           method, n)
+        else:
+            _fetch_and_compare_all_records(result1, "x", records1[start:end],
+                                           method, n)
+            _fetch_and_compare_all_records(result2, "y", records2[start:end],
+                                           method, n)
+        start = end
 
 
 @pytest.mark.parametrize("records", ([[1], [2]], [[1]], []))

@@ -89,9 +89,12 @@ class Result:
         # states
         self._discarding = False    # discard the remainder of records
         self._attached = False      # attached to a connection
-        self._streaming = False     # there is still more records to buffer upp on the wire
-        self._has_more = False      # there is more records available to pull from the server
-        self._closed = False        # the result have been properly iterated or consumed fully
+        # there are still more response messages we wait for
+        self._streaming = False
+        # there ar more records available to pull from the server
+        self._has_more = False
+        # the result has been fully iterated or consumed
+        self._closed = False
 
     def _tx_ready_run(self, query, parameters, **kwparameters):
         # BEGIN+RUN does not carry any extra on the RUN message.
@@ -110,11 +113,6 @@ class Result:
             "query": query_text,
             "parameters": parameters,
             "server": self._connection.server_info,
-        }
-
-        run_metadata = {
-            "metadata": query_metadata,
-            "timeout": query_timeout,
         }
 
         def on_attached(metadata):
@@ -144,9 +142,7 @@ class Result:
         self._attach()
 
     def _pull(self):
-
         def on_records(records):
-            self._streaming = True
             if not self._discarding:
                 self._record_buffer.extend(self._hydrant.hydrate_records(self._keys, records))
 
@@ -159,14 +155,11 @@ class Result:
             self._on_closed()
 
         def on_success(summary_metadata):
+            self._streaming = False
             has_more = summary_metadata.get("has_more")
+            self._has_more = bool(has_more)
             if has_more:
-                self._has_more = True
-                self._streaming = False
                 return
-            else:
-                self._has_more = False
-
             self._metadata.update(summary_metadata)
             self._bookmark = summary_metadata.get("bookmark")
 
@@ -178,11 +171,9 @@ class Result:
             on_failure=on_failure,
             on_summary=on_summary,
         )
+        self._streaming = True
 
     def _discard(self):
-        def on_records(records):
-            pass
-
         def on_summary():
             self._attached = False
             self._on_closed()
@@ -193,14 +184,12 @@ class Result:
             self._on_closed()
 
         def on_success(summary_metadata):
+            self._streaming = False
             has_more = summary_metadata.get("has_more")
+            self._has_more = bool(has_more)
             if has_more:
-                self._has_more = True
-                self._streaming = False
-            else:
-                self._has_more = False
-                self._discarding = False
-
+                return
+            self._discarding = False
             self._metadata.update(summary_metadata)
             self._bookmark = summary_metadata.get("bookmark")
 
@@ -208,11 +197,11 @@ class Result:
         self._connection.discard(
             n=-1,
             qid=self._qid,
-            on_records=on_records,
             on_success=on_success,
             on_failure=on_failure,
             on_summary=on_summary,
         )
+        self._streaming = True
 
     def __iter__(self):
         """Iterator returning Records.
@@ -220,20 +209,16 @@ class Result:
         :rtype: :class:`neo4j.Record`
         """
         while self._record_buffer or self._attached:
-            while self._record_buffer:
+            if self._record_buffer:
                 yield self._record_buffer.popleft()
-
-            while self._attached is True:  # _attached is set to False for _pull on_summary and _discard on_summary
-                self._connection.fetch_message()  # Receive at least one message from the server, if available.
-                if self._attached:
-                    if self._record_buffer:
-                        yield self._record_buffer.popleft()
-                    elif self._discarding and self._streaming is False:
-                        self._discard()
-                        self._connection.send_all()
-                    elif self._has_more and self._streaming is False:
-                        self._pull()
-                        self._connection.send_all()
+            elif self._streaming:
+                self._connection.fetch_message()
+            elif self._discarding:
+                self._discard()
+                self._connection.send_all()
+            elif self._has_more:
+                self._pull()
+                self._connection.send_all()
 
         self._closed = True
 
