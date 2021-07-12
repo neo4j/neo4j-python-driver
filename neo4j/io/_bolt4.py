@@ -231,7 +231,7 @@ class Bolt4x0(Bolt):
         self._is_reset = True
 
     def fetch_message(self):
-        """ Receive at least one message from the server, if available.
+        """ Receive at most one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary
                  messages fetched
