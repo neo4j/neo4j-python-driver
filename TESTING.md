@@ -1,7 +1,7 @@
 # Neo4j Driver Testing
 
 To run driver tests, [Tox](https://tox.readthedocs.io) is required as well as at least one version of Python.
-The versions of Python supported by this driver are CPython 2.7, 3.4, 3.5 and 3.6.
+The versions of Python supported by this driver are CPython 3.6, 3.7, 3.8, and 3.9.
 
 
 ## Unit Tests & Stub Tests
@@ -40,7 +40,7 @@ a report can be viewed after the run with `coverage report --show-missing`.
 
 ## Testing with Testkit
 
-Tests **require** the latest [Testkit 4.3](https://github.com/neo4j-drivers/testkit/tree/4.3), Python3 and Docker.
+Tests **require** the latest [Testkit 4.4](https://github.com/neo4j-drivers/testkit/tree/4.4), Python3 and Docker.
 
 Testkit is needed to be cloned and configured to run against the Python Driver. Use the following steps to configure Testkit.
 
@@ -69,4 +69,4 @@ To run test against against some Neo4j version:
 python3 main.py
 ```
 
-More details about how to use Teskit could be found on [its repository](https://github.com/neo4j-drivers/testkit/tree/4.3)
+More details about how to use Teskit could be found on [its repository](https://github.com/neo4j-drivers/testkit/tree/4.4)

@@ -211,7 +211,7 @@ class Bolt(abc.ABC):
 
         # Carry out Bolt subclass imports locally to avoid circular dependency issues.
         from neo4j.io._bolt3 import Bolt3
-        from neo4j.io._bolt4 import Bolt4x0, Bolt4x1, Bolt4x2, Bolt4x3
+        from neo4j.io._bolt4 import Bolt4x0, Bolt4x1, Bolt4x2, Bolt4x3, Bolt4x4
 
         handlers = {
             Bolt3.PROTOCOL_VERSION: Bolt3,
@@ -219,6 +219,7 @@ class Bolt(abc.ABC):
             Bolt4x1.PROTOCOL_VERSION: Bolt4x1,
             Bolt4x2.PROTOCOL_VERSION: Bolt4x2,
             Bolt4x3.PROTOCOL_VERSION: Bolt4x3,
+            Bolt4x4.PROTOCOL_VERSION: Bolt4x4,
         }
 
         if protocol_version is None:
@@ -238,25 +239,24 @@ class Bolt(abc.ABC):
         preference. The number of protocol versions (or ranges)
         returned is limited to four.
         """
-        ranges_supported = versions[0] >= Version(4, 3)
-        without_changes = {Version(4, 2)}
-        if versions and ranges_supported:
-            start, end = 0, 0
-            first_major = versions[start][0]
-            minors = []
-            for version in versions:
-                if version[0] == first_major:
-                    minors.append(version[1])
-                else:
-                    break
-            new_versions = [
-                Version(first_major, minors),
-                *(v for v in versions[1:] if v not in without_changes)
-            ]
-        else:
-            new_versions = [v for v in versions if v not in without_changes]
-        new_versions = [*new_versions[:(limit - 1)], versions[-1]]
-        return new_versions
+        # In fact, 4.3 is the fist version to support ranges. However, the range
+        # support got backported to 4.2. But even if the server is too old to
+        # have the backport, negotiating BOLT 4.1 is no problem as it's
+        # equivalent to 4.2
+        first_with_range_support = Version(4, 2)
+        result = []
+        for version in versions:
+            if (result
+                    and version >= first_with_range_support
+                    and result[-1][0] == version[0]
+                    and result[-1][1][1] == version[1] + 1):
+                # can use range to encompass this version
+                result[-1][1][1] = version[1]
+                continue
+            result.append(Version(version[0], [version[1], version[1]]))
+            if len(result) == 4:
+                break
+        return result
 
     @classmethod
     def get_handshake(cls):
@@ -310,32 +310,37 @@ class Bolt(abc.ABC):
             keep_alive=pool_config.keep_alive,
         )
 
+        # Carry out Bolt subclass imports locally to avoid circular dependency
+        # issues.
         if pool_config.protocol_version == (3, 0):
-            # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt3 import Bolt3
-            connection = Bolt3(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
+            bolt_cls = Bolt3
         elif pool_config.protocol_version == (4, 0):
-            # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt4 import Bolt4x0
-            connection = Bolt4x0(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
+            bolt_cls = Bolt4x0
         elif pool_config.protocol_version == (4, 1):
-            # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt4 import Bolt4x1
-            connection = Bolt4x1(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
+            bolt_cls = Bolt4x1
         elif pool_config.protocol_version == (4, 2):
-            # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt4 import Bolt4x2
-            connection = Bolt4x2(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
+            bolt_cls = Bolt4x2
         elif pool_config.protocol_version == (4, 3):
-            # Carry out Bolt subclass imports locally to avoid circular dependency issues.
             from neo4j.io._bolt4 import Bolt4x3
-            connection = Bolt4x3(address, s, pool_config.max_connection_lifetime, auth=auth, user_agent=pool_config.user_agent, routing_context=routing_context)
+            bolt_cls = Bolt4x3
+        elif pool_config.protocol_version == (4, 4):
+            from neo4j.io._bolt4 import Bolt4x4
+            bolt_cls = Bolt4x4
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
             _close_socket(s)
 
             supported_versions = Bolt.protocol_handlers().keys()
             raise BoltHandshakeError("The Neo4J server does not support communication with this driver. This driver have support for Bolt Protocols {}".format(supported_versions), address=address, request_data=handshake, response_data=data)
+
+        connection = bolt_cls(
+            address, s, pool_config.max_connection_lifetime, auth=auth,
+            user_agent=pool_config.user_agent, routing_context=routing_context
+        )
 
         try:
             connection.hello()

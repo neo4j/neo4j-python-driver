@@ -21,7 +21,7 @@
 
 # Can be automatically overridden in builds
 package = "neo4j"
-version = "4.3.dev0"
+version = "4.4.dev0"
 
 
 def get_user_agent():
