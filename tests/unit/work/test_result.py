@@ -189,6 +189,8 @@ def _fetch_and_compare_all_records(result, key, expected_records, method,
             received_records.append([record.data().get(key, None)])
             if limit is not None and len(received_records) == limit:
                 break
+        if limit is None:
+            assert result._closed
     elif method == "next":
         iter_ = iter(result)
         n = len(expected_records) if limit is None else limit
@@ -197,6 +199,7 @@ def _fetch_and_compare_all_records(result, key, expected_records, method,
         if limit is None:
             with pytest.raises(StopIteration):
                 received_records.append([next(iter_).get(key, None)])
+            assert result._closed
     elif method == "new iter":
         n = len(expected_records) if limit is None else limit
         for _ in range(n):
@@ -204,6 +207,7 @@ def _fetch_and_compare_all_records(result, key, expected_records, method,
         if limit is None:
             with pytest.raises(StopIteration):
                 received_records.append([next(iter(result)).get(key, None)])
+            assert result._closed
     else:
         raise ValueError()
     assert received_records == expected_records
