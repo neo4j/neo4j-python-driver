@@ -18,66 +18,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import inspect
 import pytest
-from unittest.mock import NonCallableMagicMock
 
 from neo4j import (
-    ServerInfo,
     Session,
     SessionConfig,
+    Transaction,
+    unit_of_work,
 )
 
-
-class FakeConnection(NonCallableMagicMock):
-    callbacks = []
-    server_info = ServerInfo("127.0.0.1", (4, 3))
-
-    def fetch_message(self, *args, **kwargs):
-        if self.callbacks:
-            cb = self.callbacks.pop(0)
-            cb()
-        return super().__getattr__("fetch_message")(*args, **kwargs)
-
-    def fetch_all(self, *args, **kwargs):
-        while self.callbacks:
-            cb = self.callbacks.pop(0)
-            cb()
-        return super().__getattr__("fetch_all")(*args, **kwargs)
-
-    def __getattr__(self, name):
-        parent = super()
-
-        def build_message_handler(name):
-            def func(*args, **kwargs):
-                def callback():
-                    for cb_name, param_count in (
-                        ("on_success", 1),
-                        ("on_summary", 0)
-                    ):
-                        cb = kwargs.get(cb_name, None)
-                        if callable(cb):
-                            try:
-                                param_count = \
-                                    len(inspect.signature(cb).parameters)
-                            except ValueError:
-                                # e.g. built-in method as cb
-                                pass
-                            if param_count == 1:
-                                cb({})
-                            else:
-                                cb()
-                self.callbacks.append(callback)
-                return parent.__getattr__(name)(*args, **kwargs)
-
-            return func
-
-        if name in ("run", "commit", "pull", "rollback", "discard"):
-            return build_message_handler(name)
-        return parent.__getattr__(name)
-
-    def defunct(self):
-        return False
+from ._fake_connection import FakeConnection
 
 
 @pytest.fixture()
@@ -215,3 +165,35 @@ def test_session_run_wrong_types(pool, query, error_type):
     with Session(pool, SessionConfig()) as session:
         with pytest.raises(error_type):
             session.run(query)
+
+
+@pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction"))
+def test_tx_function_argument_type(pool, tx_type):
+    def work(tx):
+        assert isinstance(tx, Transaction)
+
+    with Session(pool, SessionConfig()) as session:
+        getattr(session, tx_type)(work)
+
+
+@pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction"))
+@pytest.mark.parametrize("decorator_kwargs", (
+    {},
+    {"timeout": 5},
+    {"metadata": {"foo": "bar"}},
+    {"timeout": 5, "metadata": {"foo": "bar"}},
+
+))
+def test_decorated_tx_function_argument_type(pool, tx_type, decorator_kwargs):
+    @unit_of_work(**decorator_kwargs)
+    def work(tx):
+        assert isinstance(tx, Transaction)
+
+    with Session(pool, SessionConfig()) as session:
+        getattr(session, tx_type)(work)
+
+
+def test_session_tx_type(pool):
+    with Session(pool, SessionConfig()) as session:
+        tx = session.begin_transaction()
+        assert isinstance(tx, Transaction)
