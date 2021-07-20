@@ -24,6 +24,7 @@ from warnings import warn
 
 from neo4j.data import DataDehydrator
 from neo4j.exceptions import (
+    Neo4jError,
     ServiceUnavailable,
     SessionExpired,
 )
@@ -39,17 +40,16 @@ class _ConnectionErrorHandler:
     The error will be re-raised after the callback.
     """
 
-    def __init__(self, connection, on_network_error):
+    def __init__(self, connection, on_error):
         """
         :param connection the connection object to warp
         :type connection Bolt
-        :param on_network_error the function to be called when a method of
-            connection raises of of the caught errors. The callback takes the
-            error as argument.
-        :type on_network_error callable
+        :param on_error the function to be called when a method of
+            connection raises of of the caught errors.
+        :type on_error callable
         """
         self._connection = connection
-        self._on_network_error = on_network_error
+        self._on_error = on_error
 
     def __getattr__(self, item):
         connection_attr = getattr(self._connection, item)
@@ -60,9 +60,9 @@ class _ConnectionErrorHandler:
             def inner(*args, **kwargs):
                 try:
                     func(*args, **kwargs)
-                finally:
-                    if self._connection.defunct():
-                        self._on_network_error()
+                except (Neo4jError, ServiceUnavailable, SessionExpired) as exc:
+                    self._on_error(exc)
+                    raise
             return inner
 
         return outer(connection_attr)
@@ -75,8 +75,8 @@ class Result:
     """
 
     def __init__(self, connection, hydrant, fetch_size, on_closed,
-                 on_network_error):
-        self._connection = _ConnectionErrorHandler(connection, on_network_error)
+                 on_error):
+        self._connection = _ConnectionErrorHandler(connection, on_error)
         self._hydrant = hydrant
         self._on_closed = on_closed
         self._metadata = None

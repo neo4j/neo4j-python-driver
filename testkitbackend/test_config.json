@@ -1,7 +1,5 @@
 {
   "skips": {
-    "neo4j.txrun.TestTxRun.test_should_not_run_valid_query_in_invalid_tx":
-      "Driver allows to run queries in broken transaction",
     "stub.routing.test_routing_v4x1.RoutingV4x1.test_should_retry_write_until_success_with_leader_change_using_tx_function":
       "Driver closes connection to router if DNS resolved name not in routing table",
     "stub.routing.test_routing_v3.RoutingV3.test_should_retry_write_until_success_with_leader_change_using_tx_function":
