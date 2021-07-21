@@ -22,7 +22,8 @@
 from neo4j.work.result import Result
 from neo4j.data import DataHydrator
 from neo4j.exceptions import (
-    IncompleteCommit,
+    ServiceUnavailable,
+    SessionExpired,
     TransactionError,
 )
 
@@ -38,14 +39,15 @@ class Transaction:
 
     """
 
-    def __init__(self, connection, fetch_size, on_closed, on_network_error):
+    def __init__(self, connection, fetch_size, on_closed, on_error):
         self._connection = connection
         self._bookmark = None
         self._results = []
         self._closed = False
+        self._last_error = None
         self._fetch_size = fetch_size
         self._on_closed = on_closed
-        self._on_network_error = on_network_error
+        self._on_error = on_error
 
     def __enter__(self):
         return self
@@ -65,9 +67,11 @@ class Transaction:
     def _result_on_closed_handler(self):
         pass
 
-    def _result_on_network_error_handler(self):
-        self._closed = True
-        self._on_network_error()
+    def _result_on_error_handler(self, exc):
+        self._last_error = exc
+        if isinstance(exc, (ServiceUnavailable, SessionExpired)):
+            self._closed = True
+        self._on_error(exc)
 
     def _consume_results(self):
         for result in self._results:
@@ -111,7 +115,10 @@ class Transaction:
             raise ValueError("Query object is only supported for session.run")
 
         if self._closed:
-            raise TransactionError("Transaction closed")
+            raise TransactionError(self, "Transaction closed")
+        if self._last_error:
+            raise TransactionError(self,
+                                   "Transaction failed") from self._last_error
 
         if (self._results
                 and self._connection.supports_multiple_results is False):
@@ -123,7 +130,7 @@ class Transaction:
         result = Result(
             self._connection, DataHydrator(), self._fetch_size,
             self._result_on_closed_handler,
-            self._result_on_network_error_handler
+            self._result_on_error_handler
         )
         self._results.append(result)
 
@@ -137,7 +144,11 @@ class Transaction:
         :raise TransactionError: if the transaction is already closed
         """
         if self._closed:
-            raise TransactionError("Transaction closed")
+            raise TransactionError(self, "Transaction closed")
+        if self._last_error:
+            raise TransactionError(self,
+                                   "Transaction failed") from self._last_error
+
         metadata = {}
         try:
             self._consume_results()  # DISCARD pending records then do a commit.
@@ -157,7 +168,8 @@ class Transaction:
         :raise TransactionError: if the transaction is already closed
         """
         if self._closed:
-            raise TransactionError("Transaction closed")
+            raise TransactionError(self, "Transaction closed")
+
         metadata = {}
         try:
             if not self._connection.is_reset:

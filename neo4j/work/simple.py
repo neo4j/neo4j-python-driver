@@ -137,7 +137,7 @@ class Session(Workspace):
             self._autoResult = None
             self._disconnect()
 
-    def _result_network_error(self):
+    def _result_error(self, _):
         if self._autoResult:
             self._autoResult = None
             self._disconnect()
@@ -227,7 +227,7 @@ class Session(Workspace):
 
         self._autoResult = Result(
             cx, hydrant, self._config.fetch_size, self._result_closed,
-            self._result_network_error
+            self._result_error
         )
         self._autoResult._run(
             query, parameters, self._config.database,
@@ -261,7 +261,7 @@ class Session(Workspace):
             self._transaction = None
             self._disconnect()
 
-    def _transaction_network_error_handler(self):
+    def _transaction_error_handler(self, _):
         if self._transaction:
             self._transaction = None
             self._disconnect()
@@ -272,7 +272,7 @@ class Session(Workspace):
         self._transaction = Transaction(
             self._connection, self._config.fetch_size,
             self._transaction_closed_handler,
-            self._transaction_network_error_handler
+            self._transaction_error_handler
         )
         self._transaction._begin(database, self._bookmarks, access_mode,
                                  metadata, timeout)
