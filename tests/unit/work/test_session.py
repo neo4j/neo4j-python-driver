@@ -18,6 +18,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from contextlib import contextmanager
+
 import pytest
 
 from neo4j import (
@@ -197,3 +199,56 @@ def test_session_tx_type(pool):
     with Session(pool, SessionConfig()) as session:
         tx = session.begin_transaction()
         assert isinstance(tx, Transaction)
+
+
+@pytest.mark.parametrize(("parameters", "error_type"), (
+    ({"x": None}, None),
+    ({"x": True}, None),
+    ({"x": False}, None),
+    ({"x": 123456789}, None),
+    ({"x": 3.1415926}, None),
+    ({"x": float("nan")}, None),
+    ({"x": float("inf")}, None),
+    ({"x": float("-inf")}, None),
+    ({"x": "foo"}, None),
+    ({"x": bytearray([0x00, 0x33, 0x66, 0x99, 0xCC, 0xFF])}, None),
+    ({"x": b"\x00\x33\x66\x99\xcc\xff"}, None),
+    ({"x": [1, 2, 3]}, None),
+    ({"x": ["a", "b", "c"]}, None),
+    ({"x": ["a", 2, 1.234]}, None),
+    ({"x": ["a", 2, ["c"]]}, None),
+    ({"x": {"one": "eins", "two": "zwei", "three": "drei"}}, None),
+    ({"x": {"one": ["eins", "uno", 1], "two": ["zwei", "dos", 2]}}, None),
+
+    # maps must have string keys
+    ({"x": {1: 'eins', 2: 'zwei', 3: 'drei'}}, TypeError),
+    ({"x": {(1, 2): '1+2i', (2, 0): '2'}}, TypeError),
+))
+@pytest.mark.parametrize("run_type", ("auto", "unmanaged", "managed"))
+def test_session_run_with_parameters(pool, parameters, error_type, run_type):
+    @contextmanager
+    def raises():
+        if error_type is not None:
+            with pytest.raises(error_type) as exc:
+                yield exc
+        else:
+            yield None
+
+    with Session(pool, SessionConfig()) as session:
+        if run_type == "auto":
+            with raises():
+                session.run("RETURN $x", **parameters)
+        elif run_type == "unmanaged":
+            tx = session.begin_transaction()
+            with raises():
+                tx.run("RETURN $x", **parameters)
+        elif run_type == "managed":
+            def work(tx):
+                with raises() as exc:
+                    tx.run("RETURN $x", **parameters)
+                if exc is not None:
+                    raise exc
+            with raises():
+                session.write_transaction(work)
+        else:
+            raise ValueError(run_type)

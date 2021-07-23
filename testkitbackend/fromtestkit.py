@@ -52,6 +52,8 @@ def to_param(m):
     """
     value = m["data"]["value"]
     name = m["name"]
+    if name == "CypherNull":
+        return None
     if name == "CypherString":
         return str(value)
     if name == "CypherBool":
@@ -62,8 +64,8 @@ def to_param(m):
         return float(value)
     if name == "CypherString":
         return str(value)
-    if name == "CypherNull":
-        return None
+    if name == "CypherBytes":
+        return bytearray([int(byte, 16) for byte in value.split()])
     if name == "CypherList":
         return [to_param(v) for v in value]
     if name == "CypherMap":
