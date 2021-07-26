@@ -14,6 +14,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import math
+
 from neo4j.graph import (
     Node,
     Path,
@@ -39,6 +41,10 @@ def field(v):
     if isinstance(v, int):
         return to("CypherInt", v)
     if isinstance(v, float):
+        if math.isinf(v):
+            return to("CypherFloat", "+Infinity" if v > 0 else "-Infinity")
+        if math.isnan(v):
+            return to("CypherFloat", "NaN")
         return to("CypherFloat", v)
     if isinstance(v, str):
         return to("CypherString", v)
@@ -52,6 +58,8 @@ def field(v):
         for k, v in v.items():
             mp[k] = field(v)
         return to("CypherMap", mp)
+    if isinstance(v, (bytes, bytearray)):
+        return to("CypherBytes", " ".join("{:02x}".format(byte) for byte in v))
     if isinstance(v, Node):
         node = {
             "id": field(v.id),
