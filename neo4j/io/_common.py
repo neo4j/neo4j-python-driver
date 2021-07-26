@@ -19,6 +19,7 @@
 # limitations under the License.
 
 
+import socket
 from struct import pack as struct_pack
 
 from neo4j.exceptions import (
@@ -67,7 +68,7 @@ class MessageInbox:
                     # Reset for new message
                     unpacker.reset()
 
-        except OSError as error:
+        except (OSError, socket.timeout) as error:
             self.on_error(error)
 
     def pop(self):
