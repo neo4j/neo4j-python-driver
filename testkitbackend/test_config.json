@@ -35,6 +35,7 @@
     "Optimization:PullPipelining": true,
     "Temporary:ResultKeys": true,
     "Temporary:FullSummary": true,
-    "Temporary:CypherPathAndRelationship": true
+    "Temporary:CypherPathAndRelationship": true,
+    "ConfHint:connection.recv_timeout_seconds": true
   }
 }
