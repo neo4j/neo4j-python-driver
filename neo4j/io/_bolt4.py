@@ -381,16 +381,17 @@ class Bolt4x3(Bolt4x2):
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
-            recv_timeout = self.configuration_hints.get(
-                "connection.recv_timeout_seconds"
-            )
-            if isinstance(recv_timeout, int) and recv_timeout > 0:
-                self.socket.settimeout(recv_timeout)
-            else:
-                log.info("[#%04X]  Server supplied an invalid value for "
-                         "connection.recv_timeout_seconds (%r). Make sure the "
-                         "server and network is set up correctly.",
-                         self.local_port, recv_timeout)
+            if "connection.recv_timeout_seconds" in self.configuration_hints:
+                recv_timeout = self.configuration_hints[
+                    "connection.recv_timeout_seconds"
+                ]
+                if isinstance(recv_timeout, int) and recv_timeout > 0:
+                    self.socket.settimeout(recv_timeout)
+                else:
+                    log.info("[#%04X]  Server supplied an invalid value for "
+                             "connection.recv_timeout_seconds (%r). Make sure "
+                             "the server and network is set up correctly.",
+                             self.local_port, recv_timeout)
 
         headers = self.get_base_headers()
         headers.update(self.auth_dict)
