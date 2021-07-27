@@ -199,35 +199,41 @@ def test_hello_passes_routing_metadata(fake_socket_pair):
     assert fields[0]["routing"] == {"foo": "bar"}
 
 
-@pytest.mark.parametrize(("recv_timeout", "valid"), (
-    (1, True),
-    (42, True),
-    (-1, False),
-    (0, False),
-    (2.5, False),
-    (None, False),
-    ("1", False),
+@pytest.mark.parametrize(("hints", "valid"), (
+    ({"connection.recv_timeout_seconds": 1}, True),
+    ({"connection.recv_timeout_seconds": 42}, True),
+    ({}, True),
+    ({"whatever_this_is": "ignore me!"}, True),
+    ({"connection.recv_timeout_seconds": -1}, False),
+    ({"connection.recv_timeout_seconds": 0}, False),
+    ({"connection.recv_timeout_seconds": 2.5}, False),
+    ({"connection.recv_timeout_seconds": None}, False),
+    ({"connection.recv_timeout_seconds": False}, False),
+    ({"connection.recv_timeout_seconds": "1"}, False),
 ))
-def test_hint_recv_timeout_seconds(fake_socket_pair, recv_timeout, valid,
+def test_hint_recv_timeout_seconds(fake_socket_pair, hints, valid,
                                    caplog):
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address)
     sockets.client.settimeout = MagicMock()
-    sockets.server.send_message(0x70, {
-        "server": "Neo4j/4.4.0",
-        "hints": {"connection.recv_timeout_seconds": recv_timeout},
-    })
+    sockets.server.send_message(0x70, {"server": "Neo4j/4.3.4", "hints": hints})
     connection = Bolt4x4(address, sockets.client,
                          PoolConfig.max_connection_lifetime)
     with caplog.at_level(logging.INFO):
         connection.hello()
-    invalid_value_logged = any(repr(recv_timeout) in msg
-                               and "recv_timeout_seconds" in msg
-                               and "invalid" in msg
-                               for msg in caplog.messages)
     if valid:
-        sockets.client.settimeout.assert_called_once_with(recv_timeout)
-        assert not invalid_value_logged
+        if "connection.recv_timeout_seconds" in hints:
+            sockets.client.settimeout.assert_called_once_with(
+                hints["connection.recv_timeout_seconds"]
+            )
+        else:
+            sockets.client.settimeout.assert_not_called()
+        assert not any("recv_timeout_seconds" in msg
+                       and "invalid" in msg
+                       for msg in caplog.messages)
     else:
         sockets.client.settimeout.assert_not_called()
-        assert invalid_value_logged
+        assert any(repr(hints["connection.recv_timeout_seconds"]) in msg
+                   and "recv_timeout_seconds" in msg
+                   and "invalid" in msg
+                   for msg in caplog.messages)
