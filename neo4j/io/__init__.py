@@ -123,7 +123,7 @@ class Bolt(abc.ABC):
     PROTOCOL_VERSION = None
 
     # flag if connection needs RESET to go back to READY state
-    _is_reset = True
+    is_reset = False
 
     # The socket
     in_use = False
@@ -459,10 +459,6 @@ class Bolt(abc.ABC):
     def rollback(self, **handlers):
         """ Appends a ROLLBACK message to the output queue."""
         pass
-
-    @property
-    def is_reset(self):
-        return self._is_reset
 
     @abc.abstractmethod
     def reset(self):

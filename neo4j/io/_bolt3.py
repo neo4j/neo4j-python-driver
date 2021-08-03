@@ -18,6 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
 from logging import getLogger
 from ssl import SSLSocket
 
@@ -52,6 +53,38 @@ from neo4j.io._common import (
 log = getLogger("neo4j")
 
 
+class ServerStates(Enum):
+    CONNECTED = "CONNECTED"
+    READY = "READY"
+    STREAMING = "STREAMING"
+    TX_READY_OR_TX_STREAMING = "TX_READY||TX_STREAMING"
+    FAILED = "FAILED"
+
+
+STATE_TRANSITIONS = {
+    ServerStates.CONNECTED: {
+        "hello": ServerStates.READY,
+    },
+    ServerStates.READY: {
+        "run": ServerStates.STREAMING,
+        "begin": ServerStates.TX_READY_OR_TX_STREAMING,
+    },
+    ServerStates.STREAMING: {
+        "pull": ServerStates.READY,
+        "discard": ServerStates.READY,
+        "reset": ServerStates.READY,
+    },
+    ServerStates.TX_READY_OR_TX_STREAMING: {
+        "commit": ServerStates.READY,
+        "rollback": ServerStates.READY,
+        "reset": ServerStates.READY,
+    },
+    ServerStates.FAILED: {
+        "reset": ServerStates.READY,
+    }
+}
+
+
 class Bolt3(Bolt):
     """ Protocol handler for Bolt 3.
 
@@ -63,6 +96,16 @@ class Bolt3(Bolt):
     supports_multiple_results = False
 
     supports_multiple_databases = False
+
+    _server_state = ServerStates.CONNECTED
+
+    @property
+    def is_reset(self):
+        if self.responses:
+            # we can't be sure of the server's state as there are still pending
+            # responses.
+            return False
+        return self._server_state == ServerStates.READY
 
     @property
     def encrypted(self):
@@ -92,7 +135,8 @@ class Bolt3(Bolt):
             logged_headers["credentials"] = "*******"
         log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
         self._append(b"\x01", (headers,),
-                     response=InitResponse(self, on_success=self.server_info.update))
+                     response=InitResponse(self, "hello",
+                                           on_success=self.server_info.update))
         self.send_all()
         self.fetch_all()
         check_supported_server_product(self.server_info.agent)
@@ -155,20 +199,20 @@ class Bolt3(Bolt):
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
         if query.upper() == u"COMMIT":
-            self._append(b"\x10", fields, CommitResponse(self, **handlers))
+            self._append(b"\x10", fields, CommitResponse(self, "run",
+                                                         **handlers))
         else:
-            self._append(b"\x10", fields, Response(self, **handlers))
-        self._is_reset = False
+            self._append(b"\x10", fields, Response(self, "run", **handlers))
 
     def discard(self, n=-1, qid=-1, **handlers):
         # Just ignore n and qid, it is not supported in the Bolt 3 Protocol.
         log.debug("[#%04X]  C: DISCARD_ALL", self.local_port)
-        self._append(b"\x2F", (), Response(self, **handlers))
+        self._append(b"\x2F", (), Response(self, "discard", **handlers))
 
     def pull(self, n=-1, qid=-1, **handlers):
         # Just ignore n and qid, it is not supported in the Bolt 3 Protocol.
         log.debug("[#%04X]  C: PULL_ALL", self.local_port)
-        self._append(b"\x3F", (), Response(self, **handlers))
+        self._append(b"\x3F", (), Response(self, "pull", **handlers))
         self._is_reset = False
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
@@ -193,16 +237,16 @@ class Bolt3(Bolt):
             except TypeError:
                 raise TypeError("Timeout must be specified as a number of seconds")
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
-        self._append(b"\x11", (extra,), Response(self, **handlers))
+        self._append(b"\x11", (extra,), Response(self, "begin", **handlers))
         self._is_reset = False
 
     def commit(self, **handlers):
         log.debug("[#%04X]  C: COMMIT", self.local_port)
-        self._append(b"\x12", (), CommitResponse(self, **handlers))
+        self._append(b"\x12", (), CommitResponse(self, "commit", **handlers))
 
     def rollback(self, **handlers):
         log.debug("[#%04X]  C: ROLLBACK", self.local_port)
-        self._append(b"\x13", (), Response(self, **handlers))
+        self._append(b"\x13", (), Response(self, "rollback", **handlers))
 
     def reset(self):
         """ Add a RESET message to the outgoing queue, send
@@ -213,10 +257,21 @@ class Bolt3(Bolt):
             raise BoltProtocolError("RESET failed %r" % metadata, address=self.unresolved_address)
 
         log.debug("[#%04X]  C: RESET", self.local_port)
-        self._append(b"\x0F", response=Response(self, on_failure=fail))
+        self._append(b"\x0F", response=Response(self, "reset", on_failure=fail))
         self.send_all()
         self.fetch_all()
         self._is_reset = True
+
+    def _update_server_state_on_success(self, metadata, message):
+        if metadata.get("has_more"):
+            return
+        state_before = self._server_state
+        self._server_state = STATE_TRANSITIONS\
+            .get(self._server_state, {})\
+            .get(message, self._server_state)
+        if state_before != self._server_state:
+            log.debug("[#%04X]  State: %s", self.local_port,
+                      self._server_state.name)
 
     def fetch_message(self):
         """ Receive at most one message from the server, if available.
@@ -249,12 +304,15 @@ class Bolt3(Bolt):
         response.complete = True
         if summary_signature == b"\x70":
             log.debug("[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata)
+            self._update_server_state_on_success(summary_metadata,
+                                                 response.message)
             response.on_success(summary_metadata or {})
         elif summary_signature == b"\x7E":
             log.debug("[#%04X]  S: IGNORED", self.local_port)
             response.on_ignored(summary_metadata or {})
         elif summary_signature == b"\x7F":
             log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
+            self._server_state = ServerStates.FAILED
             try:
                 response.on_failure(summary_metadata or {})
             except (ServiceUnavailable, DatabaseUnavailable):

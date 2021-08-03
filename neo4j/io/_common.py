@@ -144,9 +144,10 @@ class Response:
     more detail messages followed by one summary message).
     """
 
-    def __init__(self, connection, **handlers):
+    def __init__(self, connection, message, **handlers):
         self.connection = connection
         self.handlers = handlers
+        self.message = message
         self.complete = False
 
     def on_records(self, records):
