@@ -210,6 +210,7 @@ class Bolt3(Bolt):
         """
 
         def fail(metadata):
+            self._close_socket()
             raise BoltProtocolError("RESET failed %r" % metadata, address=self.unresolved_address)
 
         log.debug("[#%04X]  C: RESET", self.local_port)
@@ -270,9 +271,18 @@ class Bolt3(Bolt):
                     self.pool.mark_all_stale()
                 raise
         else:
+            self._close_socket()
             raise BoltProtocolError("Unexpected response message with signature %02X" % summary_signature, address=self.unresolved_address)
 
         return len(details), 1
+
+    def _close_socket(self):
+        try:
+            self.socket.close()
+        except OSError:
+            pass
+        finally:
+            self._closed = True
 
     def close(self):
         """ Close the connection.
@@ -286,12 +296,7 @@ class Bolt3(Bolt):
                 except (OSError, BoltError, DriverError):
                     pass
             log.debug("[#%04X]  C: <CLOSE>", self.local_port)
-            try:
-                self.socket.close()
-            except OSError:
-                pass
-            finally:
-                self._closed = True
+            self._close_socket()
 
     def closed(self):
         return self._closed
