@@ -29,7 +29,9 @@
     "stub.session_run_parameters.test_session_run_parameters.TestSessionRunParameters.test_empty_query":
       "Driver rejects empty queries before sending it to the server",
     "tls.tlsversions.TestTlsVersions.test_1_1":
-      "TLSv1.1 and below are disabled in the driver"
+      "TLSv1.1 and below are disabled in the driver",
+    "stub.disconnects.test_disconnects.TestDisconnects.test_fail_on_reset":
+      "Driver silently ignores all errors on releasing connections back into the pool."
   },
   "features": {
     "AuthorizationExpiredTreatment": true,
