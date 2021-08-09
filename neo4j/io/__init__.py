@@ -847,7 +847,7 @@ class Neo4jPool(IOPool):
         :param opener:
         :param pool_config:
         :param workspace_config:
-        :param addresses:
+        :param address:
         """
         super(Neo4jPool, self).__init__(opener, pool_config, workspace_config)
         # Each database have a routing table, the default database is a special case.
