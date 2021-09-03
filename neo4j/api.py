@@ -66,22 +66,32 @@ class Auth:
     :param scheme: specifies the type of authentication, examples: "basic", "kerberos"
     :type scheme: str
     :param principal: specifies who is being authenticated
-    :type principal: str
+    :type principal: str or None
     :param credentials: authenticates the principal
-    :type credentials: str
+    :type credentials: str or None
     :param realm: specifies the authentication provider
-    :type realm: str
+    :type realm: str or None
     :param parameters: extra key word parameters passed along to the authentication provider
-    :type parameters: str
+    :type parameters: Dict[str, Any]
     """
 
-    #: By default we should not send any realm
-    realm = None
-
+    # TODO in 5.0: change signature to
+    #     def __init__(self, scheme, principal=None, credentials=None,
+    #                  ticket=None, realm=None, **parameters):
     def __init__(self, scheme, principal, credentials, realm=None, **parameters):
         self.scheme = scheme
-        self.principal = principal
-        self.credentials = credentials
+        # Neo4j servers pre 4.4 require the principal field to always be
+        # present. Therefore, we transmit it even if it's an empty sting.
+        if principal is not None:
+            self.principal = principal
+        if credentials:
+            self.credentials = credentials
+        # TODO in 5.0: add ticket
+        # :param ticket: alternative to authenticate the principal (depends on
+        #                scheme)
+        # :type ticket: str or None
+        # if ticket is not None:
+        #     self.ticket = ticket
         if realm:
             self.realm = realm
         if parameters:
@@ -108,7 +118,7 @@ def basic_auth(user, password, realm=None):
 
 
 def kerberos_auth(base64_encoded_ticket):
-    """ Generate a kerberos auth token with the base64 encoded ticket
+    """ Generate a kerberos auth token with the base64 encoded ticket.
 
     This will set the scheme to "kerberos" for the auth token.
 
@@ -117,7 +127,24 @@ def kerberos_auth(base64_encoded_ticket):
     :return: auth token for use with :meth:`GraphDatabase.driver`
     :rtype: :class:`neo4j.Auth`
     """
-    return Auth("kerberos", "", base64_encoded_ticket)
+    token = Auth("kerberos", "", None)
+    # token field is not supported by any other auth scheme. So we inject it.
+    token.ticket = base64_encoded_ticket
+    return token
+
+
+def bearer_auth(base64_encoded_token):
+    """ Generate an auth token for Single-Sign-On providers.
+
+    This will set the scheme to "bearer" for the auth token.
+
+    :param base64_encoded_token: a base64 encoded authentication token generated
+                                 by a Single-Sign-On provider.
+
+    :return: auth token for use with :meth:`GraphDatabase.driver`
+    :rtype: :class:`neo4j.Auth`
+    """
+    return Auth("bearer", None, base64_encoded_token)
 
 
 def custom_auth(principal, credentials, realm, scheme, **parameters):
@@ -133,6 +160,15 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
     :rtype: :class:`neo4j.Auth`
     """
     return Auth(scheme, principal, credentials, realm, **parameters)
+
+# TODO in 5.0: alter custom_auth to
+# def custom_auth(principal, credentials, ticket, realm, scheme, **parameters):
+#     """...
+#     :param ticket: alternative to authenticate the principal (depends on
+#                    scheme)
+#     ..."""
+#     return Auth(scheme, principal=principal, credentials=credentials,
+#                 ticket=ticket, realm=realm, **parameter
 
 
 class Bookmark:
