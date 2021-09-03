@@ -20,16 +20,28 @@
 
 
 import inspect
-from unittest.mock import NonCallableMagicMock
+from unittest import mock
 
 import pytest
 
 from neo4j import ServerInfo
 
 
-class FakeConnection(NonCallableMagicMock):
+class FakeConnection(mock.NonCallableMagicMock):
     callbacks = []
     server_info = ServerInfo("127.0.0.1", (4, 3))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.attach_mock(mock.PropertyMock(return_value=True), "is_reset")
+        self.attach_mock(mock.Mock(return_value=False), "defunct")
+        self.attach_mock(mock.Mock(return_value=False), "stale")
+        self.attach_mock(mock.Mock(return_value=False), "closed")
+
+        def close_side_effect():
+            self.closed.return_value = True
+
+        self.attach_mock(mock.Mock(side_effect=close_side_effect), "close")
 
     def fetch_message(self, *args, **kwargs):
         if self.callbacks:
@@ -74,8 +86,6 @@ class FakeConnection(NonCallableMagicMock):
             return build_message_handler(name)
         return parent.__getattr__(name)
 
-    def defunct(self):
-        return False
 
 
 @pytest.fixture
