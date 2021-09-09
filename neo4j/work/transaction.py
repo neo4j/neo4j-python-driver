@@ -77,10 +77,6 @@ class Transaction:
     def run(self, query, parameters=None, **kwparameters):
         """ Run a Cypher query within the context of this transaction.
 
-        The query is sent to the server lazily, when its result is
-        consumed. To force the query to be sent to the server, use
-        the :meth:`.Transaction.sync` method.
-
         Cypher is typically expressed as a query template plus a
         set of named parameters. In Python, parameters may be expressed
         through a dictionary of parameters, through individual parameter
