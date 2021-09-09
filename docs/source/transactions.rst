@@ -33,8 +33,6 @@ To construct a :class:`.Session` use the :meth:`.Driver.session` method.
 
     .. automethod:: run
 
-    .. automethod:: sync
-
     .. automethod:: detach
 
     .. automethod:: next_bookmarks
@@ -78,8 +76,6 @@ It also gives applications the ability to directly control `commit` and `rollbac
 .. class:: .Transaction
 
     .. automethod:: run
-
-    .. automethod:: sync
 
     .. automethod:: closed
 
