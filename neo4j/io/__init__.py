@@ -137,7 +137,7 @@ class Bolt(abc.ABC):
     #: The pool of which this connection is a member
     pool = None
 
-    # Store the id of the most recent ran query to be able reduce sent bits by
+    # Store the id of the most recent ran query to be able to reduce sent bits by
     # using the default (-1) to refer to the most recent query when pulling
     # results for it.
     most_recent_qid = None
