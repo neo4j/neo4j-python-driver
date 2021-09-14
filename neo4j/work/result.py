@@ -48,11 +48,11 @@ class _ConnectionErrorHandler:
             connection raises of of the caught errors.
         :type on_error callable
         """
-        self._connection = connection
-        self._on_error = on_error
+        self.connection = connection
+        self.on_error = on_error
 
     def __getattr__(self, item):
-        connection_attr = getattr(self._connection, item)
+        connection_attr = getattr(self.connection, item)
         if not callable(connection_attr):
             return connection_attr
 
@@ -61,7 +61,7 @@ class _ConnectionErrorHandler:
                 try:
                     func(*args, **kwargs)
                 except (Neo4jError, ServiceUnavailable, SessionExpired) as exc:
-                    self._on_error(exc)
+                    self.on_error(exc)
                     raise
             return inner
 
@@ -83,7 +83,7 @@ class Result:
         self._record_buffer = deque()
         self._summary = None
         self._bookmark = None
-        self._qid = -1
+        self._raw_qid = -1
         self._fetch_size = fetch_size
 
         # states
@@ -95,6 +95,13 @@ class Result:
         self._has_more = False
         # the result has been fully iterated or consumed
         self._closed = False
+
+    @property
+    def _qid(self):
+        if self._raw_qid == self._connection.connection.most_recent_qid:
+            return -1
+        else:
+            return self._raw_qid
 
     def _tx_ready_run(self, query, parameters, **kwparameters):
         # BEGIN+RUN does not carry any extra on the RUN message.
@@ -117,7 +124,10 @@ class Result:
 
         def on_attached(metadata):
             self._metadata.update(metadata)
-            self._qid = metadata.get("qid", -1)  # For auto-commit there is no qid and Bolt 3 do not support qid
+            # For auto-commit there is no qid and Bolt 3 do not support qid
+            self._raw_qid = metadata.get("qid", -1)
+            if self._raw_qid != -1:
+                self._connection.connection.most_recent_qid = self._raw_qid
             self._keys = metadata.get("fields")
             self._attached = True
 
