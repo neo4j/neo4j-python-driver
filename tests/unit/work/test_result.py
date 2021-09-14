@@ -89,6 +89,7 @@ class ConnectionStub:
             self._use_qid = force_qid
         self.fetch_idx = 0
         self._qid = -1
+        self.most_recent_qid = None
         self.record_idxs = [0] * len(self._records)
         self.to_pull = [None] * len(self._records)
         self._exhausted = [False] * len(self._records)
