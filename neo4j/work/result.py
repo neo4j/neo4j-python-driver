@@ -124,7 +124,7 @@ class Result:
 
         def on_attached(metadata):
             self._metadata.update(metadata)
-            # For auto-commit there is no qid and Bolt 3 do not support qid
+            # For auto-commit there is no qid and Bolt 3 does not support qid
             self._raw_qid = metadata.get("qid", -1)
             if self._raw_qid != -1:
                 self._connection.connection.most_recent_qid = self._raw_qid
