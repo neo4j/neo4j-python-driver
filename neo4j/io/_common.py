@@ -159,8 +159,8 @@ class ConnectionErrorHandler:
         self.__connection = connection
         self.__on_error = on_error
 
-    def __getattr__(self, item):
-        connection_attr = getattr(self.__connection, item)
+    def __getattr__(self, name):
+        connection_attr = getattr(self.__connection, name)
         if not callable(connection_attr):
             return connection_attr
 
@@ -174,6 +174,13 @@ class ConnectionErrorHandler:
             return inner
 
         return outer(connection_attr)
+
+    def __setattr__(self, name, value):
+        if name.startswith("_" + self.__class__.__name__ + "__"):
+            super().__setattr__(name, value)
+        else:
+            setattr(self.__connection, name, value)
+
 
 
 class Response:
