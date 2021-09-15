@@ -137,6 +137,11 @@ class Bolt(abc.ABC):
     #: The pool of which this connection is a member
     pool = None
 
+    # Store the id of the most recent ran query to be able to reduce sent bits by
+    # using the default (-1) to refer to the most recent query when pulling
+    # results for it.
+    most_recent_qid = None
+
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *, auth=None, user_agent=None, routing_context=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
