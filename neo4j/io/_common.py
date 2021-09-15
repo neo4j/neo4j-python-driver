@@ -139,6 +139,43 @@ class Outbox:
             return memoryview(self._data[:end])
 
 
+class ConnectionErrorHandler:
+    """
+    Wrapper class for handling connection errors.
+
+    The class will wrap each method to invoke a callback if the method raises
+    Neo4jError, SessionExpired, or ServiceUnavailable.
+    The error will be re-raised after the callback.
+    """
+
+    def __init__(self, connection, on_error):
+        """
+        :param connection the connection object to warp
+        :type connection Bolt
+        :param on_error the function to be called when a method of
+            connection raises of of the caught errors.
+        :type on_error callable
+        """
+        self.__connection = connection
+        self.__on_error = on_error
+
+    def __getattr__(self, item):
+        connection_attr = getattr(self.__connection, item)
+        if not callable(connection_attr):
+            return connection_attr
+
+        def outer(func):
+            def inner(*args, **kwargs):
+                try:
+                    func(*args, **kwargs)
+                except (Neo4jError, ServiceUnavailable, SessionExpired) as exc:
+                    self.__on_error(exc)
+                    raise
+            return inner
+
+        return outer(connection_attr)
+
+
 class Response:
     """ Subscriber object for a full response (zero or
     more detail messages followed by one summary message).

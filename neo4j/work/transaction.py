@@ -22,10 +22,9 @@
 from neo4j.work.result import Result
 from neo4j.data import DataHydrator
 from neo4j.exceptions import (
-    ServiceUnavailable,
-    SessionExpired,
     TransactionError,
 )
+from neo4j.io import ConnectionErrorHandler
 
 
 class Transaction:
@@ -41,6 +40,9 @@ class Transaction:
 
     def __init__(self, connection, fetch_size, on_closed, on_error):
         self._connection = connection
+        self._error_handling_connection = ConnectionErrorHandler(
+            connection, self._error_handler
+        )
         self._bookmark = None
         self._results = []
         self._closed = False
@@ -63,14 +65,15 @@ class Transaction:
     def _begin(self, database, bookmarks, access_mode, metadata, timeout):
         self._connection.begin(bookmarks=bookmarks, metadata=metadata,
                                timeout=timeout, mode=access_mode, db=database)
+        self._error_handling_connection.send_all()
+        self._error_handling_connection.fetch_all()
 
     def _result_on_closed_handler(self):
         pass
 
-    def _result_on_error_handler(self, exc):
+    def _error_handler(self, exc):
         self._last_error = exc
-        if isinstance(exc, (ServiceUnavailable, SessionExpired)):
-            self._closed = True
+        self._closed = True
         self._on_error(exc)
 
     def _consume_results(self):
@@ -126,7 +129,7 @@ class Transaction:
         result = Result(
             self._connection, DataHydrator(), self._fetch_size,
             self._result_on_closed_handler,
-            self._result_on_error_handler
+            self._error_handler
         )
         self._results.append(result)
 
