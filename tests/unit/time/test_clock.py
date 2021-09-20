@@ -53,3 +53,19 @@ class ClockTestCase(TestCase):
         clock = object.__new__(Clock)
         offset = clock.local_offset()
         self.assertIsInstance(offset, ClockTime)
+
+    def test_local_time(self):
+        _ = Clock()
+        for impl in Clock._Clock__implementations:
+            self.assert_(issubclass(impl, Clock))
+            clock = object.__new__(impl)
+            time = clock.local_time()
+            self.assertIsInstance(time, ClockTime)
+
+    def test_utc_time(self):
+        _ = Clock()
+        for impl in Clock._Clock__implementations:
+            self.assert_(issubclass(impl, Clock))
+            clock = object.__new__(impl)
+            time = clock.utc_time()
+            self.assertIsInstance(time, ClockTime)
