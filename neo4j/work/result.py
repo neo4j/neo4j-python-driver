@@ -23,50 +23,9 @@ from collections import deque
 from warnings import warn
 
 from neo4j.data import DataDehydrator
-from neo4j.exceptions import (
-    Neo4jError,
-    ServiceUnavailable,
-    SessionExpired,
-)
+from neo4j.io import ConnectionErrorHandler
 from neo4j.work.summary import ResultSummary
 from neo4j.exceptions import ResultConsumedError
-
-
-class _ConnectionErrorHandler:
-    """
-    Wrapper class for handling connection errors.
-
-    The class will wrap each method to invoke a callback if the method raises
-    SessionExpired or ServiceUnavailable.
-    The error will be re-raised after the callback.
-    """
-
-    def __init__(self, connection, on_error):
-        """
-        :param connection the connection object to warp
-        :type connection Bolt
-        :param on_error the function to be called when a method of
-            connection raises of of the caught errors.
-        :type on_error callable
-        """
-        self.connection = connection
-        self.on_error = on_error
-
-    def __getattr__(self, item):
-        connection_attr = getattr(self.connection, item)
-        if not callable(connection_attr):
-            return connection_attr
-
-        def outer(func):
-            def inner(*args, **kwargs):
-                try:
-                    func(*args, **kwargs)
-                except (Neo4jError, ServiceUnavailable, SessionExpired) as exc:
-                    self.on_error(exc)
-                    raise
-            return inner
-
-        return outer(connection_attr)
 
 
 class Result:
@@ -77,7 +36,7 @@ class Result:
 
     def __init__(self, connection, hydrant, fetch_size, on_closed,
                  on_error):
-        self._connection = _ConnectionErrorHandler(connection, on_error)
+        self._connection = ConnectionErrorHandler(connection, on_error)
         self._hydrant = hydrant
         self._on_closed = on_closed
         self._metadata = None
@@ -99,7 +58,7 @@ class Result:
 
     @property
     def _qid(self):
-        if self._raw_qid == self._connection.connection.most_recent_qid:
+        if self._raw_qid == self._connection.most_recent_qid:
             return -1
         else:
             return self._raw_qid
@@ -128,7 +87,7 @@ class Result:
             # For auto-commit there is no qid and Bolt 3 does not support qid
             self._raw_qid = metadata.get("qid", -1)
             if self._raw_qid != -1:
-                self._connection.connection.most_recent_qid = self._raw_qid
+                self._connection.most_recent_qid = self._raw_qid
             self._keys = metadata.get("fields")
             self._attached = True
 

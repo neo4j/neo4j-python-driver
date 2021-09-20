@@ -29,6 +29,7 @@ the `session` module provides the main user-facing abstractions.
 __all__ = [
     "Bolt",
     "BoltPool",
+    "ConnectionErrorHandler",
     "Neo4jPool",
     "check_supported_server_product",
 ]
@@ -92,6 +93,7 @@ from neo4j.exceptions import (
 )
 from neo4j.io._common import (
     CommitResponse,
+    ConnectionErrorHandler,
     Inbox,
     InitResponse,
     Outbox,
