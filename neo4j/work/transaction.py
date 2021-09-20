@@ -73,7 +73,6 @@ class Transaction:
 
     def _error_handler(self, exc):
         self._last_error = exc
-        self._closed = True
         self._on_error(exc)
 
     def _consume_results(self):
