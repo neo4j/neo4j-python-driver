@@ -266,7 +266,10 @@ class Clock:
 
         :raises OverflowError:
         """
-        return ClockTime(-int(mktime(gmtime(0))))
+        # Adding and subtracting two days to avoid passing a pre-epoch time to
+        # `mktime`, which can cause a `OverflowError` on some platforms (e.g.,
+        # Windows).
+        return ClockTime(-int(mktime(gmtime(172800))) + 172800)
 
     def local_time(self):
         """ Read and return the current local time from this clock, measured relative to the Unix Epoch.
