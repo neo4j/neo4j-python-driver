@@ -38,6 +38,8 @@
       "TLSv1.1 and below are disabled in the driver"
   },
   "features": {
+    "Feature:API:Result.Single": "Does not raise error when not exactly one record is available. To be fixed in 5.0",
+    "Feature:API:Result.Peek": true,
     "AuthorizationExpiredTreatment": true,
     "Optimization:ImplicitDefaultArguments": true,
     "Optimization:MinimalResets": true,

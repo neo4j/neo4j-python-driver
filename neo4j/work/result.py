@@ -25,6 +25,7 @@ from warnings import warn
 from neo4j.data import DataDehydrator
 from neo4j.io import ConnectionErrorHandler
 from neo4j.work.summary import ResultSummary
+from neo4j.exceptions import ResultConsumedError
 
 
 class Result:
@@ -192,20 +193,37 @@ class Result:
         self._closed = True
 
     def _attach(self):
-        """Sets the Result object in an attached state by fetching messages from the connection to the buffer.
+        """Sets the Result object in an attached state by fetching messages from
+        the connection to the buffer.
         """
         if self._closed is False:
             while self._attached is False:
                 self._connection.fetch_message()
 
-    def _buffer_all(self):
-        """Sets the Result object in an detached state by fetching all records from the connection to the buffer.
+    def _buffer(self, n=None):
+        """Try to fill `self_record_buffer` with n records.
+
+        Might end up with more records in the buffer if the fetch size makes it
+        overshoot.
+        Might ent up with fewer records in the buffer if there are not enough
+        records available.
         """
         record_buffer = deque()
         for record in self:
             record_buffer.append(record)
+            if n is not None and len(record_buffer) >= n:
+                break
         self._closed = False
-        self._record_buffer = record_buffer
+        if n is None:
+            self._record_buffer = record_buffer
+        else:
+            self._record_buffer.extend(record_buffer)
+
+    def _buffer_all(self):
+        """Sets the Result object in an detached state by fetching all records
+        from the connection to the buffer.
+        """
+        self._buffer()
 
     def _obtain_summary(self):
         """Obtain the summary of this result, buffering any remaining records.
@@ -278,6 +296,13 @@ class Result:
         :returns: the next :class:`neo4j.Record` or :const:`None` if none remain
         :warns: if more than one record is available
         """
+        # TODO in 5.0 replace with this code that raises an error if there's not
+        # exactly one record in the left result stream.
+        # self._buffer(2).
+        # if len(self._record_buffer) != 1:
+        #     raise SomeError("Expected exactly 1 record, found %i"
+        #                      % len(self._record_buffer))
+        # return self._record_buffer.popleft()
         records = list(self)  # TODO: exhausts the result with self.consume if there are more records.
         size = len(records)
         if size == 0:
@@ -292,16 +317,9 @@ class Result:
 
         :returns: the next :class:`.Record` or :const:`None` if none remain
         """
+        self._buffer(1)
         if self._record_buffer:
             return self._record_buffer[0]
-        if not self._attached:
-            return None
-        while self._attached:
-            self._connection.fetch_message()
-            if self._record_buffer:
-                return self._record_buffer[0]
-
-        return None
 
     def graph(self):
         """Return a :class:`neo4j.graph.Graph` instance containing all the graph objects
