@@ -197,7 +197,7 @@ def test_can_handle_cypher_error(bolt_driver):
             next(pipeline.pull())
 
 
-def test_should_not_allow_empty_statements(bolt_driver):
+def test_should_not_allow_empty_statements(bolt_driver, requires_bolt_4x):
     with bolt_driver.pipeline(flush_every=0) as pipeline:
         pipeline.push("")
         with pytest.raises(CypherSyntaxError):
