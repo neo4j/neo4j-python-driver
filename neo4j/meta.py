@@ -34,6 +34,11 @@ def get_user_agent():
     return template.format(*fields)
 
 
+def deprecation_warn(message):
+    from warnings import warn
+    warn(message, category=DeprecationWarning, stacklevel=2)
+
+
 def deprecated(message):
     """ Decorator for deprecating functions and methods.
 
@@ -46,8 +51,7 @@ def deprecated(message):
     """
     def f__(f):
         def f_(*args, **kwargs):
-            from warnings import warn
-            warn(message, category=DeprecationWarning, stacklevel=2)
+            deprecation_warn(message)
             return f(*args, **kwargs)
         f_.__name__ = f.__name__
         f_.__doc__ = f.__doc__
