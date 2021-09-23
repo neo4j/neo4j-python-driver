@@ -41,13 +41,18 @@
     "Feature:API:Result.Single": "Does not raise error when not exactly one record is available. To be fixed in 5.0",
     "Feature:API:Result.Peek": true,
     "AuthorizationExpiredTreatment": true,
+    "Optimization:ConnectionReuse": true,
+    "Optimization:EagerTransactionBegin": true,
     "Optimization:ImplicitDefaultArguments": true,
     "Optimization:MinimalResets": true,
-    "Optimization:ConnectionReuse": true,
     "Optimization:PullPipelining": true,
     "ConfHint:connection.recv_timeout_seconds": true,
-    "Temporary:ResultKeys": true,
+    "Temporary:CypherPathAndRelationship": true,
+    "Temporary:DriverFetchSize": true,
+    "Temporary:DriverMaxTxRetryTime": true,
     "Temporary:FullSummary": true,
-    "Temporary:CypherPathAndRelationship": true
+    "Temporary:ResultKeys": true,
+    "Temporary:ResultList": "requires further specification/discussion in the team",
+    "Temporary:TransactionClose": true
   }
 }
