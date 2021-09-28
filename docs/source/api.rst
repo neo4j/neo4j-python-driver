@@ -116,7 +116,7 @@ Example:
 
     import neo4j
 
-    auth = neo4j.Auth(scheme="basic", principal="neo4j", credentials="password")
+    auth = neo4j.Auth("basic", "neo4j", "password")
 
 
 Auth Token Helper Functions
@@ -127,6 +127,8 @@ Alternatively, one of the auth token helper functions can be used.
 .. autofunction:: neo4j.basic_auth
 
 .. autofunction:: neo4j.kerberos_auth
+
+.. autofunction:: neo4j.bearer_auth
 
 .. autofunction:: neo4j.custom_auth
 
