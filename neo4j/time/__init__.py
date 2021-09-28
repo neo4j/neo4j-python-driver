@@ -23,11 +23,19 @@
 a number of utility functions.
 """
 
+from contextlib import contextmanager
 from datetime import (
     timedelta,
     date,
     time,
     datetime,
+)
+from decimal import (
+    Decimal,
+    localcontext,
+    ROUND_DOWN,
+    ROUND_HALF_EVEN,
+    ROUND_HALF_UP,
 )
 from functools import total_ordering
 from re import compile as re_compile
@@ -36,15 +44,14 @@ from time import (
     mktime,
     struct_time,
 )
-from decimal import Decimal
 
+from neo4j.meta import (
+    deprecated,
+    deprecation_warn
+)
 from neo4j.time.arithmetic import (
     nano_add,
-    nano_sub,
-    nano_mul,
     nano_div,
-    nano_mod,
-    nano_divmod,
     symmetric_divmod,
     round_half_to_even,
 )
@@ -53,6 +60,25 @@ from neo4j.time.metaclasses import (
     TimeType,
     DateTimeType,
 )
+
+
+@contextmanager
+def _decimal_context(prec=9, rounding=ROUND_HALF_EVEN):
+    with localcontext() as ctx:
+        ctx.prec = prec
+        ctx.rounding = rounding
+        yield ctx
+
+
+def _decimal_context_decorator(prec=9):
+    def outer(fn):
+        def inner(*args, **kwargs):
+            with _decimal_context(prec=prec):
+                return fn(*args, **kwargs)
+
+        return inner
+    return outer
+
 
 MIN_INT64 = -(2 ** 63)
 MAX_INT64 = (2 ** 63) - 1
@@ -64,10 +90,14 @@ MAX_YEAR = 9999
 """The largest year number allowed in a :class:`neo4j.time.Date` or :class:`neo4j.time.DateTime` object to be compatible with :class:`python:datetime.date` and :class:`python:datetime.datetime`."""
 
 DATE_ISO_PATTERN = re_compile(r"^(\d{4})-(\d{2})-(\d{2})$")
-TIME_ISO_PATTERN = re_compile(r"^(\d{2})(:(\d{2})(:((\d{2})"
-                              r"(\.\d*)?))?)?(([+-])(\d{2}):(\d{2})(:((\d{2})(\.\d*)?))?)?$")
-DURATION_ISO_PATTERN = re_compile(r"^P((\d+)Y)?((\d+)M)?((\d+)D)?"
-                                  r"(T((\d+)H)?((\d+)M)?((\d+(\.\d+)?)?S)?)?$")
+TIME_ISO_PATTERN = re_compile(
+    r"^(\d{2})(:(\d{2})(:((\d{2})"
+    r"(\.\d*)?))?)?(([+-])(\d{2}):(\d{2})(:((\d{2})(\.\d*)?))?)?$"
+)
+DURATION_ISO_PATTERN = re_compile(
+    r"^P((\d+)Y)?((\d+)M)?((\d+)D)?"
+    r"(T((\d+)H)?((\d+)M)?(((\d+)(\.\d+)?)?S)?)?$"
+)
 
 NANO_SECONDS = 1000000000
 
@@ -173,7 +203,9 @@ class ClockTime(tuple):
     """
 
     def __new__(cls, seconds=0, nanoseconds=0):
-        seconds, nanoseconds = nano_divmod(int(1000000000 * seconds) + int(nanoseconds), 1000000000)
+        seconds, nanoseconds = divmod(
+            int(NANO_SECONDS * seconds) + int(nanoseconds), NANO_SECONDS
+        )
         return tuple.__new__(cls, (seconds, nanoseconds))
 
     def __add__(self, other):
@@ -185,7 +217,7 @@ class ClockTime(tuple):
             if other.months or other.days:
                 raise ValueError("Cannot add Duration with months or days")
             return ClockTime(self.seconds + other.seconds, self.nanoseconds +
-                             int(other.subseconds * 1000000000))
+                             int(other.nanoseconds))
         return NotImplemented
 
     def __sub__(self, other):
@@ -196,7 +228,7 @@ class ClockTime(tuple):
         if isinstance(other, Duration):
             if other.months or other.days:
                 raise ValueError("Cannot subtract Duration with months or days")
-            return ClockTime(self.seconds - other.seconds, self.nanoseconds - int(other.subseconds * 1000000000))
+            return ClockTime(self.seconds - other.seconds, self.nanoseconds - int(other.nanoseconds))
         return NotImplemented
 
     def __repr__(self):
@@ -266,7 +298,10 @@ class Clock:
 
         :raises OverflowError:
         """
-        return ClockTime(-int(mktime(gmtime(0))))
+        # Adding and subtracting two days to avoid passing a pre-epoch time to
+        # `mktime`, which can cause a `OverflowError` on some platforms (e.g.,
+        # Windows).
+        return ClockTime(-int(mktime(gmtime(172800))) + 172800)
 
     def local_time(self):
         """ Read and return the current local time from this clock, measured relative to the Unix Epoch.
@@ -297,25 +332,34 @@ class Duration(tuple):
     min = None
     max = None
 
-    def __new__(cls, years=0, months=0, weeks=0, days=0, hours=0, minutes=0, seconds=0,
-                subseconds=0, milliseconds=0, microseconds=0, nanoseconds=0):
+    def __new__(cls, years=0, months=0, weeks=0, days=0, hours=0, minutes=0,
+                seconds=0, subseconds=0, milliseconds=0, microseconds=0,
+                nanoseconds=0):
+
+        if subseconds:
+            deprecation_warn("`subseconds` will be removed in 5.0. "
+                             "Use `nanoseconds` instead.")
+            with _decimal_context(prec=9, rounding=ROUND_HALF_EVEN):
+                nanoseconds = int(Decimal(subseconds) * NANO_SECONDS)
+
         mo = int(12 * years + months)
         if mo < MIN_INT64 or mo > MAX_INT64:
             raise ValueError("Months value out of range")
         d = int(7 * weeks + days)
+        ns = (int(3600000000000 * hours) +
+              int(60000000000 * minutes) +
+              int(1000000000 * seconds) +
+              int(1000000 * milliseconds) +
+              int(1000 * microseconds) +
+              int(nanoseconds))
+        s, ns = symmetric_divmod(ns, NANO_SECONDS)
         if d < MIN_INT64 or d > MAX_INT64:
             raise ValueError("Days value out of range")
-        s = (int(3600000000000 * hours) +
-             int(60000000000 * minutes) +
-             int(1000000000 * seconds) +
-             int(1000000000 * subseconds) +
-             int(1000000 * milliseconds) +
-             int(1000 * microseconds) +
-             int(nanoseconds))
-        s, ss = symmetric_divmod(s, 1000000000)
         if s < MIN_INT64 or s > MAX_INT64:
             raise ValueError("Seconds value out of range")
-        return tuple.__new__(cls, (mo, d, s, ss / 1000000000))
+        if s < MIN_INT64 or s > MAX_INT64:
+            raise ValueError("Seconds value out of range")
+        return tuple.__new__(cls, (mo, d, s, ns))
 
     def __bool__(self):
         return any(map(bool, self))
@@ -324,52 +368,94 @@ class Duration(tuple):
 
     def __add__(self, other):
         if isinstance(other, Duration):
-            return Duration(months=self[0] + int(other[0]), days=self[1] + int(other[1]),
-                            seconds=self[2] + int(other[2]), subseconds=nano_add(self[3], other[3]))
+            return Duration(
+                months=self[0] + int(other.months),
+                days=self[1] + int(other.days),
+                seconds=self[2] + int(other.seconds),
+                nanoseconds=self[3] + int(other.nanoseconds)
+            )
         if isinstance(other, timedelta):
-            return Duration(months=self[0], days=self[1] + int(other.days),
-                            seconds=self[2] + int(other.seconds),
-                            subseconds=nano_add(self[3], other.microseconds / 1000000))
+            return Duration(
+                months=self[0], days=self[1] + other.days,
+                seconds=self[2] + other.seconds,
+                nanoseconds=self[3] + other.microseconds * 1000
+            )
         return NotImplemented
 
     def __sub__(self, other):
         if isinstance(other, Duration):
-            return Duration(months=self[0] - int(other[0]), days=self[1] - int(other[1]),
-                            seconds=self[2] - int(other[2]), subseconds=nano_sub(self[3], other[3]))
+            return Duration(
+                months=self[0] - int(other.months),
+                days=self[1] - int(other.days),
+                seconds=self[2] - int(other.seconds),
+                nanoseconds=self[3] - int(other.nanoseconds)
+            )
         if isinstance(other, timedelta):
-            return Duration(months=self[0], days=self[1] - int(other.days),
-                            seconds=self[2] - int(other.seconds),
-                            subseconds=nano_sub(self[3], other.microseconds / 1000000))
+            return Duration(
+                months=self[0],
+                days=self[1] - other.days,
+                seconds=self[2] - other.seconds,
+                nanoseconds=self[3] - other.microseconds * 1000
+            )
         return NotImplemented
 
     def __mul__(self, other):
+        if isinstance(other, float):
+            deprecation_warn("Multiplication with float will be deprecated in "
+                             "5.0.")
         if isinstance(other, (int, float)):
-            return Duration(months=self[0] * other, days=self[1] * other,
-                            seconds=self[2] * other, subseconds=nano_mul(self[3], other))
+            return Duration(
+                months=self[0] * other, days=self[1] * other,
+                seconds=self[2] * other, nanoseconds=self[3] * other
+            )
         return NotImplemented
 
+    @deprecated("Will be removed in 5.0.")
     def __floordiv__(self, other):
         if isinstance(other, int):
-            return Duration(months=int(self[0] // other), days=int(self[1] // other),
-                            seconds=int(nano_add(self[2], self[3]) // other), subseconds=0)
+            # TODO 5.0: new method (floor months, days, nanoseconds) or remove
+            # return Duration(
+            #     months=self[0] // other, days=self[1] // other,
+            #     nanoseconds=(self[2] * NANO_SECONDS + self[3]) // other
+            # )
+            seconds = self[2] + Decimal(self[3]) / NANO_SECONDS
+            return Duration(months=int(self[0] // other),
+                            days=int(self[1] // other),
+                            seconds=int(seconds // other))
         return NotImplemented
 
+    @deprecated("Will be removed in 5.0.")
     def __mod__(self, other):
         if isinstance(other, int):
-            seconds, subseconds = symmetric_divmod(nano_add(self[2], self[3]) % other, 1)
-            return Duration(months=round_half_to_even(self[0] % other), days=round_half_to_even(self[1] % other),
+            # TODO 5.0: new method (mod months, days, nanoseconds) or remove
+            # return Duration(
+            #     months=self[0] % other, days=self[1] % other,
+            #     nanoseconds=(self[2] * NANO_SECONDS + self[3]) % other
+            # )
+            seconds = self[2] + Decimal(self[3]) / NANO_SECONDS
+            seconds, subseconds = symmetric_divmod(seconds % other, 1)
+            return Duration(months=round_half_to_even(self[0] % other),
+                            days=round_half_to_even(self[1] % other),
                             seconds=seconds, subseconds=subseconds)
         return NotImplemented
 
+    @deprecated("Will be removed in 5.0.")
     def __divmod__(self, other):
         if isinstance(other, int):
             return self.__floordiv__(other), self.__mod__(other)
         return NotImplemented
 
+    @deprecated("Will be removed in 5.0.")
     def __truediv__(self, other):
         if isinstance(other, (int, float)):
-            return Duration(months=round_half_to_even(float(self[0]) / other), days=round_half_to_even(float(self[1]) / other),
-                            seconds=float(self[2]) / other, subseconds=nano_div(self[3], other))
+            return Duration(
+                months=round_half_to_even(self[0] / other),
+                days=round_half_to_even(self[1] / other),
+                nanoseconds=round_half_to_even(
+                    self[2] * NANO_SECONDS / other
+                    + self[3] / other
+                )
+            )
         return NotImplemented
 
     __div__ = __truediv__
@@ -378,34 +464,41 @@ class Duration(tuple):
         return self
 
     def __neg__(self):
-        return Duration(months=-self[0], days=-self[1], seconds=-self[2], subseconds=-self[3])
+        return Duration(months=-self[0], days=-self[1], seconds=-self[2],
+                        nanoseconds=-self[3])
 
     def __abs__(self):
-        return Duration(months=abs(self[0]), days=abs(self[1]), seconds=abs(self[2]), subseconds=abs(self[3]))
+        return Duration(months=abs(self[0]), days=abs(self[1]),
+                        seconds=abs(self[2]), nanoseconds=abs(self[3]))
 
     def __repr__(self):
-        return "Duration(months=%r, days=%r, seconds=%r, subseconds=%r)" % self
+        return "Duration(months=%r, days=%r, seconds=%r, nanoseconds=%r)" % self
 
     def __str__(self):
         return self.iso_format()
 
     def __copy__(self):
-        return self.__new(self.ticks, self.hour, self.minute, self.second, self.tzinfo)
+        return self.__new__(self.__class__, months=self[0], days=self[1],
+                            seconds=self[2], nanoseconds=self[3])
 
     def __deepcopy__(self, memodict={}):
         return self.__copy__()
 
     @classmethod
     def from_iso_format(cls, s):
-        m = DURATION_ISO_PATTERN.match(s)
-        if m:
+        match = DURATION_ISO_PATTERN.match(s)
+        if match:
+            ns = 0
+            if match.group(15):
+                ns = int(match.group(15)[1:10].ljust(9, "0"))
             return cls(
-                years=int(m.group(2) or 0),
-                months=int(m.group(4) or 0),
-                days=int(m.group(6) or 0),
-                hours=int(m.group(9) or 0),
-                minutes=int(m.group(11) or 0),
-                seconds=float(m.group(13) or 0.0),
+                years=int(match.group(2) or 0),
+                months=int(match.group(4) or 0),
+                days=int(match.group(6) or 0),
+                hours=int(match.group(9) or 0),
+                minutes=int(match.group(11) or 0),
+                seconds=int(match.group(14) or 0),
+                nanoseconds=ns
             )
         raise ValueError("Duration string must be in ISO format")
 
@@ -419,16 +512,26 @@ class Duration(tuple):
         :rtype: str
         """
         parts = []
-        hours, minutes, seconds = self.hours_minutes_seconds
+        hours, minutes, seconds, nanoseconds = \
+            self.hours_minutes_seconds_nanoseconds
         if hours:
             parts.append("%dH" % hours)
         if minutes:
             parts.append("%dM" % minutes)
-        if seconds:
-            if seconds == seconds // 1:
-                parts.append("%dS" % seconds)
+        if nanoseconds:
+            if seconds >= 0 and nanoseconds >= 0:
+                parts.append("%d.%sS" %
+                             (seconds,
+                              str(nanoseconds).rjust(9, "0").rstrip("0")))
+            elif seconds <= 0 and nanoseconds <= 0:
+                parts.append("-%d.%sS" %
+                             (abs(seconds),
+                              str(abs(nanoseconds)).rjust(9, "0").rstrip("0")))
+
             else:
-                parts.append("%rS" % seconds)
+                assert False and "Please report this issue"
+        elif seconds:
+            parts.append("%dS" % seconds)
         if parts:
             parts.insert(0, sep)
         years, months, days = self.years_months_days
@@ -469,7 +572,19 @@ class Duration(tuple):
         return self[2]
 
     @property
+    @deprecated("Will be removed in 5.0. Use `nanoseconds` instead.")
     def subseconds(self):
+        """
+
+        :return:
+        """
+        if self[3] < 0:
+            return Decimal(("-0.%09i" % -self[3])[:11])
+        else:
+            return Decimal(("0.%09i" % self[3])[:11])
+
+    @property
+    def nanoseconds(self):
         """
 
         :return:
@@ -486,16 +601,29 @@ class Duration(tuple):
         return years, months, self[1]
 
     @property
+    @deprecated("Will be removed in 5.0. "
+                "Use `hours_minutes_seconds_nanoseconds` instead.")
     def hours_minutes_seconds(self):
         """ A 3-tuple of (hours, minutes, seconds).
         """
         minutes, seconds = symmetric_divmod(self[2], 60)
         hours, minutes = symmetric_divmod(minutes, 60)
-        return hours, minutes, float(seconds) + self[3]
+        with _decimal_context(prec=11):
+            return hours, minutes, seconds + self.subseconds
+
+    @property
+    def hours_minutes_seconds_nanoseconds(self):
+        """ A 4-tuple of (hours, minutes, seconds, nanoseconds).
+        """
+        minutes, seconds = symmetric_divmod(self[2], 60)
+        hours, minutes = symmetric_divmod(minutes, 60)
+        return hours, minutes, seconds, self[3]
 
 
-Duration.min = Duration(months=MIN_INT64, days=MIN_INT64, seconds=MIN_INT64, subseconds=-0.999999999)
-Duration.max = Duration(months=MAX_INT64, days=MAX_INT64, seconds=MAX_INT64, subseconds=+0.999999999)
+Duration.min = Duration(months=MIN_INT64, days=MIN_INT64, seconds=MIN_INT64,
+                        nanoseconds=-999999999)
+Duration.max = Duration(months=MAX_INT64, days=MAX_INT64, seconds=MAX_INT64,
+                        nanoseconds=999999999)
 
 
 class Date(metaclass=DateType):
@@ -828,8 +956,8 @@ class Date(metaclass=DateType):
             d.__year, d.__month, d.__day = d0.__year, d0.__month, d0.__day
 
         if isinstance(other, Duration):
-            if other.seconds or other.subseconds:
-                raise ValueError("Cannot add a Duration with seconds or subseconds to a Date")
+            if other.seconds or other.nanoseconds:
+                raise ValueError("Cannot add a Duration with seconds or nanoseconds to a Date")
             if other.months == other.days == 0:
                 return self
             new_date = self.replace()
@@ -928,18 +1056,24 @@ class Time(metaclass=TimeType):
 
     # CONSTRUCTOR #
 
-    def __new__(cls, hour, minute, second, tzinfo=None):
-        hour, minute, second = cls.__normalize_second(hour, minute, second)
-        ticks = 3600 * hour + 60 * minute + second
-        return cls.__new(ticks, hour, minute, second, tzinfo)
+    def __new__(cls, hour=0, minute=0, second=0, nanosecond=0, tzinfo=None):
+        hour, minute, second, nanosecond = cls.__normalize_nanosecond(
+            hour, minute, second, nanosecond
+        )
+        ticks = (3600000000000 * hour
+                 + 60000000000 * minute
+                 + 1000000000 * second
+                 + nanosecond)
+        return cls.__new(ticks, hour, minute, second, nanosecond, tzinfo)
 
     @classmethod
-    def __new(cls, ticks, hour, minute, second, tzinfo):
+    def __new(cls, ticks, hour, minute, second, nanosecond, tzinfo):
         instance = object.__new__(cls)
-        instance.__ticks = float(ticks)
+        instance.__ticks = int(ticks)
         instance.__hour = int(hour)
         instance.__minute = int(minute)
-        instance.__second = float(second)
+        instance.__second = int(second)
+        instance.__nanosecond = int(nanosecond)
         instance.__tzinfo = tzinfo
         return instance
 
@@ -983,9 +1117,14 @@ class Time(metaclass=TimeType):
         if m:
             hour = int(m.group(1))
             minute = int(m.group(3) or 0)
-            second = float(m.group(5) or 0.0)
+            second = int(m.group(6) or 0)
+            nanosecond = m.group(7)
+            if nanosecond:
+                nanosecond = int(nanosecond[1:10].ljust(9, "0"))
+            else:
+                nanosecond = 0
             if m.group(8) is None:
-                return cls(hour, minute, second)
+                return cls(hour, minute, second, nanosecond)
             else:
                 offset_multiplier = 1 if m.group(9) == "+" else -1
                 offset_hour = int(m.group(10))
@@ -994,52 +1133,88 @@ class Time(metaclass=TimeType):
                 # so we can ignore this part
                 # offset_second = float(m.group(13) or 0.0)
                 offset = 60 * offset_hour + offset_minute
-                return cls(hour, minute, second, tzinfo=FixedOffset(offset_multiplier * offset))
+                return cls(hour, minute, second, nanosecond,
+                           tzinfo=FixedOffset(offset_multiplier * offset))
         raise ValueError("Time string is not in ISO format")
 
     @classmethod
     def from_ticks(cls, ticks, tz=None):
         if 0 <= ticks < 86400:
-            minute, second = nano_divmod(ticks, 60)
-            hour, minute = divmod(minute, 60)
-            return cls.__new(ticks, hour, minute, second, tz)
+            ticks = Decimal(ticks) * NANO_SECONDS
+            ticks = int(ticks.quantize(Decimal("1."), rounding=ROUND_HALF_EVEN))
+            assert 0 <= ticks < 86400000000000
+            return cls.from_ticks_ns(ticks, tz=tz)
         raise ValueError("Ticks out of range (0..86400)")
+
+    @classmethod
+    def from_ticks_ns(cls, ticks, tz=None):
+        # TODO 5.0: this will become from_ticks
+        if not isinstance(ticks, int):
+            raise TypeError("Ticks must be int")
+        if 0 <= ticks < 86400000000000:
+            second, nanosecond = divmod(ticks, NANO_SECONDS)
+            minute, second = divmod(second, 60)
+            hour, minute = divmod(minute, 60)
+            return cls.__new(ticks, hour, minute, second, nanosecond, tz)
+        raise ValueError("Ticks out of range (0..86400000000000)")
 
     @classmethod
     def from_native(cls, t):
         """ Convert from a native Python `datetime.time` value.
         """
-        second = (1000000 * t.second + t.microsecond) / 1000000
-        return Time(t.hour, t.minute, second, t.tzinfo)
+        nanosecond = t.microsecond * 1000
+        return Time(t.hour, t.minute, t.second, nanosecond, t.tzinfo)
 
     @classmethod
     def from_clock_time(cls, clock_time, epoch):
         """ Convert from a `.ClockTime` relative to a given epoch.
+
+        This method, in contrast to most others of this package, assumes days of
+         exactly 24 hours.
         """
         clock_time = ClockTime(*clock_time)
         ts = clock_time.seconds % 86400
-        nanoseconds = int(1000000000 * ts + clock_time.nanoseconds)
-        return Time.from_ticks(epoch.time().ticks + nanoseconds / 1000000000)
+        nanoseconds = int(NANO_SECONDS * ts + clock_time.nanoseconds)
+        ticks = (epoch.time().ticks_ns + nanoseconds) % (86400 * NANO_SECONDS)
+        return Time.from_ticks_ns(ticks)
 
     @classmethod
     def __normalize_hour(cls, hour):
+        hour = int(hour)
         if 0 <= hour < 24:
-            return int(hour)
+            return hour
         raise ValueError("Hour out of range (0..23)")
 
     @classmethod
     def __normalize_minute(cls, hour, minute):
         hour = cls.__normalize_hour(hour)
+        minute = int(minute)
         if 0 <= minute < 60:
-            return hour, int(minute)
+            return hour, minute
         raise ValueError("Minute out of range (0..59)")
 
     @classmethod
     def __normalize_second(cls, hour, minute, second):
         hour, minute = cls.__normalize_minute(hour, minute)
+        second = int(second)
         if 0 <= second < 60:
-            return hour, minute, float(second)
-        raise ValueError("Second out of range (0..<60)")
+            return hour, minute, second
+        raise ValueError("Second out of range (0..59)")
+
+    @classmethod
+    def __normalize_nanosecond(cls, hour, minute, second, nanosecond):
+        # TODO 5.0: remove -----------------------------------------------------
+        seconds, extra_ns = divmod(second, 1)
+        if extra_ns:
+            deprecation_warn("Float support second will be removed in 5.0. "
+                             "Use `nanosecond` instead.")
+        # ----------------------------------------------------------------------
+        hour, minute, second = cls.__normalize_second(hour, minute, second)
+        nanosecond = int(nanosecond
+                         + round_half_to_even(extra_ns * NANO_SECONDS))
+        if 0 <= nanosecond < NANO_SECONDS:
+            return hour, minute, second, nanosecond + extra_ns
+        raise ValueError("Nanosecond out of range (0..%s)" % (NANO_SECONDS - 1))
 
     # CLASS ATTRIBUTES #
 
@@ -1059,12 +1234,22 @@ class Time(metaclass=TimeType):
 
     __second = 0
 
+    __nanosecond = 0
+
     __tzinfo = None
 
     @property
     def ticks(self):
         """ Return the total number of seconds since midnight.
         """
+        with _decimal_context(prec=15):
+            return self.__ticks / NANO_SECONDS
+
+    @property
+    def ticks_ns(self):
+        """ Return the total number of seconds since midnight.
+        """
+        # TODO 5.0: this will replace self.ticks
         return self.__ticks
 
     @property
@@ -1077,11 +1262,23 @@ class Time(metaclass=TimeType):
 
     @property
     def second(self):
-        return self.__second
+        # TODO 5.0: return plain self.__second
+        with _decimal_context(prec=11):
+            return self.__second + Decimal(("0.%09i" % self.__nanosecond)[:11])
 
     @property
+    def nanosecond(self):
+        return self.__nanosecond
+
+    @property
+    @deprecated("hour_minute_second will be removed in 5.0. "
+                "Use `hour_minute_second_nanoseconds` instead.")
     def hour_minute_second(self):
-        return self.__hour, self.__minute, self.__second
+        return self.__hour, self.__minute, self.second
+
+    @property
+    def hour_minute_second_nanoseconds(self):
+        return self.__hour, self.__minute, self.__second, self.__nanosecond
 
     @property
     def tzinfo(self):
@@ -1090,14 +1287,17 @@ class Time(metaclass=TimeType):
     # OPERATIONS #
 
     def __hash__(self):
-        return hash(self.ticks) ^ hash(self.tzinfo)
+        return hash(self.__ticks) ^ hash(self.tzinfo)
 
     def __eq__(self, other):
         if isinstance(other, Time):
-            return self.ticks == other.ticks and self.tzinfo == other.tzinfo
+            return self.__ticks == other.__ticks and self.tzinfo == other.tzinfo
         if isinstance(other, time):
-            other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks == other_ticks and self.tzinfo == other.tzinfo
+            other_ticks = (3600000000000 * other.hour
+                           + 60000000000 * other.minute
+                           + NANO_SECONDS * other.second
+                           + 1000 * other.microsecond)
+            return self.ticks_ns == other_ticks and self.tzinfo == other.tzinfo
         return False
 
     def __ne__(self, other):
@@ -1105,48 +1305,51 @@ class Time(metaclass=TimeType):
 
     def __lt__(self, other):
         if isinstance(other, Time):
-            return self.ticks < other.ticks
+            return (self.tzinfo == other.tzinfo
+                    and self.ticks_ns < other.ticks_ns)
         if isinstance(other, time):
+            if self.tzinfo != other.tzinfo:
+                return False
             other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks < other_ticks
-        raise TypeError("'<' not supported between instances of 'Time' and %r" % type(other).__name__)
+            return self.ticks_ns < other_ticks
+        return NotImplemented
 
     def __le__(self, other):
         if isinstance(other, Time):
-            return self.ticks <= other.ticks
+            return (self.tzinfo == other.tzinfo
+                    and self.ticks_ns <= other.ticks_ns)
         if isinstance(other, time):
+            if self.tzinfo != other.tzinfo:
+                return False
             other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks <= other_ticks
-        raise TypeError("'<=' not supported between instances of 'Time' and %r" % type(other).__name__)
+            return self.ticks_ns <= other_ticks
+        return NotImplemented
 
     def __ge__(self, other):
         if isinstance(other, Time):
-            return self.ticks >= other.ticks
+            return (self.tzinfo == other.tzinfo
+                    and self.ticks_ns >= other.ticks_ns)
         if isinstance(other, time):
+            if self.tzinfo != other.tzinfo:
+                return False
             other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks >= other_ticks
-        raise TypeError("'>=' not supported between instances of 'Time' and %r" % type(other).__name__)
+            return self.ticks_ns >= other_ticks
+        return NotImplemented
 
     def __gt__(self, other):
         if isinstance(other, Time):
-            return self.ticks >= other.ticks
+            return (self.tzinfo == other.tzinfo
+                    and self.ticks_ns >= other.ticks_ns)
         if isinstance(other, time):
+            if self.tzinfo != other.tzinfo:
+                return False
             other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks >= other_ticks
-        raise TypeError("'>' not supported between instances of 'Time' and %r" % type(other).__name__)
-
-    def __add__(self, other):
-        if isinstance(other, Duration):
-            return NotImplemented
-        if isinstance(other, timedelta):
-            return NotImplemented
-        return NotImplemented
-
-    def __sub__(self, other):
+            return self.ticks_ns >= other_ticks
         return NotImplemented
 
     def __copy__(self):
-        return self.__new(self.__ticks, self.__hour, self.__minute, self.__second, self.__tzinfo)
+        return self.__new(self.__ticks, self.__hour, self.__minute,
+                          self.__second, self.__nanosecond, self.__tzinfo)
 
     def __deepcopy__(self, *args, **kwargs):
         return self.__copy__()
@@ -1157,10 +1360,11 @@ class Time(metaclass=TimeType):
         """ Return a :class:`.Time` with one or more components replaced
         with new values.
         """
-        return Time(kwargs.get("hour", self.__hour),
-                    kwargs.get("minute", self.__minute),
-                    kwargs.get("second", self.__second),
-                    kwargs.get("tzinfo", self.__tzinfo))
+        return Time(hour=kwargs.get("hour", self.__hour),
+                    minute=kwargs.get("minute", self.__minute),
+                    second=kwargs.get("second", self.__second),
+                    nanosecond=kwargs.get("nanosecond", self.__nanosecond),
+                    tzinfo=kwargs.get("tzinfo", self.__tzinfo))
 
     def utc_offset(self):
         if self.tzinfo is None:
@@ -1197,21 +1401,19 @@ class Time(metaclass=TimeType):
         return self.tzinfo.tzname(self)
 
     def to_clock_time(self):
-        seconds, nanoseconds = nano_divmod(self.ticks, 1)  # int, float
-        nanoseconds_int = int(Decimal(str(nanoseconds)) * NANO_SECONDS)  # Convert fractions to an integer without losing precision
-        return ClockTime(seconds, nanoseconds_int)
+        seconds, nanoseconds = divmod(self.ticks_ns, NANO_SECONDS)
+        return ClockTime(seconds, nanoseconds)
 
     def to_native(self):
         """ Convert to a native Python `datetime.time` value.
         """
-        h, m, s = self.hour_minute_second
-        s, ns = nano_divmod(s, 1)
-        ms = int(nano_mul(ns, 1000000))
+        h, m, s, ns = self.hour_minute_second_nanoseconds
+        µs = round_half_to_even(ns / 1000)
         tz = self.tzinfo
-        return time(h, m, s, ms, tz)
+        return time(h, m, s, µs, tz)
 
     def iso_format(self):
-        s = "%02d:%02d:%012.9f" % self.hour_minute_second
+        s = "%02d:%02d:%02d.%09d" % self.hour_minute_second_nanoseconds
         if self.tzinfo is not None:
             offset = self.tzinfo.utcoffset(self)
             s += "%+03d:%02d" % divmod(offset.total_seconds() // 60, 60)
@@ -1219,9 +1421,11 @@ class Time(metaclass=TimeType):
 
     def __repr__(self):
         if self.tzinfo is None:
-            return "neo4j.time.Time(%r, %r, %r)" % self.hour_minute_second
+            return "neo4j.time.Time(%r, %r, %r, %r)" % \
+                   self.hour_minute_second_nanoseconds
         else:
-            return "neo4j.time.Time(%r, %r, %r, tzinfo=%r)" % (self.hour_minute_second + (self.tzinfo,))
+            return "neo4j.time.Time(%r, %r, %r, %r, tzinfo=%r)" % \
+                   (self.hour_minute_second_nanoseconds + (self.tzinfo,))
 
     def __str__(self):
         return self.iso_format()
@@ -1230,11 +1434,11 @@ class Time(metaclass=TimeType):
         raise NotImplementedError()
 
 
-Time.min = Time(0, 0, 0)
-Time.max = Time(23, 59, 59.999999999)
+Time.min = Time(hour=0, minute=0, second=0, nanosecond=0)
+Time.max = Time(hour=23, minute=59, second=59, nanosecond=999999999)
 
 Midnight = Time.min
-Midday = Time(12, 0, 0)
+Midday = Time(hour=12)
 
 
 @total_ordering
@@ -1249,8 +1453,8 @@ class DateTime(metaclass=DateTimeType):
     sub-second values to be passed, with up to nine decimal places of
     precision held by the object within the `second` attribute.
 
-        >>> dt = DateTime(2018, 4, 30, 12, 34, 56.789123456); dt
-        neo4j.time.DateTime(2018, 4, 30, 12, 34, 56.789123456)
+        >>> dt = DateTime(2018, 4, 30, 12, 34, 56, 789123456); dt
+        neo4j.time.DateTime(2018, 4, 30, 12, 34, 56, 789123456)
         >>> dt.second
         56.789123456
 
@@ -1258,8 +1462,10 @@ class DateTime(metaclass=DateTimeType):
 
     # CONSTRUCTOR #
 
-    def __new__(cls, year, month, day, hour=0, minute=0, second=0.0, tzinfo=None):
-        return cls.combine(Date(year, month, day), Time(hour, minute, second, tzinfo))
+    def __new__(cls, year, month, day, hour=0, minute=0, second=0, nanosecond=0,
+                tzinfo=None):
+        return cls.combine(Date(year, month, day),
+                           Time(hour, minute, second, nanosecond, tzinfo))
 
     def __getattr__(self, name):
         """ Map standard library attribute names to local attribute names,
@@ -1360,10 +1566,12 @@ class DateTime(metaclass=DateTimeType):
         except (TypeError, ValueError):
             raise ValueError("Clock time must be a 2-tuple of (s, ns)")
         else:
-            ordinal, ticks = divmod(seconds, 86400)
+            ordinal, seconds = divmod(seconds, 86400)
+            ticks = epoch.time().ticks_ns + seconds * NANO_SECONDS + nanoseconds
+            days, ticks = divmod(ticks, 86400 * NANO_SECONDS)
+            ordinal += days
             date_ = Date.from_ordinal(ordinal + epoch.date().to_ordinal())
-            nanoseconds = int(1000000000 * ticks + nanoseconds)
-            time_ = Time.from_ticks(epoch.time().ticks + (nanoseconds / 1000000000))
+            time_ = Time.from_ticks_ns(ticks)
             return cls.combine(date_, time_)
 
     # CLASS ATTRIBUTES #
@@ -1413,12 +1621,20 @@ class DateTime(metaclass=DateTimeType):
         return self.__time.second
 
     @property
+    def nanosecond(self):
+        return self.__time.nanosecond
+
+    @property
     def tzinfo(self):
         return self.__time.tzinfo
 
     @property
     def hour_minute_second(self):
         return self.__time.hour_minute_second
+
+    @property
+    def hour_minute_second_nanoseconds(self):
+        return self.__time.hour_minute_second_nanoseconds
 
     # OPERATIONS #
 
@@ -1470,7 +1686,9 @@ class DateTime(metaclass=DateTimeType):
             t = self.to_clock_time() + ClockTime(86400 * other.days + other.seconds, other.microseconds * 1000)
             days, seconds = symmetric_divmod(t.seconds, 86400)
             date_ = Date.from_ordinal(days + 1)
-            time_ = Time.from_ticks(seconds + (t.nanoseconds / 1000000000))
+            time_ = Time.from_ticks_ns(round_half_to_even(
+                seconds * NANO_SECONDS + t.nanoseconds
+            ))
             return self.combine(date_, time_)
         return NotImplemented
 
@@ -1560,17 +1778,15 @@ class DateTime(metaclass=DateTimeType):
         for month in range(1, self.month):
             total_seconds += 86400 * Date.days_in_month(self.year, month)
         total_seconds += 86400 * (self.day - 1)
-        seconds, nanoseconds = nano_divmod(self.__time.ticks, 1)  # int, float
-        nanoseconds_int = int(Decimal(str(nanoseconds)) * NANO_SECONDS)  # Convert fractions to an integer without losing precision
-        return ClockTime(total_seconds + seconds, nanoseconds_int)
+        seconds, nanoseconds = divmod(self.__time.ticks_ns, NANO_SECONDS)
+        return ClockTime(total_seconds + seconds, nanoseconds)
 
     def to_native(self):
         """ Convert to a native Python `datetime.datetime` value.
         """
         y, mo, d = self.year_month_day
-        h, m, s = self.hour_minute_second
-        s, ns = nano_divmod(s, 1)
-        ms = int(nano_mul(ns, 1000000))
+        h, m, s, ns = self.hour_minute_second_nanoseconds
+        ms = int(ns / 1000)
         tz = self.tzinfo
         return datetime(y, mo, d, h, m, s, ms, tz)
 
@@ -1588,11 +1804,14 @@ class DateTime(metaclass=DateTimeType):
 
     def __repr__(self):
         if self.tzinfo is None:
-            fields = self.year_month_day + self.hour_minute_second
-            return "neo4j.time.DateTime(%r, %r, %r, %r, %r, %r)" % fields
+            fields = (*self.year_month_day,
+                      *self.hour_minute_second_nanoseconds)
+            return "neo4j.time.DateTime(%r, %r, %r, %r, %r, %r, %r)" % fields
         else:
-            fields = self.year_month_day + self.hour_minute_second + (self.tzinfo,)
-            return "neo4j.time.DateTime(%r, %r, %r, %r, %r, %r, tzinfo=%r)" % fields
+            fields = (*self.year_month_day,
+                      *self.hour_minute_second_nanoseconds, self.tzinfo)
+            return ("neo4j.time.DateTime(%r, %r, %r, %r, %r, %r, %r, tzinfo=%r)"
+                    % fields)
 
     def __str__(self):
         return self.iso_format()

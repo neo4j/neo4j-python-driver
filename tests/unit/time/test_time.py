@@ -20,9 +20,11 @@
 
 
 from datetime import time
-from unittest import TestCase
+from decimal import Decimal
 
+import pytest
 from pytz import (
+    build_tzinfo,
     timezone,
     FixedOffset,
 )
@@ -38,130 +40,147 @@ timezone_us_eastern = timezone("US/Eastern")
 timezone_utc = timezone("UTC")
 
 
-class TimeTestCase(TestCase):
+def seconds_options(seconds, nanoseconds):
+    yield seconds, nanoseconds
+    yield seconds + nanoseconds / 1000000000,
+
+
+class TimeTestCase:
 
     def test_bad_attribute(self):
         t = Time(12, 34, 56.789)
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             _ = t.x
 
     def test_simple_time(self):
         t = Time(12, 34, 56.789)
-        self.assertEqual(t.hour_minute_second, (12, 34, 56.789))
-        self.assertEqual(t.ticks, 45296.789)
-        self.assertEqual(t.hour, 12)
-        self.assertEqual(t.minute, 34)
-        self.assertEqual(t.second, 56.789)
+        assert t.hour_minute_second == (12, 34, 56.789)
+        assert t.hour_minute_second_nanoseconds == (12, 34, 56, 789000000)
+        assert t.ticks == 45296.789
+        assert t.hour == 12
+        assert t.minute == 34
+        assert t.second == 56.789
 
     def test_midnight(self):
         t = Time(0, 0, 0)
-        self.assertEqual(t.hour_minute_second, (0, 0, 0))
-        self.assertEqual(t.ticks, 0)
-        self.assertEqual(t.hour, 0)
-        self.assertEqual(t.minute, 0)
-        self.assertEqual(t.second, 0)
+        assert t.hour_minute_second == (0, 0, 0)
+        assert t.ticks == 0
+        assert t.hour == 0
+        assert t.minute == 0
+        assert t.second == 0
 
     def test_nanosecond_precision(self):
         t = Time(12, 34, 56.789123456)
-        self.assertEqual(t.hour_minute_second, (12, 34, 56.789123456))
-        self.assertEqual(t.ticks, 45296.789123456)
-        self.assertEqual(t.hour, 12)
-        self.assertEqual(t.minute, 34)
-        self.assertEqual(t.second, 56.789123456)
+        assert t.hour_minute_second == (12, 34, 56.789123456)
+        assert t.ticks == 45296.789123456
+        assert t.hour == 12
+        assert t.minute == 34
+        assert t.second == 56.789123456
 
     def test_str(self):
-        t = Time(12, 34, 56.789123456)
-        self.assertEqual(str(t), "12:34:56.789123456")
+        t = Time(12, 34, 56, 789123456)
+        assert str(t) == "12:34:56.789123456"
 
     def test_now_without_tz(self):
         t = Time.now()
-        self.assertIsInstance(t, Time)
+        assert isinstance(t, Time)
 
     def test_now_with_tz(self):
         t = Time.now(tz=timezone_us_eastern)
-        self.assertIsInstance(t, Time)
-        self.assertEqual(t.tzinfo, timezone_us_eastern)
+        assert isinstance(t, Time)
+        assert t.tzinfo == timezone_us_eastern
 
     def test_utc_now(self):
         t = Time.utc_now()
-        self.assertIsInstance(t, Time)
+        assert isinstance(t, Time)
 
     def test_from_native(self):
         native = time(12, 34, 56, 789123)
         t = Time.from_native(native)
-        self.assertEqual(t.hour, native.hour)
-        self.assertEqual(t.minute, native.minute)
-        self.assertEqual(t.second, nano_add(native.second, nano_div(native.microsecond, 1000000)))
+        assert t.hour == native.hour
+        assert t.minute == native.minute
+        assert t.second == nano_add(native.second, nano_div(native.microsecond, 1000000))
 
     def test_to_native(self):
         t = Time(12, 34, 56.789123456)
         native = t.to_native()
-        self.assertEqual(t.hour, native.hour)
-        self.assertEqual(t.minute, native.minute)
-        self.assertEqual(56.789123, nano_add(native.second, nano_div(native.microsecond, 1000000)))
+        assert t.hour == native.hour
+        assert t.minute == native.minute
+        assert 56.789123 == nano_add(native.second, nano_div(native.microsecond, 1000000))
 
     def test_iso_format(self):
-        t = Time(12, 34, 56.789123456)
-        self.assertEqual("12:34:56.789123456", t.iso_format())
+        t = Time(12, 34, 56, 789123456)
+        assert "12:34:56.789123456" == t.iso_format()
 
     def test_iso_format_with_trailing_zeroes(self):
-        t = Time(12, 34, 56.789)
-        self.assertEqual("12:34:56.789000000", t.iso_format())
+        t = Time(12, 34, 56, 789)
+        assert "12:34:56.789000000" == t.iso_format()
 
     def test_from_iso_format_hour_only(self):
         expected = Time(12, 0, 0)
         actual = Time.from_iso_format("12")
-        self.assertEqual(expected, actual)
+        assert expected == actual
 
     def test_from_iso_format_hour_and_minute(self):
         expected = Time(12, 34, 0)
         actual = Time.from_iso_format("12:34")
-        self.assertEqual(expected, actual)
+        assert expected == actual
 
     def test_from_iso_format_hour_minute_second(self):
         expected = Time(12, 34, 56)
         actual = Time.from_iso_format("12:34:56")
-        self.assertEqual(expected, actual)
+        assert expected == actual
 
     def test_from_iso_format_hour_minute_second_milliseconds(self):
-        expected = Time(12, 34, 56.123)
+        expected = Time(12, 34, 56, 123)
         actual = Time.from_iso_format("12:34:56.123")
-        self.assertEqual(expected, actual)
+        assert expected == actual
 
     def test_from_iso_format_hour_minute_second_microseconds(self):
-        expected = Time(12, 34, 56.123456)
+        expected = Time(12, 34, 56, 12345600)
         actual = Time.from_iso_format("12:34:56.123456")
-        self.assertEqual(expected, actual)
+        assert expected == actual
 
     def test_from_iso_format_hour_minute_second_nanoseconds(self):
-        expected = Time(12, 34, 56.123456789)
+        expected = Time(12, 34, 56, 123456789)
         actual = Time.from_iso_format("12:34:56.123456789")
-        self.assertEqual(expected, actual)
+        assert expected == actual
 
     def test_from_iso_format_with_positive_tz(self):
-        expected = Time(12, 34, 56.123456789, tzinfo=FixedOffset(754))
+        expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(754))
         actual = Time.from_iso_format("12:34:56.123456789+12:34")
-        self.assertEqual(expected, actual)
+        assert expected == actual
 
     def test_from_iso_format_with_negative_tz(self):
-        expected = Time(12, 34, 56.123456789, tzinfo=FixedOffset(-754))
+        expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(-754))
         actual = Time.from_iso_format("12:34:56.123456789-12:34")
-        self.assertEqual(expected, actual)
+        assert expected == actual
 
     def test_from_iso_format_with_positive_long_tz(self):
-        expected = Time(12, 34, 56.123456789, tzinfo=FixedOffset(754))
+        expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(754))
         actual = Time.from_iso_format("12:34:56.123456789+12:34:56.123456")
-        self.assertEqual(expected, actual)
+        assert expected == actual
 
     def test_from_iso_format_with_negative_long_tz(self):
-        expected = Time(12, 34, 56.123456789, tzinfo=FixedOffset(-754))
+        expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(-754))
         actual = Time.from_iso_format("12:34:56.123456789-12:34:56.123456")
-        self.assertEqual(expected, actual)
+        assert expected == actual
 
+    def test_utc_offset_fixed(self):
+        expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(-754))
+        actual = -754 * 60
+        assert expected.utc_offset().total_seconds() == actual
+
+    def test_utc_offset_variable(self):
+        expected = Time(12, 34, 56, 123456789,
+                        tzinfo=build_tzinfo()
+                        )
+        actual = -754 * 60
+        assert expected.utc_offset().total_seconds() == actual
 
 def test_iso_format_with_time_zone_case_1():
     # python -m pytest tests/unit/time/test_time.py -s -v -k test_iso_format_with_time_zone_case_1
-    expected = Time(7, 54, 2.129790999, tzinfo=timezone_utc)
+    expected = Time(7, 54, 2, 129790999, tzinfo=timezone_utc)
     assert expected.iso_format() == "07:54:02.129790999+00:00"
     assert expected.tzinfo == FixedOffset(0)
     actual = Time.from_iso_format("07:54:02.129790999+00:00")
@@ -177,7 +196,7 @@ def test_iso_format_with_time_zone_case_2():
 
 def test_to_native_case_1():
     # python -m pytest tests/unit/time/test_time.py -s -v -k test_to_native_case_1
-    t = Time(12, 34, 56.789123456)
+    t = Time(12, 34, 56, 789123456)
     native = t.to_native()
     assert native.hour == t.hour
     assert native.minute == t.minute
@@ -188,7 +207,7 @@ def test_to_native_case_1():
 
 def test_to_native_case_2():
     # python -m pytest tests/unit/time/test_time.py -s -v -k test_to_native_case_2
-    t = Time(12, 34, 56.789123456, tzinfo=timezone_utc)
+    t = Time(12, 34, 56, 789123456, tzinfo=timezone_utc)
     native = t.to_native()
     assert native.hour == t.hour
     assert native.minute == t.minute
@@ -203,7 +222,7 @@ def test_from_native_case_1():
     t = Time.from_native(native)
     assert t.hour == native.hour
     assert t.minute == native.minute
-    assert t.second == nano_add(native.second, nano_div(native.microsecond, 1000000))
+    assert t.second == Decimal(native.microsecond) / 1000000 + native.second
     assert t.tzinfo is None
 
 
@@ -213,5 +232,5 @@ def test_from_native_case_2():
     t = Time.from_native(native)
     assert t.hour == native.hour
     assert t.minute == native.minute
-    assert t.second == nano_add(native.second, nano_div(native.microsecond, 1000000))
+    assert t.second == Decimal(native.microsecond) / 1000000 + native.second
     assert t.tzinfo == FixedOffset(0)

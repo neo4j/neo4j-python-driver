@@ -41,44 +41,6 @@ def nano_add(x, y):
     return (int(1000000000 * x) + int(1000000000 * y)) / 1000000000
 
 
-def nano_sub(x, y):
-    """
-
-        >>> 0.7 - 0.2
-        0.49999999999999994
-        >>> -0.7 - 0.2
-        -0.8999999999999999
-        >>> nano_sub(0.7, 0.2)
-        0.5
-        >>> nano_sub(-0.7, 0.2)
-        -0.9
-
-    :param x:
-    :param y:
-    :return:
-    """
-    return (int(1000000000 * x) - int(1000000000 * y)) / 1000000000
-
-
-def nano_mul(x, y):
-    """
-
-        >>> 0.7 * 0.2
-        0.13999999999999999
-        >>> -0.7 * 0.2
-        -0.13999999999999999
-        >>> nano_mul(0.7, 0.2)
-        0.14
-        >>> nano_mul(-0.7, 0.2)
-        -0.14
-
-    :param x:
-    :param y:
-    :return:
-    """
-    return int(1000000000 * x) * int(1000000000 * y) / 1000000000000000000
-
-
 def nano_div(x, y):
     """
 
@@ -98,29 +60,6 @@ def nano_div(x, y):
     return float(1000000000 * x) / int(1000000000 * y)
 
 
-def nano_mod(x, y):
-    """
-
-        >>> 0.7 % 0.2
-        0.09999999999999992
-        >>> -0.7 % 0.2
-        0.10000000000000009
-        >>> nano_mod(0.7, 0.2)
-        0.1
-        >>> nano_mod(-0.7, 0.2)
-        0.1
-
-    :param x:
-    :param y:
-    :return:
-    """
-    number = type(x)
-    nx = int(1000000000 * x)
-    ny = int(1000000000 * y)
-    q, r = divmod(nx, ny)
-    return number(r / 1000000000)
-
-
 def nano_divmod(x, y):
     """
 
@@ -138,19 +77,6 @@ def nano_divmod(x, y):
     ny = int(1000000000 * y)
     q, r = divmod(nx, ny)
     return int(q), number(r / 1000000000)
-
-
-def signum(n):
-    try:
-        if isnan(n):
-            return float("nan")
-        if n > 0 or n == float("inf"):
-            return 1
-        if n < 0 or n == float("-inf"):
-            return -1
-        return 0
-    except TypeError:
-        raise TypeError(n)
 
 
 def symmetric_divmod(dividend, divisor):

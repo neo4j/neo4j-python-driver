@@ -314,6 +314,20 @@ def ResultNext(backend, data):
     backend.send_response("Record", totestkit.record(record))
 
 
+def ResultSingle(backend, data):
+    result = backend.results[data["resultId"]]
+    backend.send_response("Record", totestkit.record(result.single()))
+
+
+def ResultPeek(backend, data):
+    result = backend.results[data["resultId"]]
+    record = result.peek()
+    if record is not None:
+        backend.send_response("Record", totestkit.record(record))
+    else:
+        backend.send_response("NullRecord", {})
+
+
 def ResultConsume(backend, data):
     result = backend.results[data["resultId"]]
     summary = result.consume()
