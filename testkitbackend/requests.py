@@ -61,7 +61,7 @@ def NewDriver(backend, data):
             realm=auth_token.get("realm", None)
         )
     elif scheme == "kerberos":
-        auth = neo4j.kerberos_auth(auth_token["ticket"])
+        auth = neo4j.kerberos_auth(auth_token["credentials"])
     elif scheme == "bearer":
         auth = neo4j.bearer_auth(auth_token["credentials"])
     else:

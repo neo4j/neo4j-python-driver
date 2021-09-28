@@ -33,9 +33,9 @@ def test_should_generate_kerberos_auth_token_correctly():
     auth = kerberos_auth("I am a base64 service ticket")
     assert auth.scheme == "kerberos"
     assert auth.principal == ""
-    assert auth.ticket == "I am a base64 service ticket"
-    assert not hasattr(auth,  "credentials")
-    assert not hasattr(auth,  "realm")
+    assert auth.credentials == "I am a base64 service ticket"
+    assert not hasattr(auth, "ticket")
+    assert not hasattr(auth, "realm")
     assert not hasattr(auth, "parameters")
 
 
