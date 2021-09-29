@@ -342,7 +342,7 @@ class Bolt(abc.ABC):
             from neo4j.io._bolt4 import Bolt4x4
             bolt_cls = Bolt4x4
         else:
-            log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
+            log.debug("[#%04X]  S: <CLOSE>", s.getsockname()[1])
             _close_socket(s)
 
             supported_versions = Bolt.protocol_handlers().keys()
@@ -548,7 +548,7 @@ class Bolt(abc.ABC):
         direct_driver = isinstance(self.pool, BoltPool)
 
         if error:
-            log.error(str(error))
+            log.debug("[#%04X] %s", self.socket.getsockname()[1], error)
         log.error(message)
         # We were attempting to receive data but the connection
         # has unexpectedly terminated. So, we need to close the
@@ -711,7 +711,9 @@ class IOPool:
         """
         with self.lock:
             for connection in connections:
-                if not connection.is_reset:
+                if not (connection.is_reset
+                        or connection.defunct()
+                        or connection.closed()):
                     try:
                         connection.reset()
                     except (Neo4jError, DriverError, BoltError) as e:
