@@ -19,6 +19,9 @@
 # limitations under the License.
 
 
+from functools import wraps
+
+
 # Can be automatically overridden in builds
 package = "neo4j"
 version = "4.4.dev0"
@@ -50,12 +53,10 @@ def deprecated(message):
 
     """
     def f__(f):
+        @wraps(f)
         def f_(*args, **kwargs):
             deprecation_warn(message)
             return f(*args, **kwargs)
-        f_.__name__ = f.__name__
-        f_.__doc__ = f.__doc__
-        f_.__dict__.update(f.__dict__)
         return f_
     return f__
 
@@ -77,12 +78,10 @@ def experimental(message):
 
     """
     def f__(f):
+        @wraps(f)
         def f_(*args, **kwargs):
             from warnings import warn
             warn(message, category=ExperimentalWarning, stacklevel=2)
             return f(*args, **kwargs)
-        f_.__name__ = f.__name__
-        f_.__doc__ = f.__doc__
-        f_.__dict__.update(f.__dict__)
         return f_
     return f__

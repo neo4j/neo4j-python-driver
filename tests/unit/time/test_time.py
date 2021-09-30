@@ -45,7 +45,7 @@ def seconds_options(seconds, nanoseconds):
     yield seconds + nanoseconds / 1000000000,
 
 
-class TimeTestCase:
+class TestTimeTestCase:
 
     def test_bad_attribute(self):
         t = Time(12, 34, 56.789)
@@ -55,7 +55,7 @@ class TimeTestCase:
     def test_simple_time(self):
         t = Time(12, 34, 56.789)
         assert t.hour_minute_second == (12, 34, 56.789)
-        assert t.hour_minute_second_nanoseconds == (12, 34, 56, 789000000)
+        assert t.hour_minute_second_nanosecond == (12, 34, 56, 789000000)
         assert t.ticks == 45296.789
         assert t.hour == 12
         assert t.minute == 34
@@ -141,7 +141,7 @@ class TimeTestCase:
         actual = Time.from_iso_format("12:34:56.123456")
         assert expected == actual
 
-    def test_from_iso_format_hour_minute_second_nanoseconds(self):
+    def test_from_iso_format_hour_minute_second_nanosecond(self):
         expected = Time(12, 34, 56, 123456789)
         actual = Time.from_iso_format("12:34:56.123456789")
         assert expected == actual
@@ -164,6 +164,11 @@ class TimeTestCase:
     def test_from_iso_format_with_negative_long_tz(self):
         expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(-754))
         actual = Time.from_iso_format("12:34:56.123456789-12:34:56.123456")
+        assert expected == actual
+
+    def test_from_iso_format_with_hour_only_tz(self):
+        expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(120))
+        actual = Time.from_iso_format("12:34:56.123456789+02")
         assert expected == actual
 
     def test_utc_offset_fixed(self):
