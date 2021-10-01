@@ -342,7 +342,7 @@ class Duration(tuple):
     A :class:`.Duration` stores four primary instance attributes internally:
     `months`, `days`, `seconds` and `nanoseconds`. These are maintained as
     individual values and are immutable. Each of these four attributes can carry
-    its own sign, with the exception of `nanoseconds`, always has the smae sign
+    its own sign, with the exception of `nanoseconds`, always has the same sign
     as `seconds`. The constructor will create this state, should the duration be
     initialized with conflicting `seconds` and `nanoseconds` signs.
     This structure allows the modelling of durations such as
