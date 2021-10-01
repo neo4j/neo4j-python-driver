@@ -61,7 +61,7 @@ DEFAULT_DATABASE = None  # Must be a non string hashable value
 
 # TODO: This class is not tested
 class Auth:
-    """ Container for auth details.
+    """Container for auth details.
 
     :param scheme: specifies the type of authentication, examples: "basic",
                    "kerberos"
@@ -96,14 +96,14 @@ AuthToken = Auth
 
 
 def basic_auth(user, password, realm=None):
-    """ Generate a basic auth token for a given user and password.
+    """Generate a basic auth token for a given user and password.
 
     This will set the scheme to "basic" for the auth token.
 
     :param user: user name, this will set the
-    :type user: stro
+    :type user: str
     :param password: current password, this will set the credentials
-    :type password: stro
+    :type password: str
     :param realm: specifies the authentication provider
     :type realm: str or None
 
@@ -114,7 +114,7 @@ def basic_auth(user, password, realm=None):
 
 
 def kerberos_auth(base64_encoded_ticket):
-    """ Generate a kerberos auth token with the base64 encoded ticket.
+    """Generate a kerberos auth token with the base64 encoded ticket.
 
     This will set the scheme to "kerberos" for the auth token.
 
@@ -129,7 +129,7 @@ def kerberos_auth(base64_encoded_ticket):
 
 
 def bearer_auth(base64_encoded_token):
-    """ Generate an auth token for Single-Sign-On providers.
+    """Generate an auth token for Single-Sign-On providers.
 
     This will set the scheme to "bearer" for the auth token.
 
@@ -144,7 +144,7 @@ def bearer_auth(base64_encoded_token):
 
 
 def custom_auth(principal, credentials, realm, scheme, **parameters):
-    """ Generate a custom auth token.
+    """Generate a custom auth token.
 
     :param principal: specifies who is being authenticated
     :type principal: str or None
