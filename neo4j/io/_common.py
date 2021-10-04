@@ -182,7 +182,6 @@ class ConnectionErrorHandler:
             setattr(self.__connection, name, value)
 
 
-
 class Response:
     """ Subscriber object for a full response (zero or
     more detail messages followed by one summary message).

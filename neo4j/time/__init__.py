@@ -109,6 +109,8 @@ DURATION_ISO_PATTERN = re_compile(
 )
 
 NANO_SECONDS = 1000000000
+AVERAGE_SECONDS_IN_MONTH = 2629746
+AVERAGE_SECONDS_IN_DAY = 86400
 
 
 def _is_leap_year(year):
@@ -342,22 +344,20 @@ class Duration(tuple):
     A :class:`.Duration` stores four primary instance attributes internally:
     `months`, `days`, `seconds` and `nanoseconds`. These are maintained as
     individual values and are immutable. Each of these four attributes can carry
-    its own sign, with the exception of `nanoseconds`, always has the same sign
-    as `seconds`. The constructor will create this state, should the duration be
-    initialized with conflicting `seconds` and `nanoseconds` signs.
+    its own siggn, with the exception of `nanoseconds`, which always has the same
+    sign as `seconds`. The constructor will establish this state, should the
+    duration be initialized with conflicting `seconds` and `nanoseconds` signs.
     This structure allows the modelling of durations such as
     `3 months minus 2 days`.
 
-    The primary instance attributes and their permitted ranges are listed below.
-
-    ===============  ========================================================
-    Attribute        Value
-    ---------------  --------------------------------------------------------
-    ``months``       Between -(2\ :sup:`63`) and (2\ :sup:`63` - 1) inclusive
-    ``days``         Between -(2\ :sup:`63`) and (2\ :sup:`63` - 1) inclusive
-    ``seconds``      Between -(2\ :sup:`63`) and (2\ :sup:`63` - 1) inclusive
-    ``nanoseconds``  Between -0.999,999,999 and +0.999,999,999 inclusive
-    ===============  ========================================================
+    To determine if a :class:`Duration` `d` is overflowing the accepted values
+    of the database, first, all `nanoseconds` outside the range -999_999_999 and
+    999_999_999 are transferred into the seconds field. Then, `months`, `days`,
+    and `seconds` are summed up like so:
+    `months * 2629746 + days * 86400 + d.seconds + d.nanoseconds // 1000000000`.
+    (Like the integer division in Python, this one is to be understood as
+    rounding down rather than towards 0.)
+    This value must be between -(2\ :sup:`63`) and (2\ :sup:`63` - 1) inclusive.
 
     :param years: will be added times 12 to `months`
     :type years: float
@@ -420,12 +420,13 @@ class Duration(tuple):
               int(1000 * microseconds) +
               int(nanoseconds))
         s, ns = symmetric_divmod(ns, NANO_SECONDS)
-        if d < MIN_INT64 or d > MAX_INT64:
-            raise ValueError("Days value out of range")
-        if s < MIN_INT64 or s > MAX_INT64:
-            raise ValueError("Seconds value out of range")
-        if ns < MIN_INT64 or ns > MAX_INT64:
-            raise ValueError("Nanoseconds value out of range")
+        avg_total_seconds = (mo * AVERAGE_SECONDS_IN_MONTH
+                             + d * AVERAGE_SECONDS_IN_DAY
+                             + s
+                             - (1 if ns < 0 else 0))
+        if avg_total_seconds < MIN_INT64 or avg_total_seconds > MAX_INT64:
+            raise ValueError("Duration value out of range: %r",
+                             cls.__repr__((mo, d, s, ns)))
         return tuple.__new__(cls, (mo, d, s, ns))
 
     def __bool__(self):
@@ -747,10 +748,8 @@ class Duration(tuple):
         return hours, minutes, seconds, self[3]
 
 
-Duration.min = Duration(months=MIN_INT64, days=MIN_INT64, seconds=MIN_INT64,
-                        nanoseconds=-999999999)
-Duration.max = Duration(months=MAX_INT64, days=MAX_INT64, seconds=MAX_INT64,
-                        nanoseconds=999999999)
+Duration.min = Duration(seconds=MIN_INT64, nanoseconds=0)
+Duration.max = Duration(seconds=MAX_INT64, nanoseconds=999999999)
 
 
 class Date(metaclass=DateType):

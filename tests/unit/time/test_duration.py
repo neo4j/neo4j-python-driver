@@ -25,6 +25,7 @@ import copy
 
 import pytest
 
+from neo4j import time
 from neo4j.time import Duration
 
 
@@ -415,3 +416,150 @@ class TestDuration:
             assert Duration(
                 years=1, months=2, days=3, hours=12, minutes=34, nanoseconds=i
             ) == Duration.from_iso_format("P1Y2M3DT12H34M00.%sS" % str(i)[:-3])
+
+    @pytest.mark.parametrize("with_day", (True, False))
+    @pytest.mark.parametrize("with_month", (True, False))
+    @pytest.mark.parametrize("only_ns", (True, False))
+    def test_minimal_value(self, with_day, with_month, only_ns):
+        seconds = (time.MIN_INT64
+                   + with_month * time.AVERAGE_SECONDS_IN_MONTH
+                   + with_day * time.AVERAGE_SECONDS_IN_DAY)
+        Duration(
+            months=-with_month,
+            days=-with_day,
+            seconds=0 if only_ns else seconds,
+            nanoseconds=(seconds * time.NANO_SECONDS) if only_ns else 0
+        )
+
+    @pytest.mark.parametrize("with_day", (True, False))
+    @pytest.mark.parametrize("with_month", (True, False))
+    @pytest.mark.parametrize("only_ns", (True, False))
+    @pytest.mark.parametrize("overflow", (
+        (0, 0, 0, -1),
+        (0, 0, -1, 0),
+        (0, -1, 0, 0),
+        (-1, 0, 0, 0),
+    ))
+    def test_negative_overflow_value(self, with_day, with_month, only_ns,
+                                     overflow):
+        seconds = (time.MIN_INT64
+                   + with_month * time.AVERAGE_SECONDS_IN_MONTH
+                   + with_day * time.AVERAGE_SECONDS_IN_DAY)
+        kwargs = {
+            "months": overflow[0],
+            "days": overflow[1],
+            "seconds": overflow[2],
+            "nanoseconds": overflow[3]
+        }
+        kwargs["months"] -= with_month
+        kwargs["days"] -= with_day
+        if only_ns:
+            kwargs["nanoseconds"] += seconds * time.NANO_SECONDS
+        else:
+            kwargs["seconds"] += seconds
+
+        with pytest.raises(ValueError):
+            Duration(**kwargs)
+
+    @pytest.mark.parametrize(("field", "module"), (
+        ("days", time.AVERAGE_SECONDS_IN_DAY),
+        ("months", time.AVERAGE_SECONDS_IN_MONTH),
+    ))
+    def test_minimal_value_only_secondary_field(self, field, module):
+        kwargs = {
+            field: (time.MIN_INT64 // module
+                    - (time.MIN_INT64 % module == 0)
+                    + 1)
+        }
+        Duration(**kwargs)
+
+    @pytest.mark.parametrize(("field", "module"), (
+        ("days", time.AVERAGE_SECONDS_IN_DAY),
+        ("months", time.AVERAGE_SECONDS_IN_MONTH),
+    ))
+    def test_negative_overflow_value_only_secondary_field(self, field, module):
+        kwargs = {
+            field: (time.MIN_INT64 // module
+                    - (time.MIN_INT64 % module == 0))
+        }
+        with pytest.raises(ValueError):
+            Duration(**kwargs)
+
+    def test_negative_overflow_duration_addition(self):
+        min_ = Duration.min
+        ns = Duration(nanoseconds=1)
+        with pytest.raises(ValueError):
+            min_ - ns
+        min_ + ns
+
+    @pytest.mark.parametrize("with_day", (True, False))
+    @pytest.mark.parametrize("with_month", (True, False))
+    @pytest.mark.parametrize("only_ns", (True, False))
+    def test_maximal_value(self, with_day, with_month, only_ns):
+        seconds = (time.MAX_INT64
+                   - with_month * time.AVERAGE_SECONDS_IN_MONTH
+                   - with_day * time.AVERAGE_SECONDS_IN_DAY)
+        Duration(
+            months=with_month,
+            days=with_day,
+            seconds=0 if only_ns else seconds,
+            nanoseconds=(seconds * time.NANO_SECONDS) if only_ns else 0
+        )
+
+    @pytest.mark.parametrize("with_day", (True, False))
+    @pytest.mark.parametrize("with_month", (True, False))
+    @pytest.mark.parametrize("only_ns", (True, False))
+    @pytest.mark.parametrize("overflow", (
+        (0, 0, 0, 1),
+        (0, 0, 1, 0),
+        (0, 1, 0, 0),
+        (1, 0, 0, 0),
+    ))
+    def test_positive_overflow_value(self, with_day, with_month, only_ns,
+                                     overflow):
+        seconds = (time.MAX_INT64
+                   - with_month * time.AVERAGE_SECONDS_IN_MONTH
+                   - with_day * time.AVERAGE_SECONDS_IN_DAY)
+        kwargs = {
+            "months": overflow[0],
+            "days": overflow[1],
+            "seconds": overflow[2],
+            "nanoseconds": time.NANO_SECONDS - 1 + overflow[3]
+        }
+        kwargs["months"] += with_month
+        kwargs["days"] += with_day
+        if only_ns:
+            kwargs["nanoseconds"] += seconds * time.NANO_SECONDS
+        else:
+            kwargs["seconds"] += seconds
+
+        with pytest.raises(ValueError):
+            Duration(**kwargs)
+
+    @pytest.mark.parametrize(("field", "module"), (
+        ("days", time.AVERAGE_SECONDS_IN_DAY),
+        ("months", time.AVERAGE_SECONDS_IN_MONTH),
+    ))
+    def test_maximal_value_only_secondary_field(self, field, module):
+        kwargs = {
+            field: time.MAX_INT64 // module
+        }
+        Duration(**kwargs)
+
+    @pytest.mark.parametrize(("field", "module"), (
+        ("days", time.AVERAGE_SECONDS_IN_DAY),
+        ("months", time.AVERAGE_SECONDS_IN_MONTH),
+    ))
+    def test_positive_overflow_value_only_secondary_field(self, field, module):
+        kwargs = {
+            field: time.MAX_INT64 // module + 1
+        }
+        with pytest.raises(ValueError):
+            Duration(**kwargs)
+
+    def test_positive_overflow_duration_addition(self):
+        max_ = Duration.max
+        ns = Duration(nanoseconds=1)
+        with pytest.raises(ValueError):
+            max_ + ns
+        max_ - ns
