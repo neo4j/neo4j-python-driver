@@ -32,7 +32,7 @@ from neo4j.time import Duration, Date, UnixEpoch, ZeroDate
 eastern = pytz.timezone("US/Eastern")
 
 
-class DateTestCase(TestCase):
+class TestDate(TestCase):
 
     def test_bad_attribute(self):
         d = Date(2000, 1, 1)

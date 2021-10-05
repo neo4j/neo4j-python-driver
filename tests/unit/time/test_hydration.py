@@ -26,7 +26,7 @@ from neo4j.data import DataHydrator
 from neo4j.packstream import Structure
 
 
-class TemporalHydrationTestCase(TestCase):
+class TestTemporalHydration(TestCase):
 
     def setUp(self):
         self.hydrant = DataHydrator()

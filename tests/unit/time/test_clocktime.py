@@ -24,7 +24,7 @@ from unittest import TestCase
 from neo4j.time import ClockTime, Duration
 
 
-class ClockTimeTestCase(TestCase):
+class TestClockTime(TestCase):
 
     def test_zero_(self):
         ct = ClockTime()
