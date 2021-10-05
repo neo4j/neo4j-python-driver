@@ -164,6 +164,8 @@ Instance attributes
 
 .. autoattribute:: neo4j.time.Time.ticks
 
+.. autoattribute:: neo4j.time.Time.ticks_ns
+
 .. autoattribute:: neo4j.time.Time.hour
 
 .. autoattribute:: neo4j.time.Time.minute

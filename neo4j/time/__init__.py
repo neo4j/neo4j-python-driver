@@ -386,9 +386,7 @@ class Duration(tuple):
     :param nanoseconds: will be truncated to :class:`int` (`int(nanoseconds)`)
     :type nanoseconds: float
 
-    :raises ValueError: if any of the components `months`, `days`, or
-        `nanoseconds` exceeds the limits
-        (:attr:`.MIN_INT64`, :attr:`.MAX_INT64`).
+    :raises ValueError: the components exceed the limits as described above.
     """
 
     # i64: i64:i64: i32
@@ -784,7 +782,7 @@ class Date(metaclass=DateType):
     :type day: int
 
     A zero date can also be acquired by passing all zeroes to the
-    :class:`neo4j.time.Date` constructor or by using the :attr:`.ZeroDate`
+    :class:`neo4j.time.Date` constructor or by using the :attr:`ZeroDate`
     constant.
     """
 
@@ -1267,7 +1265,7 @@ class Date(metaclass=DateType):
         """Subtract a :class:`.Date` or :class:`.Duration`.
 
         :returns: If a :class:`.Date` is subtracted, the time between the two
-            dates is returned as class:`.Duration`. If a :class:`Duration` is
+            dates is returned as :class:`.Duration`. If a :class:`.Duration` is
             subtracted, a new :class:`.Date` is returned.
         :rtype: Date or Duration
 
@@ -1413,9 +1411,9 @@ class Time(metaclass=TimeType):
     Local times are represented by :class:`.Time` with no `tzinfo`.
 
     .. note::
-        Staring with version 5.0, `ticks` will change to be integers counting
-        nanoseconds since midnight. Currently available as
-        :attr:`.Time.ticks_ns`.
+        Staring with version 5.0, :attr:`.ticks` will change to be integers
+        counting nanoseconds since midnight. Currently available as
+        :attr:`.ticks_ns`.
 
     :param hour: the hour of the time. Must be in range 0 <= hour < 24.
     :type hour: int
@@ -1711,6 +1709,8 @@ class Time(metaclass=TimeType):
     def ticks_ns(self):
         """The total number of nanoseconds since midnight.
 
+        .. note:: This will be removed in 5.0 and replace :attr:`.ticks`.
+
         :type: int
         """
         # TODO 5.0: this will replace self.ticks
@@ -1995,7 +1995,6 @@ class Time(metaclass=TimeType):
     def __format__(self, format_spec):
         """"""
         raise NotImplementedError()
-
 
 Time.min = Time(hour=0, minute=0, second=0, nanosecond=0)
 Time.max = Time(hour=23, minute=59, second=59, nanosecond=999999999)
@@ -2452,7 +2451,7 @@ class DateTime(metaclass=DateTimeType):
     def date(self):
         """The date
 
-        :rtype: :class:`neo4j.time.Date`
+        :rtype: Date
         """
         return self.__date
 
@@ -2613,6 +2612,7 @@ class DateTime(metaclass=DateTimeType):
         return self.iso_format()
 
     def __format__(self, format_spec):
+        """"""
         raise NotImplementedError()
 
 
@@ -2623,8 +2623,8 @@ DateTime.resolution = Time.resolution
 Never = DateTime.combine(ZeroDate, Midnight)
 """
 A :class:`.DateTime` instance set to `0000-00-00T00:00:00`.
-This has a :class:`.Date` component equal to :attr:`.ZeroDate` and a
-:class:`.Time` component equal to :attr:`.Midnight`.
+This has a :class:`.Date` component equal to :attr:`ZeroDate` and a
+:class:`.Time` component equal to :attr:`Midnight`.
 """
 
 UnixEpoch = DateTime(1970, 1, 1, 0, 0, 0)
