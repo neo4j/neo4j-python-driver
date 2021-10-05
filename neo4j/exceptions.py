@@ -30,6 +30,7 @@ Driver API Errors
     + CypherTypeError
     + ConstraintError
     + AuthError
+      + TokenExpired
     + Forbidden
   + DatabaseError
   + TransientError
@@ -199,6 +200,12 @@ class AuthError(ClientError):
     """
 
 
+class TokenExpired(AuthError):
+    """ Raised when the authentication token has expired.
+
+    A new driver instance with a fresh authentication token needs to be created.
+    """
+
 client_errors = {
 
     # ConstraintError
@@ -228,8 +235,11 @@ client_errors = {
     "Neo.ClientError.Security.AuthorizationFailed": AuthError,
     "Neo.ClientError.Security.Unauthorized": AuthError,
 
+    # TokenExpired
+    "Neo.ClientError.Security.TokenExpired": TokenExpired,
+
     # NotALeader
-    "Neo.ClientError.Cluster.NotALeader": NotALeader
+    "Neo.ClientError.Cluster.NotALeader": NotALeader,
 }
 
 transient_errors = {
