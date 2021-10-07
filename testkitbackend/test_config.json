@@ -1,23 +1,5 @@
 {
   "skips": {
-    "stub.routing.test_routing_v4x1.RoutingV4x1.test_should_retry_write_until_success_with_leader_change_using_tx_function":
-      "Driver closes connection to router if DNS resolved name not in routing table",
-    "stub.routing.test_routing_v3.RoutingV3.test_should_retry_write_until_success_with_leader_change_using_tx_function":
-      "Driver closes connection to router if DNS resolved name not in routing table",
-    "stub.routing.test_routing_v4x3.RoutingV4x3.test_should_retry_write_until_success_with_leader_change_using_tx_function":
-      "Driver closes connection to router if DNS resolved name not in routing table",
-    "stub.routing.test_routing_v4x1.RoutingV4x1.test_should_retry_write_until_success_with_leader_change_on_run_using_tx_function":
-      "Driver closes connection to router if DNS resolved name not in routing table",
-    "stub.routing.test_routing_v3.RoutingV3.test_should_retry_write_until_success_with_leader_change_on_run_using_tx_function":
-      "Driver closes connection to router if DNS resolved name not in routing table",
-    "stub.routing.test_routing_v4x3.RoutingV4x3.test_should_retry_write_until_success_with_leader_change_on_run_using_tx_function":
-      "Driver closes connection to router if DNS resolved name not in routing table",
-    "stub.routing.test_routing_v4x1.RoutingV4x1.test_should_retry_write_until_success_with_leader_shutdown_during_tx_using_tx_function":
-      "Driver closes connection to router if DNS resolved name not in routing table",
-    "stub.routing.test_routing_v3.RoutingV3.test_should_retry_write_until_success_with_leader_shutdown_during_tx_using_tx_function":
-      "Driver closes connection to router if DNS resolved name not in routing table",
-    "stub.routing.test_routing_v4x3.RoutingV4x3.test_should_retry_write_until_success_with_leader_shutdown_during_tx_using_tx_function":
-      "Driver closes connection to router if DNS resolved name not in routing table",
     "stub.routing.test_routing_v4x1.RoutingV4x1.test_should_successfully_acquire_rt_when_router_ip_changes":
       "Test makes assumptions about how verify_connectivity is implemented",
     "stub.routing.test_routing_v3.RoutingV3.test_should_successfully_acquire_rt_when_router_ip_changes":

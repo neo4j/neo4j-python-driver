@@ -138,6 +138,10 @@ class Address(tuple, metaclass=_AddressMeta):
     def port(self):
         return self[1]
 
+    @property
+    def unresolved(self):
+        return self
+
     @classmethod
     def _dns_resolve(cls, address, family=0):
         """ Regular DNS resolver. Takes an address object and optional
@@ -225,6 +229,10 @@ class ResolvedAddress(Address):
     @property
     def host_name(self):
         return self._host_name
+
+    @property
+    def unresolved(self):
+        return (self._host_name, *self[1:])
 
     def resolve(self, family=0, resolver=None):
         return [self]
