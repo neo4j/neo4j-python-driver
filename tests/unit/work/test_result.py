@@ -219,7 +219,7 @@ def test_result_iteration(method):
     records = [[1], [2], [3], [4], [5]]
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, HydratorStub(), 2, noop, noop)
-    result._run("CYPHER", {}, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None)
     _fetch_and_compare_all_records(result, "x", records, method)
 
 
@@ -232,9 +232,9 @@ def test_parallel_result_iteration(method, invert_fetch):
         records=(Records(["x"], records1), Records(["x"], records2))
     )
     result1 = Result(connection, HydratorStub(), 2, noop, noop)
-    result1._run("CYPHER1", {}, None, "r", None)
+    result1._run("CYPHER1", {}, None, None, "r", None)
     result2 = Result(connection, HydratorStub(), 2, noop, noop)
-    result2._run("CYPHER2", {}, None, "r", None)
+    result2._run("CYPHER2", {}, None, None, "r", None)
     if invert_fetch:
         _fetch_and_compare_all_records(result2, "x", records2, method)
         _fetch_and_compare_all_records(result1, "x", records1, method)
@@ -252,9 +252,9 @@ def test_interwoven_result_iteration(method, invert_fetch):
         records=(Records(["x"], records1), Records(["y"], records2))
     )
     result1 = Result(connection, HydratorStub(), 2, noop, noop)
-    result1._run("CYPHER1", {}, None, "r", None)
+    result1._run("CYPHER1", {}, None, None, "r", None)
     result2 = Result(connection, HydratorStub(), 2, noop, noop)
-    result2._run("CYPHER2", {}, None, "r", None)
+    result2._run("CYPHER2", {}, None, None, "r", None)
     start = 0
     for n in (1, 2, 3, 1, None):
         end = n if n is None else start + n
@@ -276,7 +276,7 @@ def test_interwoven_result_iteration(method, invert_fetch):
 def test_result_peek(records, fetch_size):
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, HydratorStub(), fetch_size, noop, noop)
-    result._run("CYPHER", {}, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None)
     for i in range(len(records) + 1):
         record = result.peek()
         if i == len(records):
@@ -292,7 +292,7 @@ def test_result_peek(records, fetch_size):
 def test_result_single(records, fetch_size):
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, HydratorStub(), fetch_size, noop, noop)
-    result._run("CYPHER", {}, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None)
     with pytest.warns(None) as warning_record:
         record = result.single()
     if not records:
@@ -310,7 +310,7 @@ def test_result_single(records, fetch_size):
 def test_keys_are_available_before_and_after_stream():
     connection = ConnectionStub(records=Records(["x"], [[1], [2]]))
     result = Result(connection, HydratorStub(), 1, noop, noop)
-    result._run("CYPHER", {}, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None)
     assert list(result.keys()) == ["x"]
     list(result)
     assert list(result.keys()) == ["x"]
@@ -323,7 +323,7 @@ def test_consume(records, consume_one, summary_meta):
     connection = ConnectionStub(records=Records(["x"], records),
                                 summary_meta=summary_meta)
     result = Result(connection, HydratorStub(), 1, noop, noop)
-    result._run("CYPHER", {}, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None)
     if consume_one:
         try:
             next(iter(result))
@@ -356,7 +356,7 @@ def test_time_in_summary(t_first, t_last):
                                 run_meta=run_meta, summary_meta=summary_meta)
 
     result = Result(connection, HydratorStub(), 1, noop, noop)
-    result._run("CYPHER", {}, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None)
     summary = result.consume()
 
     if t_first is not None:
@@ -377,7 +377,7 @@ def test_counts_in_summary():
     connection = ConnectionStub(records=Records(["n"], [[1], [2]]))
 
     result = Result(connection, HydratorStub(), 1, noop, noop)
-    result._run("CYPHER", {}, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None)
     summary = result.consume()
 
     assert isinstance(summary.counters, SummaryCounters)
@@ -389,7 +389,7 @@ def test_query_type(query_type):
                                 summary_meta={"type": query_type})
 
     result = Result(connection, HydratorStub(), 1, noop, noop)
-    result._run("CYPHER", {}, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None)
     summary = result.consume()
 
     assert isinstance(summary.query_type, str)

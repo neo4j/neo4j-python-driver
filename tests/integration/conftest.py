@@ -299,7 +299,8 @@ def bolt_driver(target, auth):
 def neo4j_driver(target, auth):
     try:
         driver = GraphDatabase.neo4j_driver(target, auth=auth)
-        driver._pool.update_routing_table(database=None, bookmarks=None)
+        driver._pool.update_routing_table(database=None, imp_user=None,
+                                          bookmarks=None)
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])

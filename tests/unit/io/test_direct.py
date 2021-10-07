@@ -104,7 +104,8 @@ class FakeBoltPool(IOPool):
         super().__init__(opener, self.pool_config, self.workspace_config)
         self.address = address
 
-    def acquire(self, access_mode=None, timeout=None, database=None):
+    def acquire(self, access_mode=None, timeout=None, database=None,
+                imp_user=None):
         return self._acquire(self.address, timeout)
 
 

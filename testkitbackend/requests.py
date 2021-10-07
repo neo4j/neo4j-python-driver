@@ -191,12 +191,14 @@ def NewSession(backend, data):
     elif access_mode == "w":
         access_mode = neo4j.WRITE_ACCESS
     else:
-        raise Exception("Unknown access mode:" + access_mode)
+        raise ValueError("Unknown access mode:" + access_mode)
     config = {
             "default_access_mode": access_mode,
             "bookmarks": data["bookmarks"],
             "database": data["database"],
-            "fetch_size": data.get("fetchSize", None)
+            "fetch_size": data.get("fetchSize", None),
+            "impersonated_user": data.get("impersonatedUser", None),
+
     }
     session = driver.session(**config)
     key = backend.next_key()
@@ -390,8 +392,7 @@ def ForcedRoutingTableUpdate(backend, data):
     database = data["database"]
     bookmarks = data["bookmarks"]
     with driver._pool.refresh_lock:
-        driver._pool.create_routing_table(database)
-        driver._pool.update_routing_table(database=database,
+        driver._pool.update_routing_table(database=database, imp_user=None,
                                           bookmarks=bookmarks)
     backend.send_response("Driver", {"id": driver_id})
 
