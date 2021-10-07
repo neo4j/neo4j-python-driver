@@ -129,24 +129,52 @@ class SummaryCounters:
     #:
     system_updates = 0
 
+    _contains_updates = None
+    _contains_system_updates = None
+
     def __init__(self, statistics):
+        key_to_attr_name = {
+            "nodes-created": "nodes_created",
+            "nodes-deleted": "nodes_deleted",
+            "relationships-created": "relationships_created",
+            "relationships-deleted": "relationships_deleted",
+            "properties-set": "properties_set",
+            "labels-added": "labels_added",
+            "labels-removed": "labels_removed",
+            "indexes-added": "indexes_added",
+            "indexes-removed": "indexes_removed",
+            "constraints-added": "constraints_added",
+            "constraints-removed": "constraints_removed",
+            "system-updates": "system_updates",
+            "contains-updates": "_contains_updates",
+            "contains-system-updates": "_contains_system_updates",
+        }
         for key, value in dict(statistics).items():
-            key = key.replace("-", "_")
-            setattr(self, key, value)
+            attr_name = key_to_attr_name.get(key)
+            if attr_name:
+                setattr(self, attr_name, value)
 
     def __repr__(self):
         return repr(vars(self))
 
     @property
     def contains_updates(self):
-        """True if any of the counters except for system_updates, are greater than 0. Otherwise False."""
-        return bool(self.nodes_created or self.nodes_deleted or
-                    self.relationships_created or self.relationships_deleted or
-                    self.properties_set or self.labels_added or self.labels_removed or
-                    self.indexes_added or self.indexes_removed or
-                    self.constraints_added or self.constraints_removed)
+        """True if any of the counters except for system_updates, are greater
+        than 0. Otherwise False."""
+        if self._contains_updates is not None:
+            return self._contains_updates
+        return bool(
+            self.nodes_created or self.nodes_deleted
+            or self.relationships_created or self.relationships_deleted
+            or self.properties_set or self.labels_added
+            or self.labels_removed or self.indexes_added
+            or self.indexes_removed or self.constraints_added
+            or self.constraints_removed
+        )
 
     @property
     def contains_system_updates(self):
         """True if the system database was updated, otherwise False."""
+        if self._contains_system_updates is not None:
+            return self._contains_system_updates
         return self.system_updates > 0
