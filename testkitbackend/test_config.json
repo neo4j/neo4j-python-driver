@@ -6,6 +6,12 @@
       "Driver closes connection to router if DNS resolved name not in routing table",
     "stub.routing.test_routing_v4x3.RoutingV4x3.test_should_retry_write_until_success_with_leader_change_using_tx_function":
       "Driver closes connection to router if DNS resolved name not in routing table",
+    "stub.routing.test_routing_v4x1.RoutingV4x1.test_should_retry_write_until_success_with_leader_change_on_run_using_tx_function":
+      "Driver closes connection to router if DNS resolved name not in routing table",
+    "stub.routing.test_routing_v3.RoutingV3.test_should_retry_write_until_success_with_leader_change_on_run_using_tx_function":
+      "Driver closes connection to router if DNS resolved name not in routing table",
+    "stub.routing.test_routing_v4x3.RoutingV4x3.test_should_retry_write_until_success_with_leader_change_on_run_using_tx_function":
+      "Driver closes connection to router if DNS resolved name not in routing table",
     "stub.routing.test_routing_v4x1.RoutingV4x1.test_should_retry_write_until_success_with_leader_shutdown_during_tx_using_tx_function":
       "Driver closes connection to router if DNS resolved name not in routing table",
     "stub.routing.test_routing_v3.RoutingV3.test_should_retry_write_until_success_with_leader_shutdown_during_tx_using_tx_function":
@@ -26,12 +32,23 @@
       "Flaky: test requires the driver to contact servers in a specific order",
     "stub.authorization.test_authorization.TestAuthorizationV4x1.test_should_retry_on_auth_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
+    "stub.authorization.test_authorization.TestAuthorizationV4x3.test_should_fail_on_token_expired_on_begin_using_tx_function":
+      "Flaky: test requires the driver to contact servers in a specific order",
+    "stub.authorization.test_authorization.TestAuthorizationV3.test_should_fail_on_token_expired_on_begin_using_tx_function":
+      "Flaky: test requires the driver to contact servers in a specific order",
+    "stub.authorization.test_authorization.TestAuthorizationV4x1.test_should_fail_on_token_expired_on_begin_using_tx_function":
+      "Flaky: test requires the driver to contact servers in a specific order",
     "stub.session_run_parameters.test_session_run_parameters.TestSessionRunParameters.test_empty_query":
       "Driver rejects empty queries before sending it to the server",
     "tls.tlsversions.TestTlsVersions.test_1_1":
       "TLSv1.1 and below are disabled in the driver"
   },
   "features": {
+    "Feature:API:Result.Single": "Does not raise error when not exactly one record is available. To be fixed in 5.0",
+    "Feature:API:Result.Peek": true,
+    "Feature:Auth:Bearer": true,
+    "Feature:Auth:Custom": true,
+    "Feature:Auth:Kerberos": true,
     "AuthorizationExpiredTreatment": true,
     "Optimization:ImplicitDefaultArguments": true,
     "Optimization:MinimalResets": true,

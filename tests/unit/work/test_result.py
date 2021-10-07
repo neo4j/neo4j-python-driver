@@ -89,6 +89,7 @@ class ConnectionStub:
             self._use_qid = force_qid
         self.fetch_idx = 0
         self._qid = -1
+        self.most_recent_qid = None
         self.record_idxs = [0] * len(self._records)
         self.to_pull = [None] * len(self._records)
         self._exhausted = [False] * len(self._records)
@@ -276,12 +277,14 @@ def test_result_peek(records, fetch_size):
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, HydratorStub(), fetch_size, noop, noop)
     result._run("CYPHER", {}, None, "r", None)
-    record = result.peek()
-    if not records:
-        assert record is None
-    else:
-        assert isinstance(record, Record)
-        assert record.get("x") == records[0][0]
+    for i in range(len(records) + 1):
+        record = result.peek()
+        if i == len(records):
+            assert record is None
+        else:
+            assert isinstance(record, Record)
+            assert record.get("x") == records[i][0]
+            next(iter(result))  # consume the record
 
 
 @pytest.mark.parametrize("records", ([[1], [2]], [[1]], []))

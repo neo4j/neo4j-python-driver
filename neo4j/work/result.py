@@ -23,49 +23,9 @@ from collections import deque
 from warnings import warn
 
 from neo4j.data import DataDehydrator
-from neo4j.exceptions import (
-    Neo4jError,
-    ServiceUnavailable,
-    SessionExpired,
-)
+from neo4j.io import ConnectionErrorHandler
 from neo4j.work.summary import ResultSummary
-
-
-class _ConnectionErrorHandler:
-    """
-    Wrapper class for handling connection errors.
-
-    The class will wrap each method to invoke a callback if the method raises
-    SessionExpired or ServiceUnavailable.
-    The error will be re-raised after the callback.
-    """
-
-    def __init__(self, connection, on_error):
-        """
-        :param connection the connection object to warp
-        :type connection Bolt
-        :param on_error the function to be called when a method of
-            connection raises of of the caught errors.
-        :type on_error callable
-        """
-        self._connection = connection
-        self._on_error = on_error
-
-    def __getattr__(self, item):
-        connection_attr = getattr(self._connection, item)
-        if not callable(connection_attr):
-            return connection_attr
-
-        def outer(func):
-            def inner(*args, **kwargs):
-                try:
-                    func(*args, **kwargs)
-                except (Neo4jError, ServiceUnavailable, SessionExpired) as exc:
-                    self._on_error(exc)
-                    raise
-            return inner
-
-        return outer(connection_attr)
+from neo4j.exceptions import ResultConsumedError
 
 
 class Result:
@@ -76,14 +36,14 @@ class Result:
 
     def __init__(self, connection, hydrant, fetch_size, on_closed,
                  on_error):
-        self._connection = _ConnectionErrorHandler(connection, on_error)
+        self._connection = ConnectionErrorHandler(connection, on_error)
         self._hydrant = hydrant
         self._on_closed = on_closed
         self._metadata = None
         self._record_buffer = deque()
         self._summary = None
         self._bookmark = None
-        self._qid = -1
+        self._raw_qid = -1
         self._fetch_size = fetch_size
 
         # states
@@ -95,6 +55,13 @@ class Result:
         self._has_more = False
         # the result has been fully iterated or consumed
         self._closed = False
+
+    @property
+    def _qid(self):
+        if self._raw_qid == self._connection.most_recent_qid:
+            return -1
+        else:
+            return self._raw_qid
 
     def _tx_ready_run(self, query, parameters, **kwparameters):
         # BEGIN+RUN does not carry any extra on the RUN message.
@@ -117,7 +84,10 @@ class Result:
 
         def on_attached(metadata):
             self._metadata.update(metadata)
-            self._qid = metadata.get("qid", -1)  # For auto-commit there is no qid and Bolt 3 do not support qid
+            # For auto-commit there is no qid and Bolt 3 does not support qid
+            self._raw_qid = metadata.get("qid", -1)
+            if self._raw_qid != -1:
+                self._connection.most_recent_qid = self._raw_qid
             self._keys = metadata.get("fields")
             self._attached = True
 
@@ -223,20 +193,37 @@ class Result:
         self._closed = True
 
     def _attach(self):
-        """Sets the Result object in an attached state by fetching messages from the connection to the buffer.
+        """Sets the Result object in an attached state by fetching messages from
+        the connection to the buffer.
         """
         if self._closed is False:
             while self._attached is False:
                 self._connection.fetch_message()
 
-    def _buffer_all(self):
-        """Sets the Result object in an detached state by fetching all records from the connection to the buffer.
+    def _buffer(self, n=None):
+        """Try to fill `self_record_buffer` with n records.
+
+        Might end up with more records in the buffer if the fetch size makes it
+        overshoot.
+        Might ent up with fewer records in the buffer if there are not enough
+        records available.
         """
         record_buffer = deque()
         for record in self:
             record_buffer.append(record)
+            if n is not None and len(record_buffer) >= n:
+                break
         self._closed = False
-        self._record_buffer = record_buffer
+        if n is None:
+            self._record_buffer = record_buffer
+        else:
+            self._record_buffer.extend(record_buffer)
+
+    def _buffer_all(self):
+        """Sets the Result object in an detached state by fetching all records
+        from the connection to the buffer.
+        """
+        self._buffer()
 
     def _obtain_summary(self):
         """Obtain the summary of this result, buffering any remaining records.
@@ -309,6 +296,13 @@ class Result:
         :returns: the next :class:`neo4j.Record` or :const:`None` if none remain
         :warns: if more than one record is available
         """
+        # TODO in 5.0 replace with this code that raises an error if there's not
+        # exactly one record in the left result stream.
+        # self._buffer(2).
+        # if len(self._record_buffer) != 1:
+        #     raise SomeError("Expected exactly 1 record, found %i"
+        #                      % len(self._record_buffer))
+        # return self._record_buffer.popleft()
         records = list(self)  # TODO: exhausts the result with self.consume if there are more records.
         size = len(records)
         if size == 0:
@@ -323,16 +317,9 @@ class Result:
 
         :returns: the next :class:`.Record` or :const:`None` if none remain
         """
+        self._buffer(1)
         if self._record_buffer:
             return self._record_buffer[0]
-        if not self._attached:
-            return None
-        while self._attached:
-            self._connection.fetch_message()
-            if self._record_buffer:
-                return self._record_buffer[0]
-
-        return None
 
     def graph(self):
         """Return a :class:`neo4j.graph.Graph` instance containing all the graph objects

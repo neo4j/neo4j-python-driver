@@ -45,6 +45,31 @@ class SafeClock(Clock):
         return ClockTime(seconds, nanoseconds * 1000)
 
 
+class PEP564Clock(Clock):
+    """ Clock implementation based on the PEP564 additions to Python 3.7.
+    This clock is guaranteed nanosecond precision.
+    """
+
+    @classmethod
+    def precision(cls):
+        return 9
+
+    @classmethod
+    def available(cls):
+        try:
+            from time import time_ns
+        except ImportError:
+            return False
+        else:
+            return True
+
+    def utc_time(self):
+        from time import time_ns
+        t = time_ns()
+        seconds, nanoseconds = divmod(t, 1000000000)
+        return ClockTime(seconds, nanoseconds)
+
+
 class LibCClock(Clock):
     """ Clock implementation that works only on platforms that provide
     libc. This clock is guaranteed nanosecond precision.
@@ -79,28 +104,3 @@ class LibCClock(Clock):
             return ClockTime(ts.seconds, ts.nanoseconds)
         else:
             raise RuntimeError("clock_gettime failed with status %d" % status)
-
-
-class PEP564Clock(Clock):
-    """ Clock implementation based on the PEP564 additions to Python 3.7.
-    This clock is guaranteed nanosecond precision.
-    """
-
-    @classmethod
-    def precision(cls):
-        return 9
-
-    @classmethod
-    def available(cls):
-        try:
-            from time import time_ns
-        except ImportError:
-            return False
-        else:
-            return True
-
-    def utc_time(self):
-        from time import time_ns
-        t = time_ns()
-        seconds, nanoseconds = divmod(t, 1000000000)
-        return ClockTime(seconds, nanoseconds)

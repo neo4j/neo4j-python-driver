@@ -19,13 +19,14 @@
 # limitations under the License.
 
 
+from decimal import Decimal
 from unittest import TestCase
 
 from neo4j.data import DataHydrator
 from neo4j.packstream import Structure
 
 
-class TemporalHydrationTestCase(TestCase):
+class TestTemporalHydration(TestCase):
 
     def setUp(self):
         self.hydrant = DataHydrator()
@@ -38,4 +39,4 @@ class TemporalHydrationTestCase(TestCase):
         self.assertEqual(dt.day, 12)
         self.assertEqual(dt.hour, 11)
         self.assertEqual(dt.minute, 37)
-        self.assertEqual(dt.second, 41.474716862)
+        self.assertEqual(dt.second, Decimal("41.474716862"))
