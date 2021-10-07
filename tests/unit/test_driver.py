@@ -124,7 +124,10 @@ def test_driver_trust_config_error(
 def test_driver_opens_write_session_by_default(uri, mocker):
     driver = GraphDatabase.driver(uri)
     from neo4j.work.transaction import Transaction
-    with driver.session() as session:
+    # we set a specific db, because else the driver would try to fetch a RT
+    # to get hold of the actual home database (which won't work in this
+    # unittest)
+    with driver.session(database="foobar") as session:
         acquire_mock = mocker.patch.object(session._pool, "acquire",
                                            autospec=True)
         tx_begin_mock = mocker.patch.object(Transaction, "_begin",
