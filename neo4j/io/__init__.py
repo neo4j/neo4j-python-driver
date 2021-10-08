@@ -58,7 +58,6 @@ from ssl import (
 )
 from threading import (
     Condition,
-    Lock,
     RLock,
 )
 from time import perf_counter
@@ -880,7 +879,7 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  C: <NEO4J POOL> routing address %r", address)
         self.address = address
         self.routing_tables = {workspace_config.database: RoutingTable(database=workspace_config.database, routers=[address])}
-        self.refresh_lock = Lock()
+        self.refresh_lock = RLock()
 
     def __repr__(self):
         """ The representation shows the initial routing addresses.
@@ -914,12 +913,13 @@ class Neo4jPool(IOPool):
         return self.routing_tables[self.workspace_config.database]
 
     def get_or_create_routing_table(self, database):
-        if database not in self.routing_tables:
-            self.routing_tables[database] = RoutingTable(
-                database=database,
-                routers=self.get_default_database_initial_router_addresses()
-            )
-        return self.routing_tables[database]
+        with self.refresh_lock:
+            if database not in self.routing_tables:
+                self.routing_tables[database] = RoutingTable(
+                    database=database,
+                    routers=self.get_default_database_initial_router_addresses()
+                )
+            return self.routing_tables[database]
 
     def fetch_routing_info(self, address, database, imp_user, bookmarks,
                            timeout):
@@ -1024,8 +1024,8 @@ class Neo4jPool(IOPool):
         # At least one of each is fine, so return this table
         return new_routing_table
 
-    def update_routing_table_from(self, *routers, database=None, imp_user=None,
-                                  bookmarks=None, database_callback=None):
+    def _update_routing_table_from(self, *routers, database=None, imp_user=None,
+                                   bookmarks=None, database_callback=None):
         """ Try to update routing tables with the given routers.
 
         :return: True if the routing table is successfully updated,
@@ -1071,42 +1071,43 @@ class Neo4jPool(IOPool):
 
         :raise neo4j.exceptions.ServiceUnavailable:
         """
-        # copied because it can be modified
-        existing_routers = set(
-            self.get_or_create_routing_table(database).routers
-        )
+        with self.refresh_lock:
+            # copied because it can be modified
+            existing_routers = set(
+                self.get_or_create_routing_table(database).routers
+            )
 
-        prefer_initial_routing_address = \
-            self.routing_tables[database].missing_fresh_writer()
+            prefer_initial_routing_address = \
+                self.routing_tables[database].missing_fresh_writer()
 
-        if prefer_initial_routing_address:
-            # TODO: Test this state
-            if self.update_routing_table_from(
+            if prefer_initial_routing_address:
+                # TODO: Test this state
+                if self._update_routing_table_from(
+                        self.first_initial_routing_address, database=database,
+                        imp_user=imp_user, bookmarks=bookmarks,
+                        database_callback=database_callback
+                ):
+                    # Why is only the first initial routing address used?
+                    return
+            if self._update_routing_table_from(
+                    *(existing_routers - {self.first_initial_routing_address}),
+                    database=database, imp_user=imp_user, bookmarks=bookmarks,
+                    database_callback=database_callback
+            ):
+                return
+
+            if not prefer_initial_routing_address:
+                if self._update_routing_table_from(
                     self.first_initial_routing_address, database=database,
                     imp_user=imp_user, bookmarks=bookmarks,
                     database_callback=database_callback
-            ):
-                # Why is only the first initial routing address used?
-                return
-        if self.update_routing_table_from(
-                *(existing_routers - {self.first_initial_routing_address}),
-                database=database, imp_user=imp_user, bookmarks=bookmarks,
-                database_callback=database_callback
-        ):
-            return
+                ):
+                    # Why is only the first initial routing address used?
+                    return
 
-        if not prefer_initial_routing_address:
-            if self.update_routing_table_from(
-                self.first_initial_routing_address, database=database,
-                imp_user=imp_user, bookmarks=bookmarks,
-                database_callback=database_callback
-            ):
-                # Why is only the first initial routing address used?
-                return
-
-        # None of the routers have been successful, so just fail
-        log.error("Unable to retrieve routing information")
-        raise ServiceUnavailable("Unable to retrieve routing information")
+            # None of the routers have been successful, so just fail
+            log.error("Unable to retrieve routing information")
+            raise ServiceUnavailable("Unable to retrieve routing information")
 
     def update_connection_pool(self, *, database):
         servers = self.get_or_create_routing_table(database).servers()
@@ -1129,11 +1130,11 @@ class Neo4jPool(IOPool):
         :return: `True` if an update was required, `False` otherwise.
         """
         from neo4j.api import READ_ACCESS
-        if self.get_or_create_routing_table(database)\
-                .is_fresh(readonly=(access_mode == READ_ACCESS)):
-            # Readers are fresh.
-            return False
         with self.refresh_lock:
+            if self.get_or_create_routing_table(database)\
+                    .is_fresh(readonly=(access_mode == READ_ACCESS)):
+                # Readers are fresh.
+                return False
 
             self.update_routing_table(
                 database=database, imp_user=imp_user, bookmarks=bookmarks,
