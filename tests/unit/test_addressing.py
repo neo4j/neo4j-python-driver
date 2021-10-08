@@ -230,15 +230,29 @@ def test_address_resolve_with_unresolvable_address(test_input, expected):
 
 def test_address_resolve_with_custom_resolver():
     # python -m pytest tests/unit/test_addressing.py -s -k test_address_resolve_with_custom_resolver
-    custom_resolver = lambda a: [("127.0.0.1", 7687), ("localhost", 1234)]
+    custom_resolver = lambda _: [("127.0.0.1", 7687), ("localhost", 1234)]
 
     address = Address(("127.0.0.1", 7687))
     resolved = address.resolve(family=AF_INET, resolver=custom_resolver)
     assert isinstance(resolved, Address) is False
     assert isinstance(resolved, list) is True
-    if len(resolved) == 2:
-        # IPv4 only
-        assert resolved[0] == IPv4Address(('127.0.0.1', 7687))
-        assert resolved[1] == IPv4Address(('127.0.0.1', 1234))
-    else:
-        assert False
+    assert len(resolved) == 2  # IPv4 only
+    assert resolved[0] == IPv4Address(('127.0.0.1', 7687))
+    assert resolved[1] == IPv4Address(('127.0.0.1', 1234))
+
+
+def test_address_unresolve():
+    # python -m pytest tests/unit/test_addressing.py -s -k test_address_unresolve
+    custom_resolved = [("127.0.0.1", 7687), ("localhost", 4321)]
+    custom_resolver = lambda _: custom_resolved
+
+    address = Address(("foobar", 1234))
+    unresolved = address.unresolved
+    assert address.__class__ == unresolved.__class__
+    assert address == unresolved
+    resolved = address.resolve(family=AF_INET, resolver=custom_resolver)
+    custom_resolved = sorted(Address(a) for a in custom_resolved)
+    unresolved = sorted(a.unresolved for a in resolved)
+    assert custom_resolved == unresolved
+    assert (list(map(lambda a: a.__class__, custom_resolved))
+            == list(map(lambda a: a.__class__, unresolved)))
