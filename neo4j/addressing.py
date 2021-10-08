@@ -232,7 +232,7 @@ class ResolvedAddress(Address):
 
     @property
     def unresolved(self):
-        return (self._host_name, *self[1:])
+        return super().__new__(Address, (self._host_name, *self[1:]))
 
     def resolve(self, family=0, resolver=None):
         return [self]
