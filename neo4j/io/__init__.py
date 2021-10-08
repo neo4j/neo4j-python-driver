@@ -711,13 +711,12 @@ class IOPool:
                                       "within {!r}s".format(timeout))
 
     def acquire(self, access_mode=None, timeout=None, database=None,
-                imp_user=None, bookmarks=None):
+                bookmarks=None):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
         :param access_mode:
         :param timeout:
         :param database:
-        :param imp_user:
         :param bookmarks:
         """
 
@@ -1152,7 +1151,7 @@ class Neo4jPool(IOPool):
 
             return True
 
-    def _select_address(self, *, access_mode, database, imp_user, bookmarks):
+    def _select_address(self, *, access_mode, database):
         from neo4j.api import READ_ACCESS
         """ Selects the address with the fewest in-use connections.
         """
@@ -1178,11 +1177,12 @@ class Neo4jPool(IOPool):
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
     def acquire(self, access_mode=None, timeout=None, database=None,
-                imp_user=None, bookmarks=None):
+                bookmarks=None):
         if access_mode not in (WRITE_ACCESS, READ_ACCESS):
             raise ClientError("Non valid 'access_mode'; {}".format(access_mode))
         if not timeout:
-            raise ClientError("'timeout' must be a float larger than 0; {}".format(timeout))
+            raise ClientError("'timeout' must be a float larger than 0; {}"
+                              .format(timeout))
 
         from neo4j.api import check_access_mode
         access_mode = check_access_mode(access_mode)
@@ -1190,17 +1190,16 @@ class Neo4jPool(IOPool):
             log.debug("[#0000]  C: <ROUTING TABLE ENSURE FRESH> %r",
                       self.routing_tables)
             self.ensure_routing_table_is_fresh(
-                access_mode=access_mode, database=database, imp_user=imp_user,
+                access_mode=access_mode, database=database, imp_user=None,
                 bookmarks=bookmarks
             )
 
         while True:
             try:
-                # Get an address for a connection that have the fewest in-use connections.
-                address = self._select_address(
-                    access_mode=access_mode, database=database,
-                    imp_user=imp_user, bookmarks=bookmarks
-                )
+                # Get an address for a connection that have the fewest in-use
+                # connections.
+                address = self._select_address(access_mode=access_mode,
+                                               database=database)
             except (ReadServiceUnavailable, WriteServiceUnavailable) as err:
                 raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode) from err
             try:

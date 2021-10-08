@@ -144,7 +144,6 @@ class Session(Workspace):
             access_mode=access_mode,
             timeout=self._config.connection_acquisition_timeout,
             database=self._config.database,
-            imp_user=self._config.impersonated_user,
             bookmarks=self._bookmarks
         )
 

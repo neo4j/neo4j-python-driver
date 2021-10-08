@@ -137,7 +137,6 @@ def test_driver_opens_write_session_by_default(uri, mocker):
             access_mode=WRITE_ACCESS,
             timeout=mocker.ANY,
             database=mocker.ANY,
-            imp_user=mocker.ANY,
             bookmarks=mocker.ANY
         )
         tx_begin_mock.assert_called_once_with(
