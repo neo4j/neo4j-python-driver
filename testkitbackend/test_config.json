@@ -36,13 +36,18 @@
     "Feature:Bolt:4.4": true,
     "Feature:Impersonation": true,
     "AuthorizationExpiredTreatment": true,
+    "Optimization:ConnectionReuse": true,
+    "Optimization:EagerTransactionBegin": true,
     "Optimization:ImplicitDefaultArguments": true,
     "Optimization:MinimalResets": true,
-    "Optimization:ConnectionReuse": true,
     "Optimization:PullPipelining": true,
     "ConfHint:connection.recv_timeout_seconds": true,
-    "Temporary:ResultKeys": true,
+    "Temporary:CypherPathAndRelationship": true,
+    "Temporary:DriverFetchSize": true,
+    "Temporary:DriverMaxTxRetryTime": true,
     "Temporary:FullSummary": true,
-    "Temporary:CypherPathAndRelationship": true
+    "Temporary:ResultKeys": true,
+    "Temporary:ResultList": "requires further specification/discussion in the team",
+    "Temporary:TransactionClose": true
   }
 }
