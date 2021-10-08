@@ -22,32 +22,6 @@
       "Flaky: test requires the driver to contact servers in a specific order",
     "stub.session_run_parameters.test_session_run_parameters.TestSessionRunParameters.test_empty_query":
       "Driver rejects empty queries before sending it to the server",
-    "stub.routing.test_routing_v3.RoutingV3.test_should_fail_when_reading_from_unexpectedly_interrupting_readers_on_run_using_tx_function":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
-    "stub.routing.test_routing_v4x1.RoutingV4x1.test_should_fail_when_reading_from_unexpectedly_interrupting_readers_on_run_using_tx_function":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
-    "stub.routing.test_routing_v4x3.RoutingV4x3.test_should_fail_when_reading_from_unexpectedly_interrupting_readers_on_run_using_tx_function":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
-    "stub.routing.test_routing_v3.RoutingV3.test_should_fail_when_reading_from_unexpectedly_interrupting_readers_using_tx_function":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
-    "stub.routing.test_routing_v4x1.RoutingV4x1.test_should_fail_when_reading_from_unexpectedly_interrupting_readers_using_tx_function":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
-    "stub.routing.test_routing_v4x3.RoutingV4x3.test_should_fail_when_reading_from_unexpectedly_interrupting_readers_using_tx_function":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
-    "stub.routing.test_routing_v3.RoutingV3.test_should_fail_when_writing_to_unexpectedly_interrupting_writers_on_run_using_tx_function":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
-    "stub.routing.test_routing_v4x1.RoutingV4x1.test_should_fail_when_writing_to_unexpectedly_interrupting_writers_on_run_using_tx_function":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
-    "stub.routing.test_routing_v4x3.RoutingV4x3.test_should_fail_when_writing_to_unexpectedly_interrupting_writers_on_run_using_tx_function":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
-    "stub.routing.test_routing_v3.RoutingV3.test_should_fail_when_writing_to_unexpectedly_interrupting_writers_using_tx_function":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
-    "stub.routing.test_routing_v4x1.RoutingV4x1.test_should_fail_when_writing_to_unexpectedly_interrupting_writers_using_tx_function":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
-    "stub.routing.test_routing_v4x3.RoutingV4x3.test_should_fail_when_writing_to_unexpectedly_interrupting_writers_using_tx_function":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
-    "stub.tx_run.test_tx_run.TestTxRun.test_eager_begin_on_tx_func_run_with_disconnect_on_begin":
-      "Driver gets caught in an infinite loop of fetching a fresh RT and trying to contact the seemingly available readers",
     "tls.tlsversions.TestTlsVersions.test_1_1":
       "TLSv1.1 and below are disabled in the driver"
   },
