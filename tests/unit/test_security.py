@@ -22,6 +22,7 @@
 from neo4j.api import (
     kerberos_auth,
     basic_auth,
+    bearer_auth,
     custom_auth,
 )
 
@@ -33,7 +34,18 @@ def test_should_generate_kerberos_auth_token_correctly():
     assert auth.scheme == "kerberos"
     assert auth.principal == ""
     assert auth.credentials == "I am a base64 service ticket"
-    assert not auth.realm
+    assert not hasattr(auth, "ticket")
+    assert not hasattr(auth, "realm")
+    assert not hasattr(auth, "parameters")
+
+
+def test_should_generate_bearer_auth_token_correctly():
+    auth = bearer_auth("I am a base64 SSO ticket")
+    assert auth.scheme == "bearer"
+    assert auth.credentials == "I am a base64 SSO ticket"
+    assert not hasattr(auth, "principal")
+    assert not hasattr(auth, "ticket")
+    assert not hasattr(auth, "realm")
     assert not hasattr(auth, "parameters")
 
 
@@ -42,12 +54,21 @@ def test_should_generate_basic_auth_without_realm_correctly():
     assert auth.scheme == "basic"
     assert auth.principal == "molly"
     assert auth.credentials == "meoooow"
-    assert not auth.realm
+    assert not hasattr(auth, "realm")
     assert not hasattr(auth, "parameters")
 
 
 def test_should_generate_base_auth_with_realm_correctly():
     auth = basic_auth("molly", "meoooow", "cat_cafe")
+    assert auth.scheme == "basic"
+    assert auth.principal == "molly"
+    assert auth.credentials == "meoooow"
+    assert auth.realm == "cat_cafe"
+    assert not hasattr(auth, "parameters")
+
+
+def test_should_generate_base_auth_with_keyword_realm_correctly():
+    auth = basic_auth("molly", "meoooow", realm="cat_cafe")
     assert auth.scheme == "basic"
     assert auth.principal == "molly"
     assert auth.credentials == "meoooow"

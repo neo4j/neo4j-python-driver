@@ -54,10 +54,23 @@ def NewDriver(backend, data):
     data["authorizationToken"].mark_item_as_read_if_equals(
         "name", "AuthorizationToken"
     )
-    auth = neo4j.Auth(
-            auth_token["scheme"], auth_token["principal"],
-            auth_token["credentials"], realm=auth_token["realm"])
-    auth_token.mark_item_as_read_if_equals("ticket", "")
+    scheme = auth_token["scheme"]
+    if scheme == "basic":
+        auth = neo4j.basic_auth(
+            auth_token["principal"], auth_token["credentials"],
+            realm=auth_token.get("realm", None)
+        )
+    elif scheme == "kerberos":
+        auth = neo4j.kerberos_auth(auth_token["credentials"])
+    elif scheme == "bearer":
+        auth = neo4j.bearer_auth(auth_token["credentials"])
+    else:
+        auth = neo4j.custom_auth(
+            auth_token["principal"], auth_token["credentials"],
+            auth_token["realm"], auth_token["scheme"],
+            **auth_token.get("parameters", {})
+        )
+        auth_token.mark_item_as_read("parameters", recursive=True)
     resolver = None
     if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
         resolver = resolution_func(backend, data["resolverRegistered"],

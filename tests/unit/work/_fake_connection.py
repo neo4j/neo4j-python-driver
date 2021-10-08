@@ -87,7 +87,6 @@ class FakeConnection(mock.NonCallableMagicMock):
         return parent.__getattr__(name)
 
 
-
 @pytest.fixture
 def fake_connection():
     return FakeConnection()

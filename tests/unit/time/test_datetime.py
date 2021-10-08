@@ -342,7 +342,7 @@ class TestDateTime:
         actual = DateTime.from_iso_format("2018-10-01T12:34:56.123456")
         assert expected == actual
 
-    def test_from_iso_format_hour_minute_second_nanoseconds(self):
+    def test_from_iso_format_hour_minute_second_nanosecond(self):
         expected = DateTime(2018, 10, 1, 12, 34, 56, 123456789)
         actual = DateTime.from_iso_format("2018-10-01T12:34:56.123456789")
         assert expected == actual

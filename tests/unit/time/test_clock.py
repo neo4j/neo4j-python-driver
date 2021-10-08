@@ -24,7 +24,7 @@ from unittest import TestCase
 from neo4j.time import Clock, ClockTime
 
 
-class ClockTestCase(TestCase):
+class TestClock(TestCase):
 
     def test_no_clock_implementations(self):
         try:

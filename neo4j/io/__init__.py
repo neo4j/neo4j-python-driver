@@ -35,7 +35,10 @@ __all__ = [
 ]
 
 import abc
-from collections import deque
+from collections import (
+    defaultdict,
+    deque,
+)
 from logging import getLogger
 from random import choice
 from select import select
@@ -342,7 +345,7 @@ class Bolt(abc.ABC):
             from neo4j.io._bolt4 import Bolt4x4
             bolt_cls = Bolt4x4
         else:
-            log.debug("[#%04X]  S: <CLOSE>", s.getpeername()[1])
+            log.debug("[#%04X]  S: <CLOSE>", s.getsockname()[1])
             _close_socket(s)
 
             supported_versions = Bolt.protocol_handlers().keys()
@@ -548,7 +551,7 @@ class Bolt(abc.ABC):
         direct_driver = isinstance(self.pool, BoltPool)
 
         if error:
-            log.error(str(error))
+            log.debug("[#%04X] %s", self.socket.getsockname()[1], error)
         log.error(message)
         # We were attempting to receive data but the connection
         # has unexpectedly terminated. So, we need to close the
@@ -618,7 +621,7 @@ class IOPool:
         self.opener = opener
         self.pool_config = pool_config
         self.workspace_config = workspace_config
-        self.connections = {}
+        self.connections = defaultdict(deque)
         self.lock = RLock()
         self.cond = Condition(self.lock)
 
@@ -640,18 +643,13 @@ class IOPool:
             timeout = self.workspace_config.connection_acquisition_timeout
 
         with self.lock:
-            try:
-                connections = self.connections[address]
-            except KeyError:
-                connections = self.connections[address] = deque()
-
             def time_remaining():
                 t = timeout - (perf_counter() - t0)
                 return t if t > 0 else 0
 
             while True:
                 # try to find a free connection in pool
-                for connection in list(connections):
+                for connection in list(self.connections.get(address, [])):
                     if (connection.closed() or connection.defunct()
                             or connection.stale()):
                         # `close` is a noop on already closed connections.
@@ -659,16 +657,30 @@ class IOPool:
                         # closed, e.g. if it's just marked as `stale` but still
                         # alive.
                         connection.close()
-                        connections.remove(connection)
+                        try:
+                            self.connections.get(address, []).remove(connection)
+                        except ValueError:
+                            # If closure fails (e.g. because the server went
+                            # down), all connections to the same address will
+                            # be removed. Therefore, we silently ignore if the
+                            # connection isn't in the pool anymore.
+                            pass
                         continue
                     if not connection.in_use:
                         connection.in_use = True
                         return connection
                 # all connections in pool are in-use
-                infinite_pool_size = (self.pool_config.max_connection_pool_size < 0 or self.pool_config.max_connection_pool_size == float("inf"))
-                can_create_new_connection = infinite_pool_size or len(connections) < self.pool_config.max_connection_pool_size
+                connections = self.connections[address]
+                max_pool_size = self.pool_config.max_connection_pool_size
+                infinite_pool_size = (max_pool_size < 0
+                                      or max_pool_size == float("inf"))
+                can_create_new_connection = (
+                        infinite_pool_size
+                        or len(connections) < max_pool_size
+                )
                 if can_create_new_connection:
-                    timeout = min(self.pool_config.connection_timeout, time_remaining())
+                    timeout = min(self.pool_config.connection_timeout,
+                                  time_remaining())
                     try:
                         connection = self.opener(address, timeout)
                     except ServiceUnavailable:
@@ -711,7 +723,9 @@ class IOPool:
         """
         with self.lock:
             for connection in connections:
-                if not connection.is_reset:
+                if not (connection.is_reset
+                        or connection.defunct()
+                        or connection.closed()):
                     try:
                         connection.reset()
                     except (Neo4jError, DriverError, BoltError) as e:
@@ -1056,7 +1070,7 @@ class Neo4jPool(IOPool):
     def update_connection_pool(self, *, database):
         servers = self.routing_tables[database].servers()
         for address in list(self.connections):
-            if address not in servers:
+            if address.unresolved not in servers:
                 super(Neo4jPool, self).deactivate(address)
 
     def ensure_routing_table_is_fresh(self, *, access_mode, database,
