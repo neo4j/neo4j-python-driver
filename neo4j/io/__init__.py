@@ -58,7 +58,6 @@ from ssl import (
 )
 from threading import (
     Condition,
-    Lock,
     RLock,
 )
 from time import perf_counter
@@ -875,7 +874,7 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  C: <NEO4J POOL> routing address %r", address)
         self.address = address
         self.routing_tables = {workspace_config.database: RoutingTable(database=workspace_config.database, routers=[address])}
-        self.refresh_lock = Lock()
+        self.refresh_lock = RLock()
 
     def __repr__(self):
         """ The representation shows the initial routing addresses.
@@ -1109,23 +1108,25 @@ class Neo4jPool(IOPool):
         from neo4j.api import READ_ACCESS
         """ Selects the address with the fewest in-use connections.
         """
-        self.create_routing_table(database)
-        self.ensure_routing_table_is_fresh(
-            access_mode=access_mode, database=database, bookmarks=bookmarks
-        )
-        log.debug("[#0000]  C: <ROUTING TABLE ENSURE FRESH> %r", self.routing_tables)
-        if access_mode == READ_ACCESS:
-            addresses = self.routing_tables[database].readers
-        else:
-            addresses = self.routing_tables[database].writers
-        addresses_by_usage = {}
-        for address in addresses:
-            addresses_by_usage.setdefault(self.in_use_connection_count(address), []).append(address)
+        with self.refresh_lock:
+            if access_mode == READ_ACCESS:
+                addresses = self.routing_tables[database].readers
+            else:
+                addresses = self.routing_tables[database].writers
+            addresses_by_usage = {}
+            for address in addresses:
+                addresses_by_usage.setdefault(
+                    self.in_use_connection_count(address), []
+                ).append(address)
         if not addresses_by_usage:
             if access_mode == READ_ACCESS:
-                raise ReadServiceUnavailable("No read service currently available")
+                raise ReadServiceUnavailable(
+                    "No read service currently available"
+                )
             else:
-                raise WriteServiceUnavailable("No write service currently available")
+                raise WriteServiceUnavailable(
+                    "No write service currently available"
+                )
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
     def acquire(self, access_mode=None, timeout=None, database=None,
@@ -1137,6 +1138,13 @@ class Neo4jPool(IOPool):
 
         from neo4j.api import check_access_mode
         access_mode = check_access_mode(access_mode)
+        with self.refresh_lock:
+            self.create_routing_table(database)
+            log.debug("[#0000]  C: <ROUTING TABLE ENSURE FRESH> %r", self.routing_tables)
+            self.ensure_routing_table_is_fresh(
+                access_mode=access_mode, database=database, bookmarks=bookmarks
+            )
+
         while True:
             try:
                 # Get an address for a connection that have the fewest in-use connections.
@@ -1144,10 +1152,10 @@ class Neo4jPool(IOPool):
                     access_mode=access_mode, database=database,
                     bookmarks=bookmarks
                 )
-                log.debug("[#0000]  C: <ACQUIRE ADDRESS> database=%r address=%r", database, address)
             except (ReadServiceUnavailable, WriteServiceUnavailable) as err:
                 raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode) from err
             try:
+                log.debug("[#0000]  C: <ACQUIRE ADDRESS> database=%r address=%r", database, address)
                 connection = self._acquire(address, timeout=timeout)  # should always be a resolved address
             except ServiceUnavailable:
                 self.deactivate(address=address)

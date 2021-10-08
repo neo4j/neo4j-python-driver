@@ -75,13 +75,18 @@ def NewDriver(backend, data):
     if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
         resolver = resolution_func(backend, data["resolverRegistered"],
                                    data["domainNameResolverRegistered"])
-    connection_timeout = data.get("connectionTimeoutMs", None)
+    connection_timeout = data.get("connectionTimeoutMs")
     if connection_timeout is not None:
         connection_timeout /= 1000
+    max_transaction_retry_time = data.get("maxTxRetryTimeMs")
+    if max_transaction_retry_time is not None:
+        max_transaction_retry_time /= 1000
     data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.GraphDatabase.driver(
         data["uri"], auth=auth, user_agent=data["userAgent"],
-        resolver=resolver, connection_timeout=connection_timeout
+        resolver=resolver, connection_timeout=connection_timeout,
+        fetch_size=data.get("fetchSize"),
+        max_transaction_retry_time=max_transaction_retry_time,
     )
     key = backend.next_key()
     backend.drivers[key] = driver
@@ -301,6 +306,13 @@ def TransactionRollback(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
     tx.rollback()
+    backend.send_response("Transaction", {"id": key})
+
+
+def TransactionClose(backend, data):
+    key = data["txId"]
+    tx = backend.transactions[key]
+    tx.close()
     backend.send_response("Transaction", {"id": key})
 
 
