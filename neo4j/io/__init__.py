@@ -1070,7 +1070,7 @@ class Neo4jPool(IOPool):
     def update_connection_pool(self, *, database):
         servers = self.routing_tables[database].servers()
         for address in list(self.connections):
-            if address not in servers:
+            if address.unresolved not in servers:
                 super(Neo4jPool, self).deactivate(address)
 
     def ensure_routing_table_is_fresh(self, *, access_mode, database,
