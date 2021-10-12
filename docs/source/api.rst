@@ -486,7 +486,12 @@ Name of the database to query.
 
 .. Note::
 
-   The default database can be set on the Neo4j instance settings.
+    The default database can be set on the Neo4j instance settings.
+
+.. Note::
+    It is recommended to always specify the database explicitly when possible.
+    This allows the driver to work more efficiently, as it will not have to
+    resolve the home database first.
 
 
 .. code-block:: python
