@@ -1077,7 +1077,7 @@ class Neo4jPool(IOPool):
             )
 
             prefer_initial_routing_address = \
-                self.routing_tables[database].missing_fresh_writer()
+                self.routing_tables[database].initialized_without_writers
 
             if prefer_initial_routing_address:
                 # TODO: Test this state
