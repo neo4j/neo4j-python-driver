@@ -232,9 +232,14 @@ class Result:
         """
         if self._summary is None:
             if self._metadata:
-                self._summary = ResultSummary(**self._metadata)
+                self._summary = ResultSummary(
+                    self._connection.unresolved_address, **self._metadata
+                )
             elif self._connection:
-                self._summary = ResultSummary(server=self._connection.server_info)
+                self._summary = ResultSummary(
+                    self._connection.unresolved_address,
+                    server=self._connection.server_info
+                )
 
         return self._summary
 

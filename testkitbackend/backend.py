@@ -24,6 +24,9 @@ import logging
 import sys
 import traceback
 
+from neo4j._exceptions import (
+    BoltError
+)
 from neo4j.exceptions import (
     DriverError,
     Neo4jError,
@@ -152,7 +155,8 @@ class Backend:
                     "Backend does not support some properties of the " + name +
                     " request: " + ", ".join(unsused_keys)
                 )
-        except (Neo4jError, DriverError, UnsupportedServerProduct) as e:
+        except (Neo4jError, DriverError, UnsupportedServerProduct,
+                BoltError) as e:
             log.debug(traceback.format_exc())
             if isinstance(e, Neo4jError):
                 msg = "" if e.message is None else str(e.message)
