@@ -392,7 +392,7 @@ class Bolt(abc.ABC):
             pass
 
     @abc.abstractmethod
-    def route(self, database=None, bookmarks=None):
+    def route(self, database=None, imp_user=None, bookmarks=None):
         """ Fetch a routing table from the server for the given
         `database`. For Bolt 4.3 and above, this appends a ROUTE
         message; for earlier versions, a procedure call is made via
@@ -400,6 +400,7 @@ class Bolt(abc.ABC):
         sent to the network, and a response is fetched.
 
         :param database: database for which to fetch a routing table
+        :param imp_user: the user to impersonate
         :param bookmarks: iterable of bookmark values after which this
                           transaction should begin
         :return: dictionary of raw routing data
@@ -407,8 +408,8 @@ class Bolt(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None,
-            timeout=None, db=None, **handlers):
+    def run(self, query, parameters=None, mode=None, bookmarks=None,
+            metadata=None, timeout=None, db=None, imp_user=None, **handlers):
         """ Appends a RUN message to the output queue.
 
         :param query: Cypher query string
@@ -418,6 +419,7 @@ class Bolt(abc.ABC):
         :param metadata: custom metadata dictionary to attach to the transaction
         :param timeout: timeout for transaction execution (seconds)
         :param db: name of the database against which to begin the transaction
+        :param imp_user: the user to impersonate
         :param handlers: handler functions passed into the returned Response object
         :return: Response object
         """
@@ -446,7 +448,8 @@ class Bolt(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
+    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
+              db=None, imp_user=None, **handlers):
         """ Appends a BEGIN message to the output queue.
 
         :param mode: access mode for routing - "READ" or "WRITE" (default)
@@ -454,6 +457,7 @@ class Bolt(abc.ABC):
         :param metadata: custom metadata dictionary to attach to the transaction
         :param timeout: timeout for transaction execution (seconds)
         :param db: name of the database against which to begin the transaction
+        :param imp_user: the user to impersonate
         :param handlers: handler functions passed into the returned Response object
         :return: Response object
         """
@@ -826,7 +830,7 @@ class BoltPool(IOPool):
         return "<{} address={!r}>".format(self.__class__.__name__, self.address)
 
     def acquire(self, access_mode=None, timeout=None, database=None,
-                bookmarks=None):
+                imp_user=None, bookmarks=None):
         # The access_mode and database is not needed for a direct connection, its just there for consistency.
         return self._acquire(self.address, timeout)
 
@@ -907,15 +911,24 @@ class Neo4jPool(IOPool):
     def get_routing_table_for_default_database(self):
         return self.routing_tables[self.workspace_config.database]
 
-    def create_routing_table(self, database):
-        if database not in self.routing_tables:
-            self.routing_tables[database] = RoutingTable(database=database, routers=self.get_default_database_initial_router_addresses())
+    def get_or_create_routing_table(self, database):
+        with self.refresh_lock:
+            if database not in self.routing_tables:
+                self.routing_tables[database] = RoutingTable(
+                    database=database,
+                    routers=self.get_default_database_initial_router_addresses()
+                )
+            return self.routing_tables[database]
 
-    def fetch_routing_info(self, address, database, bookmarks, timeout):
+    def fetch_routing_info(self, address, database, imp_user, bookmarks,
+                           timeout):
         """ Fetch raw routing info from a given router address.
 
         :param address: router address
         :param database: the database name to get routing table for
+        :param imp_user: the user to impersonate while fetching the routing
+                         table
+        :type imp_user: str or None
         :param bookmarks: iterable of bookmark values after which the routing
                           info should be fetched
         :param timeout: connection acquisition timeout in seconds
@@ -929,7 +942,9 @@ class Neo4jPool(IOPool):
             cx = self._acquire(address, timeout)
             try:
                 routing_table = cx.route(
-                    database or self.workspace_config.database, bookmarks
+                    database or self.workspace_config.database,
+                    imp_user or self.workspace_config.impersonated_user,
+                    bookmarks
                 )
             finally:
                 self.release(cx)
@@ -954,21 +969,26 @@ class Neo4jPool(IOPool):
             self.deactivate(address)
         return routing_table
 
-    def fetch_routing_table(self, *, address, timeout, database, bookmarks):
+    def fetch_routing_table(self, *, address, timeout, database, imp_user,
+                            bookmarks):
         """ Fetch a routing table from a given router address.
 
         :param address: router address
         :param timeout: seconds
         :param database: the database name
         :type: str
+        :param imp_user: the user to impersonate while fetching the routing
+                         table
+        :type imp_user: str or None
         :param bookmarks: bookmarks used when fetching routing table
 
         :return: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
         """
         try:
-            new_routing_info = self.fetch_routing_info(address, database,
-                                                       bookmarks, timeout)
+            new_routing_info = self.fetch_routing_info(
+                address, database, imp_user, bookmarks, timeout
+            )
         except (ServiceUnavailable, SessionExpired):
             new_routing_info = None
         if not new_routing_info:
@@ -977,7 +997,10 @@ class Neo4jPool(IOPool):
         else:
             servers = new_routing_info[0]["servers"]
             ttl = new_routing_info[0]["ttl"]
-            new_routing_table = RoutingTable.parse_routing_info(database=database, servers=servers, ttl=ttl)
+            database = new_routing_info[0].get("db", database)
+            new_routing_table = RoutingTable.parse_routing_info(
+                database=database, servers=servers, ttl=ttl
+            )
 
         # Parse routing info and count the number of each type of server
         num_routers = len(new_routing_table.routers)
@@ -1000,8 +1023,8 @@ class Neo4jPool(IOPool):
         # At least one of each is fine, so return this table
         return new_routing_table
 
-    def update_routing_table_from(self, *routers, database=None,
-                                  bookmarks=None):
+    def _update_routing_table_from(self, *routers, database=None, imp_user=None,
+                                   bookmarks=None, database_callback=None):
         """ Try to update routing tables with the given routers.
 
         :return: True if the routing table is successfully updated,
@@ -1013,67 +1036,86 @@ class Neo4jPool(IOPool):
                 new_routing_table = self.fetch_routing_table(
                     address=address,
                     timeout=self.pool_config.connection_timeout,
-                    database=database, bookmarks=bookmarks
+                    database=database, imp_user=imp_user, bookmarks=bookmarks
                 )
                 if new_routing_table is not None:
-                    self.routing_tables[database].update(new_routing_table)
+                    new_databse = new_routing_table.database
+                    self.get_or_create_routing_table(new_databse)\
+                        .update(new_routing_table)
                     log.debug(
                         "[#0000]  C: <UPDATE ROUTING TABLE> address=%r (%r)",
-                        address, self.routing_tables[database]
+                        address, self.routing_tables[new_databse]
                     )
+                    if callable(database_callback):
+                        database_callback(new_databse)
                     return True
             self.deactivate(router)
         return False
 
-    def update_routing_table(self, *, database, bookmarks):
+    def update_routing_table(self, *, database, imp_user, bookmarks,
+                             database_callback=None):
         """ Update the routing table from the first router able to provide
         valid routing information.
 
         :param database: The database name
+        :param imp_user: the user to impersonate while fetching the routing
+                         table
+        :type imp_user: str or None
         :param bookmarks: bookmarks used when fetching routing table
+        :param database_callback: A callback function that will be called with
+            the database name as only argument when a new routing table has been
+            acquired. This database name might different from `database` if that
+            was None and the underlying protocol supports reporting back the
+            actual database.
 
         :raise neo4j.exceptions.ServiceUnavailable:
         """
-        # copied because it can be modified
-        existing_routers = set(self.routing_tables[database].routers)
+        with self.refresh_lock:
+            # copied because it can be modified
+            existing_routers = set(
+                self.get_or_create_routing_table(database).routers
+            )
 
-        prefer_initial_routing_address = \
-            self.routing_tables[database].missing_fresh_writer()
+            prefer_initial_routing_address = \
+                self.routing_tables[database].initialized_without_writers
 
-        if prefer_initial_routing_address:
-            # TODO: Test this state
-            if self.update_routing_table_from(
+            if prefer_initial_routing_address:
+                # TODO: Test this state
+                if self._update_routing_table_from(
+                        self.first_initial_routing_address, database=database,
+                        imp_user=imp_user, bookmarks=bookmarks,
+                        database_callback=database_callback
+                ):
+                    # Why is only the first initial routing address used?
+                    return
+            if self._update_routing_table_from(
+                    *(existing_routers - {self.first_initial_routing_address}),
+                    database=database, imp_user=imp_user, bookmarks=bookmarks,
+                    database_callback=database_callback
+            ):
+                return
+
+            if not prefer_initial_routing_address:
+                if self._update_routing_table_from(
                     self.first_initial_routing_address, database=database,
-                    bookmarks=bookmarks
-            ):
-                # Why is only the first initial routing address used?
-                return
-        if self.update_routing_table_from(
-                *(existing_routers - {self.first_initial_routing_address}),
-                database=database, bookmarks=bookmarks
-        ):
-            return
+                    imp_user=imp_user, bookmarks=bookmarks,
+                    database_callback=database_callback
+                ):
+                    # Why is only the first initial routing address used?
+                    return
 
-        if not prefer_initial_routing_address:
-            if self.update_routing_table_from(
-                self.first_initial_routing_address, database=database,
-                bookmarks=bookmarks
-            ):
-                # Why is only the first initial routing address used?
-                return
-
-        # None of the routers have been successful, so just fail
-        log.error("Unable to retrieve routing information")
-        raise ServiceUnavailable("Unable to retrieve routing information")
+            # None of the routers have been successful, so just fail
+            log.error("Unable to retrieve routing information")
+            raise ServiceUnavailable("Unable to retrieve routing information")
 
     def update_connection_pool(self, *, database):
-        servers = self.routing_tables[database].servers()
+        servers = self.get_or_create_routing_table(database).servers()
         for address in list(self.connections):
             if address.unresolved not in servers:
                 super(Neo4jPool, self).deactivate(address)
 
-    def ensure_routing_table_is_fresh(self, *, access_mode, database,
-                                      bookmarks):
+    def ensure_routing_table_is_fresh(self, *, access_mode, database, imp_user,
+                                      bookmarks, database_callback=None):
         """ Update the routing table if stale.
 
         This method performs two freshness checks, before and after acquiring
@@ -1087,24 +1129,29 @@ class Neo4jPool(IOPool):
         :return: `True` if an update was required, `False` otherwise.
         """
         from neo4j.api import READ_ACCESS
-        if self.routing_tables[database].is_fresh(readonly=(access_mode == READ_ACCESS)):
-            # Readers are fresh.
-            return False
         with self.refresh_lock:
+            if self.get_or_create_routing_table(database)\
+                    .is_fresh(readonly=(access_mode == READ_ACCESS)):
+                # Readers are fresh.
+                return False
 
-            self.update_routing_table(database=database, bookmarks=bookmarks)
+            self.update_routing_table(
+                database=database, imp_user=imp_user, bookmarks=bookmarks,
+                database_callback=database_callback
+            )
             self.update_connection_pool(database=database)
 
             for database in list(self.routing_tables.keys()):
                 # Remove unused databases in the routing table
                 # Remove the routing table after a timeout = TTL + 30s
                 log.debug("[#0000]  C: <ROUTING AGED> database=%s", database)
-                if self.routing_tables[database].should_be_purged_from_memory() and database != self.workspace_config.database:
+                if (self.routing_tables[database].should_be_purged_from_memory()
+                        and database != self.workspace_config.database):
                     del self.routing_tables[database]
 
             return True
 
-    def _select_address(self, *, access_mode, database, bookmarks):
+    def _select_address(self, *, access_mode, database):
         from neo4j.api import READ_ACCESS
         """ Selects the address with the fewest in-use connections.
         """
@@ -1134,24 +1181,25 @@ class Neo4jPool(IOPool):
         if access_mode not in (WRITE_ACCESS, READ_ACCESS):
             raise ClientError("Non valid 'access_mode'; {}".format(access_mode))
         if not timeout:
-            raise ClientError("'timeout' must be a float larger than 0; {}".format(timeout))
+            raise ClientError("'timeout' must be a float larger than 0; {}"
+                              .format(timeout))
 
         from neo4j.api import check_access_mode
         access_mode = check_access_mode(access_mode)
         with self.refresh_lock:
-            self.create_routing_table(database)
-            log.debug("[#0000]  C: <ROUTING TABLE ENSURE FRESH> %r", self.routing_tables)
+            log.debug("[#0000]  C: <ROUTING TABLE ENSURE FRESH> %r",
+                      self.routing_tables)
             self.ensure_routing_table_is_fresh(
-                access_mode=access_mode, database=database, bookmarks=bookmarks
+                access_mode=access_mode, database=database, imp_user=None,
+                bookmarks=bookmarks
             )
 
         while True:
             try:
-                # Get an address for a connection that have the fewest in-use connections.
-                address = self._select_address(
-                    access_mode=access_mode, database=database,
-                    bookmarks=bookmarks
-                )
+                # Get an address for a connection that have the fewest in-use
+                # connections.
+                address = self._select_address(access_mode=access_mode,
+                                               database=database)
             except (ReadServiceUnavailable, WriteServiceUnavailable) as err:
                 raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode) from err
             try:

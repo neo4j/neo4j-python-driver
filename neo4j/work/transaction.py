@@ -62,9 +62,11 @@ class Transaction:
             self.commit()
         self.close()
 
-    def _begin(self, database, bookmarks, access_mode, metadata, timeout):
-        self._connection.begin(bookmarks=bookmarks, metadata=metadata,
-                               timeout=timeout, mode=access_mode, db=database)
+    def _begin(self, database, imp_user, bookmarks, access_mode, metadata, timeout):
+        self._connection.begin(
+            bookmarks=bookmarks, metadata=metadata, timeout=timeout,
+            mode=access_mode, db=database, imp_user=imp_user
+        )
         self._error_handling_connection.send_all()
         self._error_handling_connection.fetch_all()
 

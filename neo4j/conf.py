@@ -283,6 +283,10 @@ class WorkspaceConfig(Config):
     #: Fetch Size
     fetch_size = 1000
 
+    #: User to impersonate
+    impersonated_user = None
+    # Note that you need appropriate permissions to do so.
+
 
 class SessionConfig(WorkspaceConfig):
     """ Session configuration.

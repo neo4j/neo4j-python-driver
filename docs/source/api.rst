@@ -486,7 +486,12 @@ Name of the database to query.
 
 .. Note::
 
-   The default database can be set on the Neo4j instance settings.
+    The default database can be set on the Neo4j instance settings.
+
+.. Note::
+    It is recommended to always specify the database explicitly when possible.
+    This allows the driver to work more efficiently, as it will not have to
+    resolve the home database first.
 
 
 .. code-block:: python
@@ -497,6 +502,41 @@ Name of the database to query.
 
 
 :Default: ``neo4j.DEFAULT_DATABASE``
+
+
+.. _impersonated-user-ref:
+
+``impersonated_user``
+---------------------
+Name of the user to impersonate.
+This means that all actions in the session will be executed in the security
+context of the impersonated user. For this, the user for which the
+:class:``Driver`` has been created needs to have the appropriate permissions.
+
+:Type: ``str``, None
+
+
+.. py:data:: None
+   :noindex:
+
+   Will not perform impersonation.
+
+
+.. Note::
+
+    The server or all servers of the cluster need to support impersonation when.
+    Otherwise, the driver will raise :py:exc:`.ConfigurationError`
+    as soon as it encounters a server that does not.
+
+
+.. code-block:: python
+
+   from neo4j import GraphDatabase
+   driver = GraphDatabase.driver(uri, auth=(user, password))
+   session = driver.session(impersonated_user="alice")
+
+
+:Default: ``None``
 
 
 .. _default-access-mode-ref:
