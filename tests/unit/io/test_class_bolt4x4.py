@@ -56,31 +56,43 @@ def test_conn_is_not_stale(fake_socket, set_stale):
         connection.set_stale()
     assert connection.stale() is set_stale
 
-
-def test_db_extra_in_begin(fake_socket):
+@pytest.mark.parametrize(("args", "kwargs", "expected_fields"), (
+    (("", {}), {"db": "something"}, ({"db": "something"},)),
+    (("", {}), {"imp_user": "imposter"}, ({"imp_user": "imposter"},)),
+    (
+        ("", {}),
+        {"db": "something", "imp_user": "imposter"},
+        ({"db": "something", "imp_user": "imposter"},)
+    ),
+))
+def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
-    connection.begin(db="something")
+    connection.begin(*args, **kwargs)
     connection.send_all()
-    tag, fields = socket.pop_message()
+    tag, is_fields = socket.pop_message()
     assert tag == b"\x11"
-    assert len(fields) == 1
-    assert fields[0] == {"db": "something"}
+    assert tuple(is_fields) == expected_fields
 
-
-def test_db_extra_in_run(fake_socket):
+@pytest.mark.parametrize(("args", "kwargs", "expected_fields"), (
+    (("", {}), {"db": "something"}, ("", {}, {"db": "something"})),
+    (("", {}), {"imp_user": "imposter"}, ("", {}, {"imp_user": "imposter"})),
+    (
+        ("", {}),
+        {"db": "something", "imp_user": "imposter"},
+        ("", {}, {"db": "something", "imp_user": "imposter"})
+    ),
+))
+def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
-    connection.run("", {}, db="something")
+    connection.run(*args, **kwargs)
     connection.send_all()
-    tag, fields = socket.pop_message()
+    tag, is_fields = socket.pop_message()
     assert tag == b"\x10"
-    assert len(fields) == 3
-    assert fields[0] == ""
-    assert fields[1] == {}
-    assert fields[2] == {"db": "something"}
+    assert tuple(is_fields) == expected_fields
 
 
 def test_n_extra_in_discard(fake_socket):
