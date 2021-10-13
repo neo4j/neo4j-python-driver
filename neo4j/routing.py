@@ -110,6 +110,7 @@ class RoutingTable:
         self.routers = OrderedSet(routers)
         self.readers = OrderedSet(readers)
         self.writers = OrderedSet(writers)
+        self.initialized_without_writers = not self.writers
         self.last_updated_time = perf_counter()
         self.ttl = ttl
         self.database = database
@@ -142,14 +143,6 @@ class RoutingTable:
         log.debug("[#0000]  C: <ROUTING> Table has_server_for_mode=%r", has_server_for_mode)
         return not expired and self.routers and has_server_for_mode
 
-    def missing_fresh_writer(self):
-        """ Check if the routing table have a fresh write address.
-
-        :return: Return true if it does not have a fresh write address.
-        :rtype: bool
-        """
-        return not self.is_fresh(readonly=False)
-
     def should_be_purged_from_memory(self):
         """ Check if the routing table is stale and not used for a long time and should be removed from memory.
 
@@ -168,6 +161,7 @@ class RoutingTable:
         self.routers.replace(new_routing_table.routers)
         self.readers.replace(new_routing_table.readers)
         self.writers.replace(new_routing_table.writers)
+        self.initialized_without_writers = not self.writers
         self.last_updated_time = perf_counter()
         self.ttl = new_routing_table.ttl
         log.debug("[#0000]  S: <ROUTING> table=%r", self)

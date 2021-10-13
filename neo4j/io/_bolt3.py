@@ -165,12 +165,22 @@ class Bolt3(Bolt):
         self.fetch_all()
         check_supported_server_product(self.server_info.agent)
 
-    def route(self, database=None, bookmarks=None):
-        if database is not None:  # default database
-            raise ConfigurationError("Database name parameter for selecting database is not "
-                                     "supported in Bolt Protocol {!r}. Database name {!r}. "
-                                     "Server Agent {!r}.".format(Bolt3.PROTOCOL_VERSION, database,
-                                                                 self.server_info.agent))
+    def route(self, database=None, imp_user=None, bookmarks=None):
+        if database is not None:
+            raise ConfigurationError(
+                "Database name parameter for selecting database is not "
+                "supported in Bolt Protocol {!r}. Database name {!r}. "
+                "Server Agent {!r}".format(
+                    self.PROTOCOL_VERSION, database, self.server_info.agent
+                )
+            )
+        if imp_user is not None:
+            raise ConfigurationError(
+                "Impersonation is not supported in Bolt Protocol {!r}. "
+                "Trying to impersonate {!r}.".format(
+                    self.PROTOCOL_VERSION, imp_user
+                )
+            )
 
         metadata = {}
         records = []
@@ -197,9 +207,22 @@ class Bolt3(Bolt):
         routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
         return routing_info
 
-    def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
+    def run(self, query, parameters=None, mode=None, bookmarks=None,
+            metadata=None, timeout=None, db=None, imp_user=None, **handlers):
         if db is not None:
-            raise ConfigurationError("Database name parameter for selecting database is not supported in Bolt Protocol {!r}. Database name {!r}.".format(Bolt3.PROTOCOL_VERSION, db))
+            raise ConfigurationError(
+                "Database name parameter for selecting database is not "
+                "supported in Bolt Protocol {!r}. Database name {!r}.".format(
+                    self.PROTOCOL_VERSION, db
+                )
+            )
+        if imp_user is not None:
+            raise ConfigurationError(
+                "Impersonation is not supported in Bolt Protocol {!r}. "
+                "Trying to impersonate {!r}.".format(
+                    self.PROTOCOL_VERSION, imp_user
+                )
+            )
         if not parameters:
             parameters = {}
         extra = {}
@@ -238,9 +261,22 @@ class Bolt3(Bolt):
         log.debug("[#%04X]  C: PULL_ALL", self.local_port)
         self._append(b"\x3F", (), Response(self, "pull", **handlers))
 
-    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
+    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
+              db=None, imp_user=None, **handlers):
         if db is not None:
-            raise ConfigurationError("Database name parameter for selecting database is not supported in Bolt Protocol {!r}. Database name {!r}.".format(Bolt3.PROTOCOL_VERSION, db))
+            raise ConfigurationError(
+                "Database name parameter for selecting database is not "
+                "supported in Bolt Protocol {!r}. Database name {!r}.".format(
+                    self.PROTOCOL_VERSION, db
+                )
+            )
+        if imp_user is not None:
+            raise ConfigurationError(
+                "Impersonation is not supported in Bolt Protocol {!r}. "
+                "Trying to impersonate {!r}.".format(
+                    self.PROTOCOL_VERSION, imp_user
+                )
+            )
         extra = {}
         if mode in (READ_ACCESS, "r"):
             extra["mode"] = "r"  # It will default to mode "w" if nothing is specified

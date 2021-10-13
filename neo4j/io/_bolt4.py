@@ -32,6 +32,7 @@ from neo4j.api import (
     Version,
 )
 from neo4j.exceptions import (
+    ConfigurationError,
     DatabaseUnavailable,
     DriverError,
     ForbiddenOnReadOnlyDatabase,
@@ -122,7 +123,14 @@ class Bolt4x0(Bolt):
         self.fetch_all()
         check_supported_server_product(self.server_info.agent)
 
-    def route(self, database=None, bookmarks=None):
+    def route(self, database=None, imp_user=None, bookmarks=None):
+        if imp_user is not None:
+            raise ConfigurationError(
+                "Impersonation is not supported in Bolt Protocol {!r}. "
+                "Trying to impersonate {!r}.".format(
+                    self.PROTOCOL_VERSION, imp_user
+                )
+            )
         metadata = {}
         records = []
 
@@ -160,7 +168,15 @@ class Bolt4x0(Bolt):
         routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
         return routing_info
 
-    def run(self, query, parameters=None, mode=None, bookmarks=None, metadata=None, timeout=None, db=None, **handlers):
+    def run(self, query, parameters=None, mode=None, bookmarks=None,
+            metadata=None, timeout=None, db=None, imp_user=None, **handlers):
+        if imp_user is not None:
+            raise ConfigurationError(
+                "Impersonation is not supported in Bolt Protocol {!r}. "
+                "Trying to impersonate {!r}.".format(
+                    self.PROTOCOL_VERSION, imp_user
+                )
+            )
         if not parameters:
             parameters = {}
         extra = {}
@@ -206,7 +222,14 @@ class Bolt4x0(Bolt):
         self._append(b"\x3F", (extra,), Response(self, "pull", **handlers))
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, **handlers):
+              db=None, imp_user=None, **handlers):
+        if imp_user is not None:
+            raise ConfigurationError(
+                "Impersonation is not supported in Bolt Protocol {!r}. "
+                "Trying to impersonate {!r}.".format(
+                    self.PROTOCOL_VERSION, imp_user
+                )
+            )
         extra = {}
         if mode in (READ_ACCESS, "r"):
             extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
@@ -376,7 +399,14 @@ class Bolt4x3(Bolt4x2):
 
     PROTOCOL_VERSION = Version(4, 3)
 
-    def route(self, database=None, bookmarks=None):
+    def route(self, database=None, imp_user=None, bookmarks=None):
+        if imp_user is not None:
+            raise ConfigurationError(
+                "Impersonation is not supported in Bolt Protocol {!r}. "
+                "Trying to impersonate {!r}.".format(
+                    self.PROTOCOL_VERSION, imp_user
+                )
+            )
 
         def fail(md):
             from neo4j._exceptions import BoltRoutingError
@@ -384,12 +414,15 @@ class Bolt4x3(Bolt4x2):
             if code == "Neo.ClientError.Database.DatabaseNotFound":
                 return  # surface this error to the user
             elif code == "Neo.ClientError.Procedure.ProcedureNotFound":
-                raise BoltRoutingError("Server does not support routing", self.unresolved_address)
+                raise BoltRoutingError("Server does not support routing",
+                                       self.unresolved_address)
             else:
-                raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
+                raise BoltRoutingError("Routing support broken on server",
+                                       self.unresolved_address)
 
         routing_context = self.routing_context or {}
-        log.debug("[#%04X]  C: ROUTE %r %r", self.local_port, routing_context, database)
+        log.debug("[#%04X]  C: ROUTE %r %r %r", self.local_port,
+                  routing_context, bookmarks, database)
         metadata = {}
         if bookmarks is None:
             bookmarks = []
@@ -440,3 +473,103 @@ class Bolt4x4(Bolt4x3):
     """
 
     PROTOCOL_VERSION = Version(4, 4)
+
+    def route(self, database=None, imp_user=None, bookmarks=None):
+        def fail(md):
+            from neo4j._exceptions import BoltRoutingError
+            code = md.get("code")
+            if code == "Neo.ClientError.Database.DatabaseNotFound":
+                return  # surface this error to the user
+            elif code == "Neo.ClientError.Procedure.ProcedureNotFound":
+                raise BoltRoutingError("Server does not support routing",
+                                       self.unresolved_address)
+            else:
+                raise BoltRoutingError("Routing support broken on server",
+                                       self.unresolved_address)
+
+        routing_context = self.routing_context or {}
+        db_context = {}
+        if database is not None:
+            db_context.update(db=database)
+        if imp_user is not None:
+            db_context.update(imp_user=imp_user)
+        log.debug("[#%04X]  C: ROUTE %r %r %r", self.local_port,
+                  routing_context, bookmarks, db_context)
+        metadata = {}
+        if bookmarks is None:
+            bookmarks = []
+        else:
+            bookmarks = list(bookmarks)
+        self._append(b"\x66", (routing_context, bookmarks, db_context),
+                     response=Response(self, "route",
+                                       on_success=metadata.update,
+                                       on_failure=fail))
+        self.send_all()
+        self.fetch_all()
+        return [metadata.get("rt")]
+
+    def run(self, query, parameters=None, mode=None, bookmarks=None,
+            metadata=None, timeout=None, db=None, imp_user=None, **handlers):
+        if not parameters:
+            parameters = {}
+        extra = {}
+        if mode in (READ_ACCESS, "r"):
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
+        if db:
+            extra["db"] = db
+        if imp_user:
+            extra["imp_user"] = imp_user
+        if bookmarks:
+            try:
+                extra["bookmarks"] = list(bookmarks)
+            except TypeError:
+                raise TypeError("Bookmarks must be provided within an iterable")
+        if metadata:
+            try:
+                extra["tx_metadata"] = dict(metadata)
+            except TypeError:
+                raise TypeError("Metadata must be coercible to a dict")
+        if timeout:
+            try:
+                extra["tx_timeout"] = int(1000 * timeout)
+            except TypeError:
+                raise TypeError("Timeout must be specified as a number of "
+                                "seconds")
+        fields = (query, parameters, extra)
+        log.debug("[#%04X]  C: RUN %s", self.local_port,
+                  " ".join(map(repr, fields)))
+        if query.upper() == u"COMMIT":
+            self._append(b"\x10", fields, CommitResponse(self, "run",
+                                                         **handlers))
+        else:
+            self._append(b"\x10", fields, Response(self, "run", **handlers))
+
+    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
+              db=None, imp_user=None, **handlers):
+        extra = {}
+        if mode in (READ_ACCESS, "r"):
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
+        if db:
+            extra["db"] = db
+        if imp_user:
+            extra["imp_user"] = imp_user
+        if bookmarks:
+            try:
+                extra["bookmarks"] = list(bookmarks)
+            except TypeError:
+                raise TypeError("Bookmarks must be provided within an iterable")
+        if metadata:
+            try:
+                extra["tx_metadata"] = dict(metadata)
+            except TypeError:
+                raise TypeError("Metadata must be coercible to a dict")
+        if timeout:
+            try:
+                extra["tx_timeout"] = int(1000 * timeout)
+            except TypeError:
+                raise TypeError("Timeout must be specified as a number of "
+                                "seconds")
+        log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
+        self._append(b"\x11", (extra,), Response(self, "begin", **handlers))

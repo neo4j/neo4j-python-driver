@@ -41,6 +41,7 @@ from neo4j.exceptions import (
     TransientError,
     TransactionError,
 )
+from neo4j.io import Neo4jPool
 from neo4j.work import Workspace
 from neo4j.work.result import Result
 from neo4j.work.transaction import Transaction
@@ -81,6 +82,9 @@ class Session(Workspace):
     # :class:`.Transaction` should be carried out.
     _bookmarks = None
 
+    # Sessions are supposed to cache the database on which to operate.
+    _cached_database = False
+
     # The state this session is in.
     _state_failed = False
 
@@ -106,7 +110,11 @@ class Session(Workspace):
             self._state_failed = True
         self.close()
 
-    def _connect(self, access_mode, database):
+    def _set_cached_database(self, database):
+        self._cached_database = True
+        self._config.database = database
+
+    def _connect(self, access_mode):
         if access_mode is None:
             access_mode = self._config.default_access_mode
         if self._connection:
@@ -115,10 +123,27 @@ class Session(Workspace):
             self._connection.send_all()
             self._connection.fetch_all()
             self._disconnect()
+        if not self._cached_database:
+            if (self._config.database is not None
+                    or not isinstance(self._pool, Neo4jPool)):
+                self._set_cached_database(self._config.database)
+            else:
+                # This is the first time we open a connection to a server in a
+                # cluster environment for this session without explicitly
+                # configured database. Hence, we request a routing table update
+                # to try to fetch the home database. If provided by the server,
+                # we shall use this database explicitly for all subsequent
+                # actions within this session.
+                self._pool.update_routing_table(
+                    database=self._config.database,
+                    imp_user=self._config.impersonated_user,
+                    bookmarks=self._bookmarks,
+                    database_callback=self._set_cached_database
+                )
         self._connection = self._pool.acquire(
             access_mode=access_mode,
             timeout=self._config.connection_acquisition_timeout,
-            database=database,
+            database=self._config.database,
             bookmarks=self._bookmarks
         )
 
@@ -218,7 +243,7 @@ class Session(Workspace):
             self._autoResult._buffer_all()  # This will buffer upp all records for the previous auto-transaction
 
         if not self._connection:
-            self._connect(self._config.default_access_mode, database=self._config.database)
+            self._connect(self._config.default_access_mode)
         cx = self._connection
         protocol_version = cx.PROTOCOL_VERSION
         server_info = cx.server_info
@@ -231,7 +256,8 @@ class Session(Workspace):
         )
         self._autoResult._run(
             query, parameters, self._config.database,
-            self._config.default_access_mode, self._bookmarks, **kwparameters
+            self._config.impersonated_user, self._config.default_access_mode,
+            self._bookmarks, **kwparameters
         )
 
         return self._autoResult
@@ -266,16 +292,18 @@ class Session(Workspace):
             self._transaction = None
             self._disconnect()
 
-    def _open_transaction(self, *, access_mode, database, metadata=None,
+    def _open_transaction(self, *, access_mode, metadata=None,
                           timeout=None):
-        self._connect(access_mode=access_mode, database=database)
+        self._connect(access_mode=access_mode)
         self._transaction = Transaction(
             self._connection, self._config.fetch_size,
             self._transaction_closed_handler,
             self._transaction_error_handler
         )
-        self._transaction._begin(database, self._bookmarks, access_mode,
-                                 metadata, timeout)
+        self._transaction._begin(
+            self._config.database, self._config.impersonated_user,
+            self._bookmarks, access_mode, metadata, timeout
+        )
 
     def begin_transaction(self, metadata=None, timeout=None):
         """ Begin a new unmanaged transaction. Creates a new :class:`.Transaction` within this session.
@@ -312,7 +340,8 @@ class Session(Workspace):
         if self._transaction:
             raise TransactionError("Explicit transaction already open")
 
-        self._open_transaction(access_mode=self._config.default_access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
+        self._open_transaction(access_mode=self._config.default_access_mode,
+                               metadata=metadata, timeout=timeout)
 
         return self._transaction
 
@@ -332,7 +361,7 @@ class Session(Workspace):
 
         while True:
             try:
-                self._open_transaction(access_mode=access_mode, database=self._config.database, metadata=metadata, timeout=timeout)
+                self._open_transaction(access_mode=access_mode, metadata=metadata, timeout=timeout)
                 tx = self._transaction
                 try:
                     result = transaction_function(tx, *args, **kwargs)

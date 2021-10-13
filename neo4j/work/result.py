@@ -67,9 +67,10 @@ class Result:
         # BEGIN+RUN does not carry any extra on the RUN message.
         # BEGIN {extra}
         # RUN "query" {parameters} {extra}
-        self._run(query, parameters, None, None, None, **kwparameters)
+        self._run(query, parameters, None, None, None, None, **kwparameters)
 
-    def _run(self, query, parameters, db, access_mode, bookmarks, **kwparameters):
+    def _run(self, query, parameters, db, imp_user, access_mode, bookmarks,
+             **kwparameters):
         query_text = str(query)  # Query or string object
         query_metadata = getattr(query, "metadata", None)
         query_timeout = getattr(query, "timeout", None)
@@ -104,6 +105,7 @@ class Result:
             metadata=query_metadata,
             timeout=query_timeout,
             db=db,
+            imp_user=imp_user,
             on_success=on_attached,
             on_failure=on_failed_attach,
         )

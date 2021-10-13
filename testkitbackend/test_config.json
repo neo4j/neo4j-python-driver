@@ -6,6 +6,8 @@
       "Test makes assumptions about how verify_connectivity is implemented",
     "stub.routing.test_routing_v4x3.RoutingV4x3.test_should_successfully_acquire_rt_when_router_ip_changes":
       "Test makes assumptions about how verify_connectivity is implemented",
+    "stub.routing.test_routing_v4x4.RoutingV4x4.test_should_successfully_acquire_rt_when_router_ip_changes":
+      "Test makes assumptions about how verify_connectivity is implemented",
     "stub.retry.test_retry_clustering.TestRetryClustering.test_retry_ForbiddenOnReadOnlyDatabase_ChangingWriter":
       "Test makes assumptions about how verify_connectivity is implemented",
     "stub.authorization.test_authorization.TestAuthorizationV4x3.test_should_retry_on_auth_expired_on_begin_using_tx_function":
@@ -31,6 +33,8 @@
     "Feature:Auth:Bearer": true,
     "Feature:Auth:Custom": true,
     "Feature:Auth:Kerberos": true,
+    "Feature:Bolt:4.4": true,
+    "Feature:Impersonation": true,
     "AuthorizationExpiredTreatment": true,
     "Optimization:ConnectionReuse": true,
     "Optimization:EagerTransactionBegin": true,

@@ -63,6 +63,7 @@ test_session_config = {
     "bookmarks": (),
     "default_access_mode": WRITE_ACCESS,
     "database": None,
+    "impersonated_user": None,
     "fetch_size": 100,
 }
 

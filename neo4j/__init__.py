@@ -329,11 +329,9 @@ class Driver:
         :return: Returns true if the server or cluster the driver connects to supports multi-databases, otherwise false.
         :rtype: bool
         """
-        cx = self._pool.acquire(access_mode=READ_ACCESS, timeout=self._pool.workspace_config.connection_acquisition_timeout, database=self._pool.workspace_config.database)
-        support = cx.supports_multiple_databases
-        self._pool.release(cx)
-
-        return support
+        with self.session() as session:
+            session._connect(READ_ACCESS)
+            return session._connection.supports_multiple_databases
 
 
 class BoltDriver(Direct, Driver):
@@ -447,6 +445,7 @@ class Neo4jDriver(Routing, Driver):
                 routing_info[ix] = self._pool.fetch_routing_info(
                     address=table.routers[0],
                     database=self._default_workspace_config.database,
+                    imp_user=self._default_workspace_config.impersonated_user,
                     bookmarks=None,
                     timeout=self._default_workspace_config
                                 .connection_acquisition_timeout
