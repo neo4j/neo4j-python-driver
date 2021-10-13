@@ -21,6 +21,8 @@
 
 from collections import namedtuple
 
+from neo4j._exceptions import BoltProtocolError
+
 BOLT_VERSION_1 = 1
 BOLT_VERSION_2 = 2
 BOLT_VERSION_3 = 3
@@ -45,7 +47,9 @@ class ResultSummary:
     #: Dictionary of parameters passed with the statement.
     parameters = None
 
-    #: A string that describes the type of query (``'r'`` = read-only, ``'rw'`` = read/write).
+    #: A string that describes the type of query
+    # ``'r'`` = read-only, ``'rw'`` = read/write, ``'w'`` = write-onlye,
+    # ``'s'`` = schema.
     query_type = None
 
     #: A :class:`neo4j.SummaryCounters` instance. Counters for operations the query triggered.
@@ -70,12 +74,19 @@ class ResultSummary:
     #: Unlike failures or errors, notifications do not affect the execution of a statement.
     notifications = None
 
-    def __init__(self, **metadata):
+    def __init__(self, address, **metadata):
         self.metadata = metadata
         self.server = metadata.get("server")
         self.database = metadata.get("db")
         self.query = metadata.get("query")
         self.parameters = metadata.get("parameters")
+        if "type" in metadata:
+            self.query_type = metadata["type"]
+            if self.query_type not in ["r", "w", "rw", "s"]:
+                raise BoltProtocolError(
+                    "Unexpected query type '%s' received from server. Consider "
+                    "updating the driver.", address
+                )
         self.query_type = metadata.get("type")
         self.plan = metadata.get("plan")
         self.profile = metadata.get("profile")
