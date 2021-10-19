@@ -829,8 +829,7 @@ class BoltPool(IOPool):
     def __repr__(self):
         return "<{} address={!r}>".format(self.__class__.__name__, self.address)
 
-    def acquire(self, access_mode=None, timeout=None, database=None,
-                imp_user=None, bookmarks=None):
+    def acquire(self, access_mode=None, timeout=None, database=None, bookmarks=None):
         # The access_mode and database is not needed for a direct connection, its just there for consistency.
         return self._acquire(self.address, timeout)
 
