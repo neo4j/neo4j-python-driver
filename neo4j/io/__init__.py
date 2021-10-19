@@ -41,7 +41,7 @@ from collections import (
 )
 from logging import getLogger
 from random import choice
-from select import select
+import selectors
 from socket import (
     AF_INET,
     AF_INET6,
@@ -1326,8 +1326,9 @@ def _handshake(s, resolved_address):
 
     # Handle the handshake response
     ready_to_read = False
-    while not ready_to_read:
-        ready_to_read, _, _ = select((s,), (), (), 1)
+    with selectors.DefaultSelector() as selector:
+        selector.register(s, selectors.EVENT_READ)
+        selector.select(1)
     try:
         data = s.recv(4)
     except OSError:
