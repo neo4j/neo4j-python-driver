@@ -19,7 +19,10 @@
 # limitations under the License.
 
 from uuid import uuid4
-from unittest.mock import MagicMock
+from unittest.mock import (
+    MagicMock,
+    NonCallableMagicMock,
+)
 
 import pytest
 
@@ -129,3 +132,59 @@ def test_transaction_run_takes_no_query_object(fake_connection):
     tx = Transaction(fake_connection, 2, on_closed, on_error)
     with pytest.raises(ValueError):
         tx.run(Query("RETURN 1"))
+
+
+def test_transaction_rollbacks_on_open_connections(fake_connection):
+    tx = Transaction(fake_connection, 2,
+                     lambda *args, **kwargs: None,
+                     lambda *args, **kwargs: None)
+    with tx as tx_:
+        fake_connection.is_reset_mock.return_value = False
+        fake_connection.is_reset_mock.reset_mock()
+        tx_.rollback()
+        fake_connection.is_reset_mock.assert_called_once()
+        fake_connection.reset.assert_not_called()
+        fake_connection.rollback.assert_called_once()
+
+
+def test_transaction_no_rollback_on_reset_connections(fake_connection):
+    tx = Transaction(fake_connection, 2,
+                     lambda *args, **kwargs: None,
+                     lambda *args, **kwargs: None)
+    with tx as tx_:
+        fake_connection.is_reset_mock.return_value = True
+        fake_connection.is_reset_mock.reset_mock()
+        tx_.rollback()
+        fake_connection.is_reset_mock.assert_called_once()
+        fake_connection.reset.asset_not_called()
+        fake_connection.rollback.asset_not_called()
+
+
+def test_transaction_no_rollback_on_closed_connections(fake_connection):
+    tx = Transaction(fake_connection, 2,
+                     lambda *args, **kwargs: None,
+                     lambda *args, **kwargs: None)
+    with tx as tx_:
+        fake_connection.closed.return_value = True
+        fake_connection.closed.reset_mock()
+        fake_connection.is_reset_mock.reset_mock()
+        tx_.rollback()
+        fake_connection.closed.assert_called_once()
+        fake_connection.is_reset_mock.asset_not_called()
+        fake_connection.reset.asset_not_called()
+        fake_connection.rollback.asset_not_called()
+
+
+def test_transaction_no_rollback_on_defunct_connections(fake_connection):
+    tx = Transaction(fake_connection, 2,
+                     lambda *args, **kwargs: None,
+                     lambda *args, **kwargs: None)
+    with tx as tx_:
+        fake_connection.defunct.return_value = True
+        fake_connection.defunct.reset_mock()
+        fake_connection.is_reset_mock.reset_mock()
+        tx_.rollback()
+        fake_connection.defunct.assert_called_once()
+        fake_connection.is_reset_mock.asset_not_called()
+        fake_connection.reset.asset_not_called()
+        fake_connection.rollback.asset_not_called()

@@ -726,9 +726,9 @@ class IOPool:
         """
         with self.lock:
             for connection in connections:
-                if not (connection.is_reset
-                        or connection.defunct()
-                        or connection.closed()):
+                if not (connection.defunct()
+                        or connection.closed()
+                        or connection.is_reset):
                     try:
                         connection.reset()
                     except (Neo4jError, DriverError, BoltError) as e:

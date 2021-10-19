@@ -172,7 +172,9 @@ class Transaction:
 
         metadata = {}
         try:
-            if not self._connection.is_reset:
+            if not (self._connection.defunct()
+                    or self._connection.closed()
+                    or self._connection.is_reset):
                 # DISCARD pending records then do a rollback.
                 self._consume_results()
                 self._connection.rollback(on_success=metadata.update)

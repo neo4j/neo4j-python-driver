@@ -91,7 +91,7 @@ class Session(Workspace):
     def __del__(self):
         try:
             self.close()
-        except OSError:
+        except (OSError, ServiceUnavailable, SessionExpired):
             pass
 
     def __enter__(self):

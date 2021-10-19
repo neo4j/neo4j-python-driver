@@ -161,3 +161,37 @@ def test_closes_stale_connections(opener, break_on_close):
     assert cx2.addr == cx1.addr
     assert cx1 not in pool.connections[cx1.addr]
     assert cx2 in pool.connections[cx2.addr]
+
+
+def test_release_resets_connections(opener):
+    pool = Neo4jPool(opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None)
+    cx1.is_reset_mock.return_value = False
+    cx1.is_reset_mock.reset_mock()
+    pool.release(cx1)
+    cx1.is_reset_mock.assert_called_once()
+    cx1.reset.assert_called_once()
+
+
+def test_release_does_not_resets_closed_connections(opener):
+    pool = Neo4jPool(opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None)
+    cx1.closed.return_value = True
+    cx1.closed.reset_mock()
+    cx1.is_reset_mock.reset_mock()
+    pool.release(cx1)
+    cx1.closed.assert_called_once()
+    cx1.is_reset_mock.asset_not_called()
+    cx1.reset.asset_not_called()
+
+
+def test_release_does_not_resets_defunct_connections(opener):
+    pool = Neo4jPool(opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None)
+    cx1.defunct.return_value = True
+    cx1.defunct.reset_mock()
+    cx1.is_reset_mock.reset_mock()
+    pool.release(cx1)
+    cx1.defunct.assert_called_once()
+    cx1.is_reset_mock.asset_not_called()
+    cx1.reset.asset_not_called()
