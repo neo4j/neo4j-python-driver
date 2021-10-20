@@ -1317,6 +1317,14 @@ def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
             s = _secure(s, resolved_address.host_name, ssl_context)
             return _handshake(s, resolved_address)
         except (BoltError, DriverError, OSError) as error:
+            try:
+                local_port = s.getsockname()[1]
+            except (OSError, AttributeError):
+                local_port = 0
+            err_str = error.__class__.__name__
+            if str(error):
+                err_str += ": " + str(error)
+            log.debug("[#%04X]  C: <CONNECTION FAILED> %s", local_port, err_str)
             if s:
                 _close_socket(s)
             errors.append(error)
