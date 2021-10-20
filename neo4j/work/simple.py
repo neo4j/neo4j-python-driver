@@ -41,7 +41,6 @@ from neo4j.exceptions import (
     TransientError,
     TransactionError,
 )
-from neo4j.io import Neo4jPool
 from neo4j.work import Workspace
 from neo4j.work.result import Result
 from neo4j.work.transaction import Transaction
@@ -78,13 +77,6 @@ class Session(Workspace):
     # The current auto-transaction result, if any.
     _autoResult = None
 
-    # The set of bookmarks after which the next
-    # :class:`.Transaction` should be carried out.
-    _bookmarks = None
-
-    # Sessions are supposed to cache the database on which to operate.
-    _cached_database = False
-
     # The state this session is in.
     _state_failed = False
 
@@ -110,47 +102,10 @@ class Session(Workspace):
             self._state_failed = True
         self.close()
 
-    def _set_cached_database(self, database):
-        self._cached_database = True
-        self._config.database = database
-
     def _connect(self, access_mode):
         if access_mode is None:
             access_mode = self._config.default_access_mode
-        if self._connection:
-            # TODO: Investigate this
-            # log.warning("FIXME: should always disconnect before connect")
-            self._connection.send_all()
-            self._connection.fetch_all()
-            self._disconnect()
-        if not self._cached_database:
-            if (self._config.database is not None
-                    or not isinstance(self._pool, Neo4jPool)):
-                self._set_cached_database(self._config.database)
-            else:
-                # This is the first time we open a connection to a server in a
-                # cluster environment for this session without explicitly
-                # configured database. Hence, we request a routing table update
-                # to try to fetch the home database. If provided by the server,
-                # we shall use this database explicitly for all subsequent
-                # actions within this session.
-                self._pool.update_routing_table(
-                    database=self._config.database,
-                    imp_user=self._config.impersonated_user,
-                    bookmarks=self._bookmarks,
-                    database_callback=self._set_cached_database
-                )
-        self._connection = self._pool.acquire(
-            access_mode=access_mode,
-            timeout=self._config.connection_acquisition_timeout,
-            database=self._config.database,
-            bookmarks=self._bookmarks
-        )
-
-    def _disconnect(self):
-        if self._connection:
-            self._pool.release(self._connection)
-            self._connection = None
+        super()._connect(access_mode)
 
     def _collect_bookmark(self, bookmark):
         if bookmark:
