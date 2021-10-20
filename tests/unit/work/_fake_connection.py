@@ -33,7 +33,7 @@ class FakeConnection(mock.NonCallableMagicMock):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.attach_mock(mock.PropertyMock(return_value=True), "is_reset")
+        self.attach_mock(mock.Mock(return_value=True), "is_reset_mock")
         self.attach_mock(mock.Mock(return_value=False), "defunct")
         self.attach_mock(mock.Mock(return_value=False), "stale")
         self.attach_mock(mock.Mock(return_value=False), "closed")
@@ -42,6 +42,13 @@ class FakeConnection(mock.NonCallableMagicMock):
             self.closed.return_value = True
 
         self.attach_mock(mock.Mock(side_effect=close_side_effect), "close")
+
+    @property
+    def is_reset(self):
+        if self.closed.return_value or self.defunct.return_value:
+            raise AssertionError("is_reset should not be called on a closed or "
+                                 "defunct connection.")
+        return self.is_reset_mock()
 
     def fetch_message(self, *args, **kwargs):
         if self.callbacks:
@@ -78,13 +85,13 @@ class FakeConnection(mock.NonCallableMagicMock):
                             else:
                                 cb()
                 self.callbacks.append(callback)
-                return parent.__getattr__(name)(*args, **kwargs)
 
             return func
 
+        method_mock = parent.__getattr__(name)
         if name in ("run", "commit", "pull", "rollback", "discard"):
-            return build_message_handler(name)
-        return parent.__getattr__(name)
+            method_mock.side_effect = build_message_handler(name)
+        return method_mock
 
 
 @pytest.fixture

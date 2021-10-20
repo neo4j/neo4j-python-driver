@@ -82,11 +82,12 @@ class Bolt4x0(Bolt):
 
     @property
     def is_reset(self):
-        if self.responses:
-            # We can't be sure of the server's state as there are still pending
-            # responses. Unless the last message we sent was RESET. In that case
-            # the server state will always be READY when we're done.
-            return self.responses[-1].message == "reset"
+        # We can't be sure of the server's state if there are still pending
+        # responses. Unless the last message we sent was RESET. In that case
+        # the server state will always be READY when we're done.
+        if (self.responses and self.responses[-1]
+                and self.responses[-1].message == "reset"):
+            return True
         return self._server_state_manager.state == ServerStates.READY
 
     @property
