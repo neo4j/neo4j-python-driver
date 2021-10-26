@@ -30,8 +30,12 @@ class FrontendError(Exception):
 def load_config():
     with open(path.join(path.dirname(__file__), "test_config.json"), "r") as fd:
         config = json.load(fd)
-    return (config["skips"],
-            [k for k, v in config["features"].items() if v is True])
+    skips = config["skips"]
+    features = [k for k, v in config["features"].items() if v is True]
+    import ssl
+    if ssl.HAS_TLSv1_3:
+        features += ["Feature:TLS:1.3"]
+    return skips, features
 
 
 SKIPPED_TESTS, FEATURES = load_config()
