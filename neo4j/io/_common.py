@@ -242,11 +242,12 @@ class InitResponse(Response):
 
     def on_failure(self, metadata):
         code = metadata.get("code")
-        message = metadata.get("message", "Connection initialisation failed")
         if code == "Neo.ClientError.Security.Unauthorized":
-            raise AuthError(message)
+            raise Neo4jError.hydrate(**metadata)
         else:
-            raise ServiceUnavailable(message)
+            raise ServiceUnavailable(
+                metadata.get("message", "Connection initialisation failed")
+            )
 
 
 class CommitResponse(Response):
