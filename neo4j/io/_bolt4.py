@@ -135,16 +135,6 @@ class Bolt4x0(Bolt):
         metadata = {}
         records = []
 
-        def fail(md):
-            from neo4j._exceptions import BoltRoutingError
-            code = md.get("code")
-            if code == "Neo.ClientError.Database.DatabaseNotFound":
-                return  # surface this error to the user
-            elif code == "Neo.ClientError.Procedure.ProcedureNotFound":
-                raise BoltRoutingError("Server does not support routing", self.unresolved_address)
-            else:
-                raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
-
         if database is None:  # default database
             self.run(
                 "CALL dbms.routing.getRoutingTable($context)",
@@ -152,7 +142,7 @@ class Bolt4x0(Bolt):
                 mode="r",
                 bookmarks=bookmarks,
                 db=SYSTEM_DATABASE,
-                on_success=metadata.update, on_failure=fail
+                on_success=metadata.update
             )
         else:
             self.run(
@@ -161,7 +151,7 @@ class Bolt4x0(Bolt):
                 mode="r",
                 bookmarks=bookmarks,
                 db=SYSTEM_DATABASE,
-                on_success=metadata.update, on_failure=fail
+                on_success=metadata.update
             )
         self.pull(on_success=metadata.update, on_records=records.extend)
         self.send_all()
@@ -409,18 +399,6 @@ class Bolt4x3(Bolt4x2):
                 )
             )
 
-        def fail(md):
-            from neo4j._exceptions import BoltRoutingError
-            code = md.get("code")
-            if code == "Neo.ClientError.Database.DatabaseNotFound":
-                return  # surface this error to the user
-            elif code == "Neo.ClientError.Procedure.ProcedureNotFound":
-                raise BoltRoutingError("Server does not support routing",
-                                       self.unresolved_address)
-            else:
-                raise BoltRoutingError("Routing support broken on server",
-                                       self.unresolved_address)
-
         routing_context = self.routing_context or {}
         log.debug("[#%04X]  C: ROUTE %r %r %r", self.local_port,
                   routing_context, bookmarks, database)
@@ -431,8 +409,7 @@ class Bolt4x3(Bolt4x2):
             bookmarks = list(bookmarks)
         self._append(b"\x66", (routing_context, bookmarks, database),
                      response=Response(self, "route",
-                                       on_success=metadata.update,
-                                       on_failure=fail))
+                                       on_success=metadata.update))
         self.send_all()
         self.fetch_all()
         return [metadata.get("rt")]
@@ -476,18 +453,6 @@ class Bolt4x4(Bolt4x3):
     PROTOCOL_VERSION = Version(4, 4)
 
     def route(self, database=None, imp_user=None, bookmarks=None):
-        def fail(md):
-            from neo4j._exceptions import BoltRoutingError
-            code = md.get("code")
-            if code == "Neo.ClientError.Database.DatabaseNotFound":
-                return  # surface this error to the user
-            elif code == "Neo.ClientError.Procedure.ProcedureNotFound":
-                raise BoltRoutingError("Server does not support routing",
-                                       self.unresolved_address)
-            else:
-                raise BoltRoutingError("Routing support broken on server",
-                                       self.unresolved_address)
-
         routing_context = self.routing_context or {}
         db_context = {}
         if database is not None:
@@ -503,8 +468,7 @@ class Bolt4x4(Bolt4x3):
             bookmarks = list(bookmarks)
         self._append(b"\x66", (routing_context, bookmarks, db_context),
                      response=Response(self, "route",
-                                       on_success=metadata.update,
-                                       on_failure=fail))
+                                       on_success=metadata.update))
         self.send_all()
         self.fetch_all()
         return [metadata.get("rt")]

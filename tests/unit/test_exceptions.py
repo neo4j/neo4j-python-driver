@@ -55,7 +55,6 @@ from neo4j.exceptions import (
 from neo4j._exceptions import (
     BoltError,
     BoltHandshakeError,
-    BoltRoutingError,
     BoltConnectionError,
     BoltSecurityError,
     BoltConnectionBroken,

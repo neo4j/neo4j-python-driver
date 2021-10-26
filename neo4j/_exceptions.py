@@ -102,11 +102,6 @@ class BoltTransactionError(BoltError):
     # TODO: pass the transaction object in as an argument
 
 
-class BoltRoutingError(BoltError):
-    """ Raised when a fault occurs with obtaining a routing table.
-    """
-
-
 class BoltFailure(BoltError):
     """ Holds a Cypher failure.
     """
