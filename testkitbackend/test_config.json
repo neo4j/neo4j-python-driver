@@ -23,9 +23,7 @@
     "stub.authorization.test_authorization.TestAuthorizationV4x1.test_should_fail_on_token_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
     "stub.session_run_parameters.test_session_run_parameters.TestSessionRunParameters.test_empty_query":
-      "Driver rejects empty queries before sending it to the server",
-    "tls.tlsversions.TestTlsVersions.test_1_1":
-      "TLSv1.1 and below are disabled in the driver"
+      "Driver rejects empty queries before sending it to the server"
   },
   "features": {
     "Feature:API:Result.Single": "Does not raise error when not exactly one record is available. To be fixed in 5.0",
@@ -35,6 +33,9 @@
     "Feature:Auth:Kerberos": true,
     "Feature:Bolt:4.4": true,
     "Feature:Impersonation": true,
+    "Feature:TLS:1.1": "Driver blocks TLS 1.1 for security reasons",
+    "Feature:TLS:1.2": true,
+    "Feature:TLS:1.3": "Depends on the machine (will be calculated dynamically)",
     "AuthorizationExpiredTreatment": true,
     "Optimization:ConnectionReuse": true,
     "Optimization:EagerTransactionBegin": true,
