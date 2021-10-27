@@ -186,13 +186,6 @@ class Bolt3(Bolt):
         metadata = {}
         records = []
 
-        def fail(md):
-            from neo4j._exceptions import BoltRoutingError
-            if md.get("code") == "Neo.ClientError.Procedure.ProcedureNotFound":
-                raise BoltRoutingError("Server does not support routing", self.unresolved_address)
-            else:
-                raise BoltRoutingError("Routing support broken on server", self.unresolved_address)
-
         # Ignoring database and bookmarks because there is no multi-db support.
         # The bookmarks are only relevant for making sure a previously created
         # db exists before querying a routing table for it.
@@ -200,7 +193,7 @@ class Bolt3(Bolt):
             "CALL dbms.cluster.routing.getRoutingTable($context)",  # This is an internal procedure call. Only available if the Neo4j 3.5 is setup with clustering.
             {"context": self.routing_context},
             mode="r",                                               # Bolt Protocol Version(3, 0) supports mode="r"
-            on_success=metadata.update, on_failure=fail
+            on_success=metadata.update
         )
         self.pull(on_success=metadata.update, on_records=records.extend)
         self.send_all()

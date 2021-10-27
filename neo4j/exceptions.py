@@ -130,6 +130,21 @@ class Neo4jError(Exception):
     def invalidates_all_connections(self):
         return self.code == "Neo.ClientError.Security.AuthorizationExpired"
 
+    def is_fatal_during_discovery(self):
+        # checks if the code is an error that is caused by the client. In this
+        # case the driver should fail fast during discovery.
+        if not isinstance(self.code, str):
+            return False
+        if self.code in ("Neo.ClientError.Database.DatabaseNotFound",
+                         "Neo.ClientError.Transaction.InvalidBookmark",
+                         "Neo.ClientError.Transaction.InvalidBookmarkMixture"):
+            return True
+        if (self.code.startswith("Neo.ClientError.Security.")
+                and self.code != "Neo.ClientError.Security."
+                                 "AuthorizationExpired"):
+            return True
+        return False
+
     def __str__(self):
         return "{{code: {code}}} {{message: {message}}}".format(code=self.code, message=self.message)
 

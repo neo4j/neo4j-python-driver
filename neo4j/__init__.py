@@ -435,8 +435,11 @@ class Neo4jDriver(Routing, Driver):
         return self._verify_routing_connectivity()
 
     def _verify_routing_connectivity(self):
-        from neo4j.exceptions import ServiceUnavailable
-        from neo4j._exceptions import BoltHandshakeError
+        from neo4j.exceptions import (
+            Neo4jError,
+            ServiceUnavailable,
+            SessionExpired,
+        )
 
         table = self._pool.get_routing_table_for_default_database()
         routing_info = {}
@@ -450,9 +453,8 @@ class Neo4jDriver(Routing, Driver):
                     timeout=self._default_workspace_config
                                 .connection_acquisition_timeout
                 )
-            except BoltHandshakeError as error:
+            except (ServiceUnavailable, SessionExpired, Neo4jError):
                 routing_info[ix] = None
-
         for key, val in routing_info.items():
             if val is not None:
                 return routing_info

@@ -66,7 +66,6 @@ from neo4j._exceptions import (
     BoltError,
     BoltHandshakeError,
     BoltProtocolError,
-    BoltRoutingError,
     BoltSecurityError,
 )
 from neo4j.addressing import Address
@@ -937,35 +936,15 @@ class Neo4jPool(IOPool):
         :raise ServiceUnavailable: if the server does not support
             routing, or if routing support is broken or outdated
         """
+        cx = self._acquire(address, timeout)
         try:
-            cx = self._acquire(address, timeout)
-            try:
-                routing_table = cx.route(
-                    database or self.workspace_config.database,
-                    imp_user or self.workspace_config.impersonated_user,
-                    bookmarks
-                )
-            finally:
-                self.release(cx)
-        except BoltRoutingError as error:
-            # Connection was successful, but routing support is
-            # broken. This may indicate that the routing procedure
-            # does not exist (for protocol versions prior to 4.3).
-            # This error is converted into ServiceUnavailable,
-            # therefore surfacing to the application as a signal that
-            # routing is broken.
-            log.debug("Routing is broken (%s)", error)
-            raise ServiceUnavailable(*error.args)
-        except (ServiceUnavailable, SessionExpired) as error:
-            # The routing table request suffered a connection
-            # failure. This should return a null routing table,
-            # signalling to the caller to retry the request
-            # elsewhere.
-            log.debug("Routing is unavailable (%s)", error)
-            routing_table = None
-        # If the routing table is empty, deactivate the address.
-        if not routing_table:
-            self.deactivate(address)
+            routing_table = cx.route(
+                database or self.workspace_config.database,
+                imp_user or self.workspace_config.impersonated_user,
+                bookmarks
+            )
+        finally:
+            self.release(cx)
         return routing_table
 
     def fetch_routing_table(self, *, address, timeout, database, imp_user,
@@ -984,12 +963,19 @@ class Neo4jPool(IOPool):
         :return: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
         """
+        new_routing_info = None
         try:
             new_routing_info = self.fetch_routing_info(
                 address, database, imp_user, bookmarks, timeout
             )
+        except Neo4jError as e:
+            # checks if the code is an error that is caused by the client. In
+            # this case there is no sense in trying to fetch a RT from another
+            # router. Hence, the driver should fail fast during discovery.
+            if e.is_fatal_during_discovery():
+                raise
         except (ServiceUnavailable, SessionExpired):
-            new_routing_info = None
+            pass
         if not new_routing_info:
             log.debug("Failed to fetch routing info %s", address)
             return None
