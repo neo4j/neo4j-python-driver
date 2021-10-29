@@ -19,6 +19,8 @@
 # limitations under the License.
 
 
+from unittest import mock
+
 import pytest
 
 from neo4j import (
@@ -216,8 +218,12 @@ def _fetch_and_compare_all_records(result, key, expected_records, method,
 
 
 @pytest.mark.parametrize("method", ("for loop", "next", "new iter"))
-def test_result_iteration(method):
-    records = [[1], [2], [3], [4], [5]]
+@pytest.mark.parametrize("records", (
+    [],
+    [[42]],
+    [[1], [2], [3], [4], [5]],
+))
+def test_result_iteration(method, records):
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, HydratorStub(), 2, noop, noop)
     result._run("CYPHER", {}, None, None, "r", None)
@@ -395,3 +401,24 @@ def test_query_type(query_type):
 
     assert isinstance(summary.query_type, str)
     assert summary.query_type == query_type
+
+
+@pytest.mark.parametrize("num_records", range(0, 5))
+def test_data(num_records):
+    connection = ConnectionStub(
+        records=Records(["n"], [[i + 1] for i in range(num_records)])
+    )
+
+    result = Result(connection, HydratorStub(), 1, noop, noop)
+    result._run("CYPHER", {}, None, None, "r", None)
+    result._buffer_all()
+    records = result._record_buffer.copy()
+    assert len(records) == num_records
+    expected_data = []
+    for i, record in enumerate(records):
+        record.data = mock.Mock()
+        expected_data.append("magic_return_%s" % i)
+        record.data.return_value = expected_data[-1]
+    assert result.data("hello", "world") == expected_data
+    for record in records:
+        assert record.data.called_once_with("hello", "world")

@@ -21,7 +21,11 @@
 
 import pytest
 
-from neo4j.data import Record
+from neo4j.data import (
+    Graph,
+    Node,
+    Record,
+)
 
 # python -m pytest -s -v tests/unit/test_record.py
 
@@ -146,6 +150,21 @@ def test_record_value():
         _ = r.value(None)
 
 
+def test_record_value_kwargs():
+    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
+    assert r.value() == "Alice"
+    assert r.value(key="name") == "Alice"
+    assert r.value(key="age") == 33
+    assert r.value(key="married") is True
+    assert r.value(key="shoe size") is None
+    assert r.value(key="shoe size", default=6) == 6
+    assert r.value(key=0) == "Alice"
+    assert r.value(key=1) == 33
+    assert r.value(key=2) is True
+    assert r.value(key=3) is None
+    assert r.value(key=3, default=6) == 6
+
+
 def test_record_contains():
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert "Alice" in r
@@ -202,3 +221,113 @@ def test_record_len(len_):
 def test_record_repr(len_):
     r = Record(("key_%i" % i, "val_%i" % i) for i in range(len_))
     assert repr(r)
+
+
+@pytest.mark.parametrize(("raw", "keys", "serialized"), (
+    (
+        zip(["x", "y", "z"], [1, 2, 3]),
+        (),
+        {"x": 1, "y": 2, "z": 3}
+    ),
+    (
+        zip(["x", "y", "z"], [1, 2, 3]),
+        (1, 2),
+        {"y": 2, "z": 3}
+    ),
+    (
+        zip(["x", "y", "z"], [1, 2, 3]),
+        ("z", "x"),
+        {"x": 1, "z": 3}
+    ),
+    (
+        zip(["x"], [None]),
+        (),
+        {"x": None}
+    ),
+    (
+        zip(["x", "y"], [True, False]),
+        (),
+        {"x": True, "y": False}
+    ),
+    (
+        zip(["x", "y", "z"], [0.0, 1.0, 3.141592653589]),
+        (),
+        {"x": 0.0, "y": 1.0, "z": 3.141592653589}
+    ),
+    (
+        zip(["x"], ["hello, world"]),
+        (),
+        {"x": "hello, world"}
+    ),
+    (
+        zip(["x"], [bytearray([1, 2, 3])]),
+        (),
+        {"x": bytearray([1, 2, 3])}
+    ),
+    (
+        zip(["x"], [[1, 2, 3]]),
+        (),
+        {"x": [1, 2, 3]}
+    ),
+    (
+        zip(["x"], [{"one": 1, "two": 2}]),
+        (),
+        {"x": {"one": 1, "two": 2}}
+    ),
+    (
+        zip(["a"], [Node("graph", 42, "Person", {"name": "Alice"})]),
+        (),
+        {"a": {"name": "Alice"}}
+    ),
+))
+def test_data(raw, keys, serialized):
+    assert Record(raw).data(*keys) == serialized
+
+
+def test_data_relationship():
+    g = Graph()
+    gh = Graph.Hydrator(g)
+    alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
+    bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
+    alice_knows_bob = gh.hydrate_relationship(1, alice.id, bob.id, "KNOWS",
+                                              {"since": 1999})
+    record = Record(zip(["a", "b", "r"], [alice, bob, alice_knows_bob]))
+    assert record.data() == {
+        "a": {"name": "Alice", "age": 33},
+        "b": {"name": "Bob", "age": 44},
+        "r": (
+            {"name": "Alice", "age": 33},
+            "KNOWS",
+            {"name": "Bob", "age": 44}
+        ),
+    }
+
+
+def test_data_unbound_relationship():
+    g = Graph()
+    gh = Graph.Hydrator(g)
+    some_one_knows_some_one = gh.hydrate_relationship(
+        1, 42, 43, "KNOWS", {"since": 1999}
+    )
+    record = Record(zip(["r"], [some_one_knows_some_one]))
+    assert record.data() == {"r": ({}, "KNOWS", {})}
+
+
+@pytest.mark.parametrize("cyclic", (True, False))
+def test_data_path(cyclic):
+    g = Graph()
+    gh = Graph.Hydrator(g)
+    alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
+    bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
+    if cyclic:
+        carol = alice
+    else:
+        carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol", "age": 55})
+    r = [gh.hydrate_unbound_relationship(1, "KNOWS", {"since": 1999}),
+         gh.hydrate_unbound_relationship(2, "DISLIKES", {})]
+    path = gh.hydrate_path([alice, bob, carol], r, [1, 1, -2, 2])
+
+    record = Record(zip(["r"], [path]))
+    assert record.data() == {
+        "r": [dict(alice), "KNOWS", dict(bob), "DISLIKES", dict(carol)]
+    }
