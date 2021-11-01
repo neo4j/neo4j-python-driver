@@ -123,7 +123,10 @@ class Session(Workspace):
             self._disconnect()
 
     def close(self):
-        """Close the session. This will release any borrowed resources, such as connections, and will roll back any outstanding transactions.
+        """Close the session.
+
+        This will release any borrowed resources, such as connections, and will
+        roll back any outstanding transactions.
         """
         if self._connection:
             if self._autoResult:
