@@ -25,9 +25,10 @@ from contextlib import redirect_stdout
 from io import StringIO
 
 # tag::driver-introduction-example-import[]
-from neo4j import GraphDatabase
 import logging
 import sys
+
+from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 # end::driver-introduction-example-import[]
 
@@ -40,7 +41,6 @@ from neo4j._exceptions import BoltHandshakeError
 class App:
 
     def __init__(self, uri, user, password):
-
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
 
     def close(self):
