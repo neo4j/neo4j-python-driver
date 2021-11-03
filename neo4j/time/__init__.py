@@ -2077,7 +2077,7 @@ class DateTime(metaclass=DateTimeType):
         """Get the current date and time.
 
         :param tz: timezone. Set to None to create a local :class:`.DateTime`.
-        :type tz: datetime.tzinfo` or Non
+        :type tz: datetime.tzinfo` or None
 
         :rtype: DateTime
 
