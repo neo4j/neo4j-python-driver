@@ -357,7 +357,8 @@ class Duration(tuple):
     `months * 2629746 + days * 86400 + d.seconds + d.nanoseconds // 1000000000`.
     (Like the integer division in Python, this one is to be understood as
     rounding down rather than towards 0.)
-    This value must be between -(2\ :sup:`63`) and (2\ :sup:`63` - 1) inclusive.
+    This value must be between -(2\\ :sup:`63`) and (2\\ :sup:`63` - 1)
+    inclusive.
 
     :param years: will be added times 12 to `months`
     :type years: float
