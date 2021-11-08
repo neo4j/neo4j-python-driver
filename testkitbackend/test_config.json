@@ -26,8 +26,9 @@
       "Driver rejects empty queries before sending it to the server"
   },
   "features": {
-    "Feature:API:Result.Single": "Does not raise error when not exactly one record is available. To be fixed in 5.0",
+    "Feature:API:Result.List": true,
     "Feature:API:Result.Peek": true,
+    "Feature:API:Result.Single": "Does not raise error when not exactly one record is available. To be fixed in 5.0.",
     "Feature:Auth:Bearer": true,
     "Feature:Auth:Custom": true,
     "Feature:Auth:Kerberos": true,
@@ -38,22 +39,22 @@
     "Feature:Bolt:4.3": true,
     "Feature:Bolt:4.4": true,
     "Feature:Impersonation": true,
-    "Feature:TLS:1.1": "Driver blocks TLS 1.1 for security reasons",
+    "Feature:TLS:1.1": "Driver blocks TLS 1.1 for security reasons.",
     "Feature:TLS:1.2": true,
-    "Feature:TLS:1.3": "Depends on the machine (will be calculated dynamically)",
+    "Feature:TLS:1.3": "Depends on the machine (will be calculated dynamically).",
     "AuthorizationExpiredTreatment": true,
     "Optimization:ConnectionReuse": true,
     "Optimization:EagerTransactionBegin": true,
     "Optimization:ImplicitDefaultArguments": true,
     "Optimization:MinimalResets": true,
     "Optimization:PullPipelining": true,
+    "Optimization:ResultListFetchAll": "The idiomatic way to cast to list is indistinguishable from iterating over the result.",
     "ConfHint:connection.recv_timeout_seconds": true,
     "Temporary:CypherPathAndRelationship": true,
     "Temporary:DriverFetchSize": true,
     "Temporary:DriverMaxTxRetryTime": true,
     "Temporary:FullSummary": true,
     "Temporary:ResultKeys": true,
-    "Temporary:ResultList": "requires further specification/discussion in the team",
     "Temporary:TransactionClose": true
   }
 }
