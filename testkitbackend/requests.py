@@ -346,6 +346,14 @@ def ResultPeek(backend, data):
         backend.send_response("NullRecord", {})
 
 
+def ResultList(backend, data):
+    result = backend.results[data["resultId"]]
+    records = list(result)
+    backend.send_response("RecordList", {
+        "records": [totestkit.record(r) for r in records]
+    })
+
+
 def ResultConsume(backend, data):
     result = backend.results[data["resultId"]]
     summary = result.consume()
