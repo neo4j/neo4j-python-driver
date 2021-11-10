@@ -87,6 +87,13 @@
   does not offer the `commit`, `rollback`, `close`, and `closed` methods.  
   Those methods would have caused a hard to interpreted error previously. Hence,
   they have been removed.
+- Deprecated Nodes' and Relationships' `id` property (`int`) in favor of
+  `element_id` (`str`).  
+  This also affects `Graph` objects as `graph.nodes[...]` and
+ `graph.relationships[...]` now prefers strings over integers.
+- `ServerInfo.connection_id` has been deprecated and will be removed in a
+  future release. There is no replacement as this is considered internal
+  information.
 
 
 ## Version 4.4

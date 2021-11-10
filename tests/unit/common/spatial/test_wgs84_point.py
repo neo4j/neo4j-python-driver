@@ -27,15 +27,43 @@ from neo4j.spatial import WGS84Point
 
 class WGS84PointTestCase(TestCase):
 
-    def test_alias(self):
+    def test_alias_3d(self):
         x, y, z = 3.2, 4.0, -1.2
         p = WGS84Point((x, y, z))
-        self.assert_(hasattr(p, "longitude"))
+
+        self.assertTrue(hasattr(p, "longitude"))
         self.assertEqual(p.longitude, x)
-        self.assert_(hasattr(p, "latitude"))
+        self.assertTrue(hasattr(p, "x"))
+        self.assertEqual(p.x, x)
+
+        self.assertTrue(hasattr(p, "latitude"))
         self.assertEqual(p.latitude, y)
-        self.assert_(hasattr(p, "height"))
+        self.assertTrue(hasattr(p, "y"))
+        self.assertEqual(p.y, y)
+
+        self.assertTrue(hasattr(p, "height"))
         self.assertEqual(p.height, z)
+        self.assertTrue(hasattr(p, "z"))
+        self.assertEqual(p.z, z)
+
+    def test_alias_2d(self):
+        x, y = 3.2, 4.0
+        p = WGS84Point((x, y))
+
+        self.assertTrue(hasattr(p, "longitude"))
+        self.assertEqual(p.longitude, x)
+        self.assertTrue(hasattr(p, "x"))
+        self.assertEqual(p.x, x)
+
+        self.assertTrue(hasattr(p, "latitude"))
+        self.assertEqual(p.latitude, y)
+        self.assertTrue(hasattr(p, "y"))
+        self.assertEqual(p.y, y)
+
+        with self.assertRaises(AttributeError):
+            p.height
+        with self.assertRaises(AttributeError):
+            p.z
 
     def test_dehydration_3d(self):
         coordinates = (1, -2, 3.1)

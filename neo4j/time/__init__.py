@@ -1657,6 +1657,19 @@ class Time(metaclass=TimeType):
 
     # OPERATIONS #
 
+    @staticmethod
+    def _native_time_to_ticks(native_time):
+        return int(3600000000000 * native_time.hour
+                   + 60000000000 * native_time.minute
+                   + NANO_SECONDS * native_time.second
+                   + 1000 * native_time.microsecond)
+
+    def _check_both_naive_or_tz_aware(self, other):
+        if (isinstance(other, (time, Time))
+                and ((self.tzinfo is None) ^ (other.tzinfo is None))):
+            raise TypeError("can't compare offset-naive and offset-aware "
+                            "times")
+
     def __hash__(self):
         """"""
         return hash(self.__ticks) ^ hash(self.tzinfo)
@@ -1666,10 +1679,7 @@ class Time(metaclass=TimeType):
         if isinstance(other, Time):
             return self.__ticks == other.__ticks and self.tzinfo == other.tzinfo
         if isinstance(other, time):
-            other_ticks = (3600000000000 * other.hour
-                           + 60000000000 * other.minute
-                           + NANO_SECONDS * other.second
-                           + 1000 * other.microsecond)
+            other_ticks = self._native_time_to_ticks(other)
             return self.ticks == other_ticks and self.tzinfo == other.tzinfo
         return False
 
@@ -1679,50 +1689,50 @@ class Time(metaclass=TimeType):
 
     def __lt__(self, other):
         """`<` comparison with :class:`.Time` or :class:`datetime.time`."""
+        self._check_both_naive_or_tz_aware(other)
         if isinstance(other, Time):
             return (self.tzinfo == other.tzinfo
                     and self.ticks < other.ticks)
         if isinstance(other, time):
             if self.tzinfo != other.tzinfo:
                 return False
-            other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks < other_ticks
+            return self.ticks < self._native_time_to_ticks(other)
         return NotImplemented
 
     def __le__(self, other):
         """`<=` comparison with :class:`.Time` or :class:`datetime.time`."""
+        self._check_both_naive_or_tz_aware(other)
         if isinstance(other, Time):
             return (self.tzinfo == other.tzinfo
                     and self.ticks <= other.ticks)
         if isinstance(other, time):
             if self.tzinfo != other.tzinfo:
                 return False
-            other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks <= other_ticks
+            return self.ticks <= self._native_time_to_ticks(other)
         return NotImplemented
 
     def __ge__(self, other):
         """`>=` comparison with :class:`.Time` or :class:`datetime.time`."""
+        self._check_both_naive_or_tz_aware(other)
         if isinstance(other, Time):
             return (self.tzinfo == other.tzinfo
                     and self.ticks >= other.ticks)
         if isinstance(other, time):
             if self.tzinfo != other.tzinfo:
                 return False
-            other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks >= other_ticks
+            return self.ticks >= self._native_time_to_ticks(other)
         return NotImplemented
 
     def __gt__(self, other):
         """`>` comparison with :class:`.Time` or :class:`datetime.time`."""
+        self._check_both_naive_or_tz_aware(other)
         if isinstance(other, Time):
             return (self.tzinfo == other.tzinfo
                     and self.ticks >= other.ticks)
         if isinstance(other, time):
             if self.tzinfo != other.tzinfo:
                 return False
-            other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks >= other_ticks
+            return self.ticks >= self._native_time_to_ticks(other)
         return NotImplemented
 
     def __copy__(self):
@@ -2203,7 +2213,8 @@ class DateTime(metaclass=DateTimeType):
         `==` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
         """
         if isinstance(other, (DateTime, datetime)):
-            return self.date() == other.date() and self.time() == other.time()
+            return (self.date() == other.date()
+                    and self.timetz() == other.timetz())
         return False
 
     def __ne__(self, other):
@@ -2218,7 +2229,7 @@ class DateTime(metaclass=DateTimeType):
         """
         if isinstance(other, (DateTime, datetime)):
             if self.date() == other.date():
-                return self.time() < other.time()
+                return self.timetz() < other.timetz()
             else:
                 return self.date() < other.date()
         return NotImplemented

@@ -31,7 +31,10 @@ __all__ = [
 
 from collections.abc import Mapping
 
-from ..meta import deprecated
+from ..meta import (
+    deprecated,
+    deprecation_warn,
+)
 
 
 class Graph:
@@ -253,6 +256,20 @@ class EntitySetView(Mapping):
         self._entity_dict = entity_dict
 
     def __getitem__(self, e_id):
+        # TODO: 6.0 - remove this compatibility shim
+        if isinstance(e_id, (int, float, complex)):
+            deprecation_warn(
+                "Accessing entities by an integer id is deprecated, "
+                "use the new style element_id (str) instead"
+            )
+            if isinstance(e_id, float) and int(e_id) == e_id:
+                # Non-int floats would always fail for legacy IDs
+                e_id = int(e_id)
+            elif isinstance(e_id, complex) and int(e_id.real) == e_id:
+                # complex numbers with imaginary parts or non-integer real
+                # parts would always fail for legacy IDs
+                e_id = int(e_id.real)
+            e_id = str(e_id)
         return self._entity_dict[e_id]
 
     def __len__(self):

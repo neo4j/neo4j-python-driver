@@ -308,6 +308,8 @@ class ServerInfo:
         return self._metadata.get("server")
 
     @property
+    @deprecated("The connection id is considered internal information "
+                "and will no longer be exposed in future versions.")
     def connection_id(self):
         """ Unique identifier for the remote server connection.
         """

@@ -18,6 +18,9 @@
 
 import json
 from os import path
+import warnings
+
+import pytz
 
 import neo4j
 from neo4j._async_compat.util import AsyncUtil
@@ -59,6 +62,39 @@ async def StartTest(backend, data):
 
 async def GetFeatures(backend, data):
     await backend.send_response("FeatureList", {"features": FEATURES})
+
+
+async def CheckSystemSupport(backend, data):
+    type_ = data["type"]
+    meta = data["meta"]
+    if type_ == "Timezone":
+        timezone = meta["timezone"]
+        # We could do this automatically, but with an explicit black list we
+        # make sure we know what we test and what we don't.
+
+        # await backend.send_response("SystemSupport", {
+        #     "supported": timezone in pytz.common_timezones_set
+        # })
+
+        await backend.send_response("SystemSupport", {
+            "supported": timezone not in {
+                "SystemV/AST4",
+                "SystemV/AST4ADT",
+                "SystemV/CST6",
+                "SystemV/CST6CDT",
+                "SystemV/EST5",
+                "SystemV/EST5EDT",
+                "SystemV/HST10",
+                "SystemV/MST7",
+                "SystemV/MST7MDT",
+                "SystemV/PST8",
+                "SystemV/PST8PDT",
+                "SystemV/YST9",
+                "SystemV/YST9YDT",
+            }
+        })
+    else:
+        raise NotImplementedError("Unknown SystemSupportType: %s" % type_)
 
 
 async def NewDriver(backend, data):
@@ -409,6 +445,17 @@ async def ResultSingle(backend, data):
     await backend.send_response("Record", totestkit.record(
         await result.single(strict=True)
     ))
+
+
+async def ResultSingleOptional(backend, data):
+    result = backend.results[data["resultId"]]
+    with warnings.catch_warnings(record=True) as warning_list:
+        record = await result.single(strict=False)
+    if record:
+        record = totestkit.record(record)
+    await backend.send_response("RecordOptional", {
+        "record": record, "warnings": list(map(str, warning_list))
+    })
 
 
 async def ResultPeek(backend, data):
