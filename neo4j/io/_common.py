@@ -89,54 +89,51 @@ class Inbox(MessageInbox):
 
 class Outbox:
 
-    def __init__(self, capacity=8192, max_chunk_size=16384):
+    def __init__(self, max_chunk_size=16384):
         self._max_chunk_size = max_chunk_size
-        self._header = 0
-        self._start = 2
-        self._end = 2
-        self._data = bytearray(capacity)
+        self._chunked_data = bytearray()
+        self._raw_data = bytearray()
+        self.write = self._raw_data.extend
 
     def max_chunk_size(self):
         return self._max_chunk_size
 
     def clear(self):
-        self._header = 0
-        self._start = 2
-        self._end = 2
-        self._data[0:2] = b"\x00\x00"
+        self._chunked_data = bytearray()
+        self._raw_data.clear()
 
-    def write(self, b):
-        to_write = len(b)
-        max_chunk_size = self._max_chunk_size
-        pos = 0
-        while to_write > 0:
-            chunk_size = self._end - self._start
-            remaining = max_chunk_size - chunk_size
-            if remaining == 0 or remaining < to_write <= max_chunk_size:
-                self.chunk()
-            else:
-                wrote = min(to_write, remaining)
-                new_end = self._end + wrote
-                self._data[self._end:new_end] = b[pos:pos+wrote]
-                self._end = new_end
-                pos += wrote
-                new_chunk_size = self._end - self._start
-                self._data[self._header:(self._header + 2)] = struct_pack(">H", new_chunk_size)
-                to_write -= wrote
+    def _chunk_data(self):
+        data_len = len(self._raw_data)
+        num_full_chunks, chunk_rest = divmod(
+            data_len, self._max_chunk_size
+        )
+        num_chunks = num_full_chunks + bool(chunk_rest)
 
-    def chunk(self):
-        self._header = self._end
-        self._start = self._header + 2
-        self._end = self._start
-        self._data[self._header:self._start] = b"\x00\x00"
+        data_view = memoryview(self._raw_data)
+        header_start = len(self._chunked_data)
+        data_start = header_start + 2
+        raw_data_start = 0
+        for i in range(num_chunks):
+            chunk_size = min(data_len - raw_data_start,
+                             self._max_chunk_size)
+            self._chunked_data[header_start:data_start] = struct_pack(
+                ">H", chunk_size
+            )
+            self._chunked_data[data_start:(data_start + chunk_size)] = \
+                data_view[raw_data_start:(raw_data_start + chunk_size)]
+            header_start += chunk_size + 2
+            data_start = header_start + 2
+            raw_data_start += chunk_size
+        del data_view
+        self._raw_data.clear()
+
+    def wrap_message(self):
+        self._chunk_data()
+        self._chunked_data += b"\x00\x00"
 
     def view(self):
-        end = self._end
-        chunk_size = end - self._start
-        if chunk_size == 0:
-            return memoryview(self._data[:self._header])
-        else:
-            return memoryview(self._data[:end])
+        self._chunk_data()
+        return memoryview(self._chunked_data)
 
 
 class ConnectionErrorHandler:
