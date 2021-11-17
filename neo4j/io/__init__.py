@@ -487,8 +487,7 @@ class Bolt(abc.ABC):
         :param response: a response object to handle callbacks
         """
         self.packer.pack_struct(signature, fields)
-        self.outbox.chunk()
-        self.outbox.chunk()
+        self.outbox.wrap_message()
         self.responses.append(response)
 
     def _send_all(self):

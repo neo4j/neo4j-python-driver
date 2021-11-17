@@ -125,12 +125,9 @@ class Packer:
             self.pack_raw(encoded)
 
         # Bytes
-        elif isinstance(value, bytes):
+        elif isinstance(value, (bytes, bytearray)):
             self.pack_bytes_header(len(value))
             self.pack_raw(value)
-        elif isinstance(value, bytearray):
-            self.pack_bytes_header(len(value))
-            self.pack_raw(bytes(value))
 
         # List
         elif isinstance(value, list):
@@ -169,38 +166,8 @@ class Packer:
 
     def pack_string_header(self, size):
         write = self._write
-        if size == 0x00:
-            write(b"\x80")
-        elif size == 0x01:
-            write(b"\x81")
-        elif size == 0x02:
-            write(b"\x82")
-        elif size == 0x03:
-            write(b"\x83")
-        elif size == 0x04:
-            write(b"\x84")
-        elif size == 0x05:
-            write(b"\x85")
-        elif size == 0x06:
-            write(b"\x86")
-        elif size == 0x07:
-            write(b"\x87")
-        elif size == 0x08:
-            write(b"\x88")
-        elif size == 0x09:
-            write(b"\x89")
-        elif size == 0x0A:
-            write(b"\x8A")
-        elif size == 0x0B:
-            write(b"\x8B")
-        elif size == 0x0C:
-            write(b"\x8C")
-        elif size == 0x0D:
-            write(b"\x8D")
-        elif size == 0x0E:
-            write(b"\x8E")
-        elif size == 0x0F:
-            write(b"\x8F")
+        if size <= 0x0F:
+            write(bytes((0x80 | size,)))
         elif size < 0x100:
             write(b"\xD0")
             write(PACKED_UINT_8[size])
@@ -215,38 +182,8 @@ class Packer:
 
     def pack_list_header(self, size):
         write = self._write
-        if size == 0x00:
-            write(b"\x90")
-        elif size == 0x01:
-            write(b"\x91")
-        elif size == 0x02:
-            write(b"\x92")
-        elif size == 0x03:
-            write(b"\x93")
-        elif size == 0x04:
-            write(b"\x94")
-        elif size == 0x05:
-            write(b"\x95")
-        elif size == 0x06:
-            write(b"\x96")
-        elif size == 0x07:
-            write(b"\x97")
-        elif size == 0x08:
-            write(b"\x98")
-        elif size == 0x09:
-            write(b"\x99")
-        elif size == 0x0A:
-            write(b"\x9A")
-        elif size == 0x0B:
-            write(b"\x9B")
-        elif size == 0x0C:
-            write(b"\x9C")
-        elif size == 0x0D:
-            write(b"\x9D")
-        elif size == 0x0E:
-            write(b"\x9E")
-        elif size == 0x0F:
-            write(b"\x9F")
+        if size <= 0x0F:
+            write(bytes((0x90 | size,)))
         elif size < 0x100:
             write(b"\xD4")
             write(PACKED_UINT_8[size])
@@ -264,38 +201,8 @@ class Packer:
 
     def pack_map_header(self, size):
         write = self._write
-        if size == 0x00:
-            write(b"\xA0")
-        elif size == 0x01:
-            write(b"\xA1")
-        elif size == 0x02:
-            write(b"\xA2")
-        elif size == 0x03:
-            write(b"\xA3")
-        elif size == 0x04:
-            write(b"\xA4")
-        elif size == 0x05:
-            write(b"\xA5")
-        elif size == 0x06:
-            write(b"\xA6")
-        elif size == 0x07:
-            write(b"\xA7")
-        elif size == 0x08:
-            write(b"\xA8")
-        elif size == 0x09:
-            write(b"\xA9")
-        elif size == 0x0A:
-            write(b"\xAA")
-        elif size == 0x0B:
-            write(b"\xAB")
-        elif size == 0x0C:
-            write(b"\xAC")
-        elif size == 0x0D:
-            write(b"\xAD")
-        elif size == 0x0E:
-            write(b"\xAE")
-        elif size == 0x0F:
-            write(b"\xAF")
+        if size <= 0x0F:
+            write(bytes((0xA0 | size,)))
         elif size < 0x100:
             write(b"\xD8")
             write(PACKED_UINT_8[size])
@@ -316,38 +223,8 @@ class Packer:
             raise ValueError("Structure signature must be a single byte value")
         write = self._write
         size = len(fields)
-        if size == 0x00:
-            write(b"\xB0")
-        elif size == 0x01:
-            write(b"\xB1")
-        elif size == 0x02:
-            write(b"\xB2")
-        elif size == 0x03:
-            write(b"\xB3")
-        elif size == 0x04:
-            write(b"\xB4")
-        elif size == 0x05:
-            write(b"\xB5")
-        elif size == 0x06:
-            write(b"\xB6")
-        elif size == 0x07:
-            write(b"\xB7")
-        elif size == 0x08:
-            write(b"\xB8")
-        elif size == 0x09:
-            write(b"\xB9")
-        elif size == 0x0A:
-            write(b"\xBA")
-        elif size == 0x0B:
-            write(b"\xBB")
-        elif size == 0x0C:
-            write(b"\xBC")
-        elif size == 0x0D:
-            write(b"\xBD")
-        elif size == 0x0E:
-            write(b"\xBE")
-        elif size == 0x0F:
-            write(b"\xBF")
+        if size <= 0x0F:
+            write(bytes((0xB0 | size,)))
         else:
             raise OverflowError("Structure size out of range")
         write(signature)
