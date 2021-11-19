@@ -62,7 +62,7 @@ setup_args = {
     "classifiers": classifiers,
     "packages": packages,
     "entry_points": entry_points,
-    "python_requires": ">=3.5",
+    "python_requires": ">=3.6",
 }
 
 setup(**setup_args)
