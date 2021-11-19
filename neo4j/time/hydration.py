@@ -156,10 +156,14 @@ def dehydrate_datetime(value):
         value = utc.localize(value)
         seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"d", seconds, nanoseconds)
-    elif hasattr(tz, "zone") and tz.zone:
-        # with named time zone
+    elif hasattr(tz, "zone") and tz.zone and isinstance(tz.zone, str):
+        # with named pytz time zone
         seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"f", seconds, nanoseconds, tz.zone)
+    elif hasattr(tz, "key") and tz.key and isinstance(tz.key, str):
+        # with named zoneinfo (Python 3.9+) time zone
+        seconds, nanoseconds = seconds_and_nanoseconds(value)
+        return Structure(b"f", seconds, nanoseconds, tz.key)
     else:
         # with time offset
         seconds, nanoseconds = seconds_and_nanoseconds(value)
