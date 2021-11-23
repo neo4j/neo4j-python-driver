@@ -232,18 +232,19 @@ class PoolConfig(Config):
         # TLS 1.1 - Released in 2006, published as RFC 4346. (Disabled)
         # TLS 1.2 - Released in 2008, published as RFC 5246.
 
-        # https://docs.python.org/3.6/library/ssl.html#ssl.PROTOCOL_TLS_CLIENT
+        # https://docs.python.org/3.7/library/ssl.html#ssl.PROTOCOL_TLS_CLIENT
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
         # For recommended security options see
-        # https://docs.python.org/3.6/library/ssl.html#protocol-versions
+        # https://docs.python.org/3.7/library/ssl.html#protocol-versions
         ssl_context.options |= ssl.OP_NO_TLSv1      # Python 3.2
         ssl_context.options |= ssl.OP_NO_TLSv1_1    # Python 3.4
 
 
         if self.trust == TRUST_ALL_CERTIFICATES:
             ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE     # https://docs.python.org/3.5/library/ssl.html#ssl.CERT_NONE
+            # https://docs.python.org/3.7/library/ssl.html#ssl.CERT_NONE
+            ssl_context.verify_mode = ssl.CERT_NONE
 
         # Must be load_default_certs, not set_default_verify_paths to work
         # on Windows with system CAs.

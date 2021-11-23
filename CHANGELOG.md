@@ -1,5 +1,11 @@
 # Neo4j Driver Change Log
 
+## Version 5.0
+
+- Python 3.10 support added
+- Python 3.6 support has been dropped.
+
+
 ## Version 4.4
 
 - Python 3.5 support has been dropped.
