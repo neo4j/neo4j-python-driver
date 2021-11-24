@@ -67,8 +67,6 @@ test_session_config = {
     "fetch_size": 100,
 }
 
-config_function_names = ["consume_chain", "consume"]
-
 
 def test_pool_config_consume():
 
@@ -84,10 +82,9 @@ def test_pool_config_consume():
         assert consumed_pool_config[key] == test_pool_config[key]
 
     for key in consumed_pool_config.keys():
-        if key not in config_function_names:
-            assert test_pool_config[key] == consumed_pool_config[key]
+        assert test_pool_config[key] == consumed_pool_config[key]
 
-    assert len(consumed_pool_config) - len(config_function_names) == len(test_pool_config)
+    assert len(consumed_pool_config) == len(test_pool_config)
 
 
 def test_pool_config_consume_default_values():
@@ -171,12 +168,11 @@ def test_config_consume_chain():
         assert consumed_pool_config[key] == val
 
     for key, val in consumed_pool_config.items():
-        if key not in config_function_names:
-            assert test_pool_config[key] == val
+        assert test_pool_config[key] == val
 
-    assert len(consumed_pool_config) - len(config_function_names) == len(test_pool_config)
+    assert len(consumed_pool_config) == len(test_pool_config)
 
-    assert len(consumed_session_config) - len(config_function_names) == len(test_session_config)
+    assert len(consumed_session_config) == len(test_session_config)
 
 
 def test_init_session_config_merge():

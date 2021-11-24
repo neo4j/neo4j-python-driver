@@ -71,7 +71,9 @@ class ConfigType(ABCMeta):
         for k, v in attributes.items():
             if isinstance(v, DeprecatedAlias):
                 deprecated_aliases[k] = v.new
-            elif not k.startswith("_") and not callable(v):
+            elif not (k.startswith("_")
+                      or callable(v)
+                      or isinstance(v, (staticmethod, classmethod))):
                 fields.append(k)
 
         def keys(_):
