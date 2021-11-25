@@ -71,7 +71,7 @@ from neo4j.io import Bolt
 def test_bolt_error():
     with pytest.raises(BoltError) as e:
         error = BoltError("Error Message", address="localhost")
-        # assert repr(error) == "BoltError('Error Message')" This differs between python version 3.6 "BoltError('Error Message',)"  and 3.7
+        assert repr(error) == "BoltError('Error Message')"
         assert str(error) == "Error Message"
         assert error.args == ("Error Message",)
         assert error.address == "localhost"

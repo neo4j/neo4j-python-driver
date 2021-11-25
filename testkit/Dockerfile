@@ -40,9 +40,9 @@ ENV PYENV_ROOT /.pyenv
 ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
 
 # Set minimum supported Python version
-RUN pyenv install 3.6.13
+RUN pyenv install 3.7.12
 RUN pyenv rehash
-RUN pyenv global 3.6.13
+RUN pyenv global 3.7.12
 
 # Install Latest pip for each environment
 # https://pip.pypa.io/en/stable/news/
