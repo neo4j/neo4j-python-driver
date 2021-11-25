@@ -24,7 +24,7 @@ from functools import wraps
 
 # Can be automatically overridden in builds
 package = "neo4j"
-version = "4.4.dev0"
+version = "5.0.dev0"
 
 
 def get_user_agent():
