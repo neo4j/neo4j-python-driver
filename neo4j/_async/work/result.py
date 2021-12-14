@@ -28,7 +28,7 @@ from ..io import ConnectionErrorHandler
 class AsyncResult:
     """A handler for the result of Cypher query execution. Instances
     of this class are typically constructed and returned by
-    :meth:`.Session.run` and :meth:`.Transaction.run`.
+    :meth:`.AyncSession.run` and :meth:`.AsyncTransaction.run`.
     """
 
     def __init__(self, connection, hydrant, fetch_size, on_closed,
@@ -204,7 +204,7 @@ class AsyncResult:
                 await self._connection.fetch_message()
 
     async def _buffer(self, n=None):
-        """Try to fill `self_record_buffer` with n records.
+        """Try to fill `self._record_buffer` with n records.
 
         Might end up with more records in the buffer if the fetch size makes it
         overshoot.
@@ -260,25 +260,28 @@ class AsyncResult:
         Example::
 
             def create_node_tx(tx, name):
-                result = tx.run("CREATE (n:ExampleNode { name: $name }) RETURN n", name=name)
-                record = result.single()
+                result = await tx.run(
+                    "CREATE (n:ExampleNode { name: $name }) RETURN n", name=name
+                )
+                record = await result.single()
                 value = record.value()
-                info = result.consume()
+                info = await result.consume()
                 return value, info
 
-            with driver.session() as session:
-                node_id, info = session.write_transaction(create_node_tx, "example")
+            async with driver.session() as session:
+                node_id, info = await session.write_transaction(create_node_tx, "example")
 
         Example::
 
-            def get_two_tx(tx):
-                result = tx.run("UNWIND [1,2,3,4] AS x RETURN x")
+            async def get_two_tx(tx):
+                result = await tx.run("UNWIND [1,2,3,4] AS x RETURN x")
                 values = []
-                for ix, record in enumerate(result):
-                    if x > 1:
+                async for record in result:
+                    if len(values) >= 2:
                         break
                     values.append(record.values())
-                info = result.consume()  # discard the remaining records if there are any
+                # discard the remaining records if there are any
+                info = await result.consume()
                 # use the info for logging etc.
                 return values, info
 

@@ -106,7 +106,8 @@ def basic_auth(user, password, realm=None):
     :param realm: specifies the authentication provider
     :type realm: str or None
 
-    :return: auth token for use with :meth:`GraphDatabase.driver`
+    :return: auth token for use with :meth:`GraphDatabase.driver` or
+        :meth:`AsyncGraphDatabase.driver`
     :rtype: :class:`neo4j.Auth`
     """
     return Auth("basic", user, password, realm)
@@ -121,7 +122,8 @@ def kerberos_auth(base64_encoded_ticket):
                                   the credentials
     :type base64_encoded_ticket: str
 
-    :return: auth token for use with :meth:`GraphDatabase.driver`
+    :return: auth token for use with :meth:`GraphDatabase.driver` or
+        :meth:`AsyncGraphDatabase.driver`
     :rtype: :class:`neo4j.Auth`
     """
     return Auth("kerberos", "", base64_encoded_ticket)
@@ -136,7 +138,8 @@ def bearer_auth(base64_encoded_token):
                                  by a Single-Sign-On provider.
     :type base64_encoded_token: str
 
-    :return: auth token for use with :meth:`GraphDatabase.driver`
+    :return: auth token for use with :meth:`GraphDatabase.driver` or
+        :meth:`AsyncGraphDatabase.driver`
     :rtype: :class:`neo4j.Auth`
     """
     return Auth("bearer", None, base64_encoded_token)
@@ -157,7 +160,8 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
                        authentication provider
     :type parameters: Dict[str, Any]
 
-    :return: auth token for use with :meth:`GraphDatabase.driver`
+    :return: auth token for use with :meth:`GraphDatabase.driver` or
+        :meth:`AsyncGraphDatabase.driver`
     :rtype: :class:`neo4j.Auth`
     """
     return Auth(scheme, principal, credentials, realm, **parameters)

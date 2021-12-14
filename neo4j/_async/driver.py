@@ -41,16 +41,16 @@ class AsyncGraphDatabase:
     @classmethod
     @AsyncUtil.experimental_async(
         "neo4j async is in experimental phase. It might be removed or change "
-        "it's API at any time (including patch releases)."
+        "its API at any time (including patch releases)."
     )
     def driver(cls, uri, *, auth=None, **config):
         """Create a driver.
 
-        :param uri: the connection URI for the driver, see :ref:`uri-ref` for available URIs.
+        :param uri: the connection URI for the driver, see :ref:`async-uri-ref` for available URIs.
         :param auth: the authentication details, see :ref:`auth-ref` for available authentication details.
-        :param config: driver configuration key-word arguments, see :ref:`driver-configuration-ref` for available key-word arguments.
+        :param config: driver configuration key-word arguments, see :ref:`async-driver-configuration-ref` for available key-word arguments.
 
-        :return: :ref:`neo4j-driver-ref` or :ref:`bolt-driver-ref`
+        :rtype: AsyncNeo4jDriver or AsyncBoltDriver
         """
 
         from ..api import (
@@ -193,8 +193,8 @@ class _Routing:
 
 
 class AsyncDriver:
-    """ Base class for all types of :class:`neo4j.Driver`, instances of which are
-    used as the primary access point to Neo4j.
+    """ Base class for all types of :class:`neo4j.AsyncDriver`, instances of
+    which are used as the primary access point to Neo4j.
     """
 
     #: Connection pool
@@ -219,9 +219,11 @@ class AsyncDriver:
         return bool(self._pool.pool_config.encrypted)
 
     def session(self, **config):
-        """Create a session, see :ref:`session-construction-ref`
+        """Create a session, see :ref:`async-session-construction-ref`
 
-        :param config: session configuration key-word arguments, see :ref:`session-configuration-ref` for available key-word arguments.
+        :param config: session configuration key-word arguments,
+            see :ref:`async-session-configuration-ref` for available key-word
+            arguments.
 
         :returns: new :class:`neo4j.AsyncSession` object
         """
@@ -257,12 +259,15 @@ class AsyncDriver:
 
 
 class AsyncBoltDriver(_Direct, AsyncDriver):
-    """ A :class:`.BoltDriver` is created from a ``bolt`` URI and addresses
-    a single database machine. This may be a standalone server or could be a
-    specific member of a cluster.
+    """:class:`.AsyncBoltDriver` is instantiated for ``bolt`` URIs and
+    addresses a single database machine. This may be a standalone server or
+    could be a specific member of a cluster.
 
-    Connections established by a :class:`.BoltDriver` are always made to the
-    exact host and port detailed in the URI.
+    Connections established by a :class:`.AsyncBoltDriver` are always made to
+    the exact host and port detailed in the URI.
+
+    This class is not supposed to be instantiated externally. Use
+    :meth:`AsyncGraphDatabase.driver` instead.
     """
 
     @classmethod
@@ -288,7 +293,7 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
 
     def session(self, **config):
         """
-        :param config: The values that can be specified are found in :class: `neo4j.AsyncSessionConfig`
+        :param config: The values that can be specified are found in :class: `neo4j.SessionConfig`
 
         :return:
         :rtype: :class: `neo4j.AsyncSession`
@@ -311,11 +316,14 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
 
 
 class AsyncNeo4jDriver(_Routing, AsyncDriver):
-    """ A :class:`.Neo4jDriver` is created from a ``neo4j`` URI. The
+    """:class:`.AsyncNeo4jDriver` is instantiated for ``neo4j`` URIs. The
     routing behaviour works in tandem with Neo4j's `Causal Clustering
     <https://neo4j.com/docs/operations-manual/current/clustering/>`_
     feature by directing read and write behaviour to appropriate
     cluster members.
+
+    This class is not supposed to be instantiated externally. Use
+    :meth:`AsyncGraphDatabase.driver` instead.
     """
 
     @classmethod

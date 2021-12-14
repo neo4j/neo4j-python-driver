@@ -25,13 +25,13 @@ from .result import AsyncResult
 
 
 class AsyncTransaction:
-    """ Container for multiple Cypher queries to be executed within
-    a single context. Transactions can be used within a :py:const:`with`
+    """ Container for multiple Cypher queries to be executed within a single
+    context. asynctransactions can be used within a :py:const:`async with`
     block where the transaction is committed or rolled back on based on
-    whether or not an exception is raised::
+    whether an exception is raised::
 
-        with session.begin_transaction() as tx:
-            pass
+        async with session.begin_transaction() as tx:
+            ...
 
     """
 
@@ -91,9 +91,9 @@ class AsyncTransaction:
         queries below are all equivalent::
 
             >>> query = "CREATE (a:Person { name: $name, age: $age })"
-            >>> result = tx.run(query, {"name": "Alice", "age": 33})
-            >>> result = tx.run(query, {"name": "Alice"}, age=33)
-            >>> result = tx.run(query, name="Alice", age=33)
+            >>> result = await tx.run(query, {"name": "Alice", "age": 33})
+            >>> result = await tx.run(query, {"name": "Alice"}, age=33)
+            >>> result = await tx.run(query, name="Alice", age=33)
 
         Parameter values can be of any type supported by the Neo4j type
         system. In Python, this includes :class:`bool`, :class:`int`,

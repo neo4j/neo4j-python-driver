@@ -47,19 +47,20 @@ log = getLogger("neo4j")
 
 
 class AsyncSession(AsyncWorkspace):
-    """A :class:`.Session` is a logical context for transactional units
-    of work. Connections are drawn from the :class:`.Driver` connection
+    """A :class:`.AsyncSession` is a logical context for transactional units
+    of work. Connections are drawn from the :class:`.AsyncDriver` connection
     pool as required.
 
-    Session creation is a lightweight operation and sessions are not thread
-    safe. Therefore a session should generally be short-lived, and not
-    span multiple threads.
+    Session creation is a lightweight operation and sessions are not safe to
+    be used in concurrent contexts (multiple threads/coroutines).
+    Therefore, a session should generally be short-lived, and must not
+    span multiple threads/coroutines.
 
     In general, sessions will be created and destroyed within a `with`
     context. For example::
 
-        with driver.session() as session:
-            result = session.run("MATCH (n:Person) RETURN n.name AS name")
+        async with driver.session() as session:
+            result = await session.run("MATCH (n:Person) RETURN n.name AS name")
             # do something with the result...
 
     :param pool: connection pool instance
@@ -171,23 +172,23 @@ class AsyncSession(AsyncWorkspace):
         fetched lazily as consumed by the client application.
 
         If a query is executed before a previous
-        :class:`neo4j.Result` in the same :class:`.Session` has
+        :class:`neo4j.AsyncResult` in the same :class:`.AsyncSession` has
         been fully consumed, the first result will be fully fetched
         and buffered. Note therefore that the generally recommended
         pattern of usage is to fully consume one result before
         executing a subsequent query. If two results need to be
-        consumed in parallel, multiple :class:`.Session` objects
+        consumed in parallel, multiple :class:`.AsyncSession` objects
         can be used as an alternative to result buffering.
 
-        For more usage details, see :meth:`.Transaction.run`.
+        For more usage details, see :meth:`.AsyncTransaction.run`.
 
         :param query: cypher query
         :type query: str, neo4j.Query
         :param parameters: dictionary of parameters
         :type parameters: dict
         :param kwargs: additional keyword parameters
-        :returns: a new :class:`neo4j.Result` object
-        :rtype: :class:`neo4j.Result`
+        :returns: a new :class:`neo4j.AsyncResult` object
+        :rtype: AsyncResult
         """
         if not query:
             raise ValueError("Cannot run an empty query")
@@ -265,11 +266,11 @@ class AsyncSession(AsyncWorkspace):
         )
 
     async def begin_transaction(self, metadata=None, timeout=None):
-        """ Begin a new unmanaged transaction. Creates a new :class:`.Transaction` within this session.
+        """ Begin a new unmanaged transaction. Creates a new :class:`.AsyncTransaction` within this session.
             At most one transaction may exist in a session at any point in time.
             To maintain multiple concurrent transactions, use multiple concurrent sessions.
 
-            Note: For auto-transaction (Session.run) this will trigger an consume for the current result.
+            Note: For auto-transaction (AsyncSession.run) this will trigger an consume for the current result.
 
         :param metadata:
             a dictionary with metadata.
@@ -287,7 +288,7 @@ class AsyncSession(AsyncWorkspace):
         :type timeout: int
 
         :returns: A new transaction instance.
-        :rtype: :class:`neo4j.Transaction`
+        :rtype: AsyncTransaction
 
         :raises TransactionError: :class:`neo4j.exceptions.TransactionError` if a transaction is already open.
         """
@@ -365,37 +366,40 @@ class AsyncSession(AsyncWorkspace):
         This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
         Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
 
-        Managed transactions should not generally be explicitly committed (via tx.commit()).
+        Managed transactions should not generally be explicitly committed
+        (via ``await tx.commit()``).
 
         Example::
 
-            def do_cypher_tx(tx, cypher):
-                result = tx.run(cypher)
-                values = []
-                for record in result:
-                    values.append(record.values())
+            async def do_cypher_tx(tx, cypher):
+                result = await tx.run(cypher)
+                values = [record.values() async for record in result]
                 return values
 
-            with driver.session() as session:
-                values = session.read_transaction(do_cypher_tx, "RETURN 1 AS x")
+            async with driver.session() as session:
+                values = await session.read_transaction(do_cypher_tx, "RETURN 1 AS x")
 
         Example::
 
-            def get_two_tx(tx):
-                result = tx.run("UNWIND [1,2,3,4] AS x RETURN x")
+            async def get_two_tx(tx):
+                result = await tx.run("UNWIND [1,2,3,4] AS x RETURN x")
                 values = []
-                for ix, record in enumerate(result):
-                    if x > 1:
+                async for record in result:
+                    if len(values) >= 2:
                         break
                     values.append(record.values())
-                info = result.consume()  # discard the remaining records if there are any
+                # discard the remaining records if there are any
+                info = await result.consume()
                 # use the info for logging etc.
                 return values
 
-            with driver.session() as session:
-                values = session.read_transaction(get_two_tx)
+            async with driver.session() as session:
+                values = await session.read_transaction(get_two_tx)
 
-        :param transaction_function: a function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, *args, **kwargs)`
+        :param transaction_function: a function that takes a transaction as an
+            argument and does work with the transaction.
+            `transaction_function(tx, *args, **kwargs)` where `tx` is a
+            :class:`.AsyncTransaction`.
         :param args: arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
         :return: a result as returned by the given unit of work
@@ -413,16 +417,19 @@ class AsyncSession(AsyncWorkspace):
 
         Example::
 
-            def create_node_tx(tx, name):
-                result = tx.run("CREATE (n:NodeExample { name: $name }) RETURN id(n) AS node_id", name=name)
-                record = result.single()
+            async def create_node_tx(tx, name):
+                query = "CREATE (n:NodeExample { name: $name }) RETURN id(n) AS node_id"
+                result = await tx.run(query, name=name)
+                record = await result.single()
                 return record["node_id"]
 
-            with driver.session() as session:
-                node_id = session.write_transaction(create_node_tx, "example")
+            async with driver.session() as session:
+                node_id = await session.write_transaction(create_node_tx, "example")
 
-
-        :param transaction_function: a function that takes a transaction as an argument and does work with the transaction. `tx_function(tx, *args, **kwargs)`
+        :param transaction_function: a function that takes a transaction as an
+            argument and does work with the transaction.
+            `transaction_function(tx, *args, **kwargs)` where `tx` is a
+            :class:`.AsyncTransaction`.
         :param args: key word arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
         :return: a result as returned by the given unit of work
