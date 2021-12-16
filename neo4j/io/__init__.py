@@ -38,6 +38,7 @@ from collections import (
     defaultdict,
     deque,
 )
+import logging
 from logging import getLogger
 from random import choice
 import selectors
@@ -643,11 +644,19 @@ class IOPool:
                 # try to find a free connection in pool
                 for connection in list(self.connections.get(address, [])):
                     if (connection.closed() or connection.defunct()
-                            or connection.stale()):
+                            or (connection.stale() and not connection.in_use)):
                         # `close` is a noop on already closed connections.
                         # This is to make sure that the connection is gracefully
                         # closed, e.g. if it's just marked as `stale` but still
                         # alive.
+                        if log.isEnabledFor(logging.DEBUG):
+                            log.debug(
+                                "[#%04X]  C: <POOL> removing old connection "
+                                "(closed=%s, defunct=%s, stale=%s, in_use=%s)",
+                                connection.local_port,
+                                connection.closed(), connection.defunct(),
+                                connection.stale(), connection.in_use
+                            )
                         connection.close()
                         try:
                             self.connections.get(address, []).remove(connection)
