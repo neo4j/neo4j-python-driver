@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import inspect
+
 from unittest.mock import Mock
 
 import pytest
@@ -121,7 +121,7 @@ def test_chooses_right_connection_type(opener, type_):
     cx1 = pool.acquire(READ_ACCESS if type_ == "r" else WRITE_ACCESS,
                        30, "test_db", None)
     pool.release(cx1)
-    if type_  == "r":
+    if type_ == "r":
         assert cx1.addr == READER_ADDRESS
     else:
         assert cx1.addr == WRITER_ADDRESS
@@ -147,7 +147,7 @@ def test_closes_stale_connections(opener, break_on_close):
     cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None)
     pool.release(cx1)
     assert cx1 in pool.connections[cx1.addr]
-    # simulate connection going stale (e.g. exceeding) and than breaking when
+    # simulate connection going stale (e.g. exceeding) and then breaking when
     # the pool tries to close the connection
     cx1.stale.return_value = True
     cx_close_mock = cx1.close
@@ -156,11 +156,42 @@ def test_closes_stale_connections(opener, break_on_close):
         cx_close_mock.side_effect = break_connection
     cx2 = pool.acquire(READ_ACCESS, 30, "test_db", None)
     pool.release(cx2)
-    assert cx1.close.called_once()
+    if break_on_close:
+        cx1.close.assert_called()
+    else:
+        cx1.close.assert_called_once()
     assert cx2 is not cx1
     assert cx2.addr == cx1.addr
     assert cx1 not in pool.connections[cx1.addr]
     assert cx2 in pool.connections[cx2.addr]
+
+
+def test_does_not_close_stale_connections_in_use(opener):
+    pool = Neo4jPool(opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None)
+    assert cx1 in pool.connections[cx1.addr]
+    # simulate connection going stale (e.g. exceeding) while being in use
+    cx1.stale.return_value = True
+    cx2 = pool.acquire(READ_ACCESS, 30, "test_db", None)
+    pool.release(cx2)
+    cx1.close.assert_not_called()
+    assert cx2 is not cx1
+    assert cx2.addr == cx1.addr
+    assert cx1 in pool.connections[cx1.addr]
+    assert cx2 in pool.connections[cx2.addr]
+
+    pool.release(cx1)
+    # now that cx1 is back in the pool and still stale,
+    # it should be closed when trying to acquire the next connection
+    cx1.close.assert_not_called()
+
+    cx3 = pool.acquire(READ_ACCESS, 30, "test_db", None)
+    pool.release(cx3)
+    cx1.close.assert_called_once()
+    assert cx2 is cx3
+    assert cx3.addr == cx1.addr
+    assert cx1 not in pool.connections[cx1.addr]
+    assert cx3 in pool.connections[cx2.addr]
 
 
 def test_release_resets_connections(opener):
