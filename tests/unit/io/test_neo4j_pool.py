@@ -109,9 +109,9 @@ def test_closes_stale_connections(opener, break_on_close):
     cx2 = pool.acquire(READ_ACCESS, 30, "test_db", None)
     pool.release(cx2)
     if break_on_close:
-        cx1.close.assert_called()
+        assert cx1.close.call_count >= 1
     else:
-        cx1.close.assert_called_once()
+        assert cx1.close.call_count == 1
     assert cx2 is not cx1
     assert cx2.addr == cx1.addr
     assert cx1 not in pool.connections[cx1.addr]
@@ -139,7 +139,7 @@ def test_does_not_close_stale_connections_in_use(opener):
 
     cx3 = pool.acquire(READ_ACCESS, 30, "test_db", None)
     pool.release(cx3)
-    cx1.close.assert_called_once()
+    assert cx1.close.call_count == 1
     assert cx2 is cx3
     assert cx3.addr == cx1.addr
     assert cx1 not in pool.connections[cx1.addr]
