@@ -350,7 +350,9 @@ class AsyncBolt:
         sent to the network, and a response is fetched.
 
         :param database: database for which to fetch a routing table
+            Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
+            Requires Bolt 4.4+.
         :param bookmarks: iterable of bookmark values after which this
                           transaction should begin
         :return: dictionary of raw routing data
@@ -369,7 +371,9 @@ class AsyncBolt:
         :param metadata: custom metadata dictionary to attach to the transaction
         :param timeout: timeout for transaction execution (seconds)
         :param db: name of the database against which to begin the transaction
+            Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
+            Requires Bolt 4.4+.
         :param handlers: handler functions passed into the returned Response object
         :return: Response object
         """
@@ -407,7 +411,9 @@ class AsyncBolt:
         :param metadata: custom metadata dictionary to attach to the transaction
         :param timeout: timeout for transaction execution (seconds)
         :param db: name of the database against which to begin the transaction
+            Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
+            Requires Bolt 4.4+
         :param handlers: handler functions passed into the returned Response object
         :return: Response object
         """

@@ -10,11 +10,11 @@ charset = utf-8
 [*.{py,js,rst,txt,sh,bat}]
 trim_trailing_whitespace = true
 
-[{Makefile,Drockerfile}]
+[{Makefile,Dockerfile}]
 trim_trailing_whitespace = true
 
 [*.bat]
-end_of_line =crlf
+end_of_line = crlf
 
 [*.py]
 max_line_length = 79

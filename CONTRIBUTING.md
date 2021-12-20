@@ -58,7 +58,7 @@ install the pre-commit hooks as described below insted. They will take care of
 updating the code if necessary.
 
 Setting up the development environment:
- * Install Python 3.6+
+ * Install Python 3.7+
  * Install the requirements
    ```bash
    $ python3 -m pip install -U pip
@@ -69,25 +69,6 @@ Setting up the development environment:
    ```bash
    $ pre-commit install
    ```
-   Note that this is not an auto-formatter. It will alter some code, but
-   mostly it will just complain about non-compliant code.  
-   You can disable a certain check for a single line of code if you think
-   your code-style if preferable. E.g.
-   ```python
-   assume_this_line(violates_rule_e123, and_w321)  # noqa: E123,W321
-   ```
-   Or use just `# noqa` to disable all checks for this line.  
-   If you use `# noqa` on its own line, it will disable *all* checks for the
-   whole file. Don't do that.  
-   To disable certain rules for a whole file, check out
-   `setup.cfg`.  
-   If you want to run the checks manually, you can do so:
-   ```bash
-   $ pre-commit run --all-files
-   # or
-   $ pre-commit run --file path/to/a/file
-   ```
-   For more details see [flake8](https://flake8.pycqa.org/).
 
 
 ## Got an idea for a new project?
@@ -95,7 +76,7 @@ Setting up the development environment:
 If you have an idea for a new tool or library, start by talking to other people in the community.
 Chances are that someone has a similar idea or may have already started working on it.
 The best software comes from getting like minds together to solve a problem.
-And we'll do our best to help you promote and co-ordinate your Neo ecosystem projects.
+And we'll do our best to help you promote and co-ordinate your Neo4j ecosystem projects.
 
 
 ## Further reading

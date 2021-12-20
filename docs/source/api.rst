@@ -17,7 +17,7 @@ The :class:`neo4j.Driver` construction is done via a `classmethod` on the :class
    :members: driver
 
 
-Example, driver creation:
+Driver creation example:
 
 .. code-block:: python
 
@@ -39,7 +39,7 @@ This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
 Other authentication methods are described under :ref:`auth-ref`.
 
 
-Example, with block context:
+``with`` block context example:
 
 .. code-block:: python
 
@@ -331,7 +331,8 @@ For example:
 
 Connection details held by the :class:`neo4j.Driver` are immutable.
 Therefore if, for example, a password is changed, a replacement :class:`neo4j.Driver` object must be created.
-More than one :class:`.Driver` may be required if connections to multiple databases, or connections as multiple users, are required.
+More than one :class:`.Driver` may be required if connections to multiple databases, or connections as multiple users, are required,
+unless when using impersonation (:ref:`impersonated-user-ref`).
 
 :class:`neo4j.Driver` objects are thread-safe but cannot be shared across processes.
 Therefore, ``multithreading`` should generally be preferred over ``multiprocessing`` for parallel database access.
@@ -371,7 +372,7 @@ All database activity is co-ordinated through two mechanisms: the :class:`neo4j.
 
 A :class:`neo4j.Session` is a logical container for any number of causally-related transactional units of work.
 Sessions automatically provide guarantees of causal consistency within a clustered environment but multiple sessions can also be causally chained if required.
-Sessions provide the top-level of containment for database activity.
+Sessions provide the top level of containment for database activity.
 Session creation is a lightweight operation and *sessions are not thread safe*.
 
 Connections are drawn from the :class:`neo4j.Driver` connection pool as required.

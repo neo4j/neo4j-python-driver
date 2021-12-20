@@ -40,8 +40,8 @@ class AsyncGraphDatabase:
 
     @classmethod
     @AsyncUtil.experimental_async(
-        "neo4j async is in experimental phase. It might be removed or change "
-        "its API at any time (including patch releases)."
+        "neo4j async is in experimental phase. It might be removed or changed "
+        "at any time (including patch releases)."
     )
     def driver(cls, uri, *, auth=None, **config):
         """Create a driver.

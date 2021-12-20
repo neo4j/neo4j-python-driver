@@ -229,29 +229,3 @@ class AsyncCondition:
 
 Condition = threading.Condition
 RLock = threading.RLock
-
-
-# async def main():
-#     lock = AsyncRLock()
-#
-#     async def say_after(delay, what):
-#         await asyncio.sleep(delay)
-#         print(what, repr(lock))
-#         async with lock:
-#             print(what, repr(lock))
-#             async with lock:
-#                 print(what, repr(lock))
-#                 await asyncio.sleep(delay)
-#                 print(what)
-#
-#     task_1 = asyncio.create_task(say_after(0.5, "1"))
-#     task_2 = asyncio.create_task(say_after(0.5, "2"))
-#     task_3 = asyncio.create_task(say_after(0.5, "3"))
-#
-#     await task_1
-#     await task_2
-#     await task_3
-#
-#
-# if __name__ == "__main__":
-#     asyncio.run(main())
