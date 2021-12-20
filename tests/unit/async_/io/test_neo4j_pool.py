@@ -186,6 +186,37 @@ async def test_closes_stale_connections(opener, break_on_close):
 
 
 @mark_async_test
+async def test_does_not_close_stale_connections_in_use(opener):
+    pool = AsyncNeo4jPool(
+        opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
+    )
+    cx1 = await pool.acquire(READ_ACCESS, 30, "test_db", None)
+    assert cx1 in pool.connections[cx1.addr]
+    # simulate connection going stale (e.g. exceeding) while being in use
+    cx1.stale.return_value = True
+    cx2 = await pool.acquire(READ_ACCESS, 30, "test_db", None)
+    await pool.release(cx2)
+    cx1.close.assert_not_called()
+    assert cx2 is not cx1
+    assert cx2.addr == cx1.addr
+    assert cx1 in pool.connections[cx1.addr]
+    assert cx2 in pool.connections[cx2.addr]
+
+    await pool.release(cx1)
+    # now that cx1 is back in the pool and still stale,
+    # it should be closed when trying to acquire the next connection
+    cx1.close.assert_not_called()
+
+    cx3 = await pool.acquire(READ_ACCESS, 30, "test_db", None)
+    await pool.release(cx3)
+    cx1.close.assert_called_once()
+    assert cx2 is cx3
+    assert cx3.addr == cx1.addr
+    assert cx1 not in pool.connections[cx1.addr]
+    assert cx3 in pool.connections[cx2.addr]
+
+
+@mark_async_test
 async def test_release_resets_connections(opener):
     pool = AsyncNeo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
