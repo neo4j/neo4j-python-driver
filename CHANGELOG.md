@@ -4,7 +4,10 @@
 
 - Python 3.10 support added
 - Python 3.6 support has been dropped.
-
+- `Result`, `Session`, and `Transaction`, can no longer be imported from
+  `neo4j.work`. They should've been imported from `neo4j` all along.
+- Experimental pipelines feature has been removed.
+- Experimental async driver has been added.
 
 ## Version 4.4
 

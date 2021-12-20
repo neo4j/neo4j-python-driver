@@ -1,0 +1,42 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: end-of-file-fixer
+        exclude_types:
+          - image
+      - id: fix-encoding-pragma
+        args: [ --remove ]
+      - id: mixed-line-ending
+        args: [ --fix=lf ]
+        exclude_types:
+          - batch
+      - id: trailing-whitespace
+        args: [ --markdown-linebreak-ext=md ]
+#  - repo: https://github.com/pycqa/flake8
+#    rev: 4.0.1
+#    hooks:
+#      - id: flake8
+#        additional_dependencies:
+#          - flake8-bugbear
+#          - flake8-builtins
+#          - flake8-docstrings
+#          - flake8-quotes
+#          - pep8-naming
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.0
+    hooks:
+      - id: isort
+  -   repo: local
+      hooks:
+      - id: unasync
+        name: unasync
+        entry: bin/make-unasync
+        language: system
+        files: "^(neo4j/_async|tests/unit/async_|testkitbackend/_async)/.*"

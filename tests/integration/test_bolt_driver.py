@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,29 +16,7 @@
 # limitations under the License.
 
 
-import pytest
 from pytest import fixture
-
-from neo4j import (
-    GraphDatabase,
-    BoltDriver,
-    Version,
-    READ_ACCESS,
-    WRITE_ACCESS,
-    ResultSummary,
-    unit_of_work,
-    Transaction,
-    Result,
-    ServerInfo,
-)
-from neo4j.exceptions import (
-    ServiceUnavailable,
-    AuthError,
-    ConfigurationError,
-    ClientError,
-)
-from neo4j._exceptions import BoltHandshakeError
-from neo4j.io._bolt3 import Bolt3
 
 
 # TODO: this test will stay until a uniform behavior for `.single()` across the

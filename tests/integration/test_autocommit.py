@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,7 +16,7 @@
 # limitations under the License.
 
 
-from neo4j.work.simple import Query
+from neo4j import Query
 
 
 # TODO: this test will stay until a uniform behavior for `.single()` across the

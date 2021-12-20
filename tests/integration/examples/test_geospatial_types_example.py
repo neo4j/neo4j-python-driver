@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -18,7 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import pytest
+
 
 # python -m pytest tests/integration/examples/test_geospatial_types_example.py -s -v
 
@@ -28,9 +27,11 @@ def _echo(tx, x):
 
 
 def test_cartesian_point(driver):
+    # isort: off
     # tag::geospatial-types-cartesian-import[]
     from neo4j.spatial import CartesianPoint
     # end::geospatial-types-cartesian-import[]
+    # isort: on
 
     # tag::geospatial-types-cartesian[]
     # Creating a 2D point in Cartesian space
@@ -87,9 +88,11 @@ def test_cartesian_point(driver):
 
 
 def test_wgs84_point(driver):
+    # isort: off
     # tag::geospatial-types-wgs84-import[]
     from neo4j.spatial import WGS84Point
     # end::geospatial-types-wgs84-import[]
+    # isort: on
 
     # tag::geospatial-types-wgs84[]
     # Creating a 2D point in WSG84 space

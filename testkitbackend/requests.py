@@ -14,13 +14,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
 import json
 from os import path
 
 import neo4j
-import testkitbackend.fromtestkit as fromtestkit
-import testkitbackend.totestkit as totestkit
-from testkitbackend.fromtestkit import to_meta_and_timeout
+
+from . import (
+    fromtestkit,
+    totestkit,
+)
+from .fromtestkit import to_meta_and_timeout
 
 
 class FrontendError(Exception):
@@ -357,7 +362,7 @@ def ResultList(backend, data):
 def ResultConsume(backend, data):
     result = backend.results[data["resultId"]]
     summary = result.consume()
-    from neo4j.work.summary import ResultSummary
+    from neo4j import ResultSummary
     assert isinstance(summary, ResultSummary)
     backend.send_response("Summary", {
         "serverInfo": {

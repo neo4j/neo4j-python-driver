@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,10 +16,19 @@
 # limitations under the License.
 
 
-from ctypes import CDLL, Structure, c_longlong, c_long, byref
+from ctypes import (
+    byref,
+    c_long,
+    c_longlong,
+    CDLL,
+    Structure,
+)
 from platform import uname
 
-from neo4j.time import Clock, ClockTime
+from neo4j.time import (
+    Clock,
+    ClockTime,
+)
 from neo4j.time.arithmetic import nano_divmod
 
 

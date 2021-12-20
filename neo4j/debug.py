@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,7 +16,16 @@
 # limitations under the License.
 
 
-from logging import CRITICAL, ERROR, WARNING, INFO, DEBUG, Formatter, StreamHandler, getLogger
+from logging import (
+    CRITICAL,
+    DEBUG,
+    ERROR,
+    Formatter,
+    getLogger,
+    INFO,
+    StreamHandler,
+    WARNING,
+)
 from sys import stderr
 
 

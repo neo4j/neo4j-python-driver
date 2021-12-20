@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -20,17 +17,17 @@
 
 
 from datetime import (
-    time,
     datetime,
+    time,
     timedelta,
 )
 
 from neo4j.packstream import Structure
 from neo4j.time import (
-    Duration,
     Date,
-    Time,
     DateTime,
+    Duration,
+    Time,
 )
 
 
@@ -114,7 +111,10 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):
     :param tz:
     :return: datetime
     """
-    from pytz import FixedOffset, timezone
+    from pytz import (
+        FixedOffset,
+        timezone,
+    )
     minutes, seconds = map(int, divmod(seconds, 60))
     hours, minutes = map(int, divmod(minutes, 60))
     days, hours = map(int, divmod(hours, 24))

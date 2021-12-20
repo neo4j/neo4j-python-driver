@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -22,9 +19,12 @@
 from contextlib import redirect_stdout
 from io import StringIO
 
+
+# isort: off
 # tag::cypher-error-import[]
 from neo4j.exceptions import ClientError
 # end::cypher-error-import[]
+# isort: on
 
 
 class Neo4jErrorExample:

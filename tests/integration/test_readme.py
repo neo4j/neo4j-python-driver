@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -18,10 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import pytest
 
-from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
+from neo4j.exceptions import ServiceUnavailable
+
 
 # python -m pytest tests/integration/test_readme.py -s -v
 

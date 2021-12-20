@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -18,20 +15,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 """
 Graph data types
 """
 
 
-from collections.abc import Mapping
-
-
 __all__ = [
     "Graph",
     "Node",
-    "Relationship",
     "Path",
+    "Relationship",
 ]
+
+
+from collections.abc import Mapping
 
 
 class Graph:

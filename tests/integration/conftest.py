@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -21,18 +18,19 @@
 
 from math import ceil
 from os import getenv
-from os.path import dirname, join
+from os.path import (
+    dirname,
+    join,
+)
 from threading import RLock
 
 import pytest
-import urllib
 
-from neo4j import (
-    GraphDatabase,
-)
-from neo4j.exceptions import ServiceUnavailable
+from neo4j import GraphDatabase
 from neo4j._exceptions import BoltHandshakeError
-from neo4j.io import Bolt
+from neo4j._sync.io import Bolt
+from neo4j.exceptions import ServiceUnavailable
+
 
 # import logging
 # log = logging.getLogger("neo4j")
@@ -50,7 +48,7 @@ NEO4J_PORTS = {
 NEO4J_CORES = 3
 NEO4J_REPLICAS = 2
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "password"
+NEO4J_PASSWORD = "pass"
 NEO4J_AUTH = (NEO4J_USER, NEO4J_PASSWORD)
 NEO4J_LOCK = RLock()
 NEO4J_SERVICE = None
@@ -76,7 +74,10 @@ class Neo4jService(object):
                  n_cores=None, n_replicas=None,
                  bolt_port=None, http_port=None, debug_port=None,
                  debug_suspend=None, dir_spec=None, config=None):
-        from boltkit.legacy.controller import _install, create_controller
+        from boltkit.legacy.controller import (
+            _install,
+            create_controller,
+        )
         assert image.endswith("-enterprise")
         release = image[:-11]
         if release == "snapshot":

@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -21,9 +18,12 @@
 
 import pytest
 
+
+# isort: off
 # tag::service-unavailable-import[]
 from neo4j.exceptions import ServiceUnavailable
 # end::service-unavailable-import[]
+# isort: on
 
 
 def service_unavailable_example(driver):

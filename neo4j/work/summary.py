@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,9 +16,8 @@
 # limitations under the License.
 
 
-from collections import namedtuple
+from .._exceptions import BoltProtocolError
 
-from neo4j._exceptions import BoltProtocolError
 
 BOLT_VERSION_1 = 1
 BOLT_VERSION_2 = 2

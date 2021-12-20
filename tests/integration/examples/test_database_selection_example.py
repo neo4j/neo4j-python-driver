@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,23 +16,21 @@
 # limitations under the License.
 
 
-import pytest
-
 from contextlib import redirect_stdout
 from io import StringIO
 
 
-from neo4j import GraphDatabase
+# isort: off
 # tag::database-selection-import[]
-from neo4j import READ_ACCESS
+from neo4j import (
+    GraphDatabase,
+    READ_ACCESS,
+)
 # end::database-selection-import[]
-
-from neo4j.exceptions import ServiceUnavailable
-from neo4j._exceptions import BoltHandshakeError
+# isort: on
 
 
 # python -m pytest tests/integration/examples/test_database_selection_example.py -s -v
-
 
 class DatabaseSelectionExample:
 

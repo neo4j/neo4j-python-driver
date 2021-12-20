@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,11 +16,15 @@
 # limitations under the License.
 
 
-import pytest
-
 from contextlib import redirect_stdout
 from io import StringIO
 
+import pytest
+
+from neo4j._exceptions import BoltHandshakeError
+
+
+# isort: off
 # tag::driver-introduction-example-import[]
 import logging
 import sys
@@ -31,8 +32,7 @@ import sys
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 # end::driver-introduction-example-import[]
-
-from neo4j._exceptions import BoltHandshakeError
+# isort: on
 
 
 # python -m pytest tests/integration/examples/test_driver_introduction_example.py -s -v

@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -21,13 +18,19 @@
 
 import pytest
 
-# tag::config-secure-import[]
-from neo4j import GraphDatabase, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
-# end::config-secure-import[]
-
-from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
+from neo4j.exceptions import ServiceUnavailable
 from tests.integration.examples import DriverSetupExample
+
+
+# isort: off
+# tag::config-secure-import[]
+from neo4j import (
+    GraphDatabase,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+)
+# end::config-secure-import[]
+# isort: off
 
 
 # python -m pytest tests/integration/examples/test_config_secure_example.py -s -v

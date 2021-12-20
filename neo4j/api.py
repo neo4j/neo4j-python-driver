@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -18,19 +15,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+""" Base classes and helpers.
+"""
+
+
 from urllib.parse import (
-    urlparse,
     parse_qs,
+    urlparse,
 )
-from.exceptions import (
-    DriverError,
+
+from .exceptions import (
     ConfigurationError,
+    DriverError,
 )
 from .meta import deprecated
 
-
-""" Base classes and helpers.
-"""
 
 READ_ACCESS = "READ"
 WRITE_ACCESS = "WRITE"

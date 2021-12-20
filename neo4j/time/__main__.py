@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding: utf-8
 
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
@@ -20,7 +19,11 @@
 
 
 def main():
-    from neo4j.time import Clock, DateTime, UnixEpoch
+    from neo4j.time import (
+        Clock,
+        DateTime,
+        UnixEpoch,
+    )
     clock = Clock()
     time = clock.utc_time()
     print("Using %s" % type(clock).__name__)

@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,14 +16,16 @@
 # limitations under the License.
 
 
-import pytest
 from uuid import uuid4
 
-from neo4j.work.simple import unit_of_work
+import pytest
+
+from neo4j import unit_of_work
 from neo4j.exceptions import (
-    Neo4jError,
     ClientError,
+    Neo4jError,
 )
+
 
 # python -m pytest tests/integration/test_tx_functions.py -s -v
 

@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -21,15 +18,17 @@
 
 import pytest
 
+from tests.integration.examples import DriverSetupExample
+
+
+# isort: off
 # tag::config-trust-import[]
 from neo4j import (
     GraphDatabase,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-    TRUST_ALL_CERTIFICATES,
+    TRUST_ALL_CERTIFICATES
 )
 # end::config-trust-import[]
-
-from tests.integration.examples import DriverSetupExample
+# isort: on
 
 
 class ConfigTrustExample(DriverSetupExample):

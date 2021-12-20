@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,14 +16,12 @@
 # limitations under the License.
 
 
+import logging
 from socket import (
-    getaddrinfo,
-    getservbyname,
-    SOCK_STREAM,
     AF_INET,
     AF_INET6,
+    getservbyname,
 )
-import logging
 
 
 log = logging.getLogger("neo4j")
@@ -142,59 +137,6 @@ class Address(tuple, metaclass=_AddressMeta):
     def unresolved(self):
         return self
 
-    @classmethod
-    def _dns_resolve(cls, address, family=0):
-        """ Regular DNS resolver. Takes an address object and optional
-        address family for filtering.
-
-        :param address:
-        :param family:
-        :return:
-        """
-        try:
-            info = getaddrinfo(address.host, address.port, family, SOCK_STREAM)
-        except OSError:
-            raise ValueError("Cannot resolve address {}".format(address))
-        else:
-            resolved = []
-            for fam, _, _, _, addr in info:
-                if fam == AF_INET6 and addr[3] != 0:
-                    # skip any IPv6 addresses with a non-zero scope id
-                    # as these appear to cause problems on some platforms
-                    continue
-                if addr not in resolved:
-                    resolved.append(ResolvedAddress(
-                        addr, host_name=address.host_name)
-                    )
-            return resolved
-
-    def resolve(self, family=0, resolver=None):
-        """ Carry out domain name resolution on this Address object.
-
-        If a resolver function is supplied, and is callable, this is
-        called first, with this object as its argument. This may yield
-        multiple output addresses, which are chained into a subsequent
-        regular DNS resolution call. If no resolver function is passed,
-        the DNS resolution is carried out on the original Address
-        object.
-
-        This function returns a list of resolved Address objects.
-
-        :param family: optional address family to filter resolved
-                       addresses by (e.g. AF_INET6)
-        :param resolver: optional customer resolver function to be
-                         called before regular DNS resolution
-        """
-
-        log.debug("[#0000]  C: <RESOLVE> %s", self)
-        resolved = []
-        if resolver:
-            for address in map(Address, resolver(self)):
-                resolved.extend(self._dns_resolve(address, family))
-        else:
-            resolved.extend(self._dns_resolve(self, family))
-        return resolved
-
     @property
     def port_number(self):
         try:
@@ -233,9 +175,6 @@ class ResolvedAddress(Address):
     @property
     def unresolved(self):
         return super().__new__(Address, (self._host_name, *self[1:]))
-
-    def resolve(self, family=0, resolver=None):
-        return [self]
 
     def __new__(cls, iterable, host_name=None):
         new = super().__new__(cls, iterable)

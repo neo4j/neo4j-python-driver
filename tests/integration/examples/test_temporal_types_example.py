@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -26,12 +23,14 @@ def _echo(tx, x):
 
 
 def test_datetime(driver):
+    # isort: off
     # tag::temporal-types-datetime-import[]
     from datetime import datetime
 
     from neo4j.time import DateTime
     import pytz
     # end::temporal-types-datetime-import[]
+    # isort: on
 
     # tag::temporal-types-datetime[]
     # Create datetimes to be used as query parameters
@@ -78,11 +77,13 @@ def test_datetime(driver):
 
 
 def test_date(driver):
+    # isort: off
     # tag::temporal-types-date-import[]
     from datetime import date
 
     from neo4j.time import Date
     # end::temporal-types-date-import[]
+    # isort: on
 
     # tag::temporal-types-date[]
     # Create dates to be used as query parameters
@@ -127,12 +128,14 @@ def test_date(driver):
 
 
 def test_time(driver):
+    # isort: off
     # tag::temporal-types-time-import[]
     from datetime import time
 
     from neo4j.time import Time
     import pytz
     # end::temporal-types-time-import[]
+    # isort: on
 
     # tag::temporal-types-time[]
     # Create datetimes to be used as query parameters
@@ -176,12 +179,13 @@ def test_time(driver):
 
 
 def test_local_datetime(driver):
+    # isort: off
     # tag::temporal-types-local-datetime-import[]
     from datetime import datetime
 
     from neo4j.time import DateTime
-    import pytz
     # end::temporal-types-local-datetime-import[]
+    # isort: on
 
     # tag::temporal-types-local-datetime[]
     # Create datetimes to be used as query parameters
@@ -226,12 +230,13 @@ def test_local_datetime(driver):
 
 
 def test_local_time(driver):
+    # isort: off
     # tag::temporal-types-local-time-import[]
     from datetime import time
 
     from neo4j.time import Time
-    import pytz
     # end::temporal-types-local-time-import[]
+    # isort: on
 
     # tag::temporal-types-local-time[]
     # Create datetimes to be used as query parameters
@@ -275,11 +280,13 @@ def test_local_time(driver):
 
 
 def test_duration_example(driver):
+    # isort: off
     # tag::temporal-types-duration-import[]
     from datetime import timedelta
 
     from neo4j.time import Duration
     # end::temporal-types-duration-import[]
+    # isort: on
 
     # tag::temporal-types-duration[]
     # Creating durations to be used as query parameters

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
 
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
@@ -20,9 +19,17 @@
 
 
 import os
-from setuptools import find_packages, setup
 
-from neo4j.meta import package, version
+from setuptools import (
+    find_packages,
+    setup,
+)
+
+from neo4j.meta import (
+    package,
+    version,
+)
+
 
 install_requires = [
     "pytz",
@@ -44,7 +51,8 @@ entry_points = {
 }
 packages = find_packages(exclude=["tests"])
 
-readme_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "README.rst"))
+readme_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                           "README.rst"))
 with open(readme_path, mode="r", encoding="utf-8") as fr:
     readme = fr.read()
 
