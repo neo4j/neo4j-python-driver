@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,17 +16,15 @@
 # limitations under the License.
 
 
-from unittest import TestCase, SkipTest
-
-try:
-    from urllib.request import urlretrieve
-except ImportError:
-    from urllib import urlretrieve
+from unittest import SkipTest
 
 from neo4j import GraphDatabase
 from neo4j.exceptions import AuthError
-
-from tests.env import NEO4J_USER, NEO4J_PASSWORD, NEO4J_SERVER_URI
+from tests.env import (
+    NEO4J_PASSWORD,
+    NEO4J_SERVER_URI,
+    NEO4J_USER,
+)
 
 
 def is_listening(address):

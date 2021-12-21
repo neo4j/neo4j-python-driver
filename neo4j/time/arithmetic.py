@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -17,9 +14,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-from math import isnan
 
 
 def nano_add(x, y):

@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,9 +16,11 @@
 # limitations under the License.
 
 
+# isort: off
 # tag::transaction-function-import[]
 from neo4j import unit_of_work
 # end::transaction-function-import[]
+# isort: on
 
 
 # python -m pytest tests/integration/examples/test_transaction_function_example.py -s -v

@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -24,24 +21,10 @@ import pytest
 from neo4j import (
     GraphDatabase,
     Neo4jDriver,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-    DEFAULT_DATABASE,
 )
-from neo4j.api import (
-    READ_ACCESS,
-    WRITE_ACCESS,
-)
-from neo4j.exceptions import (
-    ServiceUnavailable,
-    TransientError,
-    SessionExpired,
-    ConfigurationError,
-)
-from neo4j._exceptions import (
-    BoltSecurityError,
-)
+from neo4j.exceptions import ServiceUnavailable
 from tests.stub.conftest import StubCluster
+
 
 # python -m pytest tests/stub/test_routingdriver.py -s -v
 # TODO: those tests will stay until a uniform behavior across the drivers has

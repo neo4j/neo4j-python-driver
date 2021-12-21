@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,18 +16,17 @@
 # limitations under the License.
 
 
-import subprocess
+import logging
 import os
-import time
-
 from platform import system
+import subprocess
 from threading import Thread
 from time import sleep
 
 from boltkit.server.stub import BoltStubService
 from pytest import fixture
 
-import logging
+
 log = logging.getLogger("neo4j")
 
 # from neo4j.debug import watch

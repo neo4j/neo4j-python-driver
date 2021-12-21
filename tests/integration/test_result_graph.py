@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -21,13 +18,7 @@
 
 import pytest
 
-from neo4j.graph import (
-    Node,
-    Relationship,
-    Graph,
-    Path,
-)
-from neo4j.exceptions import Neo4jError
+from neo4j.graph import Graph
 
 
 def test_result_graph_instance(session):

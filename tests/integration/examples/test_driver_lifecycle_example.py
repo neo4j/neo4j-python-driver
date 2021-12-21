@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -21,12 +18,15 @@
 
 import pytest
 
+from neo4j._exceptions import BoltHandshakeError
+from neo4j.exceptions import ServiceUnavailable
+
+
+# isort: off
 # tag::driver-lifecycle-import[]
 from neo4j import GraphDatabase
 # end::driver-lifecycle-import[]
-
-from neo4j.exceptions import ServiceUnavailable
-from neo4j._exceptions import BoltHandshakeError
+# isort: on
 
 
 # python -m pytest tests/integration/examples/test_driver_lifecycle_example.py -s -v

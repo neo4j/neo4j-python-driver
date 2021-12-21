@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,12 +16,11 @@
 # limitations under the License.
 
 
-from collections import OrderedDict
 from collections.abc import MutableSet
 from logging import getLogger
 from time import perf_counter
 
-from neo4j.addressing import Address
+from .addressing import Address
 
 
 log = getLogger("neo4j")
@@ -33,7 +29,8 @@ log = getLogger("neo4j")
 class OrderedSet(MutableSet):
 
     def __init__(self, elements=()):
-        self._elements = OrderedDict.fromkeys(elements)
+        # dicts keep insertion order starting with Python 3.7
+        self._elements = dict.fromkeys(elements)
         self._current = None
 
     def __repr__(self):
@@ -70,12 +67,12 @@ class OrderedSet(MutableSet):
             raise ValueError(element)
 
     def update(self, elements=()):
-        self._elements.update(OrderedDict.fromkeys(elements))
+        self._elements.update(dict.fromkeys(elements))
 
     def replace(self, elements=()):
         e = self._elements
         e.clear()
-        e.update(OrderedDict.fromkeys(elements))
+        e.update(dict.fromkeys(elements))
 
 
 class RoutingTable:

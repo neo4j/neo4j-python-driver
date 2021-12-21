@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -21,33 +18,14 @@
 
 import pytest
 
-from neo4j.exceptions import (
-    ServiceUnavailable,
-    ConfigurationError,
-    UnsupportedServerProduct,
-)
-from neo4j._exceptions import (
-    BoltHandshakeError,
-    BoltSecurityError,
-)
-
 from neo4j import (
-    GraphDatabase,
     BoltDriver,
-    Query,
-    WRITE_ACCESS,
+    GraphDatabase,
     READ_ACCESS,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-    DEFAULT_DATABASE,
-    Result,
-    unit_of_work,
-    Transaction,
 )
+from neo4j.exceptions import ServiceUnavailable
+from tests.stub.conftest import StubCluster
 
-from tests.stub.conftest import (
-    StubCluster,
-)
 
 # python -m pytest tests/stub/test_directdriver.py -s -v
 

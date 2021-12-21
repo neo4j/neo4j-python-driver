@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -31,7 +28,10 @@ def get_user_agent():
     """ Obtain the default user agent string sent to the server after
     a successful handshake.
     """
-    from sys import platform, version_info
+    from sys import (
+        platform,
+        version_info,
+    )
     template = "neo4j-python/{} Python/{}.{}.{}-{}-{} ({})"
     fields = (version,) + tuple(version_info) + (platform,)
     return template.format(*fields)

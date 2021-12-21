@@ -23,6 +23,8 @@ Topics
 
 + :ref:`api-documentation`
 
++ :ref:`async-api-documentation` (experimental)
+
 + :ref:`temporal-data-types`
 
 + :ref:`breaking-changes`
@@ -32,6 +34,7 @@ Topics
    :hidden:
 
    api.rst
+   async_api.rst
    temporal_types.rst
    breaking_changes.rst
 

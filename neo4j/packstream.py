@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -20,8 +17,11 @@
 
 
 from codecs import decode
-from io import BytesIO
-from struct import pack as struct_pack, unpack as struct_unpack
+from struct import (
+    pack as struct_pack,
+    unpack as struct_unpack,
+)
+
 
 PACKED_UINT_8 = [struct_pack(">B", value) for value in range(0x100)]
 PACKED_UINT_16 = [struct_pack(">H", value) for value in range(0x10000)]
@@ -472,14 +472,3 @@ class UnpackableBuffer:
             return value
         else:
             return -1
-
-    def receive(self, sock, n_bytes):
-        end = self.used + n_bytes
-        if end > len(self.data):
-            self.data += bytearray(end - len(self.data))
-        view = memoryview(self.data)
-        while self.used < end:
-            n = sock.recv_into(view[self.used:end], end - self.used)
-            if n == 0:
-                raise OSError("No data")
-            self.used += n

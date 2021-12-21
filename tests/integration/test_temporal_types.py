@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,9 +16,9 @@
 # limitations under the License.
 
 
-import pytest
 import datetime
 
+import pytest
 from pytz import (
     FixedOffset,
     timezone,
@@ -31,9 +28,9 @@ from pytz import (
 from neo4j.exceptions import CypherTypeError
 from neo4j.time import (
     Date,
-    Time,
     DateTime,
     Duration,
+    Time,
 )
 
 

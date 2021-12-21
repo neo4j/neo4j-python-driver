@@ -15,7 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from neo4j.work.simple import Query
+
+from neo4j import Query
 
 
 def to_cypher_and_params(data):

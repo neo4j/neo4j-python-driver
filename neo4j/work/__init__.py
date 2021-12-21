@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,88 +16,19 @@
 # limitations under the License.
 
 
-from neo4j.conf import WorkspaceConfig
-from neo4j.exceptions import ServiceUnavailable
-from neo4j.io import Neo4jPool
+from .query import (
+    Query,
+    unit_of_work,
+)
+from .summary import (
+    ResultSummary,
+    SummaryCounters,
+)
 
 
-class Workspace:
-
-    def __init__(self, pool, config):
-        assert isinstance(config, WorkspaceConfig)
-        self._pool = pool
-        self._config = config
-        self._connection = None
-        self._connection_access_mode = None
-        # Sessions are supposed to cache the database on which to operate.
-        self._cached_database = False
-        self._bookmarks = None
-
-    def __del__(self):
-        try:
-            self.close()
-        except OSError:
-            pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-
-    def _set_cached_database(self, database):
-        self._cached_database = True
-        self._config.database = database
-
-    def _connect(self, access_mode):
-        if self._connection:
-            # TODO: Investigate this
-            # log.warning("FIXME: should always disconnect before connect")
-            self._connection.send_all()
-            self._connection.fetch_all()
-            self._disconnect()
-        if not self._cached_database:
-            if (self._config.database is not None
-                    or not isinstance(self._pool, Neo4jPool)):
-                self._set_cached_database(self._config.database)
-            else:
-                # This is the first time we open a connection to a server in a
-                # cluster environment for this session without explicitly
-                # configured database. Hence, we request a routing table update
-                # to try to fetch the home database. If provided by the server,
-                # we shall use this database explicitly for all subsequent
-                # actions within this session.
-                self._pool.update_routing_table(
-                    database=self._config.database,
-                    imp_user=self._config.impersonated_user,
-                    bookmarks=self._bookmarks,
-                    database_callback=self._set_cached_database
-                )
-        self._connection = self._pool.acquire(
-            access_mode=access_mode,
-            timeout=self._config.connection_acquisition_timeout,
-            database=self._config.database,
-            bookmarks=self._bookmarks
-        )
-        self._connection_access_mode = access_mode
-
-    def _disconnect(self, sync=False):
-        if self._connection:
-            if sync:
-                try:
-                    self._connection.send_all()
-                    self._connection.fetch_all()
-                except (WorkspaceError, ServiceUnavailable):
-                    pass
-            if self._connection:
-                self._pool.release(self._connection)
-                self._connection = None
-            self._connection_access_mode = None
-
-    def close(self):
-        self._disconnect(sync=True)
-
-
-class WorkspaceError(Exception):
-
-    pass
+__all__ = [
+    "Query",
+    "ResultSummary",
+    "SummaryCounters",
+    "unit_of_work",
+]

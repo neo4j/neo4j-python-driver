@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -18,7 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from neo4j import unit_of_work, Query
+
+from neo4j import unit_of_work
 
 
 # python -m pytest tests/integration/examples/test_transaction_timeout_config_example.py -s -v

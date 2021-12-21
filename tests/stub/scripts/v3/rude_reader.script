@@ -7,4 +7,3 @@
 C: RUN "RETURN 1" {} {"mode": "r"}
    PULL_ALL
 S: <EXIT>
-

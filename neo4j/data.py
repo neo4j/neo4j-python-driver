@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,22 +16,57 @@
 # limitations under the License.
 
 
-from abc import ABCMeta, abstractmethod
-from collections.abc import Sequence, Set, Mapping
-from datetime import date, time, datetime, timedelta
+from abc import (
+    ABCMeta,
+    abstractmethod,
+)
+from collections.abc import (
+    Mapping,
+    Sequence,
+    Set,
+)
+from datetime import (
+    date,
+    datetime,
+    time,
+    timedelta,
+)
 from functools import reduce
 from operator import xor as xor_operator
 
-from neo4j.conf import iter_items
-from neo4j.graph import Graph, Node, Relationship, Path
-from neo4j.packstream import INT64_MIN, INT64_MAX, Structure
-from neo4j.spatial import Point, hydrate_point, dehydrate_point
-from neo4j.time import Date, Time, DateTime, Duration
-from neo4j.time.hydration import (
-    hydrate_date, dehydrate_date,
-    hydrate_time, dehydrate_time,
-    hydrate_datetime, dehydrate_datetime,
-    hydrate_duration, dehydrate_duration, dehydrate_timedelta,
+from .conf import iter_items
+from .graph import (
+    Graph,
+    Node,
+    Path,
+    Relationship,
+)
+from .packstream import (
+    INT64_MAX,
+    INT64_MIN,
+    Structure,
+)
+from .spatial import (
+    dehydrate_point,
+    hydrate_point,
+    Point,
+)
+from .time import (
+    Date,
+    DateTime,
+    Duration,
+    Time,
+)
+from .time.hydration import (
+    dehydrate_date,
+    dehydrate_datetime,
+    dehydrate_duration,
+    dehydrate_time,
+    dehydrate_timedelta,
+    hydrate_date,
+    hydrate_datetime,
+    hydrate_duration,
+    hydrate_time,
 )
 
 
@@ -44,7 +76,7 @@ map_type = type(map(str, range(0)))
 class Record(tuple, Mapping):
     """ A :class:`.Record` is an immutable ordered collection of key-value
     pairs. It is generally closer to a :py:class:`namedtuple` than to a
-    :py:class:`OrderedDict` inasmuch as iteration of the collection will
+    :py:class:`OrderedDict` in as much as iteration of the collection will
     yield values rather than keys.
     """
 

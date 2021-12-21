@@ -7,4 +7,3 @@
 C: RUN "CALL dbms.cluster.routing.getRoutingTable($context)" {"context": {"address": "localhost:9001"}} {"mode": "r"}
    PULL_ALL
 S: <EXIT>
-

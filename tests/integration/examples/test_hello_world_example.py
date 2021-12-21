@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,17 +16,20 @@
 # limitations under the License.
 
 
-import pytest
-
 from contextlib import redirect_stdout
 from io import StringIO
 
+import pytest
+
+from neo4j._exceptions import BoltHandshakeError
+from neo4j.exceptions import ServiceUnavailable
+
+
+# isort: off
 # tag::hello-world-import[]
 from neo4j import GraphDatabase
 # end::hello-world-import[]
-
-from neo4j.exceptions import ServiceUnavailable
-from neo4j._exceptions import BoltHandshakeError
+# isort: on
 
 
 # python -m pytest tests/integration/examples/test_hello_world_example.py -s -v
@@ -79,4 +79,3 @@ def test_hello_world_example(uri, auth):
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
-

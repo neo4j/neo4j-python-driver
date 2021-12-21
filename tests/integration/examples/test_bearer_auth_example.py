@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -19,21 +16,21 @@
 # limitations under the License.
 
 
-import pytest
-
 import neo4j
+from tests.integration.examples import DriverSetupExample
+
+
+# isort: off
 # tag::bearer-auth-import[]
 from neo4j import (
     bearer_auth,
     GraphDatabase,
 )
 # end::bearer-auth-import[]
-
-from tests.integration.examples import DriverSetupExample
+# isort: on
 
 
 # python -m pytest tests/integration/examples/test_bearer_auth_example.py -s -v
-
 
 class BearerAuthExample(DriverSetupExample):
 
@@ -61,4 +58,3 @@ def test_example(uri, mocker):
     assert not hasattr(auth, "principal")
     assert auth.credentials == token
     assert not hasattr(auth, "parameters")
-

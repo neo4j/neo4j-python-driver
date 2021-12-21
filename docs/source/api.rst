@@ -11,34 +11,35 @@ GraphDatabase
 Driver Construction
 ===================
 
-The :class:`neo4j.Driver` construction is via a `classmethod` on the :class:`neo4j.GraphDatabase` class.
+The :class:`neo4j.Driver` construction is done via a `classmethod` on the :class:`neo4j.GraphDatabase` class.
 
 .. autoclass:: neo4j.GraphDatabase
    :members: driver
 
 
-Example, driver creation:
+Driver creation example:
 
 .. code-block:: python
 
     from neo4j import GraphDatabase
 
     uri = "neo4j://example.com:7687"
-    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"), max_connection_lifetime=1000)
+    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
 
     driver.close()  # close the driver object
 
 
-For basic auth, this can be a simple tuple, for example:
+For basic authentication, `auth` can be a simple tuple, for example:
 
 .. code-block:: python
 
    auth = ("neo4j", "password")
 
-This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``
+This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
+Other authentication methods are described under :ref:`auth-ref`.
 
 
-Example, with block context:
+``with`` block context example:
 
 .. code-block:: python
 
@@ -330,7 +331,8 @@ For example:
 
 Connection details held by the :class:`neo4j.Driver` are immutable.
 Therefore if, for example, a password is changed, a replacement :class:`neo4j.Driver` object must be created.
-More than one :class:`.Driver` may be required if connections to multiple databases, or connections as multiple users, are required.
+More than one :class:`.Driver` may be required if connections to multiple databases, or connections as multiple users, are required,
+unless when using impersonation (:ref:`impersonated-user-ref`).
 
 :class:`neo4j.Driver` objects are thread-safe but cannot be shared across processes.
 Therefore, ``multithreading`` should generally be preferred over ``multiprocessing`` for parallel database access.
@@ -345,11 +347,9 @@ BoltDriver
 URI schemes:
     ``bolt``, ``bolt+ssc``, ``bolt+s``
 
-Driver subclass:
-    :class:`neo4j.BoltDriver`
+Will result in:
 
-..
-   .. autoclass:: neo4j.BoltDriver
+.. autoclass:: neo4j.BoltDriver
 
 
 .. _neo4j-driver-ref:
@@ -360,11 +360,9 @@ Neo4jDriver
 URI schemes:
     ``neo4j``, ``neo4j+ssc``, ``neo4j+s``
 
-Driver subclass:
-    :class:`neo4j.Neo4jDriver`
+Will result in:
 
-..
-   .. autoclass:: neo4j.Neo4jDriver
+.. autoclass:: neo4j.Neo4jDriver
 
 
 ***********************
@@ -374,7 +372,7 @@ All database activity is co-ordinated through two mechanisms: the :class:`neo4j.
 
 A :class:`neo4j.Session` is a logical container for any number of causally-related transactional units of work.
 Sessions automatically provide guarantees of causal consistency within a clustered environment but multiple sessions can also be causally chained if required.
-Sessions provide the top-level of containment for database activity.
+Sessions provide the top level of containment for database activity.
 Session creation is a lightweight operation and *sessions are not thread safe*.
 
 Connections are drawn from the :class:`neo4j.Driver` connection pool as required.
@@ -604,7 +602,8 @@ Example:
 
     def create_person(driver, name):
         with driver.session(default_access_mode=neo4j.WRITE_ACCESS) as session:
-            result = session.run("CREATE (a:Person { name: $name }) RETURN id(a) AS node_id", name=name)
+            query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
+            result = session.run(query, name=name)
             record = result.single()
             return record["node_id"]
 
@@ -665,13 +664,15 @@ Example:
             tx.close()
 
     def create_person_node(tx):
+        query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
         name = "default_name"
-        result = tx.run("CREATE (a:Person { name: $name }) RETURN id(a) AS node_id", name=name)
+        result = tx.run(query, name=name)
         record = result.single()
         return record["node_id"]
 
     def set_person_name(tx, node_id, name):
-        result = tx.run("MATCH (a:Person) WHERE id(a) = $id SET a.name = $name", id=node_id, name=name)
+        query = "MATCH (a:Person) WHERE id(a) = $id SET a.name = $name"
+        result = tx.run(query, id=node_id, name=name)
         info = result.consume()
         # use the info for logging etc.
 
@@ -698,19 +699,14 @@ Example:
             node_id = session.write_transaction(create_person_tx, name)
 
     def create_person_tx(tx, name):
-        result = tx.run("CREATE (a:Person { name: $name }) RETURN id(a) AS node_id", name=name)
+        query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
+        result = tx.run(query, name=name)
         record = result.single()
         return record["node_id"]
 
 To exert more control over how a transaction function is carried out, the :func:`neo4j.unit_of_work` decorator can be used.
 
 .. autofunction:: neo4j.unit_of_work
-
-
-
-
-
-
 
 
 

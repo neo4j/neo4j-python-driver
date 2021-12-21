@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -24,6 +21,7 @@ from itertools import product
 from pytest import mark
 
 from neo4j import GraphDatabase
+
 from .tools import RemoteGraphDatabaseServer
 
 

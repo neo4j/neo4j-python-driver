@@ -1,0 +1,10 @@
+# auto-generate sync driver from async code
+unasync>=0.5.0
+pre-commit>=2.15.0
+isort>=5.10.0
+
+# needed for running tests
+-r tests/requirements.txt
+
+# production dependencies
+-r requirements.txt

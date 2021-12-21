@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -21,14 +18,16 @@
 
 import pytest
 
-from neo4j.exceptions import ServiceUnavailable
 from neo4j._exceptions import BoltHandshakeError
+from neo4j.exceptions import ServiceUnavailable
+from tests.integration.examples import DriverSetupExample
 
+
+# isort: off
 # tag::config-connection-timeout-import[]
 from neo4j import GraphDatabase
 # end::config-connection-timeout-import[]
-
-from tests.integration.examples import DriverSetupExample
+# isort: on
 
 
 # python -m pytest tests/integration/examples/test_config_connection_timeout_example.py -s -v

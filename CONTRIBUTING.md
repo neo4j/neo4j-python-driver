@@ -51,12 +51,32 @@ Occasionally, we might also have logistical, commercial, or legal reasons why we
 Remember that many community members have become regular contributors and some are now even Neo employees!
 
 
+## Specifically for this project:
+
+All code in `_sync` or `sync` folders is auto-generated. Don't change it, but
+install the pre-commit hooks as described below insted. They will take care of
+updating the code if necessary.
+
+Setting up the development environment:
+ * Install Python 3.7+
+ * Install the requirements
+   ```bash
+   $ python3 -m pip install -U pip
+   $ python3 -m pip install -Ur requirements-dev.txt
+   ```
+ * Install the pre-commit hook, that will do some code-format-checking everytime
+   you commit.
+   ```bash
+   $ pre-commit install
+   ```
+
+
 ## Got an idea for a new project?
 
 If you have an idea for a new tool or library, start by talking to other people in the community.
 Chances are that someone has a similar idea or may have already started working on it.
 The best software comes from getting like minds together to solve a problem.
-And we'll do our best to help you promote and co-ordinate your Neo ecosystem projects.
+And we'll do our best to help you promote and co-ordinate your Neo4j ecosystem projects.
 
 
 ## Further reading

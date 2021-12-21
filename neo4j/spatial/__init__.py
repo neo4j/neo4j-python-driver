@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -24,19 +21,19 @@ This module defines spatial data types.
 """
 
 
+__all__ = [
+    "CartesianPoint",
+    "dehydrate_point",
+    "hydrate_point",
+    "Point",
+    "point_type",
+    "WGS84Point",
+]
+
+
 from threading import Lock
 
 from neo4j.packstream import Structure
-
-
-__all__ = [
-    "Point",
-    "CartesianPoint",
-    "WGS84Point",
-    "point_type",
-    "hydrate_point",
-    "dehydrate_point",
-]
 
 
 # SRID to subclass mappings

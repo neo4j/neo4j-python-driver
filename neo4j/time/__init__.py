@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -24,19 +21,18 @@ This module contains the fundamental types used for temporal accounting as well
 as a number of utility functions.
 """
 
+
 from contextlib import contextmanager
 from datetime import (
-    timedelta,
     date,
-    time,
     datetime,
+    time,
+    timedelta,
 )
 from decimal import (
     Decimal,
     localcontext,
-    ROUND_DOWN,
     ROUND_HALF_EVEN,
-    ROUND_HALF_UP,
 )
 from functools import total_ordering
 from re import compile as re_compile
@@ -48,18 +44,18 @@ from time import (
 
 from neo4j.meta import (
     deprecated,
-    deprecation_warn
+    deprecation_warn,
 )
 from neo4j.time.arithmetic import (
     nano_add,
     nano_div,
-    symmetric_divmod,
     round_half_to_even,
+    symmetric_divmod,
 )
 from neo4j.time.metaclasses import (
+    DateTimeType,
     DateType,
     TimeType,
-    DateTimeType,
 )
 
 
@@ -84,19 +80,15 @@ def _decimal_context_decorator(prec=9):
 MIN_INT64 = -(2 ** 63)
 MAX_INT64 = (2 ** 63) - 1
 
+#: The smallest year number allowed in a :class:`.Date` or :class:`.DateTime`
+#: object to be compatible with :class:`datetime.date` and
+#: :class:`datetime.datetime`.
 MIN_YEAR = 1
-"""
-The smallest year number allowed in a :class:`.Date` or :class:`.DateTime`
-object to be compatible with :class:`datetime.date` and
-:class:`datetime.datetime`.
-"""
 
+#: The largest year number allowed in a :class:`.Date` or :class:`.DateTime`
+#: object to be compatible with :class:`datetime.date` and
+#: :class:`datetime.datetime`.
 MAX_YEAR = 9999
-"""
-The largest year number allowed in a :class:`.Date` or :class:`.DateTime`
-object to be compatible with :class:`datetime.date` and
-:class:`datetime.datetime`.
-"""
 
 DATE_ISO_PATTERN = re_compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 TIME_ISO_PATTERN = re_compile(
@@ -1387,11 +1379,9 @@ Date.min = Date.from_ordinal(1)
 Date.max = Date.from_ordinal(3652059)
 Date.resolution = Duration(days=1)
 
+#: A :class:`neo4j.time.Date` instance set to `0000-00-00`.
+#: This has an ordinal value of `0`.
 ZeroDate = object.__new__(Date)
-"""
-A :class:`neo4j.time.Date` instance set to `0000-00-00`.
-This has an ordinal value of `0`.
-"""
 
 
 class Time(metaclass=TimeType):
@@ -2001,17 +1991,13 @@ Time.min = Time(hour=0, minute=0, second=0, nanosecond=0)
 Time.max = Time(hour=23, minute=59, second=59, nanosecond=999999999)
 Time.resolution = Duration(nanoseconds=1)
 
+#: A :class:`.Time` instance set to `00:00:00`.
+#: This has a :attr:`.ticks_ns` value of `0`.
 Midnight = Time.min
-"""
-A :class:`.Time` instance set to `00:00:00`.
-This has a :attr:`.ticks_ns` value of `0`.
-"""
 
+#: A :class:`.Time` instance set to `12:00:00`.
+#: This has a :attr:`.ticks_ns` value of `43200000000000`.
 Midday = Time(hour=12)
-"""
-A :class:`.Time` instance set to `12:00:00`.
-This has a :attr:`.ticks_ns` value of `43200000000000`.
-"""
 
 
 @total_ordering
@@ -2621,12 +2607,9 @@ DateTime.min = DateTime.combine(Date.min, Time.min)
 DateTime.max = DateTime.combine(Date.max, Time.max)
 DateTime.resolution = Time.resolution
 
+#: A :class:`.DateTime` instance set to `0000-00-00T00:00:00`.
+#: This has a :class:`.Date` component equal to :attr:`ZeroDate` and a
 Never = DateTime.combine(ZeroDate, Midnight)
-"""
-A :class:`.DateTime` instance set to `0000-00-00T00:00:00`.
-This has a :class:`.Date` component equal to :attr:`ZeroDate` and a
-:class:`.Time` component equal to :attr:`Midnight`.
-"""
 
+#: A :class:`.DateTime` instance set to `1970-01-01T00:00:00`.
 UnixEpoch = DateTime(1970, 1, 1, 0, 0, 0)
-"""A :class:`.DateTime` instance set to `1970-01-01T00:00:00`."""

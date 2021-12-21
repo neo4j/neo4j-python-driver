@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -18,19 +15,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+""" Base classes and helpers.
+"""
+
+
 from urllib.parse import (
-    urlparse,
     parse_qs,
+    urlparse,
 )
-from.exceptions import (
-    DriverError,
+
+from .exceptions import (
     ConfigurationError,
+    DriverError,
 )
 from .meta import deprecated
 
-
-""" Base classes and helpers.
-"""
 
 READ_ACCESS = "READ"
 WRITE_ACCESS = "WRITE"
@@ -107,7 +106,8 @@ def basic_auth(user, password, realm=None):
     :param realm: specifies the authentication provider
     :type realm: str or None
 
-    :return: auth token for use with :meth:`GraphDatabase.driver`
+    :return: auth token for use with :meth:`GraphDatabase.driver` or
+        :meth:`AsyncGraphDatabase.driver`
     :rtype: :class:`neo4j.Auth`
     """
     return Auth("basic", user, password, realm)
@@ -122,7 +122,8 @@ def kerberos_auth(base64_encoded_ticket):
                                   the credentials
     :type base64_encoded_ticket: str
 
-    :return: auth token for use with :meth:`GraphDatabase.driver`
+    :return: auth token for use with :meth:`GraphDatabase.driver` or
+        :meth:`AsyncGraphDatabase.driver`
     :rtype: :class:`neo4j.Auth`
     """
     return Auth("kerberos", "", base64_encoded_ticket)
@@ -137,7 +138,8 @@ def bearer_auth(base64_encoded_token):
                                  by a Single-Sign-On provider.
     :type base64_encoded_token: str
 
-    :return: auth token for use with :meth:`GraphDatabase.driver`
+    :return: auth token for use with :meth:`GraphDatabase.driver` or
+        :meth:`AsyncGraphDatabase.driver`
     :rtype: :class:`neo4j.Auth`
     """
     return Auth("bearer", None, base64_encoded_token)
@@ -158,7 +160,8 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
                        authentication provider
     :type parameters: Dict[str, Any]
 
-    :return: auth token for use with :meth:`GraphDatabase.driver`
+    :return: auth token for use with :meth:`GraphDatabase.driver` or
+        :meth:`AsyncGraphDatabase.driver`
     :rtype: :class:`neo4j.Auth`
     """
     return Auth(scheme, principal, credentials, realm, **parameters)

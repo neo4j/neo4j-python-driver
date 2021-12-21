@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -23,17 +20,14 @@ from abc import ABCMeta
 from collections.abc import Mapping
 from warnings import warn
 
-from neo4j.meta import get_user_agent
-
-from neo4j.api import (
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-    TRUST_ALL_CERTIFICATES,
-    WRITE_ACCESS,
+from .api import (
     DEFAULT_DATABASE,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    WRITE_ACCESS,
 )
-from neo4j.exceptions import (
-    ConfigurationError,
-)
+from .exceptions import ConfigurationError
+from .meta import get_user_agent
 
 
 def iter_items(iterable):
