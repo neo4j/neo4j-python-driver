@@ -142,8 +142,6 @@ Class methods
 
 .. automethod:: neo4j.time.Time.from_ticks
 
-.. automethod:: neo4j.time.Time.from_ticks_ns
-
 .. automethod:: neo4j.time.Time.from_native
 
 .. automethod:: neo4j.time.Time.from_clock_time
@@ -164,15 +162,13 @@ Instance attributes
 
 .. autoattribute:: neo4j.time.Time.ticks
 
-.. autoattribute:: neo4j.time.Time.ticks_ns
-
 .. autoattribute:: neo4j.time.Time.hour
 
 .. autoattribute:: neo4j.time.Time.minute
 
 .. autoattribute:: neo4j.time.Time.second
 
-.. autoattribute:: neo4j.time.Time.hour_minute_second
+.. autoattribute:: neo4j.time.Time.nanosecond
 
 .. autoattribute:: neo4j.time.Time.hour_minute_second_nanosecond
 
@@ -290,8 +286,6 @@ Instance attributes
 
 .. autoattribute:: neo4j.time.DateTime.tzinfo
 
-.. autoattribute:: neo4j.time.DateTime.hour_minute_second
-
 .. autoattribute:: neo4j.time.DateTime.hour_minute_second_nanosecond
 
 
@@ -388,13 +382,9 @@ Instance attributes
 
 .. autoattribute:: neo4j.time.Duration.seconds
 
-.. autoattribute:: neo4j.time.Duration.subseconds
-
 .. autoattribute:: neo4j.time.Duration.nanoseconds
 
 .. autoattribute:: neo4j.time.Duration.years_months_days
-
-.. autoattribute:: neo4j.time.Duration.hours_minutes_seconds
 
 .. autoattribute:: neo4j.time.Duration.hours_minutes_seconds_nanoseconds
 
@@ -409,6 +399,14 @@ Operations
 .. automethod:: neo4j.time.Duration.__sub__
 
 .. automethod:: neo4j.time.Duration.__mul__
+
+.. automethod:: neo4j.time.Duration.__truediv__
+
+.. automethod:: neo4j.time.Duration.__floordiv__
+
+.. automethod:: neo4j.time.Duration.__mod__
+
+.. automethod:: neo4j.time.Duration.__divmod__
 
 .. automethod:: neo4j.time.Duration.__pos__
 

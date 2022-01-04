@@ -90,7 +90,7 @@ def dehydrate_time(value):
     :return:
     """
     if isinstance(value, Time):
-        nanoseconds = value.ticks_ns
+        nanoseconds = value.ticks
     elif isinstance(value, time):
         nanoseconds = (3600000000000 * value.hour + 60000000000 * value.minute +
                        1000000000 * value.second + 1000 * value.microsecond)

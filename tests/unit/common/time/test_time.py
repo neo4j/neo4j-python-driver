@@ -29,6 +29,7 @@ from neo4j.time import Time
 from neo4j.time.arithmetic import (
     nano_add,
     nano_div,
+    round_half_to_even,
 )
 
 
@@ -36,42 +37,39 @@ timezone_us_eastern = timezone("US/Eastern")
 timezone_utc = timezone("UTC")
 
 
-def seconds_options(seconds, nanoseconds):
-    yield seconds, nanoseconds
-    yield seconds + nanoseconds / 1000000000,
-
-
 class TestTime:
 
     def test_bad_attribute(self):
-        t = Time(12, 34, 56.789)
+        t = Time(12, 34, 56, 789000000)
         with pytest.raises(AttributeError):
             _ = t.x
 
     def test_simple_time(self):
-        t = Time(12, 34, 56.789)
-        assert t.hour_minute_second == (12, 34, Decimal("56.789"))
+        t = Time(12, 34, 56, 789000000)
         assert t.hour_minute_second_nanosecond == (12, 34, 56, 789000000)
-        assert t.ticks == 45296.789
+        assert t.ticks == 45296789000000
         assert t.hour == 12
         assert t.minute == 34
-        assert t.second == Decimal("56.789")
+        assert t.second == 56
+        assert t.nanosecond == 789000000
 
     def test_midnight(self):
         t = Time(0, 0, 0)
-        assert t.hour_minute_second == (0, 0, 0)
+        assert t.hour_minute_second_nanosecond == (0, 0, 0, 0)
         assert t.ticks == 0
         assert t.hour == 0
         assert t.minute == 0
         assert t.second == 0
+        assert t.nanosecond == 0
 
     def test_nanosecond_precision(self):
-        t = Time(12, 34, 56.789123456)
-        assert t.hour_minute_second == (12, 34, Decimal("56.789123456"))
-        assert t.ticks == 45296.789123456
+        t = Time(12, 34, 56, 789123456)
+        assert t.hour_minute_second_nanosecond == (12, 34, 56, 789123456)
+        assert t.ticks == 45296789123456
         assert t.hour == 12
         assert t.minute == 34
-        assert t.second == Decimal("56.789123456")
+        assert t.second == 56
+        assert t.nanosecond == 789123456
 
     def test_str(self):
         t = Time(12, 34, 56, 789123456)
@@ -95,15 +93,16 @@ class TestTime:
         t = Time.from_native(native)
         assert t.hour == native.hour
         assert t.minute == native.minute
-        assert t.second == \
-               Decimal(native.second) + Decimal(native.microsecond) / 1000000
+        assert t.second == native.second
+        assert t.nanosecond == native.microsecond * 1000
 
     def test_to_native(self):
-        t = Time(12, 34, 56.789123456)
+        t = Time(12, 34, 56, 789123456)
         native = t.to_native()
         assert t.hour == native.hour
         assert t.minute == native.minute
-        assert 56.789123 == nano_add(native.second, nano_div(native.microsecond, 1000000))
+        assert t.second == native.second
+        assert round_half_to_even(t.nanosecond / 1000) == native.microsecond
 
     def test_iso_format(self):
         t = Time(12, 34, 56, 789123456)
@@ -224,7 +223,8 @@ class TestTime:
         t = Time.from_native(native)
         assert t.hour == native.hour
         assert t.minute == native.minute
-        assert t.second == Decimal(native.microsecond) / 1000000 + native.second
+        assert t.second == native.second
+        assert t.nanosecond == native.microsecond * 1000
         assert t.tzinfo is None
 
     def test_from_native_case_2(self):
@@ -233,5 +233,6 @@ class TestTime:
         t = Time.from_native(native)
         assert t.hour == native.hour
         assert t.minute == native.minute
-        assert t.second == Decimal(native.microsecond) / 1000000 + native.second
+        assert t.second == native.second
+        assert t.nanosecond == native.microsecond * 1000
         assert t.tzinfo == FixedOffset(0)

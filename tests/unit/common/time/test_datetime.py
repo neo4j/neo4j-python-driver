@@ -74,24 +74,27 @@ class FixedClock(Clock):
 
 class TestDateTime:
 
-    def test_zero(self):
-        t = DateTime(0, 0, 0, 0, 0, 0)
+    @pytest.mark.parametrize("args", (
+        (0, 0, 0), (0, 0, 0, 0, 0, 0, 0)
+    ))
+    def test_zero(self, args):
+        t = DateTime(*args)
         assert t.year == 0
         assert t.month == 0
         assert t.day == 0
         assert t.hour == 0
         assert t.minute == 0
         assert t.second == 0
+        assert t.nanosecond == 0
 
-    @pytest.mark.parametrize("seconds_args", [*seconds_options(17, 914390409)])
-    def test_non_zero_naive(self, seconds_args):
-        t = DateTime(2018, 4, 26, 23, 0, *seconds_args)
+    def test_non_zero_naive(self):
+        t = DateTime(2018, 4, 26, 23, 0, 17, 914390409)
         assert t.year == 2018
         assert t.month == 4
         assert t.day == 26
         assert t.hour == 23
         assert t.minute == 0
-        assert t.second == Decimal("17.914390409")
+        assert t.second == 17
         assert t.nanosecond == 914390409
 
     def test_year_lower_bound(self):
@@ -143,7 +146,7 @@ class TestDateTime:
         assert t.day == 1
         assert t.hour == 12
         assert t.minute == 34
-        assert t.second == Decimal("56.789000000")
+        assert t.second == 56
         assert t.nanosecond == 789000000
 
     def test_now_without_tz(self):
@@ -153,7 +156,7 @@ class TestDateTime:
         assert t.day == 1
         assert t.hour == 12
         assert t.minute == 34
-        assert t.second == Decimal("56.789000000")
+        assert t.second == 56
         assert t.nanosecond == 789000000
         assert t.tzinfo is None
 
@@ -164,7 +167,7 @@ class TestDateTime:
         assert t.day == 1
         assert t.hour == 7
         assert t.minute == 34
-        assert t.second == Decimal("56.789000000")
+        assert t.second == 56
         assert t.nanosecond == 789000000
         assert t.utcoffset() == timedelta(seconds=-18000)
         assert t.dst() == timedelta()
@@ -177,7 +180,7 @@ class TestDateTime:
         assert t.day == 1
         assert t.hour == 12
         assert t.minute == 34
-        assert t.second == Decimal("56.789000000")
+        assert t.second == 56
         assert t.nanosecond == 789000000
         assert t.tzinfo is None
 
@@ -188,7 +191,7 @@ class TestDateTime:
         assert t.day == 1
         assert t.hour == 0
         assert t.minute == 0
-        assert t.second == Decimal("0.0")
+        assert t.second == 0
         assert t.nanosecond == 0
         assert t.tzinfo is None
 
@@ -203,7 +206,7 @@ class TestDateTime:
         assert t.day == 31
         assert t.hour == 19
         assert t.minute == 0
-        assert t.second == Decimal("0.0")
+        assert t.second == 0
         assert t.nanosecond == 0
         assert t.utcoffset() == timedelta(seconds=-18000)
         assert t.dst() == timedelta()
@@ -223,9 +226,8 @@ class TestDateTime:
         dt2 = dt1 + delta
         assert dt2, DateTime(2018, 4, 27, 23, 0 == seconds_args2)
 
-    @pytest.mark.parametrize("seconds_args", seconds_options(17, 914390409))
-    def test_subtract_datetime_1(self, seconds_args):
-        dt1 = DateTime(2018, 4, 26, 23, 0, *seconds_args)
+    def test_subtract_datetime_1(self):
+        dt1 = DateTime(2018, 4, 26, 23, 0, 17, 914390409)
         dt2 = DateTime(2018, 1, 1, 0, 0, 0)
         t = dt1 - dt2
 
@@ -233,25 +235,22 @@ class TestDateTime:
         assert t == Duration(months=3, days=25, hours=23, seconds=17,
                              nanoseconds=914390409)
 
-    @pytest.mark.parametrize("seconds_args", seconds_options(17, 914390409))
-    def test_subtract_datetime_2(self, seconds_args):
-        dt1 = DateTime(2018, 4, 1, 23, 0, *seconds_args)
+    def test_subtract_datetime_2(self):
+        dt1 = DateTime(2018, 4, 1, 23, 0, 17, 914390409)
         dt2 = DateTime(2018, 1, 26, 0, 0, 0.0)
         t = dt1 - dt2
         assert t == Duration(months=3, days=-25, hours=23, seconds=17.914390409)
         assert t == Duration(months=3, days=-25, hours=23, seconds=17,
                              nanoseconds=914390409)
 
-    @pytest.mark.parametrize("seconds_args", seconds_options(17, 914390409))
-    def test_subtract_native_datetime_1(self, seconds_args):
-        dt1 = DateTime(2018, 4, 26, 23, 0, *seconds_args)
+    def test_subtract_native_datetime_1(self):
+        dt1 = DateTime(2018, 4, 26, 23, 0, 17, 914390409)
         dt2 = datetime(2018, 1, 1, 0, 0, 0)
         t = dt1 - dt2
         assert t == timedelta(days=115, hours=23, seconds=17.914390409)
 
-    @pytest.mark.parametrize("seconds_args", seconds_options(17, 914390409))
-    def test_subtract_native_datetime_2(self, seconds_args):
-        dt1 = DateTime(2018, 4, 1, 23, 0, *seconds_args)
+    def test_subtract_native_datetime_2(self):
+        dt1 = DateTime(2018, 4, 1, 23, 0, 17, 914390409)
         dt2 = datetime(2018, 1, 26, 0, 0, 0)
         t = dt1 - dt2
         assert t == timedelta(days=65, hours=23, seconds=17.914390409)
@@ -274,9 +273,7 @@ class TestDateTime:
         assert dt.day == native.day
         assert dt.hour == native.hour
         assert dt.minute == native.minute
-        assert dt.second == (native.second
-                             + Decimal(native.microsecond) / 1000000)
-        assert int(dt.second) == native.second
+        assert dt.second == native.second
         assert dt.nanosecond == native.microsecond * 1000
 
     def test_to_native(self):
@@ -287,22 +284,25 @@ class TestDateTime:
         assert dt.day == native.day
         assert dt.hour == native.hour
         assert dt.minute == native.minute
-        assert 56.789123, nano_add(native.second, nano_div(native.microsecond == 1000000))
+        assert dt.second == native.second
+        assert dt.nanosecond == native.microsecond * 1000
 
     def test_iso_format(self):
-        dt = DateTime(2018, 10, 1, 12, 34, 56.789123456)
+        dt = DateTime(2018, 10, 1, 12, 34, 56, 789123456)
         assert "2018-10-01T12:34:56.789123456" == dt.iso_format()
 
     def test_iso_format_with_trailing_zeroes(self):
-        dt = DateTime(2018, 10, 1, 12, 34, 56.789)
+        dt = DateTime(2018, 10, 1, 12, 34, 56, 789000000)
         assert "2018-10-01T12:34:56.789000000" == dt.iso_format()
 
     def test_iso_format_with_tz(self):
-        dt = timezone_us_eastern.localize(DateTime(2018, 10, 1, 12, 34, 56.789123456))
+        dt = timezone_us_eastern.localize(DateTime(2018, 10, 1, 12, 34, 56,
+                                                   789123456))
         assert "2018-10-01T12:34:56.789123456-04:00" == dt.iso_format()
 
     def test_iso_format_with_tz_and_trailing_zeroes(self):
-        dt = timezone_us_eastern.localize(DateTime(2018, 10, 1, 12, 34, 56.789))
+        dt = timezone_us_eastern.localize(DateTime(2018, 10, 1, 12, 34, 56,
+                                                   789000000))
         assert "2018-10-01T12:34:56.789000000-04:00" == dt.iso_format()
 
     def test_from_iso_format_hour_only(self):
@@ -374,7 +374,7 @@ class TestDateTime:
 
 def test_iso_format_with_time_zone_case_1():
     # python -m pytest tests/unit/time/test_datetime.py -s -v -k test_iso_format_with_time_zone_case_1
-    expected = DateTime(2019, 10, 30, 7, 54, 2.129790999, tzinfo=timezone_utc)
+    expected = DateTime(2019, 10, 30, 7, 54, 2, 129790999, tzinfo=timezone_utc)
     assert expected.iso_format() == "2019-10-30T07:54:02.129790999+00:00"
     assert expected.tzinfo == FixedOffset(0)
     actual = DateTime.from_iso_format("2019-10-30T07:54:02.129790999+00:00")
@@ -431,9 +431,7 @@ def test_from_native_case_1():
     assert dt.day == native.day
     assert dt.hour == native.hour
     assert dt.minute == native.minute
-    assert dt.second == (native.second
-                         + Decimal(native.microsecond) / 1000000)
-    assert int(dt.second) == native.second
+    assert dt.second == native.second
     assert dt.nanosecond == native.microsecond * 1000
     assert dt.tzinfo is None
 
@@ -447,8 +445,6 @@ def test_from_native_case_2():
     assert dt.day == native.day
     assert dt.hour == native.hour
     assert dt.minute == native.minute
-    assert dt.second == (native.second
-                         + Decimal(native.microsecond) / 1000000)
-    assert int(dt.second) == native.second
+    assert dt.second == native.second
     assert dt.nanosecond == native.microsecond * 1000
     assert dt.tzinfo == FixedOffset(0)
