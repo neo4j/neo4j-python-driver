@@ -299,26 +299,27 @@ def test_serverinfo_initialization():
 
 
 @pytest.mark.parametrize(
-    "test_input, expected_agent, expected_version_info",
+    "test_input, expected_agent",
     [
-        ({"server": "Neo4j/3.0.0"}, "Neo4j/3.0.0", (3, 0, 0)),
-        ({"server": "Neo4j/3.X.Y"}, "Neo4j/3.X.Y", (3, "X", "Y")),
-        ({"server": "Neo4j/4.3.1"}, "Neo4j/4.3.1", (4, 3, 1)),
+        ({"server": "Neo4j/3.0.0"}, "Neo4j/3.0.0"),
+        ({"server": "Neo4j/3.X.Y"}, "Neo4j/3.X.Y"),
+        ({"server": "Neo4j/4.3.1"}, "Neo4j/4.3.1"),
     ]
 )
-def test_serverinfo_with_metadata(test_input, expected_agent, expected_version_info):
+@pytest.mark.parametrize("protocol_version", ((3, 0), (4, 3), (42, 1337)))
+def test_serverinfo_with_metadata(test_input, expected_agent,
+                                  protocol_version):
     from neo4j.addressing import Address
 
     address = Address(("bolt://localhost", 7687))
-    version = neo4j.api.Version(3, 0)
+    version = neo4j.api.Version(*protocol_version)
 
     server_info = neo4j.api.ServerInfo(address, version)
 
     server_info.update(test_input)
 
     assert server_info.agent == expected_agent
-    with pytest.warns(DeprecationWarning):
-        assert server_info.version_info() == expected_version_info
+    assert server_info.protocol_version == version
 
 
 @pytest.mark.parametrize(
