@@ -22,7 +22,7 @@ from neo4j._sync.io._bolt3 import Bolt3
 from neo4j.conf import PoolConfig
 from neo4j.exceptions import ConfigurationError
 
-from ..._async_compat import (
+from ...._async_compat import (
     MagicMock,
     mark_sync_test,
 )

@@ -32,7 +32,7 @@ from neo4j import (
 from neo4j._async_compat.util import AsyncUtil
 from neo4j.data import DataHydrator
 
-from ..._async_compat import mark_async_test
+from ...._async_compat import mark_async_test
 
 
 class Records:

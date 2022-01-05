@@ -28,7 +28,7 @@ from neo4j import (
 )
 from neo4j._sync.io._pool import IOPool
 
-from ..._async_compat import (
+from ...._async_compat import (
     mark_sync_test,
     Mock,
     mock,

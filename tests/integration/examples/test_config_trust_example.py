@@ -23,10 +23,7 @@ from tests.integration.examples import DriverSetupExample
 
 # isort: off
 # tag::config-trust-import[]
-from neo4j import (
-    GraphDatabase,
-    TRUST_ALL_CERTIFICATES
-)
+from neo4j import GraphDatabase
 # end::config-trust-import[]
 # isort: on
 
@@ -35,7 +32,12 @@ class ConfigTrustExample(DriverSetupExample):
 
     # tag::config-trust[]
     def __init__(self, uri, auth):
-        self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=True, trust=TRUST_ALL_CERTIFICATES)
+        # trusted_certificates:
+        # None :  (default) trust certificates from system store)
+        # [] : trust all certificates
+        # ["<path>", ...] : specify a list of paths to certificates to trust
+        self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=True,
+                                           trusted_certificates=[])
     # end::config-trust[]
 
 

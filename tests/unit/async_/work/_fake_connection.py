@@ -23,7 +23,7 @@ import pytest
 from neo4j import ServerInfo
 from neo4j._async.io import AsyncBolt
 
-from ..._async_compat import (
+from ...._async_compat import (
     AsyncMock,
     mock,
     Mock,

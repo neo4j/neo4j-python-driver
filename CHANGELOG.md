@@ -1,4 +1,4 @@
-# Neo4j Driver Change Log
+# Neo4j Driver Change Log (breaking/major changes only)
 
 ## Version 5.0
 
@@ -11,6 +11,10 @@
 - `ResultSummary.server.version_info` has been removed.  
   Use `ResultSummary.server.agent`, `ResultSummary.server.protocol_version`,
   or call the `dbms.components` procedure instead.
+- SSL configuration options have been changed:
+  - `trust` has been removed.  
+    Use `trusted_certificates` instead which expects `None` or a `list`. See the
+    API documentation for more details.
 
 ## Version 4.4
 

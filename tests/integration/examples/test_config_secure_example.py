@@ -25,10 +25,7 @@ from tests.integration.examples import DriverSetupExample
 
 # isort: off
 # tag::config-secure-import[]
-from neo4j import (
-    GraphDatabase,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-)
+from neo4j import GraphDatabase
 # end::config-secure-import[]
 # isort: off
 
@@ -39,7 +36,13 @@ class ConfigSecureExample(DriverSetupExample):
 
     # tag::config-secure[]
     def __init__(self, uri, auth):
-        self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=True, trust=TRUST_SYSTEM_CA_SIGNED_CERTIFICATES)
+        # trusted_certificates:
+        # None :  (default) trust certificates from system store)
+        # [] : trust all certificates
+        # ["<path>", ...] : specify a list of paths to certificates to trust
+        self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=True,
+                                           trusted_certificates=None)
+        # or omit trusted_certificates as None is the default
     # end::config-secure[]
 
 

@@ -20,7 +20,6 @@ import pytest
 
 from neo4j.api import (
     READ_ACCESS,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     WRITE_ACCESS,
 )
 from neo4j.conf import (
@@ -47,7 +46,8 @@ test_pool_config = {
     "resolver": None,
     "encrypted": False,
     "user_agent": "test",
-    "trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    "trusted_certificates": None,
+    "ssl_context": None,
 }
 
 test_session_config = {

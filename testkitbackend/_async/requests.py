@@ -99,6 +99,13 @@ async def NewDriver(backend, data):
         kwargs["max_connection_pool_size"] = data["maxConnectionPoolSize"]
     if data.get("fetchSize"):
         kwargs["fetch_size"] = data["fetchSize"]
+    if "encrypted" in data:
+        kwargs["encrypted"] = data["encrypted"]
+    if "trustedCertificates" in data:
+        kwargs["trusted_certificates"] = [
+            "/usr/local/share/custom-ca-certificates/" + cert
+            for cert in data["trustedCertificates"]
+        ]
 
     data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.AsyncGraphDatabase.driver(

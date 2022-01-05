@@ -34,8 +34,10 @@ import unasync
 ROOT_DIR = Path(__file__).parents[1].absolute()
 ASYNC_DIR = ROOT_DIR / "neo4j" / "_async"
 SYNC_DIR = ROOT_DIR / "neo4j" / "_sync"
-ASYNC_TEST_DIR = ROOT_DIR / "tests" / "unit" / "async_"
-SYNC_TEST_DIR = ROOT_DIR / "tests" / "unit" / "sync"
+ASYNC_UNIT_TEST_DIR = ROOT_DIR / "tests" / "unit" / "async_"
+SYNC_UNIT_TEST_DIR = ROOT_DIR / "tests" / "unit" / "sync"
+ASYNC_INTEGRATION_TEST_DIR = ROOT_DIR / "tests" / "integration" / "async_"
+SYNC_INTEGRATION_TEST_DIR = ROOT_DIR / "tests" / "integration" / "sync"
 ASYNC_TESTKIT_BACKEND_DIR = ROOT_DIR / "testkitbackend" / "_async"
 SYNC_TESTKIT_BACKEND_DIR = ROOT_DIR / "testkitbackend" / "_sync"
 UNASYNC_SUFFIX = ".unasync"
@@ -220,8 +222,13 @@ def apply_unasync(files):
             additional_replacements=additional_main_replacements,
         ),
         CustomRule(
-            fromdir=str(ASYNC_TEST_DIR),
-            todir=str(SYNC_TEST_DIR),
+            fromdir=str(ASYNC_UNIT_TEST_DIR),
+            todir=str(SYNC_UNIT_TEST_DIR),
+            additional_replacements=additional_test_replacements,
+        ),
+        CustomRule(
+            fromdir=str(ASYNC_INTEGRATION_TEST_DIR),
+            todir=str(SYNC_INTEGRATION_TEST_DIR),
             additional_replacements=additional_test_replacements,
         ),
         CustomRule(
@@ -233,7 +240,8 @@ def apply_unasync(files):
 
     if not files:
         paths = list(ASYNC_DIR.rglob("*"))
-        paths += list(ASYNC_TEST_DIR.rglob("*"))
+        paths += list(ASYNC_UNIT_TEST_DIR.rglob("*"))
+        paths += list(ASYNC_INTEGRATION_TEST_DIR.rglob("*"))
         paths += list(ASYNC_TESTKIT_BACKEND_DIR.rglob("*"))
     else:
         paths = [ROOT_DIR / Path(f) for f in files]
