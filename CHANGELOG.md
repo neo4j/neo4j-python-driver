@@ -8,6 +8,9 @@
   `neo4j.work`. They should've been imported from `neo4j` all along.
 - Experimental pipelines feature has been removed.
 - Experimental async driver has been added.
+- `ResultSummary.server.version_info` has been removed.  
+  Use `ResultSummary.server.agent`, `ResultSummary.server.protocol_version`,
+  or call the `dbms.components` procedure instead.
 
 ## Version 4.4
 

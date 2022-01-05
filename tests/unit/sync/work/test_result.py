@@ -370,7 +370,6 @@ def test_consume(records, consume_one, summary_meta):
         assert summary.database is None
     server_info = summary.server
     assert isinstance(server_info, ServerInfo)
-    assert server_info.version_info() == Version(4, 3)
     assert server_info.protocol_version == Version(4, 3)
     assert isinstance(summary.counters, SummaryCounters)
 
