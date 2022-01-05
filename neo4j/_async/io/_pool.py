@@ -152,12 +152,7 @@ class AsyncIOPool(abc.ABC):
                 # failed to obtain a connection from pool because the
                 # pool is full and no free connection in the pool
                 if time_remaining():
-                    await self.cond.wait(time_remaining())
-                    # if timed out, then we throw error. This time
-                    # computation is needed, as with python 2.7, we
-                    # cannot tell if the condition is notified or
-                    # timed out when we come to this line
-                    if not time_remaining():
+                    if not await self.cond.wait(time_remaining()):
                         raise ClientError("Failed to obtain a connection from pool "
                                           "within {!r}s".format(timeout))
                 else:
