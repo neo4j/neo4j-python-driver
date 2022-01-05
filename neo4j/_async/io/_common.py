@@ -222,7 +222,7 @@ class Response:
         """ Called when a FAILURE message has been received.
         """
         try:
-            self.connection.reset()
+            await self.connection.reset()
         except (SessionExpired, ServiceUnavailable):
             pass
         handler = self.handlers.get("on_failure")
