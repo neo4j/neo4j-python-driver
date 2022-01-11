@@ -32,6 +32,8 @@ RUN apt-get update && \
 # Install our own CAs on the image.
 # Assumes Linux Debian based image.
 COPY CAs/* /usr/local/share/ca-certificates/
+# Store custom CAs somewhere where the backend can find them later.
+COPY CustomCAs/* /usr/local/share/custom-ca-certificates/
 RUN update-ca-certificates
 
 # Install pyenv

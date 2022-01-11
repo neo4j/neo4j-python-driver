@@ -23,7 +23,7 @@ import pytest
 from neo4j._async.io._bolt4 import AsyncBolt4x0
 from neo4j.conf import PoolConfig
 
-from ..._async_compat import mark_async_test
+from ...._async_compat import mark_async_test
 
 
 @pytest.mark.parametrize("set_stale", (True, False))

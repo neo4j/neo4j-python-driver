@@ -20,11 +20,7 @@ import asyncio
 
 from .._async_compat.util import Util
 from ..addressing import Address
-from ..api import (
-    READ_ACCESS,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-)
+from ..api import READ_ACCESS
 from ..conf import (
     Config,
     PoolConfig,
@@ -71,17 +67,7 @@ class GraphDatabase:
 
         driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
-        if "trust" in config.keys():
-            if config.get("trust") not in [TRUST_ALL_CERTIFICATES, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES]:
-                from neo4j.exceptions import ConfigurationError
-                raise ConfigurationError("The config setting `trust` values are {!r}".format(
-                    [
-                        TRUST_ALL_CERTIFICATES,
-                        TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-                    ]
-                ))
-
-        if security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE] and ("encrypted" in config.keys() or "trust" in config.keys()):
+        if security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE] and ("encrypted" in config.keys() or "trusted_certificates" in config.keys()):
             from neo4j.exceptions import ConfigurationError
             raise ConfigurationError("The config settings 'encrypted' and 'trust' can only be used with the URI schemes {!r}. Use the other URI schemes {!r} for setting encryption settings.".format(
                 [
@@ -100,7 +86,7 @@ class GraphDatabase:
             config["encrypted"] = True
         elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
             config["encrypted"] = True
-            config["trust"] = TRUST_ALL_CERTIFICATES
+            config["trusted_certificates"] = []
 
         if driver_type == DRIVER_BOLT:
             return cls.bolt_driver(parsed.netloc, auth=auth, **config)

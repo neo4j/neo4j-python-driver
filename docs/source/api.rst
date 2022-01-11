@@ -164,7 +164,8 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`max-connection-pool-size-ref`
 + :ref:`max-transaction-retry-time-ref`
 + :ref:`resolver-ref`
-+ :ref:`trust-ref`
++ :ref:`ssl-context-ref`
++ :ref:`trusted-certificates-ref`
 + :ref:`user-agent-ref`
 
 
@@ -194,6 +195,8 @@ The maximum amount of time in seconds to wait for a TCP connection to be establi
 ``encrypted``
 -------------
 Specify whether to use an encrypted connection between the driver and server.
+
+This setting does not have any effect if a custom ``ssl_context`` is configured.
 
 :Type: ``bool``
 :Default: ``False``
@@ -270,33 +273,49 @@ For example:
                 resolver=custom_resolver)
 
 
-:Default: ``None``
+:Default: :const:`None`
 
 
-.. _trust-ref:
+.. _ssl-context-ref:
 
-``trust``
----------
+``ssl_context``
+---------------
+Specify a custom SSL context to use for wrapping connections.
+
+If give, ``encrypted`` and ``trusted_certificates`` have no effect.
+
+:Type: :class:`ssl.SSLContext` or :const:`None`
+:Default: :const:`None`
+
+
+.. _trusted-certificates-ref:
+
+``trusted_certificates``
+------------------------
 Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
 
-This setting does not have any effect if ``encrypted`` is set to ``False``.
+This setting does not have any effect if ``encrypted`` is set to ``False`` or a
+custom ``ssl_context`` is configured.
 
-:Type: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``, ``neo4j.TRUST_ALL_CERTIFICATES``
+:Type: :class:`list` or :const:`None`
 
-.. py:attribute:: neo4j.TRUST_ALL_CERTIFICATES
+**None** (default)
+    Trust server certificates that can be verified against the system
+    certificate authority. This option is primarily intended for use with
+    full certificates.
 
-   Trust any server certificate (default). This ensures that communication
-   is encrypted but does not verify the server certificate against a
-   certificate authority. This option is primarily intended for use with
-   the default auto-generated server certificate.
+**[] (empty list)**
+    Trust any server certificate. This ensures that communication
+    is encrypted but does not verify the server certificate against a
+    certificate authority. This option is primarily intended for use with
+    the default auto-generated server certificate.
 
-.. py:attribute:: neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+**["<path>", ...]**
+    Trust server certificates that can be verified against the certificate
+    authority at the specified paths. This option is primarily intended for
+    self-signed and custom certificates.
 
-   Trust server certificates that can be verified against the system
-   certificate authority. This option is primarily intended for use with
-   full certificates.
-
-:Default: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``.
+:Default: :const:`None`
 
 
 .. _user-agent-ref:
@@ -534,7 +553,7 @@ context of the impersonated user. For this, the user for which the
    session = driver.session(impersonated_user="alice")
 
 
-:Default: ``None``
+:Default: :const:`None`
 
 
 .. _default-access-mode-ref:
@@ -864,7 +883,7 @@ The core types with their general mappings are listed below:
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
 | Cypher Type            | Python Type                                                                                                               |
 +========================+===========================================================================================================================+
-| Null                   | ``None``                                                                                                                  |
+| Null                   | :const:`None`                                                                                                             |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
 | Boolean                | ``bool``                                                                                                                  |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+

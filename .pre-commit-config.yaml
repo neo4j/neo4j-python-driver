@@ -29,4 +29,4 @@ repos:
         name: unasync
         entry: bin/make-unasync
         language: system
-        files: "^(neo4j/_async|tests/unit/async_|testkitbackend/_async)/.*"
+        files: "^(neo4j/_async|tests/(unit|integration)/async_|testkitbackend/_async)/.*"

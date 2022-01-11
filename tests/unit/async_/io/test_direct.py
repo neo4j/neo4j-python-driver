@@ -30,7 +30,7 @@ from neo4j.exceptions import (
     ServiceUnavailable,
 )
 
-from ..._async_compat import (
+from ...._async_compat import (
     AsyncMock,
     mark_async_test,
     mock,
