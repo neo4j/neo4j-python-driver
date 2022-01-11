@@ -30,21 +30,24 @@ def to_cypher_and_params(data):
     return data["cypher"], params_dict
 
 
-def to_meta_and_timeout(data):
+def to_tx_kwargs(data):
     from .backend import Request
-    metadata = data.get('txMeta', None)
-    if isinstance(metadata, Request):
-        metadata.mark_all_as_read()
-    timeout = data.get('timeout', None)
-    if timeout:
-        timeout = timeout / 1000
-    return metadata, timeout
+    kwargs = {}
+    if "txMeta" in data:
+        kwargs["metadata"] = data["txMeta"]
+        if isinstance(kwargs["metadata"], Request):
+            kwargs["metadata"].mark_all_as_read()
+    if "timeout" in data:
+        kwargs["timeout"] = data["timeout"]
+        if kwargs["timeout"] is not None:
+            kwargs["timeout"] /= 1000
+    return kwargs
 
 
 def to_query_and_params(data):
     cypher, param = to_cypher_and_params(data)
-    metadata, timeout = to_meta_and_timeout(data)
-    query = Query(cypher, metadata=metadata, timeout=timeout)
+    tx_kwargs = to_tx_kwargs(data)
+    query = Query(cypher, **tx_kwargs)
     return query, param
 
 

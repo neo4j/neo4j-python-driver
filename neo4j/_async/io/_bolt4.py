@@ -181,11 +181,13 @@ class AsyncBolt4x0(AsyncBolt):
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
-        if timeout:
+        if timeout is not None:
             try:
-                extra["tx_timeout"] = int(1000 * timeout)
+                extra["tx_timeout"] = int(1000 * float(timeout))
             except TypeError:
                 raise TypeError("Timeout must be specified as a number of seconds")
+            if extra["tx_timeout"] < 0:
+                raise ValueError("Timeout must be a positive number or 0.")
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
         if query.upper() == u"COMMIT":
@@ -232,11 +234,13 @@ class AsyncBolt4x0(AsyncBolt):
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
-        if timeout:
+        if timeout is not None:
             try:
-                extra["tx_timeout"] = int(1000 * timeout)
+                extra["tx_timeout"] = int(1000 * float(timeout))
             except TypeError:
                 raise TypeError("Timeout must be specified as a number of seconds")
+            if extra["tx_timeout"] < 0:
+                raise ValueError("Timeout must be a positive number or 0.")
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,), Response(self, "begin", **handlers))
 
@@ -492,12 +496,13 @@ class AsyncBolt4x4(AsyncBolt4x3):
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
-        if timeout:
+        if timeout is not None:
             try:
-                extra["tx_timeout"] = int(1000 * timeout)
+                extra["tx_timeout"] = int(1000 * float(timeout))
             except TypeError:
-                raise TypeError("Timeout must be specified as a number of "
-                                "seconds")
+                raise TypeError("Timeout must be specified as a number of seconds")
+            if extra["tx_timeout"] < 0:
+                raise ValueError("Timeout must be a positive number or 0.")
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port,
                   " ".join(map(repr, fields)))
@@ -527,11 +532,12 @@ class AsyncBolt4x4(AsyncBolt4x3):
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
-        if timeout:
+        if timeout is not None:
             try:
-                extra["tx_timeout"] = int(1000 * timeout)
+                extra["tx_timeout"] = int(1000 * float(timeout))
             except TypeError:
-                raise TypeError("Timeout must be specified as a number of "
-                                "seconds")
+                raise TypeError("Timeout must be specified as a number of seconds")
+            if extra["tx_timeout"] < 0:
+                raise ValueError("Timeout must be a positive number or 0.")
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,), Response(self, "begin", **handlers))

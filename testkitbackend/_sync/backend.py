@@ -25,6 +25,7 @@ from json import (
     dumps,
     loads,
 )
+from pathlib import Path
 import traceback
 
 from neo4j._exceptions import BoltError
@@ -40,6 +41,10 @@ from .._driver_logger import (
     log,
 )
 from ..backend import Request
+
+
+TESTKIT_BACKEND_PATH = Path(__file__).absolute().resolve().parents[1]
+DRIVER_PATH = TESTKIT_BACKEND_PATH.parent / "neo4j"
 
 
 class Backend:
@@ -81,6 +86,30 @@ class Backend:
                     request = request + line
         return False
 
+    @staticmethod
+    def _exc_stems_from_driver(exc):
+        stack = traceback.extract_tb(exc.__traceback__)
+        for frame in stack[-1:1:-1]:
+            p = Path(frame.filename)
+            if TESTKIT_BACKEND_PATH in p.parents:
+                return False
+            if DRIVER_PATH in p.parents:
+                return True
+
+    def _handle_driver_exc(self, exc):
+        log.debug(traceback.format_exc())
+        if isinstance(exc, Neo4jError):
+            msg = "" if exc.message is None else str(exc.message)
+        else:
+            msg = str(exc.args[0]) if exc.args else ""
+
+        key = self.next_key()
+        self.errors[key] = exc
+        payload = {"id": key, "errorType": str(type(exc)), "msg": msg}
+        if isinstance(exc, Neo4jError):
+            payload["code"] = exc.code
+        self.send_response("DriverError", payload)
+
     def _process(self, request):
         """ Process a received request by retrieving handler that
         corresponds to the request name.
@@ -104,24 +133,16 @@ class Backend:
                 )
         except (Neo4jError, DriverError, UnsupportedServerProduct,
                 BoltError) as e:
-            log.debug(traceback.format_exc())
-            if isinstance(e, Neo4jError):
-                msg = "" if e.message is None else str(e.message)
-            else:
-                msg = str(e.args[0]) if e.args else ""
-
-            key = self.next_key()
-            self.errors[key] = e
-            payload = {"id": key, "errorType": str(type(e)), "msg": msg}
-            if isinstance(e, Neo4jError):
-                payload["code"] = e.code
-            self.send_response("DriverError", payload)
+            self._handle_driver_exc(e)
         except requests.FrontendError as e:
             self.send_response("FrontendError", {"msg": str(e)})
-        except Exception:
-            tb = traceback.format_exc()
-            log.error(tb)
-            self.send_response("BackendError", {"msg": tb})
+        except Exception as e:
+            if self._exc_stems_from_driver(e):
+                self._handle_driver_exc(e)
+            else:
+                tb = traceback.format_exc()
+                log.error(tb)
+                self.send_response("BackendError", {"msg": tb})
 
     def send_response(self, name, data):
         """ Sends a response to backend.

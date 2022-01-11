@@ -253,8 +253,8 @@ def SessionClose(backend, data):
 def SessionBeginTransaction(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
-    metadata, timeout = fromtestkit.to_meta_and_timeout(data)
-    tx = session.begin_transaction(metadata=metadata, timeout=timeout)
+    tx_kwargs = fromtestkit.to_tx_kwargs(data)
+    tx = session.begin_transaction(**tx_kwargs)
     key = backend.next_key()
     backend.transactions[key] = tx
     backend.send_response("Transaction", {"id": key})
@@ -272,9 +272,9 @@ def transactionFunc(backend, data, is_read):
     key = data["sessionId"]
     session_tracker = backend.sessions[key]
     session = session_tracker.session
-    metadata, timeout = fromtestkit.to_meta_and_timeout(data)
+    tx_kwargs = fromtestkit.to_tx_kwargs(data)
 
-    @neo4j.unit_of_work(metadata=metadata, timeout=timeout)
+    @neo4j.unit_of_work(**tx_kwargs)
     def func(tx):
         txkey = backend.next_key()
         backend.transactions[txkey] = tx
