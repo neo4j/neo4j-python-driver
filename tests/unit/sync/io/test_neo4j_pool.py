@@ -32,7 +32,7 @@ from neo4j.conf import (
     WorkspaceConfig,
 )
 
-from ..._async_compat import (
+from ...._async_compat import (
     mark_sync_test,
     Mock,
 )

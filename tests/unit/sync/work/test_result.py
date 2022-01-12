@@ -32,7 +32,7 @@ from neo4j import (
 from neo4j._async_compat.util import Util
 from neo4j.data import DataHydrator
 
-from ..._async_compat import mark_sync_test
+from ...._async_compat import mark_sync_test
 
 
 class Records:
@@ -370,7 +370,6 @@ def test_consume(records, consume_one, summary_meta):
         assert summary.database is None
     server_info = summary.server
     assert isinstance(server_info, ServerInfo)
-    assert server_info.version_info() == Version(4, 3)
     assert server_info.protocol_version == Version(4, 3)
     assert isinstance(summary.counters, SummaryCounters)
 

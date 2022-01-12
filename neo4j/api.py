@@ -51,9 +51,6 @@ URI_SCHEME_NEO4J_SECURE = "neo4j+s"
 
 URI_SCHEME_BOLT_ROUTING = "bolt+routing"
 
-TRUST_SYSTEM_CA_SIGNED_CERTIFICATES = "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"  # Default
-TRUST_ALL_CERTIFICATES = "TRUST_ALL_CERTIFICATES"
-
 SYSTEM_DATABASE = "system"
 DEFAULT_DATABASE = None  # Must be a non string hashable value
 
@@ -241,46 +238,6 @@ class ServerInfo:
         """ Unique identifier for the remote server connection.
         """
         return self._metadata.get("connection_id")
-
-    # TODO in 5.0: remove this method
-    @deprecated("The version_info method is deprecated, please use "
-                "ServerInfo.agent, ServerInfo.protocol_version, or "
-                "call the dbms.components procedure instead")
-    def version_info(self):
-        """Return the server version if available.
-
-        :return: Server Version or None
-        :rtype: tuple
-
-        .. deprecated:: 4.3
-            `version_info` will be removed in version 5.0. Use
-            :meth:`~ServerInfo.agent`, :meth:`~ServerInfo.protocol_version`,
-            or call the `dbms.components` procedure instead.
-        """
-        if not self.agent:
-            return None
-        # Note: Confirm that the server agent string begins with "Neo4j/" and fail gracefully if not.
-        # This is intended to help prevent drivers working for non-genuine Neo4j instances.
-
-        prefix, _, value = self.agent.partition("/")
-        try:
-            assert prefix in ["Neo4j"]
-        except AssertionError:
-            raise DriverError("Server name does not start with Neo4j/")
-
-        try:
-            if self.protocol_version >= (4, 0):
-                return self.protocol_version
-        except TypeError:
-            pass
-
-        value = value.replace("-", ".").split(".")
-        for i, v in enumerate(value):
-            try:
-                value[i] = int(v)
-            except ValueError:
-                pass
-        return tuple(value)
 
     def update(self, metadata):
         """ Update server information with extra metadata. This is

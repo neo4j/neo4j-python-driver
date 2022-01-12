@@ -31,7 +31,7 @@ from neo4j import (
 from neo4j._async_compat.network import NetworkUtil
 from neo4j._async_compat.util import Util
 
-from .._async_compat import mark_sync_test
+from ..._async_compat import mark_sync_test
 
 
 mock_socket_ipv4 = mock.Mock()

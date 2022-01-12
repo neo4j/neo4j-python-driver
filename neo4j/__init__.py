@@ -53,8 +53,6 @@ __all__ = [
     "SessionConfig",
     "SummaryCounters",
     "Transaction",
-    "TRUST_ALL_CERTIFICATES",
-    "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",
     "unit_of_work",
     "Version",
     "WorkspaceConfig",
@@ -105,8 +103,6 @@ from .api import (
     READ_ACCESS,
     ServerInfo,
     SYSTEM_DATABASE,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     Version,
     WRITE_ACCESS,
 )

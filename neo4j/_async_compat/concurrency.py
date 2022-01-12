@@ -192,7 +192,11 @@ class AsyncCondition:
         if not timeout:
             return await self._wait()
         me = asyncio.current_task()
-        return await asyncio.wait_for(self._wait(me), timeout)
+        try:
+            await asyncio.wait_for(self._wait(me), timeout)
+            return True
+        except asyncio.TimeoutError:
+            return False
 
     def notify(self, n=1):
         """By default, wake up one coroutine waiting on this condition, if any.

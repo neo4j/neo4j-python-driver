@@ -82,22 +82,34 @@ async def NewDriver(backend, data):
             **auth_token.get("parameters", {})
         )
         auth_token.mark_item_as_read("parameters", recursive=True)
-    resolver = None
+    kwargs = {}
     if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
-        resolver = resolution_func(backend, data["resolverRegistered"],
-                                   data["domainNameResolverRegistered"])
-    connection_timeout = data.get("connectionTimeoutMs")
-    if connection_timeout is not None:
-        connection_timeout /= 1000
-    max_transaction_retry_time = data.get("maxTxRetryTimeMs")
-    if max_transaction_retry_time is not None:
-        max_transaction_retry_time /= 1000
+        kwargs["resolver"] = resolution_func(
+            backend, data["resolverRegistered"],
+            data["domainNameResolverRegistered"]
+        )
+    if data.get("connectionTimeoutMs"):
+        kwargs["connection_timeout"] = data["connectionTimeoutMs"] / 1000
+    if data.get("maxTxRetryTimeMs"):
+        kwargs["max_transaction_retry_time"] = data["maxTxRetryTimeMs"] / 1000
+    if data.get("connectionAcquisitionTimeoutMs"):
+        kwargs["connection_acquisition_timeout"] = \
+            data["connectionAcquisitionTimeoutMs"] / 1000
+    if data.get("maxConnectionPoolSize"):
+        kwargs["max_connection_pool_size"] = data["maxConnectionPoolSize"]
+    if data.get("fetchSize"):
+        kwargs["fetch_size"] = data["fetchSize"]
+    if "encrypted" in data:
+        kwargs["encrypted"] = data["encrypted"]
+    if "trustedCertificates" in data:
+        kwargs["trusted_certificates"] = [
+            "/usr/local/share/custom-ca-certificates/" + cert
+            for cert in data["trustedCertificates"]
+        ]
+
     data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.AsyncGraphDatabase.driver(
-        data["uri"], auth=auth, user_agent=data["userAgent"],
-        resolver=resolver, connection_timeout=connection_timeout,
-        fetch_size=data.get("fetchSize"),
-        max_transaction_retry_time=max_transaction_retry_time,
+        data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs
     )
     key = backend.next_key()
     backend.drivers[key] = driver

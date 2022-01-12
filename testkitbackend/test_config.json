@@ -26,9 +26,12 @@
       "Driver rejects empty queries before sending it to the server"
   },
   "features": {
+    "Feature:API:Liveness.Check": false,
     "Feature:API:Result.List": true,
     "Feature:API:Result.Peek": true,
     "Feature:API:Result.Single": "Does not raise error when not exactly one record is available. To be fixed in 5.0.",
+    "Feature:API:SSLConfig": true,
+    "Feature:API:SSLSchemes": true,
     "Feature:Auth:Bearer": true,
     "Feature:Auth:Custom": true,
     "Feature:Auth:Kerberos": true,
@@ -53,8 +56,12 @@
     "Temporary:CypherPathAndRelationship": true,
     "Temporary:DriverFetchSize": true,
     "Temporary:DriverMaxTxRetryTime": true,
+    "Temporary:FastFailingDiscovery": true,
     "Temporary:FullSummary": true,
     "Temporary:ResultKeys": true,
-    "Temporary:TransactionClose": true
+    "Temporary:TransactionClose": true,
+    "Temporary:DriverMaxConnectionPoolSize": true,
+    "Temporary:ConnectionAcquisitionTimeout": true,
+    "Temporary:GetConnectionPoolMetrics": true
   }
 }

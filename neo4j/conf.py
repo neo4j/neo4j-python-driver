@@ -22,8 +22,6 @@ from warnings import warn
 
 from .api import (
     DEFAULT_DATABASE,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     WRITE_ACCESS,
 )
 from .exceptions import ConfigurationError
@@ -181,10 +179,6 @@ class PoolConfig(Config):
     connection_timeout = 30.0  # seconds
     # The maximum amount of time to wait for a TCP connection to be established.
 
-    #: Trust
-    trust = TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
-    # Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
-
     #: Custom Resolver
     resolver = None
     # Custom resolver function, returning list of resolved addresses.
@@ -192,6 +186,20 @@ class PoolConfig(Config):
     #: Encrypted
     encrypted = False
     # Specify whether to use an encrypted connection between the driver and server.
+
+    #: SSL Certificates to Trust
+    trusted_certificates = None
+    # Specify how to determine the authenticity of encryption certificates
+    # provided by the Neo4j instance on connection.
+    # * None: Use system trust store. (default)
+    # * []: Trust any certificate.
+    # * ["<path>", ...]: Trust the specified certificate(s).
+
+    #: Custom SSL context to use for wrapping sockets
+    ssl_context = None
+    # Use any custom SSL context to wrap sockets.
+    # Overwrites `trusted_certificates` and `encrypted`.
+    # The use of this option is strongly discouraged.
 
     #: User Agent (Python Driver Specific)
     user_agent = get_user_agent()
@@ -210,24 +218,23 @@ class PoolConfig(Config):
     # Specify whether TCP keep-alive should be enabled.
 
     def get_ssl_context(self):
+        if self.ssl_context is not None:
+            return self.ssl_context
+
         if not self.encrypted:
             return None
 
         import ssl
 
-        ssl_context = None
-
         # SSL stands for Secure Sockets Layer and was originally created by Netscape.
         # SSLv2 and SSLv3 are the 2 versions of this protocol (SSLv1 was never publicly released).
         # After SSLv3, SSL was renamed to TLS.
         # TLS stands for Transport Layer Security and started with TLSv1.0 which is an upgraded version of SSLv3.
-
         # SSLv2 - (Disabled)
         # SSLv3 - (Disabled)
         # TLS 1.0 - Released in 1999, published as RFC 2246. (Disabled)
         # TLS 1.1 - Released in 2006, published as RFC 4346. (Disabled)
         # TLS 1.2 - Released in 2008, published as RFC 5246.
-
         # https://docs.python.org/3.7/library/ssl.html#ssl.PROTOCOL_TLS_CLIENT
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
@@ -236,15 +243,28 @@ class PoolConfig(Config):
         ssl_context.options |= ssl.OP_NO_TLSv1      # Python 3.2
         ssl_context.options |= ssl.OP_NO_TLSv1_1    # Python 3.4
 
-
-        if self.trust == TRUST_ALL_CERTIFICATES:
-            ssl_context.check_hostname = False
-            # https://docs.python.org/3.7/library/ssl.html#ssl.CERT_NONE
-            ssl_context.verify_mode = ssl.CERT_NONE
-
-        # Must be load_default_certs, not set_default_verify_paths to work
-        # on Windows with system CAs.
-        ssl_context.load_default_certs()
+        if self.trusted_certificates is None:
+            # trust system CA certificates
+            ssl_context.check_hostname = True
+            ssl_context.verify_mode = ssl.CERT_REQUIRED
+            # Must be load_default_certs, not set_default_verify_paths to
+            # work on Windows with system CAs.
+            ssl_context.load_default_certs()
+        else:
+            self.trusted_certificates = tuple(self.trusted_certificates)
+            if not self.trusted_certificates:
+                # trust any certificate
+                ssl_context.check_hostname = False
+                # https://docs.python.org/3.7/library/ssl.html#ssl.CERT_NONE
+                ssl_context.verify_mode = ssl.CERT_NONE
+            else:
+                # trust the specified certificate(s)
+                ssl_context.check_hostname = True
+                ssl_context.verify_mode = ssl.CERT_REQUIRED
+                # Must be load_default_certs, not set_default_verify_paths to
+                # work on Windows with system CAs.
+                for cert in self.trusted_certificates:
+                    ssl_context.load_verify_locations(cert)
 
         return ssl_context
 

@@ -21,7 +21,7 @@ import pytest
 from neo4j._async.io._bolt4 import AsyncBolt4x2
 from neo4j.conf import PoolConfig
 
-from ..._async_compat import (
+from ...._async_compat import (
     AsyncMagicMock,
     mark_async_test,
 )
