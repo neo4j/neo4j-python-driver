@@ -26,12 +26,6 @@ from neo4j import time
 from neo4j.time import Duration
 
 
-def seconds_options(seconds, nanoseconds):
-    yield {"seconds": seconds, "nanoseconds": nanoseconds}
-    yield {"seconds": seconds, "subseconds": nanoseconds / 1000000000}
-    yield {"seconds": seconds + Decimal(nanoseconds) / 1000000000}
-
-
 class TestDuration:
 
     def test_zero(self):
@@ -41,7 +35,6 @@ class TestDuration:
         assert d.seconds == 0
         assert d.nanoseconds == 0
         assert d.years_months_days == (0, 0, 0)
-        assert d.hours_minutes_seconds == (0, 0, Decimal("0E-9"))
         assert d.hours_minutes_seconds_nanoseconds == (0, 0, 0, 0)
         assert not bool(d)
 
@@ -52,7 +45,6 @@ class TestDuration:
         assert d.seconds == 0
         assert d.nanoseconds == 0
         assert d.years_months_days == (2, 0, 0)
-        assert d.hours_minutes_seconds == (0, 0, Decimal("0E-9"))
         assert d.hours_minutes_seconds_nanoseconds == (0, 0, 0, 0)
         assert bool(d)
 
@@ -63,7 +55,6 @@ class TestDuration:
         assert d.seconds == 0
         assert d.nanoseconds == 0
         assert d.years_months_days == (1, 8, 0)
-        assert d.hours_minutes_seconds == (0, 0, Decimal("0E-9"))
         assert d.hours_minutes_seconds_nanoseconds == (0, 0, 0, 0)
         assert bool(d)
 
@@ -78,7 +69,6 @@ class TestDuration:
         assert d.seconds == 0
         assert d.nanoseconds == 0
         assert d.years_months_days == (0, 0, 28)
-        assert d.hours_minutes_seconds == (0, 0, Decimal("0E-9"))
         assert d.hours_minutes_seconds_nanoseconds == (0, 0, 0, 0)
         assert bool(d)
 
@@ -89,7 +79,6 @@ class TestDuration:
         assert d.seconds == 0
         assert d.nanoseconds == 0
         assert d.years_months_days == (0, 0, 40)
-        assert d.hours_minutes_seconds == (0, 0, Decimal("0E-9"))
         assert d.hours_minutes_seconds_nanoseconds == (0, 0, 0, 0)
         assert bool(d)
 
@@ -104,7 +93,6 @@ class TestDuration:
         assert d.seconds == 36000
         assert d.nanoseconds == 0
         assert d.years_months_days == (0, 0, 0)
-        assert d.hours_minutes_seconds == (10, 0, Decimal("0E-9"))
         assert d.hours_minutes_seconds_nanoseconds == (10, 0, 0, 0)
         assert bool(d)
 
@@ -115,20 +103,16 @@ class TestDuration:
         assert d.seconds == 5430
         assert d.nanoseconds == 0
         assert d.years_months_days == (0, 0, 0)
-        assert d.hours_minutes_seconds == (1, 30, Decimal("30.000000000"))
         assert d.hours_minutes_seconds_nanoseconds == (1, 30, 30, 0)
         assert bool(d)
 
-    @pytest.mark.parametrize("sec_kwargs", seconds_options(123, 456000000))
-    def test_seconds_only(self, sec_kwargs):
-        d = Duration(**sec_kwargs)
+    def test_seconds_only(self):
+        d = Duration(seconds=123, nanoseconds=456000000)
         assert d.months == 0
         assert d.days == 0
         assert d.seconds == 123
-        assert d.subseconds == Decimal("0.456000000")
         assert d.nanoseconds == 456000000
         assert d.years_months_days == (0, 0, 0)
-        assert d.hours_minutes_seconds == (0, 2, Decimal("3.456000000"))
         assert d.hours_minutes_seconds_nanoseconds == (0, 2, 3, 456000000)
         assert bool(d)
 
@@ -136,27 +120,13 @@ class TestDuration:
         with pytest.raises(ValueError):
             _ = Duration(seconds=(2**64))
 
-    def test_subseconds_only(self):
-        d = Duration(subseconds=123.456)
-        assert d.months == 0
-        assert d.days == 0
-        assert d.seconds == 123
-        assert d.subseconds == Decimal("0.456")
-        assert d.nanoseconds == 456000000
-        assert d.years_months_days == (0, 0, 0)
-        assert d.hours_minutes_seconds == (0, 2, Decimal("3.456"))
-        assert d.hours_minutes_seconds_nanoseconds == (0, 2, 3, 456000000)
-        assert bool(d)
-
     def test_milliseconds_only(self):
         d = Duration(milliseconds=1234.567)
         assert d.months == 0
         assert d.days == 0
         assert d.seconds == 1
-        assert d.subseconds == Decimal("0.234567000")
         assert d.nanoseconds == 234567000
         assert d.years_months_days == (0, 0, 0)
-        assert d.hours_minutes_seconds == (0, 0, Decimal("1.234567000"))
         assert d.hours_minutes_seconds_nanoseconds == (0, 0, 1, 234567000)
         assert bool(d)
 
@@ -165,10 +135,8 @@ class TestDuration:
         assert d.months == 0
         assert d.days == 0
         assert d.seconds == 0
-        assert d.subseconds == Decimal("0.001234567")
         assert d.nanoseconds == 1234567
         assert d.years_months_days == (0, 0, 0)
-        assert d.hours_minutes_seconds == (0, 0, Decimal("0.001234567"))
         assert d.hours_minutes_seconds_nanoseconds == (0, 0, 0, 1234567)
         assert bool(d)
 
@@ -177,10 +145,8 @@ class TestDuration:
         assert d.months == 0
         assert d.days == 0
         assert d.seconds == 0
-        assert d.subseconds == Decimal("0.000001234")
         assert d.nanoseconds == 1234
         assert d.years_months_days == (0, 0, 0)
-        assert d.hours_minutes_seconds == (0, 0, Decimal("0.000001234"))
         assert d.hours_minutes_seconds_nanoseconds == (0, 0, 0, 1234)
         assert bool(d)
 
@@ -210,7 +176,6 @@ class TestDuration:
         assert d.seconds == 14706
         assert d.nanoseconds == 789000000
         assert d.years_months_days == (1, 2, 3)
-        assert d.hours_minutes_seconds == (4, 5, Decimal("6.789000000"))
         assert d.hours_minutes_seconds_nanoseconds == (4, 5, 6, 789000000)
         assert bool(d)
 
@@ -221,7 +186,6 @@ class TestDuration:
         assert d.seconds == -14706
         assert d.nanoseconds == -789000000
         assert d.years_months_days == (-1, -2, -3)
-        assert d.hours_minutes_seconds == (-4, -5, Decimal("-6.789"))
         assert d.hours_minutes_seconds_nanoseconds == (-4, -5, -6, -789000000)
         assert bool(d)
 
@@ -230,10 +194,8 @@ class TestDuration:
         assert d.months == -14
         assert d.days == 3
         assert d.seconds == -14706
-        assert d.subseconds == Decimal("-0.789")
         assert d.nanoseconds == -789000000
         assert d.years_months_days == (-1, -2, 3)
-        assert d.hours_minutes_seconds == (-4, -5, Decimal("-6.789"))
         assert d.hours_minutes_seconds_nanoseconds == (-4, -5, -6, -789000000)
 
     def test_positive_negative(self):
@@ -241,45 +203,37 @@ class TestDuration:
         assert d.months == 14
         assert d.days == -3
         assert d.seconds == 14706
-        assert d.subseconds == Decimal("0.789")
         assert d.nanoseconds == 789000000
         assert d.years_months_days == (1, 2, -3)
-        assert d.hours_minutes_seconds == (4, 5, Decimal("6.789"))
         assert d.hours_minutes_seconds_nanoseconds == (4, 5, 6, 789000000)
 
-    @pytest.mark.parametrize("sec1_kwargs", seconds_options(5, 700000000))
-    @pytest.mark.parametrize("sec2_kwargs", seconds_options(3, 200000000))
-    @pytest.mark.parametrize("sec3_kwargs", seconds_options(8, 900000000))
-    def test_add_duration(self, sec1_kwargs, sec2_kwargs, sec3_kwargs):
-        d1 = Duration(months=2, days=3, **sec1_kwargs)
-        d2 = Duration(months=7, days=5, **sec2_kwargs)
-        assert d1 + d2 == Duration(months=9, days=8, **sec3_kwargs)
+    def test_add_duration(self):
+        d1 = Duration(months=2, days=3, seconds=5, nanoseconds=700000000)
+        d2 = Duration(months=7, days=5, seconds=3, nanoseconds=200000000)
+        d3 = Duration(months=9, days=8, seconds=8, nanoseconds=900000000)
+        assert d1 + d2 == d3
 
-    @pytest.mark.parametrize("sec1_kwargs", seconds_options(5, 700000000))
-    @pytest.mark.parametrize("sec2_kwargs", seconds_options(8, 900000000))
-    def test_add_timedelta(self, sec1_kwargs, sec2_kwargs):
-        d1 = Duration(months=2, days=3, **sec1_kwargs)
+    def test_add_timedelta(self):
+        d1 = Duration(months=2, days=3, seconds=5, nanoseconds=700000000)
         td = timedelta(days=5, seconds=3.2)
-        assert d1 + td == Duration(months=2, days=8, **sec2_kwargs)
+        d3 = Duration(months=2, days=8, seconds=8, nanoseconds=900000000)
+        assert d1 + td == d3
 
     def test_add_object(self):
         with pytest.raises(TypeError):
             _ = Duration(months=2, days=3, seconds=5.7) + object()
 
-    @pytest.mark.parametrize("sec1_kwargs", seconds_options(5, 700000000))
-    @pytest.mark.parametrize("sec2_kwargs", seconds_options(3, 200000000))
-    @pytest.mark.parametrize("sec3_kwargs", seconds_options(2, 500000000))
-    def test_subtract_duration(self, sec1_kwargs, sec2_kwargs, sec3_kwargs):
-        d1 = Duration(months=2, days=3, **sec1_kwargs)
-        d2 = Duration(months=7, days=5, **sec2_kwargs)
-        assert d1 - d2 == Duration(months=-5, days=-2, **sec3_kwargs)
+    def test_subtract_duration(self):
+        d1 = Duration(months=2, days=3, seconds=5, nanoseconds=700000000)
+        d2 = Duration(months=7, days=5, seconds=3, nanoseconds=200000000)
+        d3 = Duration(months=-5, days=-2, seconds=2, nanoseconds=500000000)
+        assert d1 - d2 == d3
 
-    @pytest.mark.parametrize("sec1_kwargs", seconds_options(5, 700000000))
-    @pytest.mark.parametrize("sec2_kwargs", seconds_options(2, 500000000))
-    def test_subtract_timedelta(self, sec1_kwargs, sec2_kwargs):
-        d1 = Duration(months=2, days=3, **sec1_kwargs)
+    def test_subtract_timedelta(self):
+        d1 = Duration(months=2, days=3, seconds=5, nanoseconds=700000000)
         td = timedelta(days=5, seconds=3.2)
-        assert d1 - td == Duration(months=2, days=-2, **sec2_kwargs)
+        d3 = Duration(months=2, days=-2, seconds=2, nanoseconds=500000000)
+        assert d1 - td == d3
 
     def test_subtract_object(self):
         with pytest.raises(TypeError):
@@ -299,33 +253,56 @@ class TestDuration:
         with pytest.raises(TypeError):
             _ = Duration(months=2, days=3, seconds=5.7) * object()
 
-    def test_floor_division_by_int(self):
-        d1 = Duration(months=11, days=33, seconds=55.77)
+    @pytest.mark.parametrize("ns", (0, 1))
+    def test_floor_division_by_int(self, ns):
+        d1 = Duration(months=11, days=33, seconds=55.77, nanoseconds=ns)
         i = 2
-        assert d1 // i == Duration(months=5, days=16, seconds=27)
+        assert d1 // i == Duration(months=5, days=16, seconds=27,
+                                   nanoseconds=885000000)
 
     def test_floor_division_by_object(self):
         with pytest.raises(TypeError):
             _ = Duration(months=2, days=3, seconds=5.7) // object()
 
-    def test_modulus_by_int(self):
-        d1 = Duration(months=11, days=33, seconds=55.77)
+    @pytest.mark.parametrize("ns", (0, 1))
+    def test_modulus_by_int(self, ns):
+        d1 = Duration(months=11, days=33, seconds=55.77, nanoseconds=ns)
         i = 2
-        assert d1 % i == Duration(months=1, days=1, seconds=1.77)
+        assert d1 % i == Duration(months=1, days=1, nanoseconds=ns)
 
     def test_modulus_by_object(self):
         with pytest.raises(TypeError):
             _ = Duration(months=2, days=3, seconds=5.7) % object()
 
-    def test_floor_division_and_modulus_by_int(self):
-        d1 = Duration(months=11, days=33, seconds=55.77)
+    @pytest.mark.parametrize("ns", (0, 1))
+    def test_floor_division_and_modulus_by_int(self, ns):
+        d1 = Duration(months=11, days=33, seconds=55.77, nanoseconds=ns)
         i = 2
-        assert divmod(d1, i) == (Duration(months=5, days=16, seconds=27.0),
-                                 Duration(months=1, days=1, seconds=1.77))
+        assert divmod(d1, i) == (Duration(months=5, days=16, seconds=27,
+                                          nanoseconds=885000000),
+                                 Duration(months=1, days=1, nanoseconds=ns))
 
     def test_floor_division_and_modulus_by_object(self):
         with pytest.raises(TypeError):
             _ = divmod(Duration(months=2, days=3, seconds=5.7), object())
+
+    @pytest.mark.parametrize(
+        ("year", "month", "day"),
+        (
+            *((i, 0, 0) for i in range(4)),
+            *((0, i, 0) for i in range(4)),
+            *((0, 0, i) for i in range(4)),
+        )
+    )
+    @pytest.mark.parametrize("second", range(4))
+    @pytest.mark.parametrize("ns", range(4))
+    @pytest.mark.parametrize("divisor", (*range(1, 3), 1_000_000_000))
+    def test_div_mod_is_well_defined(self, year, month, day, second, ns,
+                                     divisor):
+        d1 = Duration(years=year, months=month, days=day, seconds=second,
+                      nanoseconds=ns)
+        fraction, rest = divmod(d1, divisor)
+        assert d1 == fraction * divisor + rest
 
     def test_true_division_by_int(self):
         d1 = Duration(months=11, days=33, seconds=55.77)

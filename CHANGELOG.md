@@ -15,6 +15,41 @@
   - `trust` has been removed.  
     Use `trusted_certificates` instead which expects `None` or a `list`. See the
     API documentation for more details.
+- `neo4j.time` module:
+ - `Duration`
+   - The constructor does not accept `subseconds` anymore.  
+     Use `milliseconds`, `microseconds`, or `nanoseconds` instead.
+   - The property `subseconds` has been removed.  
+     Use `nanoseconds` instead.
+   - The property `hours_minutes_seconds` has been removed.  
+     Use `hours_minutes_seconds_nanoseconds` instead.
+   - For all math operations holds: they are element-wise on
+     (`months`, `days`, `nanoseconds`).
+     This affects (i.e., changes) the working of `//`, `%`, `/`, and `*`.
+     - Years are equal to 12 months.
+     - Weeks are equal to 7 days.
+     - `seconds`, `milliseconds`, `microseconds`, and `nanoseconds` are
+       implicitly converted to `nanoseconds` or `seconds` as fit.
+   - Multiplication and division allow for floats but will always result in
+     integer values (round to nearest even).
+ - `Time`
+   - The constructor does not accept `float`s for `second` anymore.  
+     Use `nanosecond` instead.
+   - Ticks are now nanoseconds since midnight (`int`).
+     - The property `ticks_ns` has been renamed to `ticks`.  
+       The old `ticks` is no longer supported.
+     - The property`from_ticks_ns` has been renamed to `from_ticks`.  
+       The old `from_ticks` is no longer supported.
+   - The property `second` returns an `int` instead of a `float`.  
+     Use `nanosecond` to get the sub-second information.
+   - The property `hour_minute_second` has been removed.  
+     Use `hour_minute_second_nanosecond` instead.
+ - `DateTime`
+   - The property `hour_minute_second` has been removed.  
+     Use `hour_minute_second_nanosecond` instead.
+   - The property `second` returns an `int` instead of a `float`.  
+     Use `nanosecond` to get the sub-second information.
+
 
 ## Version 4.4
 

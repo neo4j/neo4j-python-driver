@@ -22,17 +22,11 @@ as a number of utility functions.
 """
 
 
-from contextlib import contextmanager
 from datetime import (
     date,
     datetime,
     time,
     timedelta,
-)
-from decimal import (
-    Decimal,
-    localcontext,
-    ROUND_HALF_EVEN,
 )
 from functools import total_ordering
 from re import compile as re_compile
@@ -42,10 +36,6 @@ from time import (
     struct_time,
 )
 
-from neo4j.meta import (
-    deprecated,
-    deprecation_warn,
-)
 from neo4j.time.arithmetic import (
     nano_add,
     nano_div,
@@ -57,24 +47,6 @@ from neo4j.time.metaclasses import (
     DateType,
     TimeType,
 )
-
-
-@contextmanager
-def _decimal_context(prec=9, rounding=ROUND_HALF_EVEN):
-    with localcontext() as ctx:
-        ctx.prec = prec
-        ctx.rounding = rounding
-        yield ctx
-
-
-def _decimal_context_decorator(prec=9):
-    def outer(fn):
-        def inner(*args, **kwargs):
-            with _decimal_context(prec=prec):
-                return fn(*args, **kwargs)
-
-        return inner
-    return outer
 
 
 MIN_INT64 = -(2 ** 63)
@@ -331,12 +303,12 @@ class Duration(tuple):
     Duration objects store a composite value of `months`, `days`, `seconds`,
     and `nanoseconds`. Unlike :class:`datetime.timedelta` however, days, and
     seconds/nanoseconds are never interchanged. All values except seconds and
-    nanoseconds are applied separately in calculations.
+    nanoseconds are applied separately in calculations (element-wise).
 
     A :class:`.Duration` stores four primary instance attributes internally:
     `months`, `days`, `seconds` and `nanoseconds`. These are maintained as
     individual values and are immutable. Each of these four attributes can carry
-    its own siggn, with the exception of `nanoseconds`, which always has the same
+    its own sign, with the exception of `nanoseconds`, which always has the same
     sign as `seconds`. The constructor will establish this state, should the
     duration be initialized with conflicting `seconds` and `nanoseconds` signs.
     This structure allows the modelling of durations such as
@@ -366,12 +338,6 @@ class Duration(tuple):
     :type minutes: float
     :param seconds: will be added times 1,000,000,000 to `nanoseconds``
     :type seconds: float
-    :param subseconds: will be added times 1,000,000,000 to `nanosubseconds``
-
-        .. deprecated:: 4.4
-            Will be removed in 5.0. Use `milliseconds`, `microseconds`, or
-            `nanoseconds` instead or add `subseconds` to `seconds`
-    :type subseconds: float
     :param milliseconds: will be added times 1,000,000 to `nanoseconds`
     :type microseconds: float
     :param microseconds: will be added times 1,000 to `nanoseconds`
@@ -391,15 +357,7 @@ class Duration(tuple):
     """The highest duration value possible."""
 
     def __new__(cls, years=0, months=0, weeks=0, days=0, hours=0, minutes=0,
-                seconds=0, subseconds=0, milliseconds=0, microseconds=0,
-                nanoseconds=0):
-
-        if subseconds:
-            deprecation_warn("`subseconds` will be removed in 5.0. "
-                             "Use `nanoseconds` instead.")
-            with _decimal_context(prec=9, rounding=ROUND_HALF_EVEN):
-                nanoseconds = int(Decimal(subseconds) * NANO_SECONDS)
-
+                seconds=0, milliseconds=0, microseconds=0, nanoseconds=0):
         mo = int(12 * years + months)
         if mo < MIN_INT64 or mo > MAX_INT64:
             raise ValueError("Months value out of range")
@@ -468,57 +426,95 @@ class Duration(tuple):
         return NotImplemented
 
     def __mul__(self, other):
-        """Multiply by an :class:`int`.
+        """Multiply by an :class:`int` or :class:`float`.
+
+        The operation is performed element-wise on
+        ``(months, days, nanaoseconds)`` where
+
+        * years go into months,
+        * weeks go into days,
+        * seconds and all sub-second units go into nanoseconds.
+
+        Each element will be rounded to the nearest integer (.5 towards even).
 
         :rtype: Duration
         """
-        if isinstance(other, float):
-            deprecation_warn("Multiplication with float will be deprecated in "
-                             "5.0.")
         if isinstance(other, (int, float)):
             return Duration(
-                months=self[0] * other, days=self[1] * other,
-                seconds=self[2] * other, nanoseconds=self[3] * other
+                months=round_half_to_even(self[0] * other),
+                days=round_half_to_even(self[1] * other),
+                nanoseconds=round_half_to_even(
+                    self[2] * NANO_SECONDS * other
+                    + self[3] * other
+                )
             )
         return NotImplemented
 
-    @deprecated("Will be removed in 5.0.")
     def __floordiv__(self, other):
+        """Integer division by an :class:`int`.
+
+        The operation is performed element-wise on
+        ``(months, days, nanaoseconds)`` where
+
+        * years go into months,
+        * weeks go into days,
+        * seconds and all sub-second units go into nanoseconds.
+
+        Each element will be rounded towards -inf.
+
+        :rtype: Duration
+        """
         if isinstance(other, int):
-            # TODO 5.0: new method (floor months, days, nanoseconds) or remove
-            # return Duration(
-            #     months=self[0] // other, days=self[1] // other,
-            #     nanoseconds=(self[2] * NANO_SECONDS + self[3]) // other
-            # )
-            seconds = self[2] + Decimal(self[3]) / NANO_SECONDS
-            return Duration(months=int(self[0] // other),
-                            days=int(self[1] // other),
-                            seconds=int(seconds // other))
+            return Duration(
+                months=self[0] // other, days=self[1] // other,
+                nanoseconds=(self[2] * NANO_SECONDS + self[3]) // other
+            )
         return NotImplemented
 
-    @deprecated("Will be removed in 5.0.")
     def __mod__(self, other):
+        """Modulo operation by an :class:`int`.
+
+        The operation is performed element-wise on
+        ``(months, days, nanaoseconds)`` where
+
+        * years go into months,
+        * weeks go into days,
+        * seconds and all sub-second units go into nanoseconds.
+
+        :rtype: Duration
+        """
         if isinstance(other, int):
-            # TODO 5.0: new method (mod months, days, nanoseconds) or remove
-            # return Duration(
-            #     months=self[0] % other, days=self[1] % other,
-            #     nanoseconds=(self[2] * NANO_SECONDS + self[3]) % other
-            # )
-            seconds = self[2] + Decimal(self[3]) / NANO_SECONDS
-            seconds, subseconds = symmetric_divmod(seconds % other, 1)
-            return Duration(months=round_half_to_even(self[0] % other),
-                            days=round_half_to_even(self[1] % other),
-                            seconds=seconds, subseconds=subseconds)
+            return Duration(
+                months=self[0] % other, days=self[1] % other,
+                nanoseconds=(self[2] * NANO_SECONDS + self[3]) % other
+            )
         return NotImplemented
 
-    @deprecated("Will be removed in 5.0.")
     def __divmod__(self, other):
+        """Division and modulo operation by an :class:`int`.
+
+        See :meth:`__floordiv__` and :meth:`__mod__`.
+
+        :rtype: (Duration, Duration)
+        """
         if isinstance(other, int):
             return self.__floordiv__(other), self.__mod__(other)
         return NotImplemented
 
-    @deprecated("Will be removed in 5.0.")
     def __truediv__(self, other):
+        """Division by an :class:`int` or :class:`float`.
+
+        The operation is performed element-wise on
+        ``(months, days, nanaoseconds)`` where
+
+        * years go into months,
+        * weeks go into days,
+        * seconds and all sub-second units go into nanoseconds.
+
+        Each element will be rounded to the nearest integer (.5 towards even).
+
+        :rtype: Duration
+        """
         if isinstance(other, (int, float)):
             return Duration(
                 months=round_half_to_even(self[0] / other),
@@ -529,8 +525,6 @@ class Duration(tuple):
                 )
             )
         return NotImplemented
-
-    __div__ = __truediv__
 
     def __pos__(self):
         """"""
@@ -677,21 +671,6 @@ class Duration(tuple):
         return self[2]
 
     @property
-    @deprecated("Will be removed in 5.0. Use `nanoseconds` instead.")
-    def subseconds(self):
-        """The subseconds of the :class:`Duration`.
-
-        .. deprecated:: 4.4
-            Will be removed in 5.0. Use :attr:`.nanoseconds` instead.
-
-        :type: decimal.Decimal
-        """
-        if self[3] < 0:
-            return Decimal(("-0.%09i" % -self[3])[:11])
-        else:
-            return Decimal(("0.%09i" % self[3])[:11])
-
-    @property
     def nanoseconds(self):
         """The nanoseconds of the :class:`Duration`.
 
@@ -707,26 +686,6 @@ class Duration(tuple):
         """
         years, months = symmetric_divmod(self[0], 12)
         return years, months, self[1]
-
-    @property
-    @deprecated("Will be removed in 5.0. "
-                "Use `hours_minutes_seconds_nanoseconds` instead.")
-    def hours_minutes_seconds(self):
-        """A 3-tuple of (hours, minutes, seconds).
-
-        Where seconds is a :class:`decimal.Decimal` that combines `seconds` and
-        `nanoseconds`.
-
-        .. deprecated:: 4.4
-            Will be removed in 5.0.
-            Use :attr:`.hours_minutes_seconds_nanoseconds` instead.
-
-        :type: (int, int, decimal.Decimal)
-        """
-        minutes, seconds = symmetric_divmod(self[2], 60)
-        hours, minutes = symmetric_divmod(minutes, 60)
-        with _decimal_context(prec=11):
-            return hours, minutes, seconds + self.subseconds
 
     @property
     def hours_minutes_seconds_nanoseconds(self):
@@ -1393,31 +1352,22 @@ class Time(metaclass=TimeType):
     A high degree of API compatibility with the standard library classes is
     provided.
 
-    :class:`neo4j.time.Time` objects introduce the concept of `ticks`.
-    This is simply a count of the number of seconds since midnight,
+    :class:`neo4j.time.Time` objects introduce the concept of ``ticks``.
+    This is simply a count of the number of nanoseconds since midnight,
     in many ways analogous to the :class:`neo4j.time.Date` ordinal.
-    `ticks` values can be fractional, with a minimum value of `0` and a maximum
-    of `86399.999999999`.
+    `ticks` values are integers, with a minimum value of `0` and a maximum
+    of `86_399_999_999_999`.
 
-    Local times are represented by :class:`.Time` with no `tzinfo`.
-
-    .. note::
-        Staring with version 5.0, :attr:`.ticks` will change to be integers
-        counting nanoseconds since midnight. Currently available as
-        :attr:`.ticks_ns`.
+    Local times are represented by :class:`.Time` with no ``tzinfo``.
 
     :param hour: the hour of the time. Must be in range 0 <= hour < 24.
     :type hour: int
     :param minute: the minute of the time. Must be in range 0 <= minute < 60.
     :type minute: int
-    :param second: the second of the time. Here, a float is accepted to denote
-        sub-second precision up to nanoseconds.
-        Must be in range 0 <= second < 60.
-
-        Starting with version 5 0, this parameter will only accept :class:`int`.
-    :type second: float
-    :param nanosecond: the nanosecond
-        .Must be in range 0 <= nanosecond < 999999999.
+    :param second: the second of the time. Must be in range 0 <= second < 60.
+    :type second: int
+    :param nanosecond: the nanosecond of the time.
+        Must be in range 0 <= nanosecond < 999999999.
     :type nanosecond: int
     :param tzinfo: timezone or None to get a local :class:`.Time`.
     :type tzinfo: datetime.tzinfo or None
@@ -1542,30 +1492,6 @@ class Time(metaclass=TimeType):
 
     @classmethod
     def from_ticks(cls, ticks, tz=None):
-        """Create a time from legacy ticks (seconds since midnight).
-
-        .. deprecated:: 4.4
-            Staring from 5.0, this method's signature will be replaced with that
-            of :meth:`.from_ticks_ns`.
-
-        :param ticks: seconds since midnight
-        :type ticks: float
-        :param tz: optional timezone
-        :type tz: datetime.tzinfo
-
-        :rtype: Time
-
-        :raises ValueError: if ticks is out of bounds (0 <= ticks < 86400)
-        """
-        if 0 <= ticks < 86400:
-            ticks = Decimal(ticks) * NANO_SECONDS
-            ticks = int(ticks.quantize(Decimal("1."), rounding=ROUND_HALF_EVEN))
-            assert 0 <= ticks < 86400000000000
-            return cls.from_ticks_ns(ticks, tz=tz)
-        raise ValueError("Ticks out of range (0..86400)")
-
-    @classmethod
-    def from_ticks_ns(cls, ticks, tz=None):
         """Create a time from ticks (nanoseconds since midnight).
 
         :param ticks: nanoseconds since midnight
@@ -1578,7 +1504,6 @@ class Time(metaclass=TimeType):
         :raises ValueError: if ticks is out of bounds
             (0 <= ticks < 86400000000000)
         """
-        # TODO 5.0: this will become from_ticks
         if not isinstance(ticks, int):
             raise TypeError("Ticks must be int")
         if 0 <= ticks < 86400000000000:
@@ -1618,8 +1543,8 @@ class Time(metaclass=TimeType):
         clock_time = ClockTime(*clock_time)
         ts = clock_time.seconds % 86400
         nanoseconds = int(NANO_SECONDS * ts + clock_time.nanoseconds)
-        ticks = (epoch.time().ticks_ns + nanoseconds) % (86400 * NANO_SECONDS)
-        return Time.from_ticks_ns(ticks)
+        ticks = (epoch.time().ticks + nanoseconds) % (86400 * NANO_SECONDS)
+        return Time.from_ticks(ticks)
 
     @classmethod
     def __normalize_hour(cls, hour):
@@ -1646,17 +1571,9 @@ class Time(metaclass=TimeType):
 
     @classmethod
     def __normalize_nanosecond(cls, hour, minute, second, nanosecond):
-        # TODO 5.0: remove -----------------------------------------------------
-        seconds, extra_ns = divmod(second, 1)
-        if extra_ns:
-            deprecation_warn("Float support second will be removed in 5.0. "
-                             "Use `nanosecond` instead.")
-        # ----------------------------------------------------------------------
         hour, minute, second = cls.__normalize_second(hour, minute, second)
-        nanosecond = int(nanosecond
-                         + round_half_to_even(extra_ns * NANO_SECONDS))
         if 0 <= nanosecond < NANO_SECONDS:
-            return hour, minute, second, nanosecond + extra_ns
+            return hour, minute, second, nanosecond
         raise ValueError("Nanosecond out of range (0..%s)" % (NANO_SECONDS - 1))
 
     # CLASS ATTRIBUTES #
@@ -1686,25 +1603,10 @@ class Time(metaclass=TimeType):
 
     @property
     def ticks(self):
-        """The total number of seconds since midnight.
-
-        .. deprecated:: 4.4
-            will return :attr:`.ticks_ns` starting with version 5.0.
-
-        :type: float
-        """
-        with _decimal_context(prec=15):
-            return self.__ticks / NANO_SECONDS
-
-    @property
-    def ticks_ns(self):
         """The total number of nanoseconds since midnight.
-
-        .. note:: This will be removed in 5.0 and replace :attr:`.ticks`.
 
         :type: int
         """
-        # TODO 5.0: this will replace self.ticks
         return self.__ticks
 
     @property
@@ -1727,14 +1629,9 @@ class Time(metaclass=TimeType):
     def second(self):
         """The seconds of the time.
 
-        This contains seconds and nanoseconds of the time.
-        `int(:attr:`.seconds`)` will yield the seconds without nanoseconds.
-
-        :type: float
+        :type: int
         """
-        # TODO 5.0: return plain self.__second
-        with _decimal_context(prec=11):
-            return self.__second + Decimal(("0.%09i" % self.__nanosecond)[:11])
+        return self.__second
 
     @property
     def nanosecond(self):
@@ -1743,19 +1640,6 @@ class Time(metaclass=TimeType):
         :type: int
         """
         return self.__nanosecond
-
-    @property
-    @deprecated("hour_minute_second will be removed in 5.0. "
-                "Use `hour_minute_second_nanosecond` instead.")
-    def hour_minute_second(self):
-        """The time as a tuple of (hour, minute, second).
-
-        .. deprecated: 4.4
-            Will be removed in 5.0.
-            Use :attr:`.hour_minute_second_nanosecond` instead.
-
-        :type: (int, int, float)"""
-        return self.__hour, self.__minute, self.second
 
     @property
     def hour_minute_second_nanosecond(self):
@@ -1786,7 +1670,7 @@ class Time(metaclass=TimeType):
                            + 60000000000 * other.minute
                            + NANO_SECONDS * other.second
                            + 1000 * other.microsecond)
-            return self.ticks_ns == other_ticks and self.tzinfo == other.tzinfo
+            return self.ticks == other_ticks and self.tzinfo == other.tzinfo
         return False
 
     def __ne__(self, other):
@@ -1797,48 +1681,48 @@ class Time(metaclass=TimeType):
         """`<` comparison with :class:`.Time` or :class:`datetime.time`."""
         if isinstance(other, Time):
             return (self.tzinfo == other.tzinfo
-                    and self.ticks_ns < other.ticks_ns)
+                    and self.ticks < other.ticks)
         if isinstance(other, time):
             if self.tzinfo != other.tzinfo:
                 return False
             other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks_ns < other_ticks
+            return self.ticks < other_ticks
         return NotImplemented
 
     def __le__(self, other):
         """`<=` comparison with :class:`.Time` or :class:`datetime.time`."""
         if isinstance(other, Time):
             return (self.tzinfo == other.tzinfo
-                    and self.ticks_ns <= other.ticks_ns)
+                    and self.ticks <= other.ticks)
         if isinstance(other, time):
             if self.tzinfo != other.tzinfo:
                 return False
             other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks_ns <= other_ticks
+            return self.ticks <= other_ticks
         return NotImplemented
 
     def __ge__(self, other):
         """`>=` comparison with :class:`.Time` or :class:`datetime.time`."""
         if isinstance(other, Time):
             return (self.tzinfo == other.tzinfo
-                    and self.ticks_ns >= other.ticks_ns)
+                    and self.ticks >= other.ticks)
         if isinstance(other, time):
             if self.tzinfo != other.tzinfo:
                 return False
             other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks_ns >= other_ticks
+            return self.ticks >= other_ticks
         return NotImplemented
 
     def __gt__(self, other):
         """`>` comparison with :class:`.Time` or :class:`datetime.time`."""
         if isinstance(other, Time):
             return (self.tzinfo == other.tzinfo
-                    and self.ticks_ns >= other.ticks_ns)
+                    and self.ticks >= other.ticks)
         if isinstance(other, time):
             if self.tzinfo != other.tzinfo:
                 return False
             other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks_ns >= other_ticks
+            return self.ticks >= other_ticks
         return NotImplemented
 
     def __copy__(self):
@@ -1943,7 +1827,7 @@ class Time(metaclass=TimeType):
 
         :rtype: ClockTime
         """
-        seconds, nanoseconds = divmod(self.ticks_ns, NANO_SECONDS)
+        seconds, nanoseconds = divmod(self.ticks, NANO_SECONDS)
         return ClockTime(seconds, nanoseconds)
 
     def to_native(self):
@@ -1987,16 +1871,17 @@ class Time(metaclass=TimeType):
         """"""
         raise NotImplementedError()
 
+
 Time.min = Time(hour=0, minute=0, second=0, nanosecond=0)
 Time.max = Time(hour=23, minute=59, second=59, nanosecond=999999999)
 Time.resolution = Duration(nanoseconds=1)
 
 #: A :class:`.Time` instance set to `00:00:00`.
-#: This has a :attr:`.ticks_ns` value of `0`.
+#: This has a :attr:`.ticks` value of `0`.
 Midnight = Time.min
 
 #: A :class:`.Time` instance set to `12:00:00`.
-#: This has a :attr:`.ticks_ns` value of `43200000000000`.
+#: This has a :attr:`.ticks` value of `43200000000000`.
 Midday = Time(hour=12)
 
 
@@ -2202,11 +2087,11 @@ class DateTime(metaclass=DateTimeType):
             raise ValueError("Clock time must be a 2-tuple of (s, ns)")
         else:
             ordinal, seconds = divmod(seconds, 86400)
-            ticks = epoch.time().ticks_ns + seconds * NANO_SECONDS + nanoseconds
+            ticks = epoch.time().ticks + seconds * NANO_SECONDS + nanoseconds
             days, ticks = divmod(ticks, 86400 * NANO_SECONDS)
             ordinal += days
             date_ = Date.from_ordinal(ordinal + epoch.date().to_ordinal())
-            time_ = Time.from_ticks_ns(ticks)
+            time_ = Time.from_ticks(ticks)
             return cls.combine(date_, time_)
 
     # CLASS ATTRIBUTES #
@@ -2301,13 +2186,6 @@ class DateTime(metaclass=DateTimeType):
         return self.__time.tzinfo
 
     @property
-    def hour_minute_second(self):
-        """The hour_minute_second of the :class:`.DateTime`'s time.
-
-        See :attr:`.Time.hour_minute_second`."""
-        return self.__time.hour_minute_second
-
-    @property
     def hour_minute_second_nanosecond(self):
         """The hour_minute_second_nanosecond of the :class:`.DateTime`'s time.
 
@@ -2389,7 +2267,7 @@ class DateTime(metaclass=DateTimeType):
                              other.microseconds * 1000))
             days, seconds = symmetric_divmod(t.seconds, 86400)
             date_ = Date.from_ordinal(days + 1)
-            time_ = Time.from_ticks_ns(round_half_to_even(
+            time_ = Time.from_ticks(round_half_to_even(
                 seconds * NANO_SECONDS + t.nanoseconds
             ))
             return self.combine(date_, time_)
@@ -2529,7 +2407,7 @@ class DateTime(metaclass=DateTimeType):
         for month in range(1, self.month):
             total_seconds += 86400 * Date.days_in_month(self.year, month)
         total_seconds += 86400 * (self.day - 1)
-        seconds, nanoseconds = divmod(self.__time.ticks_ns, NANO_SECONDS)
+        seconds, nanoseconds = divmod(self.__time.ticks, NANO_SECONDS)
         return ClockTime(total_seconds + seconds, nanoseconds)
 
     def to_native(self):
