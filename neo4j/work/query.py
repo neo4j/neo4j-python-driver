@@ -24,7 +24,7 @@ class Query:
     :param metadata: metadata attached to the query.
     :type metadata: dict
     :param timeout: seconds.
-    :type timeout: int
+    :type timeout: float or None
     """
     def __init__(self, text, metadata=None, timeout=None):
         self.text = text
@@ -59,8 +59,10 @@ def unit_of_work(metadata=None, timeout=None):
         Transactions that execute longer than the configured timeout will be terminated by the database.
         This functionality allows to limit query/transaction execution time.
         Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
-        Value should not represent a duration of zero or negative duration.
-    :type timeout: int
+        Value should not represent a negative duration.
+        A zero duration will make the transaction execute indefinitely.
+        None will use the default timeout configured in the database.
+    :type timeout: float or None
     """
 
     def wrapper(f):
