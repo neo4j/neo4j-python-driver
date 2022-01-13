@@ -19,11 +19,11 @@
 # limitations under the License.
 
 
+from contextlib import contextmanager
 import socket
 from struct import pack as struct_pack
 
 from neo4j.exceptions import (
-    AuthError,
     Neo4jError,
     ServiceUnavailable,
     SessionExpired,
@@ -94,11 +94,14 @@ class Outbox:
         self._chunked_data = bytearray()
         self._raw_data = bytearray()
         self.write = self._raw_data.extend
+        self._tmp_buffering = 0
 
     def max_chunk_size(self):
         return self._max_chunk_size
 
     def clear(self):
+        if self._tmp_buffering:
+            raise RuntimeError("Cannot clear while buffering")
         self._chunked_data = bytearray()
         self._raw_data.clear()
 
@@ -128,12 +131,28 @@ class Outbox:
         self._raw_data.clear()
 
     def wrap_message(self):
+        if self._tmp_buffering:
+            raise RuntimeError("Cannot wrap message while buffering")
         self._chunk_data()
         self._chunked_data += b"\x00\x00"
 
     def view(self):
+        if self._tmp_buffering:
+            raise RuntimeError("Cannot view while buffering")
         self._chunk_data()
         return memoryview(self._chunked_data)
+
+    @contextmanager
+    def tmp_buffer(self):
+        self._tmp_buffering += 1
+        old_len = len(self._raw_data)
+        try:
+            yield
+        except Exception:
+            del self._raw_data[old_len:]
+            raise
+        finally:
+            self._tmp_buffering -= 1
 
 
 class ConnectionErrorHandler:
