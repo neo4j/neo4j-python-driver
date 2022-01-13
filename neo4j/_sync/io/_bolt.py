@@ -443,7 +443,8 @@ class Bolt:
         :param fields: the fields of the message as a tuple
         :param response: a response object to handle callbacks
         """
-        self.packer.pack_struct(signature, fields)
+        with self.outbox.tmp_buffer():
+            self.packer.pack_struct(signature, fields)
         self.outbox.wrap_message()
         self.responses.append(response)
 
