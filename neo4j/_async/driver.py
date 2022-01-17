@@ -16,8 +16,6 @@
 # limitations under the License.
 
 
-import asyncio
-
 from .._async_compat.util import AsyncUtil
 from ..addressing import Address
 from ..api import READ_ACCESS
@@ -197,7 +195,7 @@ class AsyncDriver:
         await self.close()
 
     def __del__(self):
-        if not asyncio.iscoroutinefunction(self.close):
+        if not AsyncUtil.is_async_code:
             self.close()
 
     @property

@@ -45,6 +45,8 @@ class AsyncUtil:
 
     experimental_async = experimental
 
+    is_async_code = True
+
 
 class Util:
     iter = iter
@@ -61,3 +63,5 @@ class Util:
         def f_(f):
             return f
         return f_
+
+    is_async_code = False
