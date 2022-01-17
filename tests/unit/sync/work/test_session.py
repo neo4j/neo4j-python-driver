@@ -171,14 +171,11 @@ def test_closes_connection_after_tx_commit(pool, test_run_args):
 
 @pytest.mark.parametrize("bookmarks", (None, [], ["abc"], ["foo", "bar"]))
 @mark_sync_test
-def test_session_returns_bookmark_directly(pool, bookmarks):
+def test_new_session_returns_no_bookmarks(pool, bookmarks):
     with Session(
         pool, SessionConfig(bookmarks=bookmarks)
     ) as session:
-        if bookmarks:
-            assert session.last_bookmark() == bookmarks[-1]
-        else:
-            assert session.last_bookmark() is None
+        assert session.last_bookmark() is None
 
 
 @pytest.mark.parametrize(("query", "error_type"), (

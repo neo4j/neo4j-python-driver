@@ -33,7 +33,7 @@ class AsyncWorkspace:
         self._connection_access_mode = None
         # Sessions are supposed to cache the database on which to operate.
         self._cached_database = False
-        self._bookmarks = None
+        self._bookmarks_in = None
 
     def __del__(self):
         if asyncio.iscoroutinefunction(self.close):
@@ -74,14 +74,14 @@ class AsyncWorkspace:
                 await self._pool.update_routing_table(
                     database=self._config.database,
                     imp_user=self._config.impersonated_user,
-                    bookmarks=self._bookmarks,
+                    bookmarks=self._bookmarks_in,
                     database_callback=self._set_cached_database
                 )
         self._connection = await self._pool.acquire(
             access_mode=access_mode,
             timeout=self._config.connection_acquisition_timeout,
             database=self._config.database,
-            bookmarks=self._bookmarks
+            bookmarks=self._bookmarks_in
         )
         self._connection_access_mode = access_mode
 

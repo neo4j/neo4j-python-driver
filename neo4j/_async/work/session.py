@@ -85,7 +85,8 @@ class AsyncSession(AsyncWorkspace):
     def __init__(self, pool, session_config):
         super().__init__(pool, session_config)
         assert isinstance(session_config, SessionConfig)
-        self._bookmarks = tuple(session_config.bookmarks)
+        self._bookmarks_in = tuple(session_config.bookmarks)
+        self._bookmark_out = None
 
     def __del__(self):
         if asyncio.iscoroutinefunction(self.close):
@@ -110,7 +111,8 @@ class AsyncSession(AsyncWorkspace):
 
     def _collect_bookmark(self, bookmark):
         if bookmark:
-            self._bookmarks = [bookmark]
+            self._bookmarks_in = bookmark,
+            self._bookmark_out = bookmark
 
     async def _result_closed(self):
         if self._auto_result:
@@ -217,16 +219,28 @@ class AsyncSession(AsyncWorkspace):
         await self._auto_result._run(
             query, parameters, self._config.database,
             self._config.impersonated_user, self._config.default_access_mode,
-            self._bookmarks, **kwargs
+            self._bookmarks_in, **kwargs
         )
 
         return self._auto_result
 
     async def last_bookmark(self):
-        """Return the bookmark received following the last completed transaction.
-        Note: For auto-transaction (Session.run) this will trigger an consume for the current result.
+        """Return the bookmark received from the last completed transaction.
 
-        :returns: :class:`neo4j.Bookmark` object
+        Bookmarks can be used to causally chain sessions. For example,
+        if a session (``session1``) wrote something, that another session
+        (``session2``) needs to read, use
+        ``session2 = driver.session(bookmarks=session1.last_bookmark())`` to
+        achieve this.
+
+        A session automatically manages bookmarks, so this method is rarely
+        needed. If you need causal consistency, try to run the relevant queries
+        in the same session.
+
+        Note: For auto-transaction (Session.run) this will trigger a
+        ``consume`` for the current result.
+
+        :returns: str or None
         """
         # The set of bookmarks to be passed into the next transaction.
 
@@ -237,9 +251,7 @@ class AsyncSession(AsyncWorkspace):
             self._collect_bookmark(self._transaction._bookmark)
             self._transaction = None
 
-        if len(self._bookmarks):
-            return self._bookmarks[len(self._bookmarks)-1]
-        return None
+        return self._bookmark_out
 
     async def _transaction_closed_handler(self):
         if self._transaction:
@@ -262,7 +274,7 @@ class AsyncSession(AsyncWorkspace):
         )
         await self._transaction._begin(
             self._config.database, self._config.impersonated_user,
-            self._bookmarks, access_mode, metadata, timeout
+            self._bookmarks_in, access_mode, metadata, timeout
         )
 
     async def begin_transaction(self, metadata=None, timeout=None):
