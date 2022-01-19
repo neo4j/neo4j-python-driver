@@ -295,7 +295,7 @@ class AsyncSession(AsyncWorkspace):
         # TODO: Implement TransactionConfig consumption
 
         if self._auto_result:
-            self._auto_result.consume()
+            await self._auto_result.consume()
 
         if self._transaction:
             raise TransactionError("Explicit transaction already open")
