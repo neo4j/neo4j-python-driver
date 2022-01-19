@@ -87,6 +87,11 @@ class GraphDatabase:
             config["trusted_certificates"] = []
 
         if driver_type == DRIVER_BOLT:
+            if parse_routing_context(parsed.query):
+                raise ValueError(
+                    'Routing parameters are not supported with scheme "bolt". '
+                    'Given URI "{}".'.format(uri)
+                )
             return cls.bolt_driver(parsed.netloc, auth=auth, **config)
         elif driver_type == DRIVER_NEO4j:
             routing_context = parse_routing_context(parsed.query)
