@@ -195,6 +195,9 @@ class AsyncResult:
 
         self._closed = True
 
+    async def __anext__(self):
+        return await self.__aiter__().__anext__()
+
     async def _attach(self):
         """Sets the Result object in an attached state by fetching messages from
         the connection to the buffer.

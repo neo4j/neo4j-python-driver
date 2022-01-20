@@ -195,6 +195,9 @@ class Result:
 
         self._closed = True
 
+    def __next__(self):
+        return self.__iter__().__next__()
+
     def _attach(self):
         """Sets the Result object in an attached state by fetching messages from
         the connection to the buffer.
