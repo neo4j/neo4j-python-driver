@@ -328,6 +328,10 @@ class ResultConsumedError(DriverError):
     """
 
 
+class ResultNotSingleError(DriverError):
+    """Raised when result.single() detects not exactly one record in result."""
+
+
 class ConfigurationError(DriverError):
     """ Raised when there is an error concerning a configuration.
     """
