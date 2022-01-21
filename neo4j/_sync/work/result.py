@@ -21,6 +21,7 @@ from warnings import warn
 
 from ..._async_compat.util import Util
 from ...data import DataDehydrator
+from ...exceptions import ResultNotSingleError
 from ...work import ResultSummary
 from ..io import ConnectionErrorHandler
 
@@ -37,6 +38,7 @@ class Result:
         self._hydrant = hydrant
         self._on_closed = on_closed
         self._metadata = None
+        self._keys = None
         self._record_buffer = deque()
         self._summary = None
         self._bookmark = None
@@ -214,6 +216,8 @@ class Result:
         Might ent up with fewer records in the buffer if there are not enough
         records available.
         """
+        if n is not None and len(self._record_buffer) >= n:
+            return
         record_buffer = deque()
         for record in self:
             record_buffer.append(record)
@@ -307,24 +311,21 @@ class Result:
         A warning is generated if more than one record is available but
         the first of these is still returned.
 
-        :returns: the next :class:`neo4j.Record` or :const:`None` if none remain
-        :warns: if more than one record is available
+        :returns: the next :class:`neo4j.Record`.
+        :raises: ResultNotSingleError if not exactly one record is available.
         """
-        # TODO in 5.0 replace with this code that raises an error if there's not
-        # exactly one record in the left result stream.
-        # self._buffer(2).
-        # if len(self._record_buffer) != 1:
-        #     raise SomeError("Expected exactly 1 record, found %i"
-        #                      % len(self._record_buffer))
-        # return self._record_buffer.popleft()
-        # TODO: exhausts the result with self.consume if there are more records.
-        records = Util.list(self)
-        size = len(records)
-        if size == 0:
-            return None
-        if size != 1:
-            warn("Expected a result with a single record, but this result contains %d" % size)
-        return records[0]
+        self._buffer(2)
+        if not self._record_buffer:
+            raise ResultNotSingleError(
+                "No records found. "
+                "Make sure your query returns exactly one record."
+            )
+        elif len(self._record_buffer) > 1:
+            raise ResultNotSingleError(
+                "More than one record found. "
+                "Make sure your query returns exactly one record."
+            )
+        return self._record_buffer.popleft()
 
     def peek(self):
         """Obtain the next record from this result without consuming it.

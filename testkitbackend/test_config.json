@@ -29,7 +29,7 @@
     "Feature:API:Liveness.Check": false,
     "Feature:API:Result.List": true,
     "Feature:API:Result.Peek": true,
-    "Feature:API:Result.Single": "Does not raise error when not exactly one record is available. To be fixed in 5.0.",
+    "Feature:API:Result.Single": true,
     "Feature:API:SSLConfig": true,
     "Feature:API:SSLSchemes": true,
     "Feature:Auth:Bearer": true,
