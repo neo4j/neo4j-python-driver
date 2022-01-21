@@ -52,6 +52,8 @@
 - Creation of a driver with `bolt[+s[sc]]://` scheme now raises an error if the
   URI contains a query part (a routing context). Previously, the routing context
   was silently ignored.
+- `Result.single` now raises `ResultNotSingleError` if not exactly one result is
+  available.
 
 ## Version 4.4
 

@@ -21,6 +21,7 @@ from warnings import warn
 
 from ..._async_compat.util import AsyncUtil
 from ...data import DataDehydrator
+from ...exceptions import ResultNotSingleError
 from ...work import ResultSummary
 from ..io import ConnectionErrorHandler
 
@@ -37,6 +38,7 @@ class AsyncResult:
         self._hydrant = hydrant
         self._on_closed = on_closed
         self._metadata = None
+        self._keys = None
         self._record_buffer = deque()
         self._summary = None
         self._bookmark = None
@@ -179,7 +181,7 @@ class AsyncResult:
     async def __aiter__(self):
         """Iterator returning Records.
         :returns: Record, it is an immutable ordered collection of key-value pairs.
-        :rtype: :class:`neo4j.Record`
+        :rtype: :class:`neo4j.AsyncRecord`
         """
         while self._record_buffer or self._attached:
             if self._record_buffer:
@@ -211,6 +213,8 @@ class AsyncResult:
         Might ent up with fewer records in the buffer if there are not enough
         records available.
         """
+        if n is not None and len(self._record_buffer) >= n:
+            return
         record_buffer = deque()
         async for record in self:
             record_buffer.append(record)
@@ -304,24 +308,21 @@ class AsyncResult:
         A warning is generated if more than one record is available but
         the first of these is still returned.
 
-        :returns: the next :class:`neo4j.Record` or :const:`None` if none remain
-        :warns: if more than one record is available
+        :returns: the next :class:`neo4j.AsyncRecord`.
+        :raises: ResultNotSingleError if not exactly one record is available.
         """
-        # TODO in 5.0 replace with this code that raises an error if there's not
-        # exactly one record in the left result stream.
-        # self._buffer(2).
-        # if len(self._record_buffer) != 1:
-        #     raise SomeError("Expected exactly 1 record, found %i"
-        #                      % len(self._record_buffer))
-        # return self._record_buffer.popleft()
-        # TODO: exhausts the result with self.consume if there are more records.
-        records = await AsyncUtil.list(self)
-        size = len(records)
-        if size == 0:
-            return None
-        if size != 1:
-            warn("Expected a result with a single record, but this result contains %d" % size)
-        return records[0]
+        await self._buffer(2)
+        if not self._record_buffer:
+            raise ResultNotSingleError(
+                "No records found. "
+                "Make sure your query returns exactly one record."
+            )
+        elif len(self._record_buffer) > 1:
+            raise ResultNotSingleError(
+                "More than one record found. "
+                "Make sure your query returns exactly one record."
+            )
+        return self._record_buffer.popleft()
 
     async def peek(self):
         """Obtain the next record from this result without consuming it.
@@ -347,7 +348,7 @@ class AsyncResult:
     async def value(self, key=0, default=None):
         """Helper function that return the remainder of the result as a list of values.
 
-        See :class:`neo4j.Record.value`
+        See :class:`neo4j.AsyncRecord.value`
 
         :param key: field to return for each remaining record. Obtain a single value from the record by index or key.
         :param default: default value, used if the index of key is unavailable
@@ -359,7 +360,7 @@ class AsyncResult:
     async def values(self, *keys):
         """Helper function that return the remainder of the result as a list of values lists.
 
-        See :class:`neo4j.Record.values`
+        See :class:`neo4j.AsyncRecord.values`
 
         :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
         :returns: list of values lists
@@ -370,7 +371,7 @@ class AsyncResult:
     async def data(self, *keys):
         """Helper function that return the remainder of the result as a list of dictionaries.
 
-        See :class:`neo4j.Record.data`
+        See :class:`neo4j.AsyncRecord.data`
 
         :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
         :returns: list of dictionaries

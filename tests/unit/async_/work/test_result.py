@@ -31,6 +31,7 @@ from neo4j import (
 )
 from neo4j._async_compat.util import AsyncUtil
 from neo4j.data import DataHydrator
+from neo4j.exceptions import ResultNotSingleError
 
 from ...._async_compat import mark_async_test
 
@@ -323,16 +324,19 @@ async def test_result_single(records, fetch_size):
     connection = AsyncConnectionStub(records=Records(["x"], records))
     result = AsyncResult(connection, HydratorStub(), fetch_size, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
-    with pytest.warns(None) as warning_record:
+    try:
         record = await result.single()
-    if not records:
-        assert not warning_record
-        assert record is None
+    except ResultNotSingleError as exc:
+        assert len(records) != 1
+        if len(records) == 0:
+            assert exc is not None
+            assert "no records" in str(exc).lower()
+        elif len(records) > 1:
+            assert exc is not None
+            assert "more than one record" in str(exc).lower()
+
     else:
-        if len(records) > 1:
-            assert len(warning_record) == 1
-        else:
-            assert not warning_record
+        assert len(records) == 1
         assert isinstance(record, Record)
         assert record.get("x") == records[0][0]
 
