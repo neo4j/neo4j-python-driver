@@ -205,6 +205,9 @@ class AsyncDriver:
 
     @property
     def encrypted(self):
+        """Indicate whether the driver was configured to use encryption.
+
+        :rtype: bool"""
         return bool(self._pool.pool_config.encrypted)
 
     def session(self, **config):
