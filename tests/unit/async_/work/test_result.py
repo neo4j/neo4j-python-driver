@@ -198,6 +198,15 @@ async def fetch_and_compare_all_records(
         if limit is None:
             assert result._closed
     elif method == "next":
+        n = len(expected_records) if limit is None else limit
+        for _ in range(n):
+            record = await AsyncUtil.next(result)
+            received_records.append([record.get(key, None)])
+        if limit is None:
+            with pytest.raises(StopAsyncIteration):
+                await AsyncUtil.next(result)
+            assert result._closed
+    elif method == "one iter":
         iter_ = AsyncUtil.iter(result)
         n = len(expected_records) if limit is None else limit
         for _ in range(n):
@@ -223,7 +232,8 @@ async def fetch_and_compare_all_records(
     assert received_records == expected_records
 
 
-@pytest.mark.parametrize("method", ("for loop", "next",  "new iter"))
+@pytest.mark.parametrize("method",
+                         ("for loop", "next", "one iter",  "new iter"))
 @pytest.mark.parametrize("records", (
     [],
     [[42]],
@@ -237,7 +247,8 @@ async def test_result_iteration(method, records):
     await fetch_and_compare_all_records(result, "x", records, method)
 
 
-@pytest.mark.parametrize("method", ("for loop", "next",  "new iter"))
+@pytest.mark.parametrize("method",
+                         ("for loop", "next", "one iter",  "new iter"))
 @pytest.mark.parametrize("invert_fetch", (True, False))
 @mark_async_test
 async def test_parallel_result_iteration(method, invert_fetch):
@@ -266,7 +277,8 @@ async def test_parallel_result_iteration(method, invert_fetch):
         )
 
 
-@pytest.mark.parametrize("method", ("for loop", "next",  "new iter"))
+@pytest.mark.parametrize("method",
+                         ("for loop", "next", "one iter",  "new iter"))
 @pytest.mark.parametrize("invert_fetch", (True, False))
 @mark_async_test
 async def test_interwoven_result_iteration(method, invert_fetch):
