@@ -200,6 +200,14 @@ def DriverClose(backend, data):
     backend.send_response("Driver", {"id": key})
 
 
+def CheckDriverIsEncrypted(backend, data):
+    key = data["driverId"]
+    driver = backend.drivers[key]
+    backend.send_response("DriverIsEncrypted", {
+        "encrypted": driver.encrypted
+    })
+
+
 class SessionTracker:
     """ Keeps some extra state about the tracked session
     """

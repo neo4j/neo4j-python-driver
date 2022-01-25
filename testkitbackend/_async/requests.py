@@ -200,6 +200,14 @@ async def DriverClose(backend, data):
     await backend.send_response("Driver", {"id": key})
 
 
+async def CheckDriverIsEncrypted(backend, data):
+    key = data["driverId"]
+    driver = backend.drivers[key]
+    await backend.send_response("DriverIsEncrypted", {
+        "encrypted": driver.encrypted
+    })
+
+
 class SessionTracker:
     """ Keeps some extra state about the tracked session
     """

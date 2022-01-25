@@ -126,7 +126,7 @@ This object holds the details required to establish connections with a Neo4j dat
 Closing a driver will immediately shut down all connections in the pool.
 
 .. autoclass:: neo4j.AsyncDriver()
-   :members: session, close
+   :members: session, encrypted, close
 
 
 .. _async-driver-configuration-ref:
