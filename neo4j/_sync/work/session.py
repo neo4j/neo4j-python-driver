@@ -110,7 +110,7 @@ class Session(Workspace):
 
     def _collect_bookmark(self, bookmark):
         if bookmark:
-            self._bookmarks = [bookmark]
+            self._bookmarks = bookmark,
 
     def _result_closed(self):
         if self._auto_result:
@@ -222,11 +222,28 @@ class Session(Workspace):
 
         return self._auto_result
 
-    def last_bookmark(self):
-        """Return the bookmark received following the last completed transaction.
-        Note: For auto-transaction (Session.run) this will trigger an consume for the current result.
+    def last_bookmarks(self):
+        """Return most recent bookmarks of the session.
 
-        :returns: :class:`neo4j.Bookmark` object
+        Bookmarks can be used to causally chain sessions. For example,
+        if a session (``session1``) wrote something, that another session
+        (``session2``) needs to read, use
+        ``session2 = driver.session(bookmarks=session1.last_bookmarks())`` to
+        achieve this.
+
+        A session automatically manages bookmarks, so this method is rarely
+        needed. If you need causal consistency, try to run the relevant queries
+        in the same session.
+
+        "Most recent bookmarks" are either the bookmarks passed to the session
+        or creation, or the last bookmark the session received after committing
+        a transaction to the server.
+
+        Note: For auto-transaction (Session.run) this will trigger a
+        ``consume`` for the current result.
+
+        :returns: list of bookmarks
+        :rtype: list[str]
         """
         # The set of bookmarks to be passed into the next transaction.
 
@@ -237,9 +254,7 @@ class Session(Workspace):
             self._collect_bookmark(self._transaction._bookmark)
             self._transaction = None
 
-        if len(self._bookmarks):
-            return self._bookmarks[len(self._bookmarks)-1]
-        return None
+        return list(self._bookmarks)
 
     def _transaction_closed_handler(self):
         if self._transaction:

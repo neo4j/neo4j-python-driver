@@ -54,6 +54,8 @@
   was silently ignored.
 - `Result.single` now raises `ResultNotSingleError` if not exactly one result is
   available.
+- `Session.last_bookmark` was renamed to `Session.last_bookmarks`.
+  It returns a list of strings (previously string or None).
 
 ## Version 4.4
 

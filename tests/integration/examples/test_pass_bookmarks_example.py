@@ -76,13 +76,13 @@ class BookmarksExample:
         with self.driver.session() as session_a:
             session_a.write_transaction(self.create_person, "Alice")
             session_a.write_transaction(self.employ, "Alice", "Wayne Enterprises")
-            saved_bookmarks.append(session_a.last_bookmark())
+            saved_bookmarks.extend(session_a.last_bookmarks())
 
         # Create the second person and employment relationship.
         with self.driver.session() as session_b:
             session_b.write_transaction(self.create_person, "Bob")
             session_b.write_transaction(self.employ, "Bob", "LexCorp")
-            saved_bookmarks.append(session_b.last_bookmark())
+            saved_bookmarks.extend(session_b.last_bookmarks())
 
         # Create a friendship between the two people created above.
         with self.driver.session(bookmarks=saved_bookmarks) as session_c:

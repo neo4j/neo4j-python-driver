@@ -169,16 +169,21 @@ async def test_closes_connection_after_tx_commit(pool, test_run_args):
         assert session._connection is None
 
 
-@pytest.mark.parametrize("bookmarks", (None, [], ["abc"], ["foo", "bar"]))
+@pytest.mark.parametrize(
+    "bookmarks",
+    (None, [], ["abc"], ["foo", "bar"], {"a", "b"}, ("1", "two"))
+)
 @mark_async_test
 async def test_session_returns_bookmark_directly(pool, bookmarks):
     async with AsyncSession(
         pool, SessionConfig(bookmarks=bookmarks)
     ) as session:
-        if bookmarks:
-            assert await session.last_bookmark() == bookmarks[-1]
+        if bookmarks is None:
+            assert await session.last_bookmarks() == []
+        elif isinstance(bookmarks, set):
+            assert sorted(await session.last_bookmarks()) == sorted(bookmarks)
         else:
-            assert await session.last_bookmark() is None
+            assert await session.last_bookmarks() == list(bookmarks)
 
 
 @pytest.mark.parametrize(("query", "error_type"), (

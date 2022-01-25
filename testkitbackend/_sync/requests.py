@@ -323,10 +323,7 @@ def RetryableNegative(backend, data):
 def SessionLastBookmarks(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
-    bookmark = session.last_bookmark()
-    bookmarks = []
-    if bookmark:
-        bookmarks.append(bookmark)
+    bookmarks = session.last_bookmarks()
     backend.send_response("Bookmarks", {"bookmarks": bookmarks})
 
 

@@ -323,10 +323,7 @@ async def RetryableNegative(backend, data):
 async def SessionLastBookmarks(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
-    bookmark = await session.last_bookmark()
-    bookmarks = []
-    if bookmark:
-        bookmarks.append(bookmark)
+    bookmarks = await session.last_bookmarks()
     await backend.send_response("Bookmarks", {"bookmarks": bookmarks})
 
 
