@@ -21,6 +21,7 @@ from contextlib import contextmanager
 import pytest
 
 from neo4j import (
+    Bookmarks,
     Session,
     SessionConfig,
     Transaction,
@@ -170,20 +171,25 @@ def test_closes_connection_after_tx_commit(pool, test_run_args):
 
 
 @pytest.mark.parametrize(
-    "bookmarks",
+    "bookmark_values",
     (None, [], ["abc"], ["foo", "bar"], {"a", "b"}, ("1", "two"))
 )
 @mark_sync_test
-def test_session_returns_bookmark_directly(pool, bookmarks):
+def test_session_returns_bookmarks_directly(pool, bookmark_values):
+    if bookmark_values is not None:
+        bookmarks = Bookmarks.from_raw_values(bookmark_values)
+    else:
+        bookmarks = Bookmarks()
     with Session(
         pool, SessionConfig(bookmarks=bookmarks)
     ) as session:
-        if bookmarks is None:
-            assert session.last_bookmarks() == []
-        elif isinstance(bookmarks, set):
-            assert sorted(session.last_bookmarks()) == sorted(bookmarks)
+        ret_bookmarks = (session.last_bookmarks())
+        assert isinstance(ret_bookmarks, Bookmarks)
+        ret_bookmarks = ret_bookmarks.raw_values
+        if bookmark_values is None:
+            assert ret_bookmarks == frozenset()
         else:
-            assert session.last_bookmarks() == list(bookmarks)
+            assert ret_bookmarks == frozenset(bookmark_values)
 
 
 @pytest.mark.parametrize(("query", "error_type"), (

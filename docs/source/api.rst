@@ -447,6 +447,8 @@ Session
 
     .. automethod:: run
 
+    .. automethod:: last_bookmarks
+
     .. automethod:: last_bookmark
 
     .. automethod:: begin_transaction
@@ -1366,9 +1368,12 @@ This example shows how to suppress the :class:`neo4j.ExperimentalWarning` using 
     warnings.filterwarnings("ignore", category=ExperimentalWarning)
 
 
-********
-Bookmark
-********
+*********
+Bookmarks
+*********
+
+.. autoclass:: neo4j.Bookmarks
+    :members:
 
 .. autoclass:: neo4j.Bookmark
     :members:

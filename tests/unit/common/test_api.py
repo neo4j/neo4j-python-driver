@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+from copy import deepcopy
+import itertools
 from uuid import uuid4
 
 import pytest
@@ -148,8 +150,14 @@ def test_value_dehydration_should_disallow_object(test_input, expected):
         dehydrated_value(test_input)
 
 
+def test_bookmark_is_deprecated():
+    with pytest.deprecated_call():
+        neo4j.Bookmark()
+
+
 def test_bookmark_initialization_with_no_values():
-    bookmark = neo4j.api.Bookmark()
+    with pytest.deprecated_call():
+        bookmark = neo4j.Bookmark()
     assert bookmark.values == frozenset()
     assert bool(bookmark) is False
     assert repr(bookmark) == "<Bookmark values={}>"
@@ -166,7 +174,8 @@ def test_bookmark_initialization_with_no_values():
     ]
 )
 def test_bookmark_initialization_with_values_none(test_input, expected_values, expected_bool, expected_repr):
-    bookmark = neo4j.api.Bookmark(*test_input)
+    with pytest.deprecated_call():
+        bookmark = neo4j.Bookmark(*test_input)
     assert bookmark.values == expected_values
     assert bool(bookmark) is expected_bool
     assert repr(bookmark) == expected_repr
@@ -183,7 +192,8 @@ def test_bookmark_initialization_with_values_none(test_input, expected_values, e
     ]
 )
 def test_bookmark_initialization_with_values_empty_string(test_input, expected_values, expected_bool, expected_repr):
-    bookmark = neo4j.api.Bookmark(*test_input)
+    with pytest.deprecated_call():
+        bookmark = neo4j.Bookmark(*test_input)
     assert bookmark.values == expected_values
     assert bool(bookmark) is expected_bool
     assert repr(bookmark) == expected_repr
@@ -198,7 +208,8 @@ def test_bookmark_initialization_with_values_empty_string(test_input, expected_v
     ]
 )
 def test_bookmark_initialization_with_valid_strings(test_input, expected_values, expected_bool, expected_repr):
-    bookmark = neo4j.api.Bookmark(*test_input)
+    with pytest.deprecated_call():
+        bookmark = neo4j.Bookmark(*test_input)
     assert bookmark.values == expected_values
     assert bool(bookmark) is expected_bool
     assert repr(bookmark) == expected_repr
@@ -213,8 +224,79 @@ def test_bookmark_initialization_with_valid_strings(test_input, expected_values,
     ]
 )
 def test_bookmark_initialization_with_invalid_strings(test_input, expected):
-    with pytest.raises(expected) as e:
-        bookmark = neo4j.api.Bookmark(*test_input)
+    with pytest.raises(expected):
+        neo4j.Bookmark(*test_input)
+
+
+@pytest.mark.parametrize("test_as_generator", [True, False])
+@pytest.mark.parametrize("values", (
+    ("bookmark1", "bookmark2", "bookmark3"),
+    {"bookmark1", "bookmark2", "bookmark3"},
+    frozenset(("bookmark1", "bookmark2", "bookmark3")),
+    ["bookmark1", "bookmark2", "bookmark3"],
+    ("bookmark1", "bookmark2", "bookmark1"),
+    ("bookmark1", ""),
+    ("bookmark1",),
+    (),
+    (not_ascii,),
+))
+def test_bookmarks_raw_values(test_as_generator, values):
+    expected = frozenset(values)
+    if test_as_generator:
+        values = (v for v in values)
+    received = neo4j.Bookmarks().from_raw_values(values).raw_values
+    assert isinstance(received, frozenset)
+    assert received == expected
+
+
+@pytest.mark.parametrize(("values", "exc_type"), (
+    (("bookmark1", None), TypeError),
+    ((neo4j.Bookmarks(),), TypeError),
+    (neo4j.Bookmarks(), TypeError),
+    ((None,), TypeError),
+    (None, TypeError),
+    ((False,), TypeError),
+    (((),), TypeError),
+    (([],), TypeError),
+    ((dict(),), TypeError),
+    ((set(),), TypeError),
+    ((frozenset(),), TypeError),
+    ((["bookmark1", "bookmark2"],), TypeError),
+))
+def test_bookmarks_invalid_raw_values(values, exc_type):
+    with pytest.raises(exc_type):
+        neo4j.Bookmarks().from_raw_values(values)
+
+
+@pytest.mark.parametrize(("values", "expected_repr"), (
+    (("bm1", "bm2"), "<Bookmarks values={'bm1', 'bm2'}>"),
+    (("bm2", "bm1"), "<Bookmarks values={'bm1', 'bm2'}>"),
+    (("bm42",), "<Bookmarks values={'bm42'}>"),
+    ((), "<Bookmarks values={}>"),
+))
+def test_bookmarks_repr(values, expected_repr):
+    bookmarks = neo4j.Bookmarks().from_raw_values(values)
+    assert repr(bookmarks) == expected_repr
+
+
+@pytest.mark.parametrize(("values1", "values2"), (
+    (values
+     for values in itertools.combinations_with_replacement(
+         (
+             ("bookmark1",),
+             ("bookmark1", "bookmark2"),
+             ("bookmark3",),
+             (),
+         ),
+         2
+     ))
+))
+def test_bookmarks_combination(values1, values2):
+    bookmarks1 = neo4j.Bookmarks().from_raw_values(values1)
+    bookmarks2 = neo4j.Bookmarks().from_raw_values(values2)
+    bookmarks3 = bookmarks1 + bookmarks2
+    assert bookmarks3.raw_values == (bookmarks2 + bookmarks1).raw_values
+    assert bookmarks3.raw_values == frozenset(values1) | frozenset(values2)
 
 
 @pytest.mark.parametrize(
@@ -231,7 +313,7 @@ def test_bookmark_initialization_with_invalid_strings(test_input, expected):
     ]
 )
 def test_version_initialization(test_input, expected_str, expected_repr):
-    version = neo4j.api.Version(*test_input)
+    version = neo4j.Version(*test_input)
     assert str(version) == expected_str
     assert repr(version) == expected_repr
 
@@ -247,7 +329,7 @@ def test_version_initialization(test_input, expected_str, expected_repr):
     ]
 )
 def test_version_from_bytes_with_valid_bolt_version_handshake(test_input, expected_str, expected_repr):
-    version = neo4j.api.Version.from_bytes(test_input)
+    version = neo4j.Version.from_bytes(test_input)
     assert str(version) == expected_str
     assert repr(version) == expected_repr
 
@@ -264,7 +346,7 @@ def test_version_from_bytes_with_valid_bolt_version_handshake(test_input, expect
 )
 def test_version_from_bytes_with_not_valid_bolt_version_handshake(test_input, expected):
     with pytest.raises(expected):
-        version = neo4j.api.Version.from_bytes(test_input)
+        version = neo4j.Version.from_bytes(test_input)
 
 
 @pytest.mark.parametrize(
@@ -280,7 +362,7 @@ def test_version_from_bytes_with_not_valid_bolt_version_handshake(test_input, ex
     ]
 )
 def test_version_to_bytes_with_valid_bolt_version(test_input, expected):
-    version = neo4j.api.Version(*test_input)
+    version = neo4j.Version(*test_input)
     assert version.to_bytes() == expected
 
 
@@ -289,9 +371,9 @@ def test_serverinfo_initialization():
     from neo4j.addressing import Address
 
     address = Address(("bolt://localhost", 7687))
-    version = neo4j.api.Version(3, 0)
+    version = neo4j.Version(3, 0)
 
-    server_info = neo4j.api.ServerInfo(address, version)
+    server_info = neo4j.ServerInfo(address, version)
     assert server_info.address is address
     assert server_info.protocol_version is version
     assert server_info.agent is None
@@ -312,9 +394,9 @@ def test_serverinfo_with_metadata(test_input, expected_agent,
     from neo4j.addressing import Address
 
     address = Address(("bolt://localhost", 7687))
-    version = neo4j.api.Version(*protocol_version)
+    version = neo4j.Version(*protocol_version)
 
-    server_info = neo4j.api.ServerInfo(address, version)
+    server_info = neo4j.ServerInfo(address, version)
 
     server_info.update(test_input)
 

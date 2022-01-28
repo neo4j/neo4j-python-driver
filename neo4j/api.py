@@ -24,10 +24,7 @@ from urllib.parse import (
     urlparse,
 )
 
-from .exceptions import (
-    ConfigurationError,
-    DriverError,
-)
+from .exceptions import ConfigurationError
 from .meta import deprecated
 
 
@@ -167,9 +164,14 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
 class Bookmark:
     """A Bookmark object contains an immutable list of bookmark string values.
 
+    .. deprecated:: 5.0
+        `Bookmark` will be removed in version 6.0.
+        Use :class:`Bookmarks` instead.
+
     :param values: ASCII string values
     """
 
+    @deprecated("Use the `Bookmarks`` class instead.")
     def __init__(self, *values):
         if values:
             bookmarks = []
@@ -200,6 +202,74 @@ class Bookmark:
         :rtype: frozenset
         """
         return self._values
+
+
+class Bookmarks:
+    """Container for an immutable set of bookmark string values.
+
+    Bookmarks are used to causally chain session.
+    See :meth:`Session.last_bookmarks` or :meth:`AsyncSession.last_bookmarks`
+    for more information.
+
+    Use addition to combine multiple Bookmarks objects::
+
+        bookmarks3 = bookmarks1 + bookmarks2
+    """
+
+    def __init__(self):
+        self._raw_values = frozenset()
+
+    def __repr__(self):
+        """
+        :return: repr string with sorted values
+        """
+        return "<Bookmarks values={{{}}}>".format(
+            ", ".join(map(repr, sorted(self._raw_values)))
+        )
+
+    def __bool__(self):
+        return bool(self._raw_values)
+
+    def __add__(self, other):
+        if isinstance(other, Bookmarks):
+            if not other:
+                return self
+            ret = self.__class__()
+            ret._raw_values = self._raw_values | other._raw_values
+            return ret
+        return NotImplemented
+
+    @property
+    def raw_values(self):
+        """The raw bookmark values.
+
+        You should not need to access them unless you want to serialize
+        bookmarks.
+
+        :return: immutable list of bookmark string values
+        :rtype: frozenset[str]
+        """
+        return self._raw_values
+
+    @classmethod
+    def from_raw_values(cls, values):
+        """Create a Bookmarks object from a list of raw bookmark string values.
+
+        You should not need to use this method unless you want to deserialize
+        bookmarks.
+
+        :param values: ASCII string values (raw bookmarks)
+        :type values: Iterable[str]
+        """
+        obj = cls()
+        bookmarks = []
+        for value in values:
+            if not isinstance(value, str):
+                raise TypeError("Raw bookmark values must be str. "
+                                "Found {}".format(type(value)))
+            bookmarks.append(value)
+        obj._raw_values = frozenset(bookmarks)
+        return obj
 
 
 class ServerInfo:
