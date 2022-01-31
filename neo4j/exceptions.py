@@ -38,6 +38,9 @@ Driver API Errors
 + DriverError
   + TransactionError
     + TransactionNestingError
+  + ResultError
+    + ResultConsumedError
+    + ResultNotSingleError
   + SessionExpired
   + ServiceUnavailable
     + RoutingServiceUnavailable
@@ -47,7 +50,6 @@ Driver API Errors
   + ConfigurationError
     + AuthConfigurationError
     + CertificateConfigurationError
-  + ResultConsumedError
 
 Connector API Errors
 ====================
@@ -293,6 +295,22 @@ class TransactionNestingError(DriverError):
         self.transaction = transaction
 
 
+class ResultError(DriverError):
+    """Raised when an error occurs while using a result object."""
+
+    def __init__(self, result, *args, **kwargs):
+        super(ResultError, self).__init__(*args, **kwargs)
+        self.result = result
+
+
+class ResultConsumedError(ResultError):
+    """Raised when trying to access records of a consumed result."""
+
+
+class ResultNotSingleError(ResultError):
+    """Raised when result.single() detects not exactly one record in result."""
+
+
 class ServiceUnavailable(DriverError):
     """ Raised when no database service is available.
     """
@@ -321,15 +339,6 @@ class IncompleteCommit(ServiceUnavailable):
     in an unknown state with regard to whether the transaction completed
     successfully or not.
     """
-
-
-class ResultConsumedError(DriverError):
-    """ Raised when trying to access records after the records have been consumed.
-    """
-
-
-class ResultNotSingleError(DriverError):
-    """Raised when result.single() detects not exactly one record in result."""
 
 
 class ConfigurationError(DriverError):

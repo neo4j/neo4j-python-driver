@@ -5,7 +5,9 @@
 - Python 3.10 support added
 - Python 3.6 support has been dropped.
 - `Result`, `Session`, and `Transaction` can no longer be imported from
-  `neo4j.work`. They should've been imported from `neo4j` all along.
+  `neo4j.work`. They should've been imported from `neo4j` all along.  
+  Remark: It's recommended to import everything needed directly from `noe4j`,
+  not its submodules or subpackages.
 - Experimental pipelines feature has been removed.
 - Experimental async driver has been added.
 - `ResultSummary.server.version_info` has been removed.  
@@ -65,6 +67,17 @@
   destructor will ever be called. A `ResourceWarning` is emitted instead.  
   Make sure to configure Python to output those warnings when developing your
   application locally (it does not by default).
+- Result scope:  
+  - Records of Results cannot be accessed (`peek`, `single`, `iter`, ...)
+    after their owning transaction has been closed, committed, or rolled back.
+    Previously, this would yield undefined behavior.
+    It now raises a `ResultConsumedError`.
+  - Records of Results cannot be accessed (`peek`, `single`, `iter`, ...)
+    after the Result has been consumed (`Result.consume()`).
+    Previously, this would always yield no records.
+    It now raises a `ResultConsumedError`.
+  - New method `Result.closed()` can be used to check for this condition if
+    necessary.
 
 
 ## Version 4.4

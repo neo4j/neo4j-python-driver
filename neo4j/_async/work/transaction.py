@@ -78,7 +78,7 @@ class AsyncTransaction:
 
     async def _consume_results(self):
         for result in self._results:
-            await result.consume()
+            await result._tx_end()
         self._results = []
 
     async def run(self, query, parameters=None, **kwparameters):

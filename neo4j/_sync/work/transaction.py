@@ -78,7 +78,7 @@ class Transaction:
 
     def _consume_results(self):
         for result in self._results:
-            result.consume()
+            result._tx_end()
         self._results = []
 
     def run(self, query, parameters=None, **kwparameters):
