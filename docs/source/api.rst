@@ -483,9 +483,16 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 
 ``bookmarks``
 -------------
-An iterable containing :class:`neo4j.Bookmark`
+Optional :class:`neo4j.Bookmarks`. Use this to causally chain sessions.
+See :meth:`Session.last_bookmarks` or :meth:`AsyncSession.last_bookmarks` for
+more information.
 
-:Default: ``()``
+.. deprecated:: 5.0
+    Alternatively, an iterable of strings can be passed. This usage is
+    deprecated and will be removed in a future release. Please use a
+    :class:`neo4j.Bookmarks` object instead.
+
+:Default: ``None``
 
 
 .. _database-ref:

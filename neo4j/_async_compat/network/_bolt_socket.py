@@ -46,7 +46,7 @@ from ...exceptions import (
     DriverError,
     ServiceUnavailable,
 )
-from .util import (
+from ._util import (
     AsyncNetworkUtil,
     NetworkUtil,
 )
