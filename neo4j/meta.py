@@ -96,3 +96,16 @@ def experimental(message):
             return f(*args, **kwargs)
         return f_
     return f__
+
+
+def unclosed_resource_warn(obj):
+    import tracemalloc
+    from warnings import warn
+    msg = f"Unclosed {obj!r}."
+    trace = tracemalloc.get_object_traceback(obj)
+    if trace:
+        msg += "\nObject allocated at (most recent call last):\n"
+        msg += "\n".join(trace.format())
+    else:
+        msg += "\nEnable tracemalloc to get the object allocation traceback."
+    warn(msg, ResourceWarning, stacklevel=2, source=obj)

@@ -84,21 +84,10 @@ class Session(Workspace):
     # The state this session is in.
     _state_failed = False
 
-    # Session have been properly closed.
-    _closed = False
-
     def __init__(self, pool, session_config):
         super().__init__(pool, session_config)
         assert isinstance(session_config, SessionConfig)
         self._bookmarks = self._prepare_bookmarks(session_config.bookmarks)
-
-    def __del__(self):
-        if asyncio.iscoroutinefunction(self.close):
-            return
-        try:
-            self.close()
-        except (OSError, ServiceUnavailable, SessionExpired):
-            pass
 
     def __enter__(self):
         return self

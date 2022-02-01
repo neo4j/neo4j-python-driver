@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+import asyncio
+
 from .._async_compat.util import AsyncUtil
 from ..addressing import Address
 from ..api import READ_ACCESS
@@ -25,7 +27,11 @@ from ..conf import (
     SessionConfig,
     WorkspaceConfig,
 )
-from ..meta import experimental
+from ..meta import (
+    deprecation_warn,
+    experimental,
+    unclosed_resource_warn,
+)
 
 
 class AsyncGraphDatabase:
@@ -189,6 +195,9 @@ class AsyncDriver:
     #: Connection pool
     _pool = None
 
+    #: Flag if the driver has been closed
+    _closed = False
+
     def __init__(self, pool):
         assert pool is not None
         self._pool = pool
@@ -200,8 +209,19 @@ class AsyncDriver:
         await self.close()
 
     def __del__(self):
-        if not AsyncUtil.is_async_code:
-            self.close()
+        if not self._closed:
+            unclosed_resource_warn(self)
+        # TODO: 6.0 - remove this
+        if not self._closed:
+            if not AsyncUtil.is_async_code:
+                deprecation_warn(
+                    "Relying on AsyncDriver's destructor to close the session "
+                    "is deprecated. Please make sure to close the session. "
+                    "Use it as a context (`with` statement) or make sure to "
+                    "call `.close()` explicitly. Future versions of the "
+                    "driver will not close drivers automatically."
+                )
+                self.close()
 
     @property
     def encrypted(self):
@@ -225,6 +245,7 @@ class AsyncDriver:
         """ Shut down, closing any open connections in the pool.
         """
         await self._pool.close()
+        self._closed = True
 
     @experimental("The configuration may change in the future.")
     async def verify_connectivity(self, **config):

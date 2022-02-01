@@ -19,7 +19,14 @@
 import asyncio
 
 from ...conf import WorkspaceConfig
-from ...exceptions import ServiceUnavailable
+from ...exceptions import (
+    ServiceUnavailable,
+    SessionExpired,
+)
+from ...meta import (
+    deprecation_warn,
+    unclosed_resource_warn,
+)
 from ..io import AsyncNeo4jPool
 
 
@@ -34,13 +41,25 @@ class AsyncWorkspace:
         # Sessions are supposed to cache the database on which to operate.
         self._cached_database = False
         self._bookmarks = None
+        # Workspace has been closed.
+        self._closed = False
 
     def __del__(self):
+        if not self._closed:
+            unclosed_resource_warn(self)
+        # TODO: 6.0 - remove this
         if asyncio.iscoroutinefunction(self.close):
             return
         try:
+            deprecation_warn(
+                "Relying on AsyncSession's destructor to close the session "
+                "is deprecated. Please make sure to close the session. Use it "
+                "as a context (`with` statement) or make sure to call "
+                "`.close()` explicitly. Future versions of the driver will "
+                "not close sessions automatically."
+            )
             self.close()
-        except OSError:
+        except (OSError, ServiceUnavailable, SessionExpired):
             pass
 
     async def __aenter__(self):
@@ -100,3 +119,4 @@ class AsyncWorkspace:
 
     async def close(self):
         await self._disconnect(sync=True)
+        self._closed = True
