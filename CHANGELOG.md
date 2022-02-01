@@ -60,6 +60,11 @@
     Use `Session.last_bookmarks` instead.
   - `neo4j.Bookmark` was deprecated.  
     Use `neo4j.Bookmarks` instead.
+- Deprecated closing of driver and session objects in their destructor.
+  This behaviour is non-deterministic as there is no guarantee that the
+  destructor will ever be called. A `ResourceWarning` is emitted instead.  
+  Make sure to configure Python to output those warnings when developing your
+  application locally (it does not by default).
 
 
 ## Version 4.4
