@@ -109,14 +109,17 @@ class Session(Workspace):
         self.close()
 
     def _prepare_bookmarks(self, bookmarks):
-        if not bookmarks:
-            return ()
         if isinstance(bookmarks, Bookmarks):
             return tuple(bookmarks.raw_values)
         if hasattr(bookmarks, "__iter__"):
-            deprecation_warn("Passing an iterable to `bookmarks` is "
-                             "deprecated. Please use a Bookmarks instance.")
+            deprecation_warn(
+                "Passing an iterable as `bookmarks` to `Session` is "
+                "deprecated. Please use a `Bookmarks` instance.",
+                stack_level=5
+            )
             return tuple(bookmarks)
+        if not bookmarks:
+            return ()
         raise TypeError("Bookmarks must be an instance of Bookmarks or an "
                         "iterable of raw bookmarks (deprecated).")
 
