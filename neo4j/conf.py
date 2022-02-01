@@ -310,11 +310,10 @@ class SessionConfig(WorkspaceConfig):
     """
 
     #: Bookmarks
-    bookmarks = ()
+    bookmarks = None
 
     #: Default AccessMode
     default_access_mode = WRITE_ACCESS
-    # access_mode = DeprecatedAlias("default_access_mode")
 
 
 class TransactionConfig(Config):

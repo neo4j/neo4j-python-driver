@@ -16,11 +16,11 @@
 # limitations under the License.
 
 
-from .bolt_socket import (
+from ._bolt_socket import (
     AsyncBoltSocket,
     BoltSocket,
 )
-from .util import (
+from ._util import (
     AsyncNetworkUtil,
     NetworkUtil,
 )

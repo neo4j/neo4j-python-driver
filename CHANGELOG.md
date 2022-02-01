@@ -54,6 +54,13 @@
   was silently ignored.
 - `Result.single` now raises `ResultNotSingleError` if not exactly one result is
   available.
+- Bookmarks
+  - `Session.last_bookmark` was deprecated. Its behaviour is partially incorrect
+    and cannot be fixed without breaking its signature.  
+    Use `Session.last_bookmarks` instead.
+  - `neo4j.Bookmark` was deprecated.  
+    Use `neo4j.Bookmarks` instead.
+
 
 ## Version 4.4
 

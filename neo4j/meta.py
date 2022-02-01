@@ -16,6 +16,7 @@
 # limitations under the License.
 
 
+import asyncio
 from functools import wraps
 
 
@@ -37,9 +38,9 @@ def get_user_agent():
     return template.format(*fields)
 
 
-def deprecation_warn(message):
+def deprecation_warn(message, stack_level=2):
     from warnings import warn
-    warn(message, category=DeprecationWarning, stacklevel=2)
+    warn(message, category=DeprecationWarning, stacklevel=stack_level)
 
 
 def deprecated(message):
@@ -52,13 +53,23 @@ def deprecated(message):
             pass
 
     """
-    def f__(f):
-        @wraps(f)
-        def f_(*args, **kwargs):
-            deprecation_warn(message)
-            return f(*args, **kwargs)
-        return f_
-    return f__
+    def decorator(f):
+        if asyncio.iscoroutinefunction(f):
+            @wraps(f)
+            async def inner(*args, **kwargs):
+                deprecation_warn(message, stack_level=3)
+                return await f(*args, **kwargs)
+
+            return inner
+        else:
+            @wraps(f)
+            def inner(*args, **kwargs):
+                deprecation_warn(message, stack_level=3)
+                return f(*args, **kwargs)
+
+            return inner
+
+    return decorator
 
 
 class ExperimentalWarning(Warning):

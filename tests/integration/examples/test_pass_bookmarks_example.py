@@ -24,7 +24,10 @@ from neo4j.exceptions import ServiceUnavailable
 
 # isort: off
 # tag::pass-bookmarks-import[]
-from neo4j import GraphDatabase
+from neo4j import (
+    Bookmarks,
+    GraphDatabase,
+)
 # end::pass-bookmarks-import[]
 # isort: on
 
@@ -70,19 +73,19 @@ class BookmarksExample:
             print("{} knows {}".format(record["a.name"], record["b.name"]))
 
     def main(self):
-        saved_bookmarks = []  # To collect the session bookmarks
+        saved_bookmarks = Bookmarks()  # To collect the session bookmarks
 
         # Create the first person and employment relationship.
         with self.driver.session() as session_a:
             session_a.write_transaction(self.create_person, "Alice")
             session_a.write_transaction(self.employ, "Alice", "Wayne Enterprises")
-            saved_bookmarks.append(session_a.last_bookmark())
+            saved_bookmarks += session_a.last_bookmarks()
 
         # Create the second person and employment relationship.
         with self.driver.session() as session_b:
             session_b.write_transaction(self.create_person, "Bob")
             session_b.write_transaction(self.employ, "Bob", "LexCorp")
-            saved_bookmarks.append(session_b.last_bookmark())
+            saved_bookmarks += session_a.last_bookmarks()
 
         # Create a friendship between the two people created above.
         with self.driver.session(bookmarks=saved_bookmarks) as session_c:

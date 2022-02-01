@@ -23,6 +23,7 @@ from time import perf_counter
 
 from ..._async_compat import async_sleep
 from ...api import (
+    Bookmarks,
     READ_ACCESS,
     WRITE_ACCESS,
 )
@@ -36,6 +37,10 @@ from ...exceptions import (
     SessionExpired,
     TransactionError,
     TransientError,
+)
+from ...meta import (
+    deprecated,
+    deprecation_warn,
 )
 from ...work import Query
 from .result import AsyncResult
@@ -85,7 +90,7 @@ class AsyncSession(AsyncWorkspace):
     def __init__(self, pool, session_config):
         super().__init__(pool, session_config)
         assert isinstance(session_config, SessionConfig)
-        self._bookmarks = tuple(session_config.bookmarks)
+        self._bookmarks = self._prepare_bookmarks(session_config.bookmarks)
 
     def __del__(self):
         if asyncio.iscoroutinefunction(self.close):
@@ -103,6 +108,21 @@ class AsyncSession(AsyncWorkspace):
             self._state_failed = True
         await self.close()
 
+    def _prepare_bookmarks(self, bookmarks):
+        if isinstance(bookmarks, Bookmarks):
+            return tuple(bookmarks.raw_values)
+        if hasattr(bookmarks, "__iter__"):
+            deprecation_warn(
+                "Passing an iterable as `bookmarks` to `Session` is "
+                "deprecated. Please use a `Bookmarks` instance.",
+                stack_level=5
+            )
+            return tuple(bookmarks)
+        if not bookmarks:
+            return ()
+        raise TypeError("Bookmarks must be an instance of Bookmarks or an "
+                        "iterable of raw bookmarks (deprecated).")
+
     async def _connect(self, access_mode):
         if access_mode is None:
             access_mode = self._config.default_access_mode
@@ -110,7 +130,7 @@ class AsyncSession(AsyncWorkspace):
 
     def _collect_bookmark(self, bookmark):
         if bookmark:
-            self._bookmarks = [bookmark]
+            self._bookmarks = bookmark,
 
     async def _result_closed(self):
         if self._auto_result:
@@ -222,11 +242,26 @@ class AsyncSession(AsyncWorkspace):
 
         return self._auto_result
 
+    @deprecated(
+        "`last_bookmark` has been deprecated in favor of `last_bookmarks`. "
+        "This method can lead to unexpected behaviour."
+    )
     async def last_bookmark(self):
         """Return the bookmark received following the last completed transaction.
-        Note: For auto-transaction (Session.run) this will trigger an consume for the current result.
 
-        :returns: :class:`neo4j.Bookmark` object
+        Note: For auto-transactions (:meth:`Session.run`), this will trigger
+        :meth:`Result.consume` for the current result.
+
+        .. warning::
+            This method can lead to unexpected behaviour if the session has not
+            yet successfully completed a transaction.
+
+        .. deprecated:: 5.0
+            :meth:`last_bookmark` will be removed in version 6.0.
+            Use :meth:`last_bookmarks` instead.
+
+        :returns: last bookmark
+        :rtype: str or None
         """
         # The set of bookmarks to be passed into the next transaction.
 
@@ -237,9 +272,49 @@ class AsyncSession(AsyncWorkspace):
             self._collect_bookmark(self._transaction._bookmark)
             self._transaction = None
 
-        if len(self._bookmarks):
-            return self._bookmarks[len(self._bookmarks)-1]
+        if self._bookmarks:
+            return self._bookmarks[-1]
         return None
+
+    async def last_bookmarks(self):
+        """Return most recent bookmarks of the session.
+
+        Bookmarks can be used to causally chain sessions. For example,
+        if a session (``session1``) wrote something, that another session
+        (``session2``) needs to read, use
+        ``session2 = driver.session(bookmarks=session1.last_bookmarks())`` to
+        achieve this.
+
+        Combine the bookmarks of multiple sessions like so::
+
+            bookmarks1 = await session1.last_bookmarks()
+            bookmarks2 = await session2.last_bookmarks()
+            session3 = driver.session(bookmarks=bookmarks1 + bookmarks2)
+
+        A session automatically manages bookmarks, so this method is rarely
+        needed. If you need causal consistency, try to run the relevant queries
+        in the same session.
+
+        "Most recent bookmarks" are either the bookmarks passed to the session
+        or creation, or the last bookmark the session received after committing
+        a transaction to the server.
+
+        Note: For auto-transactions (:meth:`Session.run`), this will trigger
+        :meth:`Result.consume` for the current result.
+
+        :returns: the session's last known bookmarks
+        :rtype: Bookmarks
+        """
+        # The set of bookmarks to be passed into the next transaction.
+
+        if self._auto_result:
+            await self._auto_result.consume()
+
+        if self._transaction and self._transaction._closed:
+            self._collect_bookmark(self._transaction._bookmark)
+            self._transaction = None
+
+        return Bookmarks.from_raw_values(self._bookmarks)
 
     async def _transaction_closed_handler(self):
         if self._transaction:

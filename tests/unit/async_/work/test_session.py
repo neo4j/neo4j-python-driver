@@ -23,6 +23,7 @@ import pytest
 from neo4j import (
     AsyncSession,
     AsyncTransaction,
+    Bookmarks,
     SessionConfig,
     unit_of_work,
 )
@@ -169,16 +170,56 @@ async def test_closes_connection_after_tx_commit(pool, test_run_args):
         assert session._connection is None
 
 
-@pytest.mark.parametrize("bookmarks", (None, [], ["abc"], ["foo", "bar"]))
+@pytest.mark.parametrize(
+    "bookmark_values",
+    (None, [], ["abc"], ["foo", "bar"], {"a", "b"}, ("1", "two"))
+)
 @mark_async_test
-async def test_session_returns_bookmark_directly(pool, bookmarks):
+async def test_session_returns_bookmarks_directly(pool, bookmark_values):
+    if bookmark_values is not None:
+        bookmarks = Bookmarks.from_raw_values(bookmark_values)
+    else:
+        bookmarks = Bookmarks()
     async with AsyncSession(
         pool, SessionConfig(bookmarks=bookmarks)
     ) as session:
-        if bookmarks:
-            assert await session.last_bookmark() == bookmarks[-1]
+        ret_bookmarks = (await session.last_bookmarks())
+        assert isinstance(ret_bookmarks, Bookmarks)
+        ret_bookmarks = ret_bookmarks.raw_values
+        if bookmark_values is None:
+            assert ret_bookmarks == frozenset()
         else:
-            assert await session.last_bookmark() is None
+            assert ret_bookmarks == frozenset(bookmark_values)
+
+
+@pytest.mark.parametrize(
+    "bookmarks",
+    (None, [], ["abc"], ["foo", "bar"], ("1", "two"))
+)
+@mark_async_test
+async def test_session_last_bookmark_is_deprecated(pool, bookmarks):
+    async with AsyncSession(pool, SessionConfig(
+        bookmarks=bookmarks
+    )) as session:
+        with pytest.warns(DeprecationWarning):
+            if bookmarks:
+                assert (await session.last_bookmark()) == bookmarks[-1]
+            else:
+                assert (await session.last_bookmark()) is None
+
+
+@pytest.mark.parametrize(
+    "bookmarks",
+    (("foo",), ("foo", "bar"), (), ["foo", "bar"], {"a", "b"})
+)
+@mark_async_test
+async def test_session_bookmarks_as_iterable_is_deprecated(pool, bookmarks):
+    with pytest.warns(DeprecationWarning):
+        async with AsyncSession(pool, SessionConfig(
+            bookmarks=bookmarks
+        )) as session:
+            ret_bookmarks = (await session.last_bookmarks()).raw_values
+            assert ret_bookmarks == frozenset(bookmarks)
 
 
 @pytest.mark.parametrize(("query", "error_type"), (

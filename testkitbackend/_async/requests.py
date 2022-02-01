@@ -227,9 +227,12 @@ async def NewSession(backend, data):
         access_mode = neo4j.WRITE_ACCESS
     else:
         raise ValueError("Unknown access mode:" + access_mode)
+    bookmarks = None
+    if "bookmarks" in data and data["bookmarks"]:
+        bookmarks = neo4j.Bookmarks.from_raw_values(data["bookmarks"])
     config = {
             "default_access_mode": access_mode,
-            "bookmarks": data["bookmarks"],
+            "bookmarks": bookmarks,
             "database": data["database"],
             "fetch_size": data.get("fetchSize", None),
             "impersonated_user": data.get("impersonatedUser", None),
@@ -323,11 +326,9 @@ async def RetryableNegative(backend, data):
 async def SessionLastBookmarks(backend, data):
     key = data["sessionId"]
     session = backend.sessions[key].session
-    bookmark = await session.last_bookmark()
-    bookmarks = []
-    if bookmark:
-        bookmarks.append(bookmark)
-    await backend.send_response("Bookmarks", {"bookmarks": bookmarks})
+    bookmarks = await session.last_bookmarks()
+    await backend.send_response("Bookmarks",
+                                {"bookmarks": list(bookmarks.raw_values)})
 
 
 async def TransactionRun(backend, data):
