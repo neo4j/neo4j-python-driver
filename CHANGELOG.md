@@ -49,9 +49,9 @@
       Use `hour_minute_second_nanosecond` instead.
     - The property `second` returns an `int` instead of a `float`.  
       Use `nanosecond` to get the sub-second information.
-- Creation of a driver with `bolt[+s[sc]]://` scheme now raises an error if the
-  URI contains a query part (a routing context). Previously, the routing context
-  was silently ignored.
+- Creation of a driver with `bolt[+s[sc]]://` scheme has been deprecated and
+  will raise an error in the Future. The routing context was and will be
+  silently ignored until then.
 - `Result.single` now raises `ResultNotSingleError` if not exactly one result is
   available.
 - Bookmarks
