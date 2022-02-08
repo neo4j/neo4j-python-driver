@@ -23,7 +23,9 @@
     "stub.authorization.test_authorization.TestAuthorizationV4x1.test_should_fail_on_token_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
     "stub.session_run_parameters.test_session_run_parameters.TestSessionRunParameters.test_empty_query":
-      "Driver rejects empty queries before sending it to the server"
+      "Driver rejects empty queries before sending it to the server",
+    "stub.server_side_routing.test_server_side_routing.TestServerSideRouting.test_direct_connection_with_url_params":
+      "Driver emits deprecation warning. Behavior will be unified in 6.0."
   },
   "features": {
     "Feature:API:Driver.IsEncrypted": true,

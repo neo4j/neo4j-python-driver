@@ -17,7 +17,6 @@
 
 
 from collections import deque
-from warnings import warn
 
 from ..._async_compat.util import Util
 from ...data import DataDehydrator

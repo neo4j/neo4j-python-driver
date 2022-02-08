@@ -36,22 +36,32 @@ from ..._async_compat import (
 @pytest.mark.parametrize("host", ("localhost", "127.0.0.1",
                                   "[::1]", "[0:0:0:0:0:0:0:1]"))
 @pytest.mark.parametrize("port", (":1234", "", ":7687"))
+@pytest.mark.parametrize("params", ("", "?routing_context=test"))
 @pytest.mark.parametrize("auth_token", (("test", "test"), None))
-def test_direct_driver_constructor(protocol, host, port, auth_token):
-    uri = protocol + host + port
-    driver = GraphDatabase.driver(uri, auth=auth_token)
+@mark_sync_test
+def test_direct_driver_constructor(protocol, host, port, params, auth_token):
+    uri = protocol + host + port + params
+    if params:
+        with pytest.warns(DeprecationWarning, match="routing context"):
+            driver = GraphDatabase.driver(uri, auth=auth_token)
+    else:
+        driver = GraphDatabase.driver(uri, auth=auth_token)
     assert isinstance(driver, BoltDriver)
+    driver.close()
 
 
 @pytest.mark.parametrize("protocol", ("neo4j://", "neo4j+s://", "neo4j+ssc://"))
 @pytest.mark.parametrize("host", ("localhost", "127.0.0.1",
                                   "[::1]", "[0:0:0:0:0:0:0:1]"))
 @pytest.mark.parametrize("port", (":1234", "", ":7687"))
+@pytest.mark.parametrize("params", ("", "?routing_context=test"))
 @pytest.mark.parametrize("auth_token", (("test", "test"), None))
-def test_routing_driver_constructor(protocol, host, port, auth_token):
-    uri = protocol + host + port
+@mark_sync_test
+def test_routing_driver_constructor(protocol, host, port, params, auth_token):
+    uri = protocol + host + port + params
     driver = GraphDatabase.driver(uri, auth=auth_token)
     assert isinstance(driver, Neo4jDriver)
+    driver.close()
 
 
 @pytest.mark.parametrize("test_uri", (
@@ -81,6 +91,7 @@ def test_routing_driver_constructor(protocol, host, port, auth_token):
         ),
     )
 )
+@mark_sync_test
 def test_driver_config_error(
     test_uri, test_config, expected_failure, expected_failure_message
 ):
@@ -90,7 +101,8 @@ def test_driver_config_error(
         with pytest.raises(expected_failure, match=expected_failure_message):
             GraphDatabase.driver(test_uri, **test_config)
     else:
-        GraphDatabase.driver(test_uri, **test_config)
+        driver = GraphDatabase.driver(test_uri, **test_config)
+        driver.close()
 
 
 @pytest.mark.parametrize("test_uri", (
@@ -138,3 +150,5 @@ def test_driver_opens_write_session_by_default(uri, mocker):
             mocker.ANY,
             mocker.ANY
         )
+
+    driver.close()
