@@ -164,6 +164,7 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`max-connection-pool-size-ref`
 + :ref:`max-transaction-retry-time-ref`
 + :ref:`resolver-ref`
++ :ref:`trust-ref`
 + :ref:`ssl-context-ref`
 + :ref:`trusted-certificates-ref`
 + :ref:`user-agent-ref`
@@ -276,6 +277,36 @@ For example:
 :Default: :const:`None`
 
 
+.. _trust-ref:
+
+``trust``
+---------
+Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
+
+This setting does not have any effect if ``encrypted`` is set to ``False``.
+
+:Type: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``, ``neo4j.TRUST_ALL_CERTIFICATES``
+
+.. py:attribute:: neo4j.TRUST_ALL_CERTIFICATES
+
+   Trust any server certificate (default). This ensures that communication
+   is encrypted but does not verify the server certificate against a
+   certificate authority. This option is primarily intended for use with
+   the default auto-generated server certificate.
+
+.. py:attribute:: neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+
+   Trust server certificates that can be verified against the system
+   certificate authority. This option is primarily intended for use with
+   full certificates.
+
+:Default: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``.
+
+.. deprecated:: 5.0
+    This configuration option is deprecated and will be removed in a future
+    release. Please use :ref:`trusted-certificates-ref` instead.
+
+
 .. _ssl-context-ref:
 
 ``ssl_context``
@@ -286,6 +317,8 @@ If give, ``encrypted`` and ``trusted_certificates`` have no effect.
 
 :Type: :class:`ssl.SSLContext` or :const:`None`
 :Default: :const:`None`
+
+.. versionadded:: 5.0
 
 
 .. _trusted-certificates-ref:
@@ -316,6 +349,8 @@ custom ``ssl_context`` is configured.
     self-signed and custom certificates.
 
 :Default: :const:`None`
+
+.. versionadded:: 5.0
 
 
 .. _user-agent-ref:

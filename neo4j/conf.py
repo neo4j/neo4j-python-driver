@@ -22,10 +22,15 @@ from warnings import warn
 
 from .api import (
     DEFAULT_DATABASE,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     WRITE_ACCESS,
 )
 from .exceptions import ConfigurationError
-from .meta import get_user_agent
+from .meta import (
+    deprecation_warn,
+    get_user_agent,
+)
 
 
 def iter_items(iterable):
@@ -44,9 +49,18 @@ def iter_items(iterable):
 
 
 class DeprecatedAlias:
+    """Used when a config option has been renamed."""
 
     def __init__(self, new):
         self.new = new
+
+
+class DeprecatedAlternative:
+    """Used for deprecated config options that have a similar alternative."""
+
+    def __init__(self, new, converter=None):
+        self.new = new
+        self.converter = converter
 
 
 class ConfigType(ABCMeta):
@@ -54,40 +68,56 @@ class ConfigType(ABCMeta):
     def __new__(mcs, name, bases, attributes):
         fields = []
         deprecated_aliases = {}
+        deprecated_alternatives = {}
 
         for base in bases:
             if type(base) is mcs:
                 fields += base.keys()
                 deprecated_aliases.update(base._deprecated_aliases())
+                deprecated_alternatives.update(base._deprecated_alternatives())
 
         for k, v in attributes.items():
             if isinstance(v, DeprecatedAlias):
                 deprecated_aliases[k] = v.new
+            elif isinstance(v, DeprecatedAlternative):
+                deprecated_alternatives[k] = v.new, v.converter
             elif not (k.startswith("_")
                       or callable(v)
                       or isinstance(v, (staticmethod, classmethod))):
                 fields.append(k)
 
         def keys(_):
-            return fields
+            return set(fields)
+
+        def _deprecated_keys(_):
+            return (set(deprecated_aliases.keys())
+                    | set(deprecated_alternatives.keys()))
+
+        def _get_new(_, key):
+            return deprecated_aliases.get(
+                key, deprecated_alternatives.get(key, (None,))[0]
+            )
 
         def _deprecated_aliases(_):
             return deprecated_aliases
 
-        def _deprecated_keys(_):
-            return list(deprecated_aliases)
-
-        def _get_new(_, key):
-            return deprecated_aliases.get(key)
+        def _deprecated_alternatives(_):
+            return deprecated_alternatives
 
         attributes.setdefault("keys", classmethod(keys))
-        attributes.setdefault("_deprecated_aliases", classmethod(_deprecated_aliases))
-        attributes.setdefault("_deprecated_keys", classmethod(_deprecated_keys))
-        attributes.setdefault("_get_new", classmethod(_get_new))
+        attributes.setdefault("_get_new",
+                              classmethod(_get_new))
+        attributes.setdefault("_deprecated_keys",
+                              classmethod(_deprecated_keys))
+        attributes.setdefault("_deprecated_aliases",
+                              classmethod(_deprecated_aliases))
+        attributes.setdefault("_deprecated_alternatives",
+                              classmethod(_deprecated_alternatives))
 
-        return super(ConfigType, mcs).__new__(mcs, name, bases,
-                                              {k: v for k, v in attributes.items()
-                                               if k not in deprecated_aliases})
+        return super(ConfigType, mcs).__new__(
+            mcs, name, bases, {k: v for k, v in attributes.items()
+                               if k not in _deprecated_keys(None)}
+        )
 
 
 class Config(Mapping, metaclass=ConfigType):
@@ -114,7 +144,7 @@ class Config(Mapping, metaclass=ConfigType):
     def _consume(cls, data):
         config = {}
         if data:
-            for key in list(cls.keys()) + list(cls._deprecated_keys()):
+            for key in cls.keys() | cls._deprecated_keys():
                 try:
                     value = data.pop(key)
                 except KeyError:
@@ -132,9 +162,19 @@ class Config(Mapping, metaclass=ConfigType):
             elif k in self._deprecated_keys():
                 k0 = self._get_new(k)
                 if k0 in data_dict:
-                    raise ValueError("Cannot specify both '{}' and '{}' in config".format(k0, k))
-                warn("The '{}' config key is deprecated, please use '{}' instead".format(k, k0))
-                set_attr(k0, v)
+                    raise ConfigurationError(
+                        "Cannot specify both '{}' and '{}' in config"
+                        .format(k0, k)
+                    )
+                deprecation_warn(
+                    "The '{}' config key is deprecated, please use '{}' "
+                    "instead".format(k, k0)
+                )
+                if k in self._deprecated_aliases():
+                    set_attr(k0, v)
+                else:  # k in self._deprecated_alternatives:
+                    _, converter = self._deprecated_alternatives()[k]
+                    converter(self, v)
             else:
                 raise AttributeError(k)
 
@@ -163,6 +203,13 @@ class Config(Mapping, metaclass=ConfigType):
         return iter(self.keys())
 
 
+def _trust_to_trusted_certificates(pool_config, trust):
+    if trust == TRUST_SYSTEM_CA_SIGNED_CERTIFICATES:
+        pool_config.trusted_certificates = None
+    elif trust == TRUST_ALL_CERTIFICATES:
+        pool_config.trusted_certificates = []
+
+
 class PoolConfig(Config):
     """ Connection pool configuration.
     """
@@ -178,6 +225,12 @@ class PoolConfig(Config):
     #: Connection Timeout
     connection_timeout = 30.0  # seconds
     # The maximum amount of time to wait for a TCP connection to be established.
+
+    #: Trust
+    trust = DeprecatedAlternative(
+        "trusted_certificates", _trust_to_trusted_certificates
+    )
+    # Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
 
     #: Custom Resolver
     resolver = None
