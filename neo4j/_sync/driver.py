@@ -20,7 +20,11 @@ import asyncio
 
 from .._async_compat.util import Util
 from ..addressing import Address
-from ..api import READ_ACCESS
+from ..api import (
+    READ_ACCESS,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+)
 from ..conf import (
     Config,
     PoolConfig,
@@ -71,20 +75,47 @@ class GraphDatabase:
 
         driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
-        if security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE] and ("encrypted" in config.keys() or "trusted_certificates" in config.keys()):
+        # TODO: 6.0 remove "trust" config option
+        if "trust" in config.keys():
+            if config["trust"] not in (TRUST_ALL_CERTIFICATES,
+                                       TRUST_SYSTEM_CA_SIGNED_CERTIFICATES):
+                from neo4j.exceptions import ConfigurationError
+                raise ConfigurationError(
+                    "The config setting `trust` values are {!r}"
+                    .format(
+                        [
+                            TRUST_ALL_CERTIFICATES,
+                            TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+                        ]
+                    )
+                )
+
+        if (security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE]
+            and ("encrypted" in config.keys()
+                 or "trust" in config.keys()
+                 or "trusted_certificates" in config.keys()
+                 or "ssl_context" in config.keys())):
             from neo4j.exceptions import ConfigurationError
-            raise ConfigurationError("The config settings 'encrypted' and 'trust' can only be used with the URI schemes {!r}. Use the other URI schemes {!r} for setting encryption settings.".format(
-                [
-                    URI_SCHEME_BOLT,
-                    URI_SCHEME_NEO4J,
-                ],
-                [
-                    URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
-                    URI_SCHEME_BOLT_SECURE,
-                    URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
-                    URI_SCHEME_NEO4J_SECURE,
-                ]
-            ))
+
+            # TODO: 6.0 remove "trust" from error message
+            raise ConfigurationError(
+                'The config settings "encrypted", "trust", '
+                '"trusted_certificates", and "ssl_context" can only be used '
+                "with the URI schemes {!r}. Use the other URI schemes {!r} "
+                "for setting encryption settings."
+                .format(
+                    [
+                        URI_SCHEME_BOLT,
+                        URI_SCHEME_NEO4J,
+                    ],
+                    [
+                        URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
+                        URI_SCHEME_BOLT_SECURE,
+                        URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
+                        URI_SCHEME_NEO4J_SECURE,
+                    ]
+                )
+            )
 
         if security_type == SECURITY_TYPE_SECURE:
             config["encrypted"] = True

@@ -12,7 +12,7 @@
   Use `ResultSummary.server.agent`, `ResultSummary.server.protocol_version`,
   or call the `dbms.components` procedure instead.
 - SSL configuration options have been changed:
-  - `trust` has been removed.  
+  - `trust` has been deprecated and will be removed in a future release.  
     Use `trusted_certificates` instead which expects `None` or a `list`. See the
     API documentation for more details.
 - `neo4j.time` module:

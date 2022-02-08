@@ -16,12 +16,16 @@
 # limitations under the License.
 
 
+import ssl
+
 import pytest
 
 from neo4j import (
     BoltDriver,
     GraphDatabase,
     Neo4jDriver,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
 from neo4j.api import WRITE_ACCESS
 from neo4j.exceptions import ConfigurationError
@@ -78,6 +82,18 @@ def test_routing_driver_constructor(protocol, host, port, params, auth_token):
         ({"encrypted": False}, ConfigurationError, "The config settings"),
         ({"encrypted": True}, ConfigurationError, "The config settings"),
         (
+            {"encrypted": True, "trust": TRUST_ALL_CERTIFICATES},
+            ConfigurationError, "The config settings"
+        ),
+        (
+            {"trust": TRUST_ALL_CERTIFICATES},
+            ConfigurationError, "The config settings"
+        ),
+        (
+            {"trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES},
+            ConfigurationError, "The config settings"
+        ),
+        (
             {"encrypted": True, "trusted_certificates": []},
             ConfigurationError, "The config settings"
         ),
@@ -87,6 +103,18 @@ def test_routing_driver_constructor(protocol, host, port, params, auth_token):
         ),
         (
             {"trusted_certificates": None},
+            ConfigurationError, "The config settings"
+        ),
+        (
+            {"trusted_certificates": ["foo", "bar"]},
+            ConfigurationError, "The config settings"
+        ),
+        (
+            {"ssl_context": None},
+            ConfigurationError, "The config settings"
+        ),
+        (
+            {"ssl_context": ssl.SSLContext(ssl.PROTOCOL_TLSv1)},
             ConfigurationError, "The config settings"
         ),
     )
@@ -113,6 +141,21 @@ def test_driver_config_error(
 def test_invalid_protocol(test_uri):
     with pytest.raises(ConfigurationError, match="scheme"):
         GraphDatabase.driver(test_uri)
+
+
+@pytest.mark.parametrize(
+    ("test_config", "expected_failure", "expected_failure_message"),
+    (
+        ({"trust": 1}, ConfigurationError, "The config setting `trust`"),
+        ({"trust": True}, ConfigurationError, "The config setting `trust`"),
+        ({"trust": None}, ConfigurationError, "The config setting `trust`"),
+    )
+)
+def test_driver_trust_config_error(
+    test_config, expected_failure, expected_failure_message
+):
+    with pytest.raises(expected_failure, match=expected_failure_message):
+        GraphDatabase.driver("bolt://127.0.0.1:9001", **test_config)
 
 
 @pytest.mark.parametrize("uri", (
