@@ -809,6 +809,8 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`n
 
     .. automethod:: data
 
+    .. automethod:: closed
+
 See https://neo4j.com/docs/driver-manual/current/cypher-workflow/#driver-type-mapping for more about type mapping.
 
 

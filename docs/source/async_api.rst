@@ -501,4 +501,6 @@ A :class:`neo4j.AsyncResult` is attached to an active connection, through a :cla
 
     .. automethod:: data
 
+    .. automethod:: closed
+
 See https://neo4j.com/docs/driver-manual/current/cypher-workflow/#driver-type-mapping for more about type mapping.

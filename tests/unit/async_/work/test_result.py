@@ -196,7 +196,7 @@ async def fetch_and_compare_all_records(
             if limit is not None and len(received_records) == limit:
                 break
         if limit is None:
-            assert result._closed
+            assert result._exhausted
     elif method == "next":
         n = len(expected_records) if limit is None else limit
         for _ in range(n):
@@ -205,7 +205,7 @@ async def fetch_and_compare_all_records(
         if limit is None:
             with pytest.raises(StopAsyncIteration):
                 await AsyncUtil.next(result)
-            assert result._closed
+            assert result._exhausted
     elif method == "one iter":
         iter_ = AsyncUtil.iter(result)
         n = len(expected_records) if limit is None else limit
@@ -215,7 +215,7 @@ async def fetch_and_compare_all_records(
         if limit is None:
             with pytest.raises(StopAsyncIteration):
                 await AsyncUtil.next(iter_)
-            assert result._closed
+            assert result._exhausted
     elif method == "new iter":
         n = len(expected_records) if limit is None else limit
         for _ in range(n):
@@ -226,7 +226,7 @@ async def fetch_and_compare_all_records(
             iter_ = AsyncUtil.iter(result)
             with pytest.raises(StopAsyncIteration):
                 await AsyncUtil.next(iter_)
-            assert result._closed
+            assert result._exhausted
     else:
         raise ValueError()
     assert received_records == expected_records
