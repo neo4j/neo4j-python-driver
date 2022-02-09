@@ -1,8 +1,0 @@
-!: BOLT 3
-!: AUTO HELLO
-!: AUTO GOODBYE
-!: AUTO RESET
-!: PORT 9001
-
-C: RUN "RETURN 1 AS x" {} {"mode": "r"}
-S: <EXIT>

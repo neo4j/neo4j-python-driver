@@ -269,7 +269,7 @@ class DriverError(Exception):
 
 
 class SessionExpired(DriverError):
-    """ Raised when no a session is no longer able to fulfil
+    """ Raised when a session is no longer able to fulfil
     the purpose described by its original parameters.
     """
 

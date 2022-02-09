@@ -123,6 +123,17 @@ def VerifyConnectivity(backend, data):
     backend.send_response("Driver", {"id": driver_id})
 
 
+def GetServerInfo(backend, data):
+    driver_id = data["driverId"]
+    driver = backend.drivers[driver_id]
+    server_info = driver.get_server_info()
+    backend.send_response("ServerInfo", {
+        "address": ":".join(map(str, server_info.address)),
+        "agent": server_info.agent,
+        "protocolVersion": ".".join(map(str, server_info.protocol_version)),
+    })
+
+
 def CheckMultiDBSupport(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]

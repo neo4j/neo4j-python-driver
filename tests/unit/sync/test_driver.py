@@ -27,13 +27,17 @@ from neo4j import (
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
 )
-from neo4j.api import WRITE_ACCESS
+from neo4j.api import (
+    READ_ACCESS,
+    WRITE_ACCESS,
+)
 from neo4j.exceptions import ConfigurationError
 
 from ..._async_compat import (
     mark_sync_test,
     mock,
 )
+from .work import FakeConnection
 
 
 @pytest.mark.parametrize("protocol", ("bolt://", "bolt+s://", "bolt+ssc://"))
@@ -195,3 +199,44 @@ def test_driver_opens_write_session_by_default(uri, mocker):
         )
 
     driver.close()
+
+
+@pytest.mark.parametrize("uri", (
+    "bolt://127.0.0.1:9000",
+    "neo4j://127.0.0.1:9000",
+))
+@mark_sync_test
+def test_verify_connectivity(uri):
+    driver = GraphDatabase.driver(uri)
+
+    try:
+        with mock.patch.object(driver, "_pool", autospec=True) as pool_mock:
+            ret = driver.verify_connectivity()
+    finally:
+        driver.close()
+
+    assert ret is None
+    pool_mock.acquire.assert_called_once()
+    assert pool_mock.acquire.call_args.kwargs["lifeness_check_timeout"] == 0
+    pool_mock.release.assert_called_once()
+
+
+@pytest.mark.parametrize("uri", (
+    "bolt://127.0.0.1:9000",
+    "neo4j://127.0.0.1:9000",
+))
+@pytest.mark.parametrize("kwargs", (
+    {"access_mode": WRITE_ACCESS},
+    {"access_mode": READ_ACCESS},
+    {"fetch_size": 69},
+))
+@mark_sync_test
+def test_verify_connectivity_parameters_are_deprecated(uri, kwargs):
+    driver = GraphDatabase.driver(uri)
+
+    try:
+        with mock.patch.object(driver, "_pool", autospec=True):
+            with pytest.warns(DeprecationWarning, match="configuration"):
+                driver.verify_connectivity(**kwargs)
+    finally:
+        driver.close()

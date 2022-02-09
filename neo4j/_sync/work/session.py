@@ -112,10 +112,10 @@ class Session(Workspace):
         raise TypeError("Bookmarks must be an instance of Bookmarks or an "
                         "iterable of raw bookmarks (deprecated).")
 
-    def _connect(self, access_mode):
+    def _connect(self, access_mode, **access_kwargs):
         if access_mode is None:
             access_mode = self._config.default_access_mode
-        super()._connect(access_mode)
+        super()._connect(access_mode, **access_kwargs)
 
     def _collect_bookmark(self, bookmark):
         if bookmark:
@@ -131,6 +131,13 @@ class Session(Workspace):
         if self._auto_result:
             self._auto_result = None
             self._disconnect()
+
+    def _get_server_info(self):
+        assert not self._connection
+        self._connect(READ_ACCESS, lifeness_check_timeout=0)
+        server_info = self._connection.server_info
+        self._disconnect()
+        return server_info
 
     def close(self):
         """Close the session.
@@ -171,7 +178,7 @@ class Session(Workspace):
                 self._disconnect()
 
             self._state_failed = False
-            self._closed = True
+        self._closed = True
 
     def run(self, query, parameters=None, **kwargs):
         """Run a Cypher query within an auto-commit transaction.

@@ -72,6 +72,9 @@ class Bolt:
     # The socket
     in_use = False
 
+    # When the connection was last put back into the pool
+    idle_since = float("-inf")
+
     # The socket
     _closed = False
 
@@ -104,6 +107,7 @@ class Bolt:
         self._max_connection_lifetime = max_connection_lifetime
         self._creation_timestamp = perf_counter()
         self.routing_context = routing_context
+        self.idle_since = perf_counter()
 
         # Determine the user agent
         if user_agent:
@@ -456,28 +460,54 @@ class Bolt:
             except OSError as error:
                 self._set_defunct_write(error)
             self.outbox.clear()
+            self.idle_since = perf_counter()
 
     def send_all(self):
         """ Send all queued messages to the server.
         """
         if self.closed():
-            raise ServiceUnavailable("Failed to write to closed connection {!r} ({!r})".format(
-                self.unresolved_address, self.server_info.address))
-
+            raise ServiceUnavailable(
+                "Failed to write to closed connection {!r} ({!r})".format(
+                    self.unresolved_address, self.server_info.address
+                )
+            )
         if self.defunct():
-            raise ServiceUnavailable("Failed to write to defunct connection {!r} ({!r})".format(
-                self.unresolved_address, self.server_info.address))
+            raise ServiceUnavailable(
+                "Failed to write to defunct connection {!r} ({!r})".format(
+                    self.unresolved_address, self.server_info.address
+                )
+            )
 
         self._send_all()
 
     @abc.abstractmethod
-    def fetch_message(self):
+    def _fetch_message(self):
         """ Receive at most one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
         pass
+
+    def fetch_message(self):
+        if self._closed:
+            raise ServiceUnavailable(
+                "Failed to read from closed connection {!r} ({!r})".format(
+                    self.unresolved_address, self.server_info.address
+                )
+            )
+        if self._defunct:
+            raise ServiceUnavailable(
+                "Failed to read from defunct connection {!r} ({!r})".format(
+                    self.unresolved_address, self.server_info.address
+                )
+            )
+        if not self.responses:
+            return 0, 0
+
+        res = self._fetch_message()
+        self.idle_since = perf_counter()
+        return res
 
     def fetch_all(self):
         """ Fetch all outstanding messages.
@@ -567,6 +597,16 @@ class Bolt:
     @abc.abstractmethod
     def defunct(self):
         pass
+
+    def is_idle_for(self, timeout):
+        """Check if connection has been idle for at least the given timeout.
+
+        :param timeout: timeout in seconds
+        :type timeout: float
+
+        :rtype: bool
+        """
+        return perf_counter() - self.idle_since > timeout
 
 
 BoltSocket.Bolt = Bolt

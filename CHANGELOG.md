@@ -78,6 +78,11 @@
     It now raises a `ResultConsumedError`.
   - New method `Result.closed()` can be used to check for this condition if
     necessary.
+- `driver.verify_connectivity()`
+  - All keyword arguments have been deprecated (they were experimental).
+    They are now ignored and will be removed in a future release.
+  - The undocumented return value has been removed. If you need information
+    about the remote server, use `driver.get_server_info()` instead.
 
 
 ## Version 4.4

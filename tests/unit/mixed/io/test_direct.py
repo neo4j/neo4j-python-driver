@@ -163,7 +163,7 @@ class TestMixedConnectionPoolTestCase:
     def test_multithread(self):
         def acquire_release_conn(pool, address, acquired_counter,
                                  release_event):
-            conn = pool._acquire(address, timeout=3)
+            conn = pool._acquire(address, 3, None)
             acquired_counter.increment()
             release_event.wait()
             pool.release(conn)
@@ -203,7 +203,7 @@ class TestMixedConnectionPoolTestCase:
         async def acquire_release_conn(pool_, address_, acquired_counter_,
                                        release_event_):
             try:
-                conn = await pool_._acquire(address_, timeout=3)
+                conn = await pool_._acquire(address_, 3, None)
                 await acquired_counter_.increment()
                 await release_event_.wait()
                 await pool_.release(conn)

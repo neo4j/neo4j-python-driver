@@ -35,7 +35,6 @@ from .mark_decorator import (
 AsyncMagicMock = mock.AsyncMock
 MagicMock = mock.MagicMock
 Mock = mock.Mock
-mock.NonCallableMagicMock
 
 
 class AsyncMock(AsyncMockMixin, Mock):

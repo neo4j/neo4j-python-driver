@@ -145,7 +145,7 @@ This object holds the details required to establish connections with a Neo4j dat
 Closing a driver will immediately shut down all connections in the pool.
 
 .. autoclass:: neo4j.Driver()
-   :members: session, encrypted, close
+   :members: session, encrypted, close, verify_connectivity, get_server_info
 
 
 .. _driver-configuration-ref:
