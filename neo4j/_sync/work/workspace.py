@@ -72,7 +72,7 @@ class Workspace:
         self._cached_database = True
         self._config.database = database
 
-    def _connect(self, access_mode):
+    def _connect(self, access_mode, **acquire_kwargs):
         if self._connection:
             # TODO: Investigate this
             # log.warning("FIXME: should always disconnect before connect")
@@ -96,12 +96,14 @@ class Workspace:
                     bookmarks=self._bookmarks,
                     database_callback=self._set_cached_database
                 )
-        self._connection = self._pool.acquire(
-            access_mode=access_mode,
-            timeout=self._config.connection_acquisition_timeout,
-            database=self._config.database,
-            bookmarks=self._bookmarks
-        )
+        acquire_kwargs_ = {
+            "access_mode": access_mode,
+            "timeout": self._config.connection_acquisition_timeout,
+            "database": self._config.database,
+            "bookmarks": self._bookmarks,
+        }
+        acquire_kwargs_.update(acquire_kwargs)
+        self._connection = self._pool.acquire(**acquire_kwargs_)
         self._connection_access_mode = access_mode
 
     def _disconnect(self, sync=False):

@@ -213,6 +213,7 @@ def apply_unasync(files):
     additional_test_replacements = {
         "_async": "_sync",
         "mark_async_test": "mark_sync_test",
+        "assert_awaited_once": "assert_called_once",
     }
     additional_testkit_backend_replacements = {}
     rules = [

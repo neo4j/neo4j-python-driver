@@ -72,6 +72,9 @@ class AsyncBolt:
     # The socket
     in_use = False
 
+    # When the connection was last put back into the pool
+    idle_since = float("-inf")
+
     # The socket
     _closed = False
 
@@ -104,6 +107,7 @@ class AsyncBolt:
         self._max_connection_lifetime = max_connection_lifetime
         self._creation_timestamp = perf_counter()
         self.routing_context = routing_context
+        self.idle_since = perf_counter()
 
         # Determine the user agent
         if user_agent:
@@ -456,28 +460,54 @@ class AsyncBolt:
             except OSError as error:
                 await self._set_defunct_write(error)
             self.outbox.clear()
+            self.idle_since = perf_counter()
 
     async def send_all(self):
         """ Send all queued messages to the server.
         """
         if self.closed():
-            raise ServiceUnavailable("Failed to write to closed connection {!r} ({!r})".format(
-                self.unresolved_address, self.server_info.address))
-
+            raise ServiceUnavailable(
+                "Failed to write to closed connection {!r} ({!r})".format(
+                    self.unresolved_address, self.server_info.address
+                )
+            )
         if self.defunct():
-            raise ServiceUnavailable("Failed to write to defunct connection {!r} ({!r})".format(
-                self.unresolved_address, self.server_info.address))
+            raise ServiceUnavailable(
+                "Failed to write to defunct connection {!r} ({!r})".format(
+                    self.unresolved_address, self.server_info.address
+                )
+            )
 
         await self._send_all()
 
     @abc.abstractmethod
-    async def fetch_message(self):
+    async def _fetch_message(self):
         """ Receive at most one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
         pass
+
+    async def fetch_message(self):
+        if self._closed:
+            raise ServiceUnavailable(
+                "Failed to read from closed connection {!r} ({!r})".format(
+                    self.unresolved_address, self.server_info.address
+                )
+            )
+        if self._defunct:
+            raise ServiceUnavailable(
+                "Failed to read from defunct connection {!r} ({!r})".format(
+                    self.unresolved_address, self.server_info.address
+                )
+            )
+        if not self.responses:
+            return 0, 0
+
+        res = await self._fetch_message()
+        self.idle_since = perf_counter()
+        return res
 
     async def fetch_all(self):
         """ Fetch all outstanding messages.
@@ -567,6 +597,16 @@ class AsyncBolt:
     @abc.abstractmethod
     def defunct(self):
         pass
+
+    def is_idle_for(self, timeout):
+        """Check if connection has been idle for at least the given timeout.
+
+        :param timeout: timeout in seconds
+        :type timeout: float
+
+        :rtype: bool
+        """
+        return perf_counter() - self.idle_since > timeout
 
 
 AsyncBoltSocket.Bolt = AsyncBolt

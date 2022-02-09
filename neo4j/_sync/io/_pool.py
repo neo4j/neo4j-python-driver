@@ -80,7 +80,60 @@ class IOPool(abc.ABC):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _acquire(self, address, timeout):
+    def _acquire_from_pool(self, address, health_check):
+        for connection in list(self.connections.get(address, [])):
+            if connection.in_use:
+                continue
+            if not health_check(connection):
+                # `close` is a noop on already closed connections.
+                # This is to make sure that the connection is
+                # gracefully closed, e.g. if it's just marked as
+                # `stale` but still alive.
+                if log.isEnabledFor(logging.DEBUG):
+                    log.debug(
+                        "[#%04X]  C: <POOL> removing old connection "
+                        "(closed=%s, defunct=%s, stale=%s, in_use=%s)",
+                        connection.local_port,
+                        connection.closed(), connection.defunct(),
+                        connection.stale(), connection.in_use
+                    )
+                connection.close()
+                try:
+                    self.connections.get(address, []).remove(connection)
+                except ValueError:
+                    # If closure fails (e.g. because the server went
+                    # down), all connections to the same address will
+                    # be removed. Therefore, we silently ignore if the
+                    # connection isn't in the pool anymore.
+                    pass
+                continue
+            if not connection.in_use:
+                connection.in_use = True
+                return connection
+        return None
+
+    def _acquire_new(self, address, timeout, health_check):
+        connections = self.connections[address]
+        max_pool_size = self.pool_config.max_connection_pool_size
+        infinite_pool_size = (max_pool_size < 0
+                              or max_pool_size == float("inf"))
+        can_create_new_connection = (infinite_pool_size
+                                     or len(connections) < max_pool_size)
+        if can_create_new_connection:
+            timeout = min(self.pool_config.connection_timeout, timeout)
+            try:
+                connection = self.opener(address, timeout)
+            except ServiceUnavailable:
+                self.deactivate(address)
+                raise
+            else:
+                connection.pool = self
+                connection.in_use = True
+                connections.append(connection)
+                return connection
+        return None
+
+    def _acquire(self, address, timeout, lifeness_check_timeout):
         """ Acquire a connection to a given address from the pool.
         The address supplied should always be an IP address, not
         a host name.
@@ -91,63 +144,37 @@ class IOPool(abc.ABC):
         if timeout is None:
             timeout = self.workspace_config.connection_acquisition_timeout
 
-        with self.lock:
-            def time_remaining():
-                t = timeout - (perf_counter() - t0)
-                return t if t > 0 else 0
+        def time_remaining():
+            t = timeout - (perf_counter() - t0)
+            return t if t > 0 else 0
 
+        def health_check(connection_):
+            if (connection_.closed()
+                    or connection_.defunct()
+                    or connection_.stale()):
+                return False
+            if lifeness_check_timeout is not None:
+                if connection_.is_idle_for(lifeness_check_timeout):
+                    try:
+                        connection_.reset()
+                    except (OSError, ServiceUnavailable, SessionExpired):
+                        return False
+            return True
+
+        with self.lock:
             while True:
                 # try to find a free connection in pool
-                for connection in list(self.connections.get(address, [])):
-                    if (connection.closed() or connection.defunct()
-                            or (connection.stale() and not connection.in_use)):
-                        # `close` is a noop on already closed connections.
-                        # This is to make sure that the connection is
-                        # gracefully closed, e.g. if it's just marked as
-                        # `stale` but still alive.
-                        if log.isEnabledFor(logging.DEBUG):
-                            log.debug(
-                                "[#%04X]  C: <POOL> removing old connection "
-                                "(closed=%s, defunct=%s, stale=%s, in_use=%s)",
-                                connection.local_port,
-                                connection.closed(), connection.defunct(),
-                                connection.stale(), connection.in_use
-                            )
-                        connection.close()
-                        try:
-                            self.connections.get(address, []).remove(connection)
-                        except ValueError:
-                            # If closure fails (e.g. because the server went
-                            # down), all connections to the same address will
-                            # be removed. Therefore, we silently ignore if the
-                            # connection isn't in the pool anymore.
-                            pass
-                        continue
-                    if not connection.in_use:
-                        connection.in_use = True
-                        return connection
-                # all connections in pool are in-use
-                connections = self.connections[address]
-                max_pool_size = self.pool_config.max_connection_pool_size
-                infinite_pool_size = (max_pool_size < 0
-                                      or max_pool_size == float("inf"))
-                can_create_new_connection = (
-                        infinite_pool_size
-                        or len(connections) < max_pool_size
+                connection = self._acquire_from_pool(
+                    address, health_check
                 )
-                if can_create_new_connection:
-                    timeout = min(self.pool_config.connection_timeout,
-                                  time_remaining())
-                    try:
-                        connection = self.opener(address, timeout)
-                    except ServiceUnavailable:
-                        self.remove(address)
-                        raise
-                    else:
-                        connection.pool = self
-                        connection.in_use = True
-                        connections.append(connection)
-                        return connection
+                if connection:
+                    return connection
+                # all connections in pool are in-use
+                connection = self._acquire_new(
+                    address, time_remaining(), health_check
+                )
+                if connection:
+                    return connection
 
                 # failed to obtain a connection from pool because the
                 # pool is full and no free connection in the pool
@@ -161,7 +188,8 @@ class IOPool(abc.ABC):
 
     @abc.abstractmethod
     def acquire(
-        self, access_mode=None, timeout=None, database=None, bookmarks=None
+        self, access_mode=None, timeout=None, database=None, bookmarks=None,
+        lifeness_check_timeout=None
     ):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
@@ -169,6 +197,7 @@ class IOPool(abc.ABC):
         :param timeout:
         :param database:
         :param bookmarks:
+        :param lifeness_check_timeout:
         """
 
     def release(self, *connections):
@@ -284,11 +313,14 @@ class BoltPool(IOPool):
                                           self.address)
 
     def acquire(
-        self, access_mode=None, timeout=None, database=None, bookmarks=None
+        self, access_mode=None, timeout=None, database=None, bookmarks=None,
+        lifeness_check_timeout=None
     ):
         # The access_mode and database is not needed for a direct connection,
         # it's just there for consistency.
-        return self._acquire(self.address, timeout)
+        return self._acquire(
+            self.address, timeout, lifeness_check_timeout
+        )
 
 
 class Neo4jPool(IOPool):
@@ -398,7 +430,7 @@ class Neo4jPool(IOPool):
         :raise ServiceUnavailable: if the server does not support
             routing, or if routing support is broken or outdated
         """
-        cx = self._acquire(address, timeout)
+        cx = self._acquire(address, timeout, None)
         try:
             routing_table = cx.route(
                 database or self.workspace_config.database,
@@ -636,7 +668,8 @@ class Neo4jPool(IOPool):
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
     def acquire(
-        self, access_mode=None, timeout=None, database=None, bookmarks=None
+        self, access_mode=None, timeout=None, database=None, bookmarks=None,
+        lifeness_check_timeout=None
     ):
         if access_mode not in (WRITE_ACCESS, READ_ACCESS):
             raise ClientError("Non valid 'access_mode'; {}".format(access_mode))
@@ -666,8 +699,10 @@ class Neo4jPool(IOPool):
             try:
                 log.debug("[#0000]  C: <ACQUIRE ADDRESS> database=%r address=%r", database, address)
                 # should always be a resolved address
-                connection = self._acquire(address, timeout=timeout)
-            except ServiceUnavailable:
+                connection = self._acquire(
+                    address, timeout, lifeness_check_timeout
+                )
+            except (ServiceUnavailable, SessionExpired):
                 self.deactivate(address=address)
             else:
                 return connection

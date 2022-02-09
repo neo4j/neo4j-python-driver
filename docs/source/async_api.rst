@@ -10,6 +10,8 @@ Async API Documentation
     This means everything documented on this page might be removed or change
     its API at any time (including in patch releases).
 
+.. versionadded:: 5.0
+
 ******************
 AsyncGraphDatabase
 ******************
@@ -126,7 +128,7 @@ This object holds the details required to establish connections with a Neo4j dat
 Closing a driver will immediately shut down all connections in the pool.
 
 .. autoclass:: neo4j.AsyncDriver()
-   :members: session, encrypted, close
+   :members: session, encrypted, close, verify_connectivity, get_server_info
 
 
 .. _async-driver-configuration-ref:

@@ -88,14 +88,25 @@ def experimental(message):
             pass
 
     """
-    def f__(f):
-        @wraps(f)
-        def f_(*args, **kwargs):
-            from warnings import warn
-            warn(message, category=ExperimentalWarning, stacklevel=2)
-            return f(*args, **kwargs)
-        return f_
-    return f__
+    def decorator(f):
+        if asyncio.iscoroutinefunction(f):
+            @wraps(f)
+            async def inner(*args, **kwargs):
+                from warnings import warn
+                warn(message, category=ExperimentalWarning, stacklevel=2)
+                return await f(*args, **kwargs)
+
+            return inner
+        else:
+            @wraps(f)
+            def inner(*args, **kwargs):
+                from warnings import warn
+                warn(message, category=ExperimentalWarning, stacklevel=2)
+                return f(*args, **kwargs)
+
+            return inner
+
+    return decorator
 
 
 def unclosed_resource_warn(obj):

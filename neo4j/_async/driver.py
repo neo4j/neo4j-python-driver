@@ -31,6 +31,10 @@ from ..conf import (
     SessionConfig,
     WorkspaceConfig,
 )
+from ..exceptions import (
+    ServiceUnavailable,
+    SessionExpired,
+)
 from ..meta import (
     deprecation_warn,
     experimental,
@@ -236,9 +240,11 @@ class AsyncDriver:
     #: Flag if the driver has been closed
     _closed = False
 
-    def __init__(self, pool):
+    def __init__(self, pool, default_workspace_config):
         assert pool is not None
+        assert default_workspace_config is not None
         self._pool = pool
+        self._default_workspace_config = default_workspace_config
 
     async def __aenter__(self):
         return self
@@ -285,17 +291,56 @@ class AsyncDriver:
         await self._pool.close()
         self._closed = True
 
-    @experimental("The configuration may change in the future.")
+    # TODO: 6.0 - remove config argument
     async def verify_connectivity(self, **config):
-        """ This verifies if the driver can connect to a remote server or a cluster
-        by establishing a network connection with the remote and possibly exchanging
-        a few data before closing the connection. It throws exception if fails to connect.
+        """Verify that the driver can establish a connection to the server.
 
-        Use the exception to further understand the cause of the connectivity problem.
+        This verifies if the driver can establish a reading connection to a
+        remote server or a cluster. Some data will be exchanged.
 
-        Note: Even if this method throws an exception, the driver still need to be closed via close() to free up all resources.
+        .. note::
+            Even if this method raises an exception, the driver still needs to
+            be closed via :meth:`close` to free up all resources.
+
+        :raises DriverError: if the driver cannot connect to the remote.
+            Use the exception to further understand the cause of the
+            connectivity problem.
+
+        .. versionchanged:: 5.0 the config parameters will be removed in
+            version 6 0. It has no effect starting in version 5.0.
         """
-        raise NotImplementedError
+        if config:
+            deprecation_warn(
+                "verify_connectivity() will not accept any configuration "
+                "parameters starting with version 6.0."
+            )
+
+        await self.get_server_info()
+
+    async def get_server_info(self):
+        """Get information about the connected Neo4j server.
+
+        Try to establish a working read connection to the remote server or a
+        member of a cluster and exchange some data. Then return the contacted
+        server's information.
+
+        In a cluster, there is no guarantee about which server will be
+        contacted.
+
+        .. note::
+            Even if this method raises an exception, the driver still needs to
+            be closed via :meth:`close` to free up all resources.
+
+        :rtype: ServerInfo
+
+        :raises DriverError: if the driver cannot connect to the remote.
+            Use the exception to further understand the cause of the
+            connectivity problem.
+
+        .. versionadded:: 5.0
+        """
+        async with self.session() as session:
+            return await session._get_server_info()
 
     @experimental("Feature support query, based on Bolt Protocol Version and Neo4j Server Version will change in the future.")
     async def supports_multi_db(self):
@@ -339,7 +384,7 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
 
     def __init__(self, pool, default_workspace_config):
         _Direct.__init__(self, pool.address)
-        AsyncDriver.__init__(self, pool)
+        AsyncDriver.__init__(self, pool, default_workspace_config)
         self._default_workspace_config = default_workspace_config
 
     def session(self, **config):
@@ -353,17 +398,6 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
         session_config = SessionConfig(self._default_workspace_config, config)
         SessionConfig.consume(config)  # Consume the config
         return AsyncSession(self._pool, session_config)
-
-    @experimental("The configuration may change in the future.")
-    async def verify_connectivity(self, **config):
-        server_agent = None
-        config["fetch_size"] = -1
-        async with self.session(**config) as session:
-            result = await session.run("RETURN 1 AS x")
-            value = await result.single().value()
-            summary = await result.consume()
-            server_agent = summary.server.agent
-        return server_agent
 
 
 class AsyncNeo4jDriver(_Routing, AsyncDriver):
@@ -387,45 +421,10 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
 
     def __init__(self, pool, default_workspace_config):
         _Routing.__init__(self, pool.get_default_database_initial_router_addresses())
-        AsyncDriver.__init__(self, pool)
-        self._default_workspace_config = default_workspace_config
+        AsyncDriver.__init__(self, pool, default_workspace_config)
 
     def session(self, **config):
         from .work import AsyncSession
         session_config = SessionConfig(self._default_workspace_config, config)
         SessionConfig.consume(config)  # Consume the config
         return AsyncSession(self._pool, session_config)
-
-    @experimental("The configuration may change in the future.")
-    async def verify_connectivity(self, **config):
-        """
-        :raise ServiceUnavailable: raised if the server does not support routing or if routing support is broken.
-        """
-        # TODO: Improve and update Stub Test Server to be able to test.
-        return await self._verify_routing_connectivity()
-
-    async def _verify_routing_connectivity(self):
-        from ..exceptions import (
-            Neo4jError,
-            ServiceUnavailable,
-            SessionExpired,
-        )
-
-        table = self._pool.get_routing_table_for_default_database()
-        routing_info = {}
-        for ix in list(table.routers):
-            try:
-                routing_info[ix] = await self._pool.fetch_routing_info(
-                    address=table.routers[0],
-                    database=self._default_workspace_config.database,
-                    imp_user=self._default_workspace_config.impersonated_user,
-                    bookmarks=None,
-                    timeout=self._default_workspace_config
-                                .connection_acquisition_timeout
-                )
-            except (ServiceUnavailable, SessionExpired, Neo4jError):
-                routing_info[ix] = None
-        for key, val in routing_info.items():
-            if val is not None:
-                return routing_info
-        raise ServiceUnavailable("Could not connect to any routing servers.")

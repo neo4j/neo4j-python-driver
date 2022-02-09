@@ -314,23 +314,12 @@ class Bolt3(Bolt):
         self.send_all()
         self.fetch_all()
 
-    def fetch_message(self):
+    def _fetch_message(self):
         """ Receive at most one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
-        if self._closed:
-            raise ServiceUnavailable("Failed to read from closed connection {!r} ({!r})".format(
-                self.unresolved_address, self.server_info.address))
-
-        if self._defunct:
-            raise ServiceUnavailable("Failed to read from defunct connection {!r} ({!r})".format(
-                self.unresolved_address, self.server_info.address))
-
-        if not self.responses:
-            return 0, 0
-
         # Receive exactly one message
         details, summary_signature, summary_metadata = \
             Util.next(self.inbox)

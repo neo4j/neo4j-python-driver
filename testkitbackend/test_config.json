@@ -1,13 +1,5 @@
 {
   "skips": {
-    "stub.routing.test_routing_v4x1.RoutingV4x1.test_should_successfully_acquire_rt_when_router_ip_changes":
-      "Test makes assumptions about how verify_connectivity is implemented",
-    "stub.routing.test_routing_v3.RoutingV3.test_should_successfully_acquire_rt_when_router_ip_changes":
-      "Test makes assumptions about how verify_connectivity is implemented",
-    "stub.routing.test_routing_v4x3.RoutingV4x3.test_should_successfully_acquire_rt_when_router_ip_changes":
-      "Test makes assumptions about how verify_connectivity is implemented",
-    "stub.routing.test_routing_v4x4.RoutingV4x4.test_should_successfully_acquire_rt_when_router_ip_changes":
-      "Test makes assumptions about how verify_connectivity is implemented",
     "stub.retry.test_retry_clustering.TestRetryClustering.test_retry_ForbiddenOnReadOnlyDatabase_ChangingWriter":
       "Test makes assumptions about how verify_connectivity is implemented",
     "stub.authorization.test_authorization.TestAuthorizationV4x3.test_should_retry_on_auth_expired_on_begin_using_tx_function":
@@ -28,7 +20,9 @@
       "Driver emits deprecation warning. Behavior will be unified in 6.0."
   },
   "features": {
+    "Feature:API:Driver:GetServerInfo": true,
     "Feature:API:Driver.IsEncrypted": true,
+    "Feature:API:Driver.VerifyConnectivity": true,
     "Feature:API:Liveness.Check": false,
     "Feature:API:Result.List": true,
     "Feature:API:Result.Peek": true,
@@ -48,6 +42,7 @@
     "Feature:TLS:1.1": "Driver blocks TLS 1.1 for security reasons.",
     "Feature:TLS:1.2": true,
     "Feature:TLS:1.3": "Depends on the machine (will be calculated dynamically).",
+
     "AuthorizationExpiredTreatment": true,
     "Optimization:ConnectionReuse": true,
     "Optimization:EagerTransactionBegin": true,
@@ -55,7 +50,12 @@
     "Optimization:MinimalResets": true,
     "Optimization:PullPipelining": true,
     "Optimization:ResultListFetchAll": "The idiomatic way to cast to list is indistinguishable from iterating over the result.",
+
     "ConfHint:connection.recv_timeout_seconds": true,
+
+    "Backend:RTFetch": true,
+    "Backend:RTForceUpdate": true,
+
     "Temporary:CypherPathAndRelationship": true,
     "Temporary:DriverFetchSize": true,
     "Temporary:DriverMaxTxRetryTime": true,
