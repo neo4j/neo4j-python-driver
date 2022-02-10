@@ -17,17 +17,13 @@
 
 
 import logging
-from unittest.mock import MagicMock
 
 import pytest
 
 from neo4j._async.io._bolt4 import AsyncBolt4x4
 from neo4j.conf import PoolConfig
 
-from ...._async_compat import (
-    AsyncMagicMock,
-    mark_async_test,
-)
+from ...._async_compat import mark_async_test
 
 
 @pytest.mark.parametrize("set_stale", (True, False))
@@ -240,11 +236,11 @@ async def test_hello_passes_routing_metadata(fake_socket_pair):
 ))
 @mark_async_test
 async def test_hint_recv_timeout_seconds(
-    fake_socket_pair, hints, valid, caplog
+    fake_socket_pair, hints, valid, caplog, mocker
 ):
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address)
-    sockets.client.settimeout = MagicMock()
+    sockets.client.settimeout = mocker.MagicMock()
     await sockets.server.send_message(
         0x70, {"server": "Neo4j/4.3.4", "hints": hints}
     )

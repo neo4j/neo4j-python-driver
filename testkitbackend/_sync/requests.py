@@ -26,6 +26,7 @@ from .. import (
     fromtestkit,
     totestkit,
 )
+from ..exceptions import MarkdAsDriverException
 
 
 class FrontendError(Exception):
@@ -355,21 +356,36 @@ def TransactionRun(backend, data):
 def TransactionCommit(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
-    tx.commit()
+    try:
+        commit = tx.commit
+    except AttributeError as e:
+        raise MarkdAsDriverException(e)
+        # raise DriverError("Type does not support commit %s" % type(tx))
+    commit()
     backend.send_response("Transaction", {"id": key})
 
 
 def TransactionRollback(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
-    tx.rollback()
+    try:
+        rollback = tx.rollback
+    except AttributeError as e:
+        raise MarkdAsDriverException(e)
+        # raise DriverError("Type does not support rollback %s" % type(tx))
+    rollback()
     backend.send_response("Transaction", {"id": key})
 
 
 def TransactionClose(backend, data):
     key = data["txId"]
     tx = backend.transactions[key]
-    tx.close()
+    try:
+        close = tx.close
+    except AttributeError as e:
+        raise MarkdAsDriverException(e)
+        # raise DriverError("Type does not support close %s" % type(tx))
+    close()
     backend.send_response("Transaction", {"id": key})
 
 

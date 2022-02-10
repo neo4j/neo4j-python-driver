@@ -33,11 +33,7 @@ from neo4j.api import (
 )
 from neo4j.exceptions import ConfigurationError
 
-from ..._async_compat import (
-    mark_async_test,
-    mock,
-)
-from .work import AsyncFakeConnection
+from ..._async_compat import mark_async_test
 
 
 @pytest.mark.parametrize("protocol", ("bolt://", "bolt+s://", "bolt+ssc://"))
@@ -58,7 +54,8 @@ async def test_direct_driver_constructor(protocol, host, port, params, auth_toke
     await driver.close()
 
 
-@pytest.mark.parametrize("protocol", ("neo4j://", "neo4j+s://", "neo4j+ssc://"))
+@pytest.mark.parametrize("protocol",
+                         ("neo4j://", "neo4j+s://", "neo4j+ssc://"))
 @pytest.mark.parametrize("host", ("localhost", "127.0.0.1",
                                   "[::1]", "[0:0:0:0:0:0:0:1]"))
 @pytest.mark.parametrize("port", (":1234", "", ":7687"))
@@ -175,28 +172,26 @@ async def test_driver_opens_write_session_by_default(uri, mocker):
     # to get hold of the actual home database (which won't work in this
     # unittest)
     async with driver.session(database="foobar") as session:
-        with mock.patch.object(
-            session._pool, "acquire", autospec=True
-        ) as acquire_mock:
-            with mock.patch.object(
-                AsyncTransaction, "_begin", autospec=True
-            ) as tx_begin_mock:
-                tx = await session.begin_transaction()
-        acquire_mock.assert_called_once_with(
-            access_mode=WRITE_ACCESS,
-            timeout=mocker.ANY,
-            database=mocker.ANY,
-            bookmarks=mocker.ANY
-        )
-        tx_begin_mock.assert_called_once_with(
-            tx,
-            mocker.ANY,
-            mocker.ANY,
-            mocker.ANY,
-            WRITE_ACCESS,
-            mocker.ANY,
-            mocker.ANY
-        )
+        acquire_mock = mocker.patch.object(session._pool, "acquire",
+                                           autospec=True)
+        tx_begin_mock = mocker.patch.object(AsyncTransaction, "_begin",
+                                            autospec=True)
+        tx = await session.begin_transaction()
+    acquire_mock.assert_called_once_with(
+        access_mode=WRITE_ACCESS,
+        timeout=mocker.ANY,
+        database=mocker.ANY,
+        bookmarks=mocker.ANY
+    )
+    tx_begin_mock.assert_called_once_with(
+        tx,
+        mocker.ANY,
+        mocker.ANY,
+        mocker.ANY,
+        WRITE_ACCESS,
+        mocker.ANY,
+        mocker.ANY
+    )
 
     await driver.close()
 
@@ -206,12 +201,12 @@ async def test_driver_opens_write_session_by_default(uri, mocker):
     "neo4j://127.0.0.1:9000",
 ))
 @mark_async_test
-async def test_verify_connectivity(uri):
+async def test_verify_connectivity(uri, mocker):
     driver = AsyncGraphDatabase.driver(uri)
+    pool_mock = mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
-        with mock.patch.object(driver, "_pool", autospec=True) as pool_mock:
-            ret = await driver.verify_connectivity()
+        ret = await driver.verify_connectivity()
     finally:
         await driver.close()
 
@@ -231,12 +226,13 @@ async def test_verify_connectivity(uri):
     {"fetch_size": 69},
 ))
 @mark_async_test
-async def test_verify_connectivity_parameters_are_deprecated(uri, kwargs):
+async def test_verify_connectivity_parameters_are_deprecated(uri, kwargs,
+                                                             mocker):
     driver = AsyncGraphDatabase.driver(uri)
+    mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
-        with mock.patch.object(driver, "_pool", autospec=True):
-            with pytest.warns(DeprecationWarning, match="configuration"):
-                await driver.verify_connectivity(**kwargs)
+        with pytest.warns(DeprecationWarning, match="configuration"):
+            await driver.verify_connectivity(**kwargs)
     finally:
         await driver.close()

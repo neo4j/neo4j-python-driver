@@ -16,7 +16,10 @@
 # limitations under the License.
 
 
-from ._fake_connection import (
-    fake_connection,
-    fake_connection_generator,
-)
+class MarkdAsDriverException(Exception):
+    """
+    Wrap any error as DriverException
+    """
+    def __init__(self, wrapped_exc):
+        super().__init__()
+        self.wrapped_exc = wrapped_exc

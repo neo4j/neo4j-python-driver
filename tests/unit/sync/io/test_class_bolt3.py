@@ -22,10 +22,7 @@ from neo4j._sync.io._bolt3 import Bolt3
 from neo4j.conf import PoolConfig
 from neo4j.exceptions import ConfigurationError
 
-from ...._async_compat import (
-    MagicMock,
-    mark_sync_test,
-)
+from ...._async_compat import mark_sync_test
 
 
 @pytest.mark.parametrize("set_stale", (True, False))
@@ -99,11 +96,11 @@ def test_simple_pull(fake_socket):
 @pytest.mark.parametrize("recv_timeout", (1, -1))
 @mark_sync_test
 def test_hint_recv_timeout_seconds_gets_ignored(
-    fake_socket_pair, recv_timeout
+    fake_socket_pair, recv_timeout, mocker
 ):
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address)
-    sockets.client.settimeout = MagicMock()
+    sockets.client.settimeout = mocker.Mock()
     sockets.server.send_message(0x70, {
         "server": "Neo4j/3.5.0",
         "hints": {"connection.recv_timeout_seconds": recv_timeout},

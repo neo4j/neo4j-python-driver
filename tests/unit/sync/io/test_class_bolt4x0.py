@@ -16,8 +16,6 @@
 # limitations under the License.
 
 
-from unittest.mock import MagicMock
-
 import pytest
 
 from neo4j._sync.io._bolt4 import Bolt4x0
@@ -193,11 +191,11 @@ def test_n_and_qid_extras_in_pull(fake_socket):
 @pytest.mark.parametrize("recv_timeout", (1, -1))
 @mark_sync_test
 def test_hint_recv_timeout_seconds_gets_ignored(
-    fake_socket_pair, recv_timeout
+    fake_socket_pair, recv_timeout, mocker
 ):
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address)
-    sockets.client.settimeout = MagicMock()
+    sockets.client.settimeout = mocker.MagicMock()
     sockets.server.send_message(0x70, {
         "server": "Neo4j/4.0.0",
         "hints": {"connection.recv_timeout_seconds": recv_timeout},

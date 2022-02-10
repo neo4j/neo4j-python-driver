@@ -16,7 +16,6 @@
 # limitations under the License.
 
 
-import asyncio
 from logging import getLogger
 from random import random
 from time import perf_counter
@@ -44,7 +43,10 @@ from ...meta import (
 )
 from ...work import Query
 from .result import AsyncResult
-from .transaction import AsyncTransaction
+from .transaction import (
+    AsyncManagedTransaction,
+    AsyncTransaction,
+)
 from .workspace import AsyncWorkspace
 
 
@@ -157,8 +159,9 @@ class AsyncSession(AsyncWorkspace):
                         self._state_failed = True
 
             if self._transaction:
-                if self._transaction.closed() is False:
-                    await self._transaction.rollback()  # roll back the transaction if it is not closed
+                if self._transaction._closed() is False:
+                    # roll back the transaction if it is not closed
+                    await self._transaction._rollback()
                 self._transaction = None
 
             try:
@@ -306,7 +309,7 @@ class AsyncSession(AsyncWorkspace):
         if self._auto_result:
             await self._auto_result.consume()
 
-        if self._transaction and self._transaction._closed:
+        if self._transaction and self._transaction._closed():
             self._collect_bookmark(self._transaction._bookmark)
             self._transaction = None
 
@@ -323,10 +326,10 @@ class AsyncSession(AsyncWorkspace):
             self._transaction = None
             await self._disconnect()
 
-    async def _open_transaction(self, *, access_mode, metadata=None,
+    async def _open_transaction(self, *, tx_cls, access_mode, metadata=None,
                           timeout=None):
         await self._connect(access_mode=access_mode)
-        self._transaction = AsyncTransaction(
+        self._transaction = tx_cls(
             self._connection, self._config.fetch_size,
             self._transaction_closed_handler,
             self._transaction_error_handler
@@ -372,6 +375,7 @@ class AsyncSession(AsyncWorkspace):
             raise TransactionError("Explicit transaction already open")
 
         await self._open_transaction(
+            tx_cls=AsyncTransaction,
             access_mode=self._config.default_access_mode, metadata=metadata,
             timeout=timeout
         )
@@ -396,6 +400,7 @@ class AsyncSession(AsyncWorkspace):
         while True:
             try:
                 await self._open_transaction(
+                    tx_cls=AsyncManagedTransaction,
                     access_mode=access_mode, metadata=metadata,
                     timeout=timeout
                 )
@@ -403,10 +408,10 @@ class AsyncSession(AsyncWorkspace):
                 try:
                     result = await transaction_function(tx, *args, **kwargs)
                 except Exception:
-                    await tx.close()
+                    await tx._close()
                     raise
                 else:
-                    await tx.commit()
+                    await tx._commit()
             except IncompleteCommit:
                 raise
             except (ServiceUnavailable, SessionExpired) as error:

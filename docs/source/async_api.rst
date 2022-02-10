@@ -235,16 +235,18 @@ Will result in:
 *********************************
 AsyncSessions & AsyncTransactions
 *********************************
-All database activity is co-ordinated through two mechanisms: the :class:`neo4j.AsyncSession` and the :class:`neo4j.AsyncTransaction`.
+All database activity is co-ordinated through two mechanisms:
+**sessions** (:class:`neo4j.AsyncSession`) and **transactions**
+(:class:`neo4j.AsyncTransaction`, :class:`neo4j.AsyncManagedTransaction`).
 
-A :class:`neo4j.AsyncSession` is a logical container for any number of causally-related transactional units of work.
+A **session** is a logical container for any number of causally-related transactional units of work.
 Sessions automatically provide guarantees of causal consistency within a clustered environment but multiple sessions can also be causally chained if required.
 Sessions provide the top level of containment for database activity.
-Session creation is a lightweight operation and *sessions cannot be shared between coroutines*.
+Session creation is a lightweight operation and *sessions are not thread safe*.
 
 Connections are drawn from the :class:`neo4j.AsyncDriver` connection pool as required.
 
-A :class:`neo4j.AsyncTransaction` is a unit of work that is either committed in its entirety or is rolled back on failure.
+A **transaction** is a unit of work that is either committed in its entirety or is rolled back on failure.
 
 
 .. _async-session-construction-ref:
@@ -417,7 +419,6 @@ Example:
             node_id = await create_person_node(tx)
             await set_person_name(tx, node_id, name)
             await tx.commit()
-            await tx.close()
 
     async def create_person_node(tx):
         query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
@@ -446,6 +447,12 @@ These allow a function object representing the transactional unit of work to be 
 This function is called one or more times, within a configurable time limit, until it succeeds.
 Results should be fully consumed within the function and only aggregate or status values should be returned.
 Returning a live result object would prevent the driver from correctly managing connections and would break retry guarantees.
+
+This function will receive a :class:`neo4j.AsyncManagedTransaction` object as its first parameter.
+
+.. autoclass:: neo4j.AsyncManagedTransaction
+
+    .. automethod:: run
 
 Example:
 
@@ -505,4 +512,4 @@ A :class:`neo4j.AsyncResult` is attached to an active connection, through a :cla
 
     .. automethod:: closed
 
-See https://neo4j.com/docs/driver-manual/current/cypher-workflow/#driver-type-mapping for more about type mapping.
+See https://neo4j.com/docs/python-manual/current/cypher-workflow/#python-driver-type-mapping for more about type mapping.

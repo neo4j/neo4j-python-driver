@@ -23,10 +23,7 @@ import pytest
 from neo4j._sync.io._bolt4 import Bolt4x3
 from neo4j.conf import PoolConfig
 
-from ...._async_compat import (
-    MagicMock,
-    mark_sync_test,
-)
+from ...._async_compat import mark_sync_test
 
 
 @pytest.mark.parametrize("set_stale", (True, False))
@@ -225,16 +222,17 @@ def test_hello_passes_routing_metadata(fake_socket_pair):
 ))
 @mark_sync_test
 def test_hint_recv_timeout_seconds(
-    fake_socket_pair, hints, valid, caplog
+    fake_socket_pair, hints, valid, caplog, mocker
 ):
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address)
-    sockets.client.settimeout = MagicMock()
+    sockets.client.settimeout = mocker.Mock()
     sockets.server.send_message(
         0x70, {"server": "Neo4j/4.3.0", "hints": hints}
     )
-    connection = Bolt4x3(address, sockets.client,
-                         PoolConfig.max_connection_lifetime)
+    connection = Bolt4x3(
+        address, sockets.client, PoolConfig.max_connection_lifetime
+    )
     with caplog.at_level(logging.INFO):
         connection.hello()
     if valid:

@@ -41,6 +41,7 @@ from .._driver_logger import (
     log,
 )
 from ..backend import Request
+from ..exceptions import MarkdAsDriverException
 
 
 TESTKIT_BACKEND_PATH = Path(__file__).absolute().resolve().parents[1]
@@ -96,18 +97,29 @@ class AsyncBackend:
             if DRIVER_PATH in p.parents:
                 return True
 
-    async def _handle_driver_exc(self, exc):
+    async def write_driver_exc(self, exc):
         log.debug(traceback.format_exc())
-        if isinstance(exc, Neo4jError):
-            msg = "" if exc.message is None else str(exc.message)
-        else:
-            msg = str(exc.args[0]) if exc.args else ""
 
         key = self.next_key()
         self.errors[key] = exc
-        payload = {"id": key, "errorType": str(type(exc)), "msg": msg}
-        if isinstance(exc, Neo4jError):
-            payload["code"] = exc.code
+
+        payload = {"id": key, "msg": ""}
+
+        if isinstance(exc, MarkdAsDriverException):
+            wrapped_exc = exc.wrapped_exc
+            payload["errorType"] = str(type(wrapped_exc))
+            if wrapped_exc.args:
+                payload["msg"] = str(wrapped_exc.args[0])
+        else:
+            payload["errorType"] = str(type(exc))
+            if isinstance(exc, Neo4jError) and exc.message is not None:
+                payload["msg"] = str(exc.message)
+            elif exc.args:
+                payload["msg"] = str(exc.args[0])
+
+            if isinstance(exc, Neo4jError):
+                payload["code"] = exc.code
+
         await self.send_response("DriverError", payload)
 
     async def _process(self, request):
@@ -132,13 +144,13 @@ class AsyncBackend:
                     " request: " + ", ".join(unsused_keys)
                 )
         except (Neo4jError, DriverError, UnsupportedServerProduct,
-                BoltError) as e:
-            await self._handle_driver_exc(e)
+                BoltError, MarkdAsDriverException) as e:
+            await self.write_driver_exc(e)
         except requests.FrontendError as e:
             await self.send_response("FrontendError", {"msg": str(e)})
         except Exception as e:
             if self._exc_stems_from_driver(e):
-                await self._handle_driver_exc(e)
+                await self.write_driver_exc(e)
             else:
                 tb = traceback.format_exc()
                 log.error(tb)
