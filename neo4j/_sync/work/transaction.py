@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+from functools import wraps
+
 from ..._async_compat.util import Util
 from ...data import DataHydrator
 from ...exceptions import TransactionError
@@ -24,17 +26,10 @@ from ..io import ConnectionErrorHandler
 from .result import Result
 
 
-class Transaction:
-    """ Container for multiple Cypher queries to be executed within a single
-    context. asynctransactions can be used within a :py:const:`with`
-    block where the transaction is committed or rolled back on based on
-    whether an exception is raised::
+__all__ = ("Transaction", "ManagedTransaction")
 
-        with session.begin_transaction() as tx:
-            ...
 
-    """
-
+class _AsyncTransactionBase:
     def __init__(self, connection, fetch_size, on_closed, on_error):
         self._connection = connection
         self._error_handling_connection = ConnectionErrorHandler(
@@ -42,22 +37,22 @@ class Transaction:
         )
         self._bookmark = None
         self._results = []
-        self._closed = False
+        self._closed_flag = False
         self._last_error = None
         self._fetch_size = fetch_size
         self._on_closed = on_closed
         self._on_error = on_error
 
-    def __enter__(self):
+    def _enter(self):
         return self
 
-    def __exit__(self, exception_type, exception_value, traceback):
-        if self._closed:
+    def _exit(self, exception_type, exception_value, traceback):
+        if self._closed_flag:
             return
         success = not bool(exception_type)
         if success:
-            self.commit()
-        self.close()
+            self._commit()
+        self._close()
 
     def _begin(
         self, database, imp_user, bookmarks, access_mode, metadata, timeout
@@ -105,14 +100,16 @@ class Transaction:
         :param parameters: dictionary of parameters
         :type parameters: dict
         :param kwparameters: additional keyword parameters
+
         :returns: a new :class:`neo4j.Result` object
         :rtype: :class:`neo4j.Result`
+
         :raise TransactionError: if the transaction is already closed
         """
         if isinstance(query, Query):
             raise ValueError("Query object is only supported for session.run")
 
-        if self._closed:
+        if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
         if self._last_error:
             raise TransactionError(self,
@@ -136,12 +133,12 @@ class Transaction:
 
         return result
 
-    def commit(self):
+    def _commit(self):
         """Mark this transaction as successful and close in order to trigger a COMMIT.
 
         :raise TransactionError: if the transaction is already closed
         """
-        if self._closed:
+        if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
         if self._last_error:
             raise TransactionError(self,
@@ -156,17 +153,17 @@ class Transaction:
             self._connection.fetch_all()
             self._bookmark = metadata.get("bookmark")
         finally:
-            self._closed = True
+            self._closed_flag = True
             Util.callback(self._on_closed)
 
         return self._bookmark
 
-    def rollback(self):
+    def _rollback(self):
         """Mark this transaction as unsuccessful and close in order to trigger a ROLLBACK.
 
         :raise TransactionError: if the transaction is already closed
         """
-        if self._closed:
+        if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
 
         metadata = {}
@@ -180,20 +177,82 @@ class Transaction:
                 self._connection.send_all()
                 self._connection.fetch_all()
         finally:
-            self._closed = True
+            self._closed_flag = True
             Util.callback(self._on_closed)
 
-    def close(self):
+    def _close(self):
         """Close this transaction, triggering a ROLLBACK if not closed.
         """
-        if self._closed:
+        if self._closed_flag:
             return
-        self.rollback()
+        self._rollback()
 
-    def closed(self):
+    def _closed(self):
         """Indicator to show whether the transaction has been closed.
 
         :return: :const:`True` if closed, :const:`False` otherwise.
         :rtype: bool
         """
-        return self._closed
+        return self._closed_flag
+
+
+class Transaction(_AsyncTransactionBase):
+    """ Container for multiple Cypher queries to be executed within a single
+    context. asynctransactions can be used within a :py:const:`with`
+    block where the transaction is committed or rolled back on based on
+    whether an exception is raised::
+
+        with session.begin_transaction() as tx:
+            ...
+
+    """
+
+    @wraps(_AsyncTransactionBase._enter)
+    def __enter__(self):
+        return self._enter()
+
+    @wraps(_AsyncTransactionBase._exit)
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._exit(exception_type, exception_value, traceback)
+
+    @wraps(_AsyncTransactionBase._commit)
+    def commit(self):
+        return self._commit()
+
+    @wraps(_AsyncTransactionBase._rollback)
+    def rollback(self):
+        return self._rollback()
+
+    @wraps(_AsyncTransactionBase._close)
+    def close(self):
+        return self._close()
+
+    @wraps(_AsyncTransactionBase._closed)
+    def closed(self):
+        return self._closed()
+
+
+class ManagedTransaction(_AsyncTransactionBase):
+    """Transaction object provided to transaction functions.
+
+    Inside a transaction function, the driver is responsible for managing
+    (committing / rolling back) the transaction. Therefore,
+    ManagedTransactions don't offer such methods.
+    Otherwise, they behave like :class:`.Transaction`.
+
+    * To commit the transaction,
+      return anything from the transaction function.
+    * To rollback the transaction, raise any exception.
+
+    Note that transaction functions have to be idempontent (i.e., the result
+    of running the function once has to be the same as running it any number
+    of times). This is, because the driver will retry the transaction function
+    if the error is classified as retriable.
+
+    .. versionadded:: 5.0
+
+        Prior, transaction functions used :class:`Transaction` objects,
+        but would cause hard to interpret errors when managed explicitly
+        (committed or rolled back by user code).
+    """
+    pass

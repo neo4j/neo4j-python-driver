@@ -83,6 +83,12 @@
     They are now ignored and will be removed in a future release.
   - The undocumented return value has been removed. If you need information
     about the remote server, use `driver.get_server_info()` instead.
+- Transaction functions (a.k.a. managed transactions):  
+  The first argument of transaction functions is now a `ManagedTransaction`
+  object. It behaves exactly like a regular `Transaction` object, except it
+  does not offer the `commit`, `rollback`, `close`, and `closed` methods.  
+  Those methods would have caused a hard to interpreted error previously. Hence,
+  they have been removed.
 
 
 ## Version 4.4

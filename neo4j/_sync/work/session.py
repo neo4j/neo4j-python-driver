@@ -16,7 +16,6 @@
 # limitations under the License.
 
 
-import asyncio
 from logging import getLogger
 from random import random
 from time import perf_counter
@@ -44,7 +43,10 @@ from ...meta import (
 )
 from ...work import Query
 from .result import Result
-from .transaction import Transaction
+from .transaction import (
+    ManagedTransaction,
+    Transaction,
+)
 from .workspace import Workspace
 
 
@@ -157,8 +159,9 @@ class Session(Workspace):
                         self._state_failed = True
 
             if self._transaction:
-                if self._transaction.closed() is False:
-                    self._transaction.rollback()  # roll back the transaction if it is not closed
+                if self._transaction._closed() is False:
+                    # roll back the transaction if it is not closed
+                    self._transaction._rollback()
                 self._transaction = None
 
             try:
@@ -306,7 +309,7 @@ class Session(Workspace):
         if self._auto_result:
             self._auto_result.consume()
 
-        if self._transaction and self._transaction._closed:
+        if self._transaction and self._transaction._closed():
             self._collect_bookmark(self._transaction._bookmark)
             self._transaction = None
 
@@ -323,10 +326,10 @@ class Session(Workspace):
             self._transaction = None
             self._disconnect()
 
-    def _open_transaction(self, *, access_mode, metadata=None,
+    def _open_transaction(self, *, tx_cls, access_mode, metadata=None,
                           timeout=None):
         self._connect(access_mode=access_mode)
-        self._transaction = Transaction(
+        self._transaction = tx_cls(
             self._connection, self._config.fetch_size,
             self._transaction_closed_handler,
             self._transaction_error_handler
@@ -372,6 +375,7 @@ class Session(Workspace):
             raise TransactionError("Explicit transaction already open")
 
         self._open_transaction(
+            tx_cls=Transaction,
             access_mode=self._config.default_access_mode, metadata=metadata,
             timeout=timeout
         )
@@ -396,6 +400,7 @@ class Session(Workspace):
         while True:
             try:
                 self._open_transaction(
+                    tx_cls=ManagedTransaction,
                     access_mode=access_mode, metadata=metadata,
                     timeout=timeout
                 )
@@ -403,10 +408,10 @@ class Session(Workspace):
                 try:
                     result = transaction_function(tx, *args, **kwargs)
                 except Exception:
-                    tx.close()
+                    tx._close()
                     raise
                 else:
-                    tx.commit()
+                    tx._commit()
             except IncompleteCommit:
                 raise
             except (ServiceUnavailable, SessionExpired) as error:

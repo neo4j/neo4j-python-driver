@@ -21,6 +21,7 @@ from contextlib import contextmanager
 import pytest
 
 from neo4j import (
+    AsyncManagedTransaction,
     AsyncSession,
     AsyncTransaction,
     Bookmarks,
@@ -29,28 +30,24 @@ from neo4j import (
 )
 from neo4j._async.io._pool import AsyncIOPool
 
-from ...._async_compat import (
-    AsyncMock,
-    mark_async_test,
-    mock,
-)
-from ._fake_connection import AsyncFakeConnection
+from ...._async_compat import mark_async_test
+from ._fake_connection import async_fake_connection_generator
 
 
 @pytest.fixture()
-def pool():
-    pool = AsyncMock(spec=AsyncIOPool)
-    pool.acquire.side_effect = iter(AsyncFakeConnection, 0)
+def pool(async_fake_connection_generator, mocker):
+    pool = mocker.AsyncMock(spec=AsyncIOPool)
+    pool.acquire.side_effect = iter(async_fake_connection_generator, 0)
     return pool
 
 
 @mark_async_test
-async def test_session_context_calls_close():
+async def test_session_context_calls_close(mocker):
     s = AsyncSession(None, SessionConfig())
-    with mock.patch.object(s, 'close', autospec=True) as mock_close:
-        async with s:
-            pass
-        mock_close.assert_called_once_with()
+    mock_close = mocker.patch.object(s, 'close', autospec=True)
+    async with s:
+        pass
+    mock_close.assert_called_once_with()
 
 
 @pytest.mark.parametrize("test_run_args", (
@@ -239,10 +236,10 @@ async def test_session_run_wrong_types(pool, query, error_type):
 @mark_async_test
 async def test_tx_function_argument_type(pool, tx_type):
     async def work(tx):
-        assert isinstance(tx, AsyncTransaction)
+        assert isinstance(tx, AsyncManagedTransaction)
 
     async with AsyncSession(pool, SessionConfig()) as session:
-        getattr(session, tx_type)(work)
+        await getattr(session, tx_type)(work)
 
 
 @pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction"))
@@ -257,10 +254,10 @@ async def test_tx_function_argument_type(pool, tx_type):
 async def test_decorated_tx_function_argument_type(pool, tx_type, decorator_kwargs):
     @unit_of_work(**decorator_kwargs)
     async def work(tx):
-        assert isinstance(tx, AsyncTransaction)
+        assert isinstance(tx, AsyncManagedTransaction)
 
     async with AsyncSession(pool, SessionConfig()) as session:
-        getattr(session, tx_type)(work)
+        await getattr(session, tx_type)(work)
 
 
 @mark_async_test

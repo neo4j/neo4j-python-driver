@@ -29,24 +29,10 @@ from threading import (
     Thread,
 )
 import time
-from unittest import (
-    mock,
-    TestCase,
-)
 
 import pytest
 
-from neo4j import (
-    Config,
-    PoolConfig,
-    WorkspaceConfig,
-)
-from neo4j._async.io import AsyncBolt
-from neo4j._async.io._pool import AsyncIOPool
-from neo4j.exceptions import (
-    ClientError,
-    ServiceUnavailable,
-)
+from neo4j.exceptions import ClientError
 
 from ...async_.io.test_direct import AsyncFakeBoltPool
 from ...sync.io.test_direct import FakeBoltPool

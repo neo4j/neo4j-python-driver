@@ -30,11 +30,7 @@ from neo4j.exceptions import (
     ServiceUnavailable,
 )
 
-from ...._async_compat import (
-    mark_sync_test,
-    Mock,
-    mock,
-)
+from ...._async_compat import mark_sync_test
 
 
 class FakeSocket:
@@ -216,18 +212,22 @@ def test_pool_max_conn_pool_size(pool):
 
 @pytest.mark.parametrize("is_reset", (True, False))
 @mark_sync_test
-def test_pool_reset_when_released(is_reset, pool):
+def test_pool_reset_when_released(is_reset, pool, mocker):
     address = ("127.0.0.1", 7687)
     quick_connection_name = QuickConnection.__name__
-    with mock.patch(f"{__name__}.{quick_connection_name}.is_reset",
-                    new_callable=mock.PropertyMock) as is_reset_mock:
-        with mock.patch(f"{__name__}.{quick_connection_name}.reset",
-                        new_callable=Mock) as reset_mock:
-            is_reset_mock.return_value = is_reset
-            connection = pool._acquire(address, 3, None)
-            assert isinstance(connection, QuickConnection)
-            assert is_reset_mock.call_count == 0
-            assert reset_mock.call_count == 0
-            pool.release(connection)
-            assert is_reset_mock.call_count == 1
-            assert reset_mock.call_count == int(not is_reset)
+    is_reset_mock = mocker.patch(
+        f"{__name__}.{quick_connection_name}.is_reset",
+        new_callable=mocker.PropertyMock
+    )
+    reset_mock = mocker.patch(
+        f"{__name__}.{quick_connection_name}.reset",
+        new_callable=mocker.Mock
+    )
+    is_reset_mock.return_value = is_reset
+    connection = pool._acquire(address, 3, None)
+    assert isinstance(connection, QuickConnection)
+    assert is_reset_mock.call_count == 0
+    assert reset_mock.call_count == 0
+    pool.release(connection)
+    assert is_reset_mock.call_count == 1
+    assert reset_mock.call_count == int(not is_reset)

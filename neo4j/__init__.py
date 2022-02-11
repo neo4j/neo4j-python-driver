@@ -23,6 +23,7 @@ __all__ = [
     "AsyncDriver",
     "AsyncGraphDatabase",
     "AsyncNeo4jDriver",
+    "AsyncManagedTransaction",
     "AsyncResult",
     "AsyncSession",
     "AsyncTransaction",
@@ -42,6 +43,7 @@ __all__ = [
     "IPv4Address",
     "IPv6Address",
     "kerberos_auth",
+    "ManagedTransaction",
     "Neo4jDriver",
     "PoolConfig",
     "Query",
@@ -72,6 +74,7 @@ from ._async.driver import (
     AsyncNeo4jDriver,
 )
 from ._async.work import (
+    AsyncManagedTransaction,
     AsyncResult,
     AsyncSession,
     AsyncTransaction,
@@ -83,6 +86,7 @@ from ._sync.driver import (
     Neo4jDriver,
 )
 from ._sync.work import (
+    ManagedTransaction,
     Result,
     Session,
     Transaction,

@@ -16,37 +16,13 @@
 # limitations under the License.
 
 
-import sys
-
-
-if sys.version_info >= (3, 8):
-    from unittest import mock
-    from unittest.mock import AsyncMockMixin
-else:
-    import mock
-    from mock.mock import AsyncMockMixin
-
 from .mark_decorator import (
     mark_async_test,
     mark_sync_test,
 )
 
 
-AsyncMagicMock = mock.AsyncMock
-MagicMock = mock.MagicMock
-Mock = mock.Mock
-
-
-class AsyncMock(AsyncMockMixin, Mock):
-    pass
-
-
 __all__ = [
     "mark_async_test",
     "mark_sync_test",
-    "AsyncMagicMock",
-    "AsyncMock",
-    "MagicMock",
-    "Mock",
-    "mock",
 ]

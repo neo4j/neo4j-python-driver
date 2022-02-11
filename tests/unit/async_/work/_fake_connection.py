@@ -23,89 +23,90 @@ import pytest
 from neo4j import ServerInfo
 from neo4j._async.io import AsyncBolt
 
-from ...._async_compat import (
-    AsyncMock,
-    mock,
-    Mock,
-)
 
+@pytest.fixture
+def async_fake_connection_generator(session_mocker):
+    mock = session_mocker.mock_module
 
-class AsyncFakeConnection(mock.NonCallableMagicMock):
-    callbacks = []
-    server_info = ServerInfo("127.0.0.1", (4, 3))
+    class AsyncFakeConnection(mock.NonCallableMagicMock):
+        callbacks = []
+        server_info = ServerInfo("127.0.0.1", (4, 3))
 
-    def __init__(self, *args, **kwargs):
-        kwargs["spec"] = AsyncBolt
-        super().__init__(*args, **kwargs)
-        self.attach_mock(Mock(return_value=True), "is_reset_mock")
-        self.attach_mock(Mock(return_value=False), "defunct")
-        self.attach_mock(Mock(return_value=False), "stale")
-        self.attach_mock(Mock(return_value=False), "closed")
-        self.attach_mock(Mock(), "unresolved_address")
+        def __init__(self, *args, **kwargs):
+            kwargs["spec"] = AsyncBolt
+            super().__init__(*args, **kwargs)
+            self.attach_mock(mock.Mock(return_value=True), "is_reset_mock")
+            self.attach_mock(mock.Mock(return_value=False), "defunct")
+            self.attach_mock(mock.Mock(return_value=False), "stale")
+            self.attach_mock(mock.Mock(return_value=False), "closed")
+            self.attach_mock(mock.Mock(), "unresolved_address")
 
-        def close_side_effect():
-            self.closed.return_value = True
+            def close_side_effect():
+                self.closed.return_value = True
 
-        self.attach_mock(AsyncMock(side_effect=close_side_effect),
-                         "close")
+            self.attach_mock(mock.AsyncMock(side_effect=close_side_effect),
+                             "close")
 
-    @property
-    def is_reset(self):
-        if self.closed.return_value or self.defunct.return_value:
-            raise AssertionError(
-                "is_reset should not be called on a closed or defunct "
-                "connection."
-            )
-        return self.is_reset_mock()
+        @property
+        def is_reset(self):
+            if self.closed.return_value or self.defunct.return_value:
+                raise AssertionError(
+                    "is_reset should not be called on a closed or defunct "
+                    "connection."
+                )
+            return self.is_reset_mock()
 
-    async def fetch_message(self, *args, **kwargs):
-        if self.callbacks:
-            cb = self.callbacks.pop(0)
-            await cb()
-        return await super().__getattr__("fetch_message")(*args, **kwargs)
+        async def fetch_message(self, *args, **kwargs):
+            if self.callbacks:
+                cb = self.callbacks.pop(0)
+                await cb()
+            return await super().__getattr__("fetch_message")(*args, **kwargs)
 
-    async def fetch_all(self, *args, **kwargs):
-        while self.callbacks:
-            cb = self.callbacks.pop(0)
-            cb()
-        return await super().__getattr__("fetch_all")(*args, **kwargs)
+        async def fetch_all(self, *args, **kwargs):
+            while self.callbacks:
+                cb = self.callbacks.pop(0)
+                await cb()
+            return await super().__getattr__("fetch_all")(*args, **kwargs)
 
-    def __getattr__(self, name):
-        parent = super()
+        def __getattr__(self, name):
+            parent = super()
 
-        def build_message_handler(name):
-            def func(*args, **kwargs):
-                async def callback():
-                    for cb_name, param_count in (
-                        ("on_success", 1),
-                        ("on_summary", 0)
-                    ):
-                        cb = kwargs.get(cb_name, None)
-                        if callable(cb):
-                            try:
-                                param_count = \
-                                    len(inspect.signature(cb).parameters)
-                            except ValueError:
-                                # e.g. built-in method as cb
-                                pass
-                            if param_count == 1:
-                                res = cb({})
-                            else:
-                                res = cb()
-                            try:
-                                await res  # maybe the callback is async
-                            except TypeError:
-                                pass  # or maybe it wasn't ;)
-                self.callbacks.append(callback)
+            def build_message_handler(name):
+                def func(*args, **kwargs):
+                    async def callback():
+                        for cb_name, param_count in (
+                            ("on_success", 1),
+                            ("on_summary", 0)
+                        ):
+                            cb = kwargs.get(cb_name, None)
+                            if callable(cb):
+                                try:
+                                    param_count = \
+                                        len(inspect.signature(cb).parameters)
+                                except ValueError:
+                                    # e.g. built-in method as cb
+                                    pass
+                                if param_count == 1:
+                                    res = cb({})
+                                else:
+                                    res = cb()
+                                try:
+                                    await res  # maybe the callback is async
+                                except TypeError:
+                                    pass  # or maybe it wasn't ;)
 
-            return func
+                    self.callbacks.append(callback)
 
-        method_mock = parent.__getattr__(name)
-        if name in ("run", "commit", "pull", "rollback", "discard"):
-            method_mock.side_effect = build_message_handler(name)
-        return method_mock
+                return func
+
+            method_mock = parent.__getattr__(name)
+            if name in ("run", "commit", "pull", "rollback", "discard"):
+                method_mock.side_effect = build_message_handler(name)
+            return method_mock
+
+    return AsyncFakeConnection
 
 
 @pytest.fixture
-def async_fake_connection():
-    return AsyncFakeConnection()
+def async_fake_connection(async_fake_connection_generator):
+    return async_fake_connection_generator()

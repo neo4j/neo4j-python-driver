@@ -21,21 +21,18 @@ import pytest
 
 from neo4j import GraphDatabase
 
-from ..._async_compat import (
-    mark_sync_test,
-    mock,
-)
+from ..._async_compat import mark_sync_test
 
 
 @mark_sync_test
-def test_custom_ssl_context_is_wraps_connection(target, auth):
+def test_custom_ssl_context_is_wraps_connection(target, auth, mocker):
     class NoNeedToGoFurtherException(Exception):
         pass
 
     def wrap_fail(*_, **__):
         raise NoNeedToGoFurtherException()
 
-    fake_ssl_context = mock.create_autospec(SSLContext)
+    fake_ssl_context = mocker.create_autospec(SSLContext)
     fake_ssl_context.wrap_socket.side_effect = wrap_fail
     fake_ssl_context.wrap_bio.side_effect = wrap_fail
     driver = GraphDatabase.neo4j_driver(

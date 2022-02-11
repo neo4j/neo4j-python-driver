@@ -19,8 +19,11 @@
 from .session import (
     Result,
     Session,
-    Transaction,
     Workspace,
+)
+from .transaction import (
+    ManagedTransaction,
+    Transaction,
 )
 
 
@@ -28,5 +31,6 @@ __all__ = [
     "Result",
     "Session",
     "Transaction",
+    "ManagedTransaction",
     "Workspace",
 ]

@@ -16,8 +16,6 @@
 # limitations under the License.
 
 
-from unittest.mock import Mock
-
 import pytest
 
 from neo4j import (
@@ -36,11 +34,8 @@ from neo4j.exceptions import (
     SessionExpired,
 )
 
-from ...._async_compat import (
-    AsyncMock,
-    mark_async_test,
-)
-from ..work import AsyncFakeConnection
+from ...._async_compat import mark_async_test
+from ..work import async_fake_connection_generator
 
 
 ROUTER_ADDRESS = ResolvedAddress(("1.2.3.1", 9001), host_name="host")
@@ -49,12 +44,12 @@ WRITER_ADDRESS = ResolvedAddress(("1.2.3.1", 9003), host_name="host")
 
 
 @pytest.fixture()
-def opener():
+def opener(async_fake_connection_generator, mocker):
     async def open_(addr, timeout):
-        connection = AsyncFakeConnection()
+        connection = async_fake_connection_generator()
         connection.addr = addr
         connection.timeout = timeout
-        route_mock = AsyncMock()
+        route_mock = mocker.AsyncMock()
         route_mock.return_value = [{
             "ttl": 1000,
             "servers": [
@@ -67,7 +62,7 @@ def opener():
         opener_.connections.append(connection)
         return connection
 
-    opener_ = AsyncMock()
+    opener_ = mocker.AsyncMock()
     opener_.connections = []
     opener_.side_effect = open_
     return opener_

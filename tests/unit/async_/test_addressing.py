@@ -20,7 +20,6 @@ from socket import (
     AF_INET,
     AF_INET6,
 )
-import unittest.mock as mock
 
 import pytest
 
@@ -32,13 +31,6 @@ from neo4j._async_compat.network import AsyncNetworkUtil
 from neo4j._async_compat.util import AsyncUtil
 
 from ..._async_compat import mark_async_test
-
-
-mock_socket_ipv4 = mock.Mock()
-mock_socket_ipv4.getpeername = lambda: ("127.0.0.1", 7687)  # (address, port)
-
-mock_socket_ipv6 = mock.Mock()
-mock_socket_ipv6.getpeername = lambda: ("[::1]", 7687, 0, 0)  # (address, port, flow info, scope id)
 
 
 @mark_async_test

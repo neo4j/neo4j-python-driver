@@ -22,6 +22,7 @@ import pytest
 
 from neo4j import (
     Bookmarks,
+    ManagedTransaction,
     Session,
     SessionConfig,
     Transaction,
@@ -29,28 +30,24 @@ from neo4j import (
 )
 from neo4j._sync.io._pool import IOPool
 
-from ...._async_compat import (
-    mark_sync_test,
-    Mock,
-    mock,
-)
-from ._fake_connection import FakeConnection
+from ...._async_compat import mark_sync_test
+from ._fake_connection import fake_connection_generator
 
 
 @pytest.fixture()
-def pool():
-    pool = Mock(spec=IOPool)
-    pool.acquire.side_effect = iter(FakeConnection, 0)
+def pool(fake_connection_generator, mocker):
+    pool = mocker.Mock(spec=IOPool)
+    pool.acquire.side_effect = iter(fake_connection_generator, 0)
     return pool
 
 
 @mark_sync_test
-def test_session_context_calls_close():
+def test_session_context_calls_close(mocker):
     s = Session(None, SessionConfig())
-    with mock.patch.object(s, 'close', autospec=True) as mock_close:
-        with s:
-            pass
-        mock_close.assert_called_once_with()
+    mock_close = mocker.patch.object(s, 'close', autospec=True)
+    with s:
+        pass
+    mock_close.assert_called_once_with()
 
 
 @pytest.mark.parametrize("test_run_args", (
@@ -239,7 +236,7 @@ def test_session_run_wrong_types(pool, query, error_type):
 @mark_sync_test
 def test_tx_function_argument_type(pool, tx_type):
     def work(tx):
-        assert isinstance(tx, Transaction)
+        assert isinstance(tx, ManagedTransaction)
 
     with Session(pool, SessionConfig()) as session:
         getattr(session, tx_type)(work)
@@ -257,7 +254,7 @@ def test_tx_function_argument_type(pool, tx_type):
 def test_decorated_tx_function_argument_type(pool, tx_type, decorator_kwargs):
     @unit_of_work(**decorator_kwargs)
     def work(tx):
-        assert isinstance(tx, Transaction)
+        assert isinstance(tx, ManagedTransaction)
 
     with Session(pool, SessionConfig()) as session:
         getattr(session, tx_type)(work)
