@@ -244,7 +244,7 @@ class AsyncManagedTransaction(_AsyncTransactionBase):
       return anything from the transaction function.
     * To rollback the transaction, raise any exception.
 
-    Note that transaction functions have to be idempontent (i.e., the result
+    Note that transaction functions have to be idempotent (i.e., the result
     of running the function once has to be the same as running it any number
     of times). This is, because the driver will retry the transaction function
     if the error is classified as retriable.
