@@ -314,8 +314,6 @@ class PoolConfig(Config):
                 # trust the specified certificate(s)
                 ssl_context.check_hostname = True
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
-                # Must be load_default_certs, not set_default_verify_paths to
-                # work on Windows with system CAs.
                 for cert in self.trusted_certificates:
                     ssl_context.load_verify_locations(cert)
 
