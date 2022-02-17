@@ -103,10 +103,11 @@ def NewDriver(backend, data):
     if "encrypted" in data:
         kwargs["encrypted"] = data["encrypted"]
     if "trustedCertificates" in data:
-        kwargs["trusted_certificates"] = [
+        certs = None if data["trustedCertificates"] is None else [
             "/usr/local/share/custom-ca-certificates/" + cert
             for cert in data["trustedCertificates"]
         ]
+        kwargs["trusted_certificates"] = certs
 
     data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.GraphDatabase.driver(
