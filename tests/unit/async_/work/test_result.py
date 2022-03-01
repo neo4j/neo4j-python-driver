@@ -16,10 +16,10 @@
 # limitations under the License.
 
 
-from itertools import product
 from unittest import mock
 import warnings
 
+import pandas as pd
 import pytest
 
 from neo4j import (
@@ -32,21 +32,24 @@ from neo4j import (
     Version,
 )
 from neo4j._async_compat.util import AsyncUtil
-from neo4j.data import DataHydrator
+from neo4j.data import (
+    DataHydrator,
+    Node,
+)
 from neo4j.exceptions import (
     ResultConsumedError,
     ResultNotSingleError,
 )
+from neo4j.packstream import Structure
 
 from ...._async_compat import mark_async_test
 
 
 class Records:
     def __init__(self, fields, records):
-        assert all(len(fields) == len(r) for r in records)
-        self.fields = fields
-        # self.records = [{"record_values": r} for r in records]
-        self.records = records
+        self.fields = tuple(fields)
+        self.records = tuple(records)
+        assert all(len(self.fields) == len(r) for r in self.records)
 
     def __len__(self):
         return self.records.__len__()
@@ -569,3 +572,46 @@ async def test_data(num_records):
     assert await result.data("hello", "world") == expected_data
     for record in records:
         assert record.data.called_once_with("hello", "world")
+
+
+@pytest.mark.parametrize(
+    ("keys", "values", "types", "instances"),
+    (
+        (["i"], zip(range(5)), ["int64"], None),
+        (["x"], zip((n - .5) / 5 for n in range(5)), ["float64"], None),
+        (["s"], zip(("foo", "bar", "baz", "foobar")), ["object"], None),
+        (["l"], zip(([1, 2], [3, 4])), ["object"], None),
+        (
+            ["n"],
+            zip((
+                Structure(b"N", 0, ["LABEL_A"], {"a": 1, "b": 2}),
+                Structure(b"N", 2, ["LABEL_B"], {"a": 1, "c": 1.2}),
+                Structure(b"N", 1, ["LABEL_A", "LABEL_B"], {"a": [1, "a"]}),
+            )),
+            ["object"],
+            [Node]
+        ),
+    )
+)
+@mark_async_test
+async def test_to_df(keys, values, types, instances):
+    values = list(values)
+    connection = AsyncConnectionStub(records=Records(keys, values))
+    result = AsyncResult(connection, DataHydrator(), 1, noop, noop)
+    await result._run("CYPHER", {}, None, None, "r", None)
+    df = await result.to_df()
+
+    assert isinstance(df, pd.DataFrame)
+    assert df.keys().to_list() == keys
+    assert len(df) == len(values)
+    assert df.dtypes.to_list() == types
+
+    expected_df = pd.DataFrame(
+        {k: [v[i] for v in values] for i, k in enumerate(keys)}
+    )
+
+    if instances:
+        for i, k in enumerate(keys):
+            assert all(isinstance(v, instances[i]) for v in df[k])
+    else:
+        assert df.equals(expected_df)

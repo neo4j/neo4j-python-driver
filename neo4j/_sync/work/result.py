@@ -25,6 +25,7 @@ from ...exceptions import (
     ResultConsumedError,
     ResultNotSingleError,
 )
+from ...meta import experimental
 from ...work import ResultSummary
 from ..io import ConnectionErrorHandler
 
@@ -455,6 +456,8 @@ class Result:
             was obtained has been closed or the Result has been explicitly
             consumed.
 
+        **This is experimental.** (See :ref:`filter-warnings-ref`)
+
         .. versionchanged:: 5.0
             Can raise :exc:`ResultConsumedError`.
         """
@@ -518,6 +521,31 @@ class Result:
             Can raise :exc:`ResultConsumedError`.
         """
         return [record.data(*keys) for record in self]
+
+    @experimental("pandas support is experimental and might be changed or "
+                  "removed in future versions")
+    def to_df(self):
+        """Convert (the rest of) the result to a pandas DataFrame.
+
+        This method is only available if the `pandas` library is installed.
+
+        ``tx.run("UNWIND range(1, 10) AS n RETURN n, n+1 as m").to_df()``, for
+        instance will return a DataFrame with two columns: ``n`` and ``m`` and
+        10 rows.
+
+        :rtype: :py:class:`pandas.DataFrame`
+        :raises ImportError: if `pandas` library is not available.
+        :raises ResultConsumedError: if the transaction from which this result
+            was obtained has been closed or the Result has been explicitly
+            consumed.
+
+        **This is experimental.**
+        ``pandas`` support might be changed or removed in future versions
+        without warning. (See :ref:`filter-warnings-ref`)
+        """
+        import pandas as pd
+
+        return pd.DataFrame(self.values(), columns=self._keys)
 
     def closed(self):
         """Return True if the result has been closed.
