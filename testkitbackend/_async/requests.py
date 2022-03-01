@@ -103,10 +103,12 @@ async def NewDriver(backend, data):
     if "encrypted" in data:
         kwargs["encrypted"] = data["encrypted"]
     if "trustedCertificates" in data:
-        kwargs["trusted_certificates"] = [
-            "/usr/local/share/custom-ca-certificates/" + cert
-            for cert in data["trustedCertificates"]
-        ]
+        kwargs["trusted_certificates"] = data["trustedCertificates"]
+        if isinstance(kwargs["trusted_certificates"], list):
+            kwargs["trusted_certificates"] = [
+                "/usr/local/share/custom-ca-certificates/" + cert
+                for cert in kwargs["trusted_certificates"]
+            ]
 
     data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.AsyncGraphDatabase.driver(
