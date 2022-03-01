@@ -24,8 +24,8 @@ from warnings import warn
 
 from neo4j.data import DataDehydrator
 from neo4j.io import ConnectionErrorHandler
+from neo4j.meta import experimental
 from neo4j.work.summary import ResultSummary
-from neo4j.exceptions import ResultConsumedError
 
 
 class Result:
@@ -335,6 +335,8 @@ class Result:
 
         :returns: a result graph
         :rtype: :class:`neo4j.graph.Graph`
+
+        **This is experimental.** (See :ref:`filter-warnings-ref`)
         """
         self._buffer_all()
         return self._hydrant.graph
@@ -372,3 +374,28 @@ class Result:
         :rtype: list
         """
         return [record.data(*keys) for record in self]
+
+    @experimental("pandas support is experimental and might be changed or "
+                  "removed in future versions")
+    def to_df(self):
+        """Convert (the rest of) the result to a pandas DataFrame.
+
+        This method is only available if the `pandas` library is installed.
+
+        ``tx.run("UNWIND range(1, 10) AS n RETURN n, n+1 as m").to_df()``, for
+        instance will return a DataFrame with two columns: ``n`` and ``m`` and
+        10 rows.
+
+        :rtype: :py:class:`pandas.DataFrame`
+        :raises ImportError: if `pandas` library is not available.
+
+        .. versionadded:: 5.0
+            This method was backported from 5.0 for preview purposes.
+
+        **This is experimental.**
+        ``pandas`` support might be changed or removed in future versions
+        without warning. (See :ref:`filter-warnings-ref`)
+        """
+        import pandas as pd
+
+        return pd.DataFrame(self.values(), columns=self._keys)

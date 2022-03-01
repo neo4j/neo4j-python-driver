@@ -740,15 +740,13 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`n
 
     .. automethod:: graph
 
-       **This is experimental.** (See :ref:`filter-warnings-ref`)
-
     .. automethod:: value
 
     .. automethod:: values
 
     .. automethod:: data
 
-See https://neo4j.com/docs/driver-manual/current/cypher-workflow/#driver-type-mapping for more about type mapping.
+See https://neo4j.com/docs/python-manual/current/cypher-workflow/#python-driver-type-mapping for more about type mapping.
 
 
 Graph

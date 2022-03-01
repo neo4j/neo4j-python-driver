@@ -5,3 +5,4 @@ pytest-benchmark
 pytest-cov
 pytest-mock
 teamcity-messages
+pandas>=1.0.0
