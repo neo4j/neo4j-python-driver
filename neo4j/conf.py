@@ -18,8 +18,12 @@
 
 from abc import ABCMeta
 from collections.abc import Mapping
-from warnings import warn
 
+from ._conf import (
+    TrustAll,
+    TrustCustomCAs,
+    TrustSystemCAs,
+)
 from .api import (
     DEFAULT_DATABASE,
     TRUST_ALL_CERTIFICATES,
@@ -205,9 +209,9 @@ class Config(Mapping, metaclass=ConfigType):
 
 def _trust_to_trusted_certificates(pool_config, trust):
     if trust == TRUST_SYSTEM_CA_SIGNED_CERTIFICATES:
-        pool_config.trusted_certificates = None
+        pool_config.trusted_certificates = TrustSystemCAs()
     elif trust == TRUST_ALL_CERTIFICATES:
-        pool_config.trusted_certificates = []
+        pool_config.trusted_certificates = TrustAll()
 
 
 class PoolConfig(Config):
@@ -241,12 +245,13 @@ class PoolConfig(Config):
     # Specify whether to use an encrypted connection between the driver and server.
 
     #: SSL Certificates to Trust
-    trusted_certificates = None
+    trusted_certificates = TrustSystemCAs()
     # Specify how to determine the authenticity of encryption certificates
     # provided by the Neo4j instance on connection.
-    # * None: Use system trust store. (default)
-    # * []: Trust any certificate.
-    # * ["<path>", ...]: Trust the specified certificate(s).
+    # * `neo4j.TrustSystemCAs()`: Use system trust store. (default)
+    # * `neo4j.TrustAll()`: Trust any certificate.
+    # * `neo4j.TrustCustomCAs("<path>", ...)`:
+    #       Trust the specified certificate(s).
 
     #: Custom SSL context to use for wrapping sockets
     ssl_context = None
@@ -296,26 +301,25 @@ class PoolConfig(Config):
         ssl_context.options |= ssl.OP_NO_TLSv1      # Python 3.2
         ssl_context.options |= ssl.OP_NO_TLSv1_1    # Python 3.4
 
-        if self.trusted_certificates is None:
+        if isinstance(self.trusted_certificates, TrustAll):
+            # trust any certificate
+            ssl_context.check_hostname = False
+            # https://docs.python.org/3.7/library/ssl.html#ssl.CERT_NONE
+            ssl_context.verify_mode = ssl.CERT_NONE
+        elif isinstance(self.trusted_certificates, TrustCustomCAs):
+            # trust the specified certificate(s)
+            ssl_context.check_hostname = True
+            ssl_context.verify_mode = ssl.CERT_REQUIRED
+            for cert in self.trusted_certificates.certs:
+                ssl_context.load_verify_locations(cert)
+        else:
+            # default
             # trust system CA certificates
             ssl_context.check_hostname = True
             ssl_context.verify_mode = ssl.CERT_REQUIRED
             # Must be load_default_certs, not set_default_verify_paths to
             # work on Windows with system CAs.
             ssl_context.load_default_certs()
-        else:
-            self.trusted_certificates = tuple(self.trusted_certificates)
-            if not self.trusted_certificates:
-                # trust any certificate
-                ssl_context.check_hostname = False
-                # https://docs.python.org/3.7/library/ssl.html#ssl.CERT_NONE
-                ssl_context.verify_mode = ssl.CERT_NONE
-            else:
-                # trust the specified certificate(s)
-                ssl_context.check_hostname = True
-                ssl_context.verify_mode = ssl.CERT_REQUIRED
-                for cert in self.trusted_certificates:
-                    ssl_context.load_verify_locations(cert)
 
         return ssl_context
 

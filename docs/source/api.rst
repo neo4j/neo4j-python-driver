@@ -330,25 +330,14 @@ Specify how to determine the authenticity of encryption certificates provided by
 This setting does not have any effect if ``encrypted`` is set to ``False`` or a
 custom ``ssl_context`` is configured.
 
-:Type: :class:`list` or :const:`None`
+:Type: :class:`.TrustSystemCAs`, :class:`.TrustAll`, or :class:`.TrustCustomCAs`
+:Default: :const:`neo4j.TrustSystemCAs()`
 
-**None** (default)
-    Trust server certificates that can be verified against the system
-    certificate authority. This option is primarily intended for use with
-    full certificates.
+.. autoclass:: neo4j.TrustSystemCAs
 
-**[] (empty list)**
-    Trust any server certificate. This ensures that communication
-    is encrypted but does not verify the server certificate against a
-    certificate authority. This option is primarily intended for use with
-    the default auto-generated server certificate.
+.. autoclass:: neo4j.TrustAll
 
-**["<path>", ...]**
-    Trust server certificates that can be verified against the certificate
-    authority at the specified paths. This option is primarily intended for
-    self-signed and custom certificates.
-
-:Default: :const:`None`
+.. autoclass:: neo4j.TrustCustomCAs
 
 .. versionadded:: 5.0
 

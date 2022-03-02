@@ -16,9 +16,11 @@
 # limitations under the License.
 
 
-import asyncio
-
 from .._async_compat.util import AsyncUtil
+from .._conf import (
+    TrustAll,
+    TrustStore,
+)
 from ..addressing import Address
 from ..api import (
     READ_ACCESS,
@@ -30,10 +32,6 @@ from ..conf import (
     PoolConfig,
     SessionConfig,
     WorkspaceConfig,
-)
-from ..exceptions import (
-    ServiceUnavailable,
-    SessionExpired,
 )
 from ..meta import (
     deprecation_warn,
@@ -66,7 +64,6 @@ class AsyncGraphDatabase:
             DRIVER_NEO4j,
             parse_neo4j_uri,
             parse_routing_context,
-            SECURITY_TYPE_NOT_SECURE,
             SECURITY_TYPE_SECURE,
             SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
             URI_SCHEME_BOLT,
@@ -93,6 +90,17 @@ class AsyncGraphDatabase:
                         ]
                     )
                 )
+
+        if ("trusted_certificates" in config.keys()
+            and not isinstance(config["trusted_certificates"],
+                               TrustStore)):
+            raise ConnectionError(
+                "The config setting `trusted_certificates` must be of type "
+                "neo4j.TrustAll, neo4j.TrustCustomCAs, or"
+                "neo4j.TrustSystemCAs but was {}".format(
+                    type(config["trusted_certificates"])
+                )
+            )
 
         if (security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE]
             and ("encrypted" in config.keys()
@@ -125,7 +133,7 @@ class AsyncGraphDatabase:
             config["encrypted"] = True
         elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
             config["encrypted"] = True
-            config["trusted_certificates"] = []
+            config["trusted_certificates"] = TrustAll()
 
         if driver_type == DRIVER_BOLT:
             if parse_routing_context(parsed.query):

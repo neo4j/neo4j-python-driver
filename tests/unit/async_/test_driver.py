@@ -26,6 +26,9 @@ from neo4j import (
     AsyncNeo4jDriver,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    TrustAll,
+    TrustCustomCAs,
+    TrustSystemCAs,
 )
 from neo4j.api import (
     READ_ACCESS,
@@ -95,19 +98,19 @@ async def test_routing_driver_constructor(protocol, host, port, params, auth_tok
             ConfigurationError, "The config settings"
         ),
         (
-            {"encrypted": True, "trusted_certificates": []},
+            {"encrypted": True, "trusted_certificates": TrustAll()},
             ConfigurationError, "The config settings"
         ),
         (
-            {"trusted_certificates": []},
+            {"trusted_certificates": TrustAll()},
             ConfigurationError, "The config settings"
         ),
         (
-            {"trusted_certificates": None},
+            {"trusted_certificates": TrustSystemCAs()},
             ConfigurationError, "The config settings"
         ),
         (
-            {"trusted_certificates": ["foo", "bar"]},
+            {"trusted_certificates": TrustCustomCAs("foo", "bar")},
             ConfigurationError, "The config settings"
         ),
         (

@@ -18,6 +18,11 @@
 
 import pytest
 
+from neo4j import (
+    TrustAll,
+    TrustCustomCAs,
+    TrustSystemCAs,
+)
 from neo4j.api import (
     READ_ACCESS,
     TRUST_ALL_CERTIFICATES,
@@ -48,7 +53,7 @@ test_pool_config = {
     "resolver": None,
     "encrypted": False,
     "user_agent": "test",
-    "trusted_certificates": None,
+    "trusted_certificates": TrustSystemCAs(),
     "ssl_context": None,
 }
 
@@ -148,18 +153,19 @@ def test_pool_config_consume_and_then_consume_again():
 
 
 @pytest.mark.parametrize(
-    ("value_trust", "expected_trusted_certificates"),
+    ("value_trust", "expected_trusted_certificates_cls"),
     (
-        (TRUST_ALL_CERTIFICATES, []),
-        (TRUST_SYSTEM_CA_SIGNED_CERTIFICATES, None),
+        (TRUST_ALL_CERTIFICATES, TrustAll),
+        (TRUST_SYSTEM_CA_SIGNED_CERTIFICATES, TrustSystemCAs),
     )
 )
-def test_pool_config_deprecated_trust_config(value_trust,
-                                             expected_trusted_certificates):
+def test_pool_config_deprecated_trust_config(
+    value_trust, expected_trusted_certificates_cls
+):
     with pytest.warns(DeprecationWarning, match="trust.*trusted_certificates"):
         consumed_pool_config = PoolConfig.consume({"trust": value_trust})
-    assert (consumed_pool_config.trusted_certificates
-            == expected_trusted_certificates)
+    assert isinstance(consumed_pool_config.trusted_certificates,
+                      expected_trusted_certificates_cls)
     assert not hasattr(consumed_pool_config, "trust")
 
 
@@ -167,7 +173,8 @@ def test_pool_config_deprecated_trust_config(value_trust,
     TRUST_ALL_CERTIFICATES, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
 ))
 @pytest.mark.parametrize("trusted_certificates", (
-    None, [], ["foo"], ["foo", "bar"]
+    TrustSystemCAs(), TrustAll(), TrustCustomCAs("foo"),
+    TrustCustomCAs("foo", "bar")
 ))
 def test_pool_config_deprecated_and_new_trust_config(value_trust,
                                                      trusted_certificates):

@@ -22,8 +22,8 @@ __all__ = [
     "AsyncBoltDriver",
     "AsyncDriver",
     "AsyncGraphDatabase",
-    "AsyncNeo4jDriver",
     "AsyncManagedTransaction",
+    "AsyncNeo4jDriver",
     "AsyncResult",
     "AsyncSession",
     "AsyncTransaction",
@@ -58,6 +58,9 @@ __all__ = [
     "Transaction",
     "TRUST_ALL_CERTIFICATES",
     "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",
+    "TrustAll",
+    "TrustCustomCAs",
+    "TrustSystemCAs",
     "unit_of_work",
     "Version",
     "WorkspaceConfig",
@@ -78,6 +81,11 @@ from ._async.work import (
     AsyncResult,
     AsyncSession,
     AsyncTransaction,
+)
+from ._conf import (
+    TrustAll,
+    TrustCustomCAs,
+    TrustSystemCAs,
 )
 from ._sync.driver import (
     BoltDriver,
