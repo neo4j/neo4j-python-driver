@@ -143,8 +143,13 @@ This object holds the details required to establish connections with a Neo4j dat
 :class:`neo4j.Driver` objects hold a connection pool from which :class:`neo4j.Session` objects can borrow connections.
 Closing a driver will immediately shut down all connections in the pool.
 
+.. note::
+    Driver objects only open connections and pool them as needed. To verify that
+    the driver is able to communicate with the database without executing any
+    query, use :meth:`neo4j.Driver.verify_connectivity`.
+
 .. autoclass:: neo4j.Driver()
-   :members: session, close
+   :members: session, close, verify_connectivity
 
 
 .. _driver-configuration-ref:

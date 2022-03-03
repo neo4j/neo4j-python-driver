@@ -319,15 +319,24 @@ class Driver:
         Use the exception to further understand the cause of the connectivity problem.
 
         Note: Even if this method throws an exception, the driver still need to be closed via close() to free up all resources.
+
+        .. note::
+            \\*\\*config is experimental may change in the future.
+
         """
         raise NotImplementedError
 
-    @experimental("Feature support query, based on Bolt Protocol Version and Neo4j Server Version will change in the future.")
+    @experimental("Feature support query, based on Bolt protocol version and Neo4j server version will change in the future.")
     def supports_multi_db(self):
         """ Check if the server or cluster supports multi-databases.
 
         :return: Returns true if the server or cluster the driver connects to supports multi-databases, otherwise false.
         :rtype: bool
+
+
+        .. note::
+            Feature support query, based on Bolt Protocol Version and Neo4j
+            server version will change in the future.
         """
         with self.session() as session:
             session._connect(READ_ACCESS)
