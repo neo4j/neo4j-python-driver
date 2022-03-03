@@ -15,8 +15,8 @@
   or call the `dbms.components` procedure instead.
 - SSL configuration options have been changed:
   - `trust` has been deprecated and will be removed in a future release.  
-    Use `trusted_certificates` instead which expects `None` or a `list`. See the
-    API documentation for more details.
+    Use `trusted_certificates` instead.
+    See the API documentation for more details.
 - `neo4j.time` module:
   - `Duration`
     - The constructor does not accept `subseconds` anymore.  
