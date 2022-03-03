@@ -307,7 +307,7 @@ class Driver:
             connectivity problem.
 
         .. versionchanged:: 5.0 the config parameters will be removed in
-            version 6 0. It has no effect starting in version 5.0.
+            version 6 0. It has no effect starting with version 5.0.
         """
         if config:
             deprecation_warn(
@@ -342,12 +342,16 @@ class Driver:
         with self.session() as session:
             return session._get_server_info()
 
-    @experimental("Feature support query, based on Bolt Protocol Version and Neo4j Server Version will change in the future.")
+    @experimental("Feature support query, based on Bolt protocol version and Neo4j server version will change in the future.")
     def supports_multi_db(self):
         """ Check if the server or cluster supports multi-databases.
 
         :return: Returns true if the server or cluster the driver connects to supports multi-databases, otherwise false.
         :rtype: bool
+
+        .. note::
+            Feature support query, based on Bolt Protocol Version and Neo4j
+            server version will change in the future.
         """
         with self.session() as session:
             session._connect(READ_ACCESS)
