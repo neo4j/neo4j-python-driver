@@ -124,7 +124,7 @@ Finding nodes.
         friends = []
         result = tx.run("MATCH (a:Person)-[:KNOWS]->(f) "
                              "WHERE a.name = $name "
-                             "RETURN f.name AS friend", name=name):
+                             "RETURN f.name AS friend", name=name)
         for record in result:
             friends.append(record["friend"])
         return friends
