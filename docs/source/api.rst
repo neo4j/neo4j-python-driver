@@ -1351,7 +1351,29 @@ This example shows how to suppress the :class:`neo4j.ExperimentalWarning` using 
     import warnings
     from neo4j import ExperimentalWarning
 
+    ...
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ExperimentalWarning)
+        ...  # the call emitting the ExperimentalWarning
+
+    ...
+
+This will only mute the :class:`neo4j.ExperimentalWarning` for everything inside
+the ``with``-block. This is the preferred way to mute warnings, as warnings
+triggerd by new code will still be visible.
+
+However, should you want to mute it for the entire application, use the
+following code:
+
+.. code-block:: python
+
+    import warnings
+    from neo4j import ExperimentalWarning
+
     warnings.filterwarnings("ignore", category=ExperimentalWarning)
+
+    ...
 
 
 ********
