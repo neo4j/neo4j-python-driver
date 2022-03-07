@@ -57,7 +57,7 @@ log = getLogger("neo4j")
 class Bolt4x0(Bolt):
     """ Protocol handler for Bolt 4.0.
 
-    This is supported by Neo4j versions 4.0, 4.1 and 4.2.
+    This is supported by Neo4j versions 4.0-4.4.
     """
 
     PROTOCOL_VERSION = Version(4, 0)

@@ -175,20 +175,21 @@ class AsyncBolt:
         # Carry out Bolt subclass imports locally to avoid circular dependency issues.
         from ._bolt3 import AsyncBolt3
         from ._bolt4 import (
-            AsyncBolt4x0,
             AsyncBolt4x1,
             AsyncBolt4x2,
             AsyncBolt4x3,
             AsyncBolt4x4,
         )
+        from ._bolt5 import AsyncBolt5x0
 
         handlers = {
             AsyncBolt3.PROTOCOL_VERSION: AsyncBolt3,
-            AsyncBolt4x0.PROTOCOL_VERSION: AsyncBolt4x0,
+            # 4.0 unsupported because no space left in the handshake
             AsyncBolt4x1.PROTOCOL_VERSION: AsyncBolt4x1,
             AsyncBolt4x2.PROTOCOL_VERSION: AsyncBolt4x2,
             AsyncBolt4x3.PROTOCOL_VERSION: AsyncBolt4x3,
             AsyncBolt4x4.PROTOCOL_VERSION: AsyncBolt4x4,
+            AsyncBolt5x0.PROTOCOL_VERSION: AsyncBolt5x0,
         }
 
         if protocol_version is None:
@@ -208,9 +209,9 @@ class AsyncBolt:
         preference. The number of protocol versions (or ranges)
         returned is limited to four.
         """
-        # In fact, 4.3 is the fist version to support ranges. However, the range
-        # support got backported to 4.2. But even if the server is too old to
-        # have the backport, negotiating BOLT 4.1 is no problem as it's
+        # In fact, 4.3 is the fist version to support ranges. However, the
+        # range support got backported to 4.2. But even if the server is too
+        # old to have the backport, negotiating BOLT 4.1 is no problem as it's
         # equivalent to 4.2
         first_with_range_support = Version(4, 2)
         result = []
@@ -288,9 +289,12 @@ class AsyncBolt:
         if pool_config.protocol_version == (3, 0):
             from ._bolt3 import AsyncBolt3
             bolt_cls = AsyncBolt3
-        elif pool_config.protocol_version == (4, 0):
-            from ._bolt4 import AsyncBolt4x0
-            bolt_cls = AsyncBolt4x0
+        # Implementation for 4.0 exists, but there was no space left in the
+        # handshake to offer this version to the server. Hence, the server
+        # should never request us to speak bolt 4.0.
+        # elif pool_config.protocol_version == (4, 0):
+        #     from ._bolt4 import AsyncBolt4x0
+        #     bolt_cls = AsyncBolt4x0
         elif pool_config.protocol_version == (4, 1):
             from ._bolt4 import AsyncBolt4x1
             bolt_cls = AsyncBolt4x1
@@ -303,6 +307,9 @@ class AsyncBolt:
         elif pool_config.protocol_version == (4, 4):
             from ._bolt4 import AsyncBolt4x4
             bolt_cls = AsyncBolt4x4
+        elif pool_config.protocol_version == (5, 0):
+            from ._bolt5 import AsyncBolt5x0
+            bolt_cls = AsyncBolt5x0
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getsockname()[1])
             AsyncBoltSocket.close_socket(s)
