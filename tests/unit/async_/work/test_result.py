@@ -35,6 +35,7 @@ from neo4j._async_compat.util import AsyncUtil
 from neo4j.data import (
     DataHydrator,
     Node,
+    Relationship,
 )
 from neo4j.exceptions import (
     ResultConsumedError,
@@ -591,15 +592,28 @@ async def test_data(num_records):
             ["object"],
             [Node]
         ),
+        (
+            ["r"],
+            zip((
+                Structure(b"R", 0, 1, 2, "TYPE", {"a": 1, "b": 2}),
+                Structure(b"R", 420, 1337, 69, "HYPE", {"all memes": True}),
+            )),
+            ["object"],
+            [Relationship]
+        ),
     )
 )
+@pytest.mark.parametrize("test_default_expand", (True, False))
 @mark_async_test
-async def test_to_df(keys, values, types, instances):
+async def test_to_df(keys, values, types, instances, test_default_expand):
     values = list(values)
     connection = AsyncConnectionStub(records=Records(keys, values))
     result = AsyncResult(connection, DataHydrator(), 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
-    df = await result.to_df()
+    if test_default_expand:
+        df = await result.to_df()
+    else:
+        df = await result.to_df(expand=False)
 
     assert isinstance(df, pd.DataFrame)
     assert df.keys().to_list() == keys
