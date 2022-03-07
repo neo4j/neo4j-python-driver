@@ -35,6 +35,7 @@ from neo4j import (
 from neo4j.data import (
     DataHydrator,
     Node,
+    Relationship,
 )
 from neo4j.packstream import Structure
 from neo4j.work.result import Result
@@ -444,6 +445,15 @@ def test_data(num_records):
             )),
             ["object"],
             [Node]
+        ),
+        (
+            ["r"],
+            zip((
+                Structure(b"R", 0, 1, 2, "TYPE", {"a": 1, "b": 2}),
+                Structure(b"R", 420, 1337, 69, "HYPE", {"all memes": True}),
+            )),
+            ["object"],
+            [Relationship]
         ),
     )
 )
