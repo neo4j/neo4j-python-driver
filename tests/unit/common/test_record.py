@@ -273,7 +273,7 @@ def test_record_repr(len_):
         {"x": {"one": 1, "two": 2}}
     ),
     (
-        zip(["a"], [Node("graph", 42, "Person", {"name": "Alice"})]),
+        zip(["a"], [Node("graph", "42", 42, "Person", {"name": "Alice"})]),
         (),
         {"a": {"name": "Alice"}}
     ),
