@@ -67,6 +67,7 @@ def field(v):
             "id": field(v.id),
             "labels": field(v.labels),
             "props": field(v._properties),
+            "elementId": field(v.element_id),
         }
         return {"name": "Node", "data": node}
     if isinstance(v, Relationship):
@@ -76,6 +77,9 @@ def field(v):
             "endNodeId": field(v.end_node.id),
             "type": field(v.type),
             "props": field(v._properties),
+            "elementId": field(v.element_id),
+            "startNodeElementId": field(v.start_node.element_id),
+            "endNodeElementId": field(v.end_node.element_id),
         }
         return {"name": "Relationship", "data": rel}
     if isinstance(v, Path):

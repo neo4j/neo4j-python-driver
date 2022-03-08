@@ -55,6 +55,8 @@
     "Optimization:PullPipelining": true,
     "Optimization:ResultListFetchAll": "The idiomatic way to cast to list is indistinguishable from iterating over the result.",
 
+    "Detail:NullOnMissingId": true,
+
     "ConfHint:connection.recv_timeout_seconds": true,
 
     "Backend:RTFetch": true,
