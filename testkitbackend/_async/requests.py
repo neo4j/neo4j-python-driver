@@ -407,7 +407,7 @@ async def ResultNext(backend, data):
 async def ResultSingle(backend, data):
     result = backend.results[data["resultId"]]
     await backend.send_response("Record", totestkit.record(
-        await result.single()
+        await result.single(strict=True)
     ))
 
 

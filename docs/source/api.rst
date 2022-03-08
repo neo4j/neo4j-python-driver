@@ -798,6 +798,8 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`n
 
     .. automethod:: single
 
+    .. automethod:: fetch
+
     .. automethod:: peek
 
     .. automethod:: graph
@@ -1366,6 +1368,9 @@ Connectivity Errors
     :show-inheritance:
 
 .. autoclass:: neo4j.exceptions.ResultConsumedError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.ResultNotSingleError
     :show-inheritance:
 
 
