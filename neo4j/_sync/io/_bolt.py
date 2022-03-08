@@ -315,7 +315,12 @@ class Bolt:
             BoltSocket.close_socket(s)
 
             supported_versions = cls.protocol_handlers().keys()
-            raise BoltHandshakeError("The Neo4J server does not support communication with this driver. This driver have support for Bolt Protocols {}".format(supported_versions), address=address, request_data=handshake, response_data=data)
+            raise BoltHandshakeError(
+                "The Neo4J server does not support communication with this "
+                "driver. This driver has support for Bolt protocols "
+                "{}".format(tuple(map(str, supported_versions))),
+                address=address, request_data=handshake, response_data=data
+            )
 
         connection = bolt_cls(
             address, s, pool_config.max_connection_lifetime, auth=auth,

@@ -2,11 +2,15 @@
   "skips": {
     "stub.retry.test_retry_clustering.TestRetryClustering.test_retry_ForbiddenOnReadOnlyDatabase_ChangingWriter":
       "Test makes assumptions about how verify_connectivity is implemented",
+    "stub.authorization.test_authorization.TestAuthorizationV5x0.test_should_retry_on_auth_expired_on_begin_using_tx_function":
+      "Flaky: test requires the driver to contact servers in a specific order",
     "stub.authorization.test_authorization.TestAuthorizationV4x3.test_should_retry_on_auth_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
     "stub.authorization.test_authorization.TestAuthorizationV3.test_should_retry_on_auth_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
     "stub.authorization.test_authorization.TestAuthorizationV4x1.test_should_retry_on_auth_expired_on_begin_using_tx_function":
+      "Flaky: test requires the driver to contact servers in a specific order",
+    "stub.authorization.test_authorization.TestAuthorizationV5x0.test_should_fail_on_token_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
     "stub.authorization.test_authorization.TestAuthorizationV4x3.test_should_fail_on_token_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
