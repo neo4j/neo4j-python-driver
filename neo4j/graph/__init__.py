@@ -31,6 +31,8 @@ __all__ = [
 
 from collections.abc import Mapping
 
+from ..meta import deprecated
+
 
 class Graph:
     """ Local, self-contained graph object that acts as a container for
@@ -71,35 +73,61 @@ class Graph:
         def __init__(self, graph):
             self.graph = graph
 
-        def hydrate_node(self, n_id, n_labels=None, properties=None):
+        def hydrate_node(self, id_, labels=None,
+                         properties=None, element_id=None):
             assert isinstance(self.graph, Graph)
+            # backwards compatibility with Neo4j < 5.0
+            if element_id is None:
+                element_id = str(id_)
+
             try:
-                inst = self.graph._nodes[n_id]
+                inst = self.graph._nodes[element_id]
             except KeyError:
-                inst = self.graph._nodes[n_id] = Node(self.graph, n_id, n_labels, properties)
+                inst = self.graph._nodes[element_id] = Node(
+                    self.graph, element_id, id_, labels, properties
+                )
             else:
                 # If we have already hydrated this node as the endpoint of
                 # a relationship, it won't have any labels or properties.
                 # Therefore, we need to add the ones we have here.
-                if n_labels:
-                    inst._labels = inst._labels.union(n_labels)  # frozen_set
+                if labels:
+                    inst._labels = inst._labels.union(labels)  # frozen_set
                 if properties:
                     inst._properties.update(properties)
             return inst
 
-        def hydrate_relationship(self, r_id, n0_id, n1_id, r_type, properties=None):
-            inst = self.hydrate_unbound_relationship(r_id, r_type, properties)
-            inst._start_node = self.hydrate_node(n0_id)
-            inst._end_node = self.hydrate_node(n1_id)
+        def hydrate_relationship(self, id_, n0_id, n1_id, type_,
+                                 properties=None, element_id=None,
+                                 n0_element_id=None, n1_element_id=None):
+            # backwards compatibility with Neo4j < 5.0
+            if element_id is None:
+                element_id = str(id_)
+            if n0_element_id is None:
+                n0_element_id = str(n0_id)
+            if n1_element_id is None:
+                n1_element_id = str(n1_id)
+
+            inst = self.hydrate_unbound_relationship(id_, type_, properties,
+                                                     element_id)
+            inst._start_node = self.hydrate_node(n0_id,
+                                                 element_id=n0_element_id)
+            inst._end_node = self.hydrate_node(n1_id, element_id=n1_element_id)
             return inst
 
-        def hydrate_unbound_relationship(self, r_id, r_type, properties=None):
+        def hydrate_unbound_relationship(self, id_, type_, properties=None,
+                                         element_id=None):
             assert isinstance(self.graph, Graph)
+            # backwards compatibility with Neo4j < 5.0
+            if element_id is None:
+                element_id = str(id_)
+
             try:
-                inst = self.graph._relationships[r_id]
+                inst = self.graph._relationships[element_id]
             except KeyError:
-                r = self.graph.relationship_type(r_type)
-                inst = self.graph._relationships[r_id] = r(self.graph, r_id, properties)
+                r = self.graph.relationship_type(type_)
+                inst = self.graph._relationships[element_id] = r(
+                    self.graph, element_id, id_, properties
+                )
             return inst
 
         def hydrate_path(self, nodes, relationships, sequence):
@@ -131,14 +159,19 @@ class Entity(Mapping):
     functionality.
     """
 
-    def __init__(self, graph, id, properties):
+    def __init__(self, graph, element_id, id_, properties):
         self._graph = graph
-        self._id = id
-        self._properties = dict((k, v) for k, v in (properties or {}).items() if v is not None)
+        self._element_id = element_id
+        self._id = id_
+        self._properties = {
+            k: v for k, v in (properties or {}).items() if v is not None
+        }
 
     def __eq__(self, other):
         try:
-            return type(self) == type(other) and self.graph == other.graph and self.id == other.id
+            return (type(self) == type(other)
+                    and self.graph == other.graph
+                    and self.element_id == other.element_id)
         except AttributeError:
             return False
 
@@ -146,7 +179,7 @@ class Entity(Mapping):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash(self.id)
+        return hash(self._element_id)
 
     def __len__(self):
         return len(self._properties)
@@ -167,10 +200,29 @@ class Entity(Mapping):
         return self._graph
 
     @property
+    @deprecated("`id` is deprecated, use `element_id` instead")
     def id(self):
-        """ The identity of this entity in its container :class:`.Graph`.
+        """The legacy identity of this entity in its container :class:`.Graph`.
+
+        Depending on the version of the server this entity was retrieved from,
+        this may be empty (None).
+
+        .. deprecated:: 5.0
+            Use :attr:`.element_id` instead.
+
+        :rtype: int
         """
         return self._id
+
+    @property
+    def element_id(self):
+        """The identity of this entity in its container :class:`.Graph`.
+
+        .. added:: 5.0
+
+        :rtype: str
+        """
+        return self._element_id
 
     def get(self, name, default=None):
         """ Get a property value by name, optionally with a default.
@@ -214,12 +266,14 @@ class Node(Entity):
     """ Self-contained graph node.
     """
 
-    def __init__(self, graph, n_id, n_labels=None, properties=None):
-        Entity.__init__(self, graph, n_id, properties)
+    def __init__(self, graph, element_id, id_, n_labels=None,
+                 properties=None):
+        Entity.__init__(self, graph, element_id, id_, properties)
         self._labels = frozenset(n_labels or ())
 
     def __repr__(self):
-        return "<Node id=%r labels=%r properties=%r>" % (self._id, self._labels, self._properties)
+        return (f"<Node element_id={self._element_id!r} "
+                f"labels={self._labels!r} properties={self._properties!r}>")
 
     @property
     def labels(self):
@@ -232,14 +286,15 @@ class Relationship(Entity):
     """ Self-contained graph relationship.
     """
 
-    def __init__(self, graph, r_id, properties):
-        Entity.__init__(self, graph, r_id, properties)
+    def __init__(self, graph, element_id, id_, properties):
+        Entity.__init__(self, graph, element_id, id_, properties)
         self._start_node = None
         self._end_node = None
 
     def __repr__(self):
-        return "<Relationship id=%r nodes=(%r, %r) type=%r properties=%r>" % (
-            self._id, self._start_node, self._end_node, self.type, self._properties)
+        return (f"<Relationship element_id={self._element_id!r} "
+                f"nodes={self.nodes!r} type={self.type!r} "
+                f"properties={self._properties!r}>")
 
     @property
     def nodes(self):
