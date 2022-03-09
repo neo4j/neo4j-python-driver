@@ -17,6 +17,7 @@
 
 
 from collections import deque
+from warnings import warn
 
 from ..._async_compat.util import Util
 from ...data import DataDehydrator
@@ -248,11 +249,11 @@ class Result:
             record_buffer.append(record)
             if n is not None and len(record_buffer) >= n:
                 break
-        self._exhausted = False
         if n is None:
             self._record_buffer = record_buffer
         else:
             self._record_buffer.extend(record_buffer)
+        self._exhausted = not self._record_buffer
 
     def _buffer_all(self):
         """Sets the Result object in an detached state by fetching all records
@@ -286,12 +287,20 @@ class Result:
         """
         return self._keys
 
+    def _exhaust(self):
+        # Exhaust the result, ditching all remaining records.
+        if not self._exhausted:
+            self._discarding = True
+            self._record_buffer.clear()
+            for _ in self:
+                pass
+
     def _tx_end(self):
         # Handle closure of the associated transaction.
         #
         # This will consume the result and mark it at out of scope.
         # Subsequent calls to `next` will raise a ResultConsumedError.
-        self.consume()
+        self._exhaust()
         self._out_of_scope = True
 
     def consume(self):
@@ -329,43 +338,93 @@ class Result:
                 values, info = session.read_transaction(get_two_tx)
 
         :returns: The :class:`neo4j.ResultSummary` for this result
-        """
-        if self._exhausted is False:
-            self._discarding = True
-            for _ in self:
-                pass
 
+        :raises ResultConsumedError: if the transaction from which this result
+            was obtained has been closed.
+
+        .. versionchanged:: 5.0
+            Can raise :exc:`ResultConsumedError`.
+        """
+        if self._out_of_scope:
+            raise ResultConsumedError(self, _RESULT_OUT_OF_SCOPE_ERROR)
+        if self._consumed:
+            return self._obtain_summary()
+
+        self._exhaust()
         summary = self._obtain_summary()
         self._consumed = True
         return summary
 
-    def single(self):
-        """Obtain the next and only remaining record from this result if available else return None.
+    def single(self, strict=False):
+        """Obtain the next and only remaining record or None.
+
         Calling this method always exhausts the result.
 
         A warning is generated if more than one record is available but
         the first of these is still returned.
 
-        :returns: the next :class:`neo4j.Record`.
+        :param strict:
+            If :const:`True`, raise a :class:`neo4j.ResultNotSingleError`
+            instead of returning None if there is more than one record or
+            warning if there are more than 1 record.
+            :const:`False` by default.
+        :type strict: bool
 
-        :raises ResultNotSingleError: if not exactly one record is available.
-        :raises ResultConsumedError: if the transaction from which this result was
-            obtained has been closed.
+        :returns: the next :class:`neo4j.Record` or :const:`None` if none remain
+        :warns: if more than one record is available
+
+        :raises ResultNotSingleError:
+            If ``strict=True`` and not exactly one record is available.
+        :raises ResultConsumedError: if the transaction from which this result
+            was obtained has been closed or the Result has been explicitly
+            consumed.
+
+        .. versionchanged:: 5.0
+            Added ``strict`` parameter.
+        .. versionchanged:: 5.0
+            Can raise :exc:`ResultConsumedError`.
         """
         self._buffer(2)
-        if not self._record_buffer:
+        buffer = self._record_buffer
+        self._record_buffer = deque()
+        self._exhaust()
+        if not buffer:
+            if not strict:
+                return None
             raise ResultNotSingleError(
                 self,
                 "No records found. "
                 "Make sure your query returns exactly one record."
             )
-        elif len(self._record_buffer) > 1:
-            raise ResultNotSingleError(
-                self,
-                "More than one record found. "
-                "Make sure your query returns exactly one record."
-            )
-        return self._record_buffer.popleft()
+        elif len(buffer) > 1:
+            res = buffer.popleft()
+            if not strict:
+                warn("Expected a result with a single record, "
+                     "but found multiple.")
+                return res
+            else:
+                raise ResultNotSingleError(
+                    self,
+                    "More than one record found. "
+                    "Make sure your query returns exactly one record."
+                )
+        return buffer.popleft()
+
+    def fetch(self, n):
+        """Obtain up to n records from this result.
+
+        :param n: the maximum number of records to fetch.
+        :type n: int
+
+        :returns: list of :class:`neo4j.Record`
+
+        .. versionadded:: 5.0
+        """
+        self._buffer(n)
+        return [
+            self._record_buffer.popleft()
+            for _ in range(min(n, len(self._record_buffer)))
+        ]
 
     def peek(self):
         """Obtain the next record from this result without consuming it.
@@ -376,6 +435,9 @@ class Result:
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
             consumed.
+
+        .. versionchanged:: 5.0
+            Can raise :exc:`ResultConsumedError`.
         """
         self._buffer(1)
         if self._record_buffer:
@@ -392,6 +454,9 @@ class Result:
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
             consumed.
+
+        .. versionchanged:: 5.0
+            Can raise :exc:`ResultConsumedError`.
         """
         self._buffer_all()
         return self._hydrant.graph
@@ -410,6 +475,9 @@ class Result:
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
             consumed.
+
+        .. versionchanged:: 5.0
+            Can raise :exc:`ResultConsumedError`.
         """
         return [record.value(key, default) for record in self]
 
@@ -426,6 +494,9 @@ class Result:
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
             consumed.
+
+        .. versionchanged:: 5.0
+            Can raise :exc:`ResultConsumedError`.
         """
         return [record.values(*keys) for record in self]
 
@@ -439,8 +510,12 @@ class Result:
         :returns: list of dictionaries
         :rtype: list
 
-        :raises ResultConsumedError: if the transaction from which this result was
-            obtained has been closed.
+        :raises ResultConsumedError: if the transaction from which this result
+            was obtained has been closed or the Result has been explicitly
+            consumed.
+
+        .. versionchanged:: 5.0
+            Can raise :exc:`ResultConsumedError`.
         """
         return [record.data(*keys) for record in self]
 

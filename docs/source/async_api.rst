@@ -505,6 +505,8 @@ A :class:`neo4j.AsyncResult` is attached to an active connection, through a :cla
 
     .. automethod:: single
 
+    .. automethod:: fetch
+
     .. automethod:: peek
 
     .. automethod:: graph

@@ -16,7 +16,9 @@
 # limitations under the License.
 
 
+from itertools import product
 from unittest import mock
+import warnings
 
 import pytest
 
@@ -31,7 +33,10 @@ from neo4j import (
 )
 from neo4j._async_compat.util import AsyncUtil
 from neo4j.data import DataHydrator
-from neo4j.exceptions import ResultNotSingleError
+from neo4j.exceptions import (
+    ResultConsumedError,
+    ResultNotSingleError,
+)
 
 from ...._async_compat import mark_async_test
 
@@ -331,13 +336,37 @@ async def test_result_peek(records, fetch_size):
 
 @pytest.mark.parametrize("records", ([[1], [2]], [[1]], []))
 @pytest.mark.parametrize("fetch_size", (1, 2))
+@pytest.mark.parametrize("default", (True, False))
 @mark_async_test
-async def test_result_single(records, fetch_size):
+async def test_result_single_non_strict(records, fetch_size, default):
+    kwargs = {}
+    if not default:
+        kwargs["strict"] = False
+
+    connection = AsyncConnectionStub(records=Records(["x"], records))
+    result = AsyncResult(connection, HydratorStub(), fetch_size, noop, noop)
+    await result._run("CYPHER", {}, None, None, "r", None)
+    if len(records) == 0:
+        assert await result.single(**kwargs) is None
+    else:
+        if len(records) == 1:
+            record = await result.single(**kwargs)
+        else:
+            with pytest.warns(Warning, match="multiple"):
+                record = await result.single(**kwargs)
+        assert isinstance(record, Record)
+        assert record.get("x") == records[0][0]
+
+
+@pytest.mark.parametrize("records", ([[1], [2]], [[1]], []))
+@pytest.mark.parametrize("fetch_size", (1, 2))
+@mark_async_test
+async def test_result_single_strict(records, fetch_size):
     connection = AsyncConnectionStub(records=Records(["x"], records))
     result = AsyncResult(connection, HydratorStub(), fetch_size, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     try:
-        record = await result.single()
+        record = await result.single(strict=True)
     except ResultNotSingleError as exc:
         assert len(records) != 1
         if len(records) == 0:
@@ -353,6 +382,45 @@ async def test_result_single(records, fetch_size):
         assert record.get("x") == records[0][0]
 
 
+@pytest.mark.parametrize("records", (
+    [[1], [2], [3]], [[1]], [], [[i] for i in range(100)]
+))
+@pytest.mark.parametrize("fetch_size", (1, 2))
+@pytest.mark.parametrize("strict", (True, False))
+@mark_async_test
+async def test_result_single_exhausts_records(records, fetch_size, strict):
+    connection = AsyncConnectionStub(records=Records(["x"], records))
+    result = AsyncResult(connection, HydratorStub(), fetch_size, noop, noop)
+    await result._run("CYPHER", {}, None, None, "r", None)
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            await result.single(strict=strict)
+    except ResultNotSingleError:
+        pass
+
+    assert not result.closed()  # close has nothing to do with being exhausted
+    assert [r async for r in result] == []
+    assert not result.closed()
+
+
+@pytest.mark.parametrize("records", (
+    [[1], [2], [3]], [[1]], [], [[i] for i in range(100)]
+))
+@pytest.mark.parametrize("fetch_size", (1, 2))
+@pytest.mark.parametrize("strict", (True, False))
+@mark_async_test
+async def test_result_fetch(records, fetch_size, strict):
+    connection = AsyncConnectionStub(records=Records(["x"], records))
+    result = AsyncResult(connection, HydratorStub(), fetch_size, noop, noop)
+    await result._run("CYPHER", {}, None, None, "r", None)
+    assert await result.fetch(0) == []
+    assert await result.fetch(-1) == []
+    assert [[r.get("x")] for r in await result.fetch(2)] == records[:2]
+    assert [[r.get("x")] for r in await result.fetch(1)] == records[2:3]
+    assert [[r.get("x")] async for r in result] == records[3:]
+
+
 @mark_async_test
 async def test_keys_are_available_before_and_after_stream():
     connection = AsyncConnectionStub(records=Records(["x"], [[1], [2]]))
@@ -366,8 +434,9 @@ async def test_keys_are_available_before_and_after_stream():
 @pytest.mark.parametrize("records", ([[1], [2]], [[1]], []))
 @pytest.mark.parametrize("consume_one", (True, False))
 @pytest.mark.parametrize("summary_meta", (None, {"database": "foobar"}))
+@pytest.mark.parametrize("consume_times", (1, 2))
 @mark_async_test
-async def test_consume(records, consume_one, summary_meta):
+async def test_consume(records, consume_one, summary_meta, consume_times):
     connection = AsyncConnectionStub(
         records=Records(["x"], records), summary_meta=summary_meta
     )
@@ -378,16 +447,17 @@ async def test_consume(records, consume_one, summary_meta):
             await AsyncUtil.next(AsyncUtil.iter(result))
         except StopAsyncIteration:
             pass
-    summary = await result.consume()
-    assert isinstance(summary, ResultSummary)
-    if summary_meta and "db" in summary_meta:
-        assert summary.database == summary_meta["db"]
-    else:
-        assert summary.database is None
-    server_info = summary.server
-    assert isinstance(server_info, ServerInfo)
-    assert server_info.protocol_version == Version(4, 3)
-    assert isinstance(summary.counters, SummaryCounters)
+    for _ in range(consume_times):
+        summary = await result.consume()
+        assert isinstance(summary, ResultSummary)
+        if summary_meta and "db" in summary_meta:
+            assert summary.database == summary_meta["db"]
+        else:
+            assert summary.database is None
+        server_info = summary.server
+        assert isinstance(server_info, ServerInfo)
+        assert server_info.protocol_version == Version(4, 3)
+        assert isinstance(summary.counters, SummaryCounters)
 
 
 @pytest.mark.parametrize("t_first", (None, 0, 1, 123456789))

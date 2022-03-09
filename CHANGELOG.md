@@ -54,8 +54,6 @@
 - Creation of a driver with `bolt[+s[sc]]://` scheme has been deprecated and
   will raise an error in the Future. The routing context was and will be
   silently ignored until then.
-- `Result.single` now raises `ResultNotSingleError` if not exactly one result is
-  available.
 - Bookmarks
   - `Session.last_bookmark` was deprecated. Its behaviour is partially incorrect
     and cannot be fixed without breaking its signature.  
