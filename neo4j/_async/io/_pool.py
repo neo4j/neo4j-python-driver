@@ -112,7 +112,7 @@ class AsyncIOPool(abc.ABC):
                 return connection
         return None
 
-    async def _acquire_new(self, address, timeout, health_check):
+    async def _acquire_new(self, address, timeout):
         connections = self.connections[address]
         max_pool_size = self.pool_config.max_connection_pool_size
         infinite_pool_size = (max_pool_size < 0
@@ -120,7 +120,6 @@ class AsyncIOPool(abc.ABC):
         can_create_new_connection = (infinite_pool_size
                                      or len(connections) < max_pool_size)
         if can_create_new_connection:
-            timeout = min(self.pool_config.connection_timeout, timeout)
             try:
                 connection = await self.opener(address, timeout)
             except ServiceUnavailable:
@@ -170,9 +169,7 @@ class AsyncIOPool(abc.ABC):
                 if connection:
                     return connection
                 # all connections in pool are in-use
-                connection = await self._acquire_new(
-                    address, time_remaining(), health_check
-                )
+                connection = await self._acquire_new(address, time_remaining())
                 if connection:
                     return connection
 
