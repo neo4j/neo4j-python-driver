@@ -20,6 +20,7 @@
       "Driver emits deprecation warning. Behavior will be unified in 6.0."
   },
   "features": {
+    "Feature:API:ConnectionAcquisitionTimeout": true,
     "Feature:API:Driver:GetServerInfo": true,
     "Feature:API:Driver.IsEncrypted": true,
     "Feature:API:Driver.VerifyConnectivity": true,
