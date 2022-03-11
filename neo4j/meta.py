@@ -18,6 +18,7 @@
 
 import asyncio
 from functools import wraps
+from warnings import warn
 
 
 # Can be automatically overridden in builds
@@ -39,7 +40,6 @@ def get_user_agent():
 
 
 def deprecation_warn(message, stack_level=2):
-    from warnings import warn
     warn(message, category=DeprecationWarning, stacklevel=stack_level)
 
 
