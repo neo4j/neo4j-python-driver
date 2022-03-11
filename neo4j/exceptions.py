@@ -308,7 +308,7 @@ class ResultConsumedError(ResultError):
 
 
 class ResultNotSingleError(ResultError):
-    """Raised when result.single() detects not exactly one record in result."""
+    """Raised when a result should have exactly one record but does not."""
 
 
 class ServiceUnavailable(DriverError):

@@ -147,6 +147,8 @@ class Session(Workspace):
         This will release any borrowed resources, such as connections, and will
         roll back any outstanding transactions.
         """
+        if self._closed:
+            return
         if self._connection:
             if self._auto_result:
                 if self._state_failed is False:

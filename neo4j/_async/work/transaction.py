@@ -198,9 +198,9 @@ class _AsyncTransactionBase:
 
 class AsyncTransaction(_AsyncTransactionBase):
     """ Container for multiple Cypher queries to be executed within a single
-    context. asynctransactions can be used within a :py:const:`async with`
-    block where the transaction is committed or rolled back on based on
-    whether an exception is raised::
+    context. :class:`AsyncTransaction` objects can be used as a context
+    managers (:py:const:`async with` block) where the transaction is committed
+    or rolled back on based on whether an exception is raised::
 
         async with session.begin_transaction() as tx:
             ...

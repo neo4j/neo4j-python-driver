@@ -407,7 +407,7 @@ def ResultNext(backend, data):
 def ResultSingle(backend, data):
     result = backend.results[data["resultId"]]
     backend.send_response("Record", totestkit.record(
-        result.single()
+        result.single(strict=True)
     ))
 
 

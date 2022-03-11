@@ -45,8 +45,9 @@ class Workspace:
         self._closed = False
 
     def __del__(self):
-        if not self._closed:
-            unclosed_resource_warn(self)
+        if self._closed:
+            return
+        unclosed_resource_warn(self)
         # TODO: 6.0 - remove this
         if asyncio.iscoroutinefunction(self.close):
             return
@@ -120,5 +121,7 @@ class Workspace:
             self._connection_access_mode = None
 
     def close(self):
+        if self._closed:
+            return
         self._disconnect(sync=True)
         self._closed = True

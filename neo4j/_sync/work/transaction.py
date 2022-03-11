@@ -29,7 +29,7 @@ from .result import Result
 __all__ = ("Transaction", "ManagedTransaction")
 
 
-class _AsyncTransactionBase:
+class _TransactionBase:
     def __init__(self, connection, fetch_size, on_closed, on_error):
         self._connection = connection
         self._error_handling_connection = ConnectionErrorHandler(
@@ -196,43 +196,43 @@ class _AsyncTransactionBase:
         return self._closed_flag
 
 
-class Transaction(_AsyncTransactionBase):
+class Transaction(_TransactionBase):
     """ Container for multiple Cypher queries to be executed within a single
-    context. asynctransactions can be used within a :py:const:`with`
-    block where the transaction is committed or rolled back on based on
-    whether an exception is raised::
+    context. :class:`Transaction` objects can be used as a context
+    managers (:py:const:`with` block) where the transaction is committed
+    or rolled back on based on whether an exception is raised::
 
         with session.begin_transaction() as tx:
             ...
 
     """
 
-    @wraps(_AsyncTransactionBase._enter)
+    @wraps(_TransactionBase._enter)
     def __enter__(self):
         return self._enter()
 
-    @wraps(_AsyncTransactionBase._exit)
+    @wraps(_TransactionBase._exit)
     def __exit__(self, exception_type, exception_value, traceback):
         self._exit(exception_type, exception_value, traceback)
 
-    @wraps(_AsyncTransactionBase._commit)
+    @wraps(_TransactionBase._commit)
     def commit(self):
         return self._commit()
 
-    @wraps(_AsyncTransactionBase._rollback)
+    @wraps(_TransactionBase._rollback)
     def rollback(self):
         return self._rollback()
 
-    @wraps(_AsyncTransactionBase._close)
+    @wraps(_TransactionBase._close)
     def close(self):
         return self._close()
 
-    @wraps(_AsyncTransactionBase._closed)
+    @wraps(_TransactionBase._closed)
     def closed(self):
         return self._closed()
 
 
-class ManagedTransaction(_AsyncTransactionBase):
+class ManagedTransaction(_TransactionBase):
     """Transaction object provided to transaction functions.
 
     Inside a transaction function, the driver is responsible for managing
