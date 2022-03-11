@@ -172,6 +172,9 @@ class CustomRule(unasync.Rule):
         # Convert class names from 'AsyncXyz' to 'Xyz'
         if len(name) > 5 and name.startswith("Async") and name[5].isupper():
             return name[5:]
+        # Convert class names from '_AsyncXyz' to '_Xyz'
+        elif len(name) > 6 and name.startswith("_Async") and name[6].isupper():
+            return "_" + name[6:]
         # Convert variable/method/function names from 'async_xyz' to 'xyz'
         elif len(name) > 6 and name.startswith("async_"):
             return name[6:]
