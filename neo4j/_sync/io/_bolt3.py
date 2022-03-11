@@ -314,16 +314,17 @@ class Bolt3(Bolt):
         self.send_all()
         self.fetch_all()
 
-    def _fetch_message(self):
-        """ Receive at most one message from the server, if available.
+    def goodbye(self):
+        log.debug("[#%04X]  C: GOODBYE", self.local_port)
+        self._append(b"\x02", ())
+
+    def _process_message(self, details, summary_signature,
+                               summary_metadata):
+        """ Process at most one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
-        # Receive exactly one message
-        details, summary_signature, summary_metadata = \
-            Util.next(self.inbox)
-
         if details:
             log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # Do not log any data
             self.responses[0].on_records(details)
@@ -362,28 +363,3 @@ class Bolt3(Bolt):
             raise BoltProtocolError("Unexpected response message with signature %02X" % summary_signature, address=self.unresolved_address)
 
         return len(details), 1
-
-    def close(self):
-        """ Close the connection.
-        """
-        if not self._closed:
-            if not self._defunct:
-                log.debug("[#%04X]  C: GOODBYE", self.local_port)
-                self._append(b"\x02", ())
-                try:
-                    self._send_all()
-                except (OSError, BoltError, DriverError):
-                    pass
-            log.debug("[#%04X]  C: <CLOSE>", self.local_port)
-            try:
-                self.socket.close()
-            except OSError:
-                pass
-            finally:
-                self._closed = True
-
-    def closed(self):
-        return self._closed
-
-    def defunct(self):
-        return self._defunct

@@ -20,10 +20,7 @@ from logging import getLogger
 from ssl import SSLSocket
 
 from ..._async_compat.util import AsyncUtil
-from ..._exceptions import (
-    BoltError,
-    BoltProtocolError,
-)
+from ..._exceptions import BoltProtocolError
 from ...api import (
     READ_ACCESS,
     SYSTEM_DATABASE,
@@ -32,7 +29,6 @@ from ...api import (
 from ...exceptions import (
     ConfigurationError,
     DatabaseUnavailable,
-    DriverError,
     ForbiddenOnReadOnlyDatabase,
     Neo4jError,
     NotALeader,
@@ -265,16 +261,17 @@ class AsyncBolt4x0(AsyncBolt):
         await self.send_all()
         await self.fetch_all()
 
-    async def _fetch_message(self):
-        """ Receive at most one message from the server, if available.
+    def goodbye(self):
+        log.debug("[#%04X]  C: GOODBYE", self.local_port)
+        self._append(b"\x02", ())
+
+    async def _process_message(self, details, summary_signature,
+                               summary_metadata):
+        """ Process at most one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
-        # Receive exactly one message
-        details, summary_signature, summary_metadata = \
-            await AsyncUtil.next(self.inbox)
-
         if details:
             log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # Do not log any data
             await self.responses[0].on_records(details)
@@ -314,31 +311,6 @@ class AsyncBolt4x0(AsyncBolt):
                                     "%02X" % ord(summary_signature), self.unresolved_address)
 
         return len(details), 1
-
-    async def close(self):
-        """ Close the connection.
-        """
-        if not self._closed:
-            if not self._defunct:
-                log.debug("[#%04X]  C: GOODBYE", self.local_port)
-                self._append(b"\x02", ())
-                try:
-                    await self._send_all()
-                except (OSError, BoltError, DriverError):
-                    pass
-            log.debug("[#%04X]  C: <CLOSE>", self.local_port)
-            try:
-                self.socket.close()
-            except OSError:
-                pass
-            finally:
-                self._closed = True
-
-    def closed(self):
-        return self._closed
-
-    def defunct(self):
-        return self._defunct
 
 
 class AsyncBolt4x1(AsyncBolt4x0):

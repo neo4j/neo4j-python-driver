@@ -35,12 +35,14 @@ from ssl import (
     SSLError,
 )
 import struct
+from time import perf_counter
 
 from ... import addressing
 from ..._exceptions import (
     BoltError,
     BoltProtocolError,
     BoltSecurityError,
+    SocketDeadlineExceeded,
 )
 from ...exceptions import (
     DriverError,
@@ -58,24 +60,41 @@ log = logging.getLogger("neo4j")
 class AsyncBoltSocket:
     Bolt = None
 
-    def __init__(self, reader, protocol, writer):  # , loop):
+    def __init__(self, reader, protocol, writer):
         self._reader = reader  # type: asyncio.StreamReader
         self._protocol = protocol  # type: asyncio.StreamReaderProtocol
         self._writer = writer  # type: asyncio.StreamWriter
-        # self._loop = loop  # type: asyncio.BaseEventLoop
         # 0 - non-blocking
         # None infinitely blocking
         # int - seconds to wait for data
         self._timeout = None
+        self._deadline = None
 
     async def _wait_for_io(self, io_fut):
-        if self._timeout is not None and self._timeout <= 0:
+        timeout = self._timeout
+        to_raise = SocketTimeout
+        if self._deadline is not None:
+            deadline_timeout = self._deadline - perf_counter()
+            if deadline_timeout <= 0:
+                raise SocketDeadlineExceeded("timed out")
+            if timeout is None or deadline_timeout <= timeout:
+                timeout = deadline_timeout
+                to_raise = SocketDeadlineExceeded
+
+        if timeout is not None and timeout <= 0:
             # give the io-operation time for one loop cycle to do its thing
+            io_fut = asyncio.create_task(io_fut)
             await asyncio.sleep(0)
         try:
-            return await asyncio.wait_for(io_fut, self._timeout)
-        except asyncio.TimeoutError:
-            raise SocketTimeout
+            return await asyncio.wait_for(io_fut, timeout)
+        except asyncio.TimeoutError as e:
+            raise to_raise("timed out") from e
+
+    def set_deadline(self, s_from_now):
+        if s_from_now is None:
+            self._deadline = None
+        else:
+            self._deadline = perf_counter() + s_from_now
 
     @property
     def _socket(self) -> socket:
@@ -344,6 +363,59 @@ class AsyncBoltSocket:
 class BoltSocket:
     Bolt = None
 
+    def __init__(self, socket_: socket):
+        self._socket = socket_
+        self._deadline = None
+
+    @property
+    def _socket(self):
+        return self.__socket
+
+    @_socket.setter
+    def _socket(self, socket_: socket):
+        self.__socket = socket_
+        self.getsockname = socket_.getsockname
+        self.getpeername = socket_.getpeername
+        if hasattr(socket, "getpeercert"):
+            self.getpeercert = socket_.getpeercert
+        elif hasattr(self, "getpeercert"):
+            del self.getpeercert
+        self.gettimeout = socket_.gettimeout
+        self.settimeout = socket_.settimeout
+        self.close = socket_.close
+
+    def _wait_for_io(self, func, *args, **kwargs):
+        if self._deadline is None:
+            return func(*args, **kwargs)
+        timeout = self._socket.gettimeout()
+        deadline_timeout = self._deadline - perf_counter()
+        if deadline_timeout <= 0:
+            raise SocketDeadlineExceeded("timed out")
+        if timeout is None or deadline_timeout <= timeout:
+            self._socket.settimeout(deadline_timeout)
+            try:
+                return func(*args, **kwargs)
+            except SocketTimeout as e:
+                raise SocketDeadlineExceeded("timed out") from e
+            finally:
+                self._socket.settimeout(timeout)
+        return func(*args, **kwargs)
+
+    def set_deadline(self, s_from_now):
+        if s_from_now is None:
+            self._deadline = None
+        else:
+            self._deadline = perf_counter() + s_from_now
+
+    def recv(self, n):
+        return self._wait_for_io(self._socket.recv, n)
+
+    def recv_into(self, buffer, nbytes):
+        return self._wait_for_io(self._socket.recv_into, buffer, nbytes)
+
+    def sendall(self, data):
+        return self._wait_for_io(self._socket.sendall, data)
+
     @classmethod
     def _connect(cls, resolved_address, timeout, keep_alive):
         """
@@ -477,7 +549,7 @@ class BoltSocket:
         agreed_version = data[-1], data[-2]
         log.debug("[#%04X]  S: <HANDSHAKE> 0x%06X%02X", local_port,
                   agreed_version[1], agreed_version[0])
-        return s, agreed_version, handshake, data
+        return cls(s), agreed_version, handshake, data
 
     @classmethod
     def close_socket(cls, socket_):

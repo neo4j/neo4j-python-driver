@@ -23,7 +23,12 @@ from logging import getLogger
 from time import perf_counter
 
 from ..._async_compat.network import AsyncBoltSocket
-from ..._exceptions import BoltHandshakeError
+from ..._async_compat.util import AsyncUtil
+from ..._exceptions import (
+    BoltError,
+    BoltHandshakeError,
+    SocketDeadlineExceeded,
+)
 from ...addressing import Address
 from ...api import (
     ServerInfo,
@@ -32,6 +37,7 @@ from ...api import (
 from ...conf import PoolConfig
 from ...exceptions import (
     AuthError,
+    DriverError,
     IncompleteCommit,
     ServiceUnavailable,
     SessionExpired,
@@ -76,6 +82,7 @@ class AsyncBolt:
     idle_since = float("-inf")
 
     # The socket
+    _closing = False
     _closed = False
 
     # The socket
@@ -261,24 +268,42 @@ class AsyncBolt:
 
     @classmethod
     async def open(
-        cls, address, *, auth=None, timeout=None, routing_context=None, **pool_config
+        cls, address, *, auth=None, timeout=None, routing_context=None,
+        **pool_config
     ):
-        """ Open a new Bolt connection to a given server address.
+        """Open a new Bolt connection to a given server address.
 
         :param address:
         :param auth:
         :param timeout: the connection timeout in seconds
         :param routing_context: dict containing routing context
         :param pool_config:
-        :return:
-        :raise BoltHandshakeError: raised if the Bolt Protocol can not negotiate a protocol version.
+
+        :return: connected AsyncBolt instance
+
+        :raise BoltHandshakeError:
+            raised if the Bolt Protocol can not negotiate a protocol version.
         :raise ServiceUnavailable: raised if there was a connection issue.
         """
+        def time_remaining():
+            if timeout is None:
+                return None
+            t = timeout - (perf_counter() - t0)
+            return t if t > 0 else 0
+
+        t0 = perf_counter()
         pool_config = PoolConfig.consume(pool_config)
+
+        socket_connection_timeout = pool_config.connection_timeout
+        if socket_connection_timeout is None:
+            socket_connection_timeout = time_remaining()
+        elif timeout is not None:
+            socket_connection_timeout = min(pool_config.connection_timeout,
+                                            time_remaining())
         s, pool_config.protocol_version, handshake, data = \
             await AsyncBoltSocket.connect(
                 address,
-                timeout=timeout,
+                timeout=socket_connection_timeout,
                 custom_resolver=pool_config.resolver,
                 ssl_context=pool_config.get_ssl_context(),
                 keep_alive=pool_config.keep_alive,
@@ -328,9 +353,18 @@ class AsyncBolt:
         )
 
         try:
-            await connection.hello()
+            connection.socket.set_deadline(time_remaining())
+            try:
+                await connection.hello()
+            except SocketDeadlineExceeded as e:
+                # connection._defunct = True
+                raise ServiceUnavailable(
+                    "Timeout during initial handshake occurred"
+                ) from e
+            finally:
+                connection.socket.set_deadline(None)
         except Exception:
-            await connection.close()
+            await connection.close_non_blocking()
             raise
 
         return connection
@@ -452,6 +486,11 @@ class AsyncBolt:
         """
         pass
 
+    @abc.abstractmethod
+    def goodbye(self):
+        """Append a GOODBYE message to the outgoing queued."""
+        pass
+
     def _append(self, signature, fields=(), response=None):
         """ Appends a message to the outgoing queue.
 
@@ -493,7 +532,8 @@ class AsyncBolt:
         await self._send_all()
 
     @abc.abstractmethod
-    async def _fetch_message(self):
+    async def _process_message(self, details, summary_signature,
+                               summary_metadata):
         """ Receive at most one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary
@@ -517,7 +557,12 @@ class AsyncBolt:
         if not self.responses:
             return 0, 0
 
-        res = await self._fetch_message()
+        # Receive exactly one message
+        details, summary_signature, summary_metadata = \
+            await AsyncUtil.next(self.inbox)
+        res = await self._process_message(
+            details, summary_signature, summary_metadata
+        )
         self.idle_since = perf_counter()
         return res
 
@@ -560,9 +605,13 @@ class AsyncBolt:
         # connection from the client side, and remove the address
         # from the connection pool.
         self._defunct = True
-        await self.close()
-        if self.pool:
-            await self.pool.deactivate(address=self.unresolved_address)
+        if not self._closing:
+            # If we fail while closing the connection, there is no need to
+            # remove the connection from the pool, nor to try to close the
+            # connection again.
+            await self.close()
+            if self.pool:
+                await self.pool.deactivate(address=self.unresolved_address)
         # Iterate through the outstanding responses, and if any correspond
         # to COMMIT requests then raise an error to signal that we are
         # unable to confirm that the COMMIT completed successfully.
@@ -596,19 +645,43 @@ class AsyncBolt:
     def set_stale(self):
         self._stale = True
 
-    @abc.abstractmethod
     async def close(self):
-        """ Close the connection.
+        """Close the connection."""
+        if self._closed or self._closing:
+            return
+        self._closing = True
+        if not self._defunct:
+            self.goodbye()
+            try:
+                await self._send_all()
+            except (OSError, BoltError, DriverError):
+                pass
+        log.debug("[#%04X]  C: <CLOSE>", self.local_port)
+        try:
+            self.socket.close()
+        except OSError:
+            pass
+        finally:
+            self._closed = True
+
+    async def close_non_blocking(self):
+        """Set the socket to non-blocking and close it.
+
+        This will try to send the `GOODBYE` message (given the socket is not
+        marked as defunct). However, should the write operation require
+        blocking (e.g., a full network buffer), then the socket will be closed
+        immediately (without `GOODBYE` message).
         """
-        pass
+        if self._closed or self._closing:
+            return
+        self.socket.settimeout(0)
+        await self.close()
 
-    @abc.abstractmethod
     def closed(self):
-        pass
+        return self._closed
 
-    @abc.abstractmethod
     def defunct(self):
-        pass
+        return self._defunct
 
     def is_idle_for(self, timeout):
         """Check if connection has been idle for at least the given timeout.
