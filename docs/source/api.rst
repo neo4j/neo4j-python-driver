@@ -417,7 +417,7 @@ Will result in:
 Sessions & Transactions
 ***********************
 All database activity is co-ordinated through two mechanisms:
-**sessions** (:class:`neo4j.AsyncSession`) and **transactions**
+**sessions** (:class:`neo4j.Session`) and **transactions**
 (:class:`neo4j.Transaction`, :class:`neo4j.ManagedTransaction`).
 
 A **session** is a logical container for any number of causally-related transactional units of work.
@@ -1263,18 +1263,7 @@ Neo4j Execution Errors
 
 
 .. autoclass:: neo4j.exceptions.Neo4jError
-
-    .. autoproperty:: message
-
-    .. autoproperty:: code
-
-    There are many Neo4j status codes, see `status code <https://neo4j.com/docs/status-codes/current/>`_.
-
-    .. autoproperty:: classification
-
-    .. autoproperty:: category
-
-    .. autoproperty:: title
+    :members: message, code, is_retriable
 
 
 .. autoclass:: neo4j.exceptions.ClientError
@@ -1332,7 +1321,7 @@ Connectivity Errors
 
 
 .. autoclass:: neo4j.exceptions.DriverError
-
+    :members: is_retriable
 
 .. autoclass:: neo4j.exceptions.TransactionError
     :show-inheritance:

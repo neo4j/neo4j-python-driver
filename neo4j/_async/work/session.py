@@ -30,12 +30,11 @@ from ...conf import SessionConfig
 from ...data import DataHydrator
 from ...exceptions import (
     ClientError,
-    IncompleteCommit,
+    DriverError,
     Neo4jError,
     ServiceUnavailable,
     SessionExpired,
     TransactionError,
-    TransientError,
 )
 from ...meta import (
     deprecated,
@@ -328,8 +327,9 @@ class AsyncSession(AsyncWorkspace):
             self._transaction = None
             await self._disconnect()
 
-    async def _open_transaction(self, *, tx_cls, access_mode, metadata=None,
-                          timeout=None):
+    async def _open_transaction(
+        self, *, tx_cls, access_mode, metadata=None, timeout=None
+    ):
         await self._connect(access_mode=access_mode)
         self._transaction = tx_cls(
             self._connection, self._config.fetch_size,
@@ -393,7 +393,11 @@ class AsyncSession(AsyncWorkspace):
         metadata = getattr(transaction_function, "metadata", None)
         timeout = getattr(transaction_function, "timeout", None)
 
-        retry_delay = retry_delay_generator(self._config.initial_retry_delay, self._config.retry_delay_multiplier, self._config.retry_delay_jitter_factor)
+        retry_delay = retry_delay_generator(
+            self._config.initial_retry_delay,
+            self._config.retry_delay_multiplier,
+            self._config.retry_delay_jitter_factor
+        )
 
         errors = []
 
@@ -414,24 +418,22 @@ class AsyncSession(AsyncWorkspace):
                     raise
                 else:
                     await tx._commit()
-            except IncompleteCommit:
-                raise
-            except (ServiceUnavailable, SessionExpired) as error:
-                errors.append(error)
+            except (DriverError, Neo4jError) as error:
                 await self._disconnect()
-            except TransientError as transient_error:
-                if not transient_error.is_retriable():
+                if not error.is_retriable():
                     raise
-                errors.append(transient_error)
+                errors.append(error)
             else:
                 return result
             if t0 == -1:
-                t0 = perf_counter()  # The timer should be started after the first attempt
+                # The timer should be started after the first attempt
+                t0 = perf_counter()
             t1 = perf_counter()
             if t1 - t0 > self._config.max_transaction_retry_time:
                 break
             delay = next(retry_delay)
-            log.warning("Transaction failed and will be retried in {}s ({})".format(delay, "; ".join(errors[-1].args)))
+            log.warning("Transaction failed and will be retried in {}s ({})"
+                        "".format(delay, "; ".join(errors[-1].args)))
             await async_sleep(delay)
 
         if errors:
