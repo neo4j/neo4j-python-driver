@@ -39,6 +39,7 @@ __all__ = [
     "DEFAULT_DATABASE",
     "Driver",
     "ExperimentalWarning",
+    "get_user_agent",
     "GraphDatabase",
     "IPv4Address",
     "IPv6Address",

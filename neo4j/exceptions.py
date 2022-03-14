@@ -75,11 +75,16 @@ class Neo4jError(Exception):
     """ Raised when the Cypher engine returns an error to the client.
     """
 
+    #: (str or None) The error message returned by the server.
     message = None
+    #: (str or None) The error code returned by the server.
+    #: There are many Neo4j status codes, see
+    #: `status codes <https://neo4j.com/docs/status-codes/current/>`_.
     code = None
     classification = None
     category = None
     title = None
+    #: (dict) Any additional information returned by the server.
     metadata = None
 
     @classmethod
@@ -126,6 +131,19 @@ class Neo4jError(Exception):
         else:
             return cls
 
+    def is_retriable(self):
+        """Whether the error is retryable.
+
+        Indicated whether a transaction that yielded this error makes sense to
+        retry. This methods  makes mostly sense when implementing a custom
+        retry policy in conjunction with :ref:`explicit-transactions-ref`.
+
+        :return: :const:`True` if the error is retryable,
+            :const:`False` otherwise.
+        :rtype: bool
+        """
+        return False
+
     def invalidates_all_connections(self):
         return self.code == "Neo.ClientError.Security.AuthorizationExpired"
 
@@ -163,15 +181,13 @@ class TransientError(Neo4jError):
     """
 
     def is_retriable(self):
-        """These are really client errors but classification on the server is not entirely correct and they are classified as transient.
-
-        :return: True if it is a retriable TransientError, otherwise False.
-        :rtype: bool
-        """
-        return not (self.code in (
+        # Transient errors are always retriable.
+        # However, there are some errors that are misclassified by the server.
+        # They should really be ClientErrors.
+        return self.code not in (
             "Neo.TransientError.Transaction.Terminated",
             "Neo.TransientError.Transaction.LockClientStopped",
-        ))
+        )
 
 
 class DatabaseUnavailable(TransientError):
@@ -220,6 +236,7 @@ class TokenExpired(AuthError):
     A new driver instance with a fresh authentication token needs to be created.
     """
 
+
 client_errors = {
 
     # ConstraintError
@@ -266,6 +283,18 @@ transient_errors = {
 class DriverError(Exception):
     """ Raised when the Driver raises an error.
     """
+    def is_retriable(self):
+        """Whether the error is retryable.
+
+        Indicated whether a transaction that yielded this error makes sense to
+        retry. This methods  makes mostly sense when implementing a custom
+        retry policy in conjunction with :ref:`explicit-transactions-ref`.
+
+        :return: :const:`True` if the error is retryable,
+            :const:`False` otherwise.
+        :rtype: bool
+        """
+        return False
 
 
 class SessionExpired(DriverError):
@@ -275,6 +304,9 @@ class SessionExpired(DriverError):
 
     def __init__(self, session, *args, **kwargs):
         super(SessionExpired, self).__init__(session, *args, **kwargs)
+
+    def is_retriable(self):
+        return True
 
 
 class TransactionError(DriverError):
@@ -315,6 +347,9 @@ class ServiceUnavailable(DriverError):
     """ Raised when no database service is available.
     """
 
+    def is_retriable(self):
+        return True
+
 
 class RoutingServiceUnavailable(ServiceUnavailable):
     """ Raised when no routing service is available.
@@ -339,6 +374,9 @@ class IncompleteCommit(ServiceUnavailable):
     in an unknown state with regard to whether the transaction completed
     successfully or not.
     """
+
+    def is_retriable(self):
+        return False
 
 
 class ConfigurationError(DriverError):
