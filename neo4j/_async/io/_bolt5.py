@@ -16,7 +16,6 @@
 # limitations under the License.
 
 
-from enum import Enum
 from logging import getLogger
 from ssl import SSLSocket
 
@@ -30,13 +29,16 @@ from ...api import (
     Version,
 )
 from ...exceptions import (
-    ConfigurationError,
     DatabaseUnavailable,
     DriverError,
     ForbiddenOnReadOnlyDatabase,
     Neo4jError,
     NotALeader,
     ServiceUnavailable,
+)
+from ._bolt3 import (
+    ServerStateManager,
+    ServerStates,
 )
 from ._bolt import AsyncBolt
 from ._common import (
@@ -50,64 +52,14 @@ from ._common import (
 log = getLogger("neo4j")
 
 
-class ServerStates(Enum):
-    CONNECTED = "CONNECTED"
-    READY = "READY"
-    STREAMING = "STREAMING"
-    TX_READY_OR_TX_STREAMING = "TX_READY||TX_STREAMING"
-    FAILED = "FAILED"
+class AsyncBolt5x0(AsyncBolt):
+    """Protocol handler for Bolt 5.0. """
 
+    PROTOCOL_VERSION = Version(5, 0)
 
-class ServerStateManager:
-    _STATE_TRANSITIONS = {
-        ServerStates.CONNECTED: {
-            "hello": ServerStates.READY,
-        },
-        ServerStates.READY: {
-            "run": ServerStates.STREAMING,
-            "begin": ServerStates.TX_READY_OR_TX_STREAMING,
-        },
-        ServerStates.STREAMING: {
-            "pull": ServerStates.READY,
-            "discard": ServerStates.READY,
-            "reset": ServerStates.READY,
-        },
-        ServerStates.TX_READY_OR_TX_STREAMING: {
-            "commit": ServerStates.READY,
-            "rollback": ServerStates.READY,
-            "reset": ServerStates.READY,
-        },
-        ServerStates.FAILED: {
-            "reset": ServerStates.READY,
-        }
-    }
+    supports_multiple_results = True
 
-    def __init__(self, init_state, on_change=None):
-        self.state = init_state
-        self._on_change = on_change
-
-    def transition(self, message, metadata):
-        if metadata.get("has_more"):
-            return
-        state_before = self.state
-        self.state = self._STATE_TRANSITIONS\
-            .get(self.state, {})\
-            .get(message, self.state)
-        if state_before != self.state and callable(self._on_change):
-            self._on_change(state_before, self.state)
-
-
-class AsyncBolt3(AsyncBolt):
-    """ Protocol handler for Bolt 3.
-
-    This is supported by Neo4j versions 3.5, 4.0, 4.1, 4.2, 4.3, and 4.4.
-    """
-
-    PROTOCOL_VERSION = Version(3, 0)
-
-    supports_multiple_results = False
-
-    supports_multiple_databases = False
+    supports_multiple_databases = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -145,11 +97,27 @@ class AsyncBolt3(AsyncBolt):
             return 0
 
     def get_base_headers(self):
-        return {
-            "user_agent": self.user_agent,
-        }
+        headers = {"user_agent": self.user_agent}
+        if self.routing_context is not None:
+            headers["routing"] = self.routing_context
+        return headers
 
     async def hello(self):
+        def on_success(metadata):
+            self.configuration_hints.update(metadata.pop("hints", {}))
+            self.server_info.update(metadata)
+            if "connection.recv_timeout_seconds" in self.configuration_hints:
+                recv_timeout = self.configuration_hints[
+                    "connection.recv_timeout_seconds"
+                ]
+                if isinstance(recv_timeout, int) and recv_timeout > 0:
+                    self.socket.settimeout(recv_timeout)
+                else:
+                    log.info("[#%04X]  Server supplied an invalid value for "
+                             "connection.recv_timeout_seconds (%r). Make sure "
+                             "the server and network is set up correctly.",
+                             self.local_port, recv_timeout)
+
         headers = self.get_base_headers()
         headers.update(self.auth_dict)
         logged_headers = dict(headers)
@@ -158,72 +126,49 @@ class AsyncBolt3(AsyncBolt):
         log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
         self._append(b"\x01", (headers,),
                      response=InitResponse(self, "hello",
-                                           on_success=self.server_info.update))
+                                           on_success=on_success))
         await self.send_all()
         await self.fetch_all()
         check_supported_server_product(self.server_info.agent)
 
     async def route(self, database=None, imp_user=None, bookmarks=None):
+        routing_context = self.routing_context or {}
+        db_context = {}
         if database is not None:
-            raise ConfigurationError(
-                "Database name parameter for selecting database is not "
-                "supported in Bolt Protocol {!r}. Database name {!r}. "
-                "Server Agent {!r}".format(
-                    self.PROTOCOL_VERSION, database, self.server_info.agent
-                )
-            )
+            db_context.update(db=database)
         if imp_user is not None:
-            raise ConfigurationError(
-                "Impersonation is not supported in Bolt Protocol {!r}. "
-                "Trying to impersonate {!r}.".format(
-                    self.PROTOCOL_VERSION, imp_user
-                )
-            )
-
+            db_context.update(imp_user=imp_user)
+        log.debug("[#%04X]  C: ROUTE %r %r %r", self.local_port,
+                  routing_context, bookmarks, db_context)
         metadata = {}
-        records = []
-
-        # Ignoring database and bookmarks because there is no multi-db support.
-        # The bookmarks are only relevant for making sure a previously created
-        # db exists before querying a routing table for it.
-        self.run(
-            "CALL dbms.cluster.routing.getRoutingTable($context)",  # This is an internal procedure call. Only available if the Neo4j 3.5 is setup with clustering.
-            {"context": self.routing_context},
-            mode="r",                                               # Bolt Protocol Version(3, 0) supports mode="r"
-            on_success=metadata.update
-        )
-        self.pull(on_success=metadata.update, on_records=records.extend)
+        if bookmarks is None:
+            bookmarks = []
+        else:
+            bookmarks = list(bookmarks)
+        self._append(b"\x66", (routing_context, bookmarks, db_context),
+                     response=Response(self, "route",
+                                       on_success=metadata.update))
         await self.send_all()
         await self.fetch_all()
-        routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
-        return routing_info
+        return [metadata.get("rt")]
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None, **handlers):
-        if db is not None:
-            raise ConfigurationError(
-                "Database name parameter for selecting database is not "
-                "supported in Bolt Protocol {!r}. Database name {!r}.".format(
-                    self.PROTOCOL_VERSION, db
-                )
-            )
-        if imp_user is not None:
-            raise ConfigurationError(
-                "Impersonation is not supported in Bolt Protocol {!r}. "
-                "Trying to impersonate {!r}.".format(
-                    self.PROTOCOL_VERSION, imp_user
-                )
-            )
         if not parameters:
             parameters = {}
         extra = {}
         if mode in (READ_ACCESS, "r"):
-            extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
+        if db:
+            extra["db"] = db
+        if imp_user:
+            extra["imp_user"] = imp_user
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError("Bookmarks must be provided within an iterable")
+                raise TypeError("Bookmarks must be provided as iterable")
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
@@ -233,11 +178,12 @@ class AsyncBolt3(AsyncBolt):
             try:
                 extra["tx_timeout"] = int(1000 * float(timeout))
             except TypeError:
-                raise TypeError("Timeout must be specified as a number of seconds")
+                raise TypeError("Timeout must be a number (in seconds)")
             if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a positive number or 0.")
+                raise ValueError("Timeout must be a number <= 0")
         fields = (query, parameters, extra)
-        log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
+        log.debug("[#%04X]  C: RUN %s", self.local_port,
+                  " ".join(map(repr, fields)))
         if query.upper() == u"COMMIT":
             self._append(b"\x10", fields, CommitResponse(self, "run",
                                                          **handlers))
@@ -245,39 +191,34 @@ class AsyncBolt3(AsyncBolt):
             self._append(b"\x10", fields, Response(self, "run", **handlers))
 
     def discard(self, n=-1, qid=-1, **handlers):
-        # Just ignore n and qid, it is not supported in the Bolt 3 Protocol.
-        log.debug("[#%04X]  C: DISCARD_ALL", self.local_port)
-        self._append(b"\x2F", (), Response(self, "discard", **handlers))
+        extra = {"n": n}
+        if qid != -1:
+            extra["qid"] = qid
+        log.debug("[#%04X]  C: DISCARD %r", self.local_port, extra)
+        self._append(b"\x2F", (extra,), Response(self, "discard", **handlers))
 
     def pull(self, n=-1, qid=-1, **handlers):
-        # Just ignore n and qid, it is not supported in the Bolt 3 Protocol.
-        log.debug("[#%04X]  C: PULL_ALL", self.local_port)
-        self._append(b"\x3F", (), Response(self, "pull", **handlers))
+        extra = {"n": n}
+        if qid != -1:
+            extra["qid"] = qid
+        log.debug("[#%04X]  C: PULL %r", self.local_port, extra)
+        self._append(b"\x3F", (extra,), Response(self, "pull", **handlers))
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
               db=None, imp_user=None, **handlers):
-        if db is not None:
-            raise ConfigurationError(
-                "Database name parameter for selecting database is not "
-                "supported in Bolt Protocol {!r}. Database name {!r}.".format(
-                    self.PROTOCOL_VERSION, db
-                )
-            )
-        if imp_user is not None:
-            raise ConfigurationError(
-                "Impersonation is not supported in Bolt Protocol {!r}. "
-                "Trying to impersonate {!r}.".format(
-                    self.PROTOCOL_VERSION, imp_user
-                )
-            )
         extra = {}
         if mode in (READ_ACCESS, "r"):
-            extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
+        if db:
+            extra["db"] = db
+        if imp_user:
+            extra["imp_user"] = imp_user
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
             except TypeError:
-                raise TypeError("Bookmarks must be provided within an iterable")
+                raise TypeError("Bookmarks must be provided as iterable")
         if metadata:
             try:
                 extra["tx_metadata"] = dict(metadata)
@@ -287,9 +228,9 @@ class AsyncBolt3(AsyncBolt):
             try:
                 extra["tx_timeout"] = int(1000 * float(timeout))
             except TypeError:
-                raise TypeError("Timeout must be specified as a number of seconds")
+                raise TypeError("Timeout must be a number (in seconds)")
             if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a positive number or 0.")
+                raise ValueError("Timeout must be a number <= 0")
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,), Response(self, "begin", **handlers))
 
@@ -302,15 +243,19 @@ class AsyncBolt3(AsyncBolt):
         self._append(b"\x13", (), Response(self, "rollback", **handlers))
 
     async def reset(self):
-        """ Add a RESET message to the outgoing queue, send
-        it and consume all remaining messages.
+        """Reset the connection.
+
+        Add a RESET message to the outgoing queue, send it and consume all
+        remaining messages.
         """
 
         def fail(metadata):
-            raise BoltProtocolError("RESET failed %r" % metadata, address=self.unresolved_address)
+            raise BoltProtocolError("RESET failed %r" % metadata,
+                                    self.unresolved_address)
 
         log.debug("[#%04X]  C: RESET", self.local_port)
-        self._append(b"\x0F", response=Response(self, "reset", on_failure=fail))
+        self._append(b"\x0F", response=Response(self, "reset",
+                                                on_failure=fail))
         await self.send_all()
         await self.fetch_all()
 
@@ -320,13 +265,14 @@ class AsyncBolt3(AsyncBolt):
 
     async def _process_message(self, details, summary_signature,
                                summary_metadata):
-        """ Process at most one message from the server, if available.
+        """Process at most one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
         if details:
-            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # Do not log any data
+            # Do not log any data
+            log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))
             await self.responses[0].on_records(details)
 
         if summary_signature is None:
@@ -335,7 +281,8 @@ class AsyncBolt3(AsyncBolt):
         response = self.responses.popleft()
         response.complete = True
         if summary_signature == b"\x70":
-            log.debug("[#%04X]  S: SUCCESS %r", self.local_port, summary_metadata)
+            log.debug("[#%04X]  S: SUCCESS %r", self.local_port,
+                      summary_metadata)
             self._server_state_manager.transition(response.message,
                                                   summary_metadata)
             await response.on_success(summary_metadata or {})
@@ -343,7 +290,8 @@ class AsyncBolt3(AsyncBolt):
             log.debug("[#%04X]  S: IGNORED", self.local_port)
             await response.on_ignored(summary_metadata or {})
         elif summary_signature == b"\x7F":
-            log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
+            log.debug("[#%04X]  S: FAILURE %r", self.local_port,
+                      summary_metadata)
             self._server_state_manager.state = ServerStates.FAILED
             try:
                 await response.on_failure(summary_metadata or {})
@@ -360,6 +308,10 @@ class AsyncBolt3(AsyncBolt):
                     await self.pool.mark_all_stale()
                 raise
         else:
-            raise BoltProtocolError("Unexpected response message with signature %02X" % summary_signature, address=self.unresolved_address)
+            raise BoltProtocolError(
+                "Unexpected response message with signature %02X" % ord(
+                    summary_signature
+                ), self.unresolved_address
+            )
 
         return len(details), 1

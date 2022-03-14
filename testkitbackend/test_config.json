@@ -2,11 +2,15 @@
   "skips": {
     "stub.retry.test_retry_clustering.TestRetryClustering.test_retry_ForbiddenOnReadOnlyDatabase_ChangingWriter":
       "Test makes assumptions about how verify_connectivity is implemented",
+    "stub.authorization.test_authorization.TestAuthorizationV5x0.test_should_retry_on_auth_expired_on_begin_using_tx_function":
+      "Flaky: test requires the driver to contact servers in a specific order",
     "stub.authorization.test_authorization.TestAuthorizationV4x3.test_should_retry_on_auth_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
     "stub.authorization.test_authorization.TestAuthorizationV3.test_should_retry_on_auth_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
     "stub.authorization.test_authorization.TestAuthorizationV4x1.test_should_retry_on_auth_expired_on_begin_using_tx_function":
+      "Flaky: test requires the driver to contact servers in a specific order",
+    "stub.authorization.test_authorization.TestAuthorizationV5x0.test_should_fail_on_token_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
     "stub.authorization.test_authorization.TestAuthorizationV4x3.test_should_fail_on_token_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
@@ -38,6 +42,7 @@
     "Feature:Bolt:4.2": true,
     "Feature:Bolt:4.3": true,
     "Feature:Bolt:4.4": true,
+    "Feature:Bolt:5.0": true,
     "Feature:Impersonation": true,
     "Feature:TLS:1.1": "Driver blocks TLS 1.1 for security reasons.",
     "Feature:TLS:1.2": true,
@@ -50,6 +55,8 @@
     "Optimization:MinimalResets": true,
     "Optimization:PullPipelining": true,
     "Optimization:ResultListFetchAll": "The idiomatic way to cast to list is indistinguishable from iterating over the result.",
+
+    "Detail:NullOnMissingId": true,
 
     "ConfHint:connection.recv_timeout_seconds": true,
 

@@ -53,7 +53,7 @@ log = getLogger("neo4j")
 class Bolt4x0(Bolt):
     """ Protocol handler for Bolt 4.0.
 
-    This is supported by Neo4j versions 4.0, 4.1 and 4.2.
+    This is supported by Neo4j versions 4.0-4.4.
     """
 
     PROTOCOL_VERSION = Version(4, 0)
@@ -311,12 +311,6 @@ class Bolt4x0(Bolt):
                                     "%02X" % ord(summary_signature), self.unresolved_address)
 
         return len(details), 1
-
-    def closed(self):
-        return self._closed
-
-    def defunct(self):
-        return self._defunct
 
 
 class Bolt4x1(Bolt4x0):
