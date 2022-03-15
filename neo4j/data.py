@@ -297,6 +297,59 @@ class RecordExporter(DataTransformer):
             return x
 
 
+class RecordTableRowExporter(DataTransformer):
+    """Transformer class used by the :meth:`.Result.to_df` method."""
+
+    def transform(self, x):
+        assert isinstance(x, Mapping)
+        t = type(x)
+        return t(item
+                 for k, v in x.items()
+                 for item in self._transform(
+                     v, prefix=k.replace("\\", "\\\\").replace(".", "\\.")
+                 ).items())
+
+    def _transform(self, x, prefix):
+        if isinstance(x, Node):
+            res = {
+                "%s().element_id" % prefix: x.element_id,
+                "%s().labels" % prefix: x.labels,
+            }
+            res.update(("%s().prop.%s" % (prefix, k), v) for k, v in x.items())
+            return res
+        elif isinstance(x, Relationship):
+            res = {
+                "%s->.element_id" % prefix: x.element_id,
+                "%s->.start.element_id" % prefix: x.start_node.element_id,
+                "%s->.end.element_id" % prefix: x.end_node.element_id,
+                "%s->.type" % prefix: x.__class__.__name__,
+            }
+            res.update(("%s->.prop.%s" % (prefix, k), v) for k, v in x.items())
+            return res
+        elif isinstance(x, Path) or isinstance(x, str):
+            return {prefix: x}
+        elif isinstance(x, Sequence):
+            return dict(
+                item
+                for i, v in enumerate(x)
+                for item in self._transform(
+                    v, prefix="%s[].%i" % (prefix, i)
+                ).items()
+            )
+        elif isinstance(x, Mapping):
+            t = type(x)
+            return t(
+                item
+                for k, v in x.items()
+                for item in self._transform(
+                    v, prefix="%s{}.%s" % (prefix, k.replace("\\", "\\\\")
+                                                    .replace(".", "\\."))
+                ).items()
+            )
+        else:
+            return {prefix: x}
+
+
 class DataHydrator:
     # TODO: extend DataTransformer
 

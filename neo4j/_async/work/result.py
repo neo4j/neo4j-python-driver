@@ -20,7 +20,10 @@ from collections import deque
 from warnings import warn
 
 from ..._async_compat.util import AsyncUtil
-from ...data import DataDehydrator
+from ...data import (
+    DataDehydrator,
+    RecordTableRowExporter,
+)
 from ...exceptions import (
     ResultConsumedError,
     ResultNotSingleError,
@@ -524,14 +527,83 @@ class AsyncResult:
 
     @experimental("pandas support is experimental and might be changed or "
                   "removed in future versions")
-    async def to_df(self):
-        """Convert (the rest of) the result to a pandas DataFrame.
+    async def to_df(self, expand=False):
+        r"""Convert (the rest of) the result to a pandas DataFrame.
 
         This method is only available if the `pandas` library is installed.
 
-        ``tx.run("UNWIND range(1, 10) AS n RETURN n, n+1 as m").to_df()``, for
-        instance will return a DataFrame with two columns: ``n`` and ``m`` and
-        10 rows.
+        ::
+
+            res = await tx.run("UNWIND range(1, 10) AS n RETURN n, n+1 as m")
+            df = await res.to_df()
+
+        for instance will return a DataFrame with two columns: ``n`` and ``m``
+        and 10 rows.
+
+        :param expand: if :const:`True`, some structures in the result will be
+            recursively expanded (flattened out into multiple columns) like so
+            (everything inside ``<...>`` is a placeholder):
+
+            * :class:`.Node` objects under any variable ``<n>`` will be
+              expanded into columns (the recursion stops here)
+
+              * ``<n>().prop.<property_name>`` (any) for each property of the
+                node.
+              * ``<n>().element_id`` (str) the node's element id.
+                See :attr:`.Node.element_id`.
+              * ``<n>().labels`` (frozenset of str) the node's labels.
+                See :attr:`.Node.labels`.
+
+            * :class:`.Relationship` objects under any variable ``<r>``
+              will be expanded into columns (the recursion stops here)
+
+              * ``<r>->.prop.<property_name>`` (any) for each property of the
+                relationship.
+              * ``<r>->.element_id`` (str) the relationship's element id.
+                See :attr:`.Relationship.element_id`.
+              * ``<r>->.start.element_id`` (str) the relationship's
+                start node's element id.
+                See :attr:`.Relationship.start_node`.
+              * ``<r>->.end.element_id`` (str) the relationship's
+                end node's element id.
+                See :attr:`.Relationship.end_node`.
+              * ``<r>->.type`` (str) the relationship's type.
+                See :attr:`.Relationship.type`.
+
+            * :const:`list` objects under any variable ``<l>`` will be expanded
+              into
+
+              * ``<l>[].0`` (any) the 1st list element
+              * ``<l>[].1`` (any) the 2nd list element
+              * ...
+
+            * :const:`dict` objects under any variable ``<d>`` will be expanded
+              into
+
+              * ``<d>{}.<key1>`` (any) the 1st key of the dict
+              * ``<d>{}.<key2>`` (any) the 2nd key of the dict
+              * ...
+
+            * :const:`list` and :const:`dict` objects are expanded recursively.
+              Example::
+
+                variable x: [{"foo": "bar", "baz": [42, 0]}, "foobar"]
+
+              will be expanded to::
+
+                {
+                    "x[].0{}.foo": "bar",
+                    "x[].0{}.baz[].0": 42,
+                    "n[].0{}.baz[].1": 0,
+                    "n[].1": "foobar"
+                }
+
+            * Everything else (including :class:`.Path` objects) will not
+              be flattened.
+
+            :const:`dict` keys and variable names that contain ``.``  or ``\``
+            will be escaped with a backslash (``\.`` and ``\\`` respectively).
+        :type expand: bool
 
         :rtype: :py:class:`pandas.DataFrame`
         :raises ImportError: if `pandas` library is not available.
@@ -545,7 +617,34 @@ class AsyncResult:
         """
         import pandas as pd
 
-        return pd.DataFrame(await self.values(), columns=self._keys)
+        if not expand:
+            return pd.DataFrame(await self.values(), columns=self._keys)
+        else:
+            df_keys = None
+            rows = []
+            async for record in self:
+                row = RecordTableRowExporter().transform(dict(record.items()))
+                if df_keys == row.keys():
+                    rows.append(row.values())
+                elif df_keys is None:
+                    df_keys = row.keys()
+                    rows.append(row.values())
+                elif df_keys is False:
+                    rows.append(row)
+                else:
+                    # The rows have different keys. We need to pass a list
+                    # of dicts to pandas
+                    rows = [{k: v for k, v in zip(df_keys, r)} for r in rows]
+                    df_keys = False
+                    rows.append(row)
+            if df_keys is False:
+                return pd.DataFrame(rows)
+            else:
+                columns = df_keys or [
+                    k.replace(".", "\\.").replace("\\", "\\\\")
+                    for k in self._keys
+                ]
+                return pd.DataFrame(rows, columns=columns)
 
     def closed(self):
         """Return True if the result has been closed.

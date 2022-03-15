@@ -578,26 +578,30 @@ async def test_data(num_records):
 @pytest.mark.parametrize(
     ("keys", "values", "types", "instances"),
     (
-        (["i"], zip(range(5)), ["int64"], None),
-        (["x"], zip((n - .5) / 5 for n in range(5)), ["float64"], None),
-        (["s"], zip(("foo", "bar", "baz", "foobar")), ["object"], None),
-        (["l"], zip(([1, 2], [3, 4])), ["object"], None),
+        (["i"], list(zip(range(5))), ["int64"], None),
+        (["x"], list(zip((n - .5) / 5 for n in range(5))), ["float64"], None),
+        (["s"], list(zip(("foo", "bar", "baz", "foobar"))), ["object"], None),
+        (["l"], list(zip(([1, 2], [3, 4]))), ["object"], None),
         (
             ["n"],
-            zip((
+            list(zip((
                 Structure(b"N", 0, ["LABEL_A"], {"a": 1, "b": 2}),
                 Structure(b"N", 2, ["LABEL_B"], {"a": 1, "c": 1.2}),
                 Structure(b"N", 1, ["LABEL_A", "LABEL_B"], {"a": [1, "a"]}),
-            )),
+                Structure(b"N", None, ["LABEL_A", "LABEL_B"], {"a": [1, "a"]},
+                          "cool_id"),
+            ))),
             ["object"],
             [Node]
         ),
         (
             ["r"],
-            zip((
+            list(zip((
                 Structure(b"R", 0, 1, 2, "TYPE", {"a": 1, "b": 2}),
                 Structure(b"R", 420, 1337, 69, "HYPE", {"all memes": True}),
-            )),
+                Structure(b"R", None, None, None, "HYPE", {"all memes": True},
+                          "420", "1337", "69"),
+            ))),
             ["object"],
             [Relationship]
         ),
@@ -606,7 +610,6 @@ async def test_data(num_records):
 @pytest.mark.parametrize("test_default_expand", (True, False))
 @mark_async_test
 async def test_to_df(keys, values, types, instances, test_default_expand):
-    values = list(values)
     connection = AsyncConnectionStub(records=Records(keys, values))
     result = AsyncResult(connection, DataHydrator(), 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
@@ -629,3 +632,155 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
             assert all(isinstance(v, instances[i]) for v in df[k])
     else:
         assert df.equals(expected_df)
+
+
+@pytest.mark.parametrize(
+    ("keys", "values", "expected_columns", "expected_rows", "expected_types"),
+    (
+        (
+            ["i"],
+            list(zip(range(5))),
+            ["i"],
+            [[0], [1], [2], [3], [4]],
+            ["int64"],
+        ),
+        # test variable name escaping
+        (
+            ["i.[]->.().{}.\\"],
+            list(zip(range(5))),
+            ["i\\.[]->\\.()\\.{}\\.\\\\"],
+            [[0], [1], [2], [3], [4]],
+            ["int64"],
+        ),
+        (
+            ["x"],
+            list(zip((n - .5) / 5 for n in range(5))),
+            ["x"],
+            [[-0.1], [0.1], [0.3], [0.5], [0.7]],
+            ["float64"],
+        ),
+        (
+            ["s"],
+            list(zip(("foo", "bar", "baz", "foobar"))),
+            ["s"],
+            [["foo"], ["bar"], ["baz"], ["foobar"]],
+            ["object"],
+        ),
+        (
+            ["l"],
+            list(zip(([1, 2], [3, 4]))),
+            ["l[].0", "l[].1"],
+            [[1, 2], [3, 4]],
+            ["int64", "int64"],
+        ),
+        (
+            ["l"],
+            list(zip(([1, 2], [3, 4, 5], [6]))),
+            ["l[].0", "l[].1", "l[].2"],
+            [[1, 2, None], [3, 4, 5], [6, None, None]],
+            # pandas turns None in int columns into NaN
+            # which requires the column to become a float column
+            ["int64", "float64", "float64"],
+        ),
+        (
+            ["d"],
+            list(zip(({"a": 1, "b": 2}, {"a": 3, "b": 4, "": 0}))),
+            ["d{}.a", "d{}.b", "d{}."],
+            [[1, 2, None], [3, 4, 0]],
+            ["int64", "int64", "float64"],
+        ),
+        # test key escaping
+        (
+            ["d"],
+            list(zip(({"a.[]\\{}->.().{}.": 1, "b": 2},))),
+            ["d{}.a\\.[]\\\\{}->\\.()\\.{}\\.", "d{}.b"],
+            [[1, 2]],
+            ["int64", "int64"],
+        ),
+        (
+            ["d"],
+            list(zip(({"a": 1, "b": 2}, {"a": 3, "c": 4}))),
+            ["d{}.a", "d{}.b", "d{}.c"],
+            [[1, 2, None], [3, None, 4]],
+            # pandas turns None in int columns into NaN
+            # which requires the column to become a float column
+            ["int64", "float64", "float64"],
+        ),
+        (
+            ["x"],
+            list(zip(([{"foo": "bar", "baz": [42, 0.1]}, "foobar"],))),
+            ["x[].0{}.foo", "x[].0{}.baz[].0", "x[].0{}.baz[].1", "x[].1"],
+            [["bar",  42, 0.1, "foobar"]],
+            ["object", "int64", "float64", "object"],
+        ),
+        (
+            ["n"],
+            list(zip((
+                Structure(b"N", 0, ["LABEL_A"],
+                          {"a": 1, "b": 2, "d": 1}, "00"),
+                Structure(b"N", 2, ["LABEL_B"],
+                          {"a": 1, "c": 1.2, "d": 2}, "02"),
+                Structure(b"N", 1, ["LABEL_A", "LABEL_B"],
+                          {"a": [1, "a"], "d": 3}, "01"),
+            ))),
+            [
+                "n().element_id", "n().labels", "n().prop.a", "n().prop.b",
+                "n().prop.c", "n().prop.d"
+            ],
+            [
+                ["00", frozenset(("LABEL_A",)), 1, 2, None, 1],
+                ["02", frozenset(("LABEL_B",)), 1, None, 1.2, 2],
+                [
+                    "01", frozenset(("LABEL_A", "LABEL_B")),
+                    [1, "a"], None, None, 3
+                ],
+            ],
+            ["object", "object", "object", "float64", "float64", "int64"],
+        ),
+        (
+            ["r"],
+            list(zip((
+                Structure(b"R", 0, 1, 2, "TYPE", {"a": 1, "all memes": False},
+                          "r-0", "r-1", "r-2"),
+                Structure(b"R", 420, 1337, 69, "HYPE", {"all memes": True},
+                          "r-420", "r-1337", "r-69"),
+            ))),
+            [
+                "r->.element_id", "r->.start.element_id", "r->.end.element_id",
+                "r->.type", "r->.prop.a", "r->.prop.all memes"
+            ],
+            [
+                ["r-0", "r-1", "r-2", "TYPE", 1, False],
+                ["r-420", "r-1337", "r-69", "HYPE", None, True],
+            ],
+            ["object", "object", "object", "object", "float64", "bool"],
+        ),
+    )
+)
+@mark_async_test
+async def test_to_df_expand(keys, values, expected_columns, expected_rows,
+                            expected_types):
+    connection = AsyncConnectionStub(records=Records(keys, values))
+    result = AsyncResult(connection, DataHydrator(), 1, noop, noop)
+    await result._run("CYPHER", {}, None, None, "r", None)
+    df = await result.to_df(expand=True)
+
+    assert isinstance(df, pd.DataFrame)
+    assert len(set(expected_columns)) == len(expected_columns)
+    assert set(df.keys().to_list()) == set(expected_columns)
+
+    # We don't expect the columns to be in a specific order.
+    # Hence, we need to sort them before comparing.
+    new_order = [df.keys().get_loc(ex_c) for ex_c in expected_columns]
+    expected_rows = [
+        [row[i] for i in new_order]
+        for row in expected_rows
+    ]
+    expected_types = [expected_types[i] for i in new_order]
+    expected_columns = [expected_columns[i] for i in new_order]
+
+    assert len(df) == len(values)
+    assert df.dtypes.to_list() == expected_types
+
+    expected_df = pd.DataFrame(expected_rows, columns=expected_columns)
+    assert df.equals(expected_df)
