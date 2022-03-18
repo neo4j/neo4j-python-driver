@@ -1783,21 +1783,49 @@ class Time(metaclass=TimeType):
 
     # OPERATIONS #
 
+    def _get_both_normalized_ticks(self, other, strict=True):
+        if (isinstance(other, (time, Time))
+                and ((self.utc_offset() is None)
+                     ^ (other.utcoffset() is None))):
+            if strict:
+                raise TypeError("can't compare offset-naive and offset-aware "
+                                "times")
+            else:
+                return None, None
+        if isinstance(other, Time):
+            other_ticks = other.__ticks
+        elif isinstance(other, time):
+            other_ticks = int(3600000000000 * other.hour
+                              + 60000000000 * other.minute
+                              + NANO_SECONDS * other.second
+                              + 1000 * other.microsecond)
+        else:
+            return None, None
+        utc_offset = other.utcoffset()
+        if utc_offset is not None:
+            other_ticks -= utc_offset.total_seconds() * NANO_SECONDS
+        self_ticks = self.__ticks
+        utc_offset = self.utc_offset()
+        if utc_offset is not None:
+            self_ticks -= utc_offset.total_seconds() * NANO_SECONDS
+        return self_ticks, other_ticks
+
     def __hash__(self):
         """"""
-        return hash(self.__ticks) ^ hash(self.tzinfo)
+        if self.__nanosecond % 1000 == 0:
+            return hash(self.to_native())
+        self_ticks = self.__ticks
+        if self.utc_offset() is not None:
+            self_ticks -= self.utc_offset().total_seconds() * NANO_SECONDS
+        return hash(self_ticks)
 
     def __eq__(self, other):
         """`==` comparison with :class:`.Time` or :class:`datetime.time`."""
-        if isinstance(other, Time):
-            return self.__ticks == other.__ticks and self.tzinfo == other.tzinfo
-        if isinstance(other, time):
-            other_ticks = (3600000000000 * other.hour
-                           + 60000000000 * other.minute
-                           + NANO_SECONDS * other.second
-                           + 1000 * other.microsecond)
-            return self.ticks_ns == other_ticks and self.tzinfo == other.tzinfo
-        return False
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other,
+                                                                  strict=False)
+        if self_ticks is None:
+            return False
+        return self_ticks == other_ticks
 
     def __ne__(self, other):
         """`!=` comparison with :class:`.Time` or :class:`datetime.time`."""
@@ -1805,51 +1833,31 @@ class Time(metaclass=TimeType):
 
     def __lt__(self, other):
         """`<` comparison with :class:`.Time` or :class:`datetime.time`."""
-        if isinstance(other, Time):
-            return (self.tzinfo == other.tzinfo
-                    and self.ticks_ns < other.ticks_ns)
-        if isinstance(other, time):
-            if self.tzinfo != other.tzinfo:
-                return False
-            other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks_ns < other_ticks
-        return NotImplemented
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
+        if self_ticks is None:
+            return NotImplemented
+        return self_ticks < other_ticks
 
     def __le__(self, other):
         """`<=` comparison with :class:`.Time` or :class:`datetime.time`."""
-        if isinstance(other, Time):
-            return (self.tzinfo == other.tzinfo
-                    and self.ticks_ns <= other.ticks_ns)
-        if isinstance(other, time):
-            if self.tzinfo != other.tzinfo:
-                return False
-            other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks_ns <= other_ticks
-        return NotImplemented
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
+        if self_ticks is None:
+            return NotImplemented
+        return self_ticks <= other_ticks
 
     def __ge__(self, other):
         """`>=` comparison with :class:`.Time` or :class:`datetime.time`."""
-        if isinstance(other, Time):
-            return (self.tzinfo == other.tzinfo
-                    and self.ticks_ns >= other.ticks_ns)
-        if isinstance(other, time):
-            if self.tzinfo != other.tzinfo:
-                return False
-            other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks_ns >= other_ticks
-        return NotImplemented
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
+        if self_ticks is None:
+            return NotImplemented
+        return self_ticks >= other_ticks
 
     def __gt__(self, other):
         """`>` comparison with :class:`.Time` or :class:`datetime.time`."""
-        if isinstance(other, Time):
-            return (self.tzinfo == other.tzinfo
-                    and self.ticks_ns >= other.ticks_ns)
-        if isinstance(other, time):
-            if self.tzinfo != other.tzinfo:
-                return False
-            other_ticks = 3600 * other.hour + 60 * other.minute + other.second + (other.microsecond / 1000000)
-            return self.ticks_ns >= other_ticks
-        return NotImplemented
+        self_ticks, other_ticks = self._get_both_normalized_ticks(other)
+        if self_ticks is None:
+            return NotImplemented
+        return self_ticks > other_ticks
 
     def __copy__(self):
         return self.__new(self.__ticks, self.__hour, self.__minute,
@@ -1883,6 +1891,21 @@ class Time(metaclass=TimeType):
                     nanosecond=kwargs.get("nanosecond", self.__nanosecond),
                     tzinfo=kwargs.get("tzinfo", self.__tzinfo))
 
+    def _utc_offset(self, dt=None):
+        if self.tzinfo is None:
+            return None
+        value = self.tzinfo.utcoffset(dt)
+        if value is None:
+            return None
+        if isinstance(value, timedelta):
+            s = value.total_seconds()
+            if not (-86400 < s < 86400):
+                raise ValueError("utcoffset must be less than a day")
+            if s % 60 != 0 or value.microseconds != 0:
+                raise ValueError("utcoffset must be a whole number of minutes")
+            return value
+        raise TypeError("utcoffset must be a timedelta")
+
     def utc_offset(self):
         """Return the UTC offset of this time.
 
@@ -1896,19 +1919,7 @@ class Time(metaclass=TimeType):
         :raises TypeError: if `self.tzinfo.utcoffset(self)` does return anything but
             None or a :class:`datetime.timedelta`.
         """
-        if self.tzinfo is None:
-            return None
-        value = self.tzinfo.utcoffset(self)
-        if value is None:
-            return None
-        if isinstance(value, timedelta):
-            s = value.total_seconds()
-            if not (-86400 < s < 86400):
-                raise ValueError("utcoffset must be less than a day")
-            if s % 60 != 0 or value.microseconds != 0:
-                raise ValueError("utcoffset must be a whole number of minutes")
-            return value
-        raise TypeError("utcoffset must be a timedelta")
+        return self._utc_offset()
 
     def dst(self):
         """Get the daylight saving time adjustment (DST).
@@ -1996,6 +2007,7 @@ class Time(metaclass=TimeType):
     def __format__(self, format_spec):
         """"""
         raise NotImplementedError()
+
 
 Time.min = Time(hour=0, minute=0, second=0, nanosecond=0)
 Time.max = Time(hour=23, minute=59, second=59, nanosecond=999999999)
@@ -2330,17 +2342,52 @@ class DateTime(metaclass=DateTimeType):
 
     # OPERATIONS #
 
+    def _get_both_normalized(self, other, strict=True):
+        if (isinstance(other, (datetime, DateTime))
+                and ((self.utc_offset() is None)
+                     ^ (other.utcoffset() is None))):
+            if strict:
+                raise TypeError("can't compare offset-naive and offset-aware "
+                                "datetimes")
+            else:
+                return None, None
+        self_norm = self
+        utc_offset = self.utc_offset()
+        if utc_offset is not None:
+            self_norm -= utc_offset
+        self_norm = self_norm.replace(tzinfo=None)
+        other_norm = other
+        if isinstance(other, (datetime, DateTime)):
+            utc_offset = other.utcoffset()
+            if utc_offset is not None:
+                other_norm -= utc_offset
+            other_norm = other_norm.replace(tzinfo=None)
+        else:
+            return None, None
+        return self_norm, other_norm
+
     def __hash__(self):
         """"""
-        return hash(self.date()) ^ hash(self.time())
+        if self.nanosecond % 1000 == 0:
+            return hash(self.to_native())
+        self_norm = self
+        utc_offset = self.utc_offset()
+        if utc_offset is not None:
+            self_norm -= utc_offset
+        return hash(self_norm.date()) ^ hash(self_norm.time())
 
     def __eq__(self, other):
         """
         `==` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
         """
-        if isinstance(other, (DateTime, datetime)):
+        if not isinstance(other, (datetime, DateTime)):
+            return NotImplemented
+        if self.utc_offset() == other.utcoffset():
             return self.date() == other.date() and self.time() == other.time()
-        return False
+        self_norm, other_norm = self._get_both_normalized(other, strict=False)
+        if self_norm is None:
+            return False
+        return self_norm == other_norm
 
     def __ne__(self, other):
         """
@@ -2352,45 +2399,55 @@ class DateTime(metaclass=DateTimeType):
         """
         `<` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
         """
-        if isinstance(other, (DateTime, datetime)):
+        if not isinstance(other, (datetime, DateTime)):
+            return NotImplemented
+        if self.utc_offset() == other.utcoffset():
             if self.date() == other.date():
                 return self.time() < other.time()
-            else:
-                return self.date() < other.date()
-        return NotImplemented
+            return self.date() < other.date()
+        self_norm, other_norm = self._get_both_normalized(other)
+        return (self_norm.date() < other_norm.date()
+                or self_norm.time() < other_norm.time())
 
     def __le__(self, other):
         """
         `<=` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
         """
-        if isinstance(other, (DateTime, datetime)):
+        if not isinstance(other, (datetime, DateTime)):
+            return NotImplemented
+        if self.utc_offset() == other.utcoffset():
             if self.date() == other.date():
                 return self.time() <= other.time()
-            else:
-                return self.date() < other.date()
-        return NotImplemented
+            return self.date() <= other.date()
+        self_norm, other_norm = self._get_both_normalized(other)
+        return self_norm <= other_norm
 
     def __ge__(self, other):
         """
         `>=` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
         """
-        if isinstance(other, (DateTime, datetime)):
+        if not isinstance(other, (datetime, DateTime)):
+            return NotImplemented
+        if self.utc_offset() == other.utcoffset():
             if self.date() == other.date():
                 return self.time() >= other.time()
-            else:
-                return self.date() > other.date()
-        return NotImplemented
+            return self.date() >= other.date()
+        self_norm, other_norm = self._get_both_normalized(other)
+        return self_norm >= other_norm
 
     def __gt__(self, other):
         """
         `>` comparison with :class:`.DateTime` or :class:`datetime.datetime`.
         """
-        if isinstance(other, (DateTime, datetime)):
+        if not isinstance(other, (datetime, DateTime)):
+            return NotImplemented
+        if self.utc_offset() == other.utcoffset():
             if self.date() == other.date():
                 return self.time() > other.time()
-            else:
-                return self.date() > other.date()
-        return NotImplemented
+            return self.date() > other.date()
+        self_norm, other_norm = self._get_both_normalized(other)
+        return (self_norm.date() > other_norm.date()
+                or self_norm.time() > other_norm.time())
 
     def __add__(self, other):
         """Add a :class:`datetime.timedelta`.
@@ -2494,7 +2551,7 @@ class DateTime(metaclass=DateTimeType):
         """
         if self.tzinfo is None:
             return self
-        utc = (self - self.utcoffset()).replace(tzinfo=tz)
+        utc = (self - self.utc_offset()).replace(tzinfo=tz)
         return tz.fromutc(utc)
 
     def utc_offset(self):
@@ -2503,7 +2560,7 @@ class DateTime(metaclass=DateTimeType):
         See :meth:`.Time.utc_offset`.
         """
 
-        return self.__time.utc_offset()
+        return self.__time._utc_offset(self)
 
     def dst(self):
         """Get the daylight saving time adjustment (DST).
