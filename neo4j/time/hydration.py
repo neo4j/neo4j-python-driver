@@ -167,7 +167,8 @@ def dehydrate_datetime(value):
     else:
         # with time offset
         seconds, nanoseconds = seconds_and_nanoseconds(value)
-        return Structure(b"F", seconds, nanoseconds, tz.utcoffset(value).seconds)
+        return Structure(b"F", seconds, nanoseconds,
+                         int(tz.utcoffset(value).total_seconds()))
 
 
 def hydrate_duration(months, days, seconds, nanoseconds):
