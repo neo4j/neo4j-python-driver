@@ -21,12 +21,14 @@ from datetime import (
     datetime,
     timedelta,
 )
-from decimal import Decimal
+import itertools
+import operator
 
 import pytest
 from pytz import (
     FixedOffset,
     timezone,
+    utc,
 )
 
 from neo4j.time import (
@@ -46,6 +48,8 @@ from neo4j.time.clock_implementations import (
 
 
 timezone_us_eastern = timezone("US/Eastern")
+timezone_london = timezone("Europe/London")
+timezone_berlin = timezone("Europe/Berlin")
 timezone_utc = timezone("UTC")
 
 
@@ -208,7 +212,7 @@ class TestDateTime:
         assert t.minute == 0
         assert t.second == 0
         assert t.nanosecond == 0
-        assert t.utcoffset() == timedelta(seconds=-18000)
+        assert t.utc_offset() == timedelta(seconds=-18000)
         assert t.dst() == timedelta()
         assert t.tzname() == "EST"
 
@@ -448,3 +452,318 @@ def test_from_native_case_2():
     assert dt.second == native.second
     assert dt.nanosecond == native.microsecond * 1000
     assert dt.tzinfo == FixedOffset(0)
+
+
+@pytest.mark.parametrize(("dt1", "dt2"), (
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000)
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456)
+    ),
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000, FixedOffset(1))
+    ),
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(-1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000, FixedOffset(-1))
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(1))
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(-1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(-1))
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 35, 56, 789123456, FixedOffset(1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(0))
+    ),
+    (
+        # Not testing our library directly, but asserting that Python's
+        # datetime implementation is aligned with ours.
+        datetime(2022, 11, 25, 12, 35, 56, 789123, FixedOffset(1)),
+        datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(0))
+    ),
+    (
+        datetime(2022, 11, 25, 12, 35, 56, 789123, FixedOffset(1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000, FixedOffset(0))
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 35, 56, 789123123, FixedOffset(1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123123, FixedOffset(0))
+    ),
+    (
+        timezone_london.localize(datetime(2022, 11, 25, 12, 34, 56, 789123)),
+        timezone_berlin.localize(datetime(2022, 11, 25, 13, 34, 56, 789123))
+    ),
+    (
+        timezone_london.localize(datetime(2022, 11, 25, 12, 34, 56, 789123)),
+        timezone_berlin.localize(DateTime(2022, 11, 25, 13, 34, 56, 789123000))
+    ),
+    (
+        timezone_london.localize(DateTime(2022, 1, 25, 12, 34, 56, 789123123)),
+        timezone_berlin.localize(DateTime(2022, 1, 25, 13, 34, 56, 789123123))
+    ),
+
+))
+def test_equality(dt1, dt2):
+    assert dt1 == dt2
+    assert dt2 == dt1
+    assert dt1 <= dt2
+    assert dt2 <= dt1
+    assert dt1 >= dt2
+    assert dt2 >= dt1
+
+
+@pytest.mark.parametrize(("dt1", "dt2"), (
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123001)
+     ),
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123),
+        DateTime(2022, 11, 25, 12, 34, 56, 789124000)
+     ),
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123),
+        DateTime(2022, 11, 25, 12, 34, 57, 789123000)
+     ),
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123),
+        DateTime(2022, 11, 25, 12, 35, 56, 789123000)
+     ),
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123),
+        DateTime(2022, 11, 25, 13, 34, 56, 789123000)
+     ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123450)
+     ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456),
+        DateTime(2022, 11, 25, 12, 34, 57, 789123456)
+     ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456),
+        DateTime(2022, 11, 25, 12, 35, 56, 789123456)
+     ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456),
+        DateTime(2022, 11, 25, 13, 34, 56, 789123456)
+     ),
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(2)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000, FixedOffset(1))
+    ),
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(-2)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000, FixedOffset(-1))
+    ),
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000, FixedOffset(0))
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(2)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(1))
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(-2)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(-1))
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(0))
+    ),
+    (
+        DateTime(2022, 11, 25, 13, 34, 56, 789123456, FixedOffset(1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(0))
+    ),
+    (
+        DateTime(2022, 11, 25, 11, 34, 56, 789123456, FixedOffset(1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(0))
+    ),
+))
+def test_inequality(dt1, dt2):
+    assert dt1 != dt2
+    assert dt2 != dt1
+
+
+@pytest.mark.parametrize(
+    ("dt1", "dt2"),
+    itertools.product(
+        (
+            datetime(2022, 11, 25, 12, 34, 56, 789123),
+            DateTime(2022, 11, 25, 12, 34, 56, 789123000),
+            datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(0)),
+            DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(0)),
+            datetime(2022, 11, 25, 12, 35, 56, 789123, FixedOffset(1)),
+            DateTime(2022, 11, 25, 12, 35, 56, 789123456, FixedOffset(1)),
+            datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(-1)),
+            DateTime(2022, 11, 25, 12, 34, 56, 789123456, FixedOffset(-1)),
+            datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(60 * -16)),
+            DateTime(2022, 11, 25, 12, 34, 56, 789123000,
+                     FixedOffset(60 * -16)),
+            datetime(2022, 11, 25, 11, 34, 56, 789123, FixedOffset(60 * -17)),
+            DateTime(2022, 11, 25, 11, 34, 56, 789123000,
+                     FixedOffset(60 * -17)),
+            DateTime(2022, 11, 25, 12, 34, 56, 789123456,
+                     FixedOffset(60 * -16)),
+            DateTime(2022, 11, 25, 11, 34, 56, 789123456,
+                     FixedOffset(60 * -17)),
+        ),
+        repeat=2
+    )
+)
+def test_hashed_equality(dt1, dt2):
+    if dt1 == dt2:
+        s = {dt1}
+        assert dt1 in s
+        assert dt2 in s
+        s = {dt2}
+        assert dt1 in s
+        assert dt2 in s
+    else:
+        s = {dt1}
+        assert dt1 in s
+        assert dt2 not in s
+        s = {dt2}
+        assert dt1 not in s
+        assert dt2 in s
+
+
+@pytest.mark.parametrize(("dt1", "dt2"), (
+    itertools.product(
+        (
+            datetime(2022, 11, 25, 12, 34, 56, 789123),
+            DateTime(2022, 11, 25, 12, 34, 56, 789123000),
+            DateTime(2022, 11, 25, 12, 34, 56, 789123001),
+        ),
+        repeat=2
+    )
+))
+@pytest.mark.parametrize("tz", (
+    FixedOffset(0), FixedOffset(1), FixedOffset(-1), utc,
+))
+@pytest.mark.parametrize("op", (
+    operator.lt, operator.le, operator.gt, operator.ge,
+))
+def test_comparison_with_only_one_naive_fails(dt1, dt2, tz, op):
+    dt1 = dt1.replace(tzinfo=tz)
+    with pytest.raises(TypeError, match="naive"):
+        op(dt1, dt2)
+
+
+@pytest.mark.parametrize(
+    ("dt1", "dt2"),
+    itertools.product(
+        (
+            datetime(2022, 11, 25, 12, 34, 56, 789123),
+            DateTime(2022, 11, 25, 12, 34, 56, 789123000),
+            DateTime(2022, 11, 25, 12, 34, 56, 789123001),
+        ),
+        repeat=2
+    )
+)
+@pytest.mark.parametrize("tz", (
+    timezone("Europe/Paris"), timezone("Europe/Berlin"),
+))
+@pytest.mark.parametrize("op", (
+    operator.lt, operator.le, operator.gt, operator.ge,
+))
+def test_comparison_with_one_naive_and_not_fixed_tz(dt1, dt2, tz, op):
+    dt1tz = tz.localize(dt1)
+    with pytest.raises(TypeError, match="naive"):
+        op(dt1tz, dt2)
+
+
+@pytest.mark.parametrize(("dt1", "dt2"), (
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123),
+        datetime(2022, 11, 25, 12, 34, 56, 789124)
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000),
+        datetime(2022, 11, 25, 12, 34, 56, 789124)
+    ),
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123),
+        DateTime(2022, 11, 25, 12, 34, 56, 789124000)
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000),
+        DateTime(2022, 11, 25, 12, 34, 56, 789124000)
+    ),
+    (
+        datetime(2022, 11, 24, 12, 34, 56, 789123),
+        datetime(2022, 11, 25, 12, 34, 56, 789123)
+    ),
+    (
+        datetime(2022, 11, 24, 12, 34, 56, 789123),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000)
+    ),
+    (
+        DateTime(2022, 11, 24, 12, 34, 56, 789123123),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123123)
+    ),
+    (
+        datetime(2022, 11, 24, 12, 34, 57, 789123),
+        datetime(2022, 11, 25, 12, 34, 56, 789123)
+    ),
+    (
+        datetime(2022, 11, 24, 12, 34, 57, 789123),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000)
+    ),
+    (
+        DateTime(2022, 11, 24, 12, 34, 57, 789123123),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123123)
+    ),
+    (
+        datetime(2022, 11, 25, 12, 34, 56, 789123, FixedOffset(1)),
+        datetime(2022, 11, 25, 12, 34, 56, 789124, FixedOffset(1)),
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000, FixedOffset(1)),
+        datetime(2022, 11, 25, 12, 34, 56, 789124, FixedOffset(1)),
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000, FixedOffset(1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789124000, FixedOffset(1)),
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 34, 56, 789123000, FixedOffset(1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123001, FixedOffset(1)),
+    ),
+
+    (
+        datetime(2022, 11, 25, 12, 36, 56, 789123, FixedOffset(1)),
+        datetime(2022, 11, 25, 12, 34, 56, 789124, FixedOffset(-1)),
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 36, 56, 789123000, FixedOffset(1)),
+        datetime(2022, 11, 25, 12, 34, 56, 789124, FixedOffset(-1)),
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 36, 56, 789123000, FixedOffset(1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789124000, FixedOffset(-1)),
+    ),
+    (
+        DateTime(2022, 11, 25, 12, 36, 56, 789123000, FixedOffset(1)),
+        DateTime(2022, 11, 25, 12, 34, 56, 789123001, FixedOffset(-1)),
+    ),
+))
+def test_comparison(dt1, dt2):
+    assert dt1 < dt2
+    assert not dt2 < dt1
+    assert dt1 <= dt2
+    assert not dt2 <= dt1
+    assert dt2 > dt1
+    assert not dt1 > dt2
+    assert dt2 >= dt1
+    assert not dt1 >= dt2
