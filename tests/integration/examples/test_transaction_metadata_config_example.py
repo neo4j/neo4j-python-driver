@@ -44,8 +44,8 @@ class TransactionMetadataConfigExample:
         return add_person(self.driver, name)
 
 
-def test_example(bolt_driver):
-    eg = TransactionMetadataConfigExample(bolt_driver)
+def test_example(neo4j_driver):
+    eg = TransactionMetadataConfigExample(neo4j_driver)
     with eg.driver.session() as session:
         session.run("MATCH (_) DETACH DELETE _")
         eg.add_person("Alice")

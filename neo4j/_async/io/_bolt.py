@@ -448,7 +448,7 @@ class AsyncBolt:
         self.responses.append(response)
 
     async def _send_all(self):
-        data = self.outbox.view()
+        data = self.outbox.chunked_data()
         if data:
             try:
                 await self.socket.sendall(data)

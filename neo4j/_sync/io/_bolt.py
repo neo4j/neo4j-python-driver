@@ -448,7 +448,7 @@ class Bolt:
         self.responses.append(response)
 
     def _send_all(self):
-        data = self.outbox.view()
+        data = self.outbox.chunked_data()
         if data:
             try:
                 self.socket.sendall(data)

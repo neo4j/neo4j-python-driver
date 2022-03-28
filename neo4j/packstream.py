@@ -292,13 +292,13 @@ class Unpacker:
         # Bytes
         elif marker == 0xCC:
             size, = struct_unpack(">B", self.read(1))
-            return self.read(size).tobytes()
+            return bytes(self.read(size))
         elif marker == 0xCD:
             size, = struct_unpack(">H", self.read(2))
-            return self.read(size).tobytes()
+            return bytes(self.read(size))
         elif marker == 0xCE:
             size, = struct_unpack(">I", self.read(4))
-            return self.read(size).tobytes()
+            return bytes(self.read(size))
 
         else:
             marker_high = marker & 0xF0
@@ -424,8 +424,8 @@ class Unpacker:
     def _unpack_structure_header(self, marker):
         marker_high = marker & 0xF0
         if marker_high == 0xB0:  # TINY_STRUCT
-            signature = self.read(1).tobytes()
-            return marker & 0x0F, signature
+            signature = self.read(1)
+            return marker & 0x0F, bytes(signature)
         else:
             raise ValueError("Expected structure, found marker %02X" % marker)
 
@@ -448,11 +448,10 @@ class UnpackableBuffer:
         self.p = 0
 
     def read(self, n=1):
-        view = memoryview(self.data)
         q = self.p + n
-        subview = view[self.p:q]
+        data = self.data[self.p:q]
         self.p = q
-        return subview
+        return data
 
     def read_u8(self):
         if self.used - self.p >= 1:
