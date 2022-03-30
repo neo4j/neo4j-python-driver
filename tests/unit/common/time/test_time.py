@@ -14,9 +14,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-from datetime import time
+from datetime import (
+    time,
+    timedelta,
+    timezone as datetime_timezone,
+)
 import itertools
 import operator
 
@@ -77,18 +79,25 @@ class TestTime:
         t = Time(12, 34, 56, 789123456)
         assert str(t) == "12:34:56.789123456"
 
-    def test_now_without_tz(self):
-        t = Time.now()
+    @pytest.mark.parametrize(("tz", "expected"), (
+        (None, (12, 34, 56, 789000001)),
+        (timezone_utc, (12, 34, 56, 789000001)),
+        (datetime_timezone.utc, (12, 34, 56, 789000001)),
+        (FixedOffset(60), (13, 34, 56, 789000001)),
+        (datetime_timezone(timedelta(hours=1)), (13, 34, 56, 789000001)),
+        (timezone_us_eastern, (7, 34, 56, 789000001)),
+    ))
+    def test_now(self, tz, expected):
+        t = Time.now(tz=tz)
         assert isinstance(t, Time)
-
-    def test_now_with_tz(self):
-        t = Time.now(tz=timezone_us_eastern)
-        assert isinstance(t, Time)
-        assert t.tzinfo == timezone_us_eastern
+        assert t.hour_minute_second_nanosecond == expected
+        assert str(t.tzinfo) == str(tz)
 
     def test_utc_now(self):
         t = Time.utc_now()
         assert isinstance(t, Time)
+        assert t.hour_minute_second_nanosecond == (12, 34, 56, 789000001)
+        assert t.tzinfo is None
 
     def test_from_native(self):
         native = time(12, 34, 56, 789123)
@@ -106,17 +115,58 @@ class TestTime:
         assert t.second == native.second
         assert round_half_to_even(t.nanosecond / 1000) == native.microsecond
 
-    def test_iso_format(self):
-        t = Time(12, 34, 56, 789123456)
-        assert "12:34:56.789123456" == t.iso_format()
-
-    def test_iso_format_with_trailing_zeroes(self):
-        t = Time(12, 34, 56, 789000000)
-        assert "12:34:56.789000000" == t.iso_format()
-
-    def test_iso_format_with_leading_zeroes(self):
-        t = Time(12, 34, 56, 789)
-        assert "12:34:56.000000789" == t.iso_format()
+    @pytest.mark.parametrize(("t", "expected"), (
+        (
+            Time(12, 34, 56, 789123456),
+            "12:34:56.789123456"
+        ),
+        (
+            time(12, 34, 56, 789123),
+            "12:34:56.789123"
+        ),
+        (
+            Time(12, 34, 56, 789000000),
+            "12:34:56.789000000"
+        ),
+        (
+            time(12, 34, 56, 789000),
+            "12:34:56.789000"
+        ),
+        (
+            Time(12, 34, 56, 789),
+            "12:34:56.000000789"
+        ),
+        (
+            time(12, 34, 56, 789),
+            "12:34:56.000789"
+        ),
+        (
+            Time(12, 34, 56, 789, tzinfo=timezone_utc),
+            "12:34:56.000000789+00:00"
+        ),
+        (
+            time(12, 34, 56, 789, tzinfo=timezone_utc),
+            "12:34:56.000789+00:00"
+        ),
+        (
+            Time(12, 34, 56, 789, tzinfo=timezone_us_eastern),
+            "12:34:56.000000789"
+        ),
+        (
+            time(12, 34, 56, 789, tzinfo=timezone_us_eastern),
+            "12:34:56.000789"
+        ),
+        (
+            Time(12, 34, 56, 123456789, tzinfo=FixedOffset(83)),
+            "12:34:56.123456789+01:23"
+        ),
+        (
+            time(12, 34, 56, 123456, tzinfo=FixedOffset(83)),
+            "12:34:56.123456+01:23"
+        ),
+    ))
+    def test_iso_format(self, t, expected):
+        assert t.isoformat() == expected
 
     def test_from_iso_format_hour_only(self):
         expected = Time(12, 0, 0)

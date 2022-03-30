@@ -27,6 +27,7 @@ from datetime import (
     datetime,
     time,
     timedelta,
+    timezone,
 )
 from functools import total_ordering
 from re import compile as re_compile
@@ -778,7 +779,7 @@ class Date(metaclass=DateType):
     def today(cls, tz=None):
         """Get the current date.
 
-        :param tz: timezone or None to get a local :class:`.Date`.
+        :param tz: timezone or None to get the local :class:`.Date`.
         :type tz: datetime.tzinfo or None
 
         :rtype: Date
@@ -790,11 +791,11 @@ class Date(metaclass=DateType):
         if tz is None:
             return cls.from_clock_time(Clock().local_time(), UnixEpoch)
         else:
-            return tz.fromutc(
-                DateTime.from_clock_time(
-                    Clock().utc_time(), UnixEpoch
-                ).replace(tzinfo=tz)
-            ).date()
+            return (
+                DateTime.utc_now()
+                .replace(tzinfo=timezone.utc).astimezone(tz)
+                .date()
+            )
 
     @classmethod
     def utc_today(cls):
@@ -819,14 +820,7 @@ class Date(metaclass=DateType):
             supported by the platform C localtime() function. It’s common for
             this to be restricted to years from 1970 through 2038.
         """
-        if tz is None:
-            return cls.from_clock_time(
-                ClockTime(timestamp) + Clock().local_offset(), UnixEpoch
-            )
-        else:
-            return tz.fromutc(
-                DateTime.utc_from_timestamp(timestamp).replace(tzinfo=tz)
-            ).date()
+        return cls.from_native(datetime.fromtimestamp(timestamp, tz))
 
     @classmethod
     def utc_from_timestamp(cls, timestamp):
@@ -1427,7 +1421,11 @@ class Time(metaclass=TimeType):
         if tz is None:
             return cls.from_clock_time(Clock().local_time(), UnixEpoch)
         else:
-            return tz.fromutc(DateTime.from_clock_time(Clock().utc_time(), UnixEpoch)).time().replace(tzinfo=tz)
+            return (
+                DateTime.utc_now()
+                .replace(tzinfo=timezone.utc).astimezone(tz)
+                .timetz()
+            )
 
     @classmethod
     def utc_now(cls):
@@ -1768,7 +1766,12 @@ class Time(metaclass=TimeType):
     def _utc_offset(self, dt=None):
         if self.tzinfo is None:
             return None
-        value = self.tzinfo.utcoffset(dt)
+        try:
+            value = self.tzinfo.utcoffset(dt)
+        except TypeError:
+            # For timezone implementations not compatible with the custom
+            # datetime implementations, we can't do better than this.
+            value = self.tzinfo.utcoffset(dt.to_native())
         if value is None:
             return None
         if isinstance(value, timedelta):
@@ -1810,7 +1813,12 @@ class Time(metaclass=TimeType):
         """
         if self.tzinfo is None:
             return None
-        value = self.tzinfo.dst(self)
+        try:
+            value = self.tzinfo.dst(self)
+        except TypeError:
+            # For timezone implementations not compatible with the custom
+            # datetime implementations, we can't do better than this.
+            value = self.tzinfo.dst(self.to_native())
         if value is None:
             return None
         if isinstance(value, timedelta):
@@ -1831,7 +1839,12 @@ class Time(metaclass=TimeType):
         """
         if self.tzinfo is None:
             return None
-        return self.tzinfo.tzname(self)
+        try:
+            return self.tzinfo.tzname(self)
+        except TypeError:
+            # For timezone implementations not compatible with the custom
+            # datetime implementations, we can't do better than this.
+            return self.tzinfo.tzname(self.to_native())
 
     def to_clock_time(self):
         """Convert to :class:`.ClockTime`.
@@ -1860,8 +1873,8 @@ class Time(metaclass=TimeType):
         :rtype: str
         """
         s = "%02d:%02d:%02d.%09d" % self.hour_minute_second_nanosecond
-        if self.tzinfo is not None:
-            offset = self.tzinfo.utcoffset(self)
+        offset = self.utc_offset()
+        if offset is not None:
             s += "%+03d:%02d" % divmod(offset.total_seconds() // 60, 60)
         return s
 
@@ -1970,9 +1983,24 @@ class DateTime(metaclass=DateTimeType):
         if tz is None:
             return cls.from_clock_time(Clock().local_time(), UnixEpoch)
         else:
-            return tz.fromutc(cls.from_clock_time(
-                Clock().utc_time(), UnixEpoch
-            ).replace(tzinfo=tz))
+            try:
+                return tz.fromutc(cls.from_clock_time(
+                    Clock().utc_time(), UnixEpoch
+                ).replace(tzinfo=tz))
+            except TypeError:
+                # For timezone implementations not compatible with the custom
+                # datetime implementations, we can't do better than this.
+                utc_now = cls.from_clock_time(
+                    Clock().utc_time(), UnixEpoch
+                )
+                utc_now_native = utc_now.to_native()
+                now_native = tz.fromutc(utc_now_native)
+                now = cls.from_native(now_native)
+                return now.replace(
+                    nanosecond=(now.nanosecond
+                                + utc_now.nanosecond
+                                - utc_now_native.microsecond * 1000)
+                )
 
     @classmethod
     def utc_now(cls):
@@ -2019,8 +2047,9 @@ class DateTime(metaclass=DateTimeType):
                 ClockTime(timestamp) + Clock().local_offset(), UnixEpoch
             )
         else:
-            return tz.fromutc(
-                cls.utc_from_timestamp(timestamp).replace(tzinfo=tz)
+            return (
+                cls.utc_from_timestamp(timestamp)
+                .replace(tzinfo=timezone.utc).astimezone(tz)
             )
 
     @classmethod
@@ -2326,7 +2355,15 @@ class DateTime(metaclass=DateTimeType):
             time_ = Time.from_ticks(round_half_to_even(
                 seconds * NANO_SECONDS + t.nanoseconds
             ))
-            return self.combine(date_, time_)
+            return self.combine(date_, time_).replace(tzinfo=self.tzinfo)
+        if isinstance(other, Duration):
+            t = (self.to_clock_time()
+                 + ClockTime(other.seconds, other.nanoseconds))
+            days, seconds = symmetric_divmod(t.seconds, 86400)
+            date_ = self.date() + Duration(months=other.months,
+                                           days=days + other.days)
+            time_ = Time.from_ticks(seconds * NANO_SECONDS + t.nanoseconds)
+            return self.combine(date_, time_).replace(tzinfo=self.tzinfo)
         return NotImplemented
 
     def __sub__(self, other):
@@ -2356,7 +2393,7 @@ class DateTime(metaclass=DateTimeType):
             return timedelta(days=days, seconds=t.seconds,
                              microseconds=(t.nanoseconds // 1000))
         if isinstance(other, Duration):
-            return NotImplemented
+            return self.__add__(-other)
         if isinstance(other, timedelta):
             return self.__add__(-other)
         return NotImplemented
@@ -2415,7 +2452,18 @@ class DateTime(metaclass=DateTimeType):
         if self.tzinfo is None:
             return self
         utc = (self - self.utc_offset()).replace(tzinfo=tz)
-        return tz.fromutc(utc)
+        try:
+            return tz.fromutc(utc)
+        except TypeError:
+            # For timezone implementations not compatible with the custom
+            # datetime implementations, we can't do better than this.
+            native_utc = utc.to_native()
+            native_res = tz.fromutc(native_utc)
+            res = self.from_native(native_res)
+            return res.replace(
+                nanosecond=(native_res.microsecond * 1000
+                            + self.nanosecond % 1000)
+            )
 
     def utc_offset(self):
         """Get the date times utc offset.
@@ -2513,8 +2561,17 @@ class DateTime(metaclass=DateTimeType):
 
         :rtype: str
         """
-        return "%s%s%s" % (self.date().iso_format(), sep,
-                           self.timetz().iso_format())
+        s = "%s%s%s" % (self.date().iso_format(), sep,
+                        self.timetz().iso_format())
+        time_tz = self.timetz()
+        offset = time_tz.utc_offset()
+        if offset is not None:
+            # the time component will have taken care of formatting the offset
+            return s
+        offset = self.utc_offset()
+        if offset is not None:
+            s += "%+03d:%02d" % divmod(offset.total_seconds() // 60, 60)
+        return s
 
     def __repr__(self):
         """"""
