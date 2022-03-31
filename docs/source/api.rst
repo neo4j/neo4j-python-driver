@@ -568,7 +568,7 @@ Name of the database to query.
 Name of the user to impersonate.
 This means that all actions in the session will be executed in the security
 context of the impersonated user. For this, the user for which the
-:class:``Driver`` has been created needs to have the appropriate permissions.
+:class:`Driver` has been created needs to have the appropriate permissions.
 
 :Type: ``str``, None
 
