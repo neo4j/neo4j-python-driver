@@ -14,15 +14,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-from datetime import time
-from decimal import Decimal
+from datetime import (
+    time,
+    timedelta,
+    timezone as datetime_timezone,
+)
+import itertools
+import operator
 
 import pytest
 from pytz import (
     FixedOffset,
     timezone,
+    utc,
 )
 
 from neo4j.time import Time
@@ -75,18 +79,25 @@ class TestTime:
         t = Time(12, 34, 56, 789123456)
         assert str(t) == "12:34:56.789123456"
 
-    def test_now_without_tz(self):
-        t = Time.now()
+    @pytest.mark.parametrize(("tz", "expected"), (
+        (None, (12, 34, 56, 789000001)),
+        (timezone_utc, (12, 34, 56, 789000001)),
+        (datetime_timezone.utc, (12, 34, 56, 789000001)),
+        (FixedOffset(60), (13, 34, 56, 789000001)),
+        (datetime_timezone(timedelta(hours=1)), (13, 34, 56, 789000001)),
+        (timezone_us_eastern, (7, 34, 56, 789000001)),
+    ))
+    def test_now(self, tz, expected):
+        t = Time.now(tz=tz)
         assert isinstance(t, Time)
-
-    def test_now_with_tz(self):
-        t = Time.now(tz=timezone_us_eastern)
-        assert isinstance(t, Time)
-        assert t.tzinfo == timezone_us_eastern
+        assert t.hour_minute_second_nanosecond == expected
+        assert str(t.tzinfo) == str(tz)
 
     def test_utc_now(self):
         t = Time.utc_now()
         assert isinstance(t, Time)
+        assert t.hour_minute_second_nanosecond == (12, 34, 56, 789000001)
+        assert t.tzinfo is None
 
     def test_from_native(self):
         native = time(12, 34, 56, 789123)
@@ -104,17 +115,58 @@ class TestTime:
         assert t.second == native.second
         assert round_half_to_even(t.nanosecond / 1000) == native.microsecond
 
-    def test_iso_format(self):
-        t = Time(12, 34, 56, 789123456)
-        assert "12:34:56.789123456" == t.iso_format()
-
-    def test_iso_format_with_trailing_zeroes(self):
-        t = Time(12, 34, 56, 789000000)
-        assert "12:34:56.789000000" == t.iso_format()
-
-    def test_iso_format_with_leading_zeroes(self):
-        t = Time(12, 34, 56, 789)
-        assert "12:34:56.000000789" == t.iso_format()
+    @pytest.mark.parametrize(("t", "expected"), (
+        (
+            Time(12, 34, 56, 789123456),
+            "12:34:56.789123456"
+        ),
+        (
+            time(12, 34, 56, 789123),
+            "12:34:56.789123"
+        ),
+        (
+            Time(12, 34, 56, 789000000),
+            "12:34:56.789000000"
+        ),
+        (
+            time(12, 34, 56, 789000),
+            "12:34:56.789000"
+        ),
+        (
+            Time(12, 34, 56, 789),
+            "12:34:56.000000789"
+        ),
+        (
+            time(12, 34, 56, 789),
+            "12:34:56.000789"
+        ),
+        (
+            Time(12, 34, 56, 789, tzinfo=timezone_utc),
+            "12:34:56.000000789+00:00"
+        ),
+        (
+            time(12, 34, 56, 789, tzinfo=timezone_utc),
+            "12:34:56.000789+00:00"
+        ),
+        (
+            Time(12, 34, 56, 789, tzinfo=timezone_us_eastern),
+            "12:34:56.000000789"
+        ),
+        (
+            time(12, 34, 56, 789, tzinfo=timezone_us_eastern),
+            "12:34:56.000789"
+        ),
+        (
+            Time(12, 34, 56, 123456789, tzinfo=FixedOffset(83)),
+            "12:34:56.123456789+01:23"
+        ),
+        (
+            time(12, 34, 56, 123456, tzinfo=FixedOffset(83)),
+            "12:34:56.123456+01:23"
+        ),
+    ))
+    def test_iso_format(self, t, expected):
+        assert t.isoformat() == expected
 
     def test_from_iso_format_hour_only(self):
         expected = Time(12, 0, 0)
@@ -236,3 +288,227 @@ class TestTime:
         assert t.second == native.second
         assert t.nanosecond == native.microsecond * 1000
         assert t.tzinfo == FixedOffset(0)
+
+    @pytest.mark.parametrize(("t1", "t2"), (
+        (time(12, 34, 56, 789123), Time(12, 34, 56, 789123000)),
+        (Time(12, 34, 56, 789123456), Time(12, 34, 56, 789123456)),
+        (
+            time(12, 34, 56, 789123, FixedOffset(1)),
+            Time(12, 34, 56, 789123000, FixedOffset(1))
+        ),
+        (
+            time(12, 34, 56, 789123, FixedOffset(-1)),
+            Time(12, 34, 56, 789123000, FixedOffset(-1))
+        ),
+        (
+            Time(12, 34, 56, 789123456, FixedOffset(1)),
+            Time(12, 34, 56, 789123456, FixedOffset(1))
+        ),
+        (
+            Time(12, 34, 56, 789123456, FixedOffset(-1)),
+            Time(12, 34, 56, 789123456, FixedOffset(-1))
+        ),
+        (
+            Time(12, 35, 56, 789123456, FixedOffset(1)),
+            Time(12, 34, 56, 789123456, FixedOffset(0))
+        ),
+        (
+            # Not testing our library directly, but asserting that Python's
+            # time implementation is aligned with ours.
+            time(12, 35, 56, 789123, FixedOffset(1)),
+            time(12, 34, 56, 789123, FixedOffset(0))
+        ),
+        (
+            time(12, 35, 56, 789123, FixedOffset(1)),
+            Time(12, 34, 56, 789123000, FixedOffset(0))
+        ),
+        (
+            Time(12, 35, 56, 789123123, FixedOffset(1)),
+            Time(12, 34, 56, 789123123, FixedOffset(0))
+        ),
+    ))
+    def test_equality(self, t1, t2):
+        assert t1 == t2
+        assert t2 == t1
+        assert t1 <= t2
+        assert t2 <= t1
+        assert t1 >= t2
+        assert t2 >= t1
+
+    @pytest.mark.parametrize(("t1", "t2"), (
+        (time(12, 34, 56, 789123), Time(12, 34, 56, 789123001)),
+        (time(12, 34, 56, 789123), Time(12, 34, 56, 789124000)),
+        (time(12, 34, 56, 789123), Time(12, 34, 57, 789123000)),
+        (time(12, 34, 56, 789123), Time(12, 35, 56, 789123000)),
+        (time(12, 34, 56, 789123), Time(13, 34, 56, 789123000)),
+        (Time(12, 34, 56, 789123456), Time(12, 34, 56, 789123450)),
+        (Time(12, 34, 56, 789123456), Time(12, 34, 57, 789123456)),
+        (Time(12, 34, 56, 789123456), Time(12, 35, 56, 789123456)),
+        (Time(12, 34, 56, 789123456), Time(13, 34, 56, 789123456)),
+        (
+            time(12, 34, 56, 789123, FixedOffset(2)),
+            Time(12, 34, 56, 789123000, FixedOffset(1))
+        ),
+        (
+            time(12, 34, 56, 789123, FixedOffset(-2)),
+            Time(12, 34, 56, 789123000, FixedOffset(-1))
+        ),
+        (
+            time(12, 34, 56, 789123),
+            Time(12, 34, 56, 789123000, FixedOffset(0))
+        ),
+        (
+            Time(12, 34, 56, 789123456, FixedOffset(2)),
+            Time(12, 34, 56, 789123456, FixedOffset(1))
+        ),
+        (
+            Time(12, 34, 56, 789123456, FixedOffset(-2)),
+            Time(12, 34, 56, 789123456, FixedOffset(-1))
+        ),
+        (
+            Time(12, 34, 56, 789123456),
+            Time(12, 34, 56, 789123456, FixedOffset(0))
+        ),
+        (
+            Time(13, 34, 56, 789123456, FixedOffset(1)),
+            Time(12, 34, 56, 789123456, FixedOffset(0))
+        ),
+        (
+            Time(11, 34, 56, 789123456, FixedOffset(1)),
+            Time(12, 34, 56, 789123456, FixedOffset(0))
+        ),
+    ))
+    def test_inequality(self, t1, t2):
+        assert t1 != t2
+        assert t2 != t1
+
+    @pytest.mark.parametrize(
+        ("t1", "t2"),
+        itertools.product(
+            (
+                time(12, 34, 56, 789123),
+                Time(12, 34, 56, 789123000),
+                time(12, 34, 56, 789123, FixedOffset(0)),
+                Time(12, 34, 56, 789123456, FixedOffset(0)),
+                time(12, 35, 56, 789123, FixedOffset(1)),
+                Time(12, 35, 56, 789123456, FixedOffset(1)),
+                time(12, 34, 56, 789123, FixedOffset(-1)),
+                Time(12, 34, 56, 789123456, FixedOffset(-1)),
+                time(12, 34, 56, 789123, FixedOffset(60 * -16)),
+                Time(12, 34, 56, 789123000, FixedOffset(60 * -16)),
+                time(11, 34, 56, 789123, FixedOffset(60 * -17)),
+                Time(11, 34, 56, 789123000, FixedOffset(60 * -17)),
+                Time(12, 34, 56, 789123456, FixedOffset(60 * -16)),
+                Time(11, 34, 56, 789123456, FixedOffset(60 * -17)),
+            ),
+            repeat=2
+        )
+    )
+    def test_hashed_equality(self, t1, t2):
+        if t1 == t2:
+            s = {t1}
+            assert t1 in s
+            assert t2 in s
+            s = {t2}
+            assert t1 in s
+            assert t2 in s
+        else:
+            s = {t1}
+            assert t1 in s
+            assert t2 not in s
+            s = {t2}
+            assert t1 not in s
+            assert t2 in s
+
+    @pytest.mark.parametrize(("t1", "t2"), (
+        itertools.product(
+            (
+                time(12, 34, 56, 789123),
+                Time(12, 34, 56, 789123000),
+                Time(12, 34, 56, 789123001),
+            ),
+            repeat=2
+        )
+    ))
+    @pytest.mark.parametrize("tz", (
+        FixedOffset(0), FixedOffset(1), FixedOffset(-1), utc,
+    ))
+    @pytest.mark.parametrize("op", (
+        operator.lt, operator.le, operator.gt, operator.ge,
+    ))
+    def test_comparison_with_only_one_naive_fails(self, t1, t2, tz, op):
+        t1 = t1.replace(tzinfo=tz)
+        with pytest.raises(TypeError, match="naive"):
+            op(t1, t2)
+
+    @pytest.mark.parametrize(
+        ("t1", "t2"),
+        itertools.product(
+            (
+                time(12, 34, 56, 789123),
+                Time(12, 34, 56, 789123000),
+                Time(12, 34, 56, 789123001),
+            ),
+            repeat=2
+        )
+    )
+    @pytest.mark.parametrize("tz", (
+        timezone("Europe/Paris"), timezone("Europe/Berlin"),
+    ))
+    @pytest.mark.parametrize("op", (
+        operator.lt, operator.le, operator.gt, operator.ge,
+    ))
+    def test_comparison_with_one_naive_and_not_fixed_tz(self, t1, t2, tz, op):
+        t1tz = t1.replace(tzinfo=tz)
+        res = op(t1tz, t2)
+        expected = op(t1, t2)
+        assert res is expected
+
+    @pytest.mark.parametrize(("t1", "t2"), (
+        (time(12, 34, 56, 789123), time(12, 34, 56, 789124)),
+        (Time(12, 34, 56, 789123000), time(12, 34, 56, 789124)),
+        (time(12, 34, 56, 789123), Time(12, 34, 56, 789124000)),
+        (Time(12, 34, 56, 789123000), Time(12, 34, 56, 789124000)),
+        (
+            time(12, 34, 56, 789123, FixedOffset(1)),
+            time(12, 34, 56, 789124, FixedOffset(1)),
+        ),
+        (
+            Time(12, 34, 56, 789123000, FixedOffset(1)),
+            time(12, 34, 56, 789124, FixedOffset(1)),
+        ),
+        (
+            Time(12, 34, 56, 789123000, FixedOffset(1)),
+            Time(12, 34, 56, 789124000, FixedOffset(1)),
+        ),
+        (
+            Time(12, 34, 56, 789123000, FixedOffset(1)),
+            Time(12, 34, 56, 789123001, FixedOffset(1)),
+        ),
+
+        (
+            time(12, 36, 56, 789123, FixedOffset(1)),
+            time(12, 34, 56, 789124, FixedOffset(-1)),
+        ),
+        (
+            Time(12, 36, 56, 789123000, FixedOffset(1)),
+            time(12, 34, 56, 789124, FixedOffset(-1)),
+        ),
+        (
+            Time(12, 36, 56, 789123000, FixedOffset(1)),
+            Time(12, 34, 56, 789124000, FixedOffset(-1)),
+        ),
+        (
+            Time(12, 36, 56, 789123000, FixedOffset(1)),
+            Time(12, 34, 56, 789123001, FixedOffset(-1)),
+        ),
+    ))
+    def test_comparison(self, t1, t2):
+        assert t1 < t2
+        assert not t2 < t1
+        assert t1 <= t2
+        assert not t2 <= t1
+        assert t2 > t1
+        assert not t1 > t2
+        assert t2 >= t1
+        assert not t1 >= t2
