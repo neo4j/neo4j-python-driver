@@ -511,13 +511,13 @@ A :class:`neo4j.AsyncResult` is attached to an active connection, through a :cla
 
     .. automethod:: graph
 
-       **This is experimental.** (See :ref:`filter-warnings-ref`)
-
     .. automethod:: value
 
     .. automethod:: values
 
     .. automethod:: data
+
+    .. automethod:: to_df
 
     .. automethod:: closed
 

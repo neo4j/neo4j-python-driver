@@ -207,6 +207,10 @@ class Entity(Mapping):
         Depending on the version of the server this entity was retrieved from,
         this may be empty (None).
 
+        .. Warning::
+            This value can change for the same entity across multiple
+            queries. Don't rely on it for cross-query computations.
+
         .. deprecated:: 5.0
             Use :attr:`.element_id` instead.
 
@@ -218,7 +222,11 @@ class Entity(Mapping):
     def element_id(self):
         """The identity of this entity in its container :class:`.Graph`.
 
-        .. added:: 5.0
+        .. Warning::
+            This value can change for the same entity across multiple
+            queries. Don't rely on it for cross-query computations.
+
+        .. versionadded:: 5.0
 
         :rtype: str
         """

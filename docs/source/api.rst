@@ -804,13 +804,13 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`n
 
     .. automethod:: graph
 
-       **This is experimental.** (See :ref:`filter-warnings-ref`)
-
     .. automethod:: value
 
     .. automethod:: values
 
     .. automethod:: data
+
+    .. automethod:: to_df
 
     .. automethod:: closed
 
@@ -987,7 +987,7 @@ Path           :class:`neo4j.graph.Path`
 Node
 ====
 
-.. autoclass:: neo4j.graph.Node()
+.. autoclass:: neo4j.graph.Node
 
     .. describe:: node == other
 
@@ -1022,6 +1022,8 @@ Node
 
     .. autoattribute:: id
 
+    .. autoattribute:: element_id
+
     .. autoattribute:: labels
 
     .. automethod:: get
@@ -1036,7 +1038,7 @@ Node
 Relationship
 ============
 
-.. autoclass:: neo4j.graph.Relationship()
+.. autoclass:: neo4j.graph.Relationship
 
     .. describe:: relationship == other
 
@@ -1076,6 +1078,8 @@ Relationship
 
     .. autoattribute:: id
 
+    .. autoattribute:: element_id
+
     .. autoattribute:: nodes
 
     .. autoattribute:: start_node
@@ -1097,7 +1101,7 @@ Relationship
 Path
 ====
 
-.. autoclass:: neo4j.graph.Path()
+.. autoclass:: neo4j.graph.Path
 
     .. describe:: path == other
 
