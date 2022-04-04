@@ -25,6 +25,8 @@ Topics
 
 + :ref:`async-api-documentation` (experimental)
 
++ :ref:`spatial-data-types`
+
 + :ref:`temporal-data-types`
 
 + :ref:`breaking-changes`
@@ -35,7 +37,8 @@ Topics
 
    api.rst
    async_api.rst
-   temporal_types.rst
+   types/spatial.rst
+   types/temporal.rst
    breaking_changes.rst
 
 

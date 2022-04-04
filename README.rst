@@ -3,7 +3,7 @@ Neo4j Bolt Driver for Python
 ****************************
 
 This repository contains the official Neo4j driver for Python.
-Each driver release (from 4.0 upwards) is built specifically to work with a corresponding Neo4j release, i.e. that with the same `major.minor` version number.
+Each driver release (from 4.0 upwards) is built specifically to work with a corresponding Neo4j release, i.e. that with the same ``major.minor`` version number.
 These drivers will also be compatible with the previous Neo4j release, although new server features will not be available.
 
 + Python 3.10 supported.
@@ -63,9 +63,9 @@ Connection Settings Breaking Change
 
 + This means that encrypted connections to servers holding self-signed certificates will now fail on certificate verification by default.
 
-+ Using the new `neo4j+ssc` scheme will allow to connect to servers holding self-signed certificates and not use hostname verification.
++ Using the new ``neo4j+ssc`` scheme will allow to connect to servers holding self-signed certificates and not use hostname verification.
 
-+ The `neo4j://` scheme replaces `bolt+routing://` and can be used for both clustered and single-instance configurations with Neo4j 4.0.
++ The ``neo4j://`` scheme replaces ``bolt+routing://`` and can be used for both clustered and single-instance configurations with Neo4j 4.0.
 
 
 
