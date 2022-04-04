@@ -26,7 +26,7 @@ AsyncGraphDatabase
 Async Driver Construction
 =========================
 
-The :class:`neo4j.AsyncDriver` construction is done via a `classmethod` on the :class:`neo4j.AsyncGraphDatabase` class.
+The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the :class:`neo4j.AsyncGraphDatabase` class.
 
 .. autoclass:: neo4j.AsyncGraphDatabase
    :members: driver
@@ -81,7 +81,7 @@ Other authentication methods are described under :ref:`auth-ref`.
 URI
 ===
 
-On construction, the `scheme` of the URI determines the type of :class:`neo4j.AsyncDriver` object created.
+On construction, the ``scheme`` of the URI determines the type of :class:`neo4j.AsyncDriver` object created.
 
 Available valid URIs:
 
@@ -398,7 +398,7 @@ Explicit transactions support multiple statements and must be created with an ex
 
 This creates a new :class:`neo4j.AsyncTransaction` object that can be used to run Cypher.
 
-It also gives applications the ability to directly control `commit` and `rollback` activity.
+It also gives applications the ability to directly control ``commit`` and ``rollback`` activity.
 
 .. autoclass:: neo4j.AsyncTransaction()
 
