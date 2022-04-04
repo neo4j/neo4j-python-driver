@@ -14,6 +14,11 @@ Async API Documentation
 
 .. versionadded:: 5.0
 
+.. warning::
+    There are known issue with Python 3.8 and the async driver where it
+    gradually slows down. Generally, it's recommended to use the latest
+    supported version of Python for best performance, stability, and security.
+
 ******************
 AsyncGraphDatabase
 ******************

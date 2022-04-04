@@ -136,8 +136,9 @@ class AsyncBoltSocket:
         io_fut = self._writer.drain()
         return await self._wait_for_io(io_fut)
 
-    def close(self):
+    async def close(self):
         self._writer.close()
+        await self._writer.wait_closed()
 
     @classmethod
     async def _connect_secure(cls, resolved_address, timeout, keep_alive, ssl):
@@ -210,7 +211,7 @@ class AsyncBoltSocket:
             log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             if s:
-                cls.close_socket(s)
+                await cls.close_socket(s)
             raise ServiceUnavailable(
                 "Timed out trying to establish connection to {!r}".format(
                     resolved_address))
@@ -296,7 +297,7 @@ class AsyncBoltSocket:
         return self, agreed_version, handshake, data
 
     @classmethod
-    def close_socket(cls, socket_):
+    async def close_socket(cls, socket_):
         if isinstance(socket_, socket):
             try:
                 socket_.shutdown(SHUT_RDWR)
@@ -304,7 +305,7 @@ class AsyncBoltSocket:
             except OSError:
                 pass
         else:
-            socket_.close()
+            await socket_.close()
 
     @classmethod
     async def connect(cls, address, *, timeout, custom_resolver, ssl_context,
@@ -339,12 +340,12 @@ class AsyncBoltSocket:
                 log.debug("[#%04X]  C: <CONNECTION FAILED> %s", local_port,
                           err_str)
                 if s:
-                    cls.close_socket(s)
+                    await cls.close_socket(s)
                 errors.append(error)
                 failed_addresses.append(resolved_address)
             except Exception:
                 if s:
-                    cls.close_socket(s)
+                    await cls.close_socket(s)
                 raise
         if not errors:
             raise ServiceUnavailable(
