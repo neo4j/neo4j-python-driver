@@ -4,7 +4,7 @@
 Temporal Data Types
 *******************
 
-.. include:: types/temporal.rst
+.. include:: types/_temporal_overview.rst
 
 
 Constants

@@ -1239,7 +1239,7 @@ WGS84Point
 Temporal Data Types
 *******************
 
-.. include:: types/temporal.rst
+.. include:: types/_temporal_overview.rst
 
 See topic :ref:`temporal-data-types` for more details.
 
