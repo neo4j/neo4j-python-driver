@@ -1,26 +1,14 @@
 {
   "skips": {
-    "stub.retry.test_retry_clustering.TestRetryClustering.test_retry_ForbiddenOnReadOnlyDatabase_ChangingWriter":
+    "stub\\.retry\\.test_retry_clustering\\.TestRetryClustering\\.test_retry_ForbiddenOnReadOnlyDatabase_ChangingWriter":
       "Test makes assumptions about how verify_connectivity is implemented",
-    "stub.authorization.test_authorization.TestAuthorizationV5x0.test_should_retry_on_auth_expired_on_begin_using_tx_function":
+    "stub\\.authorization\\.test_authorization\\.TestAuthorizationV[0-9x]+\\.test_should_retry_on_auth_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
-    "stub.authorization.test_authorization.TestAuthorizationV4x3.test_should_retry_on_auth_expired_on_begin_using_tx_function":
+    "stub\\.authorization\\.test_authorization\\.TestAuthorizationV[0-9x]+\\.test_should_fail_on_token_expired_on_begin_using_tx_function":
       "Flaky: test requires the driver to contact servers in a specific order",
-    "stub.authorization.test_authorization.TestAuthorizationV3.test_should_retry_on_auth_expired_on_begin_using_tx_function":
-      "Flaky: test requires the driver to contact servers in a specific order",
-    "stub.authorization.test_authorization.TestAuthorizationV4x1.test_should_retry_on_auth_expired_on_begin_using_tx_function":
-      "Flaky: test requires the driver to contact servers in a specific order",
-    "stub.authorization.test_authorization.TestAuthorizationV5x0.test_should_fail_on_token_expired_on_begin_using_tx_function":
-      "Flaky: test requires the driver to contact servers in a specific order",
-    "stub.authorization.test_authorization.TestAuthorizationV4x3.test_should_fail_on_token_expired_on_begin_using_tx_function":
-      "Flaky: test requires the driver to contact servers in a specific order",
-    "stub.authorization.test_authorization.TestAuthorizationV3.test_should_fail_on_token_expired_on_begin_using_tx_function":
-      "Flaky: test requires the driver to contact servers in a specific order",
-    "stub.authorization.test_authorization.TestAuthorizationV4x1.test_should_fail_on_token_expired_on_begin_using_tx_function":
-      "Flaky: test requires the driver to contact servers in a specific order",
-    "stub.session_run_parameters.test_session_run_parameters.TestSessionRunParameters.test_empty_query":
+    "'stub.session_run_parameters.test_session_run_parameters.TestSessionRunParameters.test_empty_query'":
       "Driver rejects empty queries before sending it to the server",
-    "stub.server_side_routing.test_server_side_routing.TestServerSideRouting.test_direct_connection_with_url_params":
+    "'stub.server_side_routing.test_server_side_routing.TestServerSideRouting.test_direct_connection_with_url_params'":
       "Driver emits deprecation warning. Behavior will be unified in 6.0."
   },
   "features": {

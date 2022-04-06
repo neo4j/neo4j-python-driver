@@ -18,6 +18,7 @@
 
 import json
 from os import path
+import re
 import warnings
 
 import pytz
@@ -52,10 +53,14 @@ SKIPPED_TESTS, FEATURES = load_config()
 
 
 async def StartTest(backend, data):
-    if data["testName"] in SKIPPED_TESTS:
-        await backend.send_response("SkipTest", {
-            "reason": SKIPPED_TESTS[data["testName"]]
-        })
+    for skip_pattern, reason in SKIPPED_TESTS.items():
+        if skip_pattern[0] == skip_pattern[-1] == "'":
+            match = skip_pattern[1:-1] == data["testName"]
+        else:
+            match = re.match(skip_pattern, data["testName"])
+        if match:
+            await backend.send_response("SkipTest", {"reason": reason})
+            break
     else:
         await backend.send_response("RunTest", {})
 
