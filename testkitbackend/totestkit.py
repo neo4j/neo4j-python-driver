@@ -18,11 +18,17 @@
 
 import math
 
+from neo4j import (
+    _exceptions as _neo_exc,
+    exceptions as neo_exc,
+)
 from neo4j.graph import (
     Node,
     Path,
     Relationship,
 )
+
+from .exceptions import MarkdAsDriverException
 
 
 def record(rec):
@@ -90,3 +96,82 @@ def field(v):
         return {"name": "Path", "data": path}
 
     raise Exception("Unhandled type:" + str(type(v)))
+
+
+_error_classifier = None
+
+
+def _get_error_classifier():
+    global _error_classifier
+
+    if _error_classifier is not None:
+        return _error_classifier
+
+    _error_classifier = [
+
+    ]
+
+
+def error(exc):
+    payload = {}
+
+    if isinstance(exc, MarkdAsDriverException):
+        exc = exc.wrapped_exc
+
+    if isinstance(exc, neo_exc.Neo4jError) and exc.message is not None:
+        payload["msg"] = str(exc.message)
+    elif exc.args:
+        payload["msg"] = str(exc.args[0])
+    else:
+        payload["msg"] = ""
+
+    if isinstance(exc, neo_exc.Neo4jError):
+        payload["code"] = exc.code
+
+    error_type = str(type(exc))
+
+    if isinstance(exc, neo_exc.SessionExpired):
+        error_type = "session_expired_error"
+    elif isinstance(exc, neo_exc.IncompleteCommit):
+        error_type = "incomplete_commit_error"
+    elif isinstance(exc, neo_exc.ServiceUnavailable):
+        error_type = "service_unavailable_error"
+    elif isinstance(exc, neo_exc.NotALeader):
+        error_type = "not_leader_error"
+    elif isinstance(exc, neo_exc.ForbiddenOnReadOnlyDatabase):
+        error_type = "forbidden_on_read_only_database_error"
+    elif isinstance(exc, AttributeError):
+        error_type = "illegal_state_error"
+    elif isinstance(exc, neo_exc.TokenExpired):
+        error_type = "token_expired_error"
+    elif isinstance(exc, neo_exc.ResultNotSingleError):
+        error_type = "not_single_error"
+    elif isinstance(exc, neo_exc.ConfigurationError):
+        error_type = "invalid_configuration_error"
+    elif isinstance(exc, neo_exc.ResultConsumedError):
+        error_type = "result_consumed_error"
+    elif isinstance(exc, (TypeError, ValueError)):
+        error_type = "illegal_argument_error"
+    elif isinstance(exc, _neo_exc.BoltProtocolError):
+        error_type = "protocol_error"
+    elif isinstance(exc, neo_exc.TransactionError):
+        error_type = "transaction_error"
+    elif isinstance(exc, neo_exc.UnsupportedServerProduct):
+        error_type = "untrusted_server_error"
+    elif isinstance(exc, neo_exc.TransientError):
+        if exc.code == "Neo.ClientError.Security.AuthorizationExpired":
+            # we should probably not remap this error to TransientError in the
+            # driver...
+            error_type = "authorization_expired_error"
+        else:
+            error_type = "transient_error"
+    elif isinstance(exc, neo_exc.ClientError):
+        if exc.code and exc.code.startswith("Neo.ClientError.Security."):
+            # maybe there should be a SecurityError class...
+            error_type = "security_error"
+        else:
+            error_type = "client_error"
+
+    payload["errorType"] = error_type
+
+    return payload
