@@ -21,13 +21,12 @@ from os import path
 import re
 import warnings
 
-import pytz
-
 import neo4j
 from neo4j._async_compat.util import AsyncUtil
 
 from .. import (
     fromtestkit,
+    test_subtest_skips,
     totestkit,
 )
 from ..exceptions import MarkdAsDriverException
@@ -52,54 +51,44 @@ def load_config():
 SKIPPED_TESTS, FEATURES = load_config()
 
 
-async def StartTest(backend, data):
+def _get_skip_reason(test_name):
     for skip_pattern, reason in SKIPPED_TESTS.items():
         if skip_pattern[0] == skip_pattern[-1] == "'":
-            match = skip_pattern[1:-1] == data["testName"]
+            match = skip_pattern[1:-1] == test_name
         else:
-            match = re.match(skip_pattern, data["testName"])
+            match = re.match(skip_pattern, test_name)
         if match:
+            return reason
+
+
+async def StartTest(backend, data):
+    test_name = data["testName"]
+    reason = _get_skip_reason(test_name)
+    if reason is not None:
+        if reason.startswith("test_subtest_skips."):
+            await backend.send_response("RunSubTests", {})
+        else:
             await backend.send_response("SkipTest", {"reason": reason})
-            break
+    else:
+        await backend.send_response("RunTest", {})
+
+
+async def StartSubTest(backend, data):
+    test_name = data["testName"]
+    subtest_args = data["subtestArguments"]
+    subtest_args.mark_all_as_read(recursive=True)
+    reason = _get_skip_reason(test_name)
+    assert reason and reason.startswith("test_subtest_skips.") or print(reason)
+    func = getattr(test_subtest_skips, reason[19:])
+    reason = func(**subtest_args)
+    if reason is not None:
+        await backend.send_response("SkipTest", {"reason": reason})
     else:
         await backend.send_response("RunTest", {})
 
 
 async def GetFeatures(backend, data):
     await backend.send_response("FeatureList", {"features": FEATURES})
-
-
-async def CheckSystemSupport(backend, data):
-    type_ = data["type"]
-    meta = data["meta"]
-    if type_ == "Timezone":
-        timezone = meta["timezone"]
-        # We could do this automatically, but with an explicit black list we
-        # make sure we know what we test and what we don't.
-
-        # await backend.send_response("SystemSupport", {
-        #     "supported": timezone in pytz.common_timezones_set
-        # })
-
-        await backend.send_response("SystemSupport", {
-            "supported": timezone not in {
-                "SystemV/AST4",
-                "SystemV/AST4ADT",
-                "SystemV/CST6",
-                "SystemV/CST6CDT",
-                "SystemV/EST5",
-                "SystemV/EST5EDT",
-                "SystemV/HST10",
-                "SystemV/MST7",
-                "SystemV/MST7MDT",
-                "SystemV/PST8",
-                "SystemV/PST8PDT",
-                "SystemV/YST9",
-                "SystemV/YST9YDT",
-            }
-        })
-    else:
-        raise NotImplementedError("Unknown SystemSupportType: %s" % type_)
 
 
 async def NewDriver(backend, data):
