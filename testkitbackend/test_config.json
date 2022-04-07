@@ -50,16 +50,6 @@
     "Optimization:MinimalResets": true,
     "Optimization:PullPipelining": true,
     "Optimization:ResultListFetchAll": "The idiomatic way to cast to list is indistinguishable from iterating over the result.",
-    "ConfHint:connection.recv_timeout_seconds": true,
-    "Temporary:CypherPathAndRelationship": true,
-    "Temporary:DriverFetchSize": true,
-    "Temporary:DriverMaxTxRetryTime": true,
-    "Temporary:FastFailingDiscovery": true,
-    "Temporary:FullSummary": true,
-    "Temporary:ResultKeys": true,
-    "Temporary:TransactionClose": true,
-    "Temporary:DriverMaxConnectionPoolSize": true,
-    "Temporary:ConnectionAcquisitionTimeout": true,
-    "Temporary:GetConnectionPoolMetrics": true
+    "ConfHint:connection.recv_timeout_seconds": true
   }
 }
