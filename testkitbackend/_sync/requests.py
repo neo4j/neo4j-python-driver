@@ -111,6 +111,7 @@ def NewDriver(backend, data):
             cert_paths = ("/usr/local/share/custom-ca-certificates/" + cert
                           for cert in data["trustedCertificates"])
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
+    data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
     data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.GraphDatabase.driver(
