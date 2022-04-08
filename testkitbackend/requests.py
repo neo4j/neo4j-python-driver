@@ -92,6 +92,7 @@ def NewDriver(backend, data):
         kwargs["max_connection_pool_size"] = data["maxConnectionPoolSize"]
     if data.get("fetchSize"):
         kwargs["fetch_size"] = data["fetchSize"]
+    data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
     data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.GraphDatabase.driver(
