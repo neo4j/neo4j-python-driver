@@ -42,12 +42,21 @@ __srid_table_lock = Lock()
 
 
 class Point(tuple):
-    """ A point within a geometric space. This type is generally used
-    via its subclasses and should not be instantiated directly unless
-    there is no subclass defined for the required SRID.
+    """Base-class for spatial data.
+
+    A point within a geometric space. This type is generally used via its
+    subclasses and should not be instantiated directly unless there is no
+    subclass defined for the required SRID.
+
+    :param iterable:
+        An iterable of coordinates.
+        All items will be converted to :class:`float`.
     """
 
-    srid = None
+    #: The SRID (spatial reference identifier) of the spatial data.
+    #: A number that identifies the coordinate system the spatial type is to be
+    #: interpreted in.
+    srid = None  # type: int
 
     def __new__(cls, iterable):
         return tuple.__new__(cls, map(float, iterable))
@@ -101,8 +110,10 @@ def point_type(name, fields, srid_map):
 
 
 # Point subclass definitions
-CartesianPoint = point_type("CartesianPoint", ["x", "y", "z"], {2: 7203, 3: 9157})
-WGS84Point = point_type("WGS84Point", ["longitude", "latitude", "height"], {2: 4326, 3: 4979})
+CartesianPoint = point_type("CartesianPoint", ["x", "y", "z"],
+                            {2: 7203, 3: 9157})
+WGS84Point = point_type("WGS84Point", ["longitude", "latitude", "height"],
+                        {2: 4326, 3: 4979})
 
 
 def hydrate_point(srid, *coordinates):

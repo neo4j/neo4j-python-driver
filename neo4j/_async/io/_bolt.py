@@ -658,7 +658,7 @@ class AsyncBolt:
                 pass
         log.debug("[#%04X]  C: <CLOSE>", self.local_port)
         try:
-            self.socket.close()
+            await self.socket.close()
         except OSError:
             pass
         finally:

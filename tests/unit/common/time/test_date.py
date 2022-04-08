@@ -17,10 +17,12 @@
 
 
 import copy
+import datetime
 from datetime import date
 from time import struct_time
 from unittest import TestCase
 
+import pytest
 import pytz
 
 from neo4j.time import (
@@ -31,7 +33,8 @@ from neo4j.time import (
 )
 
 
-eastern = pytz.timezone("US/Eastern")
+timezone_eastern = pytz.timezone("US/Eastern")
+timezone_utc = pytz.utc
 
 
 class TestDate(TestCase):
@@ -189,24 +192,12 @@ class TestDate(TestCase):
         with self.assertRaises(ValueError):
             _ = Date(10000, 2, 1)
 
-    def test_today(self):
-        d = Date.today()
-        self.assertIsInstance(d, Date)
-
-    def test_today_with_tz(self):
-        d = Date.today(tz=eastern)
-        self.assertIsInstance(d, Date)
-
-    def test_utc_today(self):
-        d = Date.utc_today()
-        self.assertIsInstance(d, Date)
-
     def test_from_timestamp_without_tz(self):
         d = Date.from_timestamp(0)
         self.assertEqual(d, Date(1970, 1, 1))
 
     def test_from_timestamp_with_tz(self):
-        d = Date.from_timestamp(0, tz=eastern)
+        d = Date.from_timestamp(0, tz=timezone_eastern)
         self.assertEqual(d, Date(1969, 12, 31))
 
     def test_utc_from_timestamp(self):
@@ -547,3 +538,23 @@ class TestDate(TestCase):
         d2 = copy.deepcopy(d)
         self.assertIsNot(d, d2)
         self.assertEqual(d, d2)
+
+
+@pytest.mark.parametrize(("tz", "expected"), (
+    (None, (1970, 1, 1)),
+    (timezone_eastern, (1970, 1, 1)),
+    (timezone_utc, (1970, 1, 1)),
+    (pytz.FixedOffset(-12 * 60), (1970, 1, 1)),
+    (datetime.timezone(datetime.timedelta(hours=-12)), (1970, 1, 1)),
+    (pytz.FixedOffset(-13 * 60), (1969, 12, 31)),
+    (datetime.timezone(datetime.timedelta(hours=-13)), (1969, 12, 31)),
+    (pytz.FixedOffset(11 * 60), (1970, 1, 1)),
+    (datetime.timezone(datetime.timedelta(hours=11)), (1970, 1, 1)),
+    (pytz.FixedOffset(12 * 60), (1970, 1, 2)),
+    (datetime.timezone(datetime.timedelta(hours=12)), (1970, 1, 2)),
+
+))
+def test_today(tz, expected):
+    d = Date.today(tz=tz)
+    assert isinstance(d, Date)
+    assert d.year_month_day == expected

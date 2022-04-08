@@ -14,6 +14,11 @@ Async API Documentation
 
 .. versionadded:: 5.0
 
+.. warning::
+    There are known issue with Python 3.8 and the async driver where it
+    gradually slows down. Generally, it's recommended to use the latest
+    supported version of Python for best performance, stability, and security.
+
 ******************
 AsyncGraphDatabase
 ******************
@@ -21,7 +26,7 @@ AsyncGraphDatabase
 Async Driver Construction
 =========================
 
-The :class:`neo4j.AsyncDriver` construction is done via a `classmethod` on the :class:`neo4j.AsyncGraphDatabase` class.
+The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the :class:`neo4j.AsyncGraphDatabase` class.
 
 .. autoclass:: neo4j.AsyncGraphDatabase
    :members: driver
@@ -76,7 +81,7 @@ Other authentication methods are described under :ref:`auth-ref`.
 URI
 ===
 
-On construction, the `scheme` of the URI determines the type of :class:`neo4j.AsyncDriver` object created.
+On construction, the ``scheme`` of the URI determines the type of :class:`neo4j.AsyncDriver` object created.
 
 Available valid URIs:
 
@@ -393,7 +398,7 @@ Explicit transactions support multiple statements and must be created with an ex
 
 This creates a new :class:`neo4j.AsyncTransaction` object that can be used to run Cypher.
 
-It also gives applications the ability to directly control `commit` and `rollback` activity.
+It also gives applications the ability to directly control ``commit`` and ``rollback`` activity.
 
 .. autoclass:: neo4j.AsyncTransaction()
 
@@ -511,13 +516,13 @@ A :class:`neo4j.AsyncResult` is attached to an active connection, through a :cla
 
     .. automethod:: graph
 
-       **This is experimental.** (See :ref:`filter-warnings-ref`)
-
     .. automethod:: value
 
     .. automethod:: values
 
     .. automethod:: data
+
+    .. automethod:: to_df
 
     .. automethod:: closed
 

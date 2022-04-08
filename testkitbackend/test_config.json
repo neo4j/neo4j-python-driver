@@ -56,16 +56,6 @@
     "ConfHint:connection.recv_timeout_seconds": true,
 
     "Backend:RTFetch": true,
-    "Backend:RTForceUpdate": true,
-
-    "Temporary:CypherPathAndRelationship": true,
-    "Temporary:DriverFetchSize": true,
-    "Temporary:DriverMaxTxRetryTime": true,
-    "Temporary:FastFailingDiscovery": true,
-    "Temporary:FullSummary": true,
-    "Temporary:ResultKeys": true,
-    "Temporary:TransactionClose": true,
-    "Temporary:DriverMaxConnectionPoolSize": true,
-    "Temporary:GetConnectionPoolMetrics": true
+    "Backend:RTForceUpdate": true
   }
 }

@@ -11,7 +11,7 @@ GraphDatabase
 Driver Construction
 ===================
 
-The :class:`neo4j.Driver` construction is done via a `classmethod` on the :class:`neo4j.GraphDatabase` class.
+The :class:`neo4j.Driver` construction is done via a ``classmethod`` on the :class:`neo4j.GraphDatabase` class.
 
 .. autoclass:: neo4j.GraphDatabase
    :members: driver
@@ -29,7 +29,7 @@ Driver creation example:
     driver.close()  # close the driver object
 
 
-For basic authentication, `auth` can be a simple tuple, for example:
+For basic authentication, ``auth`` can be a simple tuple, for example:
 
 .. code-block:: python
 
@@ -56,7 +56,7 @@ Other authentication methods are described under :ref:`auth-ref`.
 URI
 ===
 
-On construction, the `scheme` of the URI determines the type of :class:`neo4j.Driver` object created.
+On construction, the ``scheme`` of the URI determines the type of :class:`neo4j.Driver` object created.
 
 Available valid URIs:
 
@@ -568,7 +568,7 @@ Name of the database to query.
 Name of the user to impersonate.
 This means that all actions in the session will be executed in the security
 context of the impersonated user. For this, the user for which the
-:class:``Driver`` has been created needs to have the appropriate permissions.
+:class:`Driver` has been created needs to have the appropriate permissions.
 
 :Type: ``str``, None
 
@@ -604,7 +604,7 @@ The default access mode.
 
 A session can be given a default access mode on construction.
 
-This applies only in clustered environments and determines whether transactions carried out within that session should be routed to a `read` or `write` server by default.
+This applies only in clustered environments and determines whether transactions carried out within that session should be routed to a ``read`` or ``write`` server by default.
 
 Transactions (see :ref:`managed-transactions-ref`) within a session can override the access mode passed to that session on construction.
 
@@ -689,7 +689,7 @@ Explicit transactions support multiple statements and must be created with an ex
 
 This creates a new :class:`neo4j.Transaction` object that can be used to run Cypher.
 
-It also gives applications the ability to directly control `commit` and `rollback` activity.
+It also gives applications the ability to directly control ``commit`` and ``rollback`` activity.
 
 .. autoclass:: neo4j.Transaction()
 
@@ -804,13 +804,13 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`n
 
     .. automethod:: graph
 
-       **This is experimental.** (See :ref:`filter-warnings-ref`)
-
     .. automethod:: value
 
     .. automethod:: values
 
     .. automethod:: data
+
+    .. automethod:: to_df
 
     .. automethod:: closed
 
@@ -853,9 +853,9 @@ Record
     .. describe:: record == other
 
         Compare a record for equality with another value.
-        The `other` value may be any `Sequence` or `Mapping`, or both.
-        If comparing with a `Sequence`, the values are compared in order.
-        If comparing with a `Mapping`, the values are compared based on their keys.
+        The ``other`` value may be any ``Sequence`` or``Mapping`` or both.
+        If comparing with a``Sequence`` the values are compared in order.
+        If comparing with a``Mapping`` the values are compared based on their keys.
         If comparing with a value that exhibits both traits, both comparisons must be true for the values to be considered equal.
 
     .. describe:: record != other
@@ -927,7 +927,7 @@ Core Data Types
 
 Cypher supports a set of core data types that all map to built-in types in Python.
 
-These include the common `Boolean`, `Integer`, `Float` and `String` types as well as `List` and `Map` that can hold heterogenous collections of any other type.
+These include the common``Boolean`` ``Integer`` ``Float`` and ``String`` types as well as ``List`` and ``Map`` that can hold heterogenous collections of any other type.
 
 The core types with their general mappings are listed below:
 
@@ -936,24 +936,24 @@ The core types with their general mappings are listed below:
 +========================+===========================================================================================================================+
 | Null                   | :const:`None`                                                                                                             |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| Boolean                | ``bool``                                                                                                                  |
+| Boolean                | :class:`bool`                                                                                                             |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| Integer                | ``int``                                                                                                                   |
+| Integer                | :class:`int`                                                                                                              |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| Float                  | ``float``                                                                                                                 |
+| Float                  | :class:`float`                                                                                                            |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| String                 | ``str``                                                                                                                   |
+| String                 | :class:`str`                                                                                                              |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| Bytes :sup:`[1]`       | ``bytearray``                                                                                                             |
+| Bytes :sup:`[1]`       | :class:`bytearray`                                                                                                        |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| List                   | ``list``                                                                                                                  |
+| List                   | :class:`list`                                                                                                             |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| Map                    | ``dict``                                                                                                                  |
+| Map                    | :class:`dict`                                                                                                             |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
 
 .. Note::
 
-   1. `Bytes` is not an actual Cypher type but is transparently passed through when used in parameters or query results.
+   1. ``Bytes`` is not an actual Cypher type but is transparently passed through when used in parameters or query results.
 
 
 In reality, the actual conversions and coercions that occur as values are passed through the system are more complex than just a simple mapping.
@@ -987,7 +987,7 @@ Path           :class:`neo4j.graph.Path`
 Node
 ====
 
-.. autoclass:: neo4j.graph.Node()
+.. autoclass:: neo4j.graph.Node
 
     .. describe:: node == other
 
@@ -1022,6 +1022,8 @@ Node
 
     .. autoattribute:: id
 
+    .. autoattribute:: element_id
+
     .. autoattribute:: labels
 
     .. automethod:: get
@@ -1036,7 +1038,7 @@ Node
 Relationship
 ============
 
-.. autoclass:: neo4j.graph.Relationship()
+.. autoclass:: neo4j.graph.Relationship
 
     .. describe:: relationship == other
 
@@ -1076,6 +1078,8 @@ Relationship
 
     .. autoattribute:: id
 
+    .. autoattribute:: element_id
+
     .. autoattribute:: nodes
 
     .. autoattribute:: start_node
@@ -1097,7 +1101,7 @@ Relationship
 Path
 ====
 
-.. autoclass:: neo4j.graph.Path()
+.. autoclass:: neo4j.graph.Path
 
     .. describe:: path == other
 
@@ -1134,108 +1138,16 @@ Path
 Spatial Data Types
 ******************
 
+.. include:: types/_spatial_overview.rst
 
-Cypher has built-in support for handling spatial values (points),
-and the underlying database supports storing these point values as properties on nodes and relationships.
-
-https://neo4j.com/docs/cypher-manual/current/syntax/spatial/
-
-
-=================  =====================================
-Cypher Type        Python Type
-=================  =====================================
-Point              :class:`neo4j.spatial.Point`
-
-Point (Cartesian)  :class:`neo4j.spatial.CartesianPoint`
-Point (WGS-84)     :class:`neo4j.spatial.WGS84Point`
-=================  =====================================
-
-
-Point
-=====
-
-
-.. autoclass:: neo4j.spatial.Point
-   :members:
-
-
-CartesianPoint
-==============
-
-.. autoclass:: neo4j.spatial.CartesianPoint
-    :show-inheritance:
-
-    .. autoproperty:: srid
-
-    .. autoproperty:: x
-
-    .. autoproperty:: y
-
-    .. autoproperty:: z
-
-    .. automethod:: count
-
-    .. automethod:: index
-
-
-.. code-block:: python
-
-    point=CartesianPoint((1.23, 4.56)
-
-    print(point.x, point.y)
-
-
-.. code-block:: python
-
-    point=CartesianPoint((1.23, 4.56, 7.89)
-
-    print(point.x, point.y, point.z)
-
-
-WGS84Point
-==========
-
-.. autoclass:: neo4j.spatial.WGS84Point
-    :show-inheritance:
-
-    .. autoproperty:: srid
-
-    .. autoproperty:: x
-
-    .. autoproperty:: y
-
-    .. autoproperty:: z
-
-    .. autoproperty:: longitude
-
-    .. autoproperty:: latitude
-
-    .. autoproperty:: height
-
-    .. automethod:: count
-
-    .. automethod:: index
-
-
-
-
-.. code-block:: python
-
-    point=WGS84Point((1.23, 4.56))
-    print(point.longitude, point.latitude)
-
-
-.. code-block:: python
-
-    point=WGS84Point((1.23, 4.56, 7.89))
-    print(point.longitude, point.latitude, point.height)
+See topic :ref:`spatial-data-types` for more details.
 
 
 *******************
 Temporal Data Types
 *******************
 
-.. include:: types/temporal.rst
+.. include:: types/_temporal_overview.rst
 
 See topic :ref:`temporal-data-types` for more details.
 
