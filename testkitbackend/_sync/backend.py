@@ -36,6 +36,7 @@ from neo4j.exceptions import (
 )
 
 from . import requests
+from .. import totestkit
 from .._driver_logger import (
     buffer_handler,
     log,
@@ -103,24 +104,10 @@ class Backend:
         key = self.next_key()
         self.errors[key] = exc
 
-        payload = {"id": key, "msg": ""}
-
-        if isinstance(exc, MarkdAsDriverException):
-            wrapped_exc = exc.wrapped_exc
-            payload["errorType"] = str(type(wrapped_exc))
-            if wrapped_exc.args:
-                payload["msg"] = str(wrapped_exc.args[0])
-        else:
-            payload["errorType"] = str(type(exc))
-            if isinstance(exc, Neo4jError) and exc.message is not None:
-                payload["msg"] = str(exc.message)
-            elif exc.args:
-                payload["msg"] = str(exc.args[0])
-
-            if isinstance(exc, Neo4jError):
-                payload["code"] = exc.code
-
-        self.send_response("DriverError", payload)
+        self.send_response("DriverError", {
+            **totestkit.error(exc),
+            "id": key,
+        })
 
     def _process(self, request):
         """ Process a received request by retrieving handler that
