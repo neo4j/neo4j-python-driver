@@ -653,10 +653,14 @@ Each has pros and cons but if in doubt, use a managed transaction with a `transa
 
 Auto-commit Transactions
 ========================
-Auto-commit transactions are the simplest form of transaction, available via :py:meth:`neo4j.Session.run`.
+Auto-commit transactions are the simplest form of transaction, available via
+:py:meth:`neo4j.Session.run`. These are easy to use but support only one
+statement per transaction and are not automatically retried on failure.
 
-These are easy to use but support only one statement per transaction and are not automatically retried on failure.
-Auto-commit transactions are also the only way to run ``PERIODIC COMMIT`` statements, since this Cypher clause manages its own transactions internally.
+Auto-commit transactions are also the only way to run ``PERIODIC COMMIT``
+(only Neo4j 4.4 and earlier) or ``CALL {...} IN TRANSACTIONS`` (Neo4j 5.0 and
+newer) statements, since those Cypher clauses manage their own transactions
+internally.
 
 Example:
 
