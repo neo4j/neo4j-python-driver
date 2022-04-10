@@ -18,12 +18,15 @@
 
 import json
 from os import path
+import re
+import warnings
 
 import neo4j
 from neo4j._async_compat.util import Util
 
 from .. import (
     fromtestkit,
+    test_subtest_skips,
     totestkit,
 )
 from ..exceptions import MarkdAsDriverException
@@ -48,11 +51,38 @@ def load_config():
 SKIPPED_TESTS, FEATURES = load_config()
 
 
+def _get_skip_reason(test_name):
+    for skip_pattern, reason in SKIPPED_TESTS.items():
+        if skip_pattern[0] == skip_pattern[-1] == "'":
+            match = skip_pattern[1:-1] == test_name
+        else:
+            match = re.match(skip_pattern, test_name)
+        if match:
+            return reason
+
+
 def StartTest(backend, data):
-    if data["testName"] in SKIPPED_TESTS:
-        backend.send_response("SkipTest", {
-            "reason": SKIPPED_TESTS[data["testName"]]
-        })
+    test_name = data["testName"]
+    reason = _get_skip_reason(test_name)
+    if reason is not None:
+        if reason.startswith("test_subtest_skips."):
+            backend.send_response("RunSubTests", {})
+        else:
+            backend.send_response("SkipTest", {"reason": reason})
+    else:
+        backend.send_response("RunTest", {})
+
+
+def StartSubTest(backend, data):
+    test_name = data["testName"]
+    subtest_args = data["subtestArguments"]
+    subtest_args.mark_all_as_read(recursive=True)
+    reason = _get_skip_reason(test_name)
+    assert reason and reason.startswith("test_subtest_skips.") or print(reason)
+    func = getattr(test_subtest_skips, reason[19:])
+    reason = func(**subtest_args)
+    if reason is not None:
+        backend.send_response("SkipTest", {"reason": reason})
     else:
         backend.send_response("RunTest", {})
 
@@ -410,6 +440,17 @@ def ResultSingle(backend, data):
     backend.send_response("Record", totestkit.record(
         result.single(strict=True)
     ))
+
+
+def ResultSingleOptional(backend, data):
+    result = backend.results[data["resultId"]]
+    with warnings.catch_warnings(record=True) as warning_list:
+        record = result.single(strict=False)
+    if record:
+        record = totestkit.record(record)
+    backend.send_response("RecordOptional", {
+        "record": record, "warnings": list(map(str, warning_list))
+    })
 
 
 def ResultPeek(backend, data):

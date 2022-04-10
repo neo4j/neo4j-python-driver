@@ -16,7 +16,21 @@
 # limitations under the License.
 
 
+from datetime import timedelta
+
+import pytz
+
 from neo4j import Query
+from neo4j.spatial import (
+    CartesianPoint,
+    WGS84Point,
+)
+from neo4j.time import (
+    Date,
+    DateTime,
+    Duration,
+    Time,
+)
 
 
 def to_cypher_and_params(data):
@@ -54,24 +68,81 @@ def to_query_and_params(data):
 def to_param(m):
     """ Converts testkit parameter format to driver (python) parameter
     """
-    value = m["data"]["value"]
+    data = m["data"]
     name = m["name"]
     if name == "CypherNull":
+        if data["value"] is not None:
+            raise ValueError("CypherNull should be None")
         return None
     if name == "CypherString":
-        return str(value)
+        return str(data["value"])
     if name == "CypherBool":
-        return bool(value)
+        return bool(data["value"])
     if name == "CypherInt":
-        return int(value)
+        return int(data["value"])
     if name == "CypherFloat":
-        return float(value)
+        return float(data["value"])
     if name == "CypherString":
-        return str(value)
+        return str(data["value"])
     if name == "CypherBytes":
-        return bytearray([int(byte, 16) for byte in value.split()])
+        return bytearray([int(byte, 16) for byte in data["value"].split()])
     if name == "CypherList":
-        return [to_param(v) for v in value]
+        return [to_param(v) for v in data["value"]]
     if name == "CypherMap":
-        return {k: to_param(value[k]) for k in value}
-    raise Exception("Unknown param type " + name)
+        return {k: to_param(data["value"][k]) for k in data["value"]}
+    if name == "CypherPoint":
+        coords = [data["x"], data["y"]]
+        if data.get("z") is not None:
+            coords.append(data["z"])
+        if data["system"] == "cartesian":
+            return CartesianPoint(coords)
+        if data["system"] == "wgs84":
+            return WGS84Point(coords)
+        raise ValueError("Unknown point system: {}".format(data["system"]))
+    if name == "CypherDate":
+        return Date(data["year"], data["month"], data["day"])
+    if name == "CypherTime":
+        tz = None
+        utc_offset_s = data.get("utc_offset_s")
+        if utc_offset_s is not None:
+            utc_offset_m = utc_offset_s // 60
+            if utc_offset_m * 60 != utc_offset_s:
+                raise ValueError("the used timezone library only supports "
+                                 "UTC offsets by minutes")
+            tz = pytz.FixedOffset(utc_offset_m)
+        return Time(data["hour"], data["minute"], data["second"],
+                    data["nanosecond"], tzinfo=tz)
+    if name == "CypherDateTime":
+        datetime = DateTime(
+            data["year"], data["month"], data["day"],
+            data["hour"], data["minute"], data["second"], data["nanosecond"]
+        )
+        utc_offset_s = data["utc_offset_s"]
+        timezone_id = data["timezone_id"]
+        if timezone_id is not None:
+            utc_offset = timedelta(seconds=utc_offset_s)
+            tz = pytz.timezone(timezone_id)
+            localized_datetime = tz.localize(datetime, is_dst=False)
+            if localized_datetime.utcoffset() == utc_offset:
+                return localized_datetime
+            localized_datetime = tz.localize(datetime, is_dst=True)
+            if localized_datetime.utcoffset() == utc_offset:
+                return localized_datetime
+            raise ValueError(
+                "cannot localize datetime %s to timezone %s with UTC "
+                "offset %s" % (datetime, timezone_id, utc_offset)
+            )
+        elif utc_offset_s is not None:
+            utc_offset_m = utc_offset_s // 60
+            if utc_offset_m * 60 != utc_offset_s:
+                raise ValueError("the used timezone library only supports "
+                                 "UTC offsets by minutes")
+            tz = pytz.FixedOffset(utc_offset_m)
+            return tz.localize(datetime)
+        return datetime
+    if name == "CypherDuration":
+        return Duration(
+            months=data["months"], days=data["days"],
+            seconds=data["seconds"], nanoseconds=data["nanoseconds"]
+        )
+    raise ValueError("Unknown param type " + name)

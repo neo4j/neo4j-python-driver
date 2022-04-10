@@ -37,9 +37,10 @@ from neo4j.data import (
     Node,
     Relationship,
 )
-from neo4j.exceptions import (
-    ResultConsumedError,
-    ResultNotSingleError,
+from neo4j.exceptions import ResultNotSingleError
+from neo4j.graph import (
+    EntitySetView,
+    Graph,
 )
 from neo4j.packstream import Structure
 
@@ -573,6 +574,94 @@ async def test_data(num_records):
     assert await result.data("hello", "world") == expected_data
     for record in records:
         assert record.data.called_once_with("hello", "world")
+
+
+@pytest.mark.parametrize("records", (
+    Records(["n"], []),
+    Records(["n"], [[42], [69], [420], [1337]]),
+    Records(["n1", "r", "n2"], [
+        [
+            # Node
+            Structure(b"N", 0, ["Person", "LabelTest1"], {"name": "Alice"}),
+            # Relationship
+            Structure(b"R", 0, 0, 1, "KNOWS", {"since": 1999}),
+            # Node
+            Structure(b"N", 1, ["Person", "LabelTest2"], {"name": "Bob"}),
+        ]
+    ]),
+))
+@mark_async_test
+async def test_result_graph(records, async_scripted_connection):
+    async_scripted_connection.set_script((
+        ("run", {"on_success": ({"fields": records.fields},),
+                 "on_summary": None}),
+        ("pull", {
+            "on_records": (records.records,),
+            "on_success": None,
+            "on_summary": None
+        }),
+    ))
+    result = AsyncResult(async_scripted_connection, DataHydrator(), 1, noop,
+                         noop)
+    await result._run("CYPHER", {}, None, None, "r", None)
+    graph = await result.graph()
+    assert isinstance(graph, Graph)
+    if records.fields == ("n",):
+        assert len(graph.relationships) == 0
+        assert len(graph.nodes) == 0
+    else:
+        # EntitySetView is a little broken. It's a weird mixture of set, dict,
+        # and iterable. Let's just test the underlying raw dict
+        assert isinstance(graph.nodes, EntitySetView)
+        nodes = graph.nodes
+
+        assert set(nodes._entity_dict) == {"0", "1"}
+        for key in (
+            "0", 0, 0.0,
+            # I pray to god that no-one actually accessed nodes with complex
+            # numbers, but theoretically it would have worked with the legacy
+            # number IDs
+            0+0j,
+        ):
+            if not isinstance(key, str):
+                with pytest.warns(DeprecationWarning, match="element_id"):
+                    alice = nodes[key]
+            else:
+                alice = nodes[key]
+            assert isinstance(alice, Node)
+            isinstance(alice.labels, frozenset)
+            assert alice.labels == {"Person", "LabelTest1"}
+            assert set(alice.keys()) == {"name"}
+            assert alice["name"] == "Alice"
+
+        for key in ("1", 1, 1.0, 1+0j):
+            if not isinstance(key, str):
+                with pytest.warns(DeprecationWarning, match="element_id"):
+                    bob = nodes[key]
+            else:
+                bob = nodes[key]
+            assert isinstance(bob, Node)
+            isinstance(bob.labels, frozenset)
+            assert bob.labels == {"Person", "LabelTest2"}
+            assert set(bob.keys()) == {"name"}
+            assert bob["name"] == "Bob"
+
+        assert isinstance(graph.relationships, EntitySetView)
+        rels = graph.relationships
+
+        assert set(rels._entity_dict) == {"0"}
+
+        for key in ("0", 0, 0.0, 0+0j):
+            if not isinstance(key, str):
+                with pytest.warns(DeprecationWarning, match="element_id"):
+                    rel = rels[key]
+            else:
+                rel = rels[key]
+            assert isinstance(rel, Relationship)
+            assert rel.nodes == (alice, bob)
+            assert rel.type == "KNOWS"
+            assert set(rel.keys()) == {"since"}
+            assert rel["since"] == 1999
 
 
 @pytest.mark.parametrize(

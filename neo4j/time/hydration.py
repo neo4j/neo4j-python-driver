@@ -136,7 +136,7 @@ def dehydrate_datetime(value):
     """ Dehydrator for `datetime` values.
 
     :param value:
-    :type value: datetime
+    :type value: datetime or DateTime
     :return:
     """
 

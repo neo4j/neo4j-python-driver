@@ -110,3 +110,81 @@ def async_fake_connection_generator(session_mocker):
 @pytest.fixture
 def async_fake_connection(async_fake_connection_generator):
     return async_fake_connection_generator()
+
+
+@pytest.fixture
+def async_scripted_connection_generator(async_fake_connection_generator):
+    class AsyncScriptedConnection(async_fake_connection_generator):
+        _script = []
+        _script_pos = 0
+
+        def set_script(self, callbacks):
+            """Set a scripted sequence of callbacks.
+
+            :param callbacks: The callbacks. They should be a list of 2-tuples.
+                `("name_of_message", {"callback_name": arguments})`. E.g.,
+                ```
+                [
+                    ("run", {"on_success": ({},), "on_summary": None}),
+                    ("pull", {
+                        "on_success": None,
+                        "on_summary": None,
+                        "on_records":
+                    })
+                ]
+                ```
+                Note that arguments can be `None`. In this case, ScriptedConnection
+                will make a guess on best-suited default arguments.
+            """
+            self._script = callbacks
+            self._script_pos = 0
+
+        def __getattr__(self, name):
+            parent = super()
+
+            def build_message_handler(name):
+                try:
+                    expected_message, scripted_callbacks = \
+                        self._script[self._script_pos]
+                except IndexError:
+                    pytest.fail("End of scripted connection reached.")
+                assert name == expected_message
+                self._script_pos += 1
+
+                def func(*args, **kwargs):
+                    async def callback():
+                        for cb_name, default_cb_args in (
+                            ("on_ignored", ({},)),
+                            ("on_failure", ({},)),
+                            ("on_records", ([],)),
+                            ("on_success", ({},)),
+                            ("on_summary", ()),
+                        ):
+                            cb = kwargs.get(cb_name, None)
+                            if (not callable(cb)
+                                or cb_name not in scripted_callbacks):
+                                continue
+                            cb_args = scripted_callbacks[cb_name]
+                            if cb_args is None:
+                                cb_args = default_cb_args
+                            res = cb(*cb_args)
+                            try:
+                                await res  # maybe the callback is async
+                            except TypeError:
+                                pass  # or maybe it wasn't ;)
+
+                    self.callbacks.append(callback)
+
+                return func
+
+            method_mock = parent.__getattr__(name)
+            if name in ("run", "commit", "pull", "rollback", "discard"):
+                method_mock.side_effect = build_message_handler(name)
+            return method_mock
+
+    return AsyncScriptedConnection
+
+
+@pytest.fixture
+def async_scripted_connection(async_scripted_connection_generator):
+    return async_scripted_connection_generator()

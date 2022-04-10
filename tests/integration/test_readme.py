@@ -31,23 +31,28 @@ def test_should_run_readme(uri, auth):
 
     from neo4j import GraphDatabase
 
-    try:
-        driver = GraphDatabase.driver(uri, auth=auth)
-    except ServiceUnavailable as error:
-        if isinstance(error.__cause__, BoltHandshakeError):
-            pytest.skip(error.args[0])
+    driver = GraphDatabase.driver(uri, auth=auth)
+
+    def add_friend(tx, name, friend_name):
+        tx.run("MERGE (a:Person {name: $name}) "
+               "MERGE (a)-[:KNOWS]->(friend:Person {name: $friend_name})",
+               name=name, friend_name=friend_name)
 
     def print_friends(tx, name):
-        for record in tx.run("MATCH (a:Person)-[:KNOWS]->(friend) "
-                             "WHERE a.name = $name "
-                             "RETURN friend.name", name=name):
+        for record in tx.run(
+                "MATCH (a:Person)-[:KNOWS]->(friend) WHERE a.name = $name "
+                "RETURN friend.name ORDER BY friend.name", name=name):
             print(record["friend.name"])
 
     with driver.session() as session:
         session.run("MATCH (a) DETACH DELETE a")
-        session.run("CREATE (a:Person {name:'Alice'})-[:KNOWS]->({name:'Bob'})")
-        session.read_transaction(print_friends, "Alice")
+
+        session.write_transaction(add_friend, "Arthur", "Guinevere")
+        session.write_transaction(add_friend, "Arthur", "Lancelot")
+        session.write_transaction(add_friend, "Arthur", "Merlin")
+        session.read_transaction(print_friends, "Arthur")
+
+        session.run("MATCH (a) DETACH DELETE a")
 
     driver.close()
-    assert len(names) == 1
-    assert "Bob" in names
+    assert names == {"Guinevere", "Lancelot", "Merlin"}
