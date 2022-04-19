@@ -38,9 +38,6 @@ INT64_MIN = -(2 ** 63)
 INT64_MAX = 2 ** 63
 
 
-EndOfStream = object()
-
-
 class Structure:
 
     def __init__(self, tag, *fields):
@@ -196,9 +193,6 @@ class Packer:
         else:
             raise OverflowError("List header size out of range")
 
-    def pack_list_stream_header(self):
-        self._write(b"\xD7")
-
     def pack_map_header(self, size):
         write = self._write
         if size <= 0x0F:
@@ -215,9 +209,6 @@ class Packer:
         else:
             raise OverflowError("Map header size out of range")
 
-    def pack_map_stream_header(self):
-        self._write(b"\xDB")
-
     def pack_struct(self, signature, fields):
         if len(signature) != 1 or not isinstance(signature, bytes):
             raise ValueError("Structure signature must be a single byte value")
@@ -230,9 +221,6 @@ class Packer:
         write(signature)
         for field in fields:
             self._pack(field)
-
-    def pack_end_of_stream(self):
-        self._write(b"\xDF")
 
 
 class Unpacker:
@@ -316,11 +304,11 @@ class Unpacker:
                 return decode(self.read(size), "utf-8")
 
             # List
-            elif 0x90 <= marker <= 0x9F or 0xD4 <= marker <= 0xD7:
+            elif 0x90 <= marker <= 0x9F or 0xD4 <= marker <= 0xD6:
                 return list(self._unpack_list_items(marker))
 
             # Map
-            elif 0xA0 <= marker <= 0xAF or 0xD8 <= marker <= 0xDB:
+            elif 0xA0 <= marker <= 0xAF or 0xD8 <= marker <= 0xDA:
                 return self._unpack_map(marker)
 
             # Structure
@@ -330,9 +318,6 @@ class Unpacker:
                 for i in range(len(value)):
                     value[i] = self._unpack()
                 return value
-
-            elif marker == 0xDF:  # END_OF_STREAM:
-                return EndOfStream
 
             else:
                 raise ValueError("Unknown PackStream marker %02X" % marker)
@@ -360,12 +345,6 @@ class Unpacker:
             size, = struct_unpack(">I", self.read(4))
             for _ in range(size):
                 yield self._unpack()
-        elif marker == 0xD7:  # LIST_STREAM:
-            item = None
-            while item is not EndOfStream:
-                item = self._unpack()
-                if item is not EndOfStream:
-                    yield item
         else:
             return
 
@@ -402,14 +381,6 @@ class Unpacker:
             for _ in range(size):
                 key = self._unpack()
                 value[key] = self._unpack()
-            return value
-        elif marker == 0xDB:  # MAP_STREAM:
-            value = {}
-            key = None
-            while key is not EndOfStream:
-                key = self._unpack()
-                if key is not EndOfStream:
-                    value[key] = self._unpack()
             return value
         else:
             return None
