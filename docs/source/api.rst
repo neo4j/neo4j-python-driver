@@ -323,7 +323,7 @@ If given, ``encrypted`` and ``trusted_certificates`` have no effect.
 .. warning::
     This option may compromise your application's security if used improperly.
 
-    Its usage is strongly discouraged and and comes without any guarantees.
+    Its usage is strongly discouraged and comes without any guarantees.
 
 :Type: :class:`ssl.SSLContext` or :const:`None`
 :Default: :const:`None`
