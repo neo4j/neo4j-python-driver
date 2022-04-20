@@ -135,7 +135,7 @@ class Session(Workspace):
 
     def _get_server_info(self):
         assert not self._connection
-        self._connect(READ_ACCESS, lifeness_check_timeout=0)
+        self._connect(READ_ACCESS, liveness_check_timeout=0)
         server_info = self._connection.server_info
         self._disconnect()
         return server_info

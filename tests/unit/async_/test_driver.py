@@ -215,7 +215,7 @@ async def test_verify_connectivity(uri, mocker):
 
     assert ret is None
     pool_mock.acquire.assert_awaited_once()
-    assert pool_mock.acquire.call_args.kwargs["lifeness_check_timeout"] == 0
+    assert pool_mock.acquire.call_args.kwargs["liveness_check_timeout"] == 0
     pool_mock.release.assert_awaited_once()
 
 

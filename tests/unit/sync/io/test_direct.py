@@ -90,10 +90,10 @@ class FakeBoltPool(IOPool):
 
     def acquire(
         self, access_mode=None, timeout=None, database=None, bookmarks=None,
-        lifeness_check_timeout=None
+        liveness_check_timeout=None
     ):
         return self._acquire(self.address, timeout,
-                                   lifeness_check_timeout)
+                                   liveness_check_timeout)
 
 
 @mark_sync_test
