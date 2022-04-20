@@ -135,7 +135,7 @@ class AsyncSession(AsyncWorkspace):
 
     async def _get_server_info(self):
         assert not self._connection
-        await self._connect(READ_ACCESS, lifeness_check_timeout=0)
+        await self._connect(READ_ACCESS, liveness_check_timeout=0)
         server_info = self._connection.server_info
         await self._disconnect()
         return server_info

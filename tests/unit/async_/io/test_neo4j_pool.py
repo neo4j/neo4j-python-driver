@@ -258,29 +258,29 @@ async def test_release_does_not_resets_defunct_connections(opener):
     cx1.reset.asset_not_called()
 
 
-@pytest.mark.parametrize("lifeness_timeout", (0, 1, 2))
+@pytest.mark.parametrize("liveness_timeout", (0, 1, 2))
 @mark_async_test
-async def test_acquire_performs_no_lifeness_check_on_fresh_connection(
-    opener, lifeness_timeout
+async def test_acquire_performs_no_liveness_check_on_fresh_connection(
+    opener, liveness_timeout
 ):
     pool = AsyncNeo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
-    cx1 = await pool._acquire(READER_ADDRESS, 30, lifeness_timeout)
+    cx1 = await pool._acquire(READER_ADDRESS, 30, liveness_timeout)
     assert cx1.addr == READER_ADDRESS
     cx1.reset.asset_not_called()
 
 
-@pytest.mark.parametrize("lifeness_timeout", (0, 1, 2))
+@pytest.mark.parametrize("liveness_timeout", (0, 1, 2))
 @mark_async_test
-async def test_acquire_performs_lifeness_check_on_existing_connection(
-    opener, lifeness_timeout
+async def test_acquire_performs_liveness_check_on_existing_connection(
+    opener, liveness_timeout
 ):
     pool = AsyncNeo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
     # populate the pool with a connection
-    cx1 = await pool._acquire(READER_ADDRESS, 30, lifeness_timeout)
+    cx1 = await pool._acquire(READER_ADDRESS, 30, liveness_timeout)
 
     # make sure we assume the right state
     assert cx1.addr == READER_ADDRESS
@@ -293,28 +293,28 @@ async def test_acquire_performs_lifeness_check_on_existing_connection(
     await pool.release(cx1)
     cx1.reset.assert_not_called()
 
-    # then acquire it again and assert the lifeness check was performed
-    cx2 = await pool._acquire(READER_ADDRESS, 30, lifeness_timeout)
+    # then acquire it again and assert the liveness check was performed
+    cx2 = await pool._acquire(READER_ADDRESS, 30, liveness_timeout)
     assert cx1 is cx2
-    cx1.is_idle_for.assert_called_once_with(lifeness_timeout)
+    cx1.is_idle_for.assert_called_once_with(liveness_timeout)
     cx2.reset.assert_awaited_once()
 
 
-@pytest.mark.parametrize("lifeness_error",
+@pytest.mark.parametrize("liveness_error",
                          (OSError, ServiceUnavailable, SessionExpired))
 @mark_async_test
-async def test_acquire_creates_connection_on_failed_lifeness_check(
-    opener, lifeness_error
+async def test_acquire_creates_connection_on_failed_liveness_check(
+    opener, liveness_error
 ):
-    def lifeness_side_effect(*args, **kwargs):
-        raise lifeness_error("lifeness check failed")
+    def liveness_side_effect(*args, **kwargs):
+        raise liveness_error("liveness check failed")
 
-    lifeness_timeout = 1
+    liveness_timeout = 1
     pool = AsyncNeo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
     # populate the pool with a connection
-    cx1 = await pool._acquire(READER_ADDRESS, 30, lifeness_timeout)
+    cx1 = await pool._acquire(READER_ADDRESS, 30, liveness_timeout)
 
     # make sure we assume the right state
     assert cx1.addr == READER_ADDRESS
@@ -322,39 +322,39 @@ async def test_acquire_creates_connection_on_failed_lifeness_check(
     cx1.reset.assert_not_called()
 
     cx1.is_idle_for.return_value = True
-    # simulate cx1 failing lifeness check
-    cx1.reset.side_effect = lifeness_side_effect
+    # simulate cx1 failing liveness check
+    cx1.reset.side_effect = liveness_side_effect
 
     # release the connection
     await pool.release(cx1)
     cx1.reset.assert_not_called()
 
-    # then acquire it again and assert the lifeness check was performed
-    cx2 = await pool._acquire(READER_ADDRESS, 30, lifeness_timeout)
+    # then acquire it again and assert the liveness check was performed
+    cx2 = await pool._acquire(READER_ADDRESS, 30, liveness_timeout)
     assert cx1 is not cx2
     assert cx1.addr == cx2.addr
-    cx1.is_idle_for.assert_called_once_with(lifeness_timeout)
+    cx1.is_idle_for.assert_called_once_with(liveness_timeout)
     cx2.reset.assert_not_called()
     assert cx1 not in pool.connections[cx1.addr]
     assert cx2 in pool.connections[cx1.addr]
 
 
-@pytest.mark.parametrize("lifeness_error",
+@pytest.mark.parametrize("liveness_error",
                          (OSError, ServiceUnavailable, SessionExpired))
 @mark_async_test
-async def test_acquire_returns_other_connection_on_failed_lifeness_check(
-    opener, lifeness_error
+async def test_acquire_returns_other_connection_on_failed_liveness_check(
+    opener, liveness_error
 ):
-    def lifeness_side_effect(*args, **kwargs):
-        raise lifeness_error("lifeness check failed")
+    def liveness_side_effect(*args, **kwargs):
+        raise liveness_error("liveness check failed")
 
-    lifeness_timeout = 1
+    liveness_timeout = 1
     pool = AsyncNeo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
     # populate the pool with a connection
-    cx1 = await pool._acquire(READER_ADDRESS, 30, lifeness_timeout)
-    cx2 = await pool._acquire(READER_ADDRESS, 30, lifeness_timeout)
+    cx1 = await pool._acquire(READER_ADDRESS, 30, liveness_timeout)
+    cx2 = await pool._acquire(READER_ADDRESS, 30, liveness_timeout)
 
     # make sure we assume the right state
     assert cx1.addr == READER_ADDRESS
@@ -366,8 +366,8 @@ async def test_acquire_returns_other_connection_on_failed_lifeness_check(
 
     cx1.is_idle_for.return_value = True
     cx2.is_idle_for.return_value = True
-    # simulate cx1 failing lifeness check
-    cx1.reset.side_effect = lifeness_side_effect
+    # simulate cx1 failing liveness check
+    cx1.reset.side_effect = liveness_side_effect
 
     # release the connection
     await pool.release(cx1)
@@ -375,12 +375,12 @@ async def test_acquire_returns_other_connection_on_failed_lifeness_check(
     cx1.reset.assert_not_called()
     cx2.reset.assert_not_called()
 
-    # then acquire it again and assert the lifeness check was performed
-    cx3 = await pool._acquire(READER_ADDRESS, 30, lifeness_timeout)
+    # then acquire it again and assert the liveness check was performed
+    cx3 = await pool._acquire(READER_ADDRESS, 30, liveness_timeout)
     assert cx3 is cx2
-    cx1.is_idle_for.assert_called_once_with(lifeness_timeout)
+    cx1.is_idle_for.assert_called_once_with(liveness_timeout)
     cx1.reset.assert_awaited_once()
-    cx3.is_idle_for.assert_called_once_with(lifeness_timeout)
+    cx3.is_idle_for.assert_called_once_with(liveness_timeout)
     cx3.reset.assert_awaited_once()
     assert cx1 not in pool.connections[cx1.addr]
     assert cx3 in pool.connections[cx1.addr]

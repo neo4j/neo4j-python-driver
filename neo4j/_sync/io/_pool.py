@@ -132,7 +132,7 @@ class IOPool(abc.ABC):
                 return connection
         return None
 
-    def _acquire(self, address, timeout, lifeness_check_timeout):
+    def _acquire(self, address, timeout, liveness_check_timeout):
         """ Acquire a connection to a given address from the pool.
         The address supplied should always be an IP address, not
         a host name.
@@ -152,8 +152,8 @@ class IOPool(abc.ABC):
                     or connection_.defunct()
                     or connection_.stale()):
                 return False
-            if lifeness_check_timeout is not None:
-                if connection_.is_idle_for(lifeness_check_timeout):
+            if liveness_check_timeout is not None:
+                if connection_.is_idle_for(liveness_check_timeout):
                     try:
                         connection_.reset()
                     except (OSError, ServiceUnavailable, SessionExpired):
@@ -186,7 +186,7 @@ class IOPool(abc.ABC):
     @abc.abstractmethod
     def acquire(
         self, access_mode=None, timeout=None, database=None, bookmarks=None,
-        lifeness_check_timeout=None
+        liveness_check_timeout=None
     ):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
@@ -194,7 +194,7 @@ class IOPool(abc.ABC):
         :param timeout:
         :param database:
         :param bookmarks:
-        :param lifeness_check_timeout:
+        :param liveness_check_timeout:
         """
 
     def release(self, *connections):
@@ -311,12 +311,12 @@ class BoltPool(IOPool):
 
     def acquire(
         self, access_mode=None, timeout=None, database=None, bookmarks=None,
-        lifeness_check_timeout=None
+        liveness_check_timeout=None
     ):
         # The access_mode and database is not needed for a direct connection,
         # it's just there for consistency.
         return self._acquire(
-            self.address, timeout, lifeness_check_timeout
+            self.address, timeout, liveness_check_timeout
         )
 
 
@@ -666,7 +666,7 @@ class Neo4jPool(IOPool):
 
     def acquire(
         self, access_mode=None, timeout=None, database=None, bookmarks=None,
-        lifeness_check_timeout=None
+        liveness_check_timeout=None
     ):
         if access_mode not in (WRITE_ACCESS, READ_ACCESS):
             raise ClientError("Non valid 'access_mode'; {}".format(access_mode))
@@ -697,7 +697,7 @@ class Neo4jPool(IOPool):
                 log.debug("[#0000]  C: <ACQUIRE ADDRESS> database=%r address=%r", database, address)
                 # should always be a resolved address
                 connection = self._acquire(
-                    address, timeout, lifeness_check_timeout
+                    address, timeout, liveness_check_timeout
                 )
             except (ServiceUnavailable, SessionExpired):
                 self.deactivate(address=address)
