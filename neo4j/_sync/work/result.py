@@ -29,6 +29,10 @@ from ...exceptions import (
     ResultNotSingleError,
 )
 from ...meta import experimental
+from ...time import (
+    Date,
+    DateTime,
+)
 from ...work import ResultSummary
 from ..io import ConnectionErrorHandler
 
@@ -527,7 +531,7 @@ class Result:
 
     @experimental("pandas support is experimental and might be changed or "
                   "removed in future versions")
-    def to_df(self, expand=False):
+    def to_df(self, expand=False, parse_dates=False):
         r"""Convert (the rest of) the result to a pandas DataFrame.
 
         This method is only available if the `pandas` library is installed.
@@ -540,7 +544,7 @@ class Result:
         for instance will return a DataFrame with two columns: ``n`` and ``m``
         and 10 rows.
 
-        :param expand: if :const:`True`, some structures in the result will be
+        :param expand: If :const:`True`, some structures in the result will be
             recursively expanded (flattened out into multiple columns) like so
             (everything inside ``<...>`` is a placeholder):
 
@@ -604,6 +608,11 @@ class Result:
             :const:`dict` keys and variable names that contain ``.``  or ``\``
             will be escaped with a backslash (``\.`` and ``\\`` respectively).
         :type expand: bool
+        :param parse_dates:
+            If :const:`True`, columns that excluvively contain
+            :class:`time.DateTime` objects, :class:`time.Date` objects, or
+            :const:`None`, will be converted to :class:`pandas.Timestamp`.
+        :type parse_dates: bool
 
         :rtype: :py:class:`pandas.DataFrame`
         :raises ImportError: if `pandas` library is not available.
@@ -618,7 +627,7 @@ class Result:
         import pandas as pd
 
         if not expand:
-            return pd.DataFrame(self.values(), columns=self._keys)
+            df = pd.DataFrame(self.values(), columns=self._keys)
         else:
             df_keys = None
             rows = []
@@ -638,13 +647,29 @@ class Result:
                     df_keys = False
                     rows.append(row)
             if df_keys is False:
-                return pd.DataFrame(rows)
+                df = pd.DataFrame(rows)
             else:
                 columns = df_keys or [
                     k.replace(".", "\\.").replace("\\", "\\\\")
                     for k in self._keys
                 ]
-                return pd.DataFrame(rows, columns=columns)
+                df = pd.DataFrame(rows, columns=columns)
+        if not parse_dates:
+            return df
+        dt_columns = df.columns[df.apply(
+            lambda col: pd.api.types.infer_dtype(col) == "mixed" and col.map(
+                lambda x: isinstance(x, (DateTime, Date, type(None)))
+            ).all()
+        )]
+        df[dt_columns] = df[dt_columns].apply(
+            lambda col: col.map(
+                lambda x:
+                    pd.Timestamp(x.iso_format())
+                        .replace(tzinfo=getattr(x, "tzinfo", None))
+                    if x else pd.NaT
+            )
+        )
+        return df
 
     def closed(self):
         """Return True if the result has been closed.

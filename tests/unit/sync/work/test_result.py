@@ -14,13 +14,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
+from re import match
 from unittest import mock
 import warnings
 
 import pandas as pd
 import pytest
+import pytz
 
 from neo4j import (
     Address,
@@ -29,10 +29,12 @@ from neo4j import (
     ResultSummary,
     ServerInfo,
     SummaryCounters,
+    time as neo4j_time,
     Version,
 )
 from neo4j._async_compat.util import Util
 from neo4j.data import (
+    DataDehydrator,
     DataHydrator,
     Node,
     Relationship,
@@ -844,6 +846,17 @@ def test_to_df(keys, values, types, instances, test_default_expand):
             ],
             ["object", "object", "object", "object", "float64", "bool"],
         ),
+        (
+            ["dt"],
+            [
+                DataDehydrator().dehydrate((
+                    neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
+                )),
+            ],
+            ["dt"],
+            [[neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6)]],
+            ["object"],
+        ),
     )
 )
 @mark_sync_test
@@ -873,3 +886,202 @@ def test_to_df_expand(keys, values, expected_columns, expected_rows,
 
     expected_df = pd.DataFrame(expected_rows, columns=expected_columns)
     assert df.equals(expected_df)
+
+
+@pytest.mark.parametrize(
+    ("keys", "values", "expected_df"),
+    (
+        # DateTime
+        (
+            ["dt"],
+            [
+                DataDehydrator().dehydrate((
+                    neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
+                )),
+            ],
+            pd.DataFrame(
+                [[pd.Timestamp("2022-01-02 03:04:05.000000006")]],
+                columns=["dt"],
+            )
+        ),
+        # Date
+        (
+            ["d"],
+            [
+                DataDehydrator().dehydrate((
+                    neo4j_time.Date(2222, 2, 22),
+                )),
+            ],
+            pd.DataFrame(
+                [[pd.Timestamp("2222-02-22")]],
+                columns=["d"],
+            )
+        ),
+        # DateTime with timezone
+        (
+            ["dt_tz"],
+            [
+                DataDehydrator().dehydrate((
+                    pytz.timezone("Europe/Stockholm").localize(
+                        neo4j_time.DateTime(1970, 1, 1, 0, 0, 0, 0)
+                    ),
+                )),
+            ],
+            pd.DataFrame(
+                [[
+                    pytz.timezone("Europe/Stockholm").localize(
+                        pd.Timestamp("1970-01-01")
+                    )
+                ]],
+                columns=["dt_tz"],
+            )
+        ),
+        # DateTime, Date, DateTime with timezone, and None
+        (
+            ["mixed"],
+            [
+                [None],
+                DataDehydrator().dehydrate((
+                    neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
+                )),
+                DataDehydrator().dehydrate((
+                    neo4j_time.Date(2222, 2, 22),
+                )),
+                DataDehydrator().dehydrate((
+                    pytz.timezone("Europe/Stockholm").localize(
+                        neo4j_time.DateTime(1970, 1, 1, 0, 0, 0, 0)
+                    ),
+                )),
+            ],
+            pd.DataFrame(
+                [
+                    [pd.NaT],
+                    [pd.Timestamp("2022-01-02 03:04:05.000000006")],
+                    [pd.Timestamp("2222-02-22")],
+                    [
+                        pytz.timezone("Europe/Stockholm").localize(
+                            pd.Timestamp("1970-01-01")
+                        )
+                    ],
+                ],
+                columns=["mixed"],
+            )
+        ),
+        # DateTime, Date, DateTime with timezone, and None in the middle
+        (
+            ["mixed"],
+            [
+                DataDehydrator().dehydrate((
+                    neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
+                )),
+                DataDehydrator().dehydrate((
+                    neo4j_time.Date(2222, 2, 22),
+                )),
+                [None],
+                DataDehydrator().dehydrate((
+                    pytz.timezone("Europe/Stockholm").localize(
+                        neo4j_time.DateTime(1970, 1, 1, 0, 0, 0, 0)
+                    ),
+                )),
+            ],
+            pd.DataFrame(
+                [
+                    [pd.Timestamp("2022-01-02 03:04:05.000000006")],
+                    [pd.Timestamp("2222-02-22")],
+                    [pd.NaT],
+                    [
+                        pytz.timezone("Europe/Stockholm").localize(
+                            pd.Timestamp("1970-01-01")
+                        )
+                    ],
+                ],
+                columns=["mixed"],
+            )
+        ),
+        # DateTime, Date, DateTime with timezone, and None at the end
+        (
+            ["mixed"],
+            [
+                DataDehydrator().dehydrate((
+                    neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
+                )),
+                DataDehydrator().dehydrate((
+                    neo4j_time.Date(2222, 2, 22),
+                )),
+                DataDehydrator().dehydrate((
+                    pytz.timezone("Europe/Stockholm").localize(
+                        neo4j_time.DateTime(1970, 1, 1, 0, 0, 0, 0)
+                    ),
+                )),
+                [None],
+            ],
+            pd.DataFrame(
+                [
+                    [pd.Timestamp("2022-01-02 03:04:05.000000006")],
+                    [pd.Timestamp("2222-02-22")],
+                    [
+                        pytz.timezone("Europe/Stockholm").localize(
+                            pd.Timestamp("1970-01-01")
+                        )
+                    ],
+                    [pd.NaT],
+                ],
+                columns=["mixed"],
+            )
+        ),
+        # Column with only None (should not be transfomred to NaT)
+        (
+            ["all_none"],
+            [
+                [None],
+                [None],
+            ],
+            pd.DataFrame(
+                [[None], [None]],
+                columns=["all_none"],
+            )
+        ),
+        # Multiple columns
+        (
+            ["all_none", "mixed", "n"],
+            [
+                [
+                    None,
+                    None,
+                    1,
+                ],
+                [
+                    None,
+                    *DataDehydrator().dehydrate((
+                        neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
+                    )),
+                    1.234,
+                ],
+            ],
+            pd.DataFrame(
+                [
+                    [
+                        None,
+                        pd.NaT,
+                        1.0,
+                    ],
+                    [
+                        None,
+                        pd.Timestamp("2022-01-02 03:04:05.000000006"),
+                        1.234
+                    ],
+                ],
+                columns=["all_none", "mixed", "n"],
+            )
+        ),
+    ),
+)
+@pytest.mark.parametrize("expand", [True, False])
+@mark_sync_test
+def test_to_df_parse_dates(keys, values, expected_df, expand):
+    connection = ConnectionStub(records=Records(keys, values))
+    result = Result(connection, DataHydrator(), 1, noop, noop)
+    result._run("CYPHER", {}, None, None, "r", None)
+    df = result.to_df(expand=expand, parse_dates=True)
+
+    pd.testing.assert_frame_equal(df, expected_df)
