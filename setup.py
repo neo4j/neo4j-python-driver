@@ -34,6 +34,9 @@ from neo4j.meta import (
 install_requires = [
     "pytz",
 ]
+extra_require = {
+    "pandas": ["pandas>=1.0.0"],
+}
 classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
@@ -67,6 +70,7 @@ setup_args = {
     "keywords": "neo4j graph database",
     "url": "https://github.com/neo4j/neo4j-python-driver",
     "install_requires": install_requires,
+    "extra_require": extra_require,
     "classifiers": classifiers,
     "packages": packages,
     "entry_points": entry_points,
