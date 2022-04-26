@@ -358,7 +358,7 @@ Auto-commit transactions are the simplest form of transaction, available via
 statement per transaction and are not automatically retried on failure.
 
 Auto-commit transactions are also the only way to run ``PERIODIC COMMIT``
-(only Neo4j 4.4 and earlier) or ``CALL {...} IN TRANSACTIONS`` (Neo4j 5.0 and
+(only Neo4j 4.4 and earlier) or ``CALL {...} IN TRANSACTIONS`` (Neo4j 4.4 and
 newer) statements, since those Cypher clauses manage their own transactions
 internally.
 
