@@ -184,11 +184,7 @@ class Bolt5x0(Bolt):
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port,
                   " ".join(map(repr, fields)))
-        if query.upper() == u"COMMIT":
-            self._append(b"\x10", fields, CommitResponse(self, "run",
-                                                         **handlers))
-        else:
-            self._append(b"\x10", fields, Response(self, "run", **handlers))
+        self._append(b"\x10", fields, Response(self, "run", **handlers))
 
     def discard(self, n=-1, qid=-1, **handlers):
         extra = {"n": n}

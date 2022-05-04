@@ -238,11 +238,7 @@ class AsyncBolt3(AsyncBolt):
                 raise ValueError("Timeout must be a positive number or 0.")
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
-        if query.upper() == u"COMMIT":
-            self._append(b"\x10", fields, CommitResponse(self, "run",
-                                                         **handlers))
-        else:
-            self._append(b"\x10", fields, Response(self, "run", **handlers))
+        self._append(b"\x10", fields, Response(self, "run", **handlers))
 
     def discard(self, n=-1, qid=-1, **handlers):
         # Just ignore n and qid, it is not supported in the Bolt 3 Protocol.
