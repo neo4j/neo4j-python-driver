@@ -1920,7 +1920,7 @@ class DateTime(metaclass=DateTimeType):
     draws functionality from those individual classes.
 
     A :class:`.DateTime` object is fully compatible with the Python time zone
-    library `pytz <http://pytz.sourceforge.net/>`_. Functions such as
+    library `pytz <https://pypi.org/project/pytz/>`_. Functions such as
     `normalize` and `localize` can be used in the same way as they are with the
     standard library classes.
 
