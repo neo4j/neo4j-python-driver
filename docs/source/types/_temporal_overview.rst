@@ -1,7 +1,7 @@
 Temporal data types are implemented by the ``neo4j.time`` module.
 
 It provides a set of types compliant with ISO-8601 and Cypher, which are similar to those found in the built-in ``datetime`` module.
-Sub-second values are measured to nanosecond precision and the types are compatible with `pytz <http://pytz.sourceforge.net/>`_.
+Sub-second values are measured to nanosecond precision and the types are compatible with `pytz <https://pypi.org/project/pytz/>`_.
 
 The table below shows the general mappings between Cypher and the temporal types provided by the driver.
 
@@ -19,7 +19,7 @@ Duration       :class:`neo4j.time.Duration`  :class:`python:datetime.timedelta`
 =============  ============================  ==================================  ============
 
 Sub-second values are measured to nanosecond precision and the types are mostly
-compatible with `pytz <http://pytz.sourceforge.net/>`_. Some timezones
+compatible with `pytz <https://pypi.org/project/pytz/>`_. Some timezones
 (e.g.,  ``pytz.utc``) work exclusively with the built-in ``datetime.datetime``.
 
 .. Note::
