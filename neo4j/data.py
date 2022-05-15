@@ -341,7 +341,7 @@ class DataHydrator:
             else:
                 return obj
 
-        return tuple(map(hydrate_, values))
+        return [hydrate_(v) for v in values]
 
     def hydrate_records(self, keys, record_values):
         for values in record_values:
@@ -417,4 +417,4 @@ class DataDehydrator:
             else:
                 raise TypeError(obj)
 
-        return tuple(map(dehydrate_, values))
+        return [dehydrate_(v) for v in values]

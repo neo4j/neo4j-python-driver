@@ -205,7 +205,10 @@ class AsyncBolt4x0(AsyncBolt):
         extra = {"n": n}
         if qid != -1:
             extra["qid"] = qid
-        log.debug("[#%04X]  C: PULL %r", self.local_port, extra)
+
+        # PATCH: Removed due to CPU overhead
+        # log.debug("[#%04X]  C: PULL %r", self.local_port, extra)
+
         self._append(b"\x3F", (extra,), Response(self, "pull", **handlers))
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
