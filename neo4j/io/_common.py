@@ -41,6 +41,7 @@ class MessageInbox:
 
     def __init__(self, s, on_error):
         self.on_error = on_error
+        self._local_port = s.getsockname()[1]
         self._messages = self._yield_messages(s)
 
     def _yield_messages(self, sock):
@@ -55,7 +56,7 @@ class MessageInbox:
                     buffer.receive(sock, 2)
                     chunk_size = buffer.pop_u16()
                     if chunk_size == 0:
-                        log.debug("[#%04X]  S: <NOOP>", sock.getsockname()[1])
+                        log.debug("[#%04X]  S: <NOOP>", self._local_port)
 
                 buffer.receive(sock, chunk_size + 2)
                 chunk_size = buffer.pop_u16()

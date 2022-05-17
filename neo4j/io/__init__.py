@@ -149,6 +149,7 @@ class Bolt(abc.ABC):
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *, auth=None, user_agent=None, routing_context=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
+        self.local_port = self.socket.getsockname()[1]
         self.server_info = ServerInfo(Address(sock.getpeername()), self.PROTOCOL_VERSION)
         # so far `connection.recv_timeout_seconds` is the only available
         # configuration hint that exists. Therefore, all hints can be stored at
@@ -371,11 +372,6 @@ class Bolt(abc.ABC):
     @property
     @abc.abstractmethod
     def der_encoded_server_certificate(self):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def local_port(self):
         pass
 
     @abc.abstractmethod
