@@ -19,7 +19,10 @@ Python versions supported:
 
 .. note::
 
-    The `Python Driver 1.7`_ supports older versions of python, **Neo4j 4.1** will work in fallback mode with that driver.
+    The Python driver 1.7 supports older versions of python.
+    However, the Python driver 1.7 works in fallback mode with Neo4j 4.x. 
+    It does not support features introduced in Neo4j 4.0 and later, such as multiple databases, Neo4j Fabric, and fine-grained access control.
+    To run multiple databases online concurrently and do distributed queries over them, you must migrate from 1.7 to 4.x.
 
 
 ******
