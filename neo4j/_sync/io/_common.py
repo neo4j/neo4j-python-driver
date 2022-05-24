@@ -43,7 +43,6 @@ class MessageInbox:
     def __init__(self, s, on_error):
         self.on_error = on_error
         self._local_port = s.getsockname()[1]
-        assert self._local_port  # TODO: remove, just for testing
         self._messages = self._yield_messages(s)
 
     def _yield_messages(self, sock):

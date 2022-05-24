@@ -101,7 +101,6 @@ class AsyncBolt:
         self.unresolved_address = unresolved_address
         self.socket = sock
         self.local_port = self.socket.getsockname()[1]
-        assert self.local_port  # TODO: remove, just for testing
         self.server_info = ServerInfo(Address(sock.getpeername()),
                                       self.PROTOCOL_VERSION)
         # so far `connection.recv_timeout_seconds` is the only available
