@@ -27,4 +27,4 @@ def run(args):
 
 
 if __name__ == "__main__":
-    run(["python", "-m", "tox", "-c", "tox-unit.ini"])
+    run(["python", "-m", "tox", "-f", "unit"])

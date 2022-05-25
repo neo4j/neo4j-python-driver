@@ -16,59 +16,32 @@
 # limitations under the License.
 
 
-from itertools import product
-
-from pytest import mark
+import pytest
 
 from neo4j import GraphDatabase
 
-from .tools import RemoteGraphDatabaseServer
+
+def work(driver, *units_of_work):
+    def runner():
+        with driver.session() as session:
+            for unit_of_work in units_of_work:
+                session.read_transaction(unit_of_work)
+    return runner
 
 
-class ReadWorkload(object):
+def unit_of_work(record_count, record_width, value):
+    def transaction_function(tx):
+        s = "UNWIND range(1, $record_count) AS _ RETURN {}".format(
+            ", ".join("$x AS x{}".format(i) for i in range(record_width)))
+        p = {"record_count": record_count, "x": value}
+        for record in tx.run(s, p):
+            assert all(x == value for x in record.values())
 
-    server = None
-    driver = None
-
-    @classmethod
-    def setup_class(cls):
-        cls.server = server = RemoteGraphDatabaseServer()
-        server.start()
-        cls.driver = GraphDatabase.driver(server.server_uri,
-                                          auth=server.auth_token,
-                                          encrypted=server.encrypted)
-
-    @classmethod
-    def teardown_class(cls):
-        cls.driver.close()
-        cls.server.stop()
-
-    def work(self, *units_of_work):
-        def runner():
-            with self.driver.session() as session:
-                for unit_of_work in units_of_work:
-                    session.read_transaction(unit_of_work)
-        return runner
+    return transaction_function
 
 
-class TestReadWorkload(ReadWorkload):
-
-    @staticmethod
-    def uow(record_count, record_width, value):
-
-        def _(tx):
-            s = "UNWIND range(1, $record_count) AS _ RETURN {}".format(
-                ", ".join("$x AS x{}".format(i) for i in range(record_width)))
-            p = {"record_count": record_count, "x": value}
-            for record in tx.run(s, p):
-                assert all(x == value for x in record.values())
-
-        return _
-
-    @mark.parametrize("record_count,record_width,value", product(
-        [1, 1000],  # record count
-        [1, 10],    # record width
-        [1, u'hello, world'],        # value
-    ))
-    def test_1x1(self, benchmark, record_count, record_width, value):
-        benchmark(self.work(self.uow(record_count, record_width, value)))
+@pytest.mark.parametrize("record_count", [1, 1000])
+@pytest.mark.parametrize("record_width", [1, 10])
+@pytest.mark.parametrize("value", [1, u'hello, world'])
+def test_1x1(driver, benchmark, record_count, record_width, value):
+    benchmark(work(driver, unit_of_work(record_count, record_width, value)))

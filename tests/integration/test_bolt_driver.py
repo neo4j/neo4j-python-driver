@@ -14,11 +14,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
 import pytest
-from pytest import fixture
 
 
-@fixture
+@pytest.fixture
 def server_info(driver):
     """ Simple fixture to provide quick and easy access to a
     :class:`.ServerInfo` object.
@@ -31,7 +32,8 @@ def server_info(driver):
 # TODO: 6.0 -
 #       This test will stay as python is currently the only driver exposing
 #       the connection id. This will be removed in 6.0
-def test_server_connection_id(server_info):
+def test_server_connection_id(driver):
+    server_info = driver.get_server_info()
     with pytest.warns(DeprecationWarning):
         cid = server_info.connection_id
     assert cid.startswith("bolt-") and cid[5:].isdigit()

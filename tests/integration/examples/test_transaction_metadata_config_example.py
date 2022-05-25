@@ -44,10 +44,17 @@ class TransactionMetadataConfigExample:
         return add_person(self.driver, name)
 
 
-def test_example(bolt_driver):
-    eg = TransactionMetadataConfigExample(bolt_driver)
+def work(tx, query, **parameters):
+    res = tx.run(query, **parameters)
+    return [rec.values() for rec in res], res.consume()
+
+
+def test_example(driver):
+    eg = TransactionMetadataConfigExample(driver)
     with eg.driver.session() as session:
-        session.run("MATCH (_) DETACH DELETE _")
+        session.write_transaction(work, "MATCH (_) DETACH DELETE _")
         eg.add_person("Alice")
-        n = session.run("MATCH (a:Person) RETURN count(a)").single().value()
-        assert n == 1
+        records, _ = session.read_transaction(
+            work, "MATCH (a:Person) RETURN count(a)"
+        )
+        assert records == [[1]]

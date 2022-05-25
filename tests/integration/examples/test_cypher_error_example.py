@@ -48,9 +48,9 @@ class Neo4jErrorExample:
     # end::cypher-error[]
 
 
-def test_example(bolt_driver):
+def test_example(driver):
     s = StringIO()
     with redirect_stdout(s):
-        example = Neo4jErrorExample(bolt_driver)
+        example = Neo4jErrorExample(driver)
         example.get_employee_number('Alice')
         assert s.getvalue().startswith("Invalid input")
