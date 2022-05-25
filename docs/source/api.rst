@@ -1350,6 +1350,50 @@ following code:
     ...
 
 
+*******
+Logging
+*******
+
+The driver offers logging for debugging purposes. It is not recommended to
+enable logging for anything other than debugging. For instance, if the driver is
+not able to connect to the database server or if undesired behavior is observed.
+
+There are different ways of enabling logging as listed below.
+
+Simple Approach
+===============
+
+.. autofunction:: neo4j.debug.watch(*logger_names, level=logging.DEBUG, out=sys.stderr, colour=False)
+
+Context Manager
+===============
+
+.. autoclass:: neo4j.debug.Watcher(*logger_names, default_level=logging.DEBUG, default_out=sys.stderr, colour=False)
+    :members:
+    :special-members: __enter__, __exit__
+
+Full Controll
+=============
+
+.. code-block:: python
+
+    import logging
+    import sys
+
+    # create a handler, e.g. to log to stdout
+    handler = logging.StreamHandler(sys.stdout)
+    # configure the handler to your liking
+    handler.setFormatter(logging.Formatter(
+        "%(threadName)s(%(thread)d) %(asctime)s  %(message)s"
+    ))
+    # add the handler to the driver's logger
+    logging.getLogger("neo4j").addHandler(handler)
+    # make sure the logger logs on the desired log level
+    logging.getLogger("neo4j").setLevel(logging.DEBUG)
+
+    # from now on, DEBUG logging to stderr is enabled in the driver
+
+
 *********
 Bookmarks
 *********
