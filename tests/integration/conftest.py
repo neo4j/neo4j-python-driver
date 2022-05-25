@@ -266,8 +266,8 @@ def neo4j_uri(service, target):
 
 
 @pytest.fixture(scope="session")
-def uri(bolt_uri):
-    return bolt_uri
+def uri(neo4j_uri):
+    return neo4j_uri
 
 
 # @fixture(scope="session")
@@ -340,8 +340,8 @@ def driver(neo4j_driver):
 
 
 @pytest.fixture()
-def session(bolt_driver):
-    session = bolt_driver.session()
+def session(neo4j_driver):
+    session = neo4j_driver.session()
     try:
         yield session
     finally:
@@ -356,7 +356,7 @@ def protocol_version(session):
 
 
 @pytest.fixture()
-def cypher_eval(bolt_driver):
+def cypher_eval(neo4j_driver):
 
     def run_and_rollback(tx, cypher, **parameters):
         result = tx.run(cypher, **parameters)
@@ -365,7 +365,7 @@ def cypher_eval(bolt_driver):
         return value
 
     def f(cypher, **parameters):
-        with bolt_driver.session() as session:
+        with neo4j_driver.session() as session:
             return session.write_transaction(run_and_rollback, cypher, **parameters)
 
     return f

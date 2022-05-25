@@ -40,11 +40,11 @@ from neo4j._async.io._common import Outbox
 ))
 def test_async_outbox_chunking(chunk_size, data, result):
     outbox = Outbox(max_chunk_size=chunk_size)
-    assert bytes(outbox.view()) == b""
+    assert bytes(outbox.chunked_data()) == b""
     for d in data:
         outbox.write(d)
-    assert bytes(outbox.view()) == result
+    assert bytes(outbox.chunked_data()) == result
     # make sure this works multiple times
-    assert bytes(outbox.view()) == result
+    assert bytes(outbox.chunked_data()) == result
     outbox.clear()
-    assert bytes(outbox.view()) == b""
+    assert bytes(outbox.chunked_data()) == b""

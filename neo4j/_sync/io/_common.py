@@ -109,7 +109,6 @@ class Outbox:
         )
         num_chunks = num_full_chunks + bool(chunk_rest)
 
-        data_view = memoryview(self._raw_data)
         header_start = len(self._chunked_data)
         data_start = header_start + 2
         raw_data_start = 0
@@ -120,20 +119,19 @@ class Outbox:
                 ">H", chunk_size
             )
             self._chunked_data[data_start:(data_start + chunk_size)] = \
-                data_view[raw_data_start:(raw_data_start + chunk_size)]
+                self._raw_data[raw_data_start:(raw_data_start + chunk_size)]
             header_start += chunk_size + 2
             data_start = header_start + 2
             raw_data_start += chunk_size
-        del data_view
         self._raw_data.clear()
 
     def wrap_message(self):
         self._chunk_data()
         self._chunked_data += b"\x00\x00"
 
-    def view(self):
+    def chunked_data(self):
         self._chunk_data()
-        return memoryview(self._chunked_data)
+        return self._chunked_data
 
 
 class ConnectionErrorHandler:
@@ -272,9 +270,9 @@ def receive_into_buffer(sock, buffer, n_bytes):
     end = buffer.used + n_bytes
     if end > len(buffer.data):
         buffer.data += bytearray(end - len(buffer.data))
-    view = memoryview(buffer.data)
-    while buffer.used < end:
-        n = sock.recv_into(view[buffer.used:end], end - buffer.used)
-        if n == 0:
-            raise OSError("No data")
-        buffer.used += n
+    with memoryview(buffer.data) as view:
+        while buffer.used < end:
+            n = sock.recv_into(view[buffer.used:end], end - buffer.used)
+            if n == 0:
+                raise OSError("No data")
+            buffer.used += n
