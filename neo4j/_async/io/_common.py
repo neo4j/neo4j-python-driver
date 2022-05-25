@@ -276,3 +276,4 @@ async def receive_into_buffer(sock, buffer, n_bytes):
             if n == 0:
                 raise OSError("No data")
             buffer.used += n
+    del view

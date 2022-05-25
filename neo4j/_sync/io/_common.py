@@ -270,9 +270,11 @@ def receive_into_buffer(sock, buffer, n_bytes):
     end = buffer.used + n_bytes
     if end > len(buffer.data):
         buffer.data += bytearray(end - len(buffer.data))
-    with memoryview(buffer.data) as view:
+    with memoryview(bytearray(n_bytes)) as view:
         while buffer.used < end:
-            n = sock.recv_into(view[buffer.used:end], end - buffer.used)
+            n = sock.recv_into(view, end - buffer.used)
             if n == 0:
                 raise OSError("No data")
+            buffer.data[buffer.used:end] = view
             buffer.used += n
+
