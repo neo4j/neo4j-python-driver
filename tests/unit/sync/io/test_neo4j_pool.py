@@ -35,6 +35,10 @@ from neo4j.exceptions import (
 )
 
 from ...._async_compat import mark_sync_test
+from ..._async_compat import (
+    mark_sync_test,
+    Mock,
+)
 from ..work import fake_connection_generator
 
 
@@ -384,3 +388,17 @@ def test_acquire_returns_other_connection_on_failed_liveness_check(
     cx3.reset.assert_called_once()
     assert cx1 not in pool.connections[cx1.addr]
     assert cx3 in pool.connections[cx1.addr]
+
+
+
+@mark_sync_test
+def test_failing_opener_leaves_connections_in_use_alone(opener):
+    pool = Neo4jPool(
+        opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
+    )
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None)
+
+    opener.side_effect = ServiceUnavailable("Server overloaded")
+    with pytest.raises((ServiceUnavailable, SessionExpired)):
+        pool.acquire(READ_ACCESS, 30, "test_db", None)
+    assert not cx1.closed()
