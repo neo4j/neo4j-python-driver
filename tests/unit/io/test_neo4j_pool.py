@@ -35,6 +35,10 @@ from neo4j.conf import (
     RoutingConfig,
     WorkspaceConfig
 )
+from neo4j.exceptions import (
+    ServiceUnavailable,
+    SessionExpired
+)
 from neo4j.io import Neo4jPool
 
 
@@ -226,3 +230,14 @@ def test_release_does_not_resets_defunct_connections(opener):
     cx1.defunct.assert_called_once()
     cx1.is_reset_mock.asset_not_called()
     cx1.reset.asset_not_called()
+
+
+def test_failing_opener_leaves_connections_in_use_alone(opener):
+    pool = Neo4jPool(opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None)
+
+    opener.side_effect = ServiceUnavailable("Server overloaded")
+    with pytest.raises((ServiceUnavailable, SessionExpired)):
+        pool.acquire(READ_ACCESS, 30, "test_db", None)
+
+    assert not cx1.closed()
