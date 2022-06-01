@@ -695,7 +695,7 @@ class IOPool:
                     try:
                         connection = self.opener(address, timeout)
                     except ServiceUnavailable:
-                        self.remove(address)
+                        self.deactivate(address)
                         raise
                     else:
                         connection.pool = self
@@ -772,29 +772,21 @@ class IOPool:
                 connections = self.connections[address]
             except KeyError:  # already removed from the connection pool
                 return
-            for conn in list(connections):
-                if not conn.in_use:
-                    connections.remove(conn)
-                    try:
-                        conn.close()
-                    except OSError:
-                        pass
-            if not connections:
-                self.remove(address)
+            closable_connections = [
+                conn for conn in connections if not conn.in_use
+            ]
+            # First remove all connections in question, then try to close them.
+            # If closing of a connection fails, we will end up in this method
+            # again.
+            for conn in closable_connections:
+                connections.remove(conn)
+            for conn in closable_connections:
+                conn.close()
+            if not self.connections[address]:
+                del self.connections[address]
 
     def on_write_failure(self, address):
         raise WriteServiceUnavailable("No write service available for pool {}".format(self))
-
-    def remove(self, address):
-        """ Remove an address from the connection pool, if present, closing
-        all connections to that address.
-        """
-        with self.lock:
-            for connection in self.connections.pop(address, ()):
-                try:
-                    connection.close()
-                except OSError:
-                    pass
 
     def close(self):
         """ Close all connections and empty the pool.
@@ -803,7 +795,11 @@ class IOPool:
         try:
             with self.lock:
                 for address in list(self.connections):
-                    self.remove(address)
+                    for connection in self.connections.pop(address, ()):
+                        try:
+                            connection.close()
+                        except OSError:
+                            pass
         except TypeError:
             pass
 
