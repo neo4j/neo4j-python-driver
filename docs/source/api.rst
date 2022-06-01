@@ -270,8 +270,8 @@ For example:
            raise gaierror("Unexpected socket address %r" % socket_address)
 
    driver = GraphDatabase.driver("neo4j://example.com:9999",
-                auth=("neo4j", "password"),
-                resolver=custom_resolver)
+                                 auth=("neo4j", "password"),
+                                 resolver=custom_resolver)
 
 
 :Default: ``None``
@@ -484,9 +484,9 @@ Name of the database to query.
 
 
 .. py:attribute:: neo4j.DEFAULT_DATABASE
-   :noindex:
+    :noindex:
 
-   This will use the default database on the Neo4j instance.
+    This will use the default database on the Neo4j instance.
 
 
 .. Note::
@@ -501,9 +501,10 @@ Name of the database to query.
 
 .. code-block:: python
 
-   from neo4j import GraphDatabase
-   driver = GraphDatabase.driver(uri, auth=(user, password))
-   session = driver.session(database="system")
+    from neo4j import GraphDatabase
+
+    driver = GraphDatabase.driver(uri, auth=(user, password))
+    session = driver.session(database="system")
 
 
 :Default: ``neo4j.DEFAULT_DATABASE``
@@ -536,9 +537,10 @@ context of the impersonated user. For this, the user for which the
 
 .. code-block:: python
 
-   from neo4j import GraphDatabase
-   driver = GraphDatabase.driver(uri, auth=(user, password))
-   session = driver.session(impersonated_user="alice")
+    from neo4j import GraphDatabase
+
+    driver = GraphDatabase.driver(uri, auth=(user, password))
+    session = driver.session(impersonated_user="alice")
 
 
 :Default: ``None``
@@ -676,9 +678,10 @@ Example:
         return record["node_id"]
 
     def set_person_name(tx, node_id, name):
-        result = tx.run("MATCH (a:Person) WHERE id(a) = $id SET a.name = $name", id=node_id, name=name)
-        info = result.consume()
-        # use the info for logging etc.
+        query = "MATCH (a:Person) WHERE id(a) = $id SET a.name = $name"
+        result = tx.run(query, id=node_id, name=name)
+        summary = result.consume()
+        # use the summary for logging etc.
 
 .. _managed-transactions-ref:
 
@@ -1091,9 +1094,9 @@ Point (WGS-84)     :class:`neo4j.spatial.WGS84Point`
 Point
 =====
 
-
 .. autoclass:: neo4j.spatial.Point
-   :members:
+    :show-inheritance:
+    :members:
 
 
 CartesianPoint
@@ -1102,31 +1105,43 @@ CartesianPoint
 .. autoclass:: neo4j.spatial.CartesianPoint
     :show-inheritance:
 
-    .. autoproperty:: srid
+    .. property:: x
+        :type: float
 
-    .. autoproperty:: x
+        Same value as ``point[0]``.
 
-    .. autoproperty:: y
+    .. property:: y
+        :type: float
 
-    .. autoproperty:: z
+        Same value as ``point[1]``.
 
-    .. automethod:: count
+    .. property:: z
+        :type: float
 
-    .. automethod:: index
+        Same value as ``point[2]``.
+
+        Only available if the point is in 3D space.
+
+
+Examples
+--------
+
+.. code-block:: python
+
+    from neo4j.spatial import CartesianPoint
+
+    point = CartesianPoint((1.23, 4.56)
+    print(point.x, point.y, point.srid)
+    # 1.23 4.56 7203
 
 
 .. code-block:: python
 
-    point=CartesianPoint((1.23, 4.56)
+    from neo4j.spatial import CartesianPoint
 
-    print(point.x, point.y)
-
-
-.. code-block:: python
-
-    point=CartesianPoint((1.23, 4.56, 7.89)
-
-    print(point.x, point.y, point.z)
+    point = CartesianPoint((1.23, 4.56, 7.89)
+    print(point.x, point.y, point.z, point.srid)
+    # 1.23 4.56 7.8 9157
 
 
 WGS84Point
@@ -1135,37 +1150,61 @@ WGS84Point
 .. autoclass:: neo4j.spatial.WGS84Point
     :show-inheritance:
 
-    .. autoproperty:: srid
+    .. property:: x
+        :type: float
 
-    .. autoproperty:: x
+        Same value as ``point[0]``.
 
-    .. autoproperty:: y
+    .. property:: y
+        :type: float
 
-    .. autoproperty:: z
+        Same value as ``point[1]``.
 
-    .. autoproperty:: longitude
+    .. property:: z
+        :type: float
 
-    .. autoproperty:: latitude
+        Same value as ``point[2]``.
 
-    .. autoproperty:: height
+        Only available if the point is in 3D space.
 
-    .. automethod:: count
+    .. property:: longitude
+        :type: float
 
-    .. automethod:: index
+        Alias for :attr:`.x`.
+
+    .. property:: latitude
+        :type: float
+
+        Alias for :attr:`.y`.
+
+    .. property:: height
+        :type: float
+
+        Alias for :attr:`.z`.
+
+        Only available if the point is in 3D space.
 
 
+Examples
+--------
+
+.. code-block:: python
+
+    from neo4j.spatial import WGS84Point
+
+    point = WGS84Point((1.23, 4.56))
+    print(point.longitude, point.latitude, point.srid)
+    # 1.23 4.56 4326
 
 
 .. code-block:: python
 
-    point=WGS84Point((1.23, 4.56))
-    print(point.longitude, point.latitude)
+    from neo4j.spatial import WGS84Point
 
+    point = WGS84Point((1.23, 4.56, 7.89))
+    print(point.longitude, point.latitude, point.height, point.srid)
+    # 1.23 4.56 7.89 4979
 
-.. code-block:: python
-
-    point=WGS84Point((1.23, 4.56, 7.89))
-    print(point.longitude, point.latitude, point.height)
 
 
 *******************

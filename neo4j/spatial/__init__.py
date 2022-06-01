@@ -50,6 +50,11 @@ class Point(tuple):
     there is no subclass defined for the required SRID.
     """
 
+    #: The SRID (spatial reference identifier) of the spatial data.
+    #: A number that identifies the coordinate system the spatial type is to be
+    #: interpreted in.
+    #:
+    #: :type: int
     srid = None
 
     def __new__(cls, iterable):

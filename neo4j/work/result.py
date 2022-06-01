@@ -262,11 +262,11 @@ class Result:
                 result = tx.run("CREATE (n:ExampleNode { name: $name }) RETURN n", name=name)
                 record = result.single()
                 value = record.value()
-                info = result.consume()
-                return value, info
+                summary = result.consume()
+                return value, summary
 
             with driver.session() as session:
-                node_id, info = session.write_transaction(create_node_tx, "example")
+                node_id, summary = session.write_transaction(create_node_tx, "example")
 
         Example::
 
@@ -277,12 +277,12 @@ class Result:
                     if x > 1:
                         break
                     values.append(record.values())
-                info = result.consume()  # discard the remaining records if there are any
-                # use the info for logging etc.
-                return values, info
+                summary = result.consume()  # discard the remaining records if there are any
+                # use the summary for logging etc.
+                return values, summary
 
             with driver.session() as session:
-                values, info = session.read_transaction(get_two_tx)
+                values, summary = session.read_transaction(get_two_tx)
 
         :returns: The :class:`neo4j.ResultSummary` for this result
         """
@@ -322,7 +322,7 @@ class Result:
         """Obtain the next record from this result without consuming it.
         This leaves the record in the buffer for further processing.
 
-        :returns: the next :class:`.Record` or :const:`None` if none remain
+        :returns: the next :class:`neo4j.Record` or :const:`None` if none remain
         """
         self._buffer(1)
         if self._record_buffer:
