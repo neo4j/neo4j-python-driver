@@ -25,7 +25,7 @@ from ..._async_compat import mark_sync_test
 
 
 @mark_sync_test
-def test_custom_ssl_context_wraps_connection(target, auth, mocker):
+def test_custom_ssl_context_wraps_connection(uri, auth, mocker):
     # Test that the driver calls either `.wrap_socket` or `.wrap_bio` on the
     # provided custom SSL context.
 
@@ -39,8 +39,8 @@ def test_custom_ssl_context_wraps_connection(target, auth, mocker):
     fake_ssl_context.wrap_socket.side_effect = wrap_fail
     fake_ssl_context.wrap_bio.side_effect = wrap_fail
 
-    driver = GraphDatabase.neo4j_driver(
-        target, auth=auth, ssl_context=fake_ssl_context
+    driver = GraphDatabase.driver(
+        uri, auth=auth, ssl_context=fake_ssl_context
     )
     with driver:
         with driver.session() as session:

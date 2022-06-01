@@ -20,7 +20,8 @@ import pytest
 
 from neo4j._exceptions import BoltHandshakeError
 from neo4j.exceptions import ServiceUnavailable
-from tests.integration.examples import DriverSetupExample
+
+from . import DriverSetupExample
 
 
 # isort: off
