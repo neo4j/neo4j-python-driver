@@ -40,11 +40,10 @@ def test_can_hydrate_v1_node_structure():
     assert alice.get("name") == "Alice"
 
 
-@pytest.mark.parametrize("with_id", (True, False))
-def test_can_hydrate_v2_node_structure(with_id):
+def test_can_hydrate_v2_node_structure():
     hydrant = DataHydrator()
 
-    id_ = 123 if with_id else None
+    id_ = 123
 
     struct = Structure(b'N', id_, ["Person"], {"name": "Alice"}, "abc")
     alice, = hydrant.hydrate([struct])
@@ -78,14 +77,12 @@ def test_can_hydrate_v1_relationship_structure():
     assert rel.get("since") == 1999
 
 
-@pytest.mark.parametrize("with_ids", (True, False))
-def test_can_hydrate_v2_relationship_structure(with_ids):
+def test_can_hydrate_v2_relationship_structure():
     hydrant = DataHydrator()
 
-    id_ = 123 if with_ids else None
-    start_id = 456 if with_ids else None
-    end_id = 789 if with_ids else None
-
+    id_ = 123
+    start_id = 456
+    end_id = 789
     struct = Structure(b'R', id_, start_id, end_id, "KNOWS", {"since": 1999},
                        "abc", "def", "ghi")
 
