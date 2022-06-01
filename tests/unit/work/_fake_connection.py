@@ -30,6 +30,7 @@ from neo4j import ServerInfo
 class FakeConnection(mock.NonCallableMagicMock):
     callbacks = []
     server_info = ServerInfo("127.0.0.1", (4, 3))
+    local_port = 1234
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
