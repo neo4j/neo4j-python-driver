@@ -381,8 +381,9 @@ class Session(Workspace):
                     if x > 1:
                         break
                     values.append(record.values())
-                info = result.consume()  # discard the remaining records if there are any
-                # use the info for logging etc.
+                # discard the remaining records if there are any
+                summary = result.consume()
+                # use the summary for logging etc.
                 return values
 
             with driver.session() as session:
@@ -429,7 +430,7 @@ class Query:
     :param metadata: metadata attached to the query.
     :type metadata: dict
     :param timeout: seconds.
-    :type timeout: int
+    :type timeout: float or :const:`None`
     """
     def __init__(self, text, metadata=None, timeout=None):
         self.text = text
@@ -445,6 +446,8 @@ def unit_of_work(metadata=None, timeout=None):
     """This function is a decorator for transaction functions that allows extra control over how the transaction is carried out.
 
     For example, a timeout may be applied::
+
+        from neo4j import unit_of_work
 
         @unit_of_work(timeout=100)
         def count_people_tx(tx):
@@ -465,7 +468,7 @@ def unit_of_work(metadata=None, timeout=None):
         This functionality allows to limit query/transaction execution time.
         Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
         Value should not represent a duration of zero or negative duration.
-    :type timeout: int
+    :type timeout: float or :const:`None`
     """
 
     def wrapper(f):
