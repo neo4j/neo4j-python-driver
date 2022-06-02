@@ -345,7 +345,7 @@ class BoltSocket:
     Bolt = None
 
     @classmethod
-    def _connect(cls, resolved_address, timeout, keep_alive):
+    def _connect(cls, resolved_address, timeout, keep_alive, socket_timeout=None):
         """
 
         :param resolved_address:
@@ -364,7 +364,12 @@ class BoltSocket:
             else:
                 raise ValueError(
                     "Unsupported address {!r}".format(resolved_address))
+
+            if socket_timeout:
+                s.settimeout(socket_timeout)
+
             t = s.gettimeout()
+
             if timeout:
                 s.settimeout(timeout)
             log.debug("[#0000]  C: <OPEN> %s", resolved_address)
@@ -489,7 +494,7 @@ class BoltSocket:
 
     @classmethod
     def connect(cls, address, *, timeout, custom_resolver, ssl_context,
-                keep_alive):
+                keep_alive, socket_timeout=None):
         """ Connect and perform a handshake and return a valid Connection object,
         assuming a protocol version can be agreed.
         """
@@ -504,7 +509,7 @@ class BoltSocket:
         for resolved_address in resolved_addresses:
             s = None
             try:
-                s = BoltSocket._connect(resolved_address, timeout, keep_alive)
+                s = BoltSocket._connect(resolved_address, timeout, keep_alive, socket_timeout=socket_timeout)
                 s = BoltSocket._secure(s, resolved_address.host_name,
                                        ssl_context)
                 return BoltSocket._handshake(s, resolved_address)

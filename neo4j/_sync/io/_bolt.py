@@ -277,6 +277,7 @@ class Bolt:
                 custom_resolver=pool_config.resolver,
                 ssl_context=pool_config.get_ssl_context(),
                 keep_alive=pool_config.keep_alive,
+                socket_timeout=pool_config.driver_socket_timeout
             )
 
         # Carry out Bolt subclass imports locally to avoid circular dependency
