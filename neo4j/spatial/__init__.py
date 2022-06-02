@@ -56,7 +56,9 @@ class Point(tuple):
     #: The SRID (spatial reference identifier) of the spatial data.
     #: A number that identifies the coordinate system the spatial type is to be
     #: interpreted in.
-    srid = None  # type: int
+    #:
+    #: :type: int
+    srid = None
 
     def __new__(cls, iterable):
         return tuple.__new__(cls, map(float, iterable))

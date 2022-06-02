@@ -446,8 +446,8 @@ Example:
     async def set_person_name(tx, node_id, name):
         query = "MATCH (a:Person) WHERE id(a) = $id SET a.name = $name"
         result = await tx.run(query, id=node_id, name=name)
-        info = await result.consume()
-        # use the info for logging etc.
+        summary = await result.consume()
+        # use the summary for logging etc.
 
 .. _async-managed-transactions-ref:
 

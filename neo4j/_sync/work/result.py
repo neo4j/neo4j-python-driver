@@ -322,11 +322,13 @@ class Result:
                 )
                 record = result.single()
                 value = record.value()
-                info = result.consume()
-                return value, info
+                summary = result.consume()
+                return value, summary
 
             with driver.session() as session:
-                node_id, info = session.write_transaction(create_node_tx, "example")
+                node_id, summary = session.write_transaction(
+                    create_node_tx, "example"
+                )
 
         Example::
 
@@ -337,13 +339,16 @@ class Result:
                     if len(values) >= 2:
                         break
                     values.append(record.values())
+                # or shorter: values = [record.values()
+                #                       for record in result.fetch(2)]
+
                 # discard the remaining records if there are any
-                info = result.consume()
-                # use the info for logging etc.
-                return values, info
+                summary = result.consume()
+                # use the summary for logging etc.
+                return values, summary
 
             with driver.session() as session:
-                values, info = session.read_transaction(get_two_tx)
+                values, summary = session.read_transaction(get_two_tx)
 
         :returns: The :class:`neo4j.ResultSummary` for this result
 
@@ -426,6 +431,10 @@ class Result:
 
         :returns: list of :class:`neo4j.Record`
 
+        :raises ResultConsumedError: if the transaction from which this result
+            was obtained has been closed or the Result has been explicitly
+            consumed.
+
         .. versionadded:: 5.0
         """
         self._buffer(n)
@@ -438,7 +447,8 @@ class Result:
         """Obtain the next record from this result without consuming it.
         This leaves the record in the buffer for further processing.
 
-        :returns: the next :class:`.Record` or :const:`None` if none remain
+        :returns: the next :class:`neo4j.Record` or :const:`None` if none
+            remain.
 
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly

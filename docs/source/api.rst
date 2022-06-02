@@ -275,8 +275,8 @@ For example:
            raise gaierror("Unexpected socket address %r" % socket_address)
 
    driver = GraphDatabase.driver("neo4j://example.com:9999",
-                auth=("neo4j", "password"),
-                resolver=custom_resolver)
+                                 auth=("neo4j", "password"),
+                                 resolver=custom_resolver)
 
 
 :Default: :const:`None`
@@ -541,9 +541,9 @@ Name of the database to query.
 
 
 .. py:attribute:: neo4j.DEFAULT_DATABASE
-   :noindex:
+    :noindex:
 
-   This will use the default database on the Neo4j instance.
+    This will use the default database on the Neo4j instance.
 
 
 .. Note::
@@ -558,9 +558,10 @@ Name of the database to query.
 
 .. code-block:: python
 
-   from neo4j import GraphDatabase
-   driver = GraphDatabase.driver(uri, auth=(user, password))
-   session = driver.session(database="system")
+    from neo4j import GraphDatabase
+
+    driver = GraphDatabase.driver(uri, auth=(user, password))
+    session = driver.session(database="system")
 
 
 :Default: ``neo4j.DEFAULT_DATABASE``
@@ -593,9 +594,10 @@ context of the impersonated user. For this, the user for which the
 
 .. code-block:: python
 
-   from neo4j import GraphDatabase
-   driver = GraphDatabase.driver(uri, auth=(user, password))
-   session = driver.session(impersonated_user="alice")
+    from neo4j import GraphDatabase
+
+    driver = GraphDatabase.driver(uri, auth=(user, password))
+    session = driver.session(impersonated_user="alice")
 
 
 :Default: :const:`None`
@@ -740,8 +742,8 @@ Example:
     def set_person_name(tx, node_id, name):
         query = "MATCH (a:Person) WHERE id(a) = $id SET a.name = $name"
         result = tx.run(query, id=node_id, name=name)
-        info = result.consume()
-        # use the info for logging etc.
+        summary = result.consume()
+        # use the summary for logging etc.
 
 .. _managed-transactions-ref:
 
