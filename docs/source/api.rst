@@ -1390,7 +1390,6 @@ Full Controll
     logging.getLogger("neo4j").addHandler(handler)
     # make sure the logger logs on the desired log level
     logging.getLogger("neo4j").setLevel(logging.DEBUG)
-
     # from now on, DEBUG logging to stderr is enabled in the driver
 
 
