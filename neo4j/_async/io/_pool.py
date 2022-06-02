@@ -17,6 +17,7 @@
 
 
 import abc
+import asyncio
 import logging
 from collections import (
     defaultdict,
@@ -28,9 +29,11 @@ from random import choice
 
 from ..._async_compat.concurrency import (
     AsyncCondition,
+    AsyncCooperativeRLock,
     AsyncRLock,
 )
 from ..._async_compat.network import AsyncNetworkUtil
+from ..._async_compat.util import AsyncUtil
 from ..._conf import (
     PoolConfig,
     WorkspaceConfig,
@@ -78,7 +81,7 @@ class AsyncIOPool(abc.ABC):
         self.workspace_config = workspace_config
         self.connections = defaultdict(deque)
         self.connections_reservations = defaultdict(lambda: 0)
-        self.lock = AsyncRLock()
+        self.lock = AsyncCooperativeRLock()
         self.cond = AsyncCondition(self.lock)
 
     async def __aenter__(self):
@@ -88,7 +91,7 @@ class AsyncIOPool(abc.ABC):
         await self.close()
 
     async def _acquire_from_pool(self, address):
-        async with self.lock:
+        with self.lock:
             for connection in list(self.connections.get(address, [])):
                 if connection.in_use:
                     continue
@@ -118,7 +121,7 @@ class AsyncIOPool(abc.ABC):
                         connection.stale(), connection.in_use
                     )
                 await connection.close()
-                async with self.lock:
+                with self.lock:
                     try:
                         self.connections.get(address, []).remove(connection)
                     except ValueError:
@@ -131,7 +134,7 @@ class AsyncIOPool(abc.ABC):
             else:
                 return connection
 
-    async def _acquire_new_later(self, address, deadline):
+    def _acquire_new_later(self, address, deadline):
         async def connection_creator():
             released_reservation = False
             try:
@@ -144,20 +147,20 @@ class AsyncIOPool(abc.ABC):
                     raise
                 connection.pool = self
                 connection.in_use = True
-                async with self.lock:
+                with self.lock:
                     self.connections_reservations[address] -= 1
                     released_reservation = True
                     self.connections[address].append(connection)
                 return connection
             finally:
                 if not released_reservation:
-                    async with self.lock:
+                    with self.lock:
                         self.connections_reservations[address] -= 1
 
         max_pool_size = self.pool_config.max_connection_pool_size
         infinite_pool_size = (max_pool_size < 0
                               or max_pool_size == float("inf"))
-        async with self.lock:
+        with self.lock:
             connections = self.connections[address]
             pool_size = (len(connections)
                          + self.connections_reservations[address])
@@ -184,6 +187,8 @@ class AsyncIOPool(abc.ABC):
                 if connection_.is_idle_for(liveness_check_timeout):
                     with connection_deadline(connection_, deadline_):
                         try:
+                            log.debug("[#%04X]  C: <LIVENESS CHECK>",
+                                      connection_.local_port)
                             await connection_.reset()
                         except (OSError, ServiceUnavailable, SessionExpired):
                             return False
@@ -197,10 +202,8 @@ class AsyncIOPool(abc.ABC):
             if connection:
                 return connection
             # all connections in pool are in-use
-            async with self.lock:
-                connection_creator = await self._acquire_new_later(
-                    address, deadline
-                )
+            with self.lock:
+                connection_creator = self._acquire_new_later(address, deadline)
                 if connection_creator:
                     break
 
@@ -232,21 +235,55 @@ class AsyncIOPool(abc.ABC):
         :param liveness_check_timeout:
         """
 
-    async def release(self, *connections):
-        """ Release a connection back into the pool.
+    def kill_and_release(self, *connections):
+        """ Release connections back into the pool after closing them.
+
         This method is thread safe.
         """
-        async with self.lock:
+        for connection in connections:
+            if not (connection.defunct()
+                    or connection.closed()):
+                log.debug(
+                    "[#%04X]  C: <POOL> killing connection on release",
+                    connection.local_port
+                )
+                connection.kill()
+        with self.lock:
             for connection in connections:
-                if not (connection.defunct()
-                        or connection.closed()
-                        or connection.is_reset):
-                    try:
-                        await connection.reset()
-                    except (Neo4jError, DriverError, BoltError) as e:
-                        log.debug(
-                            "Failed to reset connection on release: %s", e
-                        )
+                connection.in_use = False
+            self.cond.notify_all()
+
+    async def release(self, *connections):
+        """ Release connections back into the pool.
+
+        This method is thread safe.
+        """
+        cancelled = None
+        for connection in connections:
+            if not (connection.defunct()
+                    or connection.closed()
+                    or connection.is_reset):
+                if cancelled is not None:
+                    log.debug(
+                        "[#%04X]  C: <POOL> released unclean connection",
+                        connection.local_port
+                    )
+                    connection.kill()
+                    continue
+                try:
+                    log.debug(
+                        "[#%04X]  C: <POOL> released unclean connection",
+                        connection.local_port
+                    )
+                    await connection.reset()
+                except (Neo4jError, DriverError, BoltError) as e:
+                    log.debug("Failed to reset connection on release: %r", e)
+                except asyncio.CancelledError as e:
+                    log.debug("Cancelled reset connection on release: %r", e)
+                    cancelled = e
+                    connection.kill()
+        with self.lock:
+            for connection in connections:
                 connection.in_use = False
             self.cond.notify_all()
 
@@ -262,16 +299,33 @@ class AsyncIOPool(abc.ABC):
             return sum(1 if connection.in_use else 0 for connection in connections)
 
     async def mark_all_stale(self):
-        async with self.lock:
+        with self.lock:
             for address in self.connections:
                 for connection in self.connections[address]:
                     connection.set_stale()
+
+    @classmethod
+    async def _close_connections(cls, connections):
+        cancelled = None
+        for connection in connections:
+            if cancelled is not None:
+                connection.kill()
+                continue
+            try:
+                await connection.close()
+            except asyncio.CancelledError as e:
+                # We've got cancelled: not time to gracefully close these
+                # connections. Time to burn down the place.
+                cancelled = e
+                connection.kill()
+        if cancelled is not None:
+            raise cancelled
 
     async def deactivate(self, address):
         """ Deactivate an address from the connection pool, if present, closing
         all idle connection to that address
         """
-        async with self.lock:
+        with self.lock:
             try:
                 connections = self.connections[address]
             except KeyError:  # already removed from the connection pool
@@ -284,10 +338,10 @@ class AsyncIOPool(abc.ABC):
             # again.
             for conn in closable_connections:
                 connections.remove(conn)
-            for conn in closable_connections:
-                await conn.close()
             if not self.connections[address]:
                 del self.connections[address]
+
+        await self._close_connections(closable_connections)
 
     def on_write_failure(self, address):
         raise WriteServiceUnavailable(
@@ -298,11 +352,14 @@ class AsyncIOPool(abc.ABC):
         """ Close all connections and empty the pool.
         This method is thread safe.
         """
+        log.debug("[#0000]  C: <POOL> close")
         try:
-            async with self.lock:
+            connections = []
+            with self.lock:
                 for address in list(self.connections):
                     for connection in self.connections.pop(address, ()):
-                        await connection.close()
+                        connections.append(connection)
+            await self._close_connections(connections)
         except TypeError:
             pass
 

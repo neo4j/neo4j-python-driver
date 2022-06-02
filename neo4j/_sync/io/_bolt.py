@@ -18,6 +18,7 @@
 
 import abc
 import asyncio
+import socket
 from collections import deque
 from logging import getLogger
 from time import perf_counter
@@ -370,8 +371,9 @@ class Bolt:
                 connection.hello()
             finally:
                 connection.socket.set_deadline(None)
-        except Exception:
-            connection.close_non_blocking()
+        except Exception as e:
+            log.debug("[#%04X]  C: <OPEN FAILED> %r", s.getsockname()[1], e)
+            connection.kill()
             raise
 
         return connection
@@ -678,15 +680,20 @@ class Bolt:
     def _set_defunct(self, message, error=None, silent=False):
         from ._pool import BoltPool
         direct_driver = isinstance(self.pool, BoltPool)
+        user_cancelled = isinstance(error, asyncio.CancelledError)
 
         if error:
-            log.debug("[#%04X]  %r", self.socket.getsockname()[1], error)
-        log.error(message)
+            log.debug("[#%04X]  %r", self.local_port, error)
+        if not user_cancelled:
+            log.error(message)
         # We were attempting to receive data but the connection
         # has unexpectedly terminated. So, we need to close the
         # connection from the client side, and remove the address
         # from the connection pool.
         self._defunct = True
+        if user_cancelled:
+            self.kill()
+            raise error  # cancellation error should not be re-written
         if not self._closing:
             # If we fail while closing the connection, there is no need to
             # remove the connection from the pool, nor to try to close the
@@ -694,6 +701,7 @@ class Bolt:
             self.close()
             if self.pool:
                 self.pool.deactivate(address=self.unresolved_address)
+
         # Iterate through the outstanding responses, and if any correspond
         # to COMMIT requests then raise an error to signal that we are
         # unable to confirm that the COMMIT completed successfully.
@@ -736,8 +744,9 @@ class Bolt:
             self.goodbye()
             try:
                 self._send_all()
-            except (OSError, BoltError, DriverError):
-                pass
+            except (OSError, BoltError, DriverError) as exc:
+                log.debug("[#%04X]  ignoring failed close %r",
+                          self.local_port, exc)
         log.debug("[#%04X]  C: <CLOSE>", self.local_port)
         try:
             self.socket.close()
@@ -746,18 +755,19 @@ class Bolt:
         finally:
             self._closed = True
 
-    def close_non_blocking(self):
-        """Set the socket to non-blocking and close it.
-
-        This will try to send the `GOODBYE` message (given the socket is not
-        marked as defunct). However, should the write operation require
-        blocking (e.g., a full network buffer), then the socket will be closed
-        immediately (without `GOODBYE` message).
-        """
-        if self._closed or self._closing:
+    def kill(self):
+        """Close the socket most violently. No flush, no goodbye, no mercy."""
+        if self._closed:
             return
-        self.socket.settimeout(0)
-        self.close()
+        log.debug("[#%04X]  C: <KILL>", self.local_port)
+        self._closing = True
+        try:
+            self.socket.kill()
+        except OSError as exc:
+            log.debug("[#%04X]  ignoring failed kill %r",
+                      self.local_port, exc)
+        finally:
+            self._closed = True
 
     def closed(self):
         return self._closed

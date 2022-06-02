@@ -166,3 +166,33 @@ async def test_async_r_lock_acquire_non_blocking():
     assert not lock.locked()
     await asyncio.gather(blocker(), waiter_non_blocking(), waiter())
     assert lock.locked()  # waiter_non_blocking still owns it!
+
+
+@pytest.mark.parametrize("waits", range(1, 10))
+@pytest.mark.asyncio
+async def test_async_r_lock_acquire_cancellation(waits):
+    lock = AsyncRLock()
+
+    async def acquire_task():
+        while True:
+            count = lock._count
+            cancellation = None
+            try:
+                print("try")
+                await lock.acquire(timeout=0.1)
+                print("acquired")
+            except asyncio.CancelledError as exc:
+                print("cancelled")
+                cancellation = exc
+
+            if cancellation is not None:
+                assert lock._count == count
+                raise cancellation
+            assert lock._count == count + 1
+
+    fut = asyncio.ensure_future(acquire_task())
+    for _ in range(waits):
+        await asyncio.sleep(0)
+    fut.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await fut

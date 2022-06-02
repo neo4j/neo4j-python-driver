@@ -14,13 +14,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
+import asyncio
+from functools import wraps
 from logging import getLogger
 from random import random
 from time import perf_counter
 
 from ..._async_compat import async_sleep
+from ..._async_compat.util import AsyncUtil
 from ..._conf import SessionConfig
 from ..._meta import (
     deprecated,
@@ -36,6 +37,7 @@ from ...exceptions import (
     DriverError,
     Neo4jError,
     ServiceUnavailable,
+    SessionError,
     SessionExpired,
     TransactionError,
 )
@@ -88,12 +90,17 @@ class AsyncSession(AsyncWorkspace):
         super().__init__(pool, session_config)
         assert isinstance(session_config, SessionConfig)
         self._bookmarks = self._prepare_bookmarks(session_config.bookmarks)
+        self._cancelled = False
 
     async def __aenter__(self):
         return self
 
     async def __aexit__(self, exception_type, exception_value, traceback):
         if exception_type:
+            if issubclass(exception_type, asyncio.CancelledError):
+                self._handle_cancellation(message="__aexit__")
+                self._closed = True
+                return
             self._state_failed = True
         await self.close()
 
@@ -115,11 +122,35 @@ class AsyncSession(AsyncWorkspace):
     async def _connect(self, access_mode, **access_kwargs):
         if access_mode is None:
             access_mode = self._config.default_access_mode
-        await super()._connect(access_mode, **access_kwargs)
+        try:
+            await super()._connect(access_mode, **access_kwargs)
+        except asyncio.CancelledError:
+            self._handle_cancellation(message="_connect")
+            raise
+
+    async def _disconnect(self, sync=False):
+        try:
+            return await super()._disconnect(sync=sync)
+        except asyncio.CancelledError:
+            self._handle_cancellation(message="_disconnect")
+            raise
 
     def _collect_bookmark(self, bookmark):
         if bookmark:
             self._bookmarks = bookmark,
+
+    def _handle_cancellation(self, message="General"):
+        self._cancelled = True
+        self._transaction = None
+        self._auto_result = None
+        connection = self._connection
+        self._connection = None
+        if connection:
+            log.debug("[#%04X]  %s cancellation clean-up",
+                      connection.local_port, message)
+            self._pool.kill_and_release(connection)
+        else:
+            log.debug("[#0000]  %s cancellation clean-up", message)
 
     async def _result_closed(self):
         if self._auto_result:
@@ -127,7 +158,9 @@ class AsyncSession(AsyncWorkspace):
             self._auto_result = None
             await self._disconnect()
 
-    async def _result_error(self, _):
+    async def _result_error(self, error):
+        if isinstance(error, asyncio.CancelledError):
+            return self._handle_cancellation(message="_result_error")
         if self._auto_result:
             self._auto_result = None
             await self._disconnect()
@@ -145,6 +178,7 @@ class AsyncSession(AsyncWorkspace):
         This will release any borrowed resources, such as connections, and will
         roll back any outstanding transactions.
         """
+        # if self._closed or self._cancelled:
         if self._closed:
             return
         if self._connection:
@@ -183,6 +217,29 @@ class AsyncSession(AsyncWorkspace):
             self._state_failed = False
         self._closed = True
 
+    if AsyncUtil.is_async_code:
+        def cancel(self):
+            """Cancel this session.
+
+            If the session is already closed, this method does nothing.
+            Else, it will if present, forcefully close the connection the
+            session holds. This will violently kill all work in flight.
+
+            The primary purpose of this function is to handle
+            :class:`asyncio.CancelledError`.
+
+            ::
+
+                session = await driver.session()
+                try:
+                    ...  # do some work
+                except asyncio.CancelledError:
+                    session.cancel()
+                    raise
+
+            """
+            self._handle_cancellation(message="manual cancel")
+
     async def run(self, query, parameters=None, **kwargs):
         """Run a Cypher query within an auto-commit transaction.
 
@@ -208,7 +265,10 @@ class AsyncSession(AsyncWorkspace):
         :param kwargs: additional keyword parameters
         :returns: a new :class:`neo4j.AsyncResult` object
         :rtype: AsyncResult
+
+        :raises SessionError: if the session has been closed.
         """
+        self._check_state()
         if not query:
             raise ValueError("Cannot run an empty query")
         if not isinstance(query, (str, Query)):
@@ -319,10 +379,15 @@ class AsyncSession(AsyncWorkspace):
             self._transaction = None
             await self._disconnect()
 
-    async def _transaction_error_handler(self, _):
+    async def _transaction_error_handler(self, error):
         if self._transaction:
             self._transaction = None
             await self._disconnect()
+
+    def _transaction_cancel_handler(self):
+        return self._handle_cancellation(
+            message="_transaction_cancel_handler"
+        )
 
     async def _open_transaction(
         self, *, tx_cls, access_mode, metadata=None, timeout=None
@@ -331,7 +396,8 @@ class AsyncSession(AsyncWorkspace):
         self._transaction = tx_cls(
             self._connection, self._config.fetch_size,
             self._transaction_closed_handler,
-            self._transaction_error_handler
+            self._transaction_error_handler,
+            self._transaction_cancel_handler
         )
         await self._transaction._begin(
             self._config.database, self._config.impersonated_user,
@@ -363,8 +429,10 @@ class AsyncSession(AsyncWorkspace):
         :returns: A new transaction instance.
         :rtype: AsyncTransaction
 
-        :raises TransactionError: :class:`neo4j.exceptions.TransactionError` if a transaction is already open.
+        :raises TransactionError: if a transaction is already open.
+        :raises SessionError: if the session has been closed.
         """
+        self._check_state()
         # TODO: Implement TransactionConfig consumption
 
         if self._auto_result:
@@ -384,6 +452,7 @@ class AsyncSession(AsyncWorkspace):
     async def _run_transaction(
         self, access_mode, transaction_function, *args, **kwargs
     ):
+        self._check_state()
         if not callable(transaction_function):
             raise TypeError("Unit of work is not callable")
 
@@ -410,6 +479,13 @@ class AsyncSession(AsyncWorkspace):
                 tx = self._transaction
                 try:
                     result = await transaction_function(tx, *args, **kwargs)
+                except asyncio.CancelledError:
+                    # if cancellation callback has not been called yet:
+                    if self._transaction is not None:
+                        self._handle_cancellation(
+                            message="transaction function"
+                        )
+                    raise
                 except Exception:
                     await tx._close()
                     raise
@@ -431,7 +507,11 @@ class AsyncSession(AsyncWorkspace):
             delay = next(retry_delay)
             log.warning("Transaction failed and will be retried in {}s ({})"
                         "".format(delay, "; ".join(errors[-1].args)))
-            await async_sleep(delay)
+            try:
+                await async_sleep(delay)
+            except asyncio.CancelledError:
+                log.debug("[#0000]  Retry cancelled")
+                raise
 
         if errors:
             raise errors[-1]
@@ -488,6 +568,8 @@ class AsyncSession(AsyncWorkspace):
         :param args: arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
         :return: a result as returned by the given unit of work
+
+        :raises SessionError: if the session has been closed.
         """
         return await self._run_transaction(
             READ_ACCESS, transaction_function, *args, **kwargs
@@ -523,6 +605,8 @@ class AsyncSession(AsyncWorkspace):
         :param args: key word arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
         :return: a result as returned by the given unit of work
+
+        :raises SessionError: if the session has been closed.
         """
         return await self._run_transaction(
             WRITE_ACCESS, transaction_function, *args, **kwargs

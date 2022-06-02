@@ -188,3 +188,12 @@ async def aio_benchmark(benchmark, event_loop):
             benchmark(func, *args, **kwargs)
 
     return _wrapper
+
+
+@pytest.fixture
+def watcher():
+    import sys
+
+    from neo4j.debug import watch
+    with watch("neo4j", out=sys.stdout, colour=True):
+        yield
