@@ -12,7 +12,7 @@ Point
 
 .. autoclass:: neo4j.spatial.Point
     :show-inheritance:
-    :members: srid
+    :members:
 
 
 CartesianPoint
@@ -21,9 +21,6 @@ CartesianPoint
 .. autoclass:: neo4j.spatial.CartesianPoint
     :show-inheritance:
 
-    .. property:: srid
-        :type: int
-
     .. property:: x
         :type: float
 
@@ -39,7 +36,7 @@ CartesianPoint
 
         Same value as ``point[2]``.
 
-        Only available if the point is in space.
+        Only available if the point is in 3D space.
 
 
 Examples
@@ -47,16 +44,20 @@ Examples
 
 .. code-block:: python
 
-    point=CartesianPoint((1.23, 4.56)
+    from neo4j.spatial import CartesianPoint
 
-    print(point.x, point.y)
+    point = CartesianPoint((1.23, 4.56)
+    print(point.x, point.y, point.srid)
+    # 1.23 4.56 7203
 
 
 .. code-block:: python
 
-    point=CartesianPoint((1.23, 4.56, 7.89)
+    from neo4j.spatial import CartesianPoint
 
-    print(point.x, point.y, point.z)
+    point = CartesianPoint((1.23, 4.56, 7.89)
+    print(point.x, point.y, point.z, point.srid)
+    # 1.23 4.56 7.8 9157
 
 
 WGS84Point
@@ -65,9 +66,6 @@ WGS84Point
 .. autoclass:: neo4j.spatial.WGS84Point
     :show-inheritance:
 
-    .. property:: srid
-        :type: int
-
     .. property:: x
         :type: float
 
@@ -83,7 +81,7 @@ WGS84Point
 
         Same value as ``point[2]``.
 
-        Only available if the point is in space.
+        Only available if the point is in 3D space.
 
     .. property:: longitude
         :type: float
@@ -100,7 +98,7 @@ WGS84Point
 
         Alias for :attr:`.z`.
 
-        Only available if the point is in space.
+        Only available if the point is in 3D space.
 
 
 Examples
@@ -108,11 +106,17 @@ Examples
 
 .. code-block:: python
 
-    point=WGS84Point((1.23, 4.56))
-    print(point.longitude, point.latitude)
+    from neo4j.spatial import WGS84Point
+
+    point = WGS84Point((1.23, 4.56))
+    print(point.longitude, point.latitude, point.srid)
+    # 1.23 4.56 4326
 
 
 .. code-block:: python
 
-    point=WGS84Point((1.23, 4.56, 7.89))
-    print(point.longitude, point.latitude, point.height)
+    from neo4j.spatial import WGS84Point
+
+    point = WGS84Point((1.23, 4.56, 7.89))
+    print(point.longitude, point.latitude, point.height, point.srid)
+    # 1.23 4.56 7.89 4979

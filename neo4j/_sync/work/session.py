@@ -468,9 +468,12 @@ class Session(Workspace):
                     if len(values) >= 2:
                         break
                     values.append(record.values())
+                # or shorter: values = [record.values()
+                #                       for record in result.fetch(2)]
+
                 # discard the remaining records if there are any
-                info = result.consume()
-                # use the info for logging etc.
+                summary = result.consume()
+                # use the summary for logging etc.
                 return values
 
             with driver.session() as session:
