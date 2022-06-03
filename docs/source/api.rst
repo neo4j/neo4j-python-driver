@@ -1186,7 +1186,7 @@ Neo4j Execution Errors
 
 
 .. autoclass:: neo4j.exceptions.Neo4jError
-    :members: message, code, is_retriable
+    :members: message, code, is_retriable, is_retryable
 
 
 .. autoclass:: neo4j.exceptions.ClientError
@@ -1244,7 +1244,7 @@ Connectivity Errors
 
 
 .. autoclass:: neo4j.exceptions.DriverError
-    :members: is_retriable
+    :members: is_retryable
 
 .. autoclass:: neo4j.exceptions.TransactionError
     :show-inheritance:

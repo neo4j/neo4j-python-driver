@@ -420,7 +420,7 @@ class Session(Workspace):
                     tx._commit()
             except (DriverError, Neo4jError) as error:
                 self._disconnect()
-                if not error.is_retriable():
+                if not error.is_retryable():
                     raise
                 errors.append(error)
             else:

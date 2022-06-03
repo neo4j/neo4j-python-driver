@@ -98,6 +98,8 @@
   - ANSI colour codes for log output are now opt-in
   - Prepend log format with log-level (if colours are disabled)
   - Prepend log format with thread name and id
+- Deprecated `neo4j.exceptions.Neo4jError.is_retriable()`.  
+  Use `neo4j.exceptions.Neo4jError.is_retryable()` instead.
 
 
 ## Version 4.4
