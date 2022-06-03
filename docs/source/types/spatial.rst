@@ -46,7 +46,7 @@ Examples
 
     from neo4j.spatial import CartesianPoint
 
-    point = CartesianPoint((1.23, 4.56)
+    point = CartesianPoint((1.23, 4.56))
     print(point.x, point.y, point.srid)
     # 1.23 4.56 7203
 
@@ -55,7 +55,7 @@ Examples
 
     from neo4j.spatial import CartesianPoint
 
-    point = CartesianPoint((1.23, 4.56, 7.89)
+    point = CartesianPoint((1.23, 4.56, 7.89))
     print(point.x, point.y, point.z, point.srid)
     # 1.23 4.56 7.8 9157
 
