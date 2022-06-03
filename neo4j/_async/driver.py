@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+import warnings
+
 from .._async_compat.util import AsyncUtil
 from .._conf import (
     TrustAll,
@@ -36,6 +38,8 @@ from ..conf import (
 from ..meta import (
     deprecation_warn,
     experimental,
+    experimental_warn,
+    ExperimentalWarning,
     unclosed_resource_warn,
 )
 
@@ -310,22 +314,34 @@ class AsyncDriver:
             Even if this method raises an exception, the driver still needs to
             be closed via :meth:`close` to free up all resources.
 
+        :param config: accepts the same configuration key-word arguments as
+            :meth:`session`.
+
+            .. warning::
+                All configuration key-word arguments are experimental.
+                They might be changed or removed in any future version without
+                prior notice.
+
         :raises DriverError: if the driver cannot connect to the remote.
             Use the exception to further understand the cause of the
             connectivity problem.
 
-        .. versionchanged:: 5.0 the config parameters will be removed in
-            version 6 0. It has no effect starting with version 5.0.
+        .. versionchanged:: 5.0
+            The undocumented return value has been removed.
+            If you need information about the remote server, use
+            :meth:`get_server_info` instead.
         """
         if config:
-            deprecation_warn(
-                "verify_connectivity() will not accept any configuration "
-                "parameters starting with version 6.0."
+            experimental_warn(
+                "All configuration key-word arguments to "
+                "verify_connectivity() are experimental. They might be "
+                "changed or removed in any future version without prior "
+                "notice."
             )
+        async with self.session(**config) as session:
+            await session._get_server_info()
 
-        await self.get_server_info()
-
-    async def get_server_info(self):
+    async def get_server_info(self, **config):
         """Get information about the connected Neo4j server.
 
         Try to establish a working read connection to the remote server or a
@@ -339,6 +355,14 @@ class AsyncDriver:
             Even if this method raises an exception, the driver still needs to
             be closed via :meth:`close` to free up all resources.
 
+        :param config: accepts the same configuration key-word arguments as
+            :meth:`session`.
+
+            .. warning::
+                All configuration key-word arguments are experimental.
+                They might be changed or removed in any future version without
+                prior notice.
+
         :rtype: ServerInfo
 
         :raises DriverError: if the driver cannot connect to the remote.
@@ -347,7 +371,14 @@ class AsyncDriver:
 
         .. versionadded:: 5.0
         """
-        async with self.session() as session:
+        if config:
+            experimental_warn(
+                "All configuration key-word arguments to "
+                "verify_connectivity() are experimental. They might be "
+                "changed or removed in any future version without prior "
+                "notice."
+            )
+        async with self.session(**config) as session:
             return await session._get_server_info()
 
     @experimental("Feature support query, based on Bolt protocol version and Neo4j server version will change in the future.")

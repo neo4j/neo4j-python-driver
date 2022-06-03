@@ -77,6 +77,10 @@ class ExperimentalWarning(Warning):
     """
 
 
+def experimental_warn(message, stack_level=2):
+    warn(message, category=ExperimentalWarning, stacklevel=stack_level)
+
+
 def experimental(message):
     """ Decorator for tagging experimental functions and methods.
 
@@ -92,16 +96,14 @@ def experimental(message):
         if asyncio.iscoroutinefunction(f):
             @wraps(f)
             async def inner(*args, **kwargs):
-                from warnings import warn
-                warn(message, category=ExperimentalWarning, stacklevel=2)
+                experimental_warn(message, stack_level=3)
                 return await f(*args, **kwargs)
 
             return inner
         else:
             @wraps(f)
             def inner(*args, **kwargs):
-                from warnings import warn
-                warn(message, category=ExperimentalWarning, stacklevel=2)
+                experimental_warn(message, stack_level=3)
                 return f(*args, **kwargs)
 
             return inner
