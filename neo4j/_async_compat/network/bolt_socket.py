@@ -453,10 +453,10 @@ class BoltSocket:
             selector.select(1)
         try:
             data = s.recv(4)
-        except OSError:
+        except OSError as e:
             raise ServiceUnavailable(
                 "Failed to read any data from server {!r} "
-                "after connected".format(resolved_address))
+                "after connected".format(resolved_address)) from e
         data_size = len(data)
         if data_size == 0:
             # If no data is returned after a successful select
