@@ -50,6 +50,7 @@ from ...exceptions import (
     SessionExpired,
     WriteServiceUnavailable,
 )
+from ...metrics import ConnectionPoolMetrics
 from ...routing import RoutingTable
 from ._bolt import AsyncBolt
 
@@ -73,6 +74,7 @@ class AsyncIOPool(abc.ABC):
         self.connections = defaultdict(deque)
         self.lock = AsyncRLock()
         self.cond = AsyncCondition(self.lock)
+        self.metrics = ConnectionPoolMetrics()
 
     async def __aenter__(self):
         return self
@@ -91,78 +93,99 @@ class AsyncIOPool(abc.ABC):
         if timeout is None:
             timeout = self.workspace_config.connection_acquisition_timeout
 
-        async with self.lock:
-            def time_remaining():
-                t = timeout - (perf_counter() - t0)
-                return t if t > 0 else 0
+        try:
+            async with self.lock:
+                def time_remaining():
+                    t = timeout - (perf_counter() - t0)
+                    return t if t > 0 else 0
 
-            while True:
-                # try to find a free connection in pool
-                for connection in list(self.connections.get(address, [])):
-                    if (connection.closed() or connection.defunct()
-                            or (connection.stale() and not connection.in_use)):
-                        # `close` is a noop on already closed connections.
-                        # This is to make sure that the connection is
-                        # gracefully closed, e.g. if it's just marked as
-                        # `stale` but still alive.
-                        if log.isEnabledFor(logging.DEBUG):
-                            log.debug(
-                                "[#%04X]  C: <POOL> removing old connection "
-                                "(closed=%s, defunct=%s, stale=%s, in_use=%s)",
-                                connection.local_port,
-                                connection.closed(), connection.defunct(),
-                                connection.stale(), connection.in_use
-                            )
-                        await connection.close()
+                while True:
+                    # try to find a free connection in pool
+                    for connection in list(self.connections.get(address, [])):
+                        if (connection.closed() or connection.defunct()
+                                or (connection.stale() and not connection.in_use)):
+                            # `close` is a noop on already closed connections.
+                            # This is to make sure that the connection is
+                            # gracefully closed, e.g. if it's just marked as
+                            # `stale` but still alive.
+                            if log.isEnabledFor(logging.DEBUG):
+                                log.debug(
+                                    "[#%04X]  C: <POOL> removing old connection "
+                                    "(closed=%s, defunct=%s, stale=%s, in_use=%s)",
+                                    connection.local_port,
+                                    connection.closed(), connection.defunct(),
+                                    connection.stale(), connection.in_use
+                                )
+                            await connection.close()
+                            self.metrics.closed += 1
+                            try:
+                                self.connections.get(address, []).remove(connection)
+                            except ValueError:
+                                # If closure fails (e.g. because the server went
+                                # down), all connections to the same address will
+                                # be removed. Therefore, we silently ignore if the
+                                # connection isn't in the pool anymore.
+                                pass
+                            continue
+                        if not connection.in_use:
+                            connection.in_use = True
+                            self.metrics.in_use += 1
+                            self.metrics.acquired += 1
+                            self.metrics.idle -= 1
+                            connection.in_use_time_start = perf_counter()
+                            return connection
+                    # all connections in pool are in-use
+                    connections = self.connections[address]
+                    max_pool_size = self.pool_config.max_connection_pool_size
+                    infinite_pool_size = (max_pool_size < 0
+                                          or max_pool_size == float("inf"))
+                    can_create_new_connection = (
+                            infinite_pool_size
+                            or len(connections) < max_pool_size
+                    )
+                    if can_create_new_connection:
+                        timeout = min(self.pool_config.connection_timeout,
+                                      time_remaining())
                         try:
-                            self.connections.get(address, []).remove(connection)
-                        except ValueError:
-                            # If closure fails (e.g. because the server went
-                            # down), all connections to the same address will
-                            # be removed. Therefore, we silently ignore if the
-                            # connection isn't in the pool anymore.
-                            pass
-                        continue
-                    if not connection.in_use:
-                        connection.in_use = True
-                        return connection
-                # all connections in pool are in-use
-                connections = self.connections[address]
-                max_pool_size = self.pool_config.max_connection_pool_size
-                infinite_pool_size = (max_pool_size < 0
-                                      or max_pool_size == float("inf"))
-                can_create_new_connection = (
-                        infinite_pool_size
-                        or len(connections) < max_pool_size
-                )
-                if can_create_new_connection:
-                    timeout = min(self.pool_config.connection_timeout,
-                                  time_remaining())
-                    try:
-                        connection = await self.opener(address, timeout)
-                    except ServiceUnavailable:
-                        await self.remove(address)
-                        raise
-                    else:
-                        connection.pool = self
-                        connection.in_use = True
-                        connections.append(connection)
-                        return connection
+                            self.metrics.creating += 1
+                            connection_open_start_time = perf_counter()
+                            connection = await self.opener(address, timeout)
+                        except ServiceUnavailable:
+                            self.metrics.failed_to_create += 1
+                            await self.remove(address)
+                            raise
+                        else:
+                            connection.pool = self
+                            connection.in_use = True
+                            self.metrics.in_use += 1
+                            self.metrics.created += 1
+                            connection.in_use_time_start = perf_counter()
+                            connections.append(connection)
+                            return connection
+                        finally:
+                            self.metrics.creating -= 1
+                            connection_open_time = perf_counter() - connection_open_start_time
+                            self.metrics.total_connection_time += connection_open_time
 
-                # failed to obtain a connection from pool because the
-                # pool is full and no free connection in the pool
-                if time_remaining():
-                    await self.cond.wait(time_remaining())
-                    # if timed out, then we throw error. This time
-                    # computation is needed, as with python 2.7, we
-                    # cannot tell if the condition is notified or
-                    # timed out when we come to this line
-                    if not time_remaining():
+                    # failed to obtain a connection from pool because the
+                    # pool is full and no free connection in the pool
+                    if time_remaining():
+                        await self.cond.wait(time_remaining())
+                        # if timed out, then we throw error. This time
+                        # computation is needed, as with python 2.7, we
+                        # cannot tell if the condition is notified or
+                        # timed out when we come to this line
+                        if not time_remaining():
+                            self.metrics.timed_out_to_acquire += 1
+                            raise ClientError("Failed to obtain a connection from pool "
+                                              "within {!r}s".format(timeout))
+                    else:
+                        self.metrics.timed_out_to_acquire += 1
                         raise ClientError("Failed to obtain a connection from pool "
                                           "within {!r}s".format(timeout))
-                else:
-                    raise ClientError("Failed to obtain a connection from pool "
-                                      "within {!r}s".format(timeout))
+        finally:
+            acquisition_time = perf_counter() - t0
+            self.metrics.total_acquisition_time += acquisition_time
 
     @abc.abstractmethod
     async def acquire(
@@ -192,6 +215,12 @@ class AsyncIOPool(abc.ABC):
                             "Failed to reset connection on release: %s", e
                         )
                 connection.in_use = False
+                self.metrics.in_use -= 1
+                self.metrics.idle += 1
+                self.metrics.total_in_use_count += 1
+                connection_in_use_time = perf_counter() - connection.in_use_time_start
+                self.metrics.total_in_use_time += connection_in_use_time
+                connection.in_use_time_start = 0.0
             self.cond.notify_all()
 
     def in_use_connection_count(self, address):
@@ -243,6 +272,7 @@ class AsyncIOPool(abc.ABC):
             for connection in self.connections.pop(address, ()):
                 try:
                     await connection.close()
+                    self.metrics.closed += 1
                 except OSError:
                     pass
 
