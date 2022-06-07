@@ -287,6 +287,9 @@ class AsyncIOPool(abc.ABC):
         except TypeError:
             pass
 
+    def get_metrics(self):
+        return self.metrics
+
 
 class AsyncBoltPool(AsyncIOPool):
 
