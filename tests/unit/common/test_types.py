@@ -477,12 +477,12 @@ def test_path_v2_repr(legacy_id):
 
     )
     alice_knows_bob = gh.hydrate_relationship(
-        1, alice.id, bob.id, "KNOWS", {"since": 1999},
+        1, 1, 2, "KNOWS", {"since": 1999},
         "1" if legacy_id else "alice_knows_bob",
         alice.element_id, bob.element_id
     )
     carol_dislikes_bob = gh.hydrate_relationship(
-        2, carol.id, bob.id, "DISLIKES", {},
+        2, 3, 2, "DISLIKES", {},
         "2" if legacy_id else "carol_dislikes_bob",
         carol.element_id, bob.element_id
     )
@@ -493,3 +493,77 @@ def test_path_v2_repr(legacy_id):
         f"end=<Node element_id={carol.element_id!r} "
         "labels=frozenset({'Person'}) properties={'name': 'Carol'}> size=2>"
     )
+
+
+def test_graph_views_v1():
+    g = Graph()
+    gh = Graph.Hydrator(g)
+    alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"})
+    bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob"})
+    carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol"})
+    alice_knows_bob = gh.hydrate_relationship(1, 1, 2, "KNOWS",
+                                              {"since": 1999})
+    carol_dislikes_bob = gh.hydrate_relationship(2, 3, 2, "DISLIKES", {})
+
+    assert len(g.nodes) == 3
+    for id_, node in ((1, alice), (2, bob), (3, carol)):
+        with pytest.warns(DeprecationWarning, match=r"element_id \(str\)"):
+            assert g.nodes[id_] == node
+        assert g.nodes[str(id_)] == node
+
+    assert len(g.relationships) == 2
+    for id_, rel in ((1, alice_knows_bob), (2, carol_dislikes_bob)):
+        with pytest.warns(DeprecationWarning, match=r"element_id \(str\)"):
+            assert g.relationships[id_] == rel
+        assert g.relationships[str(id_)] == rel
+
+
+@pytest.mark.parametrize("legacy_id", (True, False))
+def test_graph_views_v2_repr(legacy_id):
+    g = Graph()
+    gh = Graph.Hydrator(g)
+
+    alice_element_id = "1" if legacy_id else "alice"
+    bob_element_id = "2" if legacy_id else "bob"
+    carol_element_id = "3" if legacy_id else "carol"
+
+    alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"}, alice_element_id)
+    bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob"}, bob_element_id)
+    carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol"}, carol_element_id)
+
+    alice_knows_bob_element_id = "1" if legacy_id else "alice_knows_bob"
+    carol_dislikes_bob_element_id = "2" if legacy_id else "carol_dislikes_bob"
+
+    alice_knows_bob = gh.hydrate_relationship(
+        1, 1, 2, "KNOWS", {"since": 1999}, alice_knows_bob_element_id,
+        alice_element_id, bob_element_id
+    )
+    carol_dislikes_bob = gh.hydrate_relationship(
+        2, 3, 2, "DISLIKES", {}, carol_dislikes_bob_element_id,
+        carol_element_id, bob_element_id
+    )
+
+    assert len(g.nodes) == 3
+    for id_, element_id, node in (
+        (1, alice_element_id, alice),
+        (2, bob_element_id, bob),
+        (3, carol_element_id, carol)
+    ):
+        with pytest.warns(DeprecationWarning, match=r"element_id \(str\)"):
+            assert g.nodes[id_] == node
+        assert g.nodes[element_id] == node
+        if not legacy_id:
+            with pytest.raises(KeyError):
+                g.nodes[str(id_)]
+
+    assert len(g.relationships) == 2
+    for id_, element_id, rel in (
+        (1, alice_knows_bob_element_id, alice_knows_bob),
+        (2, carol_dislikes_bob_element_id, carol_dislikes_bob)
+    ):
+        with pytest.warns(DeprecationWarning, match=r"element_id \(str\)"):
+            assert g.relationships[id_] == rel
+        assert g.relationships[element_id] == rel
+        if not legacy_id:
+            with pytest.raises(KeyError):
+                g.relationships[str(id_)]

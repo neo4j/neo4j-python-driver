@@ -377,7 +377,8 @@ def test_serverinfo_initialization():
     assert server_info.address is address
     assert server_info.protocol_version is version
     assert server_info.agent is None
-    assert server_info.connection_id is None
+    with pytest.warns(DeprecationWarning):
+        assert server_info.connection_id is None
 
 
 @pytest.mark.parametrize(
