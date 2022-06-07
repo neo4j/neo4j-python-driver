@@ -468,9 +468,12 @@ class AsyncSession(AsyncWorkspace):
                     if len(values) >= 2:
                         break
                     values.append(record.values())
+                # or shorter: values = [record.values()
+                #                       for record in await result.fetch(2)]
+
                 # discard the remaining records if there are any
-                info = await result.consume()
-                # use the info for logging etc.
+                summary = await result.consume()
+                # use the summary for logging etc.
                 return values
 
             async with driver.session() as session:

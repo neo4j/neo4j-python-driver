@@ -89,13 +89,6 @@ class AsyncBolt5x0(AsyncBolt):
     def der_encoded_server_certificate(self):
         return self.socket.getpeercert(binary_form=True)
 
-    @property
-    def local_port(self):
-        try:
-            return self.socket.getsockname()[1]
-        except OSError:
-            return 0
-
     def get_base_headers(self):
         headers = {"user_agent": self.user_agent}
         if self.routing_context is not None:

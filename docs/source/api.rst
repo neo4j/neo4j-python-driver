@@ -275,8 +275,8 @@ For example:
            raise gaierror("Unexpected socket address %r" % socket_address)
 
    driver = GraphDatabase.driver("neo4j://example.com:9999",
-                auth=("neo4j", "password"),
-                resolver=custom_resolver)
+                                 auth=("neo4j", "password"),
+                                 resolver=custom_resolver)
 
 
 :Default: :const:`None`
@@ -541,9 +541,9 @@ Name of the database to query.
 
 
 .. py:attribute:: neo4j.DEFAULT_DATABASE
-   :noindex:
+    :noindex:
 
-   This will use the default database on the Neo4j instance.
+    This will use the default database on the Neo4j instance.
 
 
 .. Note::
@@ -558,9 +558,10 @@ Name of the database to query.
 
 .. code-block:: python
 
-   from neo4j import GraphDatabase
-   driver = GraphDatabase.driver(uri, auth=(user, password))
-   session = driver.session(database="system")
+    from neo4j import GraphDatabase
+
+    driver = GraphDatabase.driver(uri, auth=(user, password))
+    session = driver.session(database="system")
 
 
 :Default: ``neo4j.DEFAULT_DATABASE``
@@ -593,9 +594,10 @@ context of the impersonated user. For this, the user for which the
 
 .. code-block:: python
 
-   from neo4j import GraphDatabase
-   driver = GraphDatabase.driver(uri, auth=(user, password))
-   session = driver.session(impersonated_user="alice")
+    from neo4j import GraphDatabase
+
+    driver = GraphDatabase.driver(uri, auth=(user, password))
+    session = driver.session(impersonated_user="alice")
 
 
 :Default: :const:`None`
@@ -740,8 +742,8 @@ Example:
     def set_person_name(tx, node_id, name):
         query = "MATCH (a:Person) WHERE id(a) = $id SET a.name = $name"
         result = tx.run(query, id=node_id, name=name)
-        info = result.consume()
-        # use the info for logging etc.
+        summary = result.consume()
+        # use the summary for logging etc.
 
 .. _managed-transactions-ref:
 
@@ -1348,6 +1350,49 @@ following code:
     warnings.filterwarnings("ignore", category=ExperimentalWarning)
 
     ...
+
+
+*******
+Logging
+*******
+
+The driver offers logging for debugging purposes. It is not recommended to
+enable logging for anything other than debugging. For instance, if the driver is
+not able to connect to the database server or if undesired behavior is observed.
+
+There are different ways of enabling logging as listed below.
+
+Simple Approach
+===============
+
+.. autofunction:: neo4j.debug.watch(*logger_names, level=logging.DEBUG, out=sys.stderr, colour=False)
+
+Context Manager
+===============
+
+.. autoclass:: neo4j.debug.Watcher(*logger_names, default_level=logging.DEBUG, default_out=sys.stderr, colour=False)
+    :members:
+    :special-members: __enter__, __exit__
+
+Full Controll
+=============
+
+.. code-block:: python
+
+    import logging
+    import sys
+
+    # create a handler, e.g. to log to stdout
+    handler = logging.StreamHandler(sys.stdout)
+    # configure the handler to your liking
+    handler.setFormatter(logging.Formatter(
+        "%(threadName)s(%(thread)d) %(asctime)s  %(message)s"
+    ))
+    # add the handler to the driver's logger
+    logging.getLogger("neo4j").addHandler(handler)
+    # make sure the logger logs on the desired log level
+    logging.getLogger("neo4j").setLevel(logging.DEBUG)
+    # from now on, DEBUG logging to stderr is enabled in the driver
 
 
 *********
