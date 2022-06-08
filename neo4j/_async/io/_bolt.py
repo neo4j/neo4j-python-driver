@@ -250,6 +250,7 @@ class AsyncBolt:
                     custom_resolver=config.resolver,
                     ssl_context=config.get_ssl_context(),
                     keep_alive=config.keep_alive,
+                    driver_socket_timeout=config.driver_socket_timeout
                 )
         except (ServiceUnavailable, SessionExpired, BoltHandshakeError):
             return None
@@ -280,6 +281,7 @@ class AsyncBolt:
                 custom_resolver=pool_config.resolver,
                 ssl_context=pool_config.get_ssl_context(),
                 keep_alive=pool_config.keep_alive,
+                driver_socket_timeout=pool_config.driver_socket_timeout
             )
 
         # Carry out Bolt subclass imports locally to avoid circular dependency
