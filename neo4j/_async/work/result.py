@@ -207,7 +207,7 @@ class AsyncResult:
     async def __aiter__(self):
         """Iterator returning Records.
         :returns: Record, it is an immutable ordered collection of key-value pairs.
-        :rtype: :class:`neo4j.AsyncRecord`
+        :rtype: :class:`neo4j.Record`
         """
         while self._record_buffer or self._attached:
             if self._record_buffer:
@@ -316,17 +316,19 @@ class AsyncResult:
 
         Example::
 
-            def create_node_tx(tx, name):
+            async def create_node_tx(tx, name):
                 result = await tx.run(
                     "CREATE (n:ExampleNode { name: $name }) RETURN n", name=name
                 )
                 record = await result.single()
                 value = record.value()
-                info = await result.consume()
-                return value, info
+                summary = await result.consume()
+                return value, summary
 
             async with driver.session() as session:
-                node_id, info = await session.write_transaction(create_node_tx, "example")
+                node_id, summary = await session.write_transaction(
+                    create_node_tx, "example"
+                )
 
         Example::
 
@@ -337,13 +339,16 @@ class AsyncResult:
                     if len(values) >= 2:
                         break
                     values.append(record.values())
-                # discard the remaining records if there are any
-                info = await result.consume()
-                # use the info for logging etc.
-                return values, info
+                # or shorter: values = [record.values()
+                #                       for record in await result.fetch(2)]
 
-            with driver.session() as session:
-                values, info = session.read_transaction(get_two_tx)
+                # discard the remaining records if there are any
+                summary = await result.consume()
+                # use the summary for logging etc.
+                return values, summary
+
+            async with driver.session() as session:
+                values, summary = await session.read_transaction(get_two_tx)
 
         :returns: The :class:`neo4j.ResultSummary` for this result
 
@@ -424,7 +429,11 @@ class AsyncResult:
         :param n: the maximum number of records to fetch.
         :type n: int
 
-        :returns: list of :class:`neo4j.AsyncRecord`
+        :returns: list of :class:`neo4j.Record`
+
+        :raises ResultConsumedError: if the transaction from which this result
+            was obtained has been closed or the Result has been explicitly
+            consumed.
 
         .. versionadded:: 5.0
         """
@@ -438,7 +447,8 @@ class AsyncResult:
         """Obtain the next record from this result without consuming it.
         This leaves the record in the buffer for further processing.
 
-        :returns: the next :class:`.Record` or :const:`None` if none remain
+        :returns: the next :class:`neo4j.Record` or :const:`None` if none
+            remain.
 
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
@@ -474,7 +484,7 @@ class AsyncResult:
     async def value(self, key=0, default=None):
         """Helper function that return the remainder of the result as a list of values.
 
-        See :class:`neo4j.AsyncRecord.value`
+        See :class:`neo4j.Record.value`
 
         :param key: field to return for each remaining record. Obtain a single value from the record by index or key.
         :param default: default value, used if the index of key is unavailable
@@ -494,7 +504,7 @@ class AsyncResult:
     async def values(self, *keys):
         """Helper function that return the remainder of the result as a list of values lists.
 
-        See :class:`neo4j.AsyncRecord.values`
+        See :class:`neo4j.Record.values`
 
         :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
 
@@ -513,7 +523,7 @@ class AsyncResult:
     async def data(self, *keys):
         """Helper function that return the remainder of the result as a list of dictionaries.
 
-        See :class:`neo4j.AsyncRecord.data`
+        See :class:`neo4j.Record.data`
 
         :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
 

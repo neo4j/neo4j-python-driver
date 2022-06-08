@@ -6,8 +6,8 @@
 - Python 3.6 support has been dropped.
 - `Result`, `Session`, and `Transaction` can no longer be imported from
   `neo4j.work`. They should've been imported from `neo4j` all along.  
-  Remark: It's recommended to import everything needed directly from `noe4j`,
-  not its submodules or subpackages.
+  Remark: It's recommended to import everything needed directly from `noe4j` if
+  available, not its submodules or subpackages.
 - Experimental pipelines feature has been removed.
 - Experimental async driver has been added.
 - `ResultSummary.server.version_info` has been removed.  
@@ -51,9 +51,9 @@
       Use `hour_minute_second_nanosecond` instead.
     - The property `second` returns an `int` instead of a `float`.  
       Use `nanosecond` to get the sub-second information.
-- Creation of a driver with `bolt[+s[sc]]://` scheme has been deprecated and
-  will raise an error in the Future. The routing context was and will be
-  silently ignored until then.
+- Creation of a driver with `bolt[+s[sc]]://` scheme and a routing context has
+  been deprecated and will raise an error in the Future. The routing context was
+  and will be silently ignored until then.
 - Bookmarks
   - `Session.last_bookmark` was deprecated. Its behaviour is partially incorrect
     and cannot be fixed without breaking its signature.  
@@ -94,6 +94,10 @@
 - `ServerInfo.connection_id` has been deprecated and will be removed in a
   future release. There is no replacement as this is considered internal
   information.
+- Output of logging helper `neo4j.debug.watch` changes
+  - ANSI colour codes for log output are now opt-in
+  - Prepend log format with log-level (if colours are disabled)
+  - Prepend log format with thread name and id
 
 
 ## Version 4.4

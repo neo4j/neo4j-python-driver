@@ -30,6 +30,8 @@ class TrustSystemCAs(TrustStore):
 
     For example::
 
+        import neo4j
+
         driver = neo4j.GraphDatabase.driver(
             url, auth=auth, trusted_certificates=neo4j.TrustSystemCAs()
         )
@@ -47,6 +49,8 @@ class TrustAll(TrustStore):
 
 
     For example::
+
+        import neo4j
 
         driver = neo4j.GraphDatabase.driver(
             url, auth=auth, trusted_certificates=neo4j.TrustAll()
@@ -68,6 +72,8 @@ class TrustCustomCAs(TrustStore):
         certificate.
 
     For example::
+
+        import neo4j
 
         driver = neo4j.GraphDatabase.driver(
             url, auth=auth,

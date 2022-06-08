@@ -121,7 +121,7 @@ async def test_bolt_connection_ping_timeout():
     assert protocol_version is None
 
 
-@pytest.fixture
+@pytest.yield_fixture
 async def pool():
     async with AsyncFakeBoltPool(("127.0.0.1", 7687)) as pool:
         yield pool

@@ -20,7 +20,8 @@ import pytest
 
 from neo4j._exceptions import BoltHandshakeError
 from neo4j.exceptions import ServiceUnavailable
-from tests.integration.examples import DriverSetupExample
+
+from . import DriverSetupExample
 
 
 # isort: off
@@ -39,7 +40,7 @@ class ConfigSecureExample(DriverSetupExample):
     def __init__(self, uri, auth):
         # trusted_certificates:
         # neo4j.TrustSystemCAs()
-        #     (default) trust certificates from system store)
+        #     (default) trust certificates from system store
         # neo4j.TrustAll()
         #     trust all certificates
         # neo4j.TrustCustomCAs("<path>", ...)

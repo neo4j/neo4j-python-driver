@@ -24,7 +24,7 @@ class Query:
     :param metadata: metadata attached to the query.
     :type metadata: dict
     :param timeout: seconds.
-    :type timeout: float or None
+    :type timeout: float or :const:`None`
     """
     def __init__(self, text, metadata=None, timeout=None):
         self.text = text
@@ -40,6 +40,8 @@ def unit_of_work(metadata=None, timeout=None):
     """This function is a decorator for transaction functions that allows extra control over how the transaction is carried out.
 
     For example, a timeout may be applied::
+
+        from neo4j import unit_of_work
 
         @unit_of_work(timeout=100)
         def count_people_tx(tx):
@@ -62,7 +64,7 @@ def unit_of_work(metadata=None, timeout=None):
         Value should not represent a negative duration.
         A zero duration will make the transaction execute indefinitely.
         None will use the default timeout configured in the database.
-    :type timeout: float or None
+    :type timeout: float or :const:`None`
     """
 
     def wrapper(f):
