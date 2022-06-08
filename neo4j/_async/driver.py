@@ -32,6 +32,7 @@ from ..conf import (
     WorkspaceConfig,
 )
 from ..meta import experimental
+from ..metrics import ConnectionPoolMetrics
 
 
 class AsyncGraphDatabase:
@@ -378,3 +379,7 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
             if val is not None:
                 return routing_info
         raise ServiceUnavailable("Could not connect to any routing servers.")
+
+    def metrics(self) -> ConnectionPoolMetrics:
+        return self._pool.get_metrics()
+
