@@ -58,7 +58,7 @@ log = logging.getLogger("neo4j")
 class AsyncBoltSocket:
     Bolt = None
 
-    def __init__(self, reader, protocol, writer):  # , loop):
+    def __init__(self, reader, protocol, writer, driver_socket_timeout=None):  # , loop):
         self._reader = reader  # type: asyncio.StreamReader
         self._protocol = protocol  # type: asyncio.StreamReaderProtocol
         self._writer = writer  # type: asyncio.StreamWriter
@@ -66,7 +66,7 @@ class AsyncBoltSocket:
         # 0 - non-blocking
         # None infinitely blocking
         # int - seconds to wait for data
-        self._timeout = None
+        self._timeout = driver_socket_timeout
 
     async def _wait_for_io(self, io_fut):
         if self._timeout is not None and self._timeout <= 0:
@@ -121,7 +121,7 @@ class AsyncBoltSocket:
         self._writer.close()
 
     @classmethod
-    async def _connect_secure(cls, resolved_address, timeout, keep_alive, ssl):
+    async def _connect_secure(cls, resolved_address, timeout, keep_alive, ssl, driver_socket_timeout=None):
         """
 
         :param resolved_address:
@@ -185,7 +185,7 @@ class AsyncBoltSocket:
                         address=(resolved_address.host_name, local_port)
                     )
 
-            return cls(reader, protocol, writer)
+            return cls(reader, protocol, writer, driver_socket_timeout=driver_socket_timeout)
 
         except asyncio.TimeoutError:
             log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
@@ -289,7 +289,7 @@ class AsyncBoltSocket:
 
     @classmethod
     async def connect(cls, address, *, timeout, custom_resolver, ssl_context,
-                      keep_alive):
+                      keep_alive, driver_socket_timeout=None):
         """ Connect and perform a handshake and return a valid Connection object,
         assuming a protocol version can be agreed.
         """
@@ -306,7 +306,7 @@ class AsyncBoltSocket:
             s = None
             try:
                 s = await cls._connect_secure(
-                    resolved_address, timeout, keep_alive, ssl_context
+                    resolved_address, timeout, keep_alive, ssl_context, driver_socket_timeout=driver_socket_timeout
                 )
                 return await s._handshake(resolved_address)
             except (BoltError, DriverError, OSError) as error:
