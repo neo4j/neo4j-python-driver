@@ -147,12 +147,12 @@ class TestMixedConnectionPoolTestCase:
                     == len([cx for cx in connections if not cx.in_use]))
 
     def test_multithread(self):
-        def acquire_release_conn(pool, address, acquired_counter,
-                                 release_event):
-            conn = pool._acquire(address, 3, None)
-            acquired_counter.increment()
-            release_event.wait()
-            pool.release(conn)
+        def acquire_release_conn(pool_, address_, acquired_counter_,
+                                 release_event_):
+            conn = pool_._acquire(address_, 3, None)
+            acquired_counter_.increment()
+            release_event_.wait()
+            pool_.release(conn)
 
         with FakeBoltPool((), max_connection_pool_size=5) as pool:
             address = ("127.0.0.1", 7687)
@@ -188,13 +188,10 @@ class TestMixedConnectionPoolTestCase:
     async def test_multi_coroutine(self):
         async def acquire_release_conn(pool_, address_, acquired_counter_,
                                        release_event_):
-            try:
-                conn = await pool_._acquire(address_, 3, None)
-                await acquired_counter_.increment()
-                await release_event_.wait()
-                await pool_.release(conn)
-            except ClientError:
-                raise
+            conn = await pool_._acquire(address_, 3, None)
+            await acquired_counter_.increment()
+            await release_event_.wait()
+            await pool_.release(conn)
 
         async def waiter(pool_, acquired_counter_, release_event_):
             if not await acquired_counter_.wait(5, timeout=1):

@@ -186,16 +186,14 @@ class AsyncIOPool(abc.ABC):
                         return False
             return True
 
-        # try to find a free connection in pool
         while True:
+            # try to find a free connection in pool
             connection = await self._acquire_from_pool_checked(
                 address, health_check
             )
             if connection:
                 return connection
-            break
-        # all connections in pool are in-use
-        while True:
+            # all connections in pool are in-use
             async with self.lock:
                 connection_creator = await self._acquire_new_later(
                     address, time_remaining(t0, timeout)
@@ -213,8 +211,7 @@ class AsyncIOPool(abc.ABC):
                 else:
                     raise ClientError("Failed to obtain a connection from pool "
                                       "within {!r}s".format(timeout))
-        if connection_creator:
-            return await connection_creator()
+        return await connection_creator()
 
     @abc.abstractmethod
     async def acquire(
@@ -291,7 +288,6 @@ class AsyncIOPool(abc.ABC):
         raise WriteServiceUnavailable(
             "No write service available for pool {}".format(self)
         )
-
 
     async def close(self):
         """ Close all connections and empty the pool.
