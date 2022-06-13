@@ -359,6 +359,7 @@ class AsyncBolt:
                 await connection.hello()
             except SocketDeadlineExceeded as e:
                 # connection._defunct = True
+                log.debug("[#%04X]  S: <TIMEOUT>", connection.local_port)
                 raise ServiceUnavailable(
                     "Timeout during initial handshake occurred"
                 ) from e

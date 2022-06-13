@@ -21,6 +21,7 @@ from contextlib import contextmanager
 import logging
 import socket
 from struct import pack as struct_pack
+from time import perf_counter
 
 from ..._async_compat.util import AsyncUtil
 from ...exceptions import (
@@ -36,6 +37,13 @@ from ...packstream import (
 
 
 log = logging.getLogger("neo4j")
+
+
+def time_remaining(t0, timeout):
+    if timeout is None:
+        return None
+    t = timeout - (perf_counter() - t0)
+    return t if t > 0 else 0
 
 
 class AsyncMessageInbox:

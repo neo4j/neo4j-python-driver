@@ -17,6 +17,7 @@
 
 
 import asyncio
+from time import perf_counter
 
 from ...conf import WorkspaceConfig
 from ...exceptions import (
@@ -27,7 +28,10 @@ from ...meta import (
     deprecation_warn,
     unclosed_resource_warn,
 )
-from ..io import Neo4jPool
+from ..io import (
+    Neo4jPool,
+    time_remaining,
+)
 
 
 class Workspace:
@@ -74,6 +78,8 @@ class Workspace:
         self._config.database = database
 
     def _connect(self, access_mode, **acquire_kwargs):
+        t0 = perf_counter()
+        timeout = self._config.connection_acquisition_timeout
         if self._connection:
             # TODO: Investigate this
             # log.warning("FIXME: should always disconnect before connect")
@@ -95,11 +101,12 @@ class Workspace:
                     database=self._config.database,
                     imp_user=self._config.impersonated_user,
                     bookmarks=self._bookmarks,
+                    timeout=time_remaining(t0, timeout),
                     database_callback=self._set_cached_database
                 )
         acquire_kwargs_ = {
             "access_mode": access_mode,
-            "timeout": self._config.connection_acquisition_timeout,
+            "timeout": time_remaining(t0, timeout),
             "database": self._config.database,
             "bookmarks": self._bookmarks,
         }

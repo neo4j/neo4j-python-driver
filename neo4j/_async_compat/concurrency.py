@@ -24,10 +24,15 @@ import threading
 
 __all__ = [
     "AsyncCondition",
+    "AsyncLock",
     "AsyncRLock",
     "Condition",
+    "Lock",
     "RLock",
 ]
+
+
+AsyncLock = asyncio.Lock
 
 
 class AsyncRLock(asyncio.Lock):
@@ -232,4 +237,5 @@ class AsyncCondition:
 
 
 Condition = threading.Condition
+Lock = threading.Lock
 RLock = threading.RLock

@@ -29,6 +29,7 @@ __all__ = [
     "AsyncNeo4jPool",
     "check_supported_server_product",
     "ConnectionErrorHandler",
+    "time_remaining",
 ]
 
 
@@ -36,6 +37,7 @@ from ._bolt import AsyncBolt
 from ._common import (
     check_supported_server_product,
     ConnectionErrorHandler,
+    time_remaining,
 )
 from ._pool import (
     AsyncBoltPool,
