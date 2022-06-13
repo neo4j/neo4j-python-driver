@@ -241,3 +241,26 @@ def test_verify_connectivity_parameters_are_experimental(
             driver.verify_connectivity(**kwargs)
     finally:
         driver.close()
+
+
+@pytest.mark.parametrize("uri", (
+    "bolt://127.0.0.1:9000",
+    "neo4j://127.0.0.1:9000",
+))
+@pytest.mark.parametrize("kwargs", (
+    {"default_access_mode": WRITE_ACCESS},
+    {"default_access_mode": READ_ACCESS},
+    {"fetch_size": 69},
+))
+@mark_sync_test
+def test_get_server_info_parameters_are_experimental(
+    uri, kwargs, mocker
+):
+    driver = GraphDatabase.driver(uri)
+    mocker.patch.object(driver, "_pool", autospec=True)
+
+    try:
+        with pytest.warns(ExperimentalWarning, match="configuration"):
+            driver.get_server_info(**kwargs)
+    finally:
+        driver.close()

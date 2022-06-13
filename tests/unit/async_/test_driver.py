@@ -241,3 +241,26 @@ async def test_verify_connectivity_parameters_are_experimental(
             await driver.verify_connectivity(**kwargs)
     finally:
         await driver.close()
+
+
+@pytest.mark.parametrize("uri", (
+    "bolt://127.0.0.1:9000",
+    "neo4j://127.0.0.1:9000",
+))
+@pytest.mark.parametrize("kwargs", (
+    {"default_access_mode": WRITE_ACCESS},
+    {"default_access_mode": READ_ACCESS},
+    {"fetch_size": 69},
+))
+@mark_async_test
+async def test_get_server_info_parameters_are_experimental(
+    uri, kwargs, mocker
+):
+    driver = AsyncGraphDatabase.driver(uri)
+    mocker.patch.object(driver, "_pool", autospec=True)
+
+    try:
+        with pytest.warns(ExperimentalWarning, match="configuration"):
+            await driver.get_server_info(**kwargs)
+    finally:
+        await driver.close()
