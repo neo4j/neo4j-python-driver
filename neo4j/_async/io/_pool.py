@@ -565,7 +565,8 @@ class AsyncNeo4jPool(AsyncIOPool):
         return False
 
     async def update_routing_table(
-        self, *, database, imp_user, bookmarks, timeout, database_callback=None
+        self, *, database, imp_user, bookmarks, timeout=None,
+        database_callback=None
     ):
         """ Update the routing table from the first router able to provide
         valid routing information.
