@@ -75,7 +75,10 @@ class Result:
         query_metadata = getattr(query, "metadata", None)
         query_timeout = getattr(query, "timeout", None)
 
-        parameters = DataDehydrator.fix_parameters(dict(parameters or {}, **kwparameters))
+        parameters = DataDehydrator.fix_parameters(
+            dict(parameters or {}, **kwparameters),
+            patch_utc="utc" in self._connection.bolt_patches
+        )
 
         self._metadata = {
             "query": query_text,

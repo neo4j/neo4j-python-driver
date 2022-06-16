@@ -147,6 +147,8 @@ class Bolt(abc.ABC):
         # configuration hint that exists. Therefore, all hints can be stored at
         # connection level. This might change in the future.
         self.configuration_hints = {}
+        # back ported protocol patches negotiated with the server
+        self.bolt_patches = set()
         self.outbox = Outbox()
         self.inbox = Inbox(self.socket, on_error=self._set_defunct_read)
         self.packer = Packer(self.outbox)

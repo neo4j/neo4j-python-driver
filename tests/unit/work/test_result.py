@@ -105,6 +105,7 @@ class ConnectionStub:
         self.run_meta = run_meta
         self.summary_meta = summary_meta
         ConnectionStub.server_info.update({"server": "Neo4j/4.3.0"})
+        self.bolt_patches = set()
         self.unresolved_address = None
 
     def send_all(self):

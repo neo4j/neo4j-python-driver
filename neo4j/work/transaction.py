@@ -127,8 +127,12 @@ class Transaction:
             # have any qid to fetch in batches.
             self._results[-1]._buffer_all()
 
+        hydrant = DataHydrator(
+            patch_utc="utc" in self._connection.bolt_patches
+        )
+
         result = Result(
-            self._connection, DataHydrator(), self._fetch_size,
+            self._connection, hydrant, self._fetch_size,
             self._result_on_closed_handler,
             self._error_handler
         )
