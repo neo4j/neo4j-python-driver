@@ -315,6 +315,9 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
             server_agent = summary.server.agent
         return server_agent
 
+    def metrics(self) -> ConnectionPoolMetrics:
+        return self._pool.get_metrics()
+
 
 class AsyncNeo4jDriver(_Routing, AsyncDriver):
     """:class:`.AsyncNeo4jDriver` is instantiated for ``neo4j`` URIs. The
