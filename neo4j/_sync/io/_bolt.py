@@ -357,12 +357,6 @@ class Bolt:
             connection.socket.set_deadline(time_remaining())
             try:
                 connection.hello()
-            except SocketDeadlineExceeded as e:
-                # connection._defunct = True
-                log.debug("[#%04X]  S: <TIMEOUT>", connection.local_port)
-                raise ServiceUnavailable(
-                    "Timeout during initial handshake occurred"
-                ) from e
             finally:
                 connection.socket.set_deadline(None)
         except Exception:
@@ -595,7 +589,7 @@ class Bolt:
         direct_driver = isinstance(self.pool, BoltPool)
 
         if error:
-            log.debug("[#%04X] %s", self.socket.getsockname()[1], error)
+            log.debug("[#%04X]  %r", self.socket.getsockname()[1], error)
         log.error(message)
         # We were attempting to receive data but the connection
         # has unexpectedly terminated. So, we need to close the

@@ -17,8 +17,8 @@
 
 
 import asyncio
-from time import perf_counter
 
+from ..._io.deadline import Deadline
 from ...conf import WorkspaceConfig
 from ...exceptions import (
     ServiceUnavailable,
@@ -28,10 +28,7 @@ from ...meta import (
     deprecation_warn,
     unclosed_resource_warn,
 )
-from ..io import (
-    AsyncNeo4jPool,
-    time_remaining,
-)
+from ..io import AsyncNeo4jPool
 
 
 class AsyncWorkspace:
@@ -78,8 +75,7 @@ class AsyncWorkspace:
         self._config.database = database
 
     async def _connect(self, access_mode, **acquire_kwargs):
-        t0 = perf_counter()
-        timeout = self._config.connection_acquisition_timeout
+        timeout = Deadline(self._config.session_connection_timeout)
         if self._connection:
             # TODO: Investigate this
             # log.warning("FIXME: should always disconnect before connect")
@@ -101,14 +97,16 @@ class AsyncWorkspace:
                     database=self._config.database,
                     imp_user=self._config.impersonated_user,
                     bookmarks=self._bookmarks,
-                    timeout=time_remaining(t0, timeout),
+                    timeout=timeout,
                     database_callback=self._set_cached_database
                 )
         acquire_kwargs_ = {
             "access_mode": access_mode,
-            "timeout": time_remaining(t0, timeout),
+            "timeout": timeout,
+            "acquisition_timeout": self._config.connection_acquisition_timeout,
             "database": self._config.database,
             "bookmarks": self._bookmarks,
+            "liveness_check_timeout": None,
         }
         acquire_kwargs_.update(acquire_kwargs)
         self._connection = await self._pool.acquire(**acquire_kwargs_)

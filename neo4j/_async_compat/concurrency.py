@@ -39,6 +39,12 @@ class AsyncRLock(asyncio.Lock):
     """Reentrant asyncio.lock
 
     Inspired by Python's RLock implementation
+
+    .. warning::
+        In async Python there are no threads. This implementation uses
+        :meth:`asyncio.current_task()` to determine the owner of the lock. This
+        means that the owner changes when using :meth:`asyncio.wait_for` or
+        any other method that wraps the work in a new :class:`asyncio.Task`.
     """
 
     _WAITERS_RE = re.compile(r"(?:\W|^)waiters[:=](\d+)(?:\W|$)")
@@ -65,6 +71,22 @@ class AsyncRLock(asyncio.Lock):
             task = asyncio.current_task()
         return self._owner == task
 
+    async def _acquire_non_blocking(self, me):
+        if self.is_owner(task=me):
+            self._count += 1
+            return True
+        acquire_coro = super().acquire()
+        task = asyncio.ensure_future(acquire_coro)
+        # yielding one cycle is as close to non-blocking as it gets
+        # (at least without implementing the lock from the ground up)
+        await asyncio.sleep(0)
+        if task.done() and task.exception() is None:
+            self._owner = me
+            self._count = 1
+            return True
+        task.cancel()
+        return False
+
     async def _acquire(self, me):
         if self.is_owner(task=me):
             self._count += 1
@@ -73,12 +95,23 @@ class AsyncRLock(asyncio.Lock):
         self._owner = me
         self._count = 1
 
-    async def acquire(self, timeout=None):
+    async def acquire(self, blocking=True, timeout=-1):
         """Acquire the lock."""
         me = asyncio.current_task()
-        if timeout is None:
-            return await self._acquire(me)
-        return await asyncio.wait_for(self._acquire(me), timeout)
+        if timeout < 0 and timeout != -1:
+            raise ValueError("timeout value must be positive")
+        if not blocking and timeout != -1:
+            raise ValueError("can't specify a timeout for a non-blocking call")
+        if not blocking:
+            return await self._acquire_non_blocking(me)
+        if blocking and timeout == -1:
+            await self._acquire(me)
+            return True
+        try:
+            await asyncio.wait_for(self._acquire(me), timeout)
+            return True
+        except asyncio.TimeoutError:
+            return False
 
     __aenter__ = acquire
 

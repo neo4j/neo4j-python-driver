@@ -23,6 +23,7 @@ from neo4j import (
     PoolConfig,
     WorkspaceConfig,
 )
+from neo4j._io.deadline import Deadline
 from neo4j._sync.io import Bolt
 from neo4j._sync.io._pool import IOPool
 from neo4j.exceptions import (
@@ -89,11 +90,12 @@ class FakeBoltPool(IOPool):
         self.address = address
 
     def acquire(
-        self, access_mode=None, timeout=None, database=None, bookmarks=None,
-        liveness_check_timeout=None
+        self, access_mode, timeout, acquisition_timeout,
+        database, bookmarks, liveness_check_timeout
     ):
-        return self._acquire(self.address, timeout,
-                                   liveness_check_timeout)
+        return self._acquire(
+            self.address, timeout, liveness_check_timeout
+        )
 
 
 @mark_sync_test
@@ -142,7 +144,7 @@ def assert_pool_size( address, expected_active, expected_inactive, pool):
 @mark_sync_test
 def test_pool_can_acquire(pool):
     address = ("127.0.0.1", 7687)
-    connection = pool._acquire(address, 3, None)
+    connection = pool._acquire(address, Deadline(3), None)
     assert connection.address == address
     assert_pool_size(address, 1, 0, pool)
 
@@ -150,8 +152,8 @@ def test_pool_can_acquire(pool):
 @mark_sync_test
 def test_pool_can_acquire_twice(pool):
     address = ("127.0.0.1", 7687)
-    connection_1 = pool._acquire(address, 3, None)
-    connection_2 = pool._acquire(address, 3, None)
+    connection_1 = pool._acquire(address, Deadline(3), None)
+    connection_2 = pool._acquire(address, Deadline(3), None)
     assert connection_1.address == address
     assert connection_2.address == address
     assert connection_1 is not connection_2
@@ -162,8 +164,8 @@ def test_pool_can_acquire_twice(pool):
 def test_pool_can_acquire_two_addresses(pool):
     address_1 = ("127.0.0.1", 7687)
     address_2 = ("127.0.0.1", 7474)
-    connection_1 = pool._acquire(address_1, 3, None)
-    connection_2 = pool._acquire(address_2, 3, None)
+    connection_1 = pool._acquire(address_1, Deadline(3), None)
+    connection_2 = pool._acquire(address_2, Deadline(3), None)
     assert connection_1.address == address_1
     assert connection_2.address == address_2
     assert_pool_size(address_1, 1, 0, pool)
@@ -173,7 +175,7 @@ def test_pool_can_acquire_two_addresses(pool):
 @mark_sync_test
 def test_pool_can_acquire_and_release(pool):
     address = ("127.0.0.1", 7687)
-    connection = pool._acquire(address, 3, None)
+    connection = pool._acquire(address, Deadline(3), None)
     assert_pool_size(address, 1, 0, pool)
     pool.release(connection)
     assert_pool_size(address, 0, 1, pool)
@@ -182,7 +184,7 @@ def test_pool_can_acquire_and_release(pool):
 @mark_sync_test
 def test_pool_releasing_twice(pool):
     address = ("127.0.0.1", 7687)
-    connection = pool._acquire(address, 3, None)
+    connection = pool._acquire(address, Deadline(3), None)
     pool.release(connection)
     assert_pool_size(address, 0, 1, pool)
     pool.release(connection)
@@ -193,7 +195,7 @@ def test_pool_releasing_twice(pool):
 def test_pool_in_use_count(pool):
     address = ("127.0.0.1", 7687)
     assert pool.in_use_connection_count(address) == 0
-    connection = pool._acquire(address, 3, None)
+    connection = pool._acquire(address, Deadline(3), None)
     assert pool.in_use_connection_count(address) == 1
     pool.release(connection)
     assert pool.in_use_connection_count(address) == 0
@@ -203,10 +205,10 @@ def test_pool_in_use_count(pool):
 def test_pool_max_conn_pool_size(pool):
     with FakeBoltPool((), max_connection_pool_size=1) as pool:
         address = ("127.0.0.1", 7687)
-        pool._acquire(address, 0, None)
+        pool._acquire(address, Deadline(0), None)
         assert pool.in_use_connection_count(address) == 1
         with pytest.raises(ClientError):
-            pool._acquire(address, 0, None)
+            pool._acquire(address, Deadline(0), None)
         assert pool.in_use_connection_count(address) == 1
 
 
@@ -224,7 +226,7 @@ def test_pool_reset_when_released(is_reset, pool, mocker):
         new_callable=mocker.Mock
     )
     is_reset_mock.return_value = is_reset
-    connection = pool._acquire(address, 3, None)
+    connection = pool._acquire(address, Deadline(3), None)
     assert isinstance(connection, QuickConnection)
     assert is_reset_mock.call_count == 0
     assert reset_mock.call_count == 0

@@ -44,6 +44,7 @@ from ..._exceptions import (
     BoltSecurityError,
     SocketDeadlineExceeded,
 )
+from ..._io.deadline import Deadline
 from ...exceptions import (
     DriverError,
     ServiceUnavailable,
@@ -74,7 +75,7 @@ class AsyncBoltSocket:
         timeout = self._timeout
         to_raise = SocketTimeout
         if self._deadline is not None:
-            deadline_timeout = self._deadline - perf_counter()
+            deadline_timeout = self._deadline.to_timeout()
             if deadline_timeout <= 0:
                 raise SocketDeadlineExceeded("timed out")
             if timeout is None or deadline_timeout <= timeout:
@@ -90,11 +91,18 @@ class AsyncBoltSocket:
         except asyncio.TimeoutError as e:
             raise to_raise("timed out") from e
 
-    def set_deadline(self, s_from_now):
-        if s_from_now is None:
+    def get_deadline(self):
+        return self._deadline
+
+    def set_deadline(self, deadline):
+        if deadline is None:
             self._deadline = None
         else:
-            self._deadline = perf_counter() + s_from_now
+            deadline = Deadline.from_timeout_or_deadline(deadline)
+            if deadline.to_timeout() is None:
+                self._deadline = None
+            else:
+                self._deadline = deadline
 
     @property
     def _socket(self) -> socket:
@@ -389,7 +397,7 @@ class BoltSocket:
         if self._deadline is None:
             return func(*args, **kwargs)
         timeout = self._socket.gettimeout()
-        deadline_timeout = self._deadline - perf_counter()
+        deadline_timeout = self._deadline.to_timeout()
         if deadline_timeout <= 0:
             raise SocketDeadlineExceeded("timed out")
         if timeout is None or deadline_timeout <= timeout:
@@ -402,11 +410,18 @@ class BoltSocket:
                 self._socket.settimeout(timeout)
         return func(*args, **kwargs)
 
-    def set_deadline(self, s_from_now):
-        if s_from_now is None:
+    def get_deadline(self):
+        return self._deadline
+
+    def set_deadline(self, deadline):
+        if deadline is None:
             self._deadline = None
         else:
-            self._deadline = perf_counter() + s_from_now
+            deadline = Deadline.from_timeout_or_deadline(deadline)
+            if deadline.to_timeout() is None:
+                self._deadline = None
+            else:
+                self._deadline = deadline
 
     def recv(self, n):
         return self._wait_for_io(self._socket.recv, n)

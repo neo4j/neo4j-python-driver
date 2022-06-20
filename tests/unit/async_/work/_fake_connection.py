@@ -40,6 +40,7 @@ def async_fake_connection_generator(session_mocker):
             self.attach_mock(mock.Mock(return_value=False), "defunct")
             self.attach_mock(mock.Mock(return_value=False), "stale")
             self.attach_mock(mock.Mock(return_value=False), "closed")
+            self.attach_mock(mock.Mock(return_value=False), "socket")
             self.attach_mock(mock.Mock(), "unresolved_address")
 
             def close_side_effect():
@@ -47,6 +48,17 @@ def async_fake_connection_generator(session_mocker):
 
             self.attach_mock(mock.AsyncMock(side_effect=close_side_effect),
                              "close")
+
+            self.socket.attach_mock(
+                mock.Mock(return_value=None), "get_deadline"
+            )
+
+            def set_deadline_side_effect(deadline):
+                self.socket.get_deadline.return_value = deadline
+
+            self.socket.attach_mock(
+                mock.Mock(side_effect=set_deadline_side_effect), "set_deadline"
+            )
 
         @property
         def is_reset(self):

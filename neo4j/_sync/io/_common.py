@@ -21,9 +21,9 @@ from contextlib import contextmanager
 import logging
 import socket
 from struct import pack as struct_pack
-from time import perf_counter
 
 from ..._async_compat.util import Util
+from ..._exceptions import SocketDeadlineExceeded
 from ...exceptions import (
     Neo4jError,
     ServiceUnavailable,
@@ -37,13 +37,6 @@ from ...packstream import (
 
 
 log = logging.getLogger("neo4j")
-
-
-def time_remaining(t0, timeout):
-    if timeout is None:
-        return None
-    t = timeout - (perf_counter() - t0)
-    return t if t > 0 else 0
 
 
 class MessageInbox:
@@ -78,7 +71,7 @@ class MessageInbox:
                     # Reset for new message
                     unpacker.reset()
 
-        except (OSError, socket.timeout) as error:
+        except (OSError, socket.timeout, SocketDeadlineExceeded) as error:
             Util.callback(self.on_error, error)
 
     def pop(self):
