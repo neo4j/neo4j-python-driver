@@ -479,7 +479,7 @@ class AsyncBolt:
 
     @abc.abstractmethod
     def goodbye(self):
-        """Append a GOODBYE message to the outgoing queued."""
+        """Append a GOODBYE message to the outgoing queue."""
         pass
 
     def _append(self, signature, fields=(), response=None):
