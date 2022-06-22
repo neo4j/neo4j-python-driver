@@ -21,6 +21,7 @@ import inspect
 import pytest
 
 from neo4j import ServerInfo
+from neo4j._io.deadline import Deadline
 from neo4j._sync.io import Bolt
 
 
@@ -54,6 +55,7 @@ def fake_connection_generator(session_mocker):
             )
 
             def set_deadline_side_effect(deadline):
+                deadline = Deadline.from_timeout_or_deadline(deadline)
                 self.socket.get_deadline.return_value = deadline
 
             self.socket.attach_mock(
