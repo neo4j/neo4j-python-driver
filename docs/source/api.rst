@@ -194,8 +194,14 @@ larger than :ref:`update-routing-table-timeout-ref`,
 :Type: ``float``
 :Default: ``120.0``
 
+.. versionadded:: 4.4.5
 
-.. _update-routing-table_timeout-ref:
+.. versionchanged:: 5.0
+
+    The default value was changed from ``float("inf")`` to ``120.0``.
+
+
+.. _update-routing-table-timeout-ref:
 
 ``update_routing_table_timeout``
 --------------------------------
@@ -213,6 +219,8 @@ This setting only has an effect for :ref:`neo4j-driver-ref`, but not for
 
 :Type: ``float``
 :Default: ``90.0``
+
+.. versionadded:: 4.4.5
 
 
 .. _connection-acquisition-timeout-ref:
