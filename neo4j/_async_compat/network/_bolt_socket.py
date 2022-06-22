@@ -391,7 +391,6 @@ class BoltSocket:
             del self.getpeercert
         self.gettimeout = socket_.gettimeout
         self.settimeout = socket_.settimeout
-        self.close = socket_.close
 
     def _wait_for_io(self, func, *args, **kwargs):
         if self._deadline is None:
