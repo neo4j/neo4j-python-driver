@@ -264,7 +264,7 @@ class AsyncBolt:
         except (ServiceUnavailable, SessionExpired, BoltHandshakeError):
             return None
         else:
-            AsyncBoltSocket.close_socket(s)
+            await AsyncBoltSocket.close_socket(s)
             return protocol_version
 
     @classmethod
