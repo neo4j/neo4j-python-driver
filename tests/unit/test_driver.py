@@ -136,6 +136,7 @@ def test_driver_opens_write_session_by_default(uri, mocker):
         acquire_mock.assert_called_once_with(
             access_mode=WRITE_ACCESS,
             timeout=mocker.ANY,
+            acquisition_timeout=mocker.ANY,
             database=mocker.ANY,
             bookmarks=mocker.ANY
         )

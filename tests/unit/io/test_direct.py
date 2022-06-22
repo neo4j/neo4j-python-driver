@@ -37,9 +37,9 @@ from neo4j import (
     PoolConfig,
     WorkspaceConfig,
 )
+from neo4j._io.deadline import Deadline
 from neo4j.io import (
     Bolt,
-    BoltPool,
     IOPool
 )
 from neo4j.exceptions import (
@@ -104,8 +104,8 @@ class FakeBoltPool(IOPool):
         super().__init__(opener, self.pool_config, self.workspace_config)
         self.address = address
 
-    def acquire(self, access_mode=None, timeout=None, database=None,
-                bookmarks=None):
+    def acquire(self, access_mode, timeout, acquisition_timeout, database,
+                bookmarks):
         return self._acquire(self.address, timeout)
 
 
@@ -196,14 +196,14 @@ class ConnectionPoolTestCase(TestCase):
 
     def test_can_acquire(self):
         address = ("127.0.0.1", 7687)
-        connection = self.pool._acquire(address, timeout=3)
+        connection = self.pool._acquire(address, Deadline(3))
         assert connection.address == address
         self.assert_pool_size(address, 1, 0)
 
     def test_can_acquire_twice(self):
         address = ("127.0.0.1", 7687)
-        connection_1 = self.pool._acquire(address, timeout=3)
-        connection_2 = self.pool._acquire(address, timeout=3)
+        connection_1 = self.pool._acquire(address, Deadline(3))
+        connection_2 = self.pool._acquire(address, Deadline(3))
         assert connection_1.address == address
         assert connection_2.address == address
         assert connection_1 is not connection_2
@@ -212,8 +212,8 @@ class ConnectionPoolTestCase(TestCase):
     def test_can_acquire_two_addresses(self):
         address_1 = ("127.0.0.1", 7687)
         address_2 = ("127.0.0.1", 7474)
-        connection_1 = self.pool._acquire(address_1, timeout=3)
-        connection_2 = self.pool._acquire(address_2, timeout=3)
+        connection_1 = self.pool._acquire(address_1, Deadline(3))
+        connection_2 = self.pool._acquire(address_2, Deadline(3))
         assert connection_1.address == address_1
         assert connection_2.address == address_2
         self.assert_pool_size(address_1, 1, 0)
@@ -221,14 +221,14 @@ class ConnectionPoolTestCase(TestCase):
 
     def test_can_acquire_and_release(self):
         address = ("127.0.0.1", 7687)
-        connection = self.pool._acquire(address, timeout=3)
+        connection = self.pool._acquire(address, Deadline(3))
         self.assert_pool_size(address, 1, 0)
         self.pool.release(connection)
         self.assert_pool_size(address, 0, 1)
 
     def test_releasing_twice(self):
         address = ("127.0.0.1", 7687)
-        connection = self.pool._acquire(address, timeout=3)
+        connection = self.pool._acquire(address, Deadline(3))
         self.pool.release(connection)
         self.assert_pool_size(address, 0, 1)
         self.pool.release(connection)
@@ -237,7 +237,7 @@ class ConnectionPoolTestCase(TestCase):
     def test_in_use_count(self):
         address = ("127.0.0.1", 7687)
         self.assertEqual(self.pool.in_use_connection_count(address), 0)
-        connection = self.pool._acquire(address, timeout=3)
+        connection = self.pool._acquire(address, Deadline(3))
         self.assertEqual(self.pool.in_use_connection_count(address), 1)
         self.pool.release(connection)
         self.assertEqual(self.pool.in_use_connection_count(address), 0)
@@ -245,10 +245,10 @@ class ConnectionPoolTestCase(TestCase):
     def test_max_conn_pool_size(self):
         with FakeBoltPool((), max_connection_pool_size=1) as pool:
             address = ("127.0.0.1", 7687)
-            pool._acquire(address, timeout=0)
+            pool._acquire(address, Deadline(0))
             self.assertEqual(pool.in_use_connection_count(address), 1)
             with self.assertRaises(ClientError):
-                pool._acquire(address, timeout=0)
+                pool._acquire(address, Deadline(0))
             self.assertEqual(pool.in_use_connection_count(address), 1)
 
     def test_multithread(self):
@@ -268,7 +268,7 @@ class ConnectionPoolTestCase(TestCase):
                 t.start()
                 threads.append(t)
 
-            if not acquired_counter.wait(5, timeout=1):
+            if not acquired_counter.wait(5, 1):
                 raise RuntimeError("Acquire threads not fast enough")
             # The pool size should be 5, all are in-use
             self.assert_pool_size(address, 5, 0, pool)
@@ -277,7 +277,7 @@ class ConnectionPoolTestCase(TestCase):
 
             # wait for all threads to release connections back to pool
             for t in threads:
-                t.join(timeout=1)
+                t.join(1)
             # The pool size is still 5, but all are free
             self.assert_pool_size(address, 0, 5, pool)
 
@@ -288,7 +288,9 @@ class ConnectionPoolTestCase(TestCase):
                 with mock.patch(__name__ + ".QuickConnection.reset",
                                 new_callable=mock.MagicMock) as reset_mock:
                     is_reset_mock.return_value = is_reset
-                    connection = self.pool._acquire(address, timeout=3)
+                    connection = self.pool._acquire(
+                        address, Deadline(3)
+                    )
                     self.assertIsInstance(connection, QuickConnection)
                     self.assertEqual(is_reset_mock.call_count, 0)
                     self.assertEqual(reset_mock.call_count, 0)
@@ -303,7 +305,7 @@ class ConnectionPoolTestCase(TestCase):
 
 
 def acquire_release_conn(pool, address, acquired_counter, release_event):
-    conn = pool._acquire(address, timeout=3)
+    conn = pool._acquire(address, Deadline(3))
     acquired_counter.increment()
     release_event.wait()
     pool.release(conn)

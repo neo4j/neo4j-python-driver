@@ -306,6 +306,10 @@ class Bolt3(Bolt):
         self.send_all()
         self.fetch_all()
 
+    def goodbye(self):
+        log.debug("[#%04X]  C: GOODBYE", self.local_port)
+        self._append(b"\x02", ())
+
     def fetch_message(self):
         """ Receive at most one message from the server, if available.
 

@@ -258,6 +258,10 @@ class Bolt4x0(Bolt):
         self.send_all()
         self.fetch_all()
 
+    def goodbye(self):
+        log.debug("[#%04X]  C: GOODBYE", self.local_port)
+        self._append(b"\x02", ())
+
     def fetch_message(self):
         """ Receive at most one message from the server, if available.
 
@@ -317,25 +321,6 @@ class Bolt4x0(Bolt):
                                     "%02X" % ord(summary_signature), self.unresolved_address)
 
         return len(details), 1
-
-    def close(self):
-        """ Close the connection.
-        """
-        if not self._closed:
-            if not self._defunct:
-                log.debug("[#%04X]  C: GOODBYE", self.local_port)
-                self._append(b"\x02", ())
-                try:
-                    self._send_all()
-                except (OSError, BoltError, DriverError):
-                    pass
-            log.debug("[#%04X]  C: <CLOSE>", self.local_port)
-            try:
-                self.socket.close()
-            except OSError:
-                pass
-            finally:
-                self._closed = True
 
     def closed(self):
         return self._closed

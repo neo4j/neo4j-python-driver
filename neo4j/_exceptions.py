@@ -172,3 +172,7 @@ class BoltFailure(BoltError):
 class BoltProtocolError(BoltError):
     """ Raised when an unexpected or unsupported protocol event occurs.
     """
+
+
+class SocketDeadlineExceeded(RuntimeError):
+    """Raised from sockets with deadlines when a timeout occurs."""
