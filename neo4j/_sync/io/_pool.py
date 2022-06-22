@@ -677,8 +677,7 @@ class Neo4jPool(IOPool):
 
             self.update_routing_table(
                 database=database, imp_user=imp_user, bookmarks=bookmarks,
-                database_callback=database_callback,
-                timeout=deadline
+                timeout=deadline, database_callback=database_callback
             )
             self.update_connection_pool(database=database)
 

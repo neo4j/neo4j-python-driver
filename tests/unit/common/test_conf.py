@@ -59,8 +59,8 @@ test_pool_config = {
 }
 
 test_session_config = {
-    "connection_acquisition_timeout": 60.0,
     "session_connection_timeout": 120.0,
+    "connection_acquisition_timeout": 60.0,
     "max_transaction_retry_time": 30.0,
     "initial_retry_delay": 1.0,
     "retry_delay_multiplier": 2.0,
