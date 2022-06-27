@@ -792,8 +792,10 @@ class IOPool:
                     timeout == 0  # deadline expired
                     or not self.cond.wait(timeout)
                 ):
-                    raise ClientError("Failed to obtain a connection from pool "
-                                      "within {!r}s".format(deadline.original_timeout))
+                    raise ClientError(
+                        "Failed to obtain a connection from pool within {!r}s"
+                        .format(deadline.original_timeout)
+                    )
         return connection_creator()
 
     def acquire(self, access_mode, timeout, acquisition_timeout, database,
@@ -982,8 +984,8 @@ class Neo4jPool(IOPool):
             timeout = -1
         if not self.refresh_lock.acquire(timeout=timeout):
             raise ClientError(
-                "Failed to wait for the pool to updated the routing "
-                "table within {!r}s".format(deadline.original_timeout)
+                "pool failed to update routing table within {!r}s (timeout)"
+                .format(deadline.original_timeout)
             )
 
         try:
