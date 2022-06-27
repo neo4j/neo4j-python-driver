@@ -52,6 +52,15 @@ from ..exceptions import (
 log = logging.getLogger("neo4j")
 
 
+def _sanitize_deadline(deadline):
+    if deadline is None:
+        return None
+    deadline = Deadline.from_timeout_or_deadline(deadline)
+    if deadline.to_timeout() is None:
+        return None
+    return deadline
+
+
 class BoltSocket:
     Bolt = None
 
@@ -96,14 +105,7 @@ class BoltSocket:
         return self._deadline
 
     def set_deadline(self, deadline):
-        if deadline is None:
-            self._deadline = None
-        else:
-            deadline = Deadline.from_timeout_or_deadline(deadline)
-            if deadline.to_timeout() is None:
-                self._deadline = None
-            else:
-                self._deadline = deadline
+        self._deadline = _sanitize_deadline(deadline)
 
     def recv(self, n):
         return self._wait_for_io(self._socket.recv, n)
