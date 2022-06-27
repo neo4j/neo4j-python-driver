@@ -978,7 +978,7 @@ class Neo4jPool(IOPool):
     @contextmanager
     def _refresh_lock_deadline(self, deadline):
         timeout = deadline.to_timeout()
-        if timeout == float("inf"):
+        if timeout is None:
             timeout = -1
         if not self.refresh_lock.acquire(timeout=timeout):
             raise ClientError(

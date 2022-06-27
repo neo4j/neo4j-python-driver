@@ -264,7 +264,7 @@ class WorkspaceConfig(Config):
     """
 
     #: Session Connection Timeout
-    session_connection_timeout = 120.0  # seconds
+    session_connection_timeout = float("inf")  # seconds
     # The maximum amount of time to wait for a session to obtain a usable
     # read/write connection. This includes everything necessary for this to
     # happen. Including fetching routing tables, opening sockets, etc.
