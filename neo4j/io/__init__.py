@@ -53,7 +53,7 @@ from neo4j._exceptions import (
     BoltError,
     BoltHandshakeError,
 )
-from neo4j._io.deadline import (
+from neo4j._deadline import (
     connection_deadline,
     Deadline,
     merge_deadlines,

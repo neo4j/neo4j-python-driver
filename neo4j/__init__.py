@@ -60,7 +60,7 @@ __all__ = [
 from logging import getLogger
 
 
-from neo4j._io.deadline import Deadline
+from neo4j._deadline import Deadline
 from neo4j.addressing import (
     Address,
     IPv4Address,

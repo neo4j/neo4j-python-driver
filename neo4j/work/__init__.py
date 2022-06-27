@@ -19,7 +19,7 @@
 # limitations under the License.
 
 
-from neo4j._io.deadline import Deadline
+from neo4j._deadline import Deadline
 from neo4j.conf import WorkspaceConfig
 from neo4j.exceptions import ServiceUnavailable
 from neo4j.io import Neo4jPool

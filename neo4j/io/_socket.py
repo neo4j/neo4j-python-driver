@@ -41,7 +41,7 @@ from .._exceptions import (
     BoltSecurityError,
     SocketDeadlineExceeded,
 )
-from .._io.deadline import Deadline
+from .._deadline import Deadline
 from ..addressing import Address
 from ..exceptions import (
     DriverError,
