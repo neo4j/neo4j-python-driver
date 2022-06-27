@@ -38,13 +38,13 @@ import struct
 from time import perf_counter
 
 from ... import addressing
+from ..._deadline import Deadline
 from ..._exceptions import (
     BoltError,
     BoltProtocolError,
     BoltSecurityError,
     SocketDeadlineExceeded,
 )
-from ..._io.deadline import Deadline
 from ...exceptions import (
     DriverError,
     ServiceUnavailable,

@@ -22,7 +22,7 @@ from neo4j import (
     READ_ACCESS,
     WRITE_ACCESS,
 )
-from neo4j._io.deadline import Deadline
+from neo4j._deadline import Deadline
 from neo4j._sync.io import Neo4jPool
 from neo4j.addressing import ResolvedAddress
 from neo4j.conf import (

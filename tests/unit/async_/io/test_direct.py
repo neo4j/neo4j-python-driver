@@ -25,7 +25,7 @@ from neo4j import (
 )
 from neo4j._async.io import AsyncBolt
 from neo4j._async.io._pool import AsyncIOPool
-from neo4j._io.deadline import Deadline
+from neo4j._deadline import Deadline
 from neo4j.exceptions import (
     ClientError,
     ServiceUnavailable,

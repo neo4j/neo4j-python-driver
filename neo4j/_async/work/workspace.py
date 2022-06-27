@@ -18,7 +18,7 @@
 
 import asyncio
 
-from ..._io.deadline import Deadline
+from ..._deadline import Deadline
 from ...conf import WorkspaceConfig
 from ...exceptions import (
     ServiceUnavailable,

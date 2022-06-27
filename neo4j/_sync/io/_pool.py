@@ -31,13 +31,13 @@ from ..._async_compat.concurrency import (
     RLock,
 )
 from ..._async_compat.network import NetworkUtil
-from ..._exceptions import BoltError
-from ..._io.deadline import (
+from ..._deadline import (
     connection_deadline,
     Deadline,
     merge_deadlines,
     merge_deadlines_and_timeouts,
 )
+from ..._exceptions import BoltError
 from ...api import (
     READ_ACCESS,
     WRITE_ACCESS,

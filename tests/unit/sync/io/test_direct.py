@@ -23,7 +23,7 @@ from neo4j import (
     PoolConfig,
     WorkspaceConfig,
 )
-from neo4j._io.deadline import Deadline
+from neo4j._deadline import Deadline
 from neo4j._sync.io import Bolt
 from neo4j._sync.io._pool import IOPool
 from neo4j.exceptions import (

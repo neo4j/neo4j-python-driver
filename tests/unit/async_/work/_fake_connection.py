@@ -22,7 +22,7 @@ import pytest
 
 from neo4j import ServerInfo
 from neo4j._async.io import AsyncBolt
-from neo4j._io.deadline import Deadline
+from neo4j._deadline import Deadline
 
 
 @pytest.fixture
