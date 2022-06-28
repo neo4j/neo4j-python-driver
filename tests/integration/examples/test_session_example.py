@@ -22,7 +22,12 @@
 # tag::session-import[]
 # end::session-import[]
 
+# tag::session-import[]
+from neo4j.api import READ_ACCESS
+# end::session-import[]
+
 # python -m pytest tests/integration/examples/test_session_example.py -s -v
+
 
 def session_example(driver):
     with driver.session() as session:
@@ -49,3 +54,12 @@ def session_example(driver):
 def test_example(driver):
     persons = session_example(driver)
     assert persons == 2
+
+
+def test_session_database_config_example(driver):
+    # tag::session-config-database[]
+    with driver.session(
+            database="<the database name>",
+            access_mode=READ_ACCESS) as session:
+        # end::session-config-database[]
+        session.last_bookmark()
