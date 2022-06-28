@@ -60,6 +60,6 @@ def test_session_database_config_example(driver):
     # tag::session-config-database[]
     with driver.session(
             database="<the database name>",
-            access_mode=READ_ACCESS) as session:
+            default_access_mode=READ_ACCESS) as session:
         # end::session-config-database[]
         session.last_bookmark()
