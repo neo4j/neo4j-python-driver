@@ -160,6 +160,8 @@ Driver Configuration
 Additional configuration can be provided via the :class:`neo4j.Driver` constructor.
 
 
++ :ref:`session-connection-timeout-ref`
++ :ref:`update-routing-table-timeout-ref`
 + :ref:`connection-acquisition-timeout-ref`
 + :ref:`connection-timeout-ref`
 + :ref:`encrypted-ref`
@@ -172,12 +174,59 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`user-agent-ref`
 
 
+.. _session-connection-timeout-ref:
+
+``session_connection_timeout``
+------------------------------
+The maximum amount of time in seconds the session will wait when trying to
+establish a usable read/write connection to the remote host.
+This encompasses *everything* that needs to happen for this, including,
+if necessary, updating the routing table, fetching a connection from the pool,
+and, if necessary fully establishing a new connection with the reader/writer.
+
+Since this process may involve updating the routing table, acquiring a
+connection from the pool, or establishing a new connection, it should be chosen
+larger than :ref:`update-routing-table-timeout-ref`,
+:ref:`connection-acquisition-timeout-ref`, and :ref:`connection-timeout-ref`.
+
+:Type: ``float``
+:Default: ``float("inf")``
+
+.. versionadded:: 4.4.5
+
+
+.. _update-routing-table-timeout-ref:
+
+``update_routing_table_timeout``
+--------------------------------
+The maximum amount of time in seconds the driver will attempt to fetch a new
+routing table. This encompasses *everything* that needs to happen for this,
+including fetching connections from the pool, performing handshakes, and
+requesting and receiving a fresh routing table.
+
+Since this process may involve acquiring a connection from the pool, or
+establishing a new connection, it should be chosen larger than
+:ref:`connection-acquisition-timeout-ref` and :ref:`connection-timeout-ref`.
+
+This setting only has an effect for :ref:`neo4j-driver-ref`, but not for
+:ref:`bolt-driver-ref` as it does no routing at all.
+
+:Type: ``float``
+:Default: ``90.0``
+
+.. versionadded:: 4.4.5
+
+
 .. _connection-acquisition-timeout-ref:
 
 ``connection_acquisition_timeout``
 ----------------------------------
-The maximum amount of time in seconds a session will wait when requesting a connection from the connection pool.
-Since the process of acquiring a connection may involve creating a new connection, ensure that the value of this configuration is higher than the configured :ref:`connection-timeout-ref`.
+The maximum amount of time in seconds the driver will wait to either acquire an
+idle connection from the pool (including potential liveness checks) or create a
+new connection when the pool is not full and all existing connection are in use.
+
+Since this process may involve opening a new connection including handshakes,
+it should be chosen larger than :ref:`connection-timeout-ref`.
 
 :Type: ``float``
 :Default: ``60.0``
@@ -187,7 +236,11 @@ Since the process of acquiring a connection may involve creating a new connectio
 
 ``connection_timeout``
 ----------------------
-The maximum amount of time in seconds to wait for a TCP connection to be established.
+The maximum amount of time in seconds to wait for a TCP connection to be
+established.
+
+This *does not* include any handshake(s), or authentication required before the
+connection can be used to perform database related work.
 
 :Type: ``float``
 :Default: ``30.0``

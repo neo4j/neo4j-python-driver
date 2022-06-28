@@ -43,6 +43,7 @@ watch("neo4j")
 
 test_pool_config = {
     "connection_timeout": 30.0,
+    "update_routing_table_timeout": 90.0,
     "init_size": 1,
     "keep_alive": True,
     "max_connection_lifetime": 3600,
@@ -55,6 +56,7 @@ test_pool_config = {
 }
 
 test_session_config = {
+    "session_connection_timeout": 180.0,
     "connection_acquisition_timeout": 60.0,
     "max_transaction_retry_time": 30.0,
     "initial_retry_delay": 1.0,

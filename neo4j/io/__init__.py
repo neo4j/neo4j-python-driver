@@ -39,24 +39,10 @@ from collections import (
     defaultdict,
     deque,
 )
+from contextlib import contextmanager
 import logging
 from logging import getLogger
 from random import choice
-import selectors
-from socket import (
-    AF_INET,
-    AF_INET6,
-    SHUT_RDWR,
-    SO_KEEPALIVE,
-    socket,
-    SOL_SOCKET,
-    timeout as SocketTimeout,
-)
-from ssl import (
-    CertificateError,
-    HAS_SNI,
-    SSLError,
-)
 from threading import (
     Condition,
     RLock,
@@ -66,8 +52,12 @@ from time import perf_counter
 from neo4j._exceptions import (
     BoltError,
     BoltHandshakeError,
-    BoltProtocolError,
-    BoltSecurityError,
+)
+from neo4j._deadline import (
+    connection_deadline,
+    Deadline,
+    merge_deadlines,
+    merge_deadlines_and_timeouts,
 )
 from neo4j.addressing import Address
 from neo4j.api import (
@@ -101,6 +91,7 @@ from neo4j.io._common import (
     Outbox,
     Response,
 )
+from neo4j.io._socket import BoltSocket
 from neo4j.meta import get_user_agent
 from neo4j.packstream import (
     Packer,
@@ -133,6 +124,7 @@ class Bolt(abc.ABC):
     in_use = False
 
     # The socket
+    _closing = False
     _closed = False
 
     # The socket
@@ -289,7 +281,7 @@ class Bolt(abc.ABC):
         """
         config = PoolConfig.consume(config)
         try:
-            s, protocol_version, handshake, data = connect(
+            s, protocol_version, handshake, data = BoltSocket.connect(
                 address,
                 timeout=timeout,
                 custom_resolver=config.resolver,
@@ -299,7 +291,7 @@ class Bolt(abc.ABC):
         except (ServiceUnavailable, SessionExpired, BoltHandshakeError):
             return None
         else:
-            _close_socket(s)
+            BoltSocket.close_socket(s)
             return protocol_version
 
     @classmethod
@@ -315,10 +307,24 @@ class Bolt(abc.ABC):
         :raise BoltHandshakeError: raised if the Bolt Protocol can not negotiate a protocol version.
         :raise ServiceUnavailable: raised if there was a connection issue.
         """
+        def time_remaining():
+            if timeout is None:
+                return None
+            t = timeout - (perf_counter() - t0)
+            return t if t > 0 else 0
+
+        t0 = perf_counter()
         pool_config = PoolConfig.consume(pool_config)
-        s, pool_config.protocol_version, handshake, data = connect(
+
+        socket_connection_timeout = pool_config.connection_timeout
+        if socket_connection_timeout is None:
+            socket_connection_timeout = time_remaining()
+        elif timeout is not None:
+            socket_connection_timeout = min(pool_config.connection_timeout,
+                                            time_remaining())
+        s, pool_config.protocol_version, handshake, data = BoltSocket.connect(
             address,
-            timeout=timeout,
+            timeout=socket_connection_timeout,
             custom_resolver=pool_config.resolver,
             ssl_context=pool_config.get_ssl_context(),
             keep_alive=pool_config.keep_alive,
@@ -346,7 +352,7 @@ class Bolt(abc.ABC):
             bolt_cls = Bolt4x4
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getsockname()[1])
-            _close_socket(s)
+            BoltSocket.close_socket(s)
 
             supported_versions = Bolt.protocol_handlers().keys()
             raise BoltHandshakeError("The Neo4J server does not support communication with this driver. This driver have support for Bolt Protocols {}".format(supported_versions), address=address, request_data=handshake, response_data=data)
@@ -357,9 +363,13 @@ class Bolt(abc.ABC):
         )
 
         try:
-            connection.hello()
+            connection.socket.set_deadline(time_remaining())
+            try:
+                connection.hello()
+            finally:
+                connection.socket.set_deadline(None)
         except Exception:
-            connection.close()
+            connection.close_non_blocking()
             raise
 
         return connection
@@ -476,6 +486,11 @@ class Bolt(abc.ABC):
         """
         pass
 
+    @abc.abstractmethod
+    def goodbye(self):
+        """Append a GOODBYE message to the outgoing queue."""
+        pass
+
     def _append(self, signature, fields=(), response=None):
         """ Appends a message to the outgoing queue.
 
@@ -550,16 +565,20 @@ class Bolt(abc.ABC):
         direct_driver = isinstance(self.pool, BoltPool)
 
         if error:
-            log.debug("[#%04X] %s", self.socket.getsockname()[1], error)
+            log.debug("[#%04X]  %r", self.socket.getsockname()[1], error)
         log.error(message)
         # We were attempting to receive data but the connection
         # has unexpectedly terminated. So, we need to close the
         # connection from the client side, and remove the address
         # from the connection pool.
         self._defunct = True
-        self.close()
-        if self.pool:
-            self.pool.deactivate(address=self.unresolved_address)
+        if not self._closing:
+            # If we fail while closing the connection, there is no need to
+            # remove the connection from the pool, nor to try to close the
+            # connection again.
+            self.close()
+            if self.pool:
+                self.pool.deactivate(address=self.unresolved_address)
         # Iterate through the outstanding responses, and if any correspond
         # to COMMIT requests then raise an error to signal that we are
         # unable to confirm that the COMMIT completed successfully.
@@ -593,11 +612,36 @@ class Bolt(abc.ABC):
     def set_stale(self):
         self._stale = True
 
-    @abc.abstractmethod
     def close(self):
-        """ Close the connection.
+        """Close the connection."""
+        if self._closed or self._closing:
+            return
+        self._closing = True
+        if not self._defunct:
+            self.goodbye()
+            try:
+                self._send_all()
+            except (OSError, BoltError, DriverError):
+                pass
+        log.debug("[#%04X]  C: <CLOSE>", self.local_port)
+        try:
+            self.socket.close()
+        except OSError:
+            pass
+        finally:
+            self._closed = True
+
+    async def close_non_blocking(self):
+        """Set the socket to non-blocking and close it.
+        This will try to send the `GOODBYE` message (given the socket is not
+        marked as defunct). However, should the write operation require
+        blocking (e.g., a full network buffer), then the socket will be closed
+        immediately (without `GOODBYE` message).
         """
-        pass
+        if self._closed or self._closing:
+            return
+        self.socket.settimeout(0)
+        self.close()
 
     @abc.abstractmethod
     def closed(self):
@@ -621,6 +665,7 @@ class IOPool:
         self.pool_config = pool_config
         self.workspace_config = workspace_config
         self.connections = defaultdict(deque)
+        self.connections_reservations = defaultdict(lambda: 0)
         self.lock = RLock()
         self.cond = Condition(self.lock)
 
@@ -630,96 +675,136 @@ class IOPool:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _acquire(self, address, timeout):
+    def _acquire_from_pool(self, address):
+        with self.lock:
+            for connection in list(self.connections.get(address, [])):
+                if connection.in_use:
+                    continue
+                connection.pool = self
+                connection.in_use = True
+                return connection
+        return None  # no free connection available
+
+    def _acquire_from_pool_checked(
+        self, address, health_check, deadline
+    ):
+        while not deadline.expired():
+            connection = self._acquire_from_pool(address)
+            if not connection:
+                return None  # no free connection available
+            if not health_check(connection, deadline):
+                # `close` is a noop on already closed connections.
+                # This is to make sure that the connection is
+                # gracefully closed, e.g. if it's just marked as
+                # `stale` but still alive.
+                if log.isEnabledFor(logging.DEBUG):
+                    log.debug(
+                        "[#%04X]  C: <POOL> removing old connection "
+                        "(closed=%s, defunct=%s, stale=%s, in_use=%s)",
+                        connection.local_port,
+                        connection.closed(), connection.defunct(),
+                        connection.stale(), connection.in_use
+                    )
+                connection.close()
+                with self.lock:
+                    try:
+                        self.connections.get(address, []).remove(connection)
+                    except ValueError:
+                        # If closure fails (e.g. because the server went
+                        # down), all connections to the same address will
+                        # be removed. Therefore, we silently ignore if the
+                        # connection isn't in the pool anymore.
+                        pass
+                continue  # try again with a new connection
+            else:
+                return connection
+
+    def _acquire_new_later(self, address, deadline):
+        def connection_creator():
+            released_reservation = False
+            try:
+                try:
+                    connection = self.opener(
+                        address, deadline.to_timeout()
+                    )
+                except ServiceUnavailable:
+                    self.deactivate(address)
+                    raise
+                connection.pool = self
+                connection.in_use = True
+                with self.lock:
+                    self.connections_reservations[address] -= 1
+                    released_reservation = True
+                    self.connections[address].append(connection)
+                return connection
+            finally:
+                if not released_reservation:
+                    with self.lock:
+                        self.connections_reservations[address] -= 1
+
+        max_pool_size = self.pool_config.max_connection_pool_size
+        infinite_pool_size = (max_pool_size < 0
+                              or max_pool_size == float("inf"))
+        with self.lock:
+            connections = self.connections[address]
+            pool_size = (len(connections)
+                         + self.connections_reservations[address])
+            can_create_new_connection = (infinite_pool_size
+                                         or pool_size < max_pool_size)
+            self.connections_reservations[address] += 1
+        if can_create_new_connection:
+            return connection_creator
+
+    def _acquire(self, address, deadline):
+
         """ Acquire a connection to a given address from the pool.
         The address supplied should always be an IP address, not
         a host name.
 
         This method is thread safe.
         """
-        t0 = perf_counter()
-        if timeout is None:
-            timeout = self.workspace_config.connection_acquisition_timeout
+        def health_check(connection_, _deadline):
+            if (connection_.closed()
+                    or connection_.defunct()
+                    or connection_.stale()):
+                return False
+            return True
 
-        with self.lock:
-            def time_remaining():
-                t = timeout - (perf_counter() - t0)
-                return t if t > 0 else 0
-
-            while True:
-                # try to find a free connection in pool
-                for connection in list(self.connections.get(address, [])):
-                    if (connection.closed() or connection.defunct()
-                            or (connection.stale() and not connection.in_use)):
-                        # `close` is a noop on already closed connections.
-                        # This is to make sure that the connection is gracefully
-                        # closed, e.g. if it's just marked as `stale` but still
-                        # alive.
-                        if log.isEnabledFor(logging.DEBUG):
-                            log.debug(
-                                "[#%04X]  C: <POOL> removing old connection "
-                                "(closed=%s, defunct=%s, stale=%s, in_use=%s)",
-                                connection.local_port,
-                                connection.closed(), connection.defunct(),
-                                connection.stale(), connection.in_use
-                            )
-                        connection.close()
-                        try:
-                            self.connections.get(address, []).remove(connection)
-                        except ValueError:
-                            # If closure fails (e.g. because the server went
-                            # down), all connections to the same address will
-                            # be removed. Therefore, we silently ignore if the
-                            # connection isn't in the pool anymore.
-                            pass
-                        continue
-                    if not connection.in_use:
-                        connection.in_use = True
-                        return connection
-                # all connections in pool are in-use
-                connections = self.connections[address]
-                max_pool_size = self.pool_config.max_connection_pool_size
-                infinite_pool_size = (max_pool_size < 0
-                                      or max_pool_size == float("inf"))
-                can_create_new_connection = (
-                        infinite_pool_size
-                        or len(connections) < max_pool_size
+        while True:
+            # try to find a free connection in the pool
+            connection = self._acquire_from_pool_checked(
+                address, health_check, deadline
+            )
+            if connection:
+                return connection
+            # all connections in pool are in-use
+            with self.lock:
+                connection_creator = self._acquire_new_later(
+                    address, deadline
                 )
-                if can_create_new_connection:
-                    timeout = min(self.pool_config.connection_timeout,
-                                  time_remaining())
-                    try:
-                        connection = self.opener(address, timeout)
-                    except ServiceUnavailable:
-                        self.deactivate(address)
-                        raise
-                    else:
-                        connection.pool = self
-                        connection.in_use = True
-                        connections.append(connection)
-                        return connection
+                if connection_creator:
+                    break
 
                 # failed to obtain a connection from pool because the
                 # pool is full and no free connection in the pool
-                if time_remaining():
-                    self.cond.wait(time_remaining())
-                    # if timed out, then we throw error. This time
-                    # computation is needed, as with python 2.7, we
-                    # cannot tell if the condition is notified or
-                    # timed out when we come to this line
-                    if not time_remaining():
-                        raise ClientError("Failed to obtain a connection from pool "
-                                          "within {!r}s".format(timeout))
-                else:
-                    raise ClientError("Failed to obtain a connection from pool "
-                                      "within {!r}s".format(timeout))
+                timeout = deadline.to_timeout()
+                if (
+                    timeout == 0  # deadline expired
+                    or not self.cond.wait(timeout)
+                ):
+                    raise ClientError(
+                        "Failed to obtain a connection from pool within {!r}s"
+                        .format(deadline.original_timeout)
+                    )
+        return connection_creator()
 
-    def acquire(self, access_mode=None, timeout=None, database=None,
-                bookmarks=None):
+    def acquire(self, access_mode, timeout, acquisition_timeout, database,
+                bookmarks):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
         :param access_mode:
-        :param timeout:
+        :param timeout: total timeout (including potential preparation)
+        :param acquisition_timeout: timeout for actually acquiring a connection
         :param database:
         :param bookmarks:
         """
@@ -800,6 +885,9 @@ class IOPool:
             pass
 
 
+BoltSocket.Bolt = Bolt
+
+
 class BoltPool(IOPool):
 
     @classmethod
@@ -829,9 +917,11 @@ class BoltPool(IOPool):
     def __repr__(self):
         return "<{} address={!r}>".format(self.__class__.__name__, self.address)
 
-    def acquire(self, access_mode=None, timeout=None, database=None, bookmarks=None):
+    def acquire(self, access_mode, timeout,  acquisition_timeout, database,
+                bookmarks):
         # The access_mode and database is not needed for a direct connection, its just there for consistency.
-        return self._acquire(self.address, timeout)
+        deadline = merge_deadlines_and_timeouts(timeout, acquisition_timeout)
+        return self._acquire(self.address, deadline)
 
 
 class Neo4jPool(IOPool):
@@ -887,6 +977,22 @@ class Neo4jPool(IOPool):
         """
         return "<{} addresses={!r}>".format(self.__class__.__name__, self.get_default_database_initial_router_addresses())
 
+    @contextmanager
+    def _refresh_lock_deadline(self, deadline):
+        timeout = deadline.to_timeout()
+        if timeout is None:
+            timeout = -1
+        if not self.refresh_lock.acquire(timeout=timeout):
+            raise ClientError(
+                "pool failed to update routing table within {!r}s (timeout)"
+                .format(deadline.original_timeout)
+            )
+
+        try:
+            yield
+        finally:
+            self.refresh_lock.release()
+
     @property
     def first_initial_routing_address(self):
         return self.get_default_database_initial_router_addresses()[0]
@@ -920,7 +1026,7 @@ class Neo4jPool(IOPool):
             return self.routing_tables[database]
 
     def fetch_routing_info(self, address, database, imp_user, bookmarks,
-                           timeout):
+                           deadline):
         """ Fetch raw routing info from a given router address.
 
         :param address: router address
@@ -930,30 +1036,31 @@ class Neo4jPool(IOPool):
         :type imp_user: str or None
         :param bookmarks: iterable of bookmark values after which the routing
                           info should be fetched
-        :param timeout: connection acquisition timeout in seconds
+        :param deadline: connection acquisition deadline
 
         :return: list of routing records, or None if no connection
             could be established or if no readers or writers are present
         :raise ServiceUnavailable: if the server does not support
             routing, or if routing support is broken or outdated
         """
-        cx = self._acquire(address, timeout)
+        cx = self._acquire(address, deadline)
         try:
-            routing_table = cx.route(
-                database or self.workspace_config.database,
-                imp_user or self.workspace_config.impersonated_user,
-                bookmarks
-            )
+            with connection_deadline(cx, deadline):
+                routing_table = cx.route(
+                    database or self.workspace_config.database,
+                    imp_user or self.workspace_config.impersonated_user,
+                    bookmarks
+                )
         finally:
             self.release(cx)
         return routing_table
 
-    def fetch_routing_table(self, *, address, timeout, database, imp_user,
+    def fetch_routing_table(self, *, address, deadline, database, imp_user,
                             bookmarks):
         """ Fetch a routing table from a given router address.
 
         :param address: router address
-        :param timeout: seconds
+        :param deadline: deadline
         :param database: the database name
         :type: str
         :param imp_user: the user to impersonate while fetching the routing
@@ -967,7 +1074,7 @@ class Neo4jPool(IOPool):
         new_routing_info = None
         try:
             new_routing_info = self.fetch_routing_info(
-                address, database, imp_user, bookmarks, timeout
+                address, database, imp_user, bookmarks, deadline
             )
         except Neo4jError as e:
             # checks if the code is an error that is caused by the client. In
@@ -1009,8 +1116,10 @@ class Neo4jPool(IOPool):
         # At least one of each is fine, so return this table
         return new_routing_table
 
-    def _update_routing_table_from(self, *routers, database=None, imp_user=None,
-                                   bookmarks=None, database_callback=None):
+    def _update_routing_table_from(
+            self, *routers, database, imp_user, bookmarks, deadline,
+            database_callback
+    ):
         """ Try to update routing tables with the given routers.
 
         :return: True if the routing table is successfully updated,
@@ -1019,27 +1128,30 @@ class Neo4jPool(IOPool):
         log.debug("Attempting to update routing table from {}".format(", ".join(map(repr, routers))))
         for router in routers:
             for address in router.resolve(resolver=self.pool_config.resolver):
+                if deadline.expired():
+                    return False
                 new_routing_table = self.fetch_routing_table(
-                    address=address,
-                    timeout=self.pool_config.connection_timeout,
-                    database=database, imp_user=imp_user, bookmarks=bookmarks
+                    address=address, deadline=deadline, database=database,
+                    imp_user=imp_user, bookmarks=bookmarks
                 )
                 if new_routing_table is not None:
-                    new_databse = new_routing_table.database
-                    self.get_or_create_routing_table(new_databse)\
-                        .update(new_routing_table)
+                    new_database = new_routing_table.database
+                    old_routing_table = self.get_or_create_routing_table(
+                        new_database
+                    )
+                    old_routing_table.update(new_routing_table)
                     log.debug(
                         "[#0000]  C: <UPDATE ROUTING TABLE> address=%r (%r)",
-                        address, self.routing_tables[new_databse]
+                        address, self.routing_tables[new_database]
                     )
                     if callable(database_callback):
-                        database_callback(new_databse)
+                        database_callback(new_database)
                     return True
             self.deactivate(router)
         return False
 
     def update_routing_table(self, *, database, imp_user, bookmarks,
-                             database_callback=None):
+                             timeout=None, database_callback=None):
         """ Update the routing table from the first router able to provide
         valid routing information.
 
@@ -1048,6 +1160,7 @@ class Neo4jPool(IOPool):
                          table
         :type imp_user: str or None
         :param bookmarks: bookmarks used when fetching routing table
+        :param timeout: timeout in seconds for how long to try updating
         :param database_callback: A callback function that will be called with
             the database name as only argument when a new routing table has been
             acquired. This database name might different from `database` if that
@@ -1056,7 +1169,10 @@ class Neo4jPool(IOPool):
 
         :raise neo4j.exceptions.ServiceUnavailable:
         """
-        with self.refresh_lock:
+        deadline = merge_deadlines_and_timeouts(
+            timeout, self.pool_config.update_routing_table_timeout
+        )
+        with self._refresh_lock_deadline(deadline):
             # copied because it can be modified
             existing_routers = set(
                 self.get_or_create_routing_table(database).routers
@@ -1070,14 +1186,14 @@ class Neo4jPool(IOPool):
                 if self._update_routing_table_from(
                         self.first_initial_routing_address, database=database,
                         imp_user=imp_user, bookmarks=bookmarks,
-                        database_callback=database_callback
+                        deadline=deadline, database_callback=database_callback
                 ):
                     # Why is only the first initial routing address used?
                     return
             if self._update_routing_table_from(
                     *(existing_routers - {self.first_initial_routing_address}),
                     database=database, imp_user=imp_user, bookmarks=bookmarks,
-                    database_callback=database_callback
+                    deadline=deadline, database_callback=database_callback
             ):
                 return
 
@@ -1085,7 +1201,7 @@ class Neo4jPool(IOPool):
                 if self._update_routing_table_from(
                     self.first_initial_routing_address, database=database,
                     imp_user=imp_user, bookmarks=bookmarks,
-                    database_callback=database_callback
+                    deadline=deadline, database_callback=database_callback
                 ):
                     # Why is only the first initial routing address used?
                     return
@@ -1100,8 +1216,10 @@ class Neo4jPool(IOPool):
             if address.unresolved not in servers:
                 super(Neo4jPool, self).deactivate(address)
 
-    def ensure_routing_table_is_fresh(self, *, access_mode, database, imp_user,
-                                      bookmarks, database_callback=None):
+    def ensure_routing_table_is_fresh(
+            self, *, access_mode, database, imp_user, bookmarks, deadline=None,
+            database_callback=None
+    ):
         """ Update the routing table if stale.
 
         This method performs two freshness checks, before and after acquiring
@@ -1115,7 +1233,7 @@ class Neo4jPool(IOPool):
         :return: `True` if an update was required, `False` otherwise.
         """
         from neo4j.api import READ_ACCESS
-        with self.refresh_lock:
+        with self._refresh_lock_deadline(deadline):
             if self.get_or_create_routing_table(database)\
                     .is_fresh(readonly=(access_mode == READ_ACCESS)):
                 # Readers are fresh.
@@ -1123,7 +1241,7 @@ class Neo4jPool(IOPool):
 
             self.update_routing_table(
                 database=database, imp_user=imp_user, bookmarks=bookmarks,
-                database_callback=database_callback
+                timeout=deadline, database_callback=database_callback
             )
             self.update_connection_pool(database=database)
 
@@ -1162,24 +1280,33 @@ class Neo4jPool(IOPool):
                 )
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
-    def acquire(self, access_mode=None, timeout=None, database=None,
-                bookmarks=None):
+    def acquire(self, access_mode, timeout, acquisition_timeout, database,
+                bookmarks):
         if access_mode not in (WRITE_ACCESS, READ_ACCESS):
             raise ClientError("Non valid 'access_mode'; {}".format(access_mode))
         if not timeout:
             raise ClientError("'timeout' must be a float larger than 0; {}"
                               .format(timeout))
+        if not acquisition_timeout:
+            raise ClientError("'acquisition_timeout' must be a float larger "
+                              "than 0; {}".format(acquisition_timeout))
+        deadline = Deadline.from_timeout_or_deadline(timeout)
 
         from neo4j.api import check_access_mode
         access_mode = check_access_mode(access_mode)
-        with self.refresh_lock:
+        with self._refresh_lock_deadline(deadline):
             log.debug("[#0000]  C: <ROUTING TABLE ENSURE FRESH> %r",
                       self.routing_tables)
             self.ensure_routing_table_is_fresh(
                 access_mode=access_mode, database=database, imp_user=None,
-                bookmarks=bookmarks
+                bookmarks=bookmarks, deadline=deadline
             )
 
+        # Making sure the routing table is fresh is not considered part of the
+        # connection acquisition. Hence, the acquisition_timeout starts now!
+        deadline = merge_deadlines(
+            deadline, Deadline.from_timeout_or_deadline(acquisition_timeout)
+        )
         while True:
             try:
                 # Get an address for a connection that have the fewest in-use
@@ -1190,7 +1317,8 @@ class Neo4jPool(IOPool):
                 raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode) from err
             try:
                 log.debug("[#0000]  C: <ACQUIRE ADDRESS> database=%r address=%r", database, address)
-                connection = self._acquire(address, timeout=timeout)  # should always be a resolved address
+                # should always be a resolved address
+                connection = self._acquire(address, deadline)
             except ServiceUnavailable:
                 self.deactivate(address=address)
             else:
@@ -1218,182 +1346,6 @@ class Neo4jPool(IOPool):
         for database in self.routing_tables.keys():
             self.routing_tables[database].writers.discard(address)
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_tables)
-
-
-def _connect(resolved_address, timeout, keep_alive):
-    """
-
-    :param resolved_address:
-    :param timeout: seconds
-    :param keep_alive: True or False
-    :return: socket object
-    """
-
-    s = None  # The socket
-
-    try:
-        if len(resolved_address) == 2:
-            s = socket(AF_INET)
-        elif len(resolved_address) == 4:
-            s = socket(AF_INET6)
-        else:
-            raise ValueError("Unsupported address {!r}".format(resolved_address))
-        t = s.gettimeout()
-        if timeout:
-            s.settimeout(timeout)
-        log.debug("[#0000]  C: <OPEN> %s", resolved_address)
-        s.connect(resolved_address)
-        s.settimeout(t)
-        keep_alive = 1 if keep_alive else 0
-        s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
-    except SocketTimeout:
-        log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
-        log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-        _close_socket(s)
-        raise ServiceUnavailable("Timed out trying to establish connection to {!r}".format(resolved_address))
-    except OSError as error:
-        log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
-                  " ".join(map(repr, error.args)))
-        log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-        s.close()
-        raise ServiceUnavailable("Failed to establish connection to {!r} (reason {})".format(resolved_address, error))
-    else:
-        return s
-
-
-def _secure(s, host, ssl_context):
-    local_port = s.getsockname()[1]
-    # Secure the connection if an SSL context has been provided
-    if ssl_context:
-        last_error = None
-        log.debug("[#%04X]  C: <SECURE> %s", local_port, host)
-        try:
-            sni_host = host if HAS_SNI and host else None
-            s = ssl_context.wrap_socket(s, server_hostname=sni_host)
-        except (OSError, SSLError, CertificateError) as cause:
-            raise BoltSecurityError(
-                message="Failed to establish encrypted connection.",
-                address=(host, local_port)
-            ) from cause
-        # Check that the server provides a certificate
-        der_encoded_server_certificate = s.getpeercert(binary_form=True)
-        if der_encoded_server_certificate is None:
-            raise BoltProtocolError(
-                "When using an encrypted socket, the server should always "
-                "provide a certificate", address=(host, local_port)
-            )
-        return s
-    return s
-
-
-def _handshake(s, resolved_address):
-    """
-
-    :param s: Socket
-    :param resolved_address:
-
-    :return: (socket, version, client_handshake, server_response_data)
-    """
-    local_port = s.getsockname()[1]
-
-    # TODO: Optimize logging code
-    handshake = Bolt.get_handshake()
-    import struct
-    handshake = struct.unpack(">16B", handshake)
-    handshake = [handshake[i:i + 4] for i in range(0, len(handshake), 4)]
-
-    supported_versions = [("0x%02X%02X%02X%02X" % (vx[0], vx[1], vx[2], vx[3])) for vx in handshake]
-
-    log.debug("[#%04X]  C: <MAGIC> 0x%08X", local_port, int.from_bytes(Bolt.MAGIC_PREAMBLE, byteorder="big"))
-    log.debug("[#%04X]  C: <HANDSHAKE> %s %s %s %s", local_port, *supported_versions)
-
-    data = Bolt.MAGIC_PREAMBLE + Bolt.get_handshake()
-    s.sendall(data)
-
-    # Handle the handshake response
-    ready_to_read = False
-    with selectors.DefaultSelector() as selector:
-        selector.register(s, selectors.EVENT_READ)
-        selector.select(1)
-    try:
-        data = s.recv(4)
-    except OSError:
-        raise ServiceUnavailable("Failed to read any data from server {!r} "
-                                 "after connected".format(resolved_address))
-    data_size = len(data)
-    if data_size == 0:
-        # If no data is returned after a successful select
-        # response, the server has closed the connection
-        log.debug("[#%04X]  S: <CLOSE>", local_port)
-        _close_socket(s)
-        raise ServiceUnavailable("Connection to {address} closed without handshake response".format(address=resolved_address))
-    if data_size != 4:
-        # Some garbled data has been received
-        log.debug("[#%04X]  S: @*#!", local_port)
-        s.close()
-        raise BoltProtocolError("Expected four byte Bolt handshake response from %r, received %r instead; check for incorrect port number" % (resolved_address, data), address=resolved_address)
-    elif data == b"HTTP":
-        log.debug("[#%04X]  S: <CLOSE>", local_port)
-        _close_socket(s)
-        raise ServiceUnavailable("Cannot to connect to Bolt service on {!r} "
-                                 "(looks like HTTP)".format(resolved_address))
-    agreed_version = data[-1], data[-2]
-    log.debug("[#%04X]  S: <HANDSHAKE> 0x%06X%02X", local_port, agreed_version[1], agreed_version[0])
-    return s, agreed_version, handshake, data
-
-
-def _close_socket(socket_):
-    try:
-        socket_.shutdown(SHUT_RDWR)
-        socket_.close()
-    except OSError:
-        pass
-
-
-def connect(address, *, timeout, custom_resolver, ssl_context, keep_alive):
-    """ Connect and perform a handshake and return a valid Connection object,
-    assuming a protocol version can be agreed.
-    """
-    errors = []
-    # Establish a connection to the host and port specified
-    # Catches refused connections see:
-    # https://docs.python.org/2/library/errno.html
-
-    resolved_addresses = Address(address).resolve(resolver=custom_resolver)
-    for resolved_address in resolved_addresses:
-        s = None
-        try:
-            s = _connect(resolved_address, timeout, keep_alive)
-            s = _secure(s, resolved_address.host_name, ssl_context)
-            return _handshake(s, resolved_address)
-        except (BoltError, DriverError, OSError) as error:
-            try:
-                local_port = s.getsockname()[1]
-            except (OSError, AttributeError):
-                local_port = 0
-            err_str = error.__class__.__name__
-            if str(error):
-                err_str += ": " + str(error)
-            log.debug("[#%04X]  C: <CONNECTION FAILED> %s", local_port, err_str)
-            if s:
-                _close_socket(s)
-            errors.append(error)
-        except Exception:
-            if s:
-                _close_socket(s)
-            raise
-    if not errors:
-        raise ServiceUnavailable(
-            "Couldn't connect to %s (resolved to %s)" % (
-                str(address), tuple(map(str, resolved_addresses)))
-        )
-    else:
-        raise ServiceUnavailable(
-            "Couldn't connect to %s (resolved to %s):\n%s" % (
-                str(address), tuple(map(str, resolved_addresses)),
-                "\n".join(map(str, errors))
-            )
-        ) from errors[0]
 
 
 def check_supported_server_product(agent):

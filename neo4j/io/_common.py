@@ -23,6 +23,7 @@ from contextlib import contextmanager
 import socket
 from struct import pack as struct_pack
 
+from neo4j._exceptions import SocketDeadlineExceeded
 from neo4j.exceptions import (
     Neo4jError,
     ServiceUnavailable,
@@ -69,7 +70,7 @@ class MessageInbox:
                     # Reset for new message
                     unpacker.reset()
 
-        except (OSError, socket.timeout) as error:
+        except (OSError, socket.timeout, SocketDeadlineExceeded) as error:
             self.on_error(error)
 
     def pop(self):

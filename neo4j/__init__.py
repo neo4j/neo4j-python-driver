@@ -60,6 +60,7 @@ __all__ = [
 from logging import getLogger
 
 
+from neo4j._deadline import Deadline
 from neo4j.addressing import (
     Address,
     IPv4Address,
@@ -451,6 +452,7 @@ class Neo4jDriver(Routing, Driver):
         )
 
         table = self._pool.get_routing_table_for_default_database()
+        timeout = self._default_workspace_config.connection_acquisition_timeout
         routing_info = {}
         for ix in list(table.routers):
             try:
@@ -459,8 +461,7 @@ class Neo4jDriver(Routing, Driver):
                     database=self._default_workspace_config.database,
                     imp_user=self._default_workspace_config.impersonated_user,
                     bookmarks=None,
-                    timeout=self._default_workspace_config
-                                .connection_acquisition_timeout
+                    deadline=Deadline(timeout)
                 )
             except (ServiceUnavailable, SessionExpired, Neo4jError):
                 routing_info[ix] = None

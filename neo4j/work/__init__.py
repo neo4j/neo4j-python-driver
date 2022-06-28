@@ -19,6 +19,7 @@
 # limitations under the License.
 
 
+from neo4j._deadline import Deadline
 from neo4j.conf import WorkspaceConfig
 from neo4j.exceptions import ServiceUnavailable
 from neo4j.io import Neo4jPool
@@ -53,6 +54,7 @@ class Workspace:
         self._config.database = database
 
     def _connect(self, access_mode):
+        timeout = Deadline(self._config.session_connection_timeout)
         if self._connection:
             # TODO: Investigate this
             # log.warning("FIXME: should always disconnect before connect")
@@ -74,11 +76,13 @@ class Workspace:
                     database=self._config.database,
                     imp_user=self._config.impersonated_user,
                     bookmarks=self._bookmarks,
+                    timeout=timeout,
                     database_callback=self._set_cached_database
                 )
         self._connection = self._pool.acquire(
             access_mode=access_mode,
-            timeout=self._config.connection_acquisition_timeout,
+            timeout=timeout,
+            acquisition_timeout=self._config.connection_acquisition_timeout,
             database=self._config.database,
             bookmarks=self._bookmarks
         )
