@@ -23,6 +23,7 @@ import socket
 from struct import pack as struct_pack
 
 from ..._async_compat.util import Util
+from ..._exceptions import SocketDeadlineExceeded
 from ...exceptions import (
     Neo4jError,
     ServiceUnavailable,
@@ -70,7 +71,7 @@ class MessageInbox:
                     # Reset for new message
                     unpacker.reset()
 
-        except (OSError, socket.timeout) as error:
+        except (OSError, socket.timeout, SocketDeadlineExceeded) as error:
             Util.callback(self.on_error, error)
 
     def pop(self):
