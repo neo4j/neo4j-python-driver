@@ -139,7 +139,8 @@ class AsyncGraphDatabase:
                     "Creating a direct driver (`bolt://` scheme) with routing "
                     "context (URI parameters) is deprecated. They will be "
                     "ignored. This will raise an error in a future release. "
-                    'Given URI "{}"'.format(uri)
+                    'Given URI "{}"'.format(uri),
+                    stack_level=2
                 )
                 # TODO: 6.0 - raise instead of warning
                 # raise ValueError(

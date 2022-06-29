@@ -24,14 +24,13 @@ from neo4j import (
     Bookmarks,
     ManagedTransaction,
     Session,
-    SessionConfig,
     Transaction,
     unit_of_work,
 )
+from neo4j._conf import SessionConfig
 from neo4j._sync.io._pool import IOPool
 
 from ...._async_compat import mark_sync_test
-from ._fake_connection import fake_connection_generator
 
 
 @pytest.fixture()
@@ -52,7 +51,8 @@ def pool(fake_connection_generator, mocker):
 @mark_sync_test
 def test_session_context_calls_close(mocker):
     s = Session(None, SessionConfig())
-    mock_close = mocker.patch.object(s, 'close', autospec=True)
+    mock_close = mocker.patch.object(s, 'close', autospec=True,
+                                     side_effect=s.close)
     with s:
         pass
     mock_close.assert_called_once_with()
@@ -203,9 +203,12 @@ def test_session_returns_bookmarks_directly(pool, bookmark_values):
 )
 @mark_sync_test
 def test_session_last_bookmark_is_deprecated(pool, bookmarks):
-    with Session(pool, SessionConfig(
-        bookmarks=bookmarks
-    )) as session:
+    if bookmarks is not None:
+        with pytest.warns(DeprecationWarning):
+            session = Session(pool, SessionConfig(bookmarks=bookmarks))
+    else:
+        session = Session(pool, SessionConfig(bookmarks=bookmarks))
+    with session:
         with pytest.warns(DeprecationWarning):
             if bookmarks:
                 assert (session.last_bookmark()) == bookmarks[-1]

@@ -288,7 +288,7 @@ def test_data_relationship():
     gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
     bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
-    alice_knows_bob = gh.hydrate_relationship(1, alice.id, bob.id, "KNOWS",
+    alice_knows_bob = gh.hydrate_relationship(1, alice._id, bob._id, "KNOWS",
                                               {"since": 1999})
     record = Record(zip(["a", "b", "r"], [alice, bob, alice_knows_bob]))
     assert record.data() == {

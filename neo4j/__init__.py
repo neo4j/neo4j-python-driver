@@ -16,6 +16,80 @@
 # limitations under the License.
 
 
+from logging import getLogger as _getLogger
+
+from ._async.driver import (
+    AsyncBoltDriver,
+    AsyncDriver,
+    AsyncGraphDatabase,
+    AsyncNeo4jDriver,
+)
+from ._async.work import (
+    AsyncManagedTransaction,
+    AsyncResult,
+    AsyncSession,
+    AsyncTransaction,
+)
+from ._conf import (
+    Config as _Config,
+    PoolConfig as _PoolConfig,
+    SessionConfig as _SessionConfig,
+    TrustAll,
+    TrustCustomCAs,
+    TrustSystemCAs,
+    WorkspaceConfig as _WorkspaceConfig,
+)
+from ._data import Record
+from ._meta import (
+    ExperimentalWarning,
+    get_user_agent,
+    version as __version__,
+)
+from ._sync.driver import (
+    BoltDriver,
+    Driver,
+    GraphDatabase,
+    Neo4jDriver,
+)
+from ._sync.work import (
+    ManagedTransaction,
+    Result,
+    Session,
+    Transaction,
+)
+from .addressing import (
+    Address,
+    IPv4Address,
+    IPv6Address,
+)
+from .api import (
+    Auth,  # TODO: Validate naming for Auth compared to other drivers.
+)
+from .api import (
+    AuthToken,
+    basic_auth,
+    bearer_auth,
+    Bookmark,
+    Bookmarks,
+    custom_auth,
+    DEFAULT_DATABASE,
+    kerberos_auth,
+    READ_ACCESS,
+    ServerInfo,
+    SYSTEM_DATABASE,
+    TRUST_ALL_CERTIFICATES,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    Version,
+    WRITE_ACCESS,
+)
+from .work import (
+    Query,
+    ResultSummary,
+    SummaryCounters,
+    unit_of_work,
+)
+
+
 __all__ = [
     "__version__",
     "Address",
@@ -69,78 +143,24 @@ __all__ = [
 ]
 
 
-from logging import getLogger
-
-from ._async.driver import (
-    AsyncBoltDriver,
-    AsyncDriver,
-    AsyncGraphDatabase,
-    AsyncNeo4jDriver,
-)
-from ._async.work import (
-    AsyncManagedTransaction,
-    AsyncResult,
-    AsyncSession,
-    AsyncTransaction,
-)
-from ._conf import (
-    Config,
-    PoolConfig,
-    SessionConfig,
-    TrustAll,
-    TrustCustomCAs,
-    TrustSystemCAs,
-    WorkspaceConfig,
-)
-from ._data import Record
-from ._meta import (
-    ExperimentalWarning,
-    get_user_agent,
-    version as __version__,
-)
-from ._sync.driver import (
-    BoltDriver,
-    Driver,
-    GraphDatabase,
-    Neo4jDriver,
-)
-from ._sync.work import (
-    ManagedTransaction,
-    Result,
-    Session,
-    Transaction,
-)
-from .addressing import (
-    Address,
-    IPv4Address,
-    IPv6Address,
-)
-from .api import (
-    Auth,  # TODO: Validate naming for Auth compared to other drivers.
-)
-from .api import (
-    AuthToken,
-    basic_auth,
-    bearer_auth,
-    Bookmark,
-    Bookmarks,
-    custom_auth,
-    DEFAULT_DATABASE,
-    kerberos_auth,
-    READ_ACCESS,
-    ServerInfo,
-    SYSTEM_DATABASE,
-    TRUST_ALL_CERTIFICATES,
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-    Version,
-    WRITE_ACCESS,
-)
-from .work import (
-    Query,
-    ResultSummary,
-    SummaryCounters,
-    unit_of_work,
-)
+_log = _getLogger("neo4j")
 
 
-log = getLogger("neo4j")
+def __getattr__(name):
+    # TODO 6.0 - remove this
+    if name in (
+        "log", "Config", "PoolConfig", "SessionConfig", "WorkspaceConfig"
+    ):
+        from ._meta import deprecation_warn
+        deprecation_warn(
+            "Importing {} from neo4j is deprecated without replacement. It's "
+            "internal and will be removed in a future version."
+            .format(name),
+            stack_level=2
+        )
+        return globals()[f"_{name}"]
+    raise AttributeError(f"module {__name__} has no attribute {name}")
+
+
+def __dir__():
+    return __all__

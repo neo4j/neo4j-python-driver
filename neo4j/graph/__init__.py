@@ -31,7 +31,7 @@ __all__ = [
 
 from collections.abc import Mapping
 
-from ..meta import (
+from .._meta import (
     deprecated,
     deprecation_warn,
 )

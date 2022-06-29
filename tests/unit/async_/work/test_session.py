@@ -25,13 +25,12 @@ from neo4j import (
     AsyncSession,
     AsyncTransaction,
     Bookmarks,
-    SessionConfig,
     unit_of_work,
 )
 from neo4j._async.io._pool import AsyncIOPool
+from neo4j._conf import SessionConfig
 
 from ...._async_compat import mark_async_test
-from ._fake_connection import async_fake_connection_generator
 
 
 @pytest.fixture()
@@ -52,7 +51,8 @@ def pool(async_fake_connection_generator, mocker):
 @mark_async_test
 async def test_session_context_calls_close(mocker):
     s = AsyncSession(None, SessionConfig())
-    mock_close = mocker.patch.object(s, 'close', autospec=True)
+    mock_close = mocker.patch.object(s, 'close', autospec=True,
+                                     side_effect=s.close)
     async with s:
         pass
     mock_close.assert_called_once_with()
@@ -203,9 +203,12 @@ async def test_session_returns_bookmarks_directly(pool, bookmark_values):
 )
 @mark_async_test
 async def test_session_last_bookmark_is_deprecated(pool, bookmarks):
-    async with AsyncSession(pool, SessionConfig(
-        bookmarks=bookmarks
-    )) as session:
+    if bookmarks is not None:
+        with pytest.warns(DeprecationWarning):
+            session = AsyncSession(pool, SessionConfig(bookmarks=bookmarks))
+    else:
+        session = AsyncSession(pool, SessionConfig(bookmarks=bookmarks))
+    async with session:
         with pytest.warns(DeprecationWarning):
             if bookmarks:
                 assert (await session.last_bookmark()) == bookmarks[-1]

@@ -165,6 +165,7 @@ def custom_auth(principal, credentials, realm, scheme, **parameters):
     return Auth(scheme, principal, credentials, realm, **parameters)
 
 
+# TODO 6.0 - remove this class
 class Bookmark:
     """A Bookmark object contains an immutable list of bookmark string values.
 
@@ -271,6 +272,10 @@ class Bookmarks:
             if not isinstance(value, str):
                 raise TypeError("Raw bookmark values must be str. "
                                 "Found {}".format(type(value)))
+            try:
+                value.encode("ascii")
+            except UnicodeEncodeError as e:
+                raise ValueError(f"The value {value} is not ASCII") from e
             bookmarks.append(value)
         obj._raw_values = frozenset(bookmarks)
         return obj

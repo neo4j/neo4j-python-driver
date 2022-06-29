@@ -18,7 +18,7 @@
 
 from unittest import TestCase
 
-from neo4j.spatial import (
+from neo4j._spatial import (
     Point,
     point_type,
 )

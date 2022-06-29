@@ -104,6 +104,13 @@
   deprecated without replacement. They are internal functions.
 - Importing `neo4j.packstream` has been deprecated. It's internal and should not
   be used by client code.
+- Importing `neo4j.routing` has been deprecated. It's internal and should not
+  be used by client code.
+- Importing `neo4j.config` has been deprecated. It's internal and should not
+  be used by client code.
+- `neoj4.Config`, `neoj4.PoolConfig`, `neoj4.SessionConfig`, and
+  `neoj4.WorkspaceConfig` have been deprecated without replacement. They are
+  internal classes.
 - Importing `neo4j.meta` has been deprecated. It's internal and should not
   be used by client code. `ExperimantalWarning` should be imported directly from
   `neo4j`. `neo4j.meta.version` is exposed through `neo4j.__vesrion__`

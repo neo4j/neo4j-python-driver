@@ -17,7 +17,7 @@
 
 
 from ...graph import Graph
-from ...packstream import Structure
+from ..packstream import Structure
 
 
 class GraphHydrator:

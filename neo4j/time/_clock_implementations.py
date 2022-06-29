@@ -25,11 +25,11 @@ from ctypes import (
 )
 from platform import uname
 
-from neo4j.time import (
+from . import (
     Clock,
     ClockTime,
 )
-from neo4j.time.arithmetic import nano_divmod
+from ._arithmetic import nano_divmod
 
 
 __all__ = [

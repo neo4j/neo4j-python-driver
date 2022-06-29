@@ -17,6 +17,7 @@
 
 
 import itertools
+from contextlib import contextmanager
 
 import pytest
 
@@ -101,9 +102,27 @@ def test_bookmark_initialization_with_valid_strings(test_input, expected_values,
         (("bookmark1", chr(129),), ValueError),
     ]
 )
-def test_bookmark_initialization_with_invalid_strings(test_input, expected):
+@pytest.mark.parametrize(("method", "deprecated", "splat_args"), (
+    (neo4j.Bookmark, True, True),
+    (neo4j.Bookmarks.from_raw_values, False, False),
+))
+def test_bookmark_initialization_with_invalid_strings(
+    test_input, expected, method, deprecated, splat_args
+):
+    @contextmanager
+    def deprecation_assertion():
+        if deprecated:
+            with pytest.warns(DeprecationWarning):
+                yield
+        else:
+            yield
+
     with pytest.raises(expected):
-        neo4j.Bookmark(*test_input)
+        with deprecation_assertion():
+            if splat_args:
+                method(*test_input)
+            else:
+                method(test_input)
 
 
 @pytest.mark.parametrize("test_as_generator", [True, False])
@@ -116,7 +135,6 @@ def test_bookmark_initialization_with_invalid_strings(test_input, expected):
     ("bookmark1", ""),
     ("bookmark1",),
     (),
-    (not_ascii,),
 ))
 def test_bookmarks_raw_values(test_as_generator, values):
     expected = frozenset(values)
@@ -140,6 +158,7 @@ def test_bookmarks_raw_values(test_as_generator, values):
     ((set(),), TypeError),
     ((frozenset(),), TypeError),
     ((["bookmark1", "bookmark2"],), TypeError),
+    ((not_ascii,), ValueError),
 ))
 def test_bookmarks_invalid_raw_values(values, exc_type):
     with pytest.raises(exc_type):
@@ -255,7 +274,8 @@ def test_serverinfo_initialization():
     assert server_info.address is address
     assert server_info.protocol_version is version
     assert server_info.agent is None
-    assert server_info.connection_id is None
+    with pytest.warns(DeprecationWarning):
+        assert server_info.connection_id is None
 
 
 @pytest.mark.parametrize(

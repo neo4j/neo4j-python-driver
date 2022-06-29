@@ -478,12 +478,12 @@ def test_path_v2_repr(legacy_id):
 
     )
     alice_knows_bob = gh.hydrate_relationship(
-        1 if legacy_id else None, alice.id, bob.id, "KNOWS", {"since": 1999},
+        1 if legacy_id else None, alice._id, bob._id, "KNOWS", {"since": 1999},
         "1" if legacy_id else "alice_knows_bob",
         alice.element_id, bob.element_id
     )
     carol_dislikes_bob = gh.hydrate_relationship(
-        2 if legacy_id else None, carol.id, bob.id, "DISLIKES", {},
+        2 if legacy_id else None, carol._id, bob._id, "DISLIKES", {},
         "2" if legacy_id else "carol_dislikes_bob",
         carol.element_id, bob.element_id
     )
