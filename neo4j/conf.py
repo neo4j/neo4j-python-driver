@@ -19,7 +19,7 @@
 from abc import ABCMeta
 from collections.abc import Mapping
 
-from ._conf import (
+from .__conf import (
     TrustAll,
     TrustCustomCAs,
     TrustSystemCAs,

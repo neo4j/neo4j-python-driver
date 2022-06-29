@@ -71,6 +71,11 @@ __all__ = [
 
 from logging import getLogger
 
+from .__conf import (
+    TrustAll,
+    TrustCustomCAs,
+    TrustSystemCAs,
+)
 from ._async.driver import (
     AsyncBoltDriver,
     AsyncDriver,
@@ -82,11 +87,6 @@ from ._async.work import (
     AsyncResult,
     AsyncSession,
     AsyncTransaction,
-)
-from ._conf import (
-    TrustAll,
-    TrustCustomCAs,
-    TrustSystemCAs,
 )
 from ._data import Record
 from ._meta import (

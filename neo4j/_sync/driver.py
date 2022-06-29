@@ -16,11 +16,11 @@
 # limitations under the License.
 
 
-from .._async_compat.util import Util
-from .._conf import (
+from ..__conf import (
     TrustAll,
     TrustStore,
 )
+from .._async_compat.util import Util
 from .._meta import (
     deprecation_warn,
     experimental,
