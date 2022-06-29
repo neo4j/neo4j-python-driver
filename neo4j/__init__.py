@@ -88,6 +88,12 @@ from ._conf import (
     TrustCustomCAs,
     TrustSystemCAs,
 )
+from ._data import Record
+from ._meta import (
+    ExperimentalWarning,
+    get_user_agent,
+    version as __version__,
+)
 from ._sync.driver import (
     BoltDriver,
     Driver,
@@ -130,13 +136,6 @@ from .conf import (
     PoolConfig,
     SessionConfig,
     WorkspaceConfig,
-)
-from .data import Record
-from .meta import (
-    experimental,
-    ExperimentalWarning,
-    get_user_agent,
-    version as __version__,
 )
 from .work import (
     Query,

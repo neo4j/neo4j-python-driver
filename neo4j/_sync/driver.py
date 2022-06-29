@@ -21,6 +21,11 @@ from .._conf import (
     TrustAll,
     TrustStore,
 )
+from .._meta import (
+    deprecation_warn,
+    experimental,
+    unclosed_resource_warn,
+)
 from ..addressing import Address
 from ..api import (
     READ_ACCESS,
@@ -32,11 +37,6 @@ from ..conf import (
     PoolConfig,
     SessionConfig,
     WorkspaceConfig,
-)
-from ..meta import (
-    deprecation_warn,
-    experimental,
-    unclosed_resource_warn,
 )
 
 

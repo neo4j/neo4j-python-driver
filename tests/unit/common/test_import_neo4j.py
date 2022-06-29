@@ -137,7 +137,7 @@ def test_import_poolconfig():
 
 
 def test_import_graph():
-    import neo4j.graph as graph
+    from neo4j import graph
 
 
 def test_import_graph_node():
@@ -153,12 +153,12 @@ def test_import_graph_graph():
 
 
 def test_import_spatial():
-    import neo4j.spatial as spatial
+    from neo4j import spatial
 
 
 def test_import_time():
-    import neo4j.time as time
+    from neo4j import time
 
 
 def test_import_exceptions():
-    import neo4j.exceptions as exceptions
+    from neo4j import exceptions

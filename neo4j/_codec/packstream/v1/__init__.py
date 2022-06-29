@@ -17,10 +17,13 @@
 
 
 from codecs import decode
+from contextlib import contextmanager
 from struct import (
     pack as struct_pack,
     unpack as struct_unpack,
 )
+
+from .._common import Structure
 
 
 PACKED_UINT_8 = [struct_pack(">B", value) for value in range(0x100)]
@@ -38,34 +41,6 @@ INT64_MIN = -(2 ** 63)
 INT64_MAX = 2 ** 63
 
 
-class Structure:
-
-    def __init__(self, tag, *fields):
-        self.tag = tag
-        self.fields = list(fields)
-
-    def __repr__(self):
-        return "Structure[0x%02X](%s)" % (ord(self.tag), ", ".join(map(repr, self.fields)))
-
-    def __eq__(self, other):
-        try:
-            return self.tag == other.tag and self.fields == other.fields
-        except AttributeError:
-            return False
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __len__(self):
-        return len(self.fields)
-
-    def __getitem__(self, key):
-        return self.fields[key]
-
-    def __setitem__(self, key, value):
-        self.fields[key] = value
-
-
 class Packer:
 
     def __init__(self, stream):
@@ -75,10 +50,7 @@ class Packer:
     def pack_raw(self, data):
         self._write(data)
 
-    def pack(self, value):
-        return self._pack(value)
-
-    def _pack(self, value):
+    def pack(self, value, dehydration_hooks=None):
         write = self._write
 
         # None
@@ -130,20 +102,26 @@ class Packer:
         elif isinstance(value, list):
             self.pack_list_header(len(value))
             for item in value:
-                self._pack(item)
+                self.pack(item, dehydration_hooks=dehydration_hooks)
 
         # Map
         elif isinstance(value, dict):
             self.pack_map_header(len(value))
             for key, item in value.items():
-                self._pack(key)
-                self._pack(item)
+                if not isinstance(key, str):
+                    raise TypeError(
+                        "Map keys must be strings, not {}".format(type(key))
+                    )
+                self.pack(key, dehydration_hooks=dehydration_hooks)
+                self.pack(item, dehydration_hooks=dehydration_hooks)
 
         # Structure
         elif isinstance(value, Structure):
             self.pack_struct(value.tag, value.fields)
 
         # Other
+        elif dehydration_hooks and type(value) in dehydration_hooks:
+            self.pack(dehydration_hooks[type(value)](value))
         else:
             raise ValueError("Values of type %s are not supported" % type(value))
 
@@ -209,7 +187,7 @@ class Packer:
         else:
             raise OverflowError("Map header size out of range")
 
-    def pack_struct(self, signature, fields):
+    def pack_struct(self, signature, fields, dehydration_hooks=None):
         if len(signature) != 1 or not isinstance(signature, bytes):
             raise ValueError("Structure signature must be a single byte value")
         write = self._write
@@ -220,7 +198,35 @@ class Packer:
             raise OverflowError("Structure size out of range")
         write(signature)
         for field in fields:
-            self._pack(field)
+            self.pack(field, dehydration_hooks=dehydration_hooks)
+
+    @staticmethod
+    def new_packable_buffer():
+        return PackableBuffer()
+
+
+class PackableBuffer:
+    def __init__(self):
+        self.data = bytearray()
+        # export write method for packer; "inline" for performance
+        self.write = self.data.extend
+        self.clear = self.data.clear
+        self._tmp_buffering = 0
+
+    @contextmanager
+    def tmp_buffer(self):
+        self._tmp_buffering += 1
+        old_len = len(self.data)
+        try:
+            yield
+        except Exception:
+            del self.data[old_len:]
+            raise
+        finally:
+            self._tmp_buffering -= 1
+
+    def is_tmp_buffering(self):
+        return bool(self._tmp_buffering)
 
 
 class Unpacker:
@@ -237,10 +243,13 @@ class Unpacker:
     def read_u8(self):
         return self.unpackable.read_u8()
 
-    def unpack(self):
-        return self._unpack()
+    def unpack(self, hydration_hooks=None):
+        value = self._unpack(hydration_hooks=hydration_hooks)
+        if hydration_hooks and type(value) in hydration_hooks:
+            return hydration_hooks[type(value)](value)
+        return value
 
-    def _unpack(self):
+    def _unpack(self, hydration_hooks=None):
         marker = self.read_u8()
 
         if marker == -1:
@@ -305,82 +314,86 @@ class Unpacker:
 
             # List
             elif 0x90 <= marker <= 0x9F or 0xD4 <= marker <= 0xD6:
-                return list(self._unpack_list_items(marker))
+                return list(self._unpack_list_items(
+                    marker, hydration_hooks=hydration_hooks)
+                )
 
             # Map
             elif 0xA0 <= marker <= 0xAF or 0xD8 <= marker <= 0xDA:
-                return self._unpack_map(marker)
+                return self._unpack_map(
+                    marker, hydration_hooks=hydration_hooks
+                )
 
             # Structure
             elif 0xB0 <= marker <= 0xBF:
                 size, tag = self._unpack_structure_header(marker)
                 value = Structure(tag, *([None] * size))
                 for i in range(len(value)):
-                    value[i] = self._unpack()
+                    value[i] = self.unpack(hydration_hooks=hydration_hooks)
                 return value
 
             else:
                 raise ValueError("Unknown PackStream marker %02X" % marker)
 
-    def _unpack_list_items(self, marker):
+    def _unpack_list_items(self, marker, hydration_hooks=None):
         marker_high = marker & 0xF0
         if marker_high == 0x90:
             size = marker & 0x0F
             if size == 0:
                 return
             elif size == 1:
-                yield self._unpack()
+                yield self.unpack(hydration_hooks=hydration_hooks)
             else:
                 for _ in range(size):
-                    yield self._unpack()
+                    yield self.unpack(hydration_hooks=hydration_hooks)
         elif marker == 0xD4:  # LIST_8:
             size, = struct_unpack(">B", self.read(1))
             for _ in range(size):
-                yield self._unpack()
+                yield self.unpack(hydration_hooks=hydration_hooks)
         elif marker == 0xD5:  # LIST_16:
             size, = struct_unpack(">H", self.read(2))
             for _ in range(size):
-                yield self._unpack()
+                yield self.unpack(hydration_hooks=hydration_hooks)
         elif marker == 0xD6:  # LIST_32:
             size, = struct_unpack(">I", self.read(4))
             for _ in range(size):
-                yield self._unpack()
+                yield self.unpack(hydration_hooks=hydration_hooks)
         else:
             return
 
-    def unpack_map(self):
+    def unpack_map(self, hydration_hooks=None):
         marker = self.read_u8()
-        return self._unpack_map(marker)
+        return self._unpack_map(marker, hydration_hooks=hydration_hooks)
 
-    def _unpack_map(self, marker):
+    def _unpack_map(self, marker, hydration_hooks=None):
         marker_high = marker & 0xF0
         if marker_high == 0xA0:
             size = marker & 0x0F
             value = {}
             for _ in range(size):
-                key = self._unpack()
-                value[key] = self._unpack()
+                key = self.unpack(hydration_hooks=hydration_hooks)
+                value[key] = self.unpack(hydration_hooks=hydration_hooks)
             return value
         elif marker == 0xD8:  # MAP_8:
             size, = struct_unpack(">B", self.read(1))
             value = {}
             for _ in range(size):
-                key = self._unpack()
-                value[key] = self._unpack()
+                key = self.unpack(hydration_hooks=hydration_hooks)
+                value[key] = self.unpack(hydration_hooks=hydration_hooks)
             return value
         elif marker == 0xD9:  # MAP_16:
             size, = struct_unpack(">H", self.read(2))
             value = {}
             for _ in range(size):
-                key = self._unpack()
-                value[key] = self._unpack()
+                key = self.unpack(hydration_hooks=hydration_hooks)
+                value[key] = self.unpack(hydration_hooks=hydration_hooks)
             return value
         elif marker == 0xDA:  # MAP_32:
             size, = struct_unpack(">I", self.read(4))
             value = {}
             for _ in range(size):
-                key = self._unpack()
-                value[key] = self._unpack()
+                key = self.unpack(hydration_hooks=hydration_hooks)
+                value[key] = self.unpack(hydration_hooks=hydration_hooks)
             return value
         else:
             return None
@@ -399,6 +412,10 @@ class Unpacker:
             return marker & 0x0F, signature
         else:
             raise ValueError("Expected structure, found marker %02X" % marker)
+
+    @staticmethod
+    def new_unpackable_buffer():
+        return UnpackableBuffer()
 
 
 class UnpackableBuffer:

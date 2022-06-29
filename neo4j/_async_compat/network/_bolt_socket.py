@@ -20,6 +20,7 @@ import asyncio
 import logging
 import selectors
 import socket
+import struct
 from socket import (
     AF_INET,
     AF_INET6,
@@ -34,7 +35,6 @@ from ssl import (
     HAS_SNI,
     SSLError,
 )
-import struct
 from time import perf_counter
 
 from ... import addressing

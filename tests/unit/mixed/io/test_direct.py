@@ -17,6 +17,7 @@
 
 
 import asyncio
+import time
 from asyncio import (
     Condition as AsyncCondition,
     Event as AsyncEvent,
@@ -28,7 +29,6 @@ from threading import (
     Lock,
     Thread,
 )
-import time
 
 import pytest
 

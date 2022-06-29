@@ -24,6 +24,10 @@ from ._conf import (
     TrustCustomCAs,
     TrustSystemCAs,
 )
+from ._meta import (
+    deprecation_warn,
+    get_user_agent,
+)
 from .api import (
     DEFAULT_DATABASE,
     TRUST_ALL_CERTIFICATES,
@@ -31,10 +35,6 @@ from .api import (
     WRITE_ACCESS,
 )
 from .exceptions import ConfigurationError
-from .meta import (
-    deprecation_warn,
-    get_user_agent,
-)
 
 
 def iter_items(iterable):

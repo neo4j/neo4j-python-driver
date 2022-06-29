@@ -39,8 +39,8 @@ def get_user_agent():
     return template.format(*fields)
 
 
-def deprecation_warn(message, stack_level=2):
-    warn(message, category=DeprecationWarning, stacklevel=stack_level)
+def deprecation_warn(message, stack_level=1):
+    warn(message, category=DeprecationWarning, stacklevel=stack_level + 1)
 
 
 def deprecated(message):
@@ -57,14 +57,14 @@ def deprecated(message):
         if asyncio.iscoroutinefunction(f):
             @wraps(f)
             async def inner(*args, **kwargs):
-                deprecation_warn(message, stack_level=3)
+                deprecation_warn(message, stack_level=2)
                 return await f(*args, **kwargs)
 
             return inner
         else:
             @wraps(f)
             def inner(*args, **kwargs):
-                deprecation_warn(message, stack_level=3)
+                deprecation_warn(message, stack_level=2)
                 return f(*args, **kwargs)
 
             return inner

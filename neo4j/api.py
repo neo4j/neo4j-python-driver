@@ -24,8 +24,8 @@ from urllib.parse import (
     urlparse,
 )
 
+from ._meta import deprecated
 from .exceptions import ConfigurationError
-from .meta import deprecated
 
 
 READ_ACCESS = "READ"

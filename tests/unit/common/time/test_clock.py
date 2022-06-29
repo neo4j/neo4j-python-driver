@@ -18,7 +18,7 @@
 
 from unittest import TestCase
 
-from neo4j.time import (
+from neo4j.time._clock_implementations import (
     Clock,
     ClockTime,
 )

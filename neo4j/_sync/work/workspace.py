@@ -19,14 +19,14 @@
 import asyncio
 
 from ..._deadline import Deadline
+from ..._meta import (
+    deprecation_warn,
+    unclosed_resource_warn,
+)
 from ...conf import WorkspaceConfig
 from ...exceptions import (
     ServiceUnavailable,
     SessionExpired,
-)
-from ...meta import (
-    deprecation_warn,
-    unclosed_resource_warn,
 )
 from ..io import Neo4jPool
 

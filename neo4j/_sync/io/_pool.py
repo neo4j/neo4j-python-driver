@@ -17,12 +17,12 @@
 
 
 import abc
+import logging
 from collections import (
     defaultdict,
     deque,
 )
 from contextlib import contextmanager
-import logging
 from logging import getLogger
 from random import choice
 

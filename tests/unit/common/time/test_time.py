@@ -14,13 +14,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
+import itertools
+import operator
 from datetime import (
     time,
     timedelta,
     timezone as datetime_timezone,
 )
-import itertools
-import operator
 
 import pytest
 from pytz import (
@@ -30,7 +32,7 @@ from pytz import (
 )
 
 from neo4j.time import Time
-from neo4j.time.arithmetic import (
+from neo4j.time._arithmetic import (
     nano_add,
     nano_div,
     round_half_to_even,

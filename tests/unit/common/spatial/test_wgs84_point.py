@@ -16,12 +16,8 @@
 # limitations under the License.
 
 
-import io
-import struct
 from unittest import TestCase
 
-from neo4j.data import DataDehydrator
-from neo4j.packstream import Packer
 from neo4j.spatial import WGS84Point
 
 
@@ -64,33 +60,3 @@ class WGS84PointTestCase(TestCase):
             p.height
         with self.assertRaises(AttributeError):
             p.z
-
-    def test_dehydration_3d(self):
-        coordinates = (1, -2, 3.1)
-        p = WGS84Point(coordinates)
-
-        dehydrator = DataDehydrator()
-        buffer = io.BytesIO()
-        packer = Packer(buffer)
-        packer.pack(dehydrator.dehydrate((p,))[0])
-        self.assertEqual(
-            buffer.getvalue(),
-            b"\xB4Y" +
-            b"\xC9" + struct.pack(">h", 4979) +
-            b"".join(map(lambda c: b"\xC1" + struct.pack(">d", c), coordinates))
-        )
-
-    def test_dehydration_2d(self):
-        coordinates = (.1, 0)
-        p = WGS84Point(coordinates)
-
-        dehydrator = DataDehydrator()
-        buffer = io.BytesIO()
-        packer = Packer(buffer)
-        packer.pack(dehydrator.dehydrate((p,))[0])
-        self.assertEqual(
-            buffer.getvalue(),
-            b"\xB3X" +
-            b"\xC9" + struct.pack(">h", 4326) +
-            b"".join(map(lambda c: b"\xC1" + struct.pack(">d", c), coordinates))
-        )

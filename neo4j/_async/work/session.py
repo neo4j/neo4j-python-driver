@@ -21,13 +21,16 @@ from random import random
 from time import perf_counter
 
 from ..._async_compat import async_sleep
+from ..._meta import (
+    deprecated,
+    deprecation_warn,
+)
 from ...api import (
     Bookmarks,
     READ_ACCESS,
     WRITE_ACCESS,
 )
 from ...conf import SessionConfig
-from ...data import DataHydrator
 from ...exceptions import (
     ClientError,
     DriverError,
@@ -35,10 +38,6 @@ from ...exceptions import (
     ServiceUnavailable,
     SessionExpired,
     TransactionError,
-)
-from ...meta import (
-    deprecated,
-    deprecation_warn,
 )
 from ...work import Query
 from .result import AsyncResult
@@ -228,10 +227,8 @@ class AsyncSession(AsyncWorkspace):
         protocol_version = cx.PROTOCOL_VERSION
         server_info = cx.server_info
 
-        hydrant = DataHydrator()
-
         self._auto_result = AsyncResult(
-            cx, hydrant, self._config.fetch_size, self._result_closed,
+            cx, self._config.fetch_size, self._result_closed,
             self._result_error
         )
         await self._auto_result._run(

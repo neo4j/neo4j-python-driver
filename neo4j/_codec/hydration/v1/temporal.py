@@ -22,13 +22,13 @@ from datetime import (
     timedelta,
 )
 
-from neo4j.packstream import Structure
-from neo4j.time import (
+from ....time import (
     Date,
     DateTime,
     Duration,
     Time,
 )
+from ...packstream import Structure
 
 
 def get_date_unix_epoch():

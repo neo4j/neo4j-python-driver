@@ -16,138 +16,16 @@
 # limitations under the License.
 
 
-from copy import deepcopy
 import itertools
-from uuid import uuid4
 
 import pytest
 
 import neo4j.api
-from neo4j.data import DataDehydrator
 from neo4j.exceptions import ConfigurationError
 
 
 standard_ascii = [chr(i) for i in range(128)]
 not_ascii = "♥O◘♦♥O◘♦"
-
-
-def dehydrated_value(value):
-    return DataDehydrator.fix_parameters({"_": value})["_"]
-
-
-def test_value_dehydration_should_allow_none():
-    assert dehydrated_value(None) is None
-
-
-@pytest.mark.parametrize(
-    "test_input, expected",
-    [
-        (True, True),
-        (False, False),
-    ]
-)
-def test_value_dehydration_should_allow_boolean(test_input, expected):
-    assert dehydrated_value(test_input) is expected
-
-
-@pytest.mark.parametrize(
-    "test_input, expected",
-    [
-        (0, 0),
-        (1, 1),
-        (0x7F, 0x7F),
-        (0x7FFF, 0x7FFF),
-        (0x7FFFFFFF, 0x7FFFFFFF),
-        (0x7FFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF),
-    ]
-)
-def test_value_dehydration_should_allow_integer(test_input, expected):
-    assert dehydrated_value(test_input) == expected
-
-
-@pytest.mark.parametrize(
-    "test_input, expected",
-    [
-        (0x10000000000000000, ValueError),
-        (-0x10000000000000000, ValueError),
-    ]
-)
-def test_value_dehydration_should_disallow_oversized_integer(test_input, expected):
-    with pytest.raises(expected):
-        dehydrated_value(test_input)
-
-
-@pytest.mark.parametrize(
-    "test_input, expected",
-    [
-        (0.0, 0.0),
-        (-0.1, -0.1),
-        (3.1415926, 3.1415926),
-        (-3.1415926, -3.1415926),
-    ]
-)
-def test_value_dehydration_should_allow_float(test_input, expected):
-    assert dehydrated_value(test_input) == expected
-
-
-@pytest.mark.parametrize(
-    "test_input, expected",
-    [
-        (u"", u""),
-        (u"hello, world", u"hello, world"),
-        ("".join(standard_ascii), "".join(standard_ascii)),
-    ]
-)
-def test_value_dehydration_should_allow_string(test_input, expected):
-    assert dehydrated_value(test_input) == expected
-
-
-@pytest.mark.parametrize(
-    "test_input, expected",
-    [
-        (bytearray(), bytearray()),
-        (bytearray([1, 2, 3]), bytearray([1, 2, 3])),
-    ]
-)
-def test_value_dehydration_should_allow_bytes(test_input, expected):
-    assert dehydrated_value(test_input) == expected
-
-
-@pytest.mark.parametrize(
-    "test_input, expected",
-    [
-        ([], []),
-        ([1, 2, 3], [1, 2, 3]),
-        ([1, 3.1415926, "string", None], [1, 3.1415926, "string", None])
-    ]
-)
-def test_value_dehydration_should_allow_list(test_input, expected):
-    assert dehydrated_value(test_input) == expected
-
-
-@pytest.mark.parametrize(
-    "test_input, expected",
-    [
-        ({}, {}),
-        ({u"one": 1, u"two": 1, u"three": 1}, {u"one": 1, u"two": 1, u"three": 1}),
-        ({u"list": [1, 2, 3, [4, 5, 6]], u"dict": {u"a": 1, u"b": 2}}, {u"list": [1, 2, 3, [4, 5, 6]], u"dict": {u"a": 1, u"b": 2}}),
-        ({"alpha": [1, 3.1415926, "string", None]}, {"alpha": [1, 3.1415926, "string", None]}),
-    ]
-)
-def test_value_dehydration_should_allow_dict(test_input, expected):
-    assert dehydrated_value(test_input) == expected
-
-
-@pytest.mark.parametrize(
-    "test_input, expected",
-    [
-        (object(), TypeError),
-        (uuid4(), TypeError),
-    ]
-)
-def test_value_dehydration_should_disallow_object(test_input, expected):
-    with pytest.raises(expected):
-        dehydrated_value(test_input)
 
 
 def test_bookmark_is_deprecated():

@@ -72,7 +72,7 @@ def test_db_extra_not_supported_in_run(fake_socket):
 @mark_sync_test
 def test_simple_discard(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt3.UNPACKER_CLS)
     connection = Bolt3(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard()
     connection.send_all()
@@ -84,7 +84,7 @@ def test_simple_discard(fake_socket):
 @mark_sync_test
 def test_simple_pull(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt3.UNPACKER_CLS)
     connection = Bolt3(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull()
     connection.send_all()
@@ -99,9 +99,11 @@ def test_hint_recv_timeout_seconds_gets_ignored(
     fake_socket_pair, recv_timeout, mocker
 ):
     address = ("127.0.0.1", 7687)
-    sockets = fake_socket_pair(address)
+    sockets = fake_socket_pair(
+        address, Bolt3.PACKER_CLS, Bolt3.UNPACKER_CLS
+    )
     sockets.client.settimeout = mocker.Mock()
-    sockets.server.send_message(0x70, {
+    sockets.server.send_message(b"\x70", {
         "server": "Neo4j/3.5.0",
         "hints": {"connection.recv_timeout_seconds": recv_timeout},
     })
