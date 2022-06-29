@@ -31,6 +31,10 @@ from ..._async_compat.concurrency import (
     RLock,
 )
 from ..._async_compat.network import NetworkUtil
+from ..._conf import (
+    PoolConfig,
+    WorkspaceConfig,
+)
 from ..._deadline import (
     connection_deadline,
     Deadline,
@@ -38,13 +42,10 @@ from ..._deadline import (
     merge_deadlines_and_timeouts,
 )
 from ..._exceptions import BoltError
+from ..._routing import RoutingTable
 from ...api import (
     READ_ACCESS,
     WRITE_ACCESS,
-)
-from ...conf import (
-    PoolConfig,
-    WorkspaceConfig,
 )
 from ...exceptions import (
     ClientError,
@@ -56,7 +57,6 @@ from ...exceptions import (
     SessionExpired,
     WriteServiceUnavailable,
 )
-from ...routing import RoutingTable
 from ._bolt import Bolt
 
 

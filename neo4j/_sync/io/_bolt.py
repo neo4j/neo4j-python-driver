@@ -26,6 +26,7 @@ from ..._async_compat.network import BoltSocket
 from ..._async_compat.util import Util
 from ..._codec.hydration import v1 as hydration_v1
 from ..._codec.packstream import v1 as packstream_v1
+from ..._conf import PoolConfig
 from ..._exceptions import (
     BoltError,
     BoltHandshakeError,
@@ -37,7 +38,6 @@ from ...api import (
     ServerInfo,
     Version,
 )
-from ...conf import PoolConfig
 from ...exceptions import (
     AuthError,
     DriverError,

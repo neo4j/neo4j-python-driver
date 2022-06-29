@@ -21,7 +21,7 @@ import logging
 import pytest
 
 from neo4j._async.io._bolt4 import AsyncBolt4x4
-from neo4j.conf import PoolConfig
+from neo4j._conf import PoolConfig
 
 from ...._async_compat import mark_async_test
 

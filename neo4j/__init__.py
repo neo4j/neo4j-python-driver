@@ -71,11 +71,6 @@ __all__ = [
 
 from logging import getLogger
 
-from .__conf import (
-    TrustAll,
-    TrustCustomCAs,
-    TrustSystemCAs,
-)
 from ._async.driver import (
     AsyncBoltDriver,
     AsyncDriver,
@@ -87,6 +82,15 @@ from ._async.work import (
     AsyncResult,
     AsyncSession,
     AsyncTransaction,
+)
+from ._conf import (
+    Config,
+    PoolConfig,
+    SessionConfig,
+    TrustAll,
+    TrustCustomCAs,
+    TrustSystemCAs,
+    WorkspaceConfig,
 )
 from ._data import Record
 from ._meta import (
@@ -130,12 +134,6 @@ from .api import (
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     Version,
     WRITE_ACCESS,
-)
-from .conf import (
-    Config,
-    PoolConfig,
-    SessionConfig,
-    WorkspaceConfig,
 )
 from .work import (
     Query,

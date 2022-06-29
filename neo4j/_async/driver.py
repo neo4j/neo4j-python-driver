@@ -16,11 +16,15 @@
 # limitations under the License.
 
 
-from ..__conf import (
+from .._async_compat.util import AsyncUtil
+from .._conf import (
+    Config,
+    PoolConfig,
+    SessionConfig,
     TrustAll,
     TrustStore,
+    WorkspaceConfig,
 )
-from .._async_compat.util import AsyncUtil
 from .._meta import (
     deprecation_warn,
     experimental,
@@ -31,12 +35,6 @@ from ..api import (
     READ_ACCESS,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-)
-from ..conf import (
-    Config,
-    PoolConfig,
-    SessionConfig,
-    WorkspaceConfig,
 )
 
 

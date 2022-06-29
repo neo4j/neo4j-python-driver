@@ -18,8 +18,8 @@
 
 import pytest
 
+from neo4j._conf import PoolConfig
 from neo4j._sync.io._bolt3 import Bolt3
-from neo4j.conf import PoolConfig
 from neo4j.exceptions import ConfigurationError
 
 from ...._async_compat import mark_sync_test

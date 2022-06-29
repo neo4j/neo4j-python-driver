@@ -18,12 +18,12 @@
 
 import asyncio
 
+from ..._conf import WorkspaceConfig
 from ..._deadline import Deadline
 from ..._meta import (
     deprecation_warn,
     unclosed_resource_warn,
 )
-from ...conf import WorkspaceConfig
 from ...exceptions import (
     ServiceUnavailable,
     SessionExpired,

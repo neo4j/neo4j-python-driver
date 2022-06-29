@@ -146,7 +146,7 @@ class RoutingTable:
         :return: Returns true if it is old and not used for a while.
         :rtype: bool
         """
-        from neo4j.conf import RoutingConfig
+        from neo4j._conf import RoutingConfig
         perf_time = perf_counter()
         log.debug("[#0000]  C: <ROUTING AGED> last_updated_time=%r perf_time=%r", self.last_updated_time, perf_time)
         return self.last_updated_time + self.ttl + RoutingConfig.routing_table_purge_delay <= perf_time

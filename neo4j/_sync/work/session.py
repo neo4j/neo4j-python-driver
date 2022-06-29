@@ -21,6 +21,7 @@ from random import random
 from time import perf_counter
 
 from ..._async_compat import sleep
+from ..._conf import SessionConfig
 from ..._meta import (
     deprecated,
     deprecation_warn,
@@ -30,7 +31,6 @@ from ...api import (
     READ_ACCESS,
     WRITE_ACCESS,
 )
-from ...conf import SessionConfig
 from ...exceptions import (
     ClientError,
     DriverError,

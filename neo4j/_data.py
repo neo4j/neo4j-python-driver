@@ -28,7 +28,7 @@ from collections.abc import (
 from functools import reduce
 from operator import xor as xor_operator
 
-from .conf import iter_items
+from ._conf import iter_items
 from .graph import (
     Node,
     Path,

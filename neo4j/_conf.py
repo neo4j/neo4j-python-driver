@@ -19,11 +19,6 @@
 from abc import ABCMeta
 from collections.abc import Mapping
 
-from .__conf import (
-    TrustAll,
-    TrustCustomCAs,
-    TrustSystemCAs,
-)
 from ._meta import (
     deprecation_warn,
     get_user_agent,
@@ -50,6 +45,76 @@ def iter_items(iterable):
     else:
         for key, value in iterable:
             yield key, value
+
+
+class TrustStore:
+    # Base class for trust stores. For internal type-checking only.
+    pass
+
+
+class TrustSystemCAs(TrustStore):
+    """Used to configure the driver to trust system CAs (default).
+
+    Trust server certificates that can be verified against the system
+    certificate authority. This option is primarily intended for use with
+    full certificates.
+
+    For example::
+
+        import neo4j
+
+        driver = neo4j.GraphDatabase.driver(
+            url, auth=auth, trusted_certificates=neo4j.TrustSystemCAs()
+        )
+    """
+    pass
+
+
+class TrustAll(TrustStore):
+    """Used to configure the driver to trust all certificates.
+
+    Trust any server certificate. This ensures that communication
+    is encrypted but does not verify the server certificate against a
+    certificate authority. This option is primarily intended for use with
+    the default auto-generated server certificate.
+
+
+    For example::
+
+        import neo4j
+
+        driver = neo4j.GraphDatabase.driver(
+            url, auth=auth, trusted_certificates=neo4j.TrustAll()
+        )
+    """
+    pass
+
+
+class TrustCustomCAs(TrustStore):
+    """Used to configure the driver to trust custom CAs.
+
+    Trust server certificates that can be verified against the certificate
+    authority at the specified paths. This option is primarily intended for
+    self-signed and custom certificates.
+
+    :param certificates (str): paths to the certificates to trust.
+        Those are not the certificates you expect to see from the server but
+        the CA certificates you expect to be used to sign the server's
+        certificate.
+
+    For example::
+
+        import neo4j
+
+        driver = neo4j.GraphDatabase.driver(
+            url, auth=auth,
+            trusted_certificates=neo4j.TrustCustomCAs(
+                "/path/to/ca1.crt", "/path/to/ca2.crt",
+            )
+        )
+    """
+    def __init__(self, *certificates):
+        self.certs = certificates
 
 
 class DeprecatedAlias:

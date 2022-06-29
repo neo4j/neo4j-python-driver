@@ -20,8 +20,8 @@ import logging
 
 import pytest
 
+from neo4j._conf import PoolConfig
 from neo4j._sync.io._bolt4 import Bolt4x3
-from neo4j.conf import PoolConfig
 
 from ...._async_compat import mark_sync_test
 
