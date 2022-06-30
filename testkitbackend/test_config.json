@@ -32,6 +32,7 @@
     "Feature:API:Result.Peek": true,
     "Feature:API:Result.Single": "Does not raise error when not exactly one record is available. To be fixed in 5.0.",
     "Feature:API:SessionConnectionTimeout": true,
+    "Feature:API:Type.Temporal": true,
     "Feature:API:UpdateRoutingTableTimeout": true,
     "Feature:Auth:Bearer": true,
     "Feature:Auth:Custom": true,

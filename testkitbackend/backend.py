@@ -14,39 +14,37 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
+import asyncio
+import traceback
 from inspect import (
     getmembers,
     isfunction,
 )
-import io
-from json import loads, dumps
-import logging
-import sys
-import traceback
-
-from neo4j._exceptions import (
-    BoltError
+from json import (
+    dumps,
+    loads,
 )
+from pathlib import Path
+
+from neo4j._exceptions import BoltError
 from neo4j.exceptions import (
     DriverError,
     Neo4jError,
     UnsupportedServerProduct,
 )
 
-import testkitbackend.requests as requests
+from ._driver_logger import (
+    buffer_handler,
+    log,
+)
+from .exceptions import MarkdAsDriverException
+from . import requests
 
-buffer_handler = logging.StreamHandler(io.StringIO())
-buffer_handler.setLevel(logging.DEBUG)
 
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
-logging.getLogger("neo4j").addHandler(handler)
-logging.getLogger("neo4j").addHandler(buffer_handler)
-logging.getLogger("neo4j").setLevel(logging.DEBUG)
-
-log = logging.getLogger("testkitbackend")
-log.addHandler(handler)
-log.setLevel(logging.DEBUG)
+TESTKIT_BACKEND_PATH = Path(__file__).absolute().resolve().parent
+DRIVER_PATH = TESTKIT_BACKEND_PATH.parent / "neo4j"
 
 
 class Request(dict):
@@ -134,6 +132,41 @@ class Backend:
                     request = request + line
         return False
 
+    @staticmethod
+    def _exc_stems_from_driver(exc):
+        stack = traceback.extract_tb(exc.__traceback__)
+        for frame in stack[-1:1:-1]:
+            p = Path(frame.filename)
+            if TESTKIT_BACKEND_PATH in p.parents:
+                return False
+            if DRIVER_PATH in p.parents:
+                return True
+
+    def write_driver_exc(self, exc):
+        log.debug(traceback.format_exc())
+
+        key = self.next_key()
+        self.errors[key] = exc
+
+        payload = {"id": key, "msg": ""}
+
+        if isinstance(exc, MarkdAsDriverException):
+            wrapped_exc = exc.wrapped_exc
+            payload["errorType"] = str(type(wrapped_exc))
+            if wrapped_exc.args:
+                payload["msg"] = str(wrapped_exc.args[0])
+        else:
+            payload["errorType"] = str(type(exc))
+            if isinstance(exc, Neo4jError) and exc.message is not None:
+                payload["msg"] = str(exc.message)
+            elif exc.args:
+                payload["msg"] = str(exc.args[0])
+
+            if isinstance(exc, Neo4jError):
+                payload["code"] = exc.code
+
+        self.send_response("DriverError", payload)
+
     def _process(self, request):
         """ Process a received request by retrieving handler that
         corresponds to the request name.
@@ -156,34 +189,25 @@ class Backend:
                     " request: " + ", ".join(unsused_keys)
                 )
         except (Neo4jError, DriverError, UnsupportedServerProduct,
-                BoltError) as e:
-            log.debug(traceback.format_exc())
-            if isinstance(e, Neo4jError):
-                msg = "" if e.message is None else str(e.message)
-            else:
-                msg = str(e.args[0]) if e.args else ""
-
-            key = self.next_key()
-            self.errors[key] = e
-            payload = {"id": key, "errorType": str(type(e)), "msg": msg}
-            if isinstance(e, Neo4jError):
-                payload["code"] = e.code
-            self.send_response("DriverError", payload)
+                BoltError, MarkdAsDriverException) as e:
+            self.write_driver_exc(e)
         except requests.FrontendError as e:
             self.send_response("FrontendError", {"msg": str(e)})
-        except Exception:
-            tb = traceback.format_exc()
-            log.error(tb)
-            self.send_response("BackendError", {"msg": tb})
+        except Exception as e:
+            if self._exc_stems_from_driver(e):
+                self.write_driver_exc(e)
+            else:
+                tb = traceback.format_exc()
+                log.error(tb)
+                self.send_response("BackendError", {"msg": tb})
 
     def send_response(self, name, data):
         """ Sends a response to backend.
         """
-        buffer_handler.acquire()
-        log_output = buffer_handler.stream.getvalue()
-        buffer_handler.stream.truncate(0)
-        buffer_handler.stream.seek(0)
-        buffer_handler.release()
+        with buffer_handler.lock:
+            log_output = buffer_handler.stream.getvalue()
+            buffer_handler.stream.truncate(0)
+            buffer_handler.stream.seek(0)
         if not log_output.endswith("\n"):
             log_output += "\n"
         self._wr.write(log_output.encode("utf-8"))
@@ -193,4 +217,7 @@ class Backend:
         self._wr.write(b"#response begin\n")
         self._wr.write(bytes(response+"\n", "utf-8"))
         self._wr.write(b"#response end\n")
-        self._wr.flush()
+        if isinstance(self._wr, asyncio.StreamWriter):
+            self._wr.drain()
+        else:
+            self._wr.flush()
