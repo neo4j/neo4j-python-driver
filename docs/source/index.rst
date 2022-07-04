@@ -97,7 +97,7 @@ To deactivate the current active virtual environment, use:
 Quick Example
 *************
 
-Creating nodes.
+Creating nodes and relationships.
 
 .. code-block:: python
 
@@ -106,15 +106,17 @@ Creating nodes.
     uri = "neo4j://localhost:7687"
     driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
 
+    def create_person(tx, name):
+        tx.run("CREATE (a:Person {name: $name})", name=name)
+
     def create_friend_of(tx, name, friend):
         tx.run("MATCH (a:Person) WHERE a.name = $name "
                "CREATE (a)-[:KNOWS]->(:Person {name: $friend})",
                name=name, friend=friend)
 
     with driver.session() as session:
+        session.write_transaction(create_person, "Alice")
         session.write_transaction(create_friend_of, "Alice", "Bob")
-
-    with driver.session() as session:
         session.write_transaction(create_friend_of, "Alice", "Carl")
 
     driver.close()
@@ -132,8 +134,8 @@ Finding nodes.
     def get_friends_of(tx, name):
         friends = []
         result = tx.run("MATCH (a:Person)-[:KNOWS]->(f) "
-                             "WHERE a.name = $name "
-                             "RETURN f.name AS friend", name=name)
+                        "WHERE a.name = $name "
+                        "RETURN f.name AS friend", name=name)
         for record in result:
             friends.append(record["friend"])
         return friends
