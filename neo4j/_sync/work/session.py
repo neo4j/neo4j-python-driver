@@ -443,6 +443,11 @@ class Session(Workspace):
 
     def read_transaction(self, transaction_function, *args, **kwargs):
         """Execute a unit of work in a managed read transaction.
+
+        .. note::
+            This does not necessarily imply access control, see the session
+            configuration option :ref:`default-access-mode-ref`.
+
         This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
         Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
 
@@ -493,6 +498,11 @@ class Session(Workspace):
 
     def write_transaction(self, transaction_function, *args, **kwargs):
         """Execute a unit of work in a managed write transaction.
+
+        .. note::
+            This does not necessarily imply access control, see the session
+            configuration option :ref:`default-access-mode-ref`.
+
         This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
         Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
 
