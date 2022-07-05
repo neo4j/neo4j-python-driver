@@ -119,13 +119,15 @@ async def NewDriver(backend, data):
             backend, data["resolverRegistered"],
             data["domainNameResolverRegistered"]
         )
-    if data.get("connectionTimeoutMs"):
-        kwargs["connection_timeout"] = data["connectionTimeoutMs"] / 1000
-    if data.get("maxTxRetryTimeMs"):
-        kwargs["max_transaction_retry_time"] = data["maxTxRetryTimeMs"] / 1000
-    if data.get("connectionAcquisitionTimeoutMs"):
-        kwargs["connection_acquisition_timeout"] = \
-            data["connectionAcquisitionTimeoutMs"] / 1000
+    for timeout_testkit, timeout_driver in (
+        ("connectionTimeoutMs", "connection_timeout"),
+        ("maxTxRetryTimeMs", "max_transaction_retry_time"),
+        ("connectionAcquisitionTimeoutMs", "connection_acquisition_timeout"),
+        ("sessionConnectionTimeoutMs", "session_connection_timeout"),
+        ("updateRoutingTableTimeoutMs", "update_routing_table_timeout"),
+    ):
+        if data.get(timeout_testkit) is not None:
+            kwargs[timeout_driver] = data[timeout_testkit] / 1000
     if data.get("maxConnectionPoolSize"):
         kwargs["max_connection_pool_size"] = data["maxConnectionPoolSize"]
     if data.get("fetchSize"):

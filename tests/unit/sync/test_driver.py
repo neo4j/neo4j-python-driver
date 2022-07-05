@@ -22,6 +22,7 @@ import pytest
 
 from neo4j import (
     BoltDriver,
+    ExperimentalWarning,
     GraphDatabase,
     Neo4jDriver,
     TRUST_ALL_CERTIFICATES,
@@ -183,8 +184,10 @@ def test_driver_opens_write_session_by_default(uri, mocker):
     acquire_mock.assert_called_once_with(
         access_mode=WRITE_ACCESS,
         timeout=mocker.ANY,
+        acquisition_timeout=mocker.ANY,
         database=mocker.ANY,
-        bookmarks=mocker.ANY
+        bookmarks=mocker.ANY,
+        liveness_check_timeout=mocker.ANY
     )
     tx_begin_mock.assert_called_once_with(
         tx,
@@ -224,18 +227,42 @@ def test_verify_connectivity(uri, mocker):
     "neo4j://127.0.0.1:9000",
 ))
 @pytest.mark.parametrize("kwargs", (
-    {"access_mode": WRITE_ACCESS},
-    {"access_mode": READ_ACCESS},
+    {"default_access_mode": WRITE_ACCESS},
+    {"default_access_mode": READ_ACCESS},
     {"fetch_size": 69},
 ))
 @mark_sync_test
-def test_verify_connectivity_parameters_are_deprecated(uri, kwargs,
-                                                             mocker):
+def test_verify_connectivity_parameters_are_experimental(
+    uri, kwargs, mocker
+):
     driver = GraphDatabase.driver(uri)
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
-        with pytest.warns(DeprecationWarning, match="configuration"):
+        with pytest.warns(ExperimentalWarning, match="configuration"):
             driver.verify_connectivity(**kwargs)
+    finally:
+        driver.close()
+
+
+@pytest.mark.parametrize("uri", (
+    "bolt://127.0.0.1:9000",
+    "neo4j://127.0.0.1:9000",
+))
+@pytest.mark.parametrize("kwargs", (
+    {"default_access_mode": WRITE_ACCESS},
+    {"default_access_mode": READ_ACCESS},
+    {"fetch_size": 69},
+))
+@mark_sync_test
+def test_get_server_info_parameters_are_experimental(
+    uri, kwargs, mocker
+):
+    driver = GraphDatabase.driver(uri)
+    mocker.patch.object(driver, "_pool", autospec=True)
+
+    try:
+        with pytest.warns(ExperimentalWarning, match="configuration"):
+            driver.get_server_info(**kwargs)
     finally:
         driver.close()
