@@ -183,7 +183,7 @@ class Neo4jError(Exception):
     def is_retryable(self):
         """Whether the error is retryable.
 
-        Indicated whether a transaction that yielded this error makes sense to
+        Indicates whether a transaction that yielded this error makes sense to
         retry. This method makes mostly sense when implementing a custom
         retry policy in conjunction with :ref:`explicit-transactions-ref`.
 
@@ -331,7 +331,7 @@ class DriverError(Exception):
     def is_retryable(self):
         """Whether the error is retryable.
 
-        Indicated whether a transaction that yielded this error makes sense to
+        Indicates whether a transaction that yielded this error makes sense to
         retry. This method makes mostly sense when implementing a custom
         retry policy in conjunction with :ref:`explicit-transactions-ref`.
 
