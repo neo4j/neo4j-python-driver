@@ -76,11 +76,9 @@
     It now raises a `ResultConsumedError`.
   - New method `Result.closed()` can be used to check for this condition if
     necessary.
-- `driver.verify_connectivity()`
-  - All keyword arguments have been deprecated (they were experimental).
-    They are now ignored and will be removed in a future release.
-  - The undocumented return value has been removed. If you need information
-    about the remote server, use `driver.get_server_info()` instead.
+- The undocumented return value of `driver.verify_connectivity()` has been
+  removed. If you need information about the remote server, use
+  `driver.get_server_info()` instead.
 - Transaction functions (a.k.a. managed transactions):  
   The first argument of transaction functions is now a `ManagedTransaction`
   object. It behaves exactly like a regular `Transaction` object, except it
