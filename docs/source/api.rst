@@ -505,16 +505,21 @@ The default access mode.
 
 A session can be given a default access mode on construction.
 
-This applies only in clustered environments and determines whether transactions carried out within that session should be routed to a `read` or `write` server by default.
+This applies only in clustered environments and determines whether transactions
+carried out within that session should be routed to a ``read`` or ``write``
+server by default.
 
-Transactions (see :ref:`managed-transactions-ref`) within a session can override the access mode passed to that session on construction.
+Transactions (see :ref:`managed-transactions-ref`) within a session override the
+access mode passed to that session on construction.
 
 .. note::
-    The driver does not parse Cypher queries and cannot determine whether the access mode should be ``neo4j.ACCESS_WRITE`` or ``neo4j.ACCESS_READ``.
-    Since the access mode is not passed to the server, this can allow a ``neo4j.ACCESS_WRITE`` statement to be executed for a ``neo4j.ACCESS_READ`` call on a single instance.
-    Clustered environments are not susceptible to this loophole as cluster roles prevent it.
-    This behaviour should not be relied upon as the loophole may be closed in a future release.
-
+    The driver does not parse Cypher queries and cannot determine whether the
+    access mode should be ``neo4j.ACCESS_WRITE`` or ``neo4j.ACCESS_READ``.
+    This setting is only meant to enable the driver to perform correct routing,
+    *not* for enforcing access control. This means that, depending on the server
+    version and settings, the server or cluster might allow a write-statement to
+    be executed even when ``neo4j.ACCESS_READ`` is chosen. This behaviour should
+    not be relied upon as it can change with the server.
 
 :Type: ``neo4j.WRITE_ACCESS``, ``neo4j.READ_ACCESS``
 :Default: ``neo4j.WRITE_ACCESS``
