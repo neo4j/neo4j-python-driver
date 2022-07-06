@@ -63,6 +63,7 @@ class _GraphHydrator(GraphHydrator):
 
     def hydrate_node(self, id_, labels=None,
                      properties=None, element_id=None):
+        assert isinstance(self.graph, Graph)
         # backwards compatibility with Neo4j < 5.0
         if element_id is None:
             element_id = str(id_)
@@ -70,9 +71,9 @@ class _GraphHydrator(GraphHydrator):
         try:
             inst = self.graph._nodes[element_id]
         except KeyError:
-            inst = self.graph._nodes[element_id] = Node(
-                self.graph, element_id, id_, labels, properties
-            )
+            inst = Node(self.graph, element_id, id_, labels, properties)
+            self.graph._nodes[element_id] = inst
+            self.graph._legacy_nodes[id_] = inst
         else:
             # If we have already hydrated this node as the endpoint of
             # a relationship, it won't have any labels or properties.
@@ -112,9 +113,11 @@ class _GraphHydrator(GraphHydrator):
             inst = self.graph._relationships[element_id]
         except KeyError:
             r = self.graph.relationship_type(type_)
-            inst = self.graph._relationships[element_id] = r(
+            inst = r(
                 self.graph, element_id, id_, properties
             )
+            self.graph._relationships[element_id] = inst
+            self.graph._legacy_relationships[id_] = inst
         return inst
 
     def hydrate_path(self, nodes, relationships, sequence):
@@ -138,14 +141,6 @@ class _GraphHydrator(GraphHydrator):
                 entities.append(r)
             last_node = next_node
         return Path(*entities)
-
-    def _hydrate(self, value):
-        pass
-
-    def _dehydrate(self, value):
-        raise NotImplementedError(
-            "GraphHydrationHandler cannot be used for dehydration."
-        )
 
 
 class HydrationHandler(HydrationHandlerABC):

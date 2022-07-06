@@ -44,10 +44,13 @@ class Graph:
 
     def __init__(self):
         self._nodes = {}
+        self._legacy_nodes = {}  # TODO: 6.0 - remove
         self._relationships = {}
+        self._legacy_relationships = {}  # TODO: 6.0 - remove
         self._relationship_types = {}
-        self._node_set_view = EntitySetView(self._nodes)
-        self._relationship_set_view = EntitySetView(self._relationships)
+        self._node_set_view = EntitySetView(self._nodes, self._legacy_nodes)
+        self._relationship_set_view = EntitySetView(self._relationships,
+                                                    self._legacy_relationships)
 
     @property
     def nodes(self):
@@ -176,8 +179,9 @@ class EntitySetView(Mapping):
     """ View of a set of :class:`.Entity` instances within a :class:`.Graph`.
     """
 
-    def __init__(self, entity_dict):
+    def __init__(self, entity_dict, legacy_entity_dict):
         self._entity_dict = entity_dict
+        self._legacy_entity_dict = legacy_entity_dict  # TODO: 6.0 - remove
 
     def __getitem__(self, e_id):
         # TODO: 6.0 - remove this compatibility shim
@@ -186,14 +190,7 @@ class EntitySetView(Mapping):
                 "Accessing entities by an integer id is deprecated, "
                 "use the new style element_id (str) instead"
             )
-            if isinstance(e_id, float) and int(e_id) == e_id:
-                # Non-int floats would always fail for legacy IDs
-                e_id = int(e_id)
-            elif isinstance(e_id, complex) and int(e_id.real) == e_id:
-                # complex numbers with imaginary parts or non-integer real
-                # parts would always fail for legacy IDs
-                e_id = int(e_id.real)
-            e_id = str(e_id)
+            return self._legacy_entity_dict[e_id]
         return self._entity_dict[e_id]
 
     def __len__(self):

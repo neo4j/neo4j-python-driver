@@ -41,7 +41,7 @@ class TestGraphHydration(HydrationHandlerTestBase):
         assert isinstance(alice, Node)
         with pytest.warns(DeprecationWarning, match="element_id"):
             assert alice.id == 123
-        # for backwards compatibility, the driver should compy the element_id
+        # for backwards compatibility, the driver should compute the element_id
         assert alice.element_id == "123"
         assert alice.labels == {"Person"}
         assert set(alice.keys()) == {"name"}
@@ -58,7 +58,7 @@ class TestGraphHydration(HydrationHandlerTestBase):
             assert rel.start_node.id == 456
         with pytest.warns(DeprecationWarning, match="element_id"):
             assert rel.end_node.id == 789
-        # for backwards compatibility, the driver should compy the element_id
+        # for backwards compatibility, the driver should compute the element_id
         assert rel.element_id == "123"
         assert rel.start_node.element_id == "456"
         assert rel.end_node.element_id == "789"

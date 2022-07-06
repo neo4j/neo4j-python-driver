@@ -58,7 +58,7 @@ class TestGraphHydration(_TestGraphHydration):
             assert rel.start_node.id == 456
         with pytest.warns(DeprecationWarning, match="element_id"):
             assert rel.end_node.id == 789
-        # for backwards compatibility, the driver should compy the element_id
+        # for backwards compatibility, the driver should compute the element_id
         assert rel.element_id == "abc"
         assert rel.start_node.element_id == "def"
         assert rel.end_node.element_id == "ghi"
