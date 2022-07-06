@@ -160,7 +160,8 @@ Driver Configuration
 
 Additional configuration can be provided via the :class:`neo4j.Driver` constructor.
 
-
++ :ref:`session-connection-timeout-ref`
++ :ref:`update-routing-table-timeout-ref`
 + :ref:`connection-acquisition-timeout-ref`
 + :ref:`connection-timeout-ref`
 + :ref:`encrypted-ref`
@@ -175,12 +176,63 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`user-agent-ref`
 
 
+.. _session-connection-timeout-ref:
+
+``session_connection_timeout``
+------------------------------
+The maximum amount of time in seconds the session will wait when trying to
+establish a usable read/write connection to the remote host.
+This encompasses *everything* that needs to happen for this, including,
+if necessary, updating the routing table, fetching a connection from the pool,
+and, if necessary fully establishing a new connection with the reader/writer.
+
+Since this process may involve updating the routing table, acquiring a
+connection from the pool, or establishing a new connection, it should be chosen
+larger than :ref:`update-routing-table-timeout-ref`,
+:ref:`connection-acquisition-timeout-ref`, and :ref:`connection-timeout-ref`.
+
+:Type: ``float``
+:Default: ``120.0``
+
+.. versionadded:: 4.4.5
+
+.. versionchanged:: 5.0
+
+    The default value was changed from ``float("inf")`` to ``120.0``.
+
+
+.. _update-routing-table-timeout-ref:
+
+``update_routing_table_timeout``
+--------------------------------
+The maximum amount of time in seconds the driver will attempt to fetch a new
+routing table. This encompasses *everything* that needs to happen for this,
+including fetching connections from the pool, performing handshakes, and
+requesting and receiving a fresh routing table.
+
+Since this process may involve acquiring a connection from the pool, or
+establishing a new connection, it should be chosen larger than
+:ref:`connection-acquisition-timeout-ref` and :ref:`connection-timeout-ref`.
+
+This setting only has an effect for :ref:`neo4j-driver-ref`, but not for
+:ref:`bolt-driver-ref` as it does no routing at all.
+
+:Type: ``float``
+:Default: ``90.0``
+
+.. versionadded:: 4.4.5
+
+
 .. _connection-acquisition-timeout-ref:
 
 ``connection_acquisition_timeout``
 ----------------------------------
-The maximum amount of time in seconds a session will wait when requesting a connection from the connection pool.
-Since the process of acquiring a connection may involve creating a new connection, ensure that the value of this configuration is higher than the configured :ref:`connection-timeout-ref`.
+The maximum amount of time in seconds the driver will wait to either acquire an
+idle connection from the pool (including potential liveness checks) or create a
+new connection when the pool is not full and all existing connection are in use.
+
+Since this process may involve opening a new connection including handshakes,
+it should be chosen larger than :ref:`connection-timeout-ref`.
 
 :Type: ``float``
 :Default: ``60.0``
@@ -190,7 +242,11 @@ Since the process of acquiring a connection may involve creating a new connectio
 
 ``connection_timeout``
 ----------------------
-The maximum amount of time in seconds to wait for a TCP connection to be established.
+The maximum amount of time in seconds to wait for a TCP connection to be
+established.
+
+This *does not* include any handshake(s), or authentication required before the
+connection can be used to perform database related work.
 
 :Type: ``float``
 :Default: ``30.0``
@@ -224,7 +280,6 @@ Specify whether TCP keep-alive should be enabled.
 
 ``max_connection_lifetime``
 ---------------------------
-
 The maximum duration in seconds that the driver will keep a connection for before being removed from the pool.
 
 :Type: ``float``
@@ -611,16 +666,21 @@ The default access mode.
 
 A session can be given a default access mode on construction.
 
-This applies only in clustered environments and determines whether transactions carried out within that session should be routed to a ``read`` or ``write`` server by default.
+This applies only in clustered environments and determines whether transactions
+carried out within that session should be routed to a ``read`` or ``write``
+server by default.
 
-Transactions (see :ref:`managed-transactions-ref`) within a session can override the access mode passed to that session on construction.
+Transactions (see :ref:`managed-transactions-ref`) within a session override the
+access mode passed to that session on construction.
 
 .. note::
-    The driver does not parse Cypher queries and cannot determine whether the access mode should be ``neo4j.ACCESS_WRITE`` or ``neo4j.ACCESS_READ``.
-    Since the access mode is not passed to the server, this can allow a ``neo4j.ACCESS_WRITE`` statement to be executed for a ``neo4j.ACCESS_READ`` call on a single instance.
-    Clustered environments are not susceptible to this loophole as cluster roles prevent it.
-    This behaviour should not be relied upon as the loophole may be closed in a future release.
-
+    The driver does not parse Cypher queries and cannot determine whether the
+    access mode should be ``neo4j.ACCESS_WRITE`` or ``neo4j.ACCESS_READ``.
+    This setting is only meant to enable the driver to perform correct routing,
+    *not* for enforcing access control. This means that, depending on the server
+    version and settings, the server or cluster might allow a write-statement to
+    be executed even when ``neo4j.ACCESS_READ`` is chosen. This behaviour should
+    not be relied upon as it can change with the server.
 
 :Type: ``neo4j.WRITE_ACCESS``, ``neo4j.READ_ACCESS``
 :Default: ``neo4j.WRITE_ACCESS``
