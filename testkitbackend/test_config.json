@@ -55,6 +55,7 @@
     "Optimization:MinimalResets": true,
     "Optimization:PullPipelining": true,
     "Optimization:ResultListFetchAll": "The idiomatic way to cast to list is indistinguishable from iterating over the result.",
+    "Detail:ResultStreamWorksAfterBrokenRecord": true,
     "ConfHint:connection.recv_timeout_seconds": true
   }
 }
