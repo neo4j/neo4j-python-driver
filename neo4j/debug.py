@@ -96,8 +96,7 @@ class Watcher:
 
         format = "%(threadName)s(%(thread)d) %(asctime)s  %(message)s"
         if not colour:
-            format = "[%(levelname)s] " + format
-
+            format = "[%(levelname)-8s] " + format
         formatter_cls = ColourFormatter if colour else Formatter
         self.formatter = formatter_cls(format)
 

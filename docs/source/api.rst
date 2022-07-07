@@ -1446,7 +1446,7 @@ Full Controll
     handler = logging.StreamHandler(sys.stdout)
     # configure the handler to your liking
     handler.setFormatter(logging.Formatter(
-        "%(threadName)s(%(thread)d) %(asctime)s  %(message)s"
+        "[%(levelname)-8s] %(threadName)s(%(thread)d) %(asctime)s  %(message)s"
     ))
     # add the handler to the driver's logger
     logging.getLogger("neo4j").addHandler(handler)

@@ -180,5 +180,5 @@ def test_watcher_format(add_handler_mocker, colour):
     if colour:
         assert format == "%(threadName)s(%(thread)d) %(asctime)s  %(message)s"
     else:
-        assert format == "[%(levelname)s] " \
+        assert format == "[%(levelname)-8s] " \
                          "%(threadName)s(%(thread)d) %(asctime)s  %(message)s"
