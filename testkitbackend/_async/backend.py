@@ -17,6 +17,7 @@
 
 
 import asyncio
+import traceback
 from inspect import (
     getmembers,
     isfunction,
@@ -26,7 +27,6 @@ from json import (
     loads,
 )
 from pathlib import Path
-import traceback
 
 from neo4j._exceptions import BoltError
 from neo4j.exceptions import (
@@ -35,13 +35,13 @@ from neo4j.exceptions import (
     UnsupportedServerProduct,
 )
 
-from . import requests
 from .._driver_logger import (
     buffer_handler,
     log,
 )
 from ..backend import Request
 from ..exceptions import MarkdAsDriverException
+from . import requests
 
 
 TESTKIT_BACKEND_PATH = Path(__file__).absolute().resolve().parents[1]

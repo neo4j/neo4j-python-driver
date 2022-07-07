@@ -16,44 +16,22 @@
 # limitations under the License.
 
 
-class DateType(type):
-
-    def __getattr__(cls, name):
-        try:
-            return {
-                "fromisoformat": cls.from_iso_format,
-                "fromordinal": cls.from_ordinal,
-                "fromtimestamp": cls.from_timestamp,
-                "utcfromtimestamp": cls.utc_from_timestamp,
-            }[name]
-        except KeyError:
-            raise AttributeError("%s has no attribute %r" % (cls.__name__, name))
+from .._meta import deprecation_warn
+from ._metaclasses import (
+    DateTimeType,
+    DateType,
+    TimeType,
+)
 
 
-class TimeType(type):
+__all__ = [
+    "DateType",
+    "TimeType",
+    "DateTimeType",
+]
 
-    def __getattr__(cls, name):
-        try:
-            return {
-                "fromisoformat": cls.from_iso_format,
-                "utcnow": cls.utc_now,
-            }[name]
-        except KeyError:
-            raise AttributeError("%s has no attribute %r" % (cls.__name__, name))
-
-
-class DateTimeType(type):
-
-    def __getattr__(cls, name):
-        try:
-            return {
-                "fromisoformat": cls.from_iso_format,
-                "fromordinal": cls.from_ordinal,
-                "fromtimestamp": cls.from_timestamp,
-                "strptime": cls.parse,
-                "today": cls.now,
-                "utcfromtimestamp": cls.utc_from_timestamp,
-                "utcnow": cls.utc_now,
-            }[name]
-        except KeyError:
-            raise AttributeError("%s has no attribute %r" % (cls.__name__, name))
+deprecation_warn(
+    "The module 'neo4j.time.metaclasses' was made internal and will "
+    "no longer be available for import in future versions.",
+    stack_level=2
+)

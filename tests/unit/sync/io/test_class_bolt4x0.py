@@ -18,8 +18,8 @@
 
 import pytest
 
+from neo4j._conf import PoolConfig
 from neo4j._sync.io._bolt4 import Bolt4x0
-from neo4j.conf import PoolConfig
 
 from ...._async_compat import mark_sync_test
 
@@ -57,7 +57,7 @@ def test_conn_is_not_stale(fake_socket, set_stale):
 @mark_sync_test
 def test_db_extra_in_begin(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x0.UNPACKER_CLS)
     connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.begin(db="something")
     connection.send_all()
@@ -70,7 +70,7 @@ def test_db_extra_in_begin(fake_socket):
 @mark_sync_test
 def test_db_extra_in_run(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x0.UNPACKER_CLS)
     connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.run("", {}, db="something")
     connection.send_all()
@@ -85,7 +85,7 @@ def test_db_extra_in_run(fake_socket):
 @mark_sync_test
 def test_n_extra_in_discard(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x0.UNPACKER_CLS)
     connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666)
     connection.send_all()
@@ -105,7 +105,7 @@ def test_n_extra_in_discard(fake_socket):
 @mark_sync_test
 def test_qid_extra_in_discard(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x0.UNPACKER_CLS)
     connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(qid=test_input)
     connection.send_all()
@@ -125,7 +125,7 @@ def test_qid_extra_in_discard(fake_socket, test_input, expected):
 @mark_sync_test
 def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x0.UNPACKER_CLS)
     connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666, qid=test_input)
     connection.send_all()
@@ -145,7 +145,7 @@ def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
 @mark_sync_test
 def test_n_extra_in_pull(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x0.UNPACKER_CLS)
     connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=test_input)
     connection.send_all()
@@ -165,7 +165,7 @@ def test_n_extra_in_pull(fake_socket, test_input, expected):
 @mark_sync_test
 def test_qid_extra_in_pull(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x0.UNPACKER_CLS)
     connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(qid=test_input)
     connection.send_all()
@@ -178,7 +178,7 @@ def test_qid_extra_in_pull(fake_socket, test_input, expected):
 @mark_sync_test
 def test_n_and_qid_extras_in_pull(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x0.UNPACKER_CLS)
     connection = Bolt4x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=666, qid=777)
     connection.send_all()
@@ -194,9 +194,11 @@ def test_hint_recv_timeout_seconds_gets_ignored(
     fake_socket_pair, recv_timeout, mocker
 ):
     address = ("127.0.0.1", 7687)
-    sockets = fake_socket_pair(address)
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt4x0.PACKER_CLS,
+                               unpacker_cls=Bolt4x0.UNPACKER_CLS)
     sockets.client.settimeout = mocker.MagicMock()
-    sockets.server.send_message(0x70, {
+    sockets.server.send_message(b"\x70", {
         "server": "Neo4j/4.0.0",
         "hints": {"connection.recv_timeout_seconds": recv_timeout},
     })

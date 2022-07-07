@@ -23,17 +23,17 @@ from neo4j import (
     TrustCustomCAs,
     TrustSystemCAs,
 )
+from neo4j._conf import (
+    Config,
+    PoolConfig,
+    SessionConfig,
+    WorkspaceConfig,
+)
 from neo4j.api import (
     READ_ACCESS,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     WRITE_ACCESS,
-)
-from neo4j.conf import (
-    Config,
-    PoolConfig,
-    SessionConfig,
-    WorkspaceConfig,
 )
 from neo4j.debug import watch
 from neo4j.exceptions import ConfigurationError

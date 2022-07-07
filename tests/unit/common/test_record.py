@@ -18,10 +18,11 @@
 
 import pytest
 
-from neo4j.data import (
+from neo4j import Record
+from neo4j._codec.hydration.v1 import HydrationHandler
+from neo4j.graph import (
     Graph,
     Node,
-    Record,
 )
 
 
@@ -283,11 +284,11 @@ def test_data(raw, keys, serialized):
 
 
 def test_data_relationship():
-    g = Graph()
-    gh = Graph.Hydrator(g)
+    hydration_scope = HydrationHandler().new_hydration_scope()
+    gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
     bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
-    alice_knows_bob = gh.hydrate_relationship(1, alice.id, bob.id, "KNOWS",
+    alice_knows_bob = gh.hydrate_relationship(1, 1, 2, "KNOWS",
                                               {"since": 1999})
     record = Record(zip(["a", "b", "r"], [alice, bob, alice_knows_bob]))
     assert record.data() == {
@@ -302,8 +303,8 @@ def test_data_relationship():
 
 
 def test_data_unbound_relationship():
-    g = Graph()
-    gh = Graph.Hydrator(g)
+    hydration_scope = HydrationHandler().new_hydration_scope()
+    gh = hydration_scope._graph_hydrator
     some_one_knows_some_one = gh.hydrate_relationship(
         1, 42, 43, "KNOWS", {"since": 1999}
     )
@@ -313,8 +314,8 @@ def test_data_unbound_relationship():
 
 @pytest.mark.parametrize("cyclic", (True, False))
 def test_data_path(cyclic):
-    g = Graph()
-    gh = Graph.Hydrator(g)
+    hydration_scope = HydrationHandler().new_hydration_scope()
+    gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
     bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob", "age": 44})
     if cyclic:

@@ -16,13 +16,9 @@
 # limitations under the License.
 
 
-import io
-import struct
 from unittest import TestCase
 
-from neo4j.data import DataDehydrator
-from neo4j.packstream import Packer
-from neo4j.spatial import (
+from neo4j._spatial import (
     Point,
     point_type,
 )
@@ -41,22 +37,6 @@ class PointTestCase(TestCase):
             with self.subTest():
                 p = Point(argument)
                 assert tuple(p) == argument
-
-    def test_dehydration(self):
-        MyPoint = point_type("MyPoint", ["x", "y"], {2: 1234})
-        coordinates = (.1, 0)
-        p = MyPoint(coordinates)
-
-        dehydrator = DataDehydrator()
-        buffer = io.BytesIO()
-        packer = Packer(buffer)
-        packer.pack(dehydrator.dehydrate((p,))[0])
-        self.assertEqual(
-            buffer.getvalue(),
-            b"\xB3X" +
-            b"\xC9" + struct.pack(">h", 1234) +
-            b"".join(map(lambda c: b"\xC1" + struct.pack(">d", c), coordinates))
-        )
 
     def test_immutable_coordinates(self):
         MyPoint = point_type("MyPoint", ["x", "y"], {2: 1234})

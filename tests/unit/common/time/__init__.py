@@ -16,7 +16,7 @@
 # limitations under the License.
 
 
-from neo4j.time.clock_implementations import (
+from neo4j.time import (
     Clock,
     ClockTime,
 )

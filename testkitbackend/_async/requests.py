@@ -17,9 +17,9 @@
 
 
 import json
-from os import path
 import re
 import warnings
+from os import path
 
 import neo4j
 from neo4j._async_compat.util import AsyncUtil

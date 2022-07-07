@@ -18,7 +18,7 @@
 
 from unittest import TestCase
 
-from neo4j.time import (
+from neo4j.time._clock_implementations import (
     Clock,
     ClockTime,
 )
@@ -57,7 +57,7 @@ class TestClock(TestCase):
     def test_local_time(self):
         _ = Clock()
         for impl in Clock._Clock__implementations:
-            self.assert_(issubclass(impl, Clock))
+            self.assertTrue(issubclass(impl, Clock))
             clock = object.__new__(impl)
             time = clock.local_time()
             self.assertIsInstance(time, ClockTime)
@@ -65,7 +65,7 @@ class TestClock(TestCase):
     def test_utc_time(self):
         _ = Clock()
         for impl in Clock._Clock__implementations:
-            self.assert_(issubclass(impl, Clock))
+            self.assertTrue(issubclass(impl, Clock))
             clock = object.__new__(impl)
             time = clock.utc_time()
             self.assertIsInstance(time, ClockTime)

@@ -25,26 +25,34 @@ from neo4j import (
     AsyncSession,
     AsyncTransaction,
     Bookmarks,
-    SessionConfig,
     unit_of_work,
 )
 from neo4j._async.io._pool import AsyncIOPool
+from neo4j._conf import SessionConfig
 
 from ...._async_compat import mark_async_test
-from ._fake_connection import async_fake_connection_generator
 
 
 @pytest.fixture()
 def pool(async_fake_connection_generator, mocker):
     pool = mocker.AsyncMock(spec=AsyncIOPool)
-    pool.acquire.side_effect = iter(async_fake_connection_generator, 0)
+    assert not hasattr(pool, "acquired_connection_mocks")
+    pool.acquired_connection_mocks = []
+
+    def acquire_side_effect(*_, **__):
+        connection = async_fake_connection_generator()
+        pool.acquired_connection_mocks.append(connection)
+        return connection
+
+    pool.acquire.side_effect = acquire_side_effect
     return pool
 
 
 @mark_async_test
 async def test_session_context_calls_close(mocker):
     s = AsyncSession(None, SessionConfig())
-    mock_close = mocker.patch.object(s, 'close', autospec=True)
+    mock_close = mocker.patch.object(s, 'close', autospec=True,
+                                     side_effect=s.close)
     async with s:
         pass
     mock_close.assert_called_once_with()
@@ -195,9 +203,12 @@ async def test_session_returns_bookmarks_directly(pool, bookmark_values):
 )
 @mark_async_test
 async def test_session_last_bookmark_is_deprecated(pool, bookmarks):
-    async with AsyncSession(pool, SessionConfig(
-        bookmarks=bookmarks
-    )) as session:
+    if bookmarks is not None:
+        with pytest.warns(DeprecationWarning):
+            session = AsyncSession(pool, SessionConfig(bookmarks=bookmarks))
+    else:
+        session = AsyncSession(pool, SessionConfig(bookmarks=bookmarks))
+    async with session:
         with pytest.warns(DeprecationWarning):
             if bookmarks:
                 assert (await session.last_bookmark()) == bookmarks[-1]
@@ -267,57 +278,46 @@ async def test_session_tx_type(pool):
         assert isinstance(tx, AsyncTransaction)
 
 
-@pytest.mark.parametrize(("parameters", "error_type"), (
-    ({"x": None}, None),
-    ({"x": True}, None),
-    ({"x": False}, None),
-    ({"x": 123456789}, None),
-    ({"x": 3.1415926}, None),
-    ({"x": float("nan")}, None),
-    ({"x": float("inf")}, None),
-    ({"x": float("-inf")}, None),
-    ({"x": "foo"}, None),
-    ({"x": bytearray([0x00, 0x33, 0x66, 0x99, 0xCC, 0xFF])}, None),
-    ({"x": b"\x00\x33\x66\x99\xcc\xff"}, None),
-    ({"x": [1, 2, 3]}, None),
-    ({"x": ["a", "b", "c"]}, None),
-    ({"x": ["a", 2, 1.234]}, None),
-    ({"x": ["a", 2, ["c"]]}, None),
-    ({"x": {"one": "eins", "two": "zwei", "three": "drei"}}, None),
-    ({"x": {"one": ["eins", "uno", 1], "two": ["zwei", "dos", 2]}}, None),
-
-    # maps must have string keys
-    ({"x": {1: 'eins', 2: 'zwei', 3: 'drei'}}, TypeError),
-    ({"x": {(1, 2): '1+2i', (2, 0): '2'}}, TypeError),
+@pytest.mark.parametrize("parameters", (
+    {"x": None},
+    {"x": True},
+    {"x": False},
+    {"x": 123456789},
+    {"x": 3.1415926},
+    {"x": float("nan")},
+    {"x": float("inf")},
+    {"x": float("-inf")},
+    {"x": "foo"},
+    {"x": bytearray([0x00, 0x33, 0x66, 0x99, 0xCC, 0xFF])},
+    {"x": b"\x00\x33\x66\x99\xcc\xff"},
+    {"x": [1, 2, 3]},
+    {"x": ["a", "b", "c"]},
+    {"x": ["a", 2, 1.234]},
+    {"x": ["a", 2, ["c"]]},
+    {"x": {"one": "eins", "two": "zwei", "three": "drei"}},
+    {"x": {"one": ["eins", "uno", 1], "two": ["zwei", "dos", 2]}},
 ))
 @pytest.mark.parametrize("run_type", ("auto", "unmanaged", "managed"))
 @mark_async_test
 async def test_session_run_with_parameters(
-    pool, parameters, error_type, run_type
+    pool, parameters, run_type, mocker
 ):
-    @contextmanager
-    def raises():
-        if error_type is not None:
-            with pytest.raises(error_type) as exc:
-                yield exc
-        else:
-            yield None
-
     async with AsyncSession(pool, SessionConfig()) as session:
         if run_type == "auto":
-            with raises():
-                await session.run("RETURN $x", **parameters)
+            await session.run("RETURN $x", **parameters)
         elif run_type == "unmanaged":
             tx = await session.begin_transaction()
-            with raises():
-                await tx.run("RETURN $x", **parameters)
+            await tx.run("RETURN $x", **parameters)
         elif run_type == "managed":
             async def work(tx):
-                with raises() as exc:
-                    await tx.run("RETURN $x", **parameters)
-                if exc is not None:
-                    raise exc
-            with raises():
-                await session.write_transaction(work)
+                await tx.run("RETURN $x", **parameters)
+            await session.write_transaction(work)
         else:
             raise ValueError(run_type)
+
+    assert len(pool.acquired_connection_mocks) == 1
+    connection_mock = pool.acquired_connection_mocks[0]
+    assert connection_mock.run.called_once()
+    call = connection_mock.run.call_args
+    assert call.args[0] == "RETURN $x"
+    assert call.kwargs["parameters"] == parameters

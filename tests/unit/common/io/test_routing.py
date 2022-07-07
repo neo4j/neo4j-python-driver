@@ -18,11 +18,11 @@
 
 import pytest
 
-from neo4j.api import DEFAULT_DATABASE
-from neo4j.routing import (
+from neo4j._routing import (
     OrderedSet,
     RoutingTable,
 )
+from neo4j.api import DEFAULT_DATABASE
 
 
 VALID_ROUTING_RECORD = {

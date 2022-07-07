@@ -18,7 +18,7 @@
 
 import inspect
 
-from ..meta import experimental
+from .._meta import experimental
 
 
 __all__ = [

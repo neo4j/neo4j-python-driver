@@ -14,9 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from re import match
-from unittest import mock
+
+
 import warnings
+from unittest import mock
 
 import pandas as pd
 import pytest
@@ -25,6 +26,7 @@ import pytz
 from neo4j import (
     Address,
     AsyncResult,
+    ExperimentalWarning,
     Record,
     ResultSummary,
     ServerInfo,
@@ -33,9 +35,9 @@ from neo4j import (
     Version,
 )
 from neo4j._async_compat.util import AsyncUtil
-from neo4j.data import (
-    DataDehydrator,
-    DataHydrator,
+from neo4j._codec.hydration.v1 import HydrationHandler
+from neo4j._codec.packstream import Structure
+from neo4j._data import (
     Node,
     Relationship,
 )
@@ -44,7 +46,6 @@ from neo4j.graph import (
     EntitySetView,
     Graph,
 )
-from neo4j.packstream import Structure
 
 from ...._async_compat import mark_async_test
 
@@ -52,8 +53,23 @@ from ...._async_compat import mark_async_test
 class Records:
     def __init__(self, fields, records):
         self.fields = tuple(fields)
+        self.hydration_scope = HydrationHandler().new_hydration_scope()
         self.records = tuple(records)
+        self._hydrate_records()
+
         assert all(len(self.fields) == len(r) for r in self.records)
+
+    def _hydrate_records(self):
+        def _hydrate(value):
+            if type(value) in self.hydration_scope.hydration_hooks:
+                return self.hydration_scope.hydration_hooks[type(value)](value)
+            if isinstance(value, (list, tuple)):
+                return type(value)(_hydrate(v) for v in value)
+            if isinstance(value, dict):
+                return {k: _hydrate(v) for k, v in value.items()}
+            return value
+
+        self.records = tuple(_hydrate(r) for r in self.records)
 
     def __len__(self):
         return self.records.__len__()
@@ -113,6 +129,7 @@ class AsyncConnectionStub:
         self.summary_meta = summary_meta
         AsyncConnectionStub.server_info.update({"server": "Neo4j/4.3.0"})
         self.unresolved_address = None
+        self._new_hydration_scope_called = False
 
     async def send_all(self):
         self.sent += self.queued
@@ -187,10 +204,20 @@ class AsyncConnectionStub:
     def defunct(self):
         return False
 
+    def new_hydration_scope(self):
+        class FakeHydrationScope:
+            hydration_hooks = None
+            dehydration_hooks = None
 
-class HydratorStub(DataHydrator):
-    def hydrate(self, values):
-        return values
+            def get_graph(self):
+                return Graph()
+
+        if len(self._records) > 1:
+            return FakeHydrationScope()
+        assert not self._new_hydration_scope_called
+        assert self._records
+        self._new_hydration_scope_called = True
+        return self._records[0].hydration_scope
 
 
 def noop(*_, **__):
@@ -254,7 +281,7 @@ async def fetch_and_compare_all_records(
 @mark_async_test
 async def test_result_iteration(method, records):
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, HydratorStub(), 2, noop, noop)
+    result = AsyncResult(connection, 2, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     await fetch_and_compare_all_records(result, "x", records, method)
 
@@ -263,7 +290,7 @@ async def test_result_iteration(method, records):
 async def test_result_iteration_mixed_methods():
     records = [[i] for i in range(10)]
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, HydratorStub(), 4, noop, noop)
+    result = AsyncResult(connection, 4, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     iter1 = AsyncUtil.iter(result)
     iter2 = AsyncUtil.iter(result)
@@ -299,9 +326,9 @@ async def test_parallel_result_iteration(method, invert_fetch):
     connection = AsyncConnectionStub(
         records=(Records(["x"], records1), Records(["x"], records2))
     )
-    result1 = AsyncResult(connection, HydratorStub(), 2, noop, noop)
+    result1 = AsyncResult(connection, 2, noop, noop)
     await result1._run("CYPHER1", {}, None, None, "r", None)
-    result2 = AsyncResult(connection, HydratorStub(), 2, noop, noop)
+    result2 = AsyncResult(connection, 2, noop, noop)
     await result2._run("CYPHER2", {}, None, None, "r", None)
     if invert_fetch:
         await fetch_and_compare_all_records(
@@ -329,9 +356,9 @@ async def test_interwoven_result_iteration(method, invert_fetch):
     connection = AsyncConnectionStub(
         records=(Records(["x"], records1), Records(["y"], records2))
     )
-    result1 = AsyncResult(connection, HydratorStub(), 2, noop, noop)
+    result1 = AsyncResult(connection, 2, noop, noop)
     await result1._run("CYPHER1", {}, None, None, "r", None)
-    result2 = AsyncResult(connection, HydratorStub(), 2, noop, noop)
+    result2 = AsyncResult(connection, 2, noop, noop)
     await result2._run("CYPHER2", {}, None, None, "r", None)
     start = 0
     for n in (1, 2, 3, 1, None):
@@ -358,7 +385,7 @@ async def test_interwoven_result_iteration(method, invert_fetch):
 @mark_async_test
 async def test_result_peek(records, fetch_size):
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, HydratorStub(), fetch_size, noop, noop)
+    result = AsyncResult(connection, fetch_size, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     for i in range(len(records) + 1):
         record = await result.peek()
@@ -381,7 +408,7 @@ async def test_result_single_non_strict(records, fetch_size, default):
         kwargs["strict"] = False
 
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, HydratorStub(), fetch_size, noop, noop)
+    result = AsyncResult(connection, fetch_size, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     if len(records) == 0:
         assert await result.single(**kwargs) is None
@@ -400,7 +427,7 @@ async def test_result_single_non_strict(records, fetch_size, default):
 @mark_async_test
 async def test_result_single_strict(records, fetch_size):
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, HydratorStub(), fetch_size, noop, noop)
+    result = AsyncResult(connection, fetch_size, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     try:
         record = await result.single(strict=True)
@@ -427,7 +454,7 @@ async def test_result_single_strict(records, fetch_size):
 @mark_async_test
 async def test_result_single_exhausts_records(records, fetch_size, strict):
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, HydratorStub(), fetch_size, noop, noop)
+    result = AsyncResult(connection, fetch_size, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     try:
         with warnings.catch_warnings():
@@ -449,7 +476,7 @@ async def test_result_single_exhausts_records(records, fetch_size, strict):
 @mark_async_test
 async def test_result_fetch(records, fetch_size, strict):
     connection = AsyncConnectionStub(records=Records(["x"], records))
-    result = AsyncResult(connection, HydratorStub(), fetch_size, noop, noop)
+    result = AsyncResult(connection, fetch_size, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     assert await result.fetch(0) == []
     assert await result.fetch(-1) == []
@@ -461,7 +488,7 @@ async def test_result_fetch(records, fetch_size, strict):
 @mark_async_test
 async def test_keys_are_available_before_and_after_stream():
     connection = AsyncConnectionStub(records=Records(["x"], [[1], [2]]))
-    result = AsyncResult(connection, HydratorStub(), 1, noop, noop)
+    result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     assert list(result.keys()) == ["x"]
     await AsyncUtil.list(result)
@@ -477,7 +504,7 @@ async def test_consume(records, consume_one, summary_meta, consume_times):
     connection = AsyncConnectionStub(
         records=Records(["x"], records), summary_meta=summary_meta
     )
-    result = AsyncResult(connection, HydratorStub(), 1, noop, noop)
+    result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     if consume_one:
         try:
@@ -512,7 +539,7 @@ async def test_time_in_summary(t_first, t_last):
         summary_meta=summary_meta
     )
 
-    result = AsyncResult(connection, HydratorStub(), 1, noop, noop)
+    result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     summary = await result.consume()
 
@@ -534,7 +561,7 @@ async def test_time_in_summary(t_first, t_last):
 async def test_counts_in_summary():
     connection = AsyncConnectionStub(records=Records(["n"], [[1], [2]]))
 
-    result = AsyncResult(connection, HydratorStub(), 1, noop, noop)
+    result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     summary = await result.consume()
 
@@ -548,7 +575,7 @@ async def test_query_type(query_type):
         records=Records(["n"], [[1], [2]]), summary_meta={"type": query_type}
     )
 
-    result = AsyncResult(connection, HydratorStub(), 1, noop, noop)
+    result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     summary = await result.consume()
 
@@ -563,7 +590,7 @@ async def test_data(num_records):
         records=Records(["n"], [[i + 1] for i in range(num_records)])
     )
 
-    result = AsyncResult(connection, HydratorStub(), 1, noop, noop)
+    result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     await result._buffer_all()
     records = result._record_buffer.copy()
@@ -578,6 +605,7 @@ async def test_data(num_records):
         assert record.data.called_once_with("hello", "world")
 
 
+# TODO: dehydration now happens on a much lower level
 @pytest.mark.parametrize("records", (
     Records(["n"], []),
     Records(["n"], [[42], [69], [420], [1337]]),
@@ -603,8 +631,9 @@ async def test_result_graph(records, async_scripted_connection):
             "on_summary": None
         }),
     ))
-    result = AsyncResult(async_scripted_connection, DataHydrator(), 1, noop,
-                         noop)
+    async_scripted_connection.new_hydration_scope.return_value = \
+        records.hydration_scope
+    result = AsyncResult(async_scripted_connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     graph = await result.graph()
     assert isinstance(graph, Graph)
@@ -702,12 +731,13 @@ async def test_result_graph(records, async_scripted_connection):
 @mark_async_test
 async def test_to_df(keys, values, types, instances, test_default_expand):
     connection = AsyncConnectionStub(records=Records(keys, values))
-    result = AsyncResult(connection, DataHydrator(), 1, noop, noop)
+    result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
-    if test_default_expand:
-        df = await result.to_df()
-    else:
-        df = await result.to_df(expand=False)
+    with pytest.warns(ExperimentalWarning, match="pandas"):
+        if test_default_expand:
+            df = await result.to_df()
+        else:
+            df = await result.to_df(expand=False)
 
     assert isinstance(df, pd.DataFrame)
     assert df.keys().to_list() == keys
@@ -807,12 +837,12 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
         (
             ["n"],
             list(zip((
-                Structure(b"N", 0, ["LABEL_A"],
-                          {"a": 1, "b": 2, "d": 1}, "00"),
-                Structure(b"N", 2, ["LABEL_B"],
-                          {"a": 1, "c": 1.2, "d": 2}, "02"),
-                Structure(b"N", 1, ["LABEL_A", "LABEL_B"],
-                          {"a": [1, "a"], "d": 3}, "01"),
+                Node(None, "00", 0, ["LABEL_A"],
+                     {"a": 1, "b": 2, "d": 1}),
+                Node(None, "02", 2, ["LABEL_B"],
+                     {"a": 1, "c": 1.2, "d": 2}),
+                Node(None, "01", 1, ["LABEL_A", "LABEL_B"],
+                     {"a": [1, "a"], "d": 3}),
             ))),
             [
                 "n().element_id", "n().labels", "n().prop.a", "n().prop.b",
@@ -848,11 +878,7 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
         ),
         (
             ["dt"],
-            [
-                DataDehydrator().dehydrate((
-                    neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
-                )),
-            ],
+            [[neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6)]],
             ["dt"],
             [[neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6)]],
             ["object"],
@@ -863,9 +889,10 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
 async def test_to_df_expand(keys, values, expected_columns, expected_rows,
                             expected_types):
     connection = AsyncConnectionStub(records=Records(keys, values))
-    result = AsyncResult(connection, DataHydrator(), 1, noop, noop)
+    result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
-    df = await result.to_df(expand=True)
+    with pytest.warns(ExperimentalWarning, match="pandas"):
+        df = await result.to_df(expand=True)
 
     assert isinstance(df, pd.DataFrame)
     assert len(set(expected_columns)) == len(expected_columns)
@@ -895,9 +922,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
         (
             ["dt"],
             [
-                DataDehydrator().dehydrate((
-                    neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
-                )),
+                [neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6)],
             ],
             pd.DataFrame(
                 [[pd.Timestamp("2022-01-02 03:04:05.000000006")]],
@@ -908,9 +933,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
         (
             ["d"],
             [
-                DataDehydrator().dehydrate((
-                    neo4j_time.Date(2222, 2, 22),
-                )),
+                [neo4j_time.Date(2222, 2, 22)],
             ],
             pd.DataFrame(
                 [[pd.Timestamp("2222-02-22")]],
@@ -921,11 +944,11 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
         (
             ["dt_tz"],
             [
-                DataDehydrator().dehydrate((
+                [
                     pytz.timezone("Europe/Stockholm").localize(
                         neo4j_time.DateTime(1970, 1, 1, 0, 0, 0, 0)
                     ),
-                )),
+                ],
             ],
             pd.DataFrame(
                 [[
@@ -941,17 +964,13 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
             ["mixed"],
             [
                 [None],
-                DataDehydrator().dehydrate((
-                    neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
-                )),
-                DataDehydrator().dehydrate((
-                    neo4j_time.Date(2222, 2, 22),
-                )),
-                DataDehydrator().dehydrate((
+                [neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6)],
+                [neo4j_time.Date(2222, 2, 22)],
+                [
                     pytz.timezone("Europe/Stockholm").localize(
                         neo4j_time.DateTime(1970, 1, 1, 0, 0, 0, 0)
                     ),
-                )),
+                ],
             ],
             pd.DataFrame(
                 [
@@ -971,18 +990,14 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
         (
             ["mixed"],
             [
-                DataDehydrator().dehydrate((
-                    neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
-                )),
-                DataDehydrator().dehydrate((
-                    neo4j_time.Date(2222, 2, 22),
-                )),
+                [neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6)],
+                [neo4j_time.Date(2222, 2, 22)],
                 [None],
-                DataDehydrator().dehydrate((
+                [
                     pytz.timezone("Europe/Stockholm").localize(
                         neo4j_time.DateTime(1970, 1, 1, 0, 0, 0, 0)
                     ),
-                )),
+                ],
             ],
             pd.DataFrame(
                 [
@@ -1002,17 +1017,13 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
         (
             ["mixed"],
             [
-                DataDehydrator().dehydrate((
-                    neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
-                )),
-                DataDehydrator().dehydrate((
-                    neo4j_time.Date(2222, 2, 22),
-                )),
-                DataDehydrator().dehydrate((
+                [neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),],
+                [neo4j_time.Date(2222, 2, 22),],
+                [
                     pytz.timezone("Europe/Stockholm").localize(
                         neo4j_time.DateTime(1970, 1, 1, 0, 0, 0, 0)
                     ),
-                )),
+                ],
                 [None],
             ],
             pd.DataFrame(
@@ -1052,9 +1063,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
                 ],
                 [
                     None,
-                    *DataDehydrator().dehydrate((
-                        neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
-                    )),
+                    neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),
                     1.234,
                 ],
             ],
@@ -1080,8 +1089,9 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
 @mark_async_test
 async def test_to_df_parse_dates(keys, values, expected_df, expand):
     connection = AsyncConnectionStub(records=Records(keys, values))
-    result = AsyncResult(connection, DataHydrator(), 1, noop, noop)
+    result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
-    df = await result.to_df(expand=expand, parse_dates=True)
+    with pytest.warns(ExperimentalWarning, match="pandas"):
+        df = await result.to_df(expand=expand, parse_dates=True)
 
     pd.testing.assert_frame_equal(df, expected_df)

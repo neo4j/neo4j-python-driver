@@ -17,8 +17,8 @@
 
 
 import abc
-from os import environ
 import sys
+from os import environ
 
 
 class _LazyEval(abc.ABC):

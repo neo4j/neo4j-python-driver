@@ -31,7 +31,7 @@ __all__ = [
 
 from collections.abc import Mapping
 
-from ..meta import (
+from .._meta import (
     deprecated,
     deprecation_warn,
 )
@@ -44,10 +44,13 @@ class Graph:
 
     def __init__(self):
         self._nodes = {}
+        self._legacy_nodes = {}  # TODO: 6.0 - remove
         self._relationships = {}
+        self._legacy_relationships = {}  # TODO: 6.0 - remove
         self._relationship_types = {}
-        self._node_set_view = EntitySetView(self._nodes)
-        self._relationship_set_view = EntitySetView(self._relationships)
+        self._node_set_view = EntitySetView(self._nodes, self._legacy_nodes)
+        self._relationship_set_view = EntitySetView(self._relationships,
+                                                    self._legacy_relationships)
 
     @property
     def nodes(self):
@@ -70,90 +73,6 @@ class Graph:
         except KeyError:
             cls = self._relationship_types[name] = type(str(name), (Relationship,), {})
         return cls
-
-    class Hydrator:
-
-        def __init__(self, graph):
-            self.graph = graph
-
-        def hydrate_node(self, id_, labels=None,
-                         properties=None, element_id=None):
-            assert isinstance(self.graph, Graph)
-            # backwards compatibility with Neo4j < 5.0
-            if element_id is None:
-                element_id = str(id_)
-
-            try:
-                inst = self.graph._nodes[element_id]
-            except KeyError:
-                inst = self.graph._nodes[element_id] = Node(
-                    self.graph, element_id, id_, labels, properties
-                )
-            else:
-                # If we have already hydrated this node as the endpoint of
-                # a relationship, it won't have any labels or properties.
-                # Therefore, we need to add the ones we have here.
-                if labels:
-                    inst._labels = inst._labels.union(labels)  # frozen_set
-                if properties:
-                    inst._properties.update(properties)
-            return inst
-
-        def hydrate_relationship(self, id_, n0_id, n1_id, type_,
-                                 properties=None, element_id=None,
-                                 n0_element_id=None, n1_element_id=None):
-            # backwards compatibility with Neo4j < 5.0
-            if element_id is None:
-                element_id = str(id_)
-            if n0_element_id is None:
-                n0_element_id = str(n0_id)
-            if n1_element_id is None:
-                n1_element_id = str(n1_id)
-
-            inst = self.hydrate_unbound_relationship(id_, type_, properties,
-                                                     element_id)
-            inst._start_node = self.hydrate_node(n0_id,
-                                                 element_id=n0_element_id)
-            inst._end_node = self.hydrate_node(n1_id, element_id=n1_element_id)
-            return inst
-
-        def hydrate_unbound_relationship(self, id_, type_, properties=None,
-                                         element_id=None):
-            assert isinstance(self.graph, Graph)
-            # backwards compatibility with Neo4j < 5.0
-            if element_id is None:
-                element_id = str(id_)
-
-            try:
-                inst = self.graph._relationships[element_id]
-            except KeyError:
-                r = self.graph.relationship_type(type_)
-                inst = self.graph._relationships[element_id] = r(
-                    self.graph, element_id, id_, properties
-                )
-            return inst
-
-        def hydrate_path(self, nodes, relationships, sequence):
-            assert isinstance(self.graph, Graph)
-            assert len(nodes) >= 1
-            assert len(sequence) % 2 == 0
-            last_node = nodes[0]
-            entities = [last_node]
-            for i, rel_index in enumerate(sequence[::2]):
-                assert rel_index != 0
-                next_node = nodes[sequence[2 * i + 1]]
-                if rel_index > 0:
-                    r = relationships[rel_index - 1]
-                    r._start_node = last_node
-                    r._end_node = next_node
-                    entities.append(r)
-                else:
-                    r = relationships[-rel_index - 1]
-                    r._start_node = next_node
-                    r._end_node = last_node
-                    entities.append(r)
-                last_node = next_node
-            return Path(*entities)
 
 
 class Entity(Mapping):
@@ -260,8 +179,9 @@ class EntitySetView(Mapping):
     """ View of a set of :class:`.Entity` instances within a :class:`.Graph`.
     """
 
-    def __init__(self, entity_dict):
+    def __init__(self, entity_dict, legacy_entity_dict):
         self._entity_dict = entity_dict
+        self._legacy_entity_dict = legacy_entity_dict  # TODO: 6.0 - remove
 
     def __getitem__(self, e_id):
         # TODO: 6.0 - remove this compatibility shim
@@ -270,14 +190,7 @@ class EntitySetView(Mapping):
                 "Accessing entities by an integer id is deprecated, "
                 "use the new style element_id (str) instead"
             )
-            if isinstance(e_id, float) and int(e_id) == e_id:
-                # Non-int floats would always fail for legacy IDs
-                e_id = int(e_id)
-            elif isinstance(e_id, complex) and int(e_id.real) == e_id:
-                # complex numbers with imaginary parts or non-integer real
-                # parts would always fail for legacy IDs
-                e_id = int(e_id.real)
-            e_id = str(e_id)
+            return self._legacy_entity_dict[e_id]
         return self._entity_dict[e_id]
 
     def __len__(self):

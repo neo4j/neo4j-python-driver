@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+import inspect
+
 import pytest
 
 from neo4j import (
@@ -23,20 +25,20 @@ from neo4j import (
     WRITE_ACCESS,
 )
 from neo4j._async.io import AsyncNeo4jPool
-from neo4j._deadline import Deadline
-from neo4j.addressing import ResolvedAddress
-from neo4j.conf import (
+from neo4j._conf import (
     PoolConfig,
     RoutingConfig,
     WorkspaceConfig,
 )
+from neo4j._deadline import Deadline
+from neo4j.addressing import ResolvedAddress
 from neo4j.exceptions import (
     ServiceUnavailable,
     SessionExpired,
 )
 
 from ...._async_compat import mark_async_test
-from ..work import async_fake_connection_generator
+from ..work import async_fake_connection_generator  # needed as fixture
 
 
 ROUTER_ADDRESS = ResolvedAddress(("1.2.3.1", 9001), host_name="host")
@@ -44,7 +46,7 @@ READER_ADDRESS = ResolvedAddress(("1.2.3.1", 9002), host_name="host")
 WRITER_ADDRESS = ResolvedAddress(("1.2.3.1", 9003), host_name="host")
 
 
-@pytest.fixture()
+@pytest.fixture
 def opener(async_fake_connection_generator, mocker):
     async def open_(addr, timeout):
         connection = async_fake_connection_generator()
@@ -156,11 +158,13 @@ async def test_reuses_connection(opener):
 @pytest.mark.parametrize("break_on_close", (True, False))
 @mark_async_test
 async def test_closes_stale_connections(opener, break_on_close):
-    def break_connection():
-        pool.deactivate(cx1.addr)
+    async def break_connection():
+        await pool.deactivate(cx1.addr)
 
         if cx_close_mock_side_effect:
-            cx_close_mock_side_effect()
+            res = cx_close_mock_side_effect()
+            if inspect.isawaitable(res):
+                return await res
 
     pool = AsyncNeo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
@@ -242,8 +246,8 @@ async def test_release_does_not_resets_closed_connections(opener):
     cx1.is_reset_mock.reset_mock()
     await pool.release(cx1)
     cx1.closed.assert_called_once()
-    cx1.is_reset_mock.asset_not_called()
-    cx1.reset.asset_not_called()
+    cx1.is_reset_mock.assert_not_called()
+    cx1.reset.assert_not_called()
 
 
 @mark_async_test
@@ -257,8 +261,8 @@ async def test_release_does_not_resets_defunct_connections(opener):
     cx1.is_reset_mock.reset_mock()
     await pool.release(cx1)
     cx1.defunct.assert_called_once()
-    cx1.is_reset_mock.asset_not_called()
-    cx1.reset.asset_not_called()
+    cx1.is_reset_mock.assert_not_called()
+    cx1.reset.assert_not_called()
 
 
 @pytest.mark.parametrize("liveness_timeout", (0, 1, 2))
@@ -271,7 +275,7 @@ async def test_acquire_performs_no_liveness_check_on_fresh_connection(
     )
     cx1 = await pool._acquire(READER_ADDRESS, Deadline(30), liveness_timeout)
     assert cx1.addr == READER_ADDRESS
-    cx1.reset.asset_not_called()
+    cx1.reset.assert_not_called()
 
 
 @pytest.mark.parametrize("liveness_timeout", (0, 1, 2))

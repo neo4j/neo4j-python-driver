@@ -19,7 +19,6 @@
 from functools import wraps
 
 from ..._async_compat.util import AsyncUtil
-from ...data import DataHydrator
 from ...exceptions import TransactionError
 from ...work import Query
 from ..io import ConnectionErrorHandler
@@ -123,8 +122,7 @@ class _AsyncTransactionBase:
             await self._results[-1]._buffer_all()
 
         result = AsyncResult(
-            self._connection, DataHydrator(), self._fetch_size,
-            self._result_on_closed_handler,
+            self._connection, self._fetch_size, self._result_on_closed_handler,
             self._error_handler
         )
         self._results.append(result)

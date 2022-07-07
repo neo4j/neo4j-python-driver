@@ -16,31 +16,26 @@
 # limitations under the License.
 
 
-import warnings
-
 from .._async_compat.util import AsyncUtil
 from .._conf import (
+    Config,
+    PoolConfig,
+    SessionConfig,
     TrustAll,
     TrustStore,
+    WorkspaceConfig,
+)
+from .._meta import (
+    deprecation_warn,
+    experimental,
+    experimental_warn,
+    unclosed_resource_warn,
 )
 from ..addressing import Address
 from ..api import (
     READ_ACCESS,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-)
-from ..conf import (
-    Config,
-    PoolConfig,
-    SessionConfig,
-    WorkspaceConfig,
-)
-from ..meta import (
-    deprecation_warn,
-    experimental,
-    experimental_warn,
-    ExperimentalWarning,
-    unclosed_resource_warn,
 )
 
 
@@ -145,7 +140,8 @@ class AsyncGraphDatabase:
                     "Creating a direct driver (`bolt://` scheme) with routing "
                     "context (URI parameters) is deprecated. They will be "
                     "ignored. This will raise an error in a future release. "
-                    'Given URI "{}"'.format(uri)
+                    'Given URI "{}"'.format(uri),
+                    stack_level=2
                 )
                 # TODO: 6.0 - raise instead of warning
                 # raise ValueError(
