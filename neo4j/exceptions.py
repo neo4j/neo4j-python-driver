@@ -66,7 +66,7 @@ Connector API Errors
 """
 
 
-from .meta import deprecated
+from ._meta import deprecated
 
 
 CLASSIFICATION_CLIENT = "ClientError"
