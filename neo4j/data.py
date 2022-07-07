@@ -34,6 +34,7 @@ from neo4j.time.hydration import (
     hydrate_date, dehydrate_date,
     hydrate_time, dehydrate_time,
     hydrate_datetime, dehydrate_datetime,
+    hydrate_datetime_v2, dehydrate_datetime_v2,
     hydrate_duration, dehydrate_duration, dehydrate_timedelta,
 )
 
@@ -268,7 +269,7 @@ class RecordExporter(DataTransformer):
 class DataHydrator:
     # TODO: extend DataTransformer
 
-    def __init__(self):
+    def __init__(self, patch_utc=False):
         super(DataHydrator, self).__init__()
         self.graph = Graph()
         self.graph_hydrator = Graph.Hydrator(self.graph)
@@ -282,11 +283,19 @@ class DataHydrator:
             b"D": hydrate_date,
             b"T": hydrate_time,         # time zone offset
             b"t": hydrate_time,         # no time zone
-            b"F": hydrate_datetime,     # time zone offset
-            b"f": hydrate_datetime,     # time zone name
             b"d": hydrate_datetime,     # no time zone
             b"E": hydrate_duration,
         }
+        if not patch_utc:
+            self.hydration_functions.update({
+                b"F": hydrate_datetime,     # time zone offset
+                b"f": hydrate_datetime,     # time zone name
+            })
+        else:
+            self.hydration_functions.update({
+                b"I": hydrate_datetime_v2,     # time zone offset
+                b"i": hydrate_datetime_v2,     # time zone name
+            })
 
     def hydrate(self, values):
         """ Convert PackStream values into native values.
@@ -320,10 +329,10 @@ class DataDehydrator:
     # TODO: extend DataTransformer
 
     @classmethod
-    def fix_parameters(cls, parameters):
+    def fix_parameters(cls, parameters, patch_utc=False):
         if not parameters:
             return {}
-        dehydrator = cls()
+        dehydrator = cls(patch_utc=patch_utc)
         try:
             dehydrated, = dehydrator.dehydrate([parameters])
         except TypeError as error:
@@ -332,7 +341,7 @@ class DataDehydrator:
         else:
             return dehydrated
 
-    def __init__(self):
+    def __init__(self, patch_utc=False):
         self.dehydration_functions = {}
         self.dehydration_functions.update({
             Point: dehydrate_point,
@@ -340,11 +349,20 @@ class DataDehydrator:
             date: dehydrate_date,
             Time: dehydrate_time,
             time: dehydrate_time,
-            DateTime: dehydrate_datetime,
-            datetime: dehydrate_datetime,
             Duration: dehydrate_duration,
             timedelta: dehydrate_timedelta,
         })
+        if not patch_utc:
+            self.dehydration_functions.update({
+                DateTime: dehydrate_datetime,
+                datetime: dehydrate_datetime,
+            })
+        else:
+            self.dehydration_functions.update({
+                DateTime: dehydrate_datetime_v2,
+                datetime: dehydrate_datetime_v2,
+            })
+
         # Allow dehydration from any direct Point subclass
         self.dehydration_functions.update({cls: dehydrate_point for cls in Point.__subclasses__()})
 

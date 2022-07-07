@@ -91,15 +91,15 @@ class TestTemporalDehydration(TestCase):
         assert struct == Structure(b"F", 1539344261, 474716000, -3600)
 
     def test_date_time_zone_id(self):
-        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
-                      pytz.timezone("Europe/Stockholm"))
+        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862)
+        dt = pytz.timezone("Europe/Stockholm").localize(dt)
         struct, = self.dehydrator.dehydrate((dt,))
         assert struct == Structure(b"f", 1539344261, 474716862,
                                    "Europe/Stockholm")
 
     def test_native_date_time_zone_id(self):
-        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716,
-                               pytz.timezone("Europe/Stockholm"))
+        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716)
+        dt = pytz.timezone("Europe/Stockholm").localize(dt)
         struct, = self.dehydrator.dehydrate((dt,))
         assert struct == Structure(b"f", 1539344261, 474716000,
                                    "Europe/Stockholm")
@@ -133,3 +133,83 @@ class TestTemporalDehydration(TestCase):
         duration = datetime.timedelta(days=-1, seconds=2, microseconds=3)
         struct, = self.dehydrator.dehydrate((duration,))
         assert struct == Structure(b"E", 0, -1, 2, 3000)
+
+
+class TestPatchedTemporalDehydration(TestTemporalDehydration):
+
+    def setUp(self):
+        self.dehydrator = DataDehydrator(patch_utc=True)
+
+    def test_date(self):
+        super().test_date()
+
+    def test_native_date(self):
+        super().test_native_date()
+
+    def test_time(self):
+        super().test_time()
+
+    def test_native_time(self):
+        super().test_native_time()
+
+    def test_local_time(self):
+        super().test_local_time()
+
+    def test_local_native_time(self):
+        super().test_local_native_time()
+
+    def test_date_time(self):
+        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
+                      pytz.FixedOffset(60))
+        struct, = self.dehydrator.dehydrate((dt,))
+        assert struct == Structure(b"I", 1539340661, 474716862, 3600)
+
+    def test_native_date_time(self):
+        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716,
+                               pytz.FixedOffset(60))
+        struct, = self.dehydrator.dehydrate((dt,))
+        assert struct == Structure(b"I", 1539340661, 474716000, 3600)
+
+    def test_date_time_negative_offset(self):
+        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
+                      pytz.FixedOffset(-60))
+        struct, = self.dehydrator.dehydrate((dt,))
+        assert struct == Structure(b"I", 1539347861, 474716862, -3600)
+
+    def test_native_date_time_negative_offset(self):
+        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716,
+                               pytz.FixedOffset(-60))
+        struct, = self.dehydrator.dehydrate((dt,))
+        assert struct == Structure(b"I", 1539347861, 474716000, -3600)
+
+    def test_date_time_zone_id(self):
+        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862)
+        dt = pytz.timezone("Europe/Stockholm").localize(dt)
+        struct, = self.dehydrator.dehydrate((dt,))
+        assert struct == Structure(b"i", 1539337061, 474716862,
+                                   "Europe/Stockholm")
+
+    def test_native_date_time_zone_id(self):
+        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716)
+        dt = pytz.timezone("Europe/Stockholm").localize(dt)
+        struct, = self.dehydrator.dehydrate((dt,))
+        assert struct == Structure(b"i", 1539337061, 474716000,
+                                   "Europe/Stockholm")
+
+    def test_local_date_time(self):
+        super().test_local_date_time()
+
+    def test_native_local_date_time(self):
+        super().test_native_local_date_time()
+
+    def test_duration(self):
+        super().test_duration()
+
+    def test_native_duration(self):
+        super().test_native_duration()
+
+    def test_duration_mixed_sign(self):
+        super().test_duration_mixed_sign()
+
+    def test_native_duration_mixed_sign(self):
+        super().test_native_duration_mixed_sign()

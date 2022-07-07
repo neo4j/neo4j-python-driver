@@ -21,6 +21,12 @@ from neo4j.graph import (
     Path,
     Relationship,
 )
+from neo4j.time import (
+    Date,
+    DateTime,
+    Duration,
+    Time,
+)
 
 
 def record(rec):
@@ -82,5 +88,57 @@ def field(v):
             "relationships": field(list(v.relationships)),
         }
         return {"name": "Path", "data": path}
+    if isinstance(v, Date):
+        return {
+            "name": "CypherDate",
+            "data": {
+                "year": v.year,
+                "month": v.month,
+                "day": v.day
+            }
+        }
+    if isinstance(v, Time):
+        data = {
+            "hour": v.hour,
+            "minute": v.minute,
+            "second": int(v.second),
+            "nanosecond": v.nanosecond
+        }
+        if v.tzinfo is not None:
+            data["utc_offset_s"] = v.tzinfo.utcoffset(v).total_seconds()
+        return {
+            "name": "CypherTime",
+            "data": data
+        }
+    if isinstance(v, DateTime):
+        data = {
+            "year": v.year,
+            "month": v.month,
+            "day": v.day,
+            "hour": v.hour,
+            "minute": v.minute,
+            "second": int(v.second),
+            "nanosecond": v.nanosecond
+        }
+        if v.tzinfo is not None:
+            data["utc_offset_s"] = v.tzinfo.utcoffset(v).total_seconds()
+            for attr in ("zone", "key"):
+                timezone_id = getattr(v.tzinfo, attr, None)
+                if isinstance(timezone_id, str):
+                    data["timezone_id"] = timezone_id
+        return {
+            "name": "CypherDateTime",
+            "data": data,
+        }
+    if isinstance(v, Duration):
+        return {
+            "name": "CypherDuration",
+            "data": {
+                "months": v.months,
+                "days": v.days,
+                "seconds": v.seconds,
+                "nanoseconds": v.nanoseconds
+             },
+        }
 
     raise Exception("Unhandled type:" + str(type(v)))

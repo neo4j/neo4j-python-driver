@@ -368,6 +368,20 @@ class Bolt4x3(Bolt4x2):
 
     PROTOCOL_VERSION = Version(4, 3)
 
+    def get_base_headers(self):
+        """ Bolt 4.1 passes the routing context, originally taken from
+        the URI, into the connection initialisation message. This
+        enables server-side routing to propagate the same behaviour
+        through its driver.
+        """
+        headers = {
+            "user_agent": self.user_agent,
+            "patch_bolt": ["utc"]
+        }
+        if self.routing_context is not None:
+            headers["routing"] = self.routing_context
+        return headers
+
     def route(self, database=None, imp_user=None, bookmarks=None):
         if imp_user is not None:
             raise ConfigurationError(
@@ -394,6 +408,7 @@ class Bolt4x3(Bolt4x2):
 
     def hello(self):
         def on_success(metadata):
+            # configuration hints
             self.configuration_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
             if "connection.recv_timeout_seconds" in self.configuration_hints:
@@ -407,6 +422,8 @@ class Bolt4x3(Bolt4x2):
                              "connection.recv_timeout_seconds (%r). Make sure "
                              "the server and network is set up correctly.",
                              self.local_port, recv_timeout)
+            # bolt patch handshake
+            self.bolt_patches.update(set(metadata.pop("patch_bolt", ())))
 
         headers = self.get_base_headers()
         headers.update(self.auth_dict)

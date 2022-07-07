@@ -32,6 +32,7 @@
     "Feature:API:Result.Peek": true,
     "Feature:API:Result.Single": "Does not raise error when not exactly one record is available. To be fixed in 5.0.",
     "Feature:API:SessionConnectionTimeout": true,
+    "Feature:API:Type.Temporal": true,
     "Feature:API:UpdateRoutingTableTimeout": true,
     "Feature:Auth:Bearer": true,
     "Feature:Auth:Custom": true,
@@ -42,6 +43,7 @@
     "Feature:Bolt:4.2": true,
     "Feature:Bolt:4.3": true,
     "Feature:Bolt:4.4": true,
+    "Feature:Bolt:Patch:UTC": true,
     "Feature:Impersonation": true,
     "Feature:TLS:1.1": "Driver blocks TLS 1.1 for security reasons.",
     "Feature:TLS:1.2": true,
@@ -53,6 +55,7 @@
     "Optimization:MinimalResets": true,
     "Optimization:PullPipelining": true,
     "Optimization:ResultListFetchAll": "The idiomatic way to cast to list is indistinguishable from iterating over the result.",
+    "Detail:ResultStreamWorksAfterBrokenRecord": true,
     "ConfHint:connection.recv_timeout_seconds": true
   }
 }

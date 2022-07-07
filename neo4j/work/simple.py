@@ -206,7 +206,7 @@ class Session(Workspace):
         protocol_version = cx.PROTOCOL_VERSION
         server_info = cx.server_info
 
-        hydrant = DataHydrator()
+        hydrant = DataHydrator(patch_utc="utc" in cx.bolt_patches)
 
         self._autoResult = Result(
             cx, hydrant, self._config.fetch_size, self._result_closed,
