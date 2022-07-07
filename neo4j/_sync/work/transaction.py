@@ -245,7 +245,7 @@ class ManagedTransaction(_TransactionBase):
     Note that transaction functions have to be idempotent (i.e., the result
     of running the function once has to be the same as running it any number
     of times). This is, because the driver will retry the transaction function
-    if the error is classified as retriable.
+    if the error is classified as retryable.
 
     .. versionadded:: 5.0
 

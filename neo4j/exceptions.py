@@ -63,12 +63,36 @@ Connector API Errors
   + BoltFailure
   + BoltProtocolError
   + Bolt*
-
 """
+
+
+from .meta import deprecated
+
 
 CLASSIFICATION_CLIENT = "ClientError"
 CLASSIFICATION_TRANSIENT = "TransientError"
 CLASSIFICATION_DATABASE = "DatabaseError"
+
+
+ERROR_REWRITE_MAP = {
+    # This error can be retried ed. The driver just needs to re-authenticate
+    # with the same credentials.
+    "Neo.ClientError.Security.AuthorizationExpired": (
+        CLASSIFICATION_TRANSIENT, None
+    ),
+    # In 5.0, this error has been re-classified as ClientError.
+    # For backwards compatibility with Neo4j 4.4 and earlier, we re-map it in
+    # the driver, too.
+    "Neo.TransientError.Transaction.Terminated": (
+        CLASSIFICATION_CLIENT, "Neo.ClientError.Transaction.Terminated"
+    ),
+    # In 5.0, this error has been re-classified as ClientError.
+    # For backwards compatibility with Neo4j 4.4 and earlier, we re-map it in
+    # the driver, too.
+    "Neo.TransientError.Transaction.LockClientStopped": (
+        CLASSIFICATION_CLIENT, "Neo.ClientError.Transaction.LockClientStopped"
+    ),
+}
 
 
 class Neo4jError(Exception):
@@ -93,12 +117,17 @@ class Neo4jError(Exception):
         code = code or "Neo.DatabaseError.General.UnknownError"
         try:
             _, classification, category, title = code.split(".")
-            if code == "Neo.ClientError.Security.AuthorizationExpired":
-                classification = CLASSIFICATION_TRANSIENT
         except ValueError:
             classification = CLASSIFICATION_DATABASE
             category = "General"
             title = "UnknownError"
+        else:
+            classification_override, code_override = \
+                ERROR_REWRITE_MAP.get(code, (None, None))
+            if classification_override is not None:
+                classification = classification_override
+            if code_override is not None:
+                code = code_override
 
         error_class = cls._extract_error_class(classification, code)
 
@@ -131,11 +160,31 @@ class Neo4jError(Exception):
         else:
             return cls
 
+    # TODO 6.0: Remove this alias
+    @deprecated(
+        "Neo4jError.is_retriable is deprecated and will be removed in a "
+        "future version. Please use Neo4jError.is_retryable instead."
+    )
     def is_retriable(self):
         """Whether the error is retryable.
 
-        Indicated whether a transaction that yielded this error makes sense to
-        retry. This methods  makes mostly sense when implementing a custom
+        See :meth:`.is_retryable`.
+
+        :return: :const:`True` if the error is retryable,
+            :const:`False` otherwise.
+        :rtype: bool
+
+        .. deprecated:: 5.0
+            This method will be removed in a future version.
+            Please use :meth:`.is_retryable` instead.
+        """
+        return self.is_retryable()
+
+    def is_retryable(self):
+        """Whether the error is retryable.
+
+        Indicates whether a transaction that yielded this error makes sense to
+        retry. This method makes mostly sense when implementing a custom
         retry policy in conjunction with :ref:`explicit-transactions-ref`.
 
         :return: :const:`True` if the error is retryable,
@@ -182,14 +231,8 @@ class TransientError(Neo4jError):
     """ The database cannot service the request right now, retrying later might yield a successful outcome.
     """
 
-    def is_retriable(self):
-        # Transient errors are always retriable.
-        # However, there are some errors that are misclassified by the server.
-        # They should really be ClientErrors.
-        return self.code not in (
-            "Neo.TransientError.Transaction.Terminated",
-            "Neo.TransientError.Transaction.LockClientStopped",
-        )
+    def is_retryable(self):
+        return True
 
 
 class DatabaseUnavailable(TransientError):
@@ -285,11 +328,11 @@ transient_errors = {
 class DriverError(Exception):
     """ Raised when the Driver raises an error.
     """
-    def is_retriable(self):
+    def is_retryable(self):
         """Whether the error is retryable.
 
-        Indicated whether a transaction that yielded this error makes sense to
-        retry. This methods  makes mostly sense when implementing a custom
+        Indicates whether a transaction that yielded this error makes sense to
+        retry. This method makes mostly sense when implementing a custom
         retry policy in conjunction with :ref:`explicit-transactions-ref`.
 
         :return: :const:`True` if the error is retryable,
@@ -307,7 +350,7 @@ class SessionExpired(DriverError):
     def __init__(self, session, *args, **kwargs):
         super(SessionExpired, self).__init__(session, *args, **kwargs)
 
-    def is_retriable(self):
+    def is_retryable(self):
         return True
 
 
@@ -349,7 +392,7 @@ class ServiceUnavailable(DriverError):
     """ Raised when no database service is available.
     """
 
-    def is_retriable(self):
+    def is_retryable(self):
         return True
 
 
@@ -377,7 +420,7 @@ class IncompleteCommit(ServiceUnavailable):
     successfully or not.
     """
 
-    def is_retriable(self):
+    def is_retryable(self):
         return False
 
 

@@ -96,6 +96,8 @@
   - ANSI colour codes for log output are now opt-in
   - Prepend log format with log-level (if colours are disabled)
   - Prepend log format with thread name and id
+- Deprecated `neo4j.exceptions.Neo4jError.is_retriable()`.  
+  Use `neo4j.exceptions.Neo4jError.is_retryable()` instead.
 - Importing submodules from `neo4j.time` (`neo4j.time.xyz`) has been deprecated.
   Everything needed should be imported from `neo4j.time` directly.
 - `neo4j.spatial.hydrate_point` and `neo4j.spatial.dehydrate_point` have been

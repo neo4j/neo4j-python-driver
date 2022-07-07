@@ -417,7 +417,7 @@ class AsyncSession(AsyncWorkspace):
                     await tx._commit()
             except (DriverError, Neo4jError) as error:
                 await self._disconnect()
-                if not error.is_retriable():
+                if not error.is_retryable():
                     raise
                 errors.append(error)
             else:
