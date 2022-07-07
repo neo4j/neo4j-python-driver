@@ -18,7 +18,7 @@
 
 import pytest
 
-from neo4j import (
+from neo4j._conf import (
     Config,
     PoolConfig,
     WorkspaceConfig,

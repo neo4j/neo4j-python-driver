@@ -24,28 +24,26 @@ from time import perf_counter
 
 from ..._async_compat.network import BoltSocket
 from ..._async_compat.util import Util
+from ..._codec.hydration import v1 as hydration_v1
+from ..._codec.packstream import v1 as packstream_v1
+from ..._conf import PoolConfig
 from ..._exceptions import (
     BoltError,
     BoltHandshakeError,
     SocketDeadlineExceeded,
 )
+from ..._meta import get_user_agent
 from ...addressing import Address
 from ...api import (
     ServerInfo,
     Version,
 )
-from ...conf import PoolConfig
 from ...exceptions import (
     AuthError,
     DriverError,
     IncompleteCommit,
     ServiceUnavailable,
     SessionExpired,
-)
-from ...meta import get_user_agent
-from ...packstream import (
-    Packer,
-    Unpacker,
 )
 from ._common import (
     CommitResponse,
@@ -67,6 +65,13 @@ class Bolt:
     Bolt handshake and takes the socket over which
     the handshake was carried out.
     """
+
+    # TODO: let packer/unpacker know of hydration (give them hooks?)
+    # TODO: make sure query parameter dehydration gets clear error message.
+
+    PACKER_CLS = packstream_v1.Packer
+    UNPACKER_CLS = packstream_v1.Unpacker
+    HYDRATION_HANDLER_CLS = hydration_v1.HydrationHandler
 
     MAGIC_PREAMBLE = b"\x60\x60\xB0\x17"
 
@@ -107,10 +112,16 @@ class Bolt:
         # configuration hint that exists. Therefore, all hints can be stored at
         # connection level. This might change in the future.
         self.configuration_hints = {}
-        self.outbox = Outbox()
-        self.inbox = Inbox(self.socket, on_error=self._set_defunct_read)
-        self.packer = Packer(self.outbox)
-        self.unpacker = Unpacker(self.inbox)
+        self.patch = {}
+        self.outbox = Outbox(
+            self.socket, on_error=self._set_defunct_write,
+            packer_cls=self.PACKER_CLS
+        )
+        self.inbox = Inbox(
+            self.socket, on_error=self._set_defunct_read,
+            unpacker_cls=self.UNPACKER_CLS
+        )
+        self.hydration_handler = self.HYDRATION_HANDLER_CLS()
         self.responses = deque()
         self._max_connection_lifetime = max_connection_lifetime
         self._creation_timestamp = perf_counter()
@@ -376,14 +387,17 @@ class Bolt:
         pass
 
     @abc.abstractmethod
-    def hello(self):
+    def hello(self, dehydration_hooks=None, hydration_hooks=None):
         """ Appends a HELLO message to the outgoing queue, sends it and consumes
          all remaining messages.
         """
         pass
 
     @abc.abstractmethod
-    def route(self, database=None, imp_user=None, bookmarks=None):
+    def route(
+        self, database=None, imp_user=None, bookmarks=None,
+        dehydration_hooks=None, hydration_hooks=None
+    ):
         """ Fetch a routing table from the server for the given
         `database`. For Bolt 4.3 and above, this appends a ROUTE
         message; for earlier versions, a procedure call is made via
@@ -396,13 +410,22 @@ class Bolt:
             Requires Bolt 4.4+.
         :param bookmarks: iterable of bookmark values after which this
                           transaction should begin
-        :return: dictionary of raw routing data
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         """
         pass
 
     @abc.abstractmethod
     def run(self, query, parameters=None, mode=None, bookmarks=None,
-            metadata=None, timeout=None, db=None, imp_user=None, **handlers):
+            metadata=None, timeout=None, db=None, imp_user=None,
+            dehydration_hooks=None, hydration_hooks=None,
+            **handlers):
         """ Appends a RUN message to the output queue.
 
         :param query: Cypher query string
@@ -415,36 +438,60 @@ class Bolt:
             Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
             Requires Bolt 4.4+.
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         :param handlers: handler functions passed into the returned Response object
-        :return: Response object
         """
         pass
 
     @abc.abstractmethod
-    def discard(self, n=-1, qid=-1, **handlers):
+    def discard(self, n=-1, qid=-1, dehydration_hooks=None,
+                hydration_hooks=None, **handlers):
         """ Appends a DISCARD message to the output queue.
 
         :param n: number of records to discard, default = -1 (ALL)
         :param qid: query ID to discard for, default = -1 (last query)
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         :param handlers: handler functions passed into the returned Response object
-        :return: Response object
         """
         pass
 
     @abc.abstractmethod
-    def pull(self, n=-1, qid=-1, **handlers):
+    def pull(self, n=-1, qid=-1, dehydration_hooks=None, hydration_hooks=None,
+             **handlers):
         """ Appends a PULL message to the output queue.
 
         :param n: number of records to pull, default = -1 (ALL)
         :param qid: query ID to pull for, default = -1 (last query)
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         :param handlers: handler functions passed into the returned Response object
-        :return: Response object
         """
         pass
 
     @abc.abstractmethod
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, **handlers):
+              db=None, imp_user=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
         """ Appends a BEGIN message to the output queue.
 
         :param mode: access mode for routing - "READ" or "WRITE" (default)
@@ -455,53 +502,99 @@ class Bolt:
             Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
             Requires Bolt 4.4+
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         :param handlers: handler functions passed into the returned Response object
         :return: Response object
         """
         pass
 
     @abc.abstractmethod
-    def commit(self, **handlers):
-        """ Appends a COMMIT message to the output queue."""
-        pass
+    def commit(self, dehydration_hooks=None, hydration_hooks=None, **handlers):
+        """ Appends a COMMIT message to the output queue.
 
-    @abc.abstractmethod
-    def rollback(self, **handlers):
-        """ Appends a ROLLBACK message to the output queue."""
-        pass
-
-    @abc.abstractmethod
-    def reset(self):
-        """ Appends a RESET message to the outgoing queue, sends it and consumes
-         all remaining messages.
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         """
         pass
 
     @abc.abstractmethod
-    def goodbye(self):
-        """Append a GOODBYE message to the outgoing queue."""
+    def rollback(self, dehydration_hooks=None, hydration_hooks=None, **handlers):
+        """ Appends a ROLLBACK message to the output queue.
+
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything."""
         pass
 
-    def _append(self, signature, fields=(), response=None):
+    @abc.abstractmethod
+    def reset(self, dehydration_hooks=None, hydration_hooks=None):
+        """ Appends a RESET message to the outgoing queue, sends it and consumes
+         all remaining messages.
+
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
+        """
+        pass
+
+    @abc.abstractmethod
+    def goodbye(self, dehydration_hooks=None, hydration_hooks=None):
+        """Append a GOODBYE message to the outgoing queue.
+
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
+        """
+        pass
+
+    def new_hydration_scope(self):
+        return self.hydration_handler.new_hydration_scope()
+
+    def _append(self, signature, fields=(), response=None,
+                dehydration_hooks=None):
         """ Appends a message to the outgoing queue.
 
         :param signature: the signature of the message
         :param fields: the fields of the message as a tuple
         :param response: a response object to handle callbacks
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
         """
-        with self.outbox.tmp_buffer():
-            self.packer.pack_struct(signature, fields)
-        self.outbox.wrap_message()
+        self.outbox.append_message(signature, fields, dehydration_hooks)
         self.responses.append(response)
 
     def _send_all(self):
-        data = self.outbox.view()
-        if data:
-            try:
-                self.socket.sendall(data)
-            except OSError as error:
-                self._set_defunct_write(error)
-            self.outbox.clear()
+        if self.outbox.flush():
             self.idle_since = perf_counter()
 
     def send_all(self):
@@ -523,8 +616,7 @@ class Bolt:
         self._send_all()
 
     @abc.abstractmethod
-    def _process_message(self, details, summary_signature,
-                               summary_metadata):
+    def _process_message(self, tag, fields):
         """ Receive at most one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary
@@ -549,11 +641,10 @@ class Bolt:
             return 0, 0
 
         # Receive exactly one message
-        details, summary_signature, summary_metadata = \
-            Util.next(self.inbox)
-        res = self._process_message(
-            details, summary_signature, summary_metadata
+        tag, fields = self.inbox.pop(
+            hydration_hooks=self.responses[0].hydration_hooks
         )
+        res = self._process_message(tag, fields)
         self.idle_since = perf_counter()
         return res
 

@@ -17,9 +17,9 @@
 
 
 import asyncio
+import warnings
 from functools import wraps
 from os import environ
-import warnings
 
 import pytest
 import pytest_asyncio

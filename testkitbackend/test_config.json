@@ -11,7 +11,7 @@
     "'stub.server_side_routing.test_server_side_routing.TestServerSideRouting.test_direct_connection_with_url_params'":
       "Driver emits deprecation warning. Behavior will be unified in 6.0.",
     "neo4j.datatypes.test_temporal_types.TestDataTypes.test_should_echo_all_timezone_ids":
-      "test_subtest_skips.tz_id",
+      "test_subtest_skips.dt_conversion",
     "neo4j.datatypes.test_temporal_types.TestDataTypes.test_date_time_cypher_created_tz_id":
       "test_subtest_skips.tz_id"
   },
@@ -40,6 +40,7 @@
     "Feature:Bolt:4.3": true,
     "Feature:Bolt:4.4": true,
     "Feature:Bolt:5.0": true,
+    "Feature:Bolt:Patch:UTC": true,
     "Feature:Impersonation": true,
     "Feature:TLS:1.1": "Driver blocks TLS 1.1 for security reasons.",
     "Feature:TLS:1.2": true,

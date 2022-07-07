@@ -142,7 +142,7 @@ class AsyncBolt3(AsyncBolt):
             "user_agent": self.user_agent,
         }
 
-    async def hello(self):
+    async def hello(self, dehydration_hooks=None, hydration_hooks=None):
         headers = self.get_base_headers()
         headers.update(self.auth_dict)
         logged_headers = dict(headers)
@@ -150,13 +150,17 @@ class AsyncBolt3(AsyncBolt):
             logged_headers["credentials"] = "*******"
         log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
         self._append(b"\x01", (headers,),
-                     response=InitResponse(self, "hello",
-                                           on_success=self.server_info.update))
+                     response=InitResponse(self, "hello", hydration_hooks,
+                                           on_success=self.server_info.update),
+                     dehydration_hooks=dehydration_hooks)
         await self.send_all()
         await self.fetch_all()
         check_supported_server_product(self.server_info.agent)
 
-    async def route(self, database=None, imp_user=None, bookmarks=None):
+    async def route(
+        self, database=None, imp_user=None, bookmarks=None,
+        dehydration_hooks=None, hydration_hooks=None
+    ):
         if database is not None:
             raise ConfigurationError(
                 "Database name parameter for selecting database is not "
@@ -183,16 +187,20 @@ class AsyncBolt3(AsyncBolt):
             "CALL dbms.cluster.routing.getRoutingTable($context)",  # This is an internal procedure call. Only available if the Neo4j 3.5 is setup with clustering.
             {"context": self.routing_context},
             mode="r",                                               # Bolt Protocol Version(3, 0) supports mode="r"
+            dehydration_hooks=dehydration_hooks,
+            hydration_hooks=hydration_hooks,
             on_success=metadata.update
         )
-        self.pull(on_success=metadata.update, on_records=records.extend)
+        self.pull(dehydration_hooks = None, hydration_hooks = None,
+                  on_success=metadata.update, on_records=records.extend)
         await self.send_all()
         await self.fetch_all()
         routing_info = [dict(zip(metadata.get("fields", ()), values)) for values in records]
         return routing_info
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
-            metadata=None, timeout=None, db=None, imp_user=None, **handlers):
+            metadata=None, timeout=None, db=None, imp_user=None,
+            dehydration_hooks=None, hydration_hooks=None, **handlers):
         if db is not None:
             raise ConfigurationError(
                 "Database name parameter for selecting database is not "
@@ -231,20 +239,29 @@ class AsyncBolt3(AsyncBolt):
                 raise ValueError("Timeout must be a positive number or 0.")
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
-        self._append(b"\x10", fields, Response(self, "run", **handlers))
+        self._append(b"\x10", fields,
+                     Response(self, "run", hydration_hooks, **handlers),
+                     dehydration_hooks=dehydration_hooks)
 
-    def discard(self, n=-1, qid=-1, **handlers):
+    def discard(self, n=-1, qid=-1, dehydration_hooks=None,
+                hydration_hooks=None, **handlers):
         # Just ignore n and qid, it is not supported in the Bolt 3 Protocol.
         log.debug("[#%04X]  C: DISCARD_ALL", self.local_port)
-        self._append(b"\x2F", (), Response(self, "discard", **handlers))
+        self._append(b"\x2F", (),
+                     Response(self, "discard", hydration_hooks, **handlers),
+                     dehydration_hooks=dehydration_hooks)
 
-    def pull(self, n=-1, qid=-1, **handlers):
+    def pull(self, n=-1, qid=-1, dehydration_hooks=None, hydration_hooks=None,
+             **handlers):
         # Just ignore n and qid, it is not supported in the Bolt 3 Protocol.
         log.debug("[#%04X]  C: PULL_ALL", self.local_port)
-        self._append(b"\x3F", (), Response(self, "pull", **handlers))
+        self._append(b"\x3F", (),
+                     Response(self, "pull", hydration_hooks, **handlers),
+                     dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, **handlers):
+              db=None, imp_user=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
         if db is not None:
             raise ConfigurationError(
                 "Database name parameter for selecting database is not "
@@ -280,17 +297,25 @@ class AsyncBolt3(AsyncBolt):
             if extra["tx_timeout"] < 0:
                 raise ValueError("Timeout must be a positive number or 0.")
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
-        self._append(b"\x11", (extra,), Response(self, "begin", **handlers))
+        self._append(b"\x11", (extra,),
+                     Response(self, "begin", hydration_hooks, **handlers),
+                     dehydration_hooks=dehydration_hooks)
 
-    def commit(self, **handlers):
+    def commit(self, dehydration_hooks=None, hydration_hooks=None, **handlers):
         log.debug("[#%04X]  C: COMMIT", self.local_port)
-        self._append(b"\x12", (), CommitResponse(self, "commit", **handlers))
+        self._append(b"\x12", (),
+                     CommitResponse(self, "commit", hydration_hooks,
+                                    **handlers),
+                     dehydration_hooks=dehydration_hooks)
 
-    def rollback(self, **handlers):
+    def rollback(self, dehydration_hooks=None, hydration_hooks=None,
+                 **handlers):
         log.debug("[#%04X]  C: ROLLBACK", self.local_port)
-        self._append(b"\x13", (), Response(self, "rollback", **handlers))
+        self._append(b"\x13", (),
+                     Response(self, "rollback", hydration_hooks, **handlers),
+                     dehydration_hooks=dehydration_hooks)
 
-    async def reset(self):
+    async def reset(self, dehydration_hooks=None, hydration_hooks=None):
         """ Add a RESET message to the outgoing queue, send
         it and consume all remaining messages.
         """
@@ -299,21 +324,33 @@ class AsyncBolt3(AsyncBolt):
             raise BoltProtocolError("RESET failed %r" % metadata, address=self.unresolved_address)
 
         log.debug("[#%04X]  C: RESET", self.local_port)
-        self._append(b"\x0F", response=Response(self, "reset", on_failure=fail))
+        self._append(b"\x0F",
+                     response=Response(self, "reset", hydration_hooks,
+                                       on_failure=fail),
+                     dehydration_hooks=dehydration_hooks)
         await self.send_all()
         await self.fetch_all()
 
-    def goodbye(self):
+    def goodbye(self, dehydration_hooks=None, hydration_hooks=None):
         log.debug("[#%04X]  C: GOODBYE", self.local_port)
-        self._append(b"\x02", ())
+        self._append(b"\x02", (), dehydration_hooks=dehydration_hooks)
 
-    async def _process_message(self, details, summary_signature,
-                               summary_metadata):
+    async def _process_message(self, tag, fields):
         """ Process at most one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
+        details = []
+        summary_signature = summary_metadata = None
+        if tag == b"\x71":  # RECORD
+            details = fields
+        elif fields:
+            summary_signature = tag
+            summary_metadata = fields[0]
+        else:
+            summary_signature = tag
+
         if details:
             log.debug("[#%04X]  S: RECORD * %d", self.local_port, len(details))  # Do not log any data
             await self.responses[0].on_records(details)

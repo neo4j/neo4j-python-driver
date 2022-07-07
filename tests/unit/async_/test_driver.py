@@ -17,6 +17,7 @@
 
 
 import ssl
+from functools import wraps
 
 import pytest
 
@@ -31,6 +32,7 @@ from neo4j import (
     TrustCustomCAs,
     TrustSystemCAs,
 )
+from neo4j._async_compat.util import AsyncUtil
 from neo4j.api import (
     READ_ACCESS,
     WRITE_ACCESS,
@@ -38,6 +40,21 @@ from neo4j.api import (
 from neo4j.exceptions import ConfigurationError
 
 from ..._async_compat import mark_async_test
+
+
+@wraps(AsyncGraphDatabase.driver)
+def create_driver(*args, **kwargs):
+    if AsyncUtil.is_async_code:
+        with pytest.warns(ExperimentalWarning, match="async") as warnings:
+            driver = AsyncGraphDatabase.driver(*args, **kwargs)
+        print(warnings)
+        return driver
+    else:
+        return AsyncGraphDatabase.driver(*args, **kwargs)
+
+
+def driver(*args, **kwargs):
+    return AsyncNeo4jDriver(*args, **kwargs)
 
 
 @pytest.mark.parametrize("protocol", ("bolt://", "bolt+s://", "bolt+ssc://"))
@@ -53,7 +70,7 @@ async def test_direct_driver_constructor(protocol, host, port, params, auth_toke
         with pytest.warns(DeprecationWarning, match="routing context"):
             driver = AsyncGraphDatabase.driver(uri, auth=auth_token)
     else:
-        driver = AsyncGraphDatabase.driver(uri, auth=auth_token)
+        driver = create_driver(uri, auth=auth_token)
     assert isinstance(driver, AsyncBoltDriver)
     await driver.close()
 
@@ -68,7 +85,7 @@ async def test_direct_driver_constructor(protocol, host, port, params, auth_toke
 @mark_async_test
 async def test_routing_driver_constructor(protocol, host, port, params, auth_token):
     uri = protocol + host + port + params
-    driver = AsyncGraphDatabase.driver(uri, auth=auth_token)
+    driver = create_driver(uri, auth=auth_token)
     assert isinstance(driver, AsyncNeo4jDriver)
     await driver.close()
 
@@ -128,13 +145,20 @@ async def test_routing_driver_constructor(protocol, host, port, params, auth_tok
 async def test_driver_config_error(
     test_uri, test_config, expected_failure, expected_failure_message
 ):
+    def driver_builder():
+        if "trust" in test_config:
+            with pytest.warns(DeprecationWarning, match="trust"):
+                return AsyncGraphDatabase.driver(test_uri, **test_config)
+        else:
+            return create_driver(test_uri, **test_config)
+
     if "+" in test_uri:
         # `+s` and `+ssc` are short hand syntax for not having to configure the
         # encryption behavior of the driver. Specifying both is invalid.
         with pytest.raises(expected_failure, match=expected_failure_message):
-            AsyncGraphDatabase.driver(test_uri, **test_config)
+            driver_builder()
     else:
-        driver = AsyncGraphDatabase.driver(test_uri, **test_config)
+        driver = driver_builder()
         await driver.close()
 
 
@@ -145,7 +169,7 @@ async def test_driver_config_error(
 ))
 def test_invalid_protocol(test_uri):
     with pytest.raises(ConfigurationError, match="scheme"):
-        AsyncGraphDatabase.driver(test_uri)
+        create_driver(test_uri)
 
 
 @pytest.mark.parametrize(
@@ -160,7 +184,7 @@ def test_driver_trust_config_error(
     test_config, expected_failure, expected_failure_message
 ):
     with pytest.raises(expected_failure, match=expected_failure_message):
-        AsyncGraphDatabase.driver("bolt://127.0.0.1:9001", **test_config)
+        create_driver("bolt://127.0.0.1:9001", **test_config)
 
 
 @pytest.mark.parametrize("uri", (
@@ -169,7 +193,7 @@ def test_driver_trust_config_error(
 ))
 @mark_async_test
 async def test_driver_opens_write_session_by_default(uri, mocker):
-    driver = AsyncGraphDatabase.driver(uri)
+    driver = create_driver(uri)
     from neo4j import AsyncTransaction
 
     # we set a specific db, because else the driver would try to fetch a RT
@@ -208,7 +232,7 @@ async def test_driver_opens_write_session_by_default(uri, mocker):
 ))
 @mark_async_test
 async def test_verify_connectivity(uri, mocker):
-    driver = AsyncGraphDatabase.driver(uri)
+    driver = create_driver(uri)
     pool_mock = mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
@@ -232,10 +256,10 @@ async def test_verify_connectivity(uri, mocker):
     {"fetch_size": 69},
 ))
 @mark_async_test
-async def test_verify_connectivity_parameters_are_experimental(
+async def test_verify_connectivity_parameters_are_deprecated(
     uri, kwargs, mocker
 ):
-    driver = AsyncGraphDatabase.driver(uri)
+    driver = create_driver(uri)
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
@@ -258,7 +282,7 @@ async def test_verify_connectivity_parameters_are_experimental(
 async def test_get_server_info_parameters_are_experimental(
     uri, kwargs, mocker
 ):
-    driver = AsyncGraphDatabase.driver(uri)
+    driver = create_driver(uri)
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:

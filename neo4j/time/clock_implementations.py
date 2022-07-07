@@ -15,98 +15,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: 6.0 - remove this file
 
-from ctypes import (
-    byref,
-    c_long,
-    c_longlong,
-    CDLL,
-    Structure,
+
+from .._meta import deprecation_warn
+from ._clock_implementations import (
+    LibCClock,
+    PEP564Clock,
+    SafeClock,
 )
-from platform import uname
 
-from neo4j.time import (
-    Clock,
-    ClockTime,
+
+__all__ = [
+    "SafeClock",
+    "PEP564Clock",
+    "LibCClock",
+]
+
+deprecation_warn(
+    "The module 'neo4j.time.clock_implementations' was made internal and will "
+    "no longer be available for import in future versions.",
+    stack_level=2
 )
-from neo4j.time.arithmetic import nano_divmod
-
-
-class SafeClock(Clock):
-    """ Clock implementation that should work for any variant of Python.
-    This clock is guaranteed microsecond precision.
-    """
-
-    @classmethod
-    def precision(cls):
-        return 6
-
-    @classmethod
-    def available(cls):
-        return True
-
-    def utc_time(self):
-        from time import time
-        seconds, nanoseconds = nano_divmod(int(time() * 1000000), 1000000)
-        return ClockTime(seconds, nanoseconds * 1000)
-
-
-class PEP564Clock(Clock):
-    """ Clock implementation based on the PEP564 additions to Python 3.7.
-    This clock is guaranteed nanosecond precision.
-    """
-
-    @classmethod
-    def precision(cls):
-        return 9
-
-    @classmethod
-    def available(cls):
-        try:
-            from time import time_ns
-        except ImportError:
-            return False
-        else:
-            return True
-
-    def utc_time(self):
-        from time import time_ns
-        t = time_ns()
-        seconds, nanoseconds = divmod(t, 1000000000)
-        return ClockTime(seconds, nanoseconds)
-
-
-class LibCClock(Clock):
-    """ Clock implementation that works only on platforms that provide
-    libc. This clock is guaranteed nanosecond precision.
-    """
-
-    __libc = "libc.dylib" if uname()[0] == "Darwin" else "libc.so.6"
-
-    class _TimeSpec(Structure):
-        _fields_ = [
-            ("seconds", c_longlong),
-            ("nanoseconds", c_long),
-        ]
-
-    @classmethod
-    def precision(cls):
-        return 9
-
-    @classmethod
-    def available(cls):
-        try:
-            _ = CDLL(cls.__libc)
-        except OSError:
-            return False
-        else:
-            return True
-
-    def utc_time(self):
-        libc = CDLL(self.__libc)
-        ts = self._TimeSpec()
-        status = libc.clock_gettime(0, byref(ts))
-        if status == 0:
-            return ClockTime(ts.seconds, ts.nanoseconds)
-        else:
-            raise RuntimeError("clock_gettime failed with status %d" % status)

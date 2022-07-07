@@ -21,10 +21,10 @@
 import collections
 import errno
 import os
-from pathlib import Path
 import re
 import sys
 import tokenize as std_tokenize
+from pathlib import Path
 
 import isort
 import isort.files

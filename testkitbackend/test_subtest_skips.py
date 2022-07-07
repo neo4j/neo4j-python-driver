@@ -25,6 +25,11 @@ They take the subtest parameters as arguments and return
 """
 
 
+import pytz
+
+from . import fromtestkit
+
+
 def tz_id(**params):
     # We could do this automatically, but with an explicit black list we
     # make sure we know what we test and what we don't.
@@ -51,3 +56,11 @@ def tz_id(**params):
         return (
             "timezone id %s is not supported by the system" % params["tz_id"]
         )
+
+
+def dt_conversion(**params):
+    dt = params["dt"]
+    try:
+        fromtestkit.to_param(dt)
+    except (pytz.UnknownTimeZoneError, ValueError) as e:
+        return "cannot create desired dt %s: %r" % (dt, e)

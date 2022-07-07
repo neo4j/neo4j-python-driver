@@ -17,13 +17,13 @@
 
 
 import copy
+import itertools
+import operator
 from datetime import (
     datetime,
     timedelta,
     timezone as datetime_timezone,
 )
-import itertools
-import operator
 
 import pytest
 from pytz import (
@@ -38,11 +38,11 @@ from neo4j.time import (
     MAX_YEAR,
     MIN_YEAR,
 )
-from neo4j.time.arithmetic import (
+from neo4j.time._arithmetic import (
     nano_add,
     nano_div,
 )
-from neo4j.time.clock_implementations import ClockTime
+from neo4j.time._clock_implementations import ClockTime
 
 
 timezone_us_eastern = timezone("US/Eastern")

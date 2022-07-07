@@ -25,7 +25,7 @@ from setuptools import (
     setup,
 )
 
-from neo4j.meta import (
+from neo4j._meta import (
     package,
     version,
 )

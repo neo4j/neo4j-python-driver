@@ -31,7 +31,7 @@ __all__ = [
 
 from collections.abc import Mapping
 
-from ..meta import (
+from .._meta import (
     deprecated,
     deprecation_warn,
 )
@@ -73,92 +73,6 @@ class Graph:
         except KeyError:
             cls = self._relationship_types[name] = type(str(name), (Relationship,), {})
         return cls
-
-    class Hydrator:
-
-        def __init__(self, graph):
-            self.graph = graph
-
-        def hydrate_node(self, id_, labels=None,
-                         properties=None, element_id=None):
-            assert isinstance(self.graph, Graph)
-            # backwards compatibility with Neo4j < 5.0
-            if element_id is None:
-                element_id = str(id_)
-
-            try:
-                inst = self.graph._nodes[element_id]
-            except KeyError:
-                inst = Node(self.graph, element_id, id_, labels, properties)
-                self.graph._nodes[element_id] = inst
-                self.graph._legacy_nodes[id_] = inst
-            else:
-                # If we have already hydrated this node as the endpoint of
-                # a relationship, it won't have any labels or properties.
-                # Therefore, we need to add the ones we have here.
-                if labels:
-                    inst._labels = inst._labels.union(labels)  # frozen_set
-                if properties:
-                    inst._properties.update(properties)
-            return inst
-
-        def hydrate_relationship(self, id_, n0_id, n1_id, type_,
-                                 properties=None, element_id=None,
-                                 n0_element_id=None, n1_element_id=None):
-            # backwards compatibility with Neo4j < 5.0
-            if element_id is None:
-                element_id = str(id_)
-            if n0_element_id is None:
-                n0_element_id = str(n0_id)
-            if n1_element_id is None:
-                n1_element_id = str(n1_id)
-
-            inst = self.hydrate_unbound_relationship(id_, type_, properties,
-                                                     element_id)
-            inst._start_node = self.hydrate_node(n0_id,
-                                                 element_id=n0_element_id)
-            inst._end_node = self.hydrate_node(n1_id, element_id=n1_element_id)
-            return inst
-
-        def hydrate_unbound_relationship(self, id_, type_, properties=None,
-                                         element_id=None):
-            assert isinstance(self.graph, Graph)
-            # backwards compatibility with Neo4j < 5.0
-            if element_id is None:
-                element_id = str(id_)
-
-            try:
-                inst = self.graph._relationships[element_id]
-            except KeyError:
-                r = self.graph.relationship_type(type_)
-                inst = r(
-                    self.graph, element_id, id_, properties
-                )
-                self.graph._relationships[element_id] = inst
-                self.graph._legacy_relationships[id_] = inst
-            return inst
-
-        def hydrate_path(self, nodes, relationships, sequence):
-            assert isinstance(self.graph, Graph)
-            assert len(nodes) >= 1
-            assert len(sequence) % 2 == 0
-            last_node = nodes[0]
-            entities = [last_node]
-            for i, rel_index in enumerate(sequence[::2]):
-                assert rel_index != 0
-                next_node = nodes[sequence[2 * i + 1]]
-                if rel_index > 0:
-                    r = relationships[rel_index - 1]
-                    r._start_node = last_node
-                    r._end_node = next_node
-                    entities.append(r)
-                else:
-                    r = relationships[-rel_index - 1]
-                    r._start_node = next_node
-                    r._end_node = last_node
-                    entities.append(r)
-                last_node = next_node
-            return Path(*entities)
 
 
 class Entity(Mapping):

@@ -96,6 +96,26 @@
   - ANSI colour codes for log output are now opt-in
   - Prepend log format with log-level (if colours are disabled)
   - Prepend log format with thread name and id
+- Importing submodules from `neo4j.time` (`neo4j.time.xyz`) has been deprecated.
+  Everything needed should be imported from `neo4j.time` directly.
+- `neo4j.spatial.hydrate_point` and `neo4j.spatial.dehydrate_point` have been
+  deprecated without replacement. They are internal functions.
+- Importing `neo4j.packstream` has been deprecated. It's internal and should not
+  be used by client code.
+- Importing `neo4j.routing` has been deprecated. It's internal and should not
+  be used by client code.
+- Importing `neo4j.config` has been deprecated. It's internal and should not
+  be used by client code.
+- `neoj4.Config`, `neoj4.PoolConfig`, `neoj4.SessionConfig`, and
+  `neoj4.WorkspaceConfig` have been deprecated without replacement. They are
+  internal classes.
+- Importing `neo4j.meta` has been deprecated. It's internal and should not
+  be used by client code. `ExperimantalWarning` should be imported directly from
+  `neo4j`. `neo4j.meta.version` is exposed through `neo4j.__vesrion__`
+- Importing `neo4j.data` has been deprecated. It's internal and should not
+  be used by client code. `Record` should be imported directly from `neo4j`
+  instead. `neo4j.data.DataHydrator` and `neo4j.data.DataDeydrator` have been
+  removed without replacement.
 
 
 ## Version 4.4

@@ -113,23 +113,6 @@ def test_transaction_context_calls_rollback_on_error(
     assert tx_.closed()
 
 
-@pytest.mark.parametrize(("parameters", "error_type"), (
-    # maps must have string keys
-    ({"x": {1: 'eins', 2: 'zwei', 3: 'drei'}}, TypeError),
-    ({"x": {(1, 2): '1+2i', (2, 0): '2'}}, TypeError),
-    ({"x": uuid4()}, TypeError),
-))
-@mark_sync_test
-def test_transaction_run_with_invalid_parameters(
-    fake_connection, parameters, error_type
-):
-    on_closed = MagicMock()
-    on_error = MagicMock()
-    tx = Transaction(fake_connection, 2, on_closed, on_error)
-    with pytest.raises(error_type):
-        tx.run("RETURN $x", **parameters)
-
-
 @mark_sync_test
 def test_transaction_run_takes_no_query_object(fake_connection):
     on_closed = MagicMock()

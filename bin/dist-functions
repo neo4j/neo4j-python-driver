@@ -6,22 +6,22 @@ DIST="${ROOT}/dist"
 
 function get_package
 {
-    python -c "from neo4j.meta import package; print(package)"
+    python -c "from neo4j._meta import package; print(package)"
 }
 
 function set_package
 {
-    sed -i 's/^package = .*/package = "'$1'"/g' neo4j/meta.py
+    sed -i 's/^package = .*/package = "'$1'"/g' neo4j/_meta.py
 }
 
 function get_version
 {
-    python -c "from neo4j.meta import version; print(version)"
+    python -c "from neo4j._meta import version; print(version)"
 }
 
 function set_version
 {
-    sed -i 's/^version = .*/version = "'$1'"/g' neo4j/meta.py
+    sed -i 's/^version = .*/version = "'$1'"/g' neo4j/_meta.py
 }
 
 function check_file
@@ -49,8 +49,8 @@ function set_metadata_and_setup
     ORIGINAL_VERSION=$(get_version)
     echo "Source code originally configured for package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}"
     echo "----------------------------------------"
-    grep "package\s\+=" neo4j/meta.py
-    grep "version\s\+=" neo4j/meta.py
+    grep "package\s\+=" neo4j/_meta.py
+    grep "version\s\+=" neo4j/_meta.py
     echo "----------------------------------------"
 
     function cleanup() {
@@ -59,8 +59,8 @@ function set_metadata_and_setup
       set_version "${ORIGINAL_VERSION}"
       echo "Source code reconfigured back to original package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}"
       echo "----------------------------------------"
-      grep "package\s\+=" neo4j/meta.py
-      grep "version\s\+=" neo4j/meta.py
+      grep "package\s\+=" neo4j/_meta.py
+      grep "version\s\+=" neo4j/_meta.py
       echo "----------------------------------------"
     }
     trap cleanup EXIT
@@ -70,8 +70,8 @@ function set_metadata_and_setup
     set_version "${VERSION}"
     echo "Source code reconfigured for package ${PACKAGE}/${VERSION}"
     echo "----------------------------------------"
-    grep "package\s\+=" neo4j/meta.py
-    grep "version\s\+=" neo4j/meta.py
+    grep "package\s\+=" neo4j/_meta.py
+    grep "version\s\+=" neo4j/_meta.py
     echo "----------------------------------------"
 
     # Create source distribution

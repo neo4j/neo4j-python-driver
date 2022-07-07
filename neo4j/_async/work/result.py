@@ -20,15 +20,15 @@ from collections import deque
 from warnings import warn
 
 from ..._async_compat.util import AsyncUtil
-from ...data import (
-    DataDehydrator,
+from ..._data import (
+    Record,
     RecordTableRowExporter,
 )
+from ..._meta import experimental
 from ...exceptions import (
     ResultConsumedError,
     ResultNotSingleError,
 )
-from ...meta import experimental
 from ...time import (
     Date,
     DateTime,
@@ -54,10 +54,9 @@ class AsyncResult:
     :meth:`.AyncSession.run` and :meth:`.AsyncTransaction.run`.
     """
 
-    def __init__(self, connection, hydrant, fetch_size, on_closed,
-                 on_error):
+    def __init__(self, connection, fetch_size, on_closed, on_error):
         self._connection = ConnectionErrorHandler(connection, on_error)
-        self._hydrant = hydrant
+        self._hydration_scope = connection.new_hydration_scope()
         self._on_closed = on_closed
         self._metadata = None
         self._keys = None
@@ -104,7 +103,7 @@ class AsyncResult:
         query_metadata = getattr(query, "metadata", None)
         query_timeout = getattr(query, "timeout", None)
 
-        parameters = DataDehydrator.fix_parameters(dict(parameters or {}, **kwargs))
+        parameters = dict(parameters or {}, **kwargs)
 
         self._metadata = {
             "query": query_text,
@@ -135,6 +134,7 @@ class AsyncResult:
             timeout=query_timeout,
             db=db,
             imp_user=imp_user,
+            dehydration_hooks=self._hydration_scope.dehydration_hooks,
             on_success=on_attached,
             on_failure=on_failed_attach,
         )
@@ -145,7 +145,10 @@ class AsyncResult:
     def _pull(self):
         def on_records(records):
             if not self._discarding:
-                self._record_buffer.extend(self._hydrant.hydrate_records(self._keys, records))
+                self._record_buffer.extend((
+                    Record(zip(self._keys, record))
+                    for record in records
+                ))
 
         async def on_summary():
             self._attached = False
@@ -167,6 +170,7 @@ class AsyncResult:
         self._connection.pull(
             n=self._fetch_size,
             qid=self._qid,
+            hydration_hooks=self._hydration_scope.hydration_hooks,
             on_records=on_records,
             on_success=on_success,
             on_failure=on_failure,
@@ -479,7 +483,7 @@ class AsyncResult:
             Can raise :exc:`ResultConsumedError`.
         """
         await self._buffer_all()
-        return self._hydrant.graph
+        return self._hydration_scope.get_graph()
 
     async def value(self, key=0, default=None):
         """Helper function that return the remainder of the result as a list of values.
