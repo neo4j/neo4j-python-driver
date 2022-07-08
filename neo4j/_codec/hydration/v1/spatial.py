@@ -57,6 +57,22 @@ def dehydrate_point(value):
         raise ValueError("Cannot dehydrate Point with %d dimensions" % dim)
 
 
+def dehydrate_placeholder(value):
+    """Placeholder dehydrator for Point data.
+
+    :param value:
+    :type value: Point
+    :return:
+    """
+    dim = len(value)
+    if dim == 2:
+        return Structure(b"X", value.srid, 0, 0)
+    elif dim == 3:
+        return Structure(b"Y", value.srid, 0, 0, 0)
+    else:
+        raise ValueError("Cannot dehydrate Point with %d dimensions" % dim)
+
+
 __all__ = [
     "hydrate_point",
     "dehydrate_point",

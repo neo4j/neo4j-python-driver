@@ -173,6 +173,21 @@ class HydrationHandler(HydrationHandlerABC):
             Duration: temporal.dehydrate_duration,
             timedelta: temporal.dehydrate_timedelta,
         }
+        self._type_placeholders = {
+            int: lambda _: 0,
+            bytes: lambda _: b"",
+            bytearray: lambda _: b"",
+            list: lambda _: [],
+            dict: lambda _: {},
+            Date: lambda _: temporal.dehydrate_date_placeholder,
+            date: lambda _: temporal.dehydrate_date_placeholder,
+            Time: lambda _: temporal.dehydrate_time_placeholder,
+            time: lambda _: temporal.dehydrate_time_placeholder,
+            DateTime: lambda _: temporal.dehydrate_datetime_placeholder,
+            datetime: lambda _: temporal.dehydrate_datetime_placeholder,
+            Duration: lambda _: temporal.dehydrate_duration_placeholder,
+            timedelta: lambda _: temporal.dehydrate_duration_placeholder,
+        }
 
     def patch_utc(self):
         from ..v2 import temporal as temporal_v2
@@ -191,6 +206,22 @@ class HydrationHandler(HydrationHandlerABC):
             datetime: temporal_v2.dehydrate_datetime,
         })
 
+        self._type_placeholders.update({
+            DateTime: temporal_v2.dehydrate_datetime_placeholder,
+            datetime: temporal_v2.dehydrate_datetime_placeholder,
+        })
+
     def new_hydration_scope(self):
         self._created_scope = True
         return HydrationScope(self, _GraphHydrator())
+
+    def placeholder_parameters(self, parameters):
+        if parameters is None:
+            return None
+        placeholders = {}
+        for k, v in parameters.items():
+            if type(v) in self._type_placeholders:
+                placeholders[k] = self._type_placeholders[type(v)](v)
+            else:
+                placeholders[k] = v
+        return placeholders

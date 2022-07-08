@@ -144,6 +144,7 @@ def NewDriver(backend, data):
                           for cert in data["trustedCertificates"])
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
+    data.mark_item_as_read_if_equals("queryPlanCacheSize", None)
 
     data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.GraphDatabase.driver(
@@ -540,3 +541,15 @@ def GetRoutingTable(backend, data):
         addresses = routing_table.__getattribute__(role)
         response_data[role] = list(map(str, addresses))
     backend.send_response("RoutingTable", response_data)
+
+
+def DriverPlan(backend, data):
+    driver_id = data["driverId"]
+    driver = backend.drivers[driver_id]
+    database = data["database"]
+    query, params = fromtestkit.to_cypher_and_params(data)
+    with driver.session(database=database) as session:
+        backend.send_response(
+            "DriverPlanResponse",
+            session._plan(query, parameters=params)
+        )

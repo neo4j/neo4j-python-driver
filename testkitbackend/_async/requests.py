@@ -144,6 +144,7 @@ async def NewDriver(backend, data):
                           for cert in data["trustedCertificates"])
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
+    data.mark_item_as_read_if_equals("queryPlanCacheSize", None)
 
     data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.AsyncGraphDatabase.driver(
@@ -540,3 +541,15 @@ async def GetRoutingTable(backend, data):
         addresses = routing_table.__getattribute__(role)
         response_data[role] = list(map(str, addresses))
     await backend.send_response("RoutingTable", response_data)
+
+
+async def DriverPlan(backend, data):
+    driver_id = data["driverId"]
+    driver = backend.drivers[driver_id]
+    database = data["database"]
+    query, params = fromtestkit.to_cypher_and_params(data)
+    async with driver.session(database=database) as session:
+        await backend.send_response(
+            "DriverPlanResponse",
+            await session._plan(query, parameters=params)
+        )

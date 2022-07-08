@@ -51,6 +51,21 @@ class HydrationHandler(HydrationHandlerABC):
             Duration: temporal.dehydrate_duration,
             timedelta: temporal.dehydrate_timedelta,
         }
+        self._type_placeholders = {
+            int: lambda _: 0,
+            bytes: lambda _: b"",
+            bytearray: lambda _: b"",
+            list: lambda _: [],
+            dict: lambda _: {},
+            Date: lambda _: temporal.dehydrate_date_placeholder,
+            date: lambda _: temporal.dehydrate_date_placeholder,
+            Time: lambda _: temporal.dehydrate_time_placeholder,
+            time: lambda _: temporal.dehydrate_time_placeholder,
+            DateTime: lambda _: temporal.dehydrate_datetime_placeholder,
+            datetime: lambda _: temporal.dehydrate_datetime_placeholder,
+            Duration: lambda _: temporal.dehydrate_duration_placeholder,
+            timedelta: lambda _: temporal.dehydrate_duration_placeholder,
+        }
 
     def new_hydration_scope(self):
         self._created_scope = True

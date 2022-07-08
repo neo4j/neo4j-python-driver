@@ -545,6 +545,26 @@ class Bolt:
         pass
 
     @abc.abstractmethod
+    def plan(self, query, params=None, db=None, dehydration_hooks=None,
+             hydration_hooks=None, **handlers):
+        """Append a PLAN message to the output queue.
+
+        :param db: name of the database against which to plan the query
+        :param params: dictionary of parameters to the query
+        :param handlers:
+            handler functions passed into the returned Response object
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
+        """
+        pass
+
+    @abc.abstractmethod
     def reset(self, dehydration_hooks=None, hydration_hooks=None):
         """ Appends a RESET message to the outgoing queue, sends it and consumes
          all remaining messages.

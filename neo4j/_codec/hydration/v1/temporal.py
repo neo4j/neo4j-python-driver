@@ -63,6 +63,16 @@ def dehydrate_date(value):
     return Structure(b"D", value.toordinal() - get_date_unix_epoch().toordinal())
 
 
+def dehydrate_date_placeholder(value):
+    """ Placeholder dehydrator for `date` values.
+
+    :param value:
+    :type value: Date
+    :return:
+    """
+    return Structure(b"D", 0)
+
+
 def hydrate_time(nanoseconds, tz=None):
     """ Hydrator for `Time` and `LocalTime` values.
 
@@ -101,6 +111,19 @@ def dehydrate_time(value):
                          int(value.tzinfo.utcoffset(value).total_seconds()))
     else:
         return Structure(b"t", nanoseconds)
+
+
+def dehydrate_time_placeholder(value):
+    """ Placeholder dehydrator for `time` values.
+
+    :param value:
+    :type value: Time
+    :return:
+    """
+    if value.tzinfo:
+        return Structure(b"T", 0, 0)
+    else:
+        return Structure(b"t", 0)
 
 
 def hydrate_datetime(seconds, nanoseconds, tz=None):
@@ -171,6 +194,26 @@ def dehydrate_datetime(value):
                          int(tz.utcoffset(value).total_seconds()))
 
 
+def dehydrate_datetime_placeholder(value):
+    """ Placeholder dehydrator for `datetime` values.
+
+    :param value:
+    :type value: datetime or DateTime
+    :return:
+    """
+    tz = value.tzinfo
+    if tz is None:
+        # without time zone
+        return Structure(b"d", 0, 0)
+    elif (hasattr(tz, "zone") and tz.zone and isinstance(tz.zone, str)
+          or hasattr(tz, "key") and tz.key and isinstance(tz.key, str)):
+        # with named pytz time zone
+        return Structure(b"f", 0, 0, "UTC")
+    else:
+        # with time offset
+        return Structure(b"F", 0, 0, 0)
+
+
 def hydrate_duration(months, days, seconds, nanoseconds):
     """ Hydrator for `Duration` values.
 
@@ -191,6 +234,16 @@ def dehydrate_duration(value):
     :return:
     """
     return Structure(b"E", value.months, value.days, value.seconds, value.nanoseconds)
+
+
+def dehydrate_duration_placeholder(value):
+    """ Placeholder dehydrator for `duration` values.
+
+    :param value:
+    :type value: Duration
+    :return:
+    """
+    return Structure(b"E", 0, 0, 0)
 
 
 def dehydrate_timedelta(value):

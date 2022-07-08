@@ -139,6 +139,25 @@ class AsyncSession(AsyncWorkspace):
         await self._disconnect()
         return server_info
 
+    async def _plan(self, query, parameters=None):
+        def on_success(meta):
+            nonlocal plan
+            plan = meta
+
+        plan = None
+
+        await self._connect(READ_ACCESS)
+        try:
+            self._connection.plan(
+                query, params=parameters, db=self._config.database,
+                on_success=on_success
+            )
+            await self._connection.send_all()
+            await self._connection.fetch_all()
+            return plan
+        finally:
+            await self._disconnect()
+
     async def close(self):
         """Close the session.
 

@@ -266,6 +266,13 @@ class Bolt4x0(Bolt):
                      Response(self, "rollback", hydration_hooks, **handlers),
                      dehydration_hooks=dehydration_hooks)
 
+    def plan(self, query, params=None, db=None, dehydration_hooks=None,
+             hydration_hooks=None, **handlers):
+        raise NotImplementedError(
+            "Plan is not supported in Bolt Protocol {!r}."
+            .format(self.PROTOCOL_VERSION)
+        )
+
     def reset(self, dehydration_hooks=None, hydration_hooks=None):
         """ Add a RESET message to the outgoing queue, send
         it and consume all remaining messages.

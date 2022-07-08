@@ -90,3 +90,23 @@ def dehydrate_datetime(value):
                              "UTC offsets.")
         offset_seconds = offset.days * 86400 + offset.seconds
         return Structure(b"I", seconds, nanoseconds, offset_seconds)
+
+
+def dehydrate_datetime_placeholder(value):
+    """ Placeholder dehydrator for `datetime` values.
+
+    :param value:
+    :type value: datetime or DateTime
+    :return:
+    """
+    tz = value.tzinfo
+    if tz is None:
+        # without time zone
+        return Structure(b"d", 0, 0)
+    elif (hasattr(tz, "zone") and tz.zone and isinstance(tz.zone, str)
+          or hasattr(tz, "key") and tz.key and isinstance(tz.key, str)):
+        # with named pytz time zone
+        return Structure(b"i", 0, 0, "UTC")
+    else:
+        # with time offset
+        return Structure(b"I", 0, 0, 0)

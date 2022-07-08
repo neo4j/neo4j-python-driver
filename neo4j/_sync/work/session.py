@@ -139,6 +139,25 @@ class Session(Workspace):
         self._disconnect()
         return server_info
 
+    def _plan(self, query, parameters=None):
+        def on_success(meta):
+            nonlocal plan
+            plan = meta
+
+        plan = None
+
+        self._connect(READ_ACCESS)
+        try:
+            self._connection.plan(
+                query, params=parameters, db=self._config.database,
+                on_success=on_success
+            )
+            self._connection.send_all()
+            self._connection.fetch_all()
+            return plan
+        finally:
+            self._disconnect()
+
     def close(self):
         """Close the session.
 

@@ -250,6 +250,20 @@ class Bolt5x0(Bolt):
                      Response(self, "rollback", hydration_hooks, **handlers),
                      dehydration_hooks=dehydration_hooks)
 
+    def plan(self, query, params=None, db=None, dehydration_hooks=None,
+             hydration_hooks=None, **handlers):
+        extra = {}
+        if params:
+            extra["params"] = \
+                self.hydration_handler.placeholder_parameters(params)
+        if db is not None:
+            extra["db"] = db
+        log.debug("[#%04X]  C: PLAN %r %r", self.local_port, query, extra)
+        self._append(b"\x73", (query, extra),
+                     response=Response(self, "plan", hydration_hooks,
+                                       **handlers),
+                     dehydration_hooks=dehydration_hooks)
+
     def reset(self, dehydration_hooks=None, hydration_hooks=None):
         """Reset the connection.
 
