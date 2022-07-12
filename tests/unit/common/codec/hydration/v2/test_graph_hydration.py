@@ -18,10 +18,9 @@
 
 import pytest
 
-from neo4j._codec.hydration.v1 import HydrationHandler
+from neo4j._codec.hydration.v2 import HydrationHandler
 from neo4j._codec.packstream import Structure
 from neo4j.graph import (
-    Graph,
     Node,
     Relationship,
 )

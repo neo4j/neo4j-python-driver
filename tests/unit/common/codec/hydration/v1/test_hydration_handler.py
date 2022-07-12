@@ -60,7 +60,7 @@ class TestHydrationHandler(HydrationHandlerTestBase):
     def test_scope_hydration_keys(self, hydration_scope):
         hooks = hydration_scope.hydration_hooks
         assert isinstance(hooks, dict)
-        assert set(hooks.keys()) == {Structure}
+        assert set(hooks.keys()) == {Structure, list, dict}
 
     def test_scope_dehydration_keys(self, hydration_scope):
         hooks = hydration_scope.dehydration_hooks
@@ -76,3 +76,23 @@ class TestHydrationHandler(HydrationHandlerTestBase):
         assert isinstance(graph, Graph)
         assert not graph.nodes
         assert not graph.relationships
+
+    @pytest.mark.parametrize("data", (
+        [1, 2, 3],
+        ["a", "b", "c"],
+        [object(), object()],
+        [ValueError(), 42, {}, b"foo"],
+    ))
+    def test_list_hydration(self, hydration_scope, data):
+        res = hydration_scope.hydration_hooks[list](data)
+        assert res == data
+
+    @pytest.mark.parametrize("data", (
+        {"a": 1, "b": 2, "c": 3},
+        {"a": "a", "b": "b", "c": "c"},
+        {"a": object(), "b": object()},
+        {"a": ValueError(), "b": 42, "c": {}, "d": b"foo"},
+    ))
+    def test_dict_hydration(self, hydration_scope, data):
+        res = hydration_scope.hydration_hooks[dict](data)
+        assert res == data

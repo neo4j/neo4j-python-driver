@@ -28,7 +28,10 @@ from collections.abc import (
 from functools import reduce
 from operator import xor as xor_operator
 
+from ._codec.hydration import BrokenHydrationObject
 from ._conf import iter_items
+from ._meta import deprecated
+from .exceptions import BrokenRecordError
 from .graph import (
     Node,
     Path,
@@ -55,9 +58,26 @@ class Record(tuple, Mapping):
         inst.__keys = tuple(keys)
         return inst
 
+    def _broken_record_error(self, index):
+        return BrokenRecordError(
+            f"Record contains broken data at {index} ('{self.__keys[index]}')"
+        )
+
+    def _super_getitem_single(self, index):
+        value = super().__getitem__(index)
+        if isinstance(value, BrokenHydrationObject):
+            raise self._broken_record_error(index) from value.error
+        return value
+
     def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__,
-                            " ".join("%s=%r" % (field, self[i]) for i, field in enumerate(self.__keys)))
+        return "<%s %s>" % (
+            self.__class__.__name__,
+            " ".join("%s=%r" % (field, value)
+                     for field, value in zip(self.__keys, super().__iter__()))
+        )
+
+    def __str__(self):
+        return self.__repr__()
 
     def __eq__(self, other):
         """ In order to be flexible regarding comparison, the equality rules
@@ -83,18 +103,26 @@ class Record(tuple, Mapping):
     def __hash__(self):
         return reduce(xor_operator, map(hash, self.items()))
 
+    def __iter__(self):
+        for i, v in enumerate(super().__iter__()):
+            if isinstance(v, BrokenHydrationObject):
+                raise self._broken_record_error(i) from v.error
+            yield v
+
     def __getitem__(self, key):
         if isinstance(key, slice):
             keys = self.__keys[key]
-            values = super(Record, self).__getitem__(key)
+            values = super().__getitem__(key)
             return self.__class__(zip(keys, values))
         try:
             index = self.index(key)
         except IndexError:
             return None
         else:
-            return super(Record, self).__getitem__(index)
+            return self._super_getitem_single(index)
 
+    # TODO: 6.0 - remove
+    @deprecated("This method is deprecated and will be removed in the future.")
     def __getslice__(self, start, stop):
         key = slice(start, stop)
         keys = self.__keys[key]
@@ -114,7 +142,7 @@ class Record(tuple, Mapping):
         except ValueError:
             return default
         if 0 <= index < len(self):
-            return super(Record, self).__getitem__(index)
+            return self._super_getitem_single(index)
         else:
             return default
 
@@ -197,7 +225,8 @@ class Record(tuple, Mapping):
                 else:
                     d.append((self.__keys[i], self[i]))
             return d
-        return list((self.__keys[i], super(Record, self).__getitem__(i)) for i in range(len(self)))
+        return list((self.__keys[i], self._super_getitem_single(i))
+                    for i in range(len(self)))
 
     def data(self, *keys):
         """ Return the keys and values of this record as a dictionary,

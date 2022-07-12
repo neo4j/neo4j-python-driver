@@ -396,6 +396,14 @@ class ServiceUnavailable(DriverError):
         return True
 
 
+class BrokenRecordError(DriverError):
+    """ Raised when accessing a Record's field that couldn't be decoded.
+
+    This can for instance happen when the server sends a zoned datetime with a
+    zone id unknown to the client.
+    """
+
+
 class RoutingServiceUnavailable(ServiceUnavailable):
     """ Raised when no routing service is available.
     """

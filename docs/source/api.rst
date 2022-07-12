@@ -1248,7 +1248,6 @@ Neo4j Execution Errors
 .. autoclass:: neo4j.exceptions.Neo4jError
     :members: message, code, is_retriable, is_retryable
 
-
 .. autoclass:: neo4j.exceptions.ClientError
     :show-inheritance:
 
@@ -1328,6 +1327,9 @@ Connectivity Errors
     :show-inheritance:
 
 .. autoclass:: neo4j.exceptions.ReadServiceUnavailable
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.BrokenRecordError
     :show-inheritance:
 
 .. autoclass:: neo4j.exceptions.ConfigurationError

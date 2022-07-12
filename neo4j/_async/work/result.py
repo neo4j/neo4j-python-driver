@@ -20,6 +20,7 @@ from collections import deque
 from warnings import warn
 
 from ..._async_compat.util import AsyncUtil
+from ..._codec.hydration import BrokenHydrationObject
 from ..._data import (
     Record,
     RecordTableRowExporter,
@@ -145,6 +146,11 @@ class AsyncResult:
     def _pull(self):
         def on_records(records):
             if not self._discarding:
+                records = (
+                    record.raw_data
+                    if isinstance(record, BrokenHydrationObject) else record
+                    for record in records
+                )
                 self._record_buffer.extend((
                     Record(zip(self._keys, record))
                     for record in records

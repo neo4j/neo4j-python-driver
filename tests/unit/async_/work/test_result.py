@@ -41,7 +41,10 @@ from neo4j._data import (
     Node,
     Relationship,
 )
-from neo4j.exceptions import ResultNotSingleError
+from neo4j.exceptions import (
+    BrokenRecordError,
+    ResultNotSingleError,
+)
 from neo4j.graph import (
     EntitySetView,
     Graph,
@@ -55,18 +58,18 @@ class Records:
         self.fields = tuple(fields)
         self.hydration_scope = HydrationHandler().new_hydration_scope()
         self.records = tuple(records)
-        self._hydrate_records()
-
         assert all(len(self.fields) == len(r) for r in self.records)
+
+        self._hydrate_records()
 
     def _hydrate_records(self):
         def _hydrate(value):
+            if isinstance(value, (list, tuple)):
+                value = type(value)(_hydrate(v) for v in value)
+            elif isinstance(value, dict):
+                value = {k: _hydrate(v) for k, v in value.items()}
             if type(value) in self.hydration_scope.hydration_hooks:
                 return self.hydration_scope.hydration_hooks[type(value)](value)
-            if isinstance(value, (list, tuple)):
-                return type(value)(_hydrate(v) for v in value)
-            if isinstance(value, dict):
-                return {k: _hydrate(v) for k, v in value.items()}
             return value
 
         self.records = tuple(_hydrate(r) for r in self.records)
@@ -605,7 +608,6 @@ async def test_data(num_records):
         assert record.data.called_once_with("hello", "world")
 
 
-# TODO: dehydration now happens on a much lower level
 @pytest.mark.parametrize("records", (
     Records(["n"], []),
     Records(["n"], [[42], [69], [420], [1337]]),
@@ -621,19 +623,9 @@ async def test_data(num_records):
     ]),
 ))
 @mark_async_test
-async def test_result_graph(records, async_scripted_connection):
-    async_scripted_connection.set_script((
-        ("run", {"on_success": ({"fields": records.fields},),
-                 "on_summary": None}),
-        ("pull", {
-            "on_records": (records.records,),
-            "on_success": None,
-            "on_summary": None
-        }),
-    ))
-    async_scripted_connection.new_hydration_scope.return_value = \
-        records.hydration_scope
-    result = AsyncResult(async_scripted_connection, 1, noop, noop)
+async def test_result_graph(records):
+    connection = AsyncConnectionStub(records=records)
+    result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
     graph = await result.graph()
     assert isinstance(graph, Graph)
@@ -1095,3 +1087,25 @@ async def test_to_df_parse_dates(keys, values, expected_df, expand):
         df = await result.to_df(expand=expand, parse_dates=True)
 
     pd.testing.assert_frame_equal(df, expected_df)
+
+
+@pytest.mark.parametrize("nested", [True, False])
+@mark_async_test
+async def test_broken_hydration(nested):
+    value_in = Structure(b"a", "broken")
+    if nested:
+        value_in = [value_in]
+    records_in = Records(["foo", "bar"], [["foobar", value_in]])
+    connection = AsyncConnectionStub(records=records_in)
+    result = AsyncResult(connection, 1, noop, noop)
+    await result._run("CYPHER", {}, None, None, "r", None)
+    records_out = await AsyncUtil.list(result)
+    assert len(records_out) == 1
+    record_out = records_out[0]
+    assert len(record_out) == 2
+    assert record_out[0] == "foobar"
+    with pytest.raises(BrokenRecordError) as exc:
+        record_out[1]
+    cause = exc.value.__cause__
+    assert isinstance(cause, ValueError)
+    assert repr(b"a") in str(cause)

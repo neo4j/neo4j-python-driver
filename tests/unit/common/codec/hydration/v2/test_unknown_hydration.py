@@ -15,15 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._common import (
-    BrokenHydrationObject,
-    HydrationScope,
+
+import pytest
+
+from neo4j._codec.hydration.v2 import HydrationHandler
+
+from ..v1.test_unknown_hydration import (
+    TestUnknownHydration as _TestUnknownHydration,
 )
-from ._interface import HydrationHandlerABC
 
 
-__all__ = [
-    "BrokenHydrationObject",
-    "HydrationHandlerABC",
-    "HydrationScope",
-]
+class TestUnknownHydration(_TestUnknownHydration):
+    @pytest.fixture
+    def hydration_handler(self):
+        return HydrationHandler()
