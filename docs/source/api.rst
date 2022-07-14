@@ -1233,16 +1233,34 @@ Errors
 Neo4j Errors
 ============
 
-Neo4j Execution Errors
+Server-side errors
 
 
 * :class:`neo4j.exceptions.Neo4jError`
 
   * :class:`neo4j.exceptions.ClientError`
 
+    * :class:`neo4j.exceptions.CypherSyntaxError`
+
+    * :class:`neo4j.exceptions.CypherTypeError`
+
+    * :class:`neo4j.exceptions.ConstraintError`
+
+    * :class:`neo4j.exceptions.AuthError`
+
+      * :class:`neo4j.exceptions.TokenExpired`
+
+    * :class:`neo4j.exceptions.Forbidden`
+
   * :class:`neo4j.exceptions.DatabaseError`
 
   * :class:`neo4j.exceptions.TransientError`
+
+    * :class:`neo4j.exceptions.DatabaseUnavailable`
+
+    * :class:`neo4j.exceptions.NotALeader`
+
+    * :class:`neo4j.exceptions.ForbiddenOnReadOnlyDatabase`
 
 
 .. autoclass:: neo4j.exceptions.Neo4jError
@@ -1263,13 +1281,10 @@ Neo4j Execution Errors
 .. autoclass:: neo4j.exceptions.AuthError
     :show-inheritance:
 
+.. autoclass:: neo4j.exceptions.TokenExpired
+    :show-inheritance:
+
 .. autoclass:: neo4j.exceptions.Forbidden
-    :show-inheritance:
-
-.. autoclass:: neo4j.exceptions.ForbiddenOnReadOnlyDatabase
-    :show-inheritance:
-
-.. autoclass:: neo4j.exceptions.NotALeader
     :show-inheritance:
 
 .. autoclass:: neo4j.exceptions.DatabaseError
@@ -1281,25 +1296,52 @@ Neo4j Execution Errors
 .. autoclass:: neo4j.exceptions.DatabaseUnavailable
     :show-inheritance:
 
+.. autoclass:: neo4j.exceptions.NotALeader
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.ForbiddenOnReadOnlyDatabase
+    :show-inheritance:
+
+
 
 
 Driver Errors
 =============
 
-Connectivity Errors
+Client-side errors
 
 
 * :class:`neo4j.exceptions.DriverError`
 
   * :class:`neo4j.exceptions.TransactionError`
 
+    * :class:`neo4j.exceptions.TransactionNestingError`
+
+  * :class:`neo4j.exceptions.ResultError`
+
+    * :class:`neo4j.exceptions.ResultConsumedError`
+
+    * :class:`neo4j.exceptions.ResultNotSingleError`
+
+  * :class:`neo4j.exceptions.BrokenRecordError`
+
   * :class:`neo4j.exceptions.SessionExpired`
 
   * :class:`neo4j.exceptions.ServiceUnavailable`
 
+    * :class:`neo4j.exceptions.RoutingServiceUnavailable`
+
+    * :class:`neo4j.exceptions.WriteServiceUnavailable`
+
+    * :class:`neo4j.exceptions.ReadServiceUnavailable`
+
+    * :class:`neo4j.exceptions.IncompleteCommit`
+
   * :class:`neo4j.exceptions.ConfigurationError`
 
-  * :class:`neo4j.exceptions.ResultConsumedError`
+    * :class:`neo4j.exceptions.AuthConfigurationError`
+
+    * :class:`neo4j.exceptions.CertificateConfigurationError`
 
 
 .. autoclass:: neo4j.exceptions.DriverError
@@ -1311,14 +1353,23 @@ Connectivity Errors
 .. autoclass:: neo4j.exceptions.TransactionNestingError
     :show-inheritance:
 
+.. autoclass:: neo4j.exceptions.ResultError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.ResultConsumedError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.ResultNotSingleError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.BrokenRecordError
+    :show-inheritance:
+
 .. autoclass:: neo4j.exceptions.SessionExpired
     :show-inheritance:
 
 .. autoclass:: neo4j.exceptions.ServiceUnavailable
     :show-inheritance:
-
-    Raised when a database server or service is not available.
-    This may be due to incorrect configuration or could indicate a runtime failure of a database service that the driver is unable to route around.
 
 .. autoclass:: neo4j.exceptions.RoutingServiceUnavailable
     :show-inheritance:
@@ -1329,7 +1380,7 @@ Connectivity Errors
 .. autoclass:: neo4j.exceptions.ReadServiceUnavailable
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.BrokenRecordError
+.. autoclass:: neo4j.exceptions.IncompleteCommit
     :show-inheritance:
 
 .. autoclass:: neo4j.exceptions.ConfigurationError
@@ -1339,12 +1390,6 @@ Connectivity Errors
     :show-inheritance:
 
 .. autoclass:: neo4j.exceptions.CertificateConfigurationError
-    :show-inheritance:
-
-.. autoclass:: neo4j.exceptions.ResultConsumedError
-    :show-inheritance:
-
-.. autoclass:: neo4j.exceptions.ResultNotSingleError
     :show-inheritance:
 
 

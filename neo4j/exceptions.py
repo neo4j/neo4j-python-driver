@@ -41,6 +41,7 @@ Driver API Errors
   + ResultError
     + ResultConsumedError
     + ResultNotSingleError
+  + BrokenRecordError
   + SessionExpired
   + ServiceUnavailable
     + RoutingServiceUnavailable
@@ -95,6 +96,7 @@ ERROR_REWRITE_MAP = {
 }
 
 
+# Neo4jError
 class Neo4jError(Exception):
     """ Raised when the Cypher engine returns an error to the client.
     """
@@ -215,18 +217,59 @@ class Neo4jError(Exception):
         return "{{code: {code}}} {{message: {message}}}".format(code=self.code, message=self.message)
 
 
+# Neo4jError > ClientError
 class ClientError(Neo4jError):
     """ The Client sent a bad request - changing the request might yield a successful outcome.
     """
     def __str__(self):
-        return super(Neo4jError, self).__str__()
+        return super().__str__()
 
 
+# Neo4jError > ClientError > CypherSyntaxError
+class CypherSyntaxError(ClientError):
+    """
+    """
+
+
+# Neo4jError > ClientError > CypherTypeError
+class CypherTypeError(ClientError):
+    """
+    """
+
+
+# Neo4jError > ClientError > ConstraintError
+class ConstraintError(ClientError):
+    """
+    """
+
+
+# Neo4jError > ClientError > AuthError
+class AuthError(ClientError):
+    """ Raised when authentication failure occurs.
+    """
+
+
+# Neo4jError > ClientError > AuthError > TokenExpired
+class TokenExpired(AuthError):
+    """ Raised when the authentication token has expired.
+
+    A new driver instance with a fresh authentication token needs to be created.
+    """
+
+
+# Neo4jError > ClientError > Forbidden
+class Forbidden(ClientError):
+    """
+    """
+
+
+# Neo4jError > DatabaseError
 class DatabaseError(Neo4jError):
     """ The database failed to service the request.
     """
 
 
+# Neo4jError > TransientError
 class TransientError(Neo4jError):
     """ The database cannot service the request right now, retrying later might yield a successful outcome.
     """
@@ -235,50 +278,21 @@ class TransientError(Neo4jError):
         return True
 
 
+# Neo4jError > TransientError > DatabaseUnavailable
 class DatabaseUnavailable(TransientError):
     """
     """
 
 
-class ConstraintError(ClientError):
-    """
-    """
-
-
-class CypherSyntaxError(ClientError):
-    """
-    """
-
-
-class CypherTypeError(ClientError):
-    """
-    """
-
-
+# Neo4jError > TransientError > NotALeader
 class NotALeader(TransientError):
     """
     """
 
 
-class Forbidden(ClientError):
-    """
-    """
-
-
+# Neo4jError > TransientError > ForbiddenOnReadOnlyDatabase
 class ForbiddenOnReadOnlyDatabase(TransientError):
     """
-    """
-
-
-class AuthError(ClientError):
-    """ Raised when authentication failure occurs.
-    """
-
-
-class TokenExpired(AuthError):
-    """ Raised when the authentication token has expired.
-
-    A new driver instance with a fresh authentication token needs to be created.
     """
 
 
@@ -325,6 +339,7 @@ transient_errors = {
 }
 
 
+# DriverError
 class DriverError(Exception):
     """ Raised when the Driver raises an error.
     """
@@ -342,60 +357,46 @@ class DriverError(Exception):
         return False
 
 
-class SessionExpired(DriverError):
-    """ Raised when a session is no longer able to fulfil
-    the purpose described by its original parameters.
-    """
-
-    def __init__(self, session, *args, **kwargs):
-        super(SessionExpired, self).__init__(session, *args, **kwargs)
-
-    def is_retryable(self):
-        return True
-
-
+# DriverError > TransactionError
 class TransactionError(DriverError):
     """ Raised when an error occurs while using a transaction.
     """
 
     def __init__(self, transaction, *args, **kwargs):
-        super(TransactionError, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.transaction = transaction
 
 
-class TransactionNestingError(DriverError):
+# DriverError > TransactionNestingError
+class TransactionNestingError(TransactionError):
     """ Raised when transactions are nested incorrectly.
     """
 
     def __init__(self, transaction, *args, **kwargs):
-        super(TransactionError, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.transaction = transaction
 
 
+# DriverError > ResultError
 class ResultError(DriverError):
     """Raised when an error occurs while using a result object."""
 
     def __init__(self, result, *args, **kwargs):
-        super(ResultError, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.result = result
 
 
+# DriverError > ResultError > ResultConsumedError
 class ResultConsumedError(ResultError):
     """Raised when trying to access records of a consumed result."""
 
 
+# DriverError > ResultError > ResultNotSingleError
 class ResultNotSingleError(ResultError):
     """Raised when a result should have exactly one record but does not."""
 
 
-class ServiceUnavailable(DriverError):
-    """ Raised when no database service is available.
-    """
-
-    def is_retryable(self):
-        return True
-
-
+# DriverError > BrokenRecordError
 class BrokenRecordError(DriverError):
     """ Raised when accessing a Record's field that couldn't be decoded.
 
@@ -404,21 +405,50 @@ class BrokenRecordError(DriverError):
     """
 
 
+# DriverError > SessionExpired
+class SessionExpired(DriverError):
+    """ Raised when a session is no longer able to fulfil
+    the purpose described by its original parameters.
+    """
+
+    def __init__(self, session, *args, **kwargs):
+        super().__init__(session, *args, **kwargs)
+
+    def is_retryable(self):
+        return True
+
+
+# DriverError > ServiceUnavailable
+class ServiceUnavailable(DriverError):
+    """ Raised when no database service is available.
+
+    This may be due to incorrect configuration or could indicate a runtime
+    failure of a database service that the driver is unable to route around.
+    """
+
+    def is_retryable(self):
+        return True
+
+
+# DriverError > ServiceUnavailable > RoutingServiceUnavailable
 class RoutingServiceUnavailable(ServiceUnavailable):
     """ Raised when no routing service is available.
     """
 
 
+# DriverError > ServiceUnavailable > WriteServiceUnavailable
 class WriteServiceUnavailable(ServiceUnavailable):
     """ Raised when no write service is available.
     """
 
 
+# DriverError > ServiceUnavailable > ReadServiceUnavailable
 class ReadServiceUnavailable(ServiceUnavailable):
     """ Raised when no read service is available.
     """
 
 
+# DriverError > ServiceUnavailable > IncompleteCommit
 class IncompleteCommit(ServiceUnavailable):
     """ Raised when the client looses connection while committing a transaction
 
@@ -432,16 +462,19 @@ class IncompleteCommit(ServiceUnavailable):
         return False
 
 
+# DriverError > ConfigurationError
 class ConfigurationError(DriverError):
     """ Raised when there is an error concerning a configuration.
     """
 
 
+# DriverError > ConfigurationError > AuthConfigurationError
 class AuthConfigurationError(ConfigurationError):
     """ Raised when there is an error with the authentication configuration.
     """
 
 
+# DriverError > ConfigurationError > CertificateConfigurationError
 class CertificateConfigurationError(ConfigurationError):
     """ Raised when there is an error with the authentication configuration.
     """
