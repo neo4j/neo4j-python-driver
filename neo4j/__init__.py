@@ -108,7 +108,6 @@ __all__ = [
     "BoltDriver",
     "Bookmark",
     "Bookmarks",
-    "Config",
     "custom_auth",
     "DEFAULT_DATABASE",
     "Driver",
@@ -120,7 +119,6 @@ __all__ = [
     "kerberos_auth",
     "ManagedTransaction",
     "Neo4jDriver",
-    "PoolConfig",
     "Query",
     "READ_ACCESS",
     "Record",
@@ -128,7 +126,6 @@ __all__ = [
     "ResultSummary",
     "ServerInfo",
     "Session",
-    "SessionConfig",
     "SummaryCounters",
     "Transaction",
     "TRUST_ALL_CERTIFICATES",
@@ -138,7 +135,6 @@ __all__ = [
     "TrustSystemCAs",
     "unit_of_work",
     "Version",
-    "WorkspaceConfig",
     "WRITE_ACCESS",
 ]
 

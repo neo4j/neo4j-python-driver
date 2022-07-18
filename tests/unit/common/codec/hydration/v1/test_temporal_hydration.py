@@ -19,6 +19,7 @@
 import pytest
 import pytz
 
+from neo4j._codec.hydration import BrokenHydrationObject
 from neo4j._codec.hydration.v1 import HydrationHandler
 from neo4j._codec.packstream import Structure
 from neo4j.time import (
@@ -31,7 +32,7 @@ from neo4j.time import (
 from ._base import HydrationHandlerTestBase
 
 
-class TestTimeHydration(HydrationHandlerTestBase):
+class TestTemporalHydration(HydrationHandlerTestBase):
     @pytest.fixture
     def hydration_handler(self):
         return HydrationHandler()
@@ -80,8 +81,8 @@ class TestTimeHydration(HydrationHandlerTestBase):
     def test_hydrate_date_time_structure_v2(self, hydration_scope):
         struct = Structure(b"I", 1539344261, 474716862, 3600)
         dt = hydration_scope.hydration_hooks[Structure](struct)
-        assert isinstance(dt, Structure)
-        assert dt == struct
+        assert isinstance(dt, BrokenHydrationObject)
+        assert repr(b"I") in str(dt.error)
 
     def test_hydrate_date_time_zone_id_structure_v1(self, hydration_scope):
         struct = Structure(b"f", 1539344261, 474716862, "Europe/Stockholm")
@@ -98,11 +99,24 @@ class TestTimeHydration(HydrationHandlerTestBase):
             .localize(dt.replace(tzinfo=None)).tzinfo
         assert dt.tzinfo == tz
 
+    def test_hydrate_date_time_unknown_zone_id_structure(self,
+                                                         hydration_scope):
+        struct = Structure(b"f", 1539344261, 474716862, "Europe/Neo4j")
+        res = hydration_scope.hydration_hooks[Structure](struct)
+        assert isinstance(res, BrokenHydrationObject)
+        exc = None
+        try:
+            pytz.timezone("Europe/Neo4j")
+        except Exception as e:
+            exc = e
+        assert exc.__class__ == res.error.__class__
+        assert str(exc) == str(res.error)
+
     def test_hydrate_date_time_zone_id_structure_v2(self, hydration_scope):
         struct = Structure(b"i", 1539344261, 474716862, "Europe/Stockholm")
         dt = hydration_scope.hydration_hooks[Structure](struct)
-        assert isinstance(dt, Structure)
-        assert dt == struct
+        assert isinstance(dt, BrokenHydrationObject)
+        assert repr(b"i") in str(dt.error)
 
     def test_hydrate_local_date_time_structure(self, hydration_scope):
         struct = Structure(b"d", 1539344261, 474716862)
@@ -127,7 +141,7 @@ class TestTimeHydration(HydrationHandlerTestBase):
         assert d.nanoseconds == 4
 
 
-class TestUTCPatchedTimeHydration(TestTimeHydration):
+class TestUTCPatchedTemporalHydration(TestTemporalHydration):
     @pytest.fixture
     def hydration_handler(self):
         handler = HydrationHandler()
@@ -135,33 +149,43 @@ class TestUTCPatchedTimeHydration(TestTimeHydration):
         return handler
 
     def test_hydrate_date_time_structure_v1(self, hydration_scope):
-        from ..v2.test_time_hydration import (
-            TestTimeHydration as TestTimeHydrationV2,
+        from ..v2.test_temporal_hydration import (
+            TestTemporalHydration as TestTimeHydrationV2,
         )
         TestTimeHydrationV2().test_hydrate_date_time_structure_v1(
             hydration_scope
         )
 
     def test_hydrate_date_time_structure_v2(self, hydration_scope):
-        from ..v2.test_time_hydration import (
-            TestTimeHydration as TestTimeHydrationV2,
+        from ..v2.test_temporal_hydration import (
+            TestTemporalHydration as TestTimeHydrationV2,
         )
         TestTimeHydrationV2().test_hydrate_date_time_structure_v2(
             hydration_scope
         )
 
     def test_hydrate_date_time_zone_id_structure_v1(self, hydration_scope):
-        from ..v2.test_time_hydration import (
-            TestTimeHydration as TestTimeHydrationV2,
+        from ..v2.test_temporal_hydration import (
+            TestTemporalHydration as TestTimeHydrationV2,
         )
         TestTimeHydrationV2().test_hydrate_date_time_zone_id_structure_v1(
             hydration_scope
         )
 
     def test_hydrate_date_time_zone_id_structure_v2(self, hydration_scope):
-        from ..v2.test_time_hydration import (
-            TestTimeHydration as TestTimeHydrationV2,
+        from ..v2.test_temporal_hydration import (
+            TestTemporalHydration as TestTimeHydrationV2,
         )
         TestTimeHydrationV2().test_hydrate_date_time_zone_id_structure_v2(
+            hydration_scope
+        )
+
+    def test_hydrate_date_time_unknown_zone_id_structure(self,
+                                                         hydration_scope):
+
+        from ..v2.test_temporal_hydration import (
+            TestTemporalHydration as TestTimeHydrationV2,
+        )
+        TestTimeHydrationV2().test_hydrate_date_time_unknown_zone_id_structure(
             hydration_scope
         )

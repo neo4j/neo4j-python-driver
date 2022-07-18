@@ -145,7 +145,7 @@ class TestUTCPatchedTimeDehydration(TestTimeDehydration):
         return handler
 
     def test_date_time(self, hydration_scope):
-        from ..v2.test_time_dehydration import (
+        from ..v2.test_temporal_dehydration import (
             TestTimeDehydration as TestTimeDehydrationV2,
         )
         TestTimeDehydrationV2().test_date_time(
@@ -153,7 +153,7 @@ class TestUTCPatchedTimeDehydration(TestTimeDehydration):
         )
 
     def test_native_date_time(self, hydration_scope):
-        from ..v2.test_time_dehydration import (
+        from ..v2.test_temporal_dehydration import (
             TestTimeDehydration as TestTimeDehydrationV2,
         )
         TestTimeDehydrationV2().test_native_date_time(
@@ -161,7 +161,7 @@ class TestUTCPatchedTimeDehydration(TestTimeDehydration):
         )
 
     def test_date_time_negative_offset(self, hydration_scope):
-        from ..v2.test_time_dehydration import (
+        from ..v2.test_temporal_dehydration import (
             TestTimeDehydration as TestTimeDehydrationV2,
         )
         TestTimeDehydrationV2().test_date_time_negative_offset(
@@ -169,7 +169,7 @@ class TestUTCPatchedTimeDehydration(TestTimeDehydration):
         )
 
     def test_native_date_time_negative_offset(self, hydration_scope):
-        from ..v2.test_time_dehydration import (
+        from ..v2.test_temporal_dehydration import (
             TestTimeDehydration as TestTimeDehydrationV2,
         )
         TestTimeDehydrationV2().test_native_date_time_negative_offset(
@@ -177,7 +177,7 @@ class TestUTCPatchedTimeDehydration(TestTimeDehydration):
         )
 
     def test_date_time_zone_id(self, hydration_scope):
-        from ..v2.test_time_dehydration import (
+        from ..v2.test_temporal_dehydration import (
             TestTimeDehydration as TestTimeDehydrationV2,
         )
         TestTimeDehydrationV2().test_date_time_zone_id(
@@ -185,7 +185,7 @@ class TestUTCPatchedTimeDehydration(TestTimeDehydration):
         )
 
     def test_native_date_time_zone_id(self, hydration_scope):
-        from ..v2.test_time_dehydration import (
+        from ..v2.test_temporal_dehydration import (
             TestTimeDehydration as TestTimeDehydrationV2,
         )
         TestTimeDehydrationV2().test_native_date_time_zone_id(

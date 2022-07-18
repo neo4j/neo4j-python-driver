@@ -1323,6 +1323,8 @@ Client-side errors
 
     * :class:`neo4j.exceptions.ResultNotSingleError`
 
+  * :class:`neo4j.exceptions.BrokenRecordError`
+
   * :class:`neo4j.exceptions.SessionExpired`
 
   * :class:`neo4j.exceptions.ServiceUnavailable`
@@ -1358,6 +1360,9 @@ Client-side errors
     :show-inheritance:
 
 .. autoclass:: neo4j.exceptions.ResultNotSingleError
+    :show-inheritance:
+
+.. autoclass:: neo4j.exceptions.BrokenRecordError
     :show-inheritance:
 
 .. autoclass:: neo4j.exceptions.SessionExpired

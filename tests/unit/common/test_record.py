@@ -16,14 +16,15 @@
 # limitations under the License.
 
 
+import traceback
+
 import pytest
 
 from neo4j import Record
+from neo4j._codec.hydration import BrokenHydrationObject
 from neo4j._codec.hydration.v1 import HydrationHandler
-from neo4j.graph import (
-    Graph,
-    Node,
-)
+from neo4j.exceptions import BrokenRecordError
+from neo4j.graph import Node
 
 
 # python -m pytest -s -v tests/unit/test_record.py
@@ -330,3 +331,76 @@ def test_data_path(cyclic):
     assert record.data() == {
         "r": [dict(alice), "KNOWS", dict(bob), "DISLIKES", dict(carol)]
     }
+
+
+@pytest.mark.parametrize(("accessor", "should_raise"), (
+    (lambda r: r["a"], False),
+    (lambda r: r["b"], True),
+    (lambda r: r["c"], False),
+    (lambda r: r[0], False),
+    (lambda r: r[1], True),
+    (lambda r: r[2], False),
+    (lambda r: r.value("a"), False),
+    (lambda r: r.value("b"), True),
+    (lambda r: r.value("c"), False),
+    (lambda r: r.value("made-up"), False),
+    (lambda r: r.value(0), False),
+    (lambda r: r.value(1), True),
+    (lambda r: r.value(2), False),
+    (lambda r: r.value(3), False),
+    (lambda r: r.values(0, 2, "made-up"), False),
+    (lambda r: r.values(0, 1), True),
+    (lambda r: r.values(2, 1), True),
+    (lambda r: r.values(1), True),
+    (lambda r: r.values(1, "made-up"), True),
+    (lambda r: r.values(1, 0), True),
+    (lambda r: r.values("a", "c", "made-up"), False),
+    (lambda r: r.values("a", "b"), True),
+    (lambda r: r.values("c", "b"), True),
+    (lambda r: r.values("b"), True),
+    (lambda r: r.values("b", "made-up"), True),
+    (lambda r: r.values("b", "a"), True),
+    (lambda r: r.data(0, 2, "made-up"), False),
+    (lambda r: r.data(0, 1), True),
+    (lambda r: r.data(2, 1), True),
+    (lambda r: r.data(1), True),
+    (lambda r: r.data(1, "made-up"), True),
+    (lambda r: r.data(1, 0), True),
+    (lambda r: r.data("a", "c", "made-up"), False),
+    (lambda r: r.data("a", "b"), True),
+    (lambda r: r.data("c", "b"), True),
+    (lambda r: r.data("b"), True),
+    (lambda r: r.data("b", "made-up"), True),
+    (lambda r: r.data("b", "a"), True),
+    (lambda r: r.get("a"), False),
+    (lambda r: r.get("b"), True),
+    (lambda r: r.get("c"), False),
+    (lambda r: r.get("made-up"), False),
+    (lambda r: list(r), True),
+    (lambda r: list(r.items()), True),
+    (lambda r: r.index("a"), False),
+    (lambda r: r.index("b"), False),
+    (lambda r: r.index("c"), False),
+    (lambda r: r.index(0), False),
+    (lambda r: r.index(1), False),
+    (lambda r: r.index(2), False),
+))
+def test_record_with_error(accessor, should_raise):
+    class TestException(Exception):
+        pass
+
+    # raising and catching exceptions to get the stacktrace populated
+    try:
+        raise TestException("test")
+    except TestException as e:
+        exc = e
+    frames = list(traceback.walk_tb(exc.__traceback__))
+    r = Record((("a", 1), ("b", BrokenHydrationObject(exc, None)), ("c", 3)))
+    if not should_raise:
+        accessor(r)
+        return
+    with pytest.raises(BrokenRecordError) as raised:
+        accessor(r)
+    raised = raised.value
+    assert raised.__cause__ is exc
+    assert list(traceback.walk_tb(raised.__cause__.__traceback__)) == frames

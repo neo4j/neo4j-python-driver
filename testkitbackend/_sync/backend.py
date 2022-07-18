@@ -97,6 +97,21 @@ class Backend:
             if DRIVER_PATH in p.parents:
                 return True
 
+    @staticmethod
+    def _exc_msg(exc, max_depth=10):
+        if isinstance(exc, Neo4jError) and exc.message is not None:
+            return str(exc.message)
+
+        depth = 0
+        res = str(exc)
+        while getattr(exc, "__cause__", None) is not None:
+            depth += 1
+            if depth >= max_depth:
+                break
+            res += f"\nCaused by: {exc.__cause__!r}"
+            exc = exc.__cause__
+        return res
+
     def write_driver_exc(self, exc):
         log.debug(traceback.format_exc())
 
@@ -109,14 +124,10 @@ class Backend:
             wrapped_exc = exc.wrapped_exc
             payload["errorType"] = str(type(wrapped_exc))
             if wrapped_exc.args:
-                payload["msg"] = str(wrapped_exc.args[0])
+                payload["msg"] = self._exc_msg(wrapped_exc.args[0])
         else:
             payload["errorType"] = str(type(exc))
-            if isinstance(exc, Neo4jError) and exc.message is not None:
-                payload["msg"] = str(exc.message)
-            elif exc.args:
-                payload["msg"] = str(exc.args[0])
-
+            payload["msg"] = self._exc_msg(exc)
             if isinstance(exc, Neo4jError):
                 payload["code"] = exc.code
 

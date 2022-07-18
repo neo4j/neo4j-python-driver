@@ -21,14 +21,17 @@ import datetime
 import pytest
 import pytz
 
+from neo4j._codec.hydration import BrokenHydrationObject
 from neo4j._codec.hydration.v2 import HydrationHandler
 from neo4j._codec.packstream import Structure
 from neo4j.time import DateTime
 
-from ..v1.test_time_hydration import TestTimeHydration as _TestTimeHydrationV1
+from ..v1.test_temporal_hydration import (
+    TestTemporalHydration as _TestTemporalHydrationV1,
+)
 
 
-class TestTimeHydration(_TestTimeHydrationV1):
+class TestTemporalHydration(_TestTemporalHydrationV1):
     @pytest.fixture
     def hydration_handler(self):
         return HydrationHandler()
@@ -36,8 +39,8 @@ class TestTimeHydration(_TestTimeHydrationV1):
     def test_hydrate_date_time_structure_v1(self, hydration_scope):
         struct = Structure(b"F", 1539344261, 474716862, 3600)
         dt = hydration_scope.hydration_hooks[Structure](struct)
-        assert isinstance(dt, Structure)
-        assert dt == struct
+        assert isinstance(dt, BrokenHydrationObject)
+        assert repr(b"F") in str(dt.error)
 
     def test_hydrate_date_time_structure_v2(self, hydration_scope):
         struct = Structure(b"I", 1539344261, 474716862, 3600)
@@ -55,8 +58,8 @@ class TestTimeHydration(_TestTimeHydrationV1):
     def test_hydrate_date_time_zone_id_structure_v1(self, hydration_scope):
         struct = Structure(b"f", 1539344261, 474716862, "Europe/Stockholm")
         dt = hydration_scope.hydration_hooks[Structure](struct)
-        assert isinstance(dt, Structure)
-        assert dt == struct
+        assert isinstance(dt, BrokenHydrationObject)
+        assert repr(b"f") in str(dt.error)
 
     def test_hydrate_date_time_zone_id_structure_v2(self, hydration_scope):
         struct = Structure(b"i", 1539344261, 474716862, "Europe/Stockholm")
@@ -72,3 +75,16 @@ class TestTimeHydration(_TestTimeHydrationV1):
         tz = pytz.timezone("Europe/Stockholm") \
             .localize(dt.replace(tzinfo=None)).tzinfo
         assert dt.tzinfo == tz
+
+    def test_hydrate_date_time_unknown_zone_id_structure(self,
+                                                         hydration_scope):
+        struct = Structure(b"i", 1539344261, 474716862, "Europe/Neo4j")
+        res = hydration_scope.hydration_hooks[Structure](struct)
+        assert isinstance(res, BrokenHydrationObject)
+        exc = None
+        try:
+            pytz.timezone("Europe/Neo4j")
+        except Exception as e:
+            exc = e
+        assert exc.__class__ == res.error.__class__
+        assert str(exc) == str(res.error)

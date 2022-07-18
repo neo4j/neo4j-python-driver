@@ -41,6 +41,7 @@ Driver API Errors
   + ResultError
     + ResultConsumedError
     + ResultNotSingleError
+  + BrokenRecordError
   + SessionExpired
   + ServiceUnavailable
     + RoutingServiceUnavailable
@@ -393,6 +394,15 @@ class ResultConsumedError(ResultError):
 # DriverError > ResultError > ResultNotSingleError
 class ResultNotSingleError(ResultError):
     """Raised when a result should have exactly one record but does not."""
+
+
+# DriverError > BrokenRecordError
+class BrokenRecordError(DriverError):
+    """ Raised when accessing a Record's field that couldn't be decoded.
+
+    This can for instance happen when the server sends a zoned datetime with a
+    zone id unknown to the client.
+    """
 
 
 # DriverError > SessionExpired
