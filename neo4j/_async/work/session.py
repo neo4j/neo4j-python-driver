@@ -61,7 +61,7 @@ class AsyncSession(AsyncWorkspace):
     Session creation is a lightweight operation and sessions are not safe to
     be used in concurrent contexts (multiple threads/coroutines).
     Therefore, a session should generally be short-lived, and must not
-    span multiple threads/coroutines.
+    span multiple threads/asynchronous Tasks.
 
     In general, sessions will be created and destroyed within a `with`
     context. For example::

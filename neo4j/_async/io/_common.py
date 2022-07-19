@@ -140,7 +140,7 @@ class AsyncOutbox:
             try:
                 await self.socket.sendall(data)
             except (OSError, asyncio.CancelledError) as error:
-                await self.on_error(error)
+                await AsyncUtil.callback(self.on_error, error)
                 return False
             self._clear()
             return True

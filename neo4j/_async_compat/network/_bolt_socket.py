@@ -35,7 +35,6 @@ from ssl import (
     HAS_SNI,
     SSLError,
 )
-from time import perf_counter
 
 from ... import addressing
 from ..._deadline import Deadline
@@ -49,7 +48,7 @@ from ...exceptions import (
     DriverError,
     ServiceUnavailable,
 )
-from ..util import AsyncUtil
+from ..shims import wait_for
 from ._util import (
     AsyncNetworkUtil,
     NetworkUtil,
@@ -104,7 +103,7 @@ class AsyncBoltSocket:
                 # `await` will raise the CancelledError.
                 asyncio.current_task().cancel()
         try:
-            return await asyncio.wait_for(io_fut, timeout)
+            return await wait_for(io_fut, timeout)
         except asyncio.TimeoutError as e:
             raise to_raise("timed out") from e
 
@@ -187,7 +186,7 @@ class AsyncBoltSocket:
                     "Unsupported address {!r}".format(resolved_address))
             s.setblocking(False)  # asyncio + blocking = no-no!
             log.debug("[#0000]  C: <OPEN> %s", resolved_address)
-            await asyncio.wait_for(
+            await wait_for(
                 loop.sock_connect(s, resolved_address),
                 timeout
             )
@@ -331,7 +330,7 @@ class AsyncBoltSocket:
             else:
                 socket_.shutdown(SHUT_RDWR)
                 socket_.close()
-        except (OSError, asyncio.CancelledError):
+        except OSError:
             pass
 
     @classmethod

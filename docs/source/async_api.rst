@@ -313,6 +313,37 @@ AsyncSession
 
 .. autoclass:: neo4j.AsyncSession()
 
+    .. note::
+
+        Some asyncio utility functions (e.g., :func:`asyncio.wait_for` and
+        :func:`asyncio.shield`) will wrap work in a :class:`asyncio.Task`.
+        This introduces concurrency and can lead to undefined behavior as
+        :class:`AsyncSession` is not concurrency-safe.
+
+        Consider this **wrong** example::
+
+            async def dont_do_this(driver):
+                async with driver.session() as session:
+                    await asyncio.shield(session.run("RETURN 1"))
+
+        If ``dont_do_this`` gets cancelled while waiting for ``session.run``,
+        ``session.run`` itself won't get cancelled (it's shielded) so it will
+        continue to use the session in another Task. Concurrently, will the
+        async context manager (``async with driver.session()``) on exit clean
+        up the session. That's two Tasks handling the session concurrently.
+        Therefore, this yields undefined behavior.
+
+        In this particular example, the problem could be solved by shielding
+        the whole coroutine ``dont_do_this`` instead of only the
+        ``session.run``. Like so::
+
+            async def thats_better(driver):
+                async def inner()
+                    async with driver.session() as session:
+                        await session.run("RETURN 1")
+
+                await asyncio.shield(inner())
+
     .. automethod:: close
 
     .. automethod:: cancel

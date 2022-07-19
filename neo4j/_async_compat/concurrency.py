@@ -21,7 +21,7 @@ import collections
 import re
 import threading
 
-from neo4j._async_compat.util import AsyncUtil
+from neo4j._async_compat.shims import wait_for
 
 
 __all__ = [
@@ -123,12 +123,12 @@ class AsyncRLock(asyncio.Lock):
         try:
             fut = asyncio.ensure_future(self._acquire(me))
             try:
-                await asyncio.wait_for(fut, timeout)
+                await wait_for(fut, timeout)
             except asyncio.CancelledError:
-                if (fut.done()
-                        and not fut.cancelled()
-                        and fut.exception() is None):
-                    # too late to cancel the acquisition
+                already_finished = not fut.cancel()
+                if already_finished:
+                    # Too late to cancel the acquisition.
+                    # This can only happen in Python 3.7's asyncio
                     self._release(me)
                 raise
             return True
@@ -357,7 +357,7 @@ class AsyncCondition:
             fut = self._loop.create_future()
             self._waiters.append(fut)
             try:
-                await asyncio.wait_for(fut, timeout)
+                await wait_for(fut, timeout)
                 return True
             except asyncio.TimeoutError:
                 return False

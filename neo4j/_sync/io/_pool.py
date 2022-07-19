@@ -286,6 +286,8 @@ class IOPool(abc.ABC):
             for connection in connections:
                 connection.in_use = False
             self.cond.notify_all()
+        if cancelled is not None:
+            raise cancelled
 
     def in_use_connection_count(self, address):
         """ Count the number of connections currently in use to a given
