@@ -257,7 +257,7 @@ class Session(Workspace):
         def job(tx, **job_kwargs):
             if skip_records:
                 summary = tx.run(query, parameters, **job_kwargs)
-                return QueryResult(summary, [])
+                return QueryResult([], summary)
             return tx.query(query, parameters, **job_kwargs)
 
         return self.execute(job, **kwargs)
@@ -278,8 +278,8 @@ class Session(Workspace):
         Example::
 
             def do_cypher_tx(tx, cypher):
-                query_result = tx.query(cypher)
-                return query_result.records
+                records, _ = tx.query(cypher)
+                return records
 
             with driver.session() as session:
                 values = session.execute(do_cypher_tx, "RETURN 1 AS x")
@@ -287,8 +287,8 @@ class Session(Workspace):
         Example::
 
             def do_cypher_tx(tx):
-                query_result = tx.query("RETURN 1 AS x")
-                return query_result.records
+                records, _ = tx.query("RETURN 1 AS x")
+                return records
 
             with driver.session() as session:
                 values = session.execute(do_cypher_tx, 

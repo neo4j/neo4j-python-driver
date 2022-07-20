@@ -18,6 +18,7 @@
 
 from collections import deque
 from warnings import warn
+from collections import namedtuple
 
 from ..._async_compat.util import Util
 from ..._codec.hydration import BrokenHydrationObject
@@ -709,11 +710,4 @@ class Result:
         return self._out_of_scope or self._consumed
 
 
-class QueryResult:
-    """The result of Cypher query execution. Instances
-    of this class are typically constructed and returned by
-    :meth:`.Session.query` and :meth:`.Transaction.query`.
-    """
-    def __init__(self, summary, records):
-        self.summary = summary
-        self.records = records
+QueryResult = namedtuple("QueryResult", ("records", "summary"))

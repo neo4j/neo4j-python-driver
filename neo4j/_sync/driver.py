@@ -425,16 +425,16 @@ class Driver:
         Example::
 
             def do_cypher_tx(tx, cypher):
-                query_result = tx.query(cypher)
-                return query_result.records
+                records, _ = tx.query(cypher)
+                return records
 
             values = driver.execute(do_cypher_tx, "RETURN 1 AS x")
 
         Example::
 
             def do_cypher_tx(tx):
-                query_result = tx.query("RETURN 1 AS x")
-                return query_result.records
+                records, _ = tx.query("RETURN 1 AS x")
+                return records
 
             values = driver.execute(do_cypher_tx, 
                 database="neo4j",

@@ -164,7 +164,7 @@ class _TransactionBase:
         result = self.run(query, parameters, **kwparameters)
         records = list(result)
         summary = result.consume()
-        return QueryResult(summary, records)
+        return QueryResult(records, summary)
 
     def _commit(self):
         """Mark this transaction as successful and close in order to trigger a COMMIT.
