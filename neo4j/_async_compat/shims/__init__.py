@@ -93,9 +93,8 @@ if sys.version_info >= (3, 8):
                     # We got cancelled, but we are already done. Therefore,
                     # we defer the cancellation until next time the task yields
                     # to the event loop.
-                    asyncio.current_task().cancel()
+                    raise
                     # [/PATCH]
-                    return fut.result()
                 else:
                     fut.remove_done_callback(cb)
                     # We must ensure that the task is not running

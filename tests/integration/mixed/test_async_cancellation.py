@@ -48,7 +48,7 @@ def _get_work():
             assert isinstance(summary, neo4j.ResultSummary)
             assert len(records) == 1
             assert list(records[0]) == [i]
-        except asyncio.CancelledError as e:
+        except asyncio.CancelledError:
             work_cancelled = True
             raise
 

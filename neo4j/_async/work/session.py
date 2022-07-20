@@ -90,7 +90,6 @@ class AsyncSession(AsyncWorkspace):
         super().__init__(pool, session_config)
         assert isinstance(session_config, SessionConfig)
         self._bookmarks = self._prepare_bookmarks(session_config.bookmarks)
-        self._cancelled = False
 
     async def __aenter__(self):
         return self
@@ -140,7 +139,6 @@ class AsyncSession(AsyncWorkspace):
             self._bookmarks = bookmark,
 
     def _handle_cancellation(self, message="General"):
-        self._cancelled = True
         self._transaction = None
         self._auto_result = None
         connection = self._connection
@@ -178,7 +176,6 @@ class AsyncSession(AsyncWorkspace):
         This will release any borrowed resources, such as connections, and will
         roll back any outstanding transactions.
         """
-        # if self._closed or self._cancelled:
         if self._closed:
             return
         if self._connection:
