@@ -26,6 +26,21 @@ from neo4j._async_compat import shims
 from ...._async_compat import mark_async_test
 
 
+async def _check_wait_for(wait_for_, should_propagate_cancellation):
+    inner = asyncio.get_event_loop().create_future()
+    outer = wait_for_(inner, 0.1)
+    outer_future = asyncio.ensure_future(outer)
+    await asyncio.sleep(0)
+    inner.set_result(None)  # inner is done
+    outer_future.cancel()  # AND outer got cancelled
+
+    if should_propagate_cancellation:
+        with pytest.raises(asyncio.CancelledError):
+            await outer_future
+    else:
+        await outer_future
+
+
 @pytest.mark.skipif(
     sys.version_info < (3, 8),
     reason="wait_for is only broken in Python 3.8+"
@@ -33,15 +48,11 @@ from ...._async_compat import mark_async_test
 @mark_async_test
 async def test_wait_for_shim_is_necessary_starting_from_3x8():
     # when this tests fails, the shim became superfluous
-    inner = asyncio.get_event_loop().create_future()
-    outer = asyncio.wait_for(inner, 0.1)
-    outer_future = asyncio.ensure_future(outer)
-    await asyncio.sleep(0)
-    inner.set_result(None)  # inner is done
-    outer_future.cancel()  # AND outer got cancelled
-
-    # this should propagate the cancellation, but it's broken :/
-    await outer_future
+    await _check_wait_for(
+        asyncio.wait_for,
+        # this should propagate the cancellation, but it's broken :/
+        should_propagate_cancellation=False
+    )
 
 
 @pytest.mark.skipif(
@@ -50,25 +61,16 @@ async def test_wait_for_shim_is_necessary_starting_from_3x8():
 )
 @mark_async_test
 async def test_wait_for_shim_is_not_necessary_prior_to_3x8():
-    inner = asyncio.get_event_loop().create_future()
-    outer = asyncio.wait_for(inner, 0.1)
-    outer_future = asyncio.ensure_future(outer)
-    await asyncio.sleep(0)
-    inner.set_result(None)  # inner is done
-    outer_future.cancel()  # AND outer got cancelled
-
-    with pytest.raises(asyncio.CancelledError):
-        await outer_future
+    await _check_wait_for(
+        asyncio.wait_for,
+        should_propagate_cancellation=True
+    )
 
 
 @mark_async_test
 async def test_wait_for_shim_propagates_cancellation():
-    inner = asyncio.get_event_loop().create_future()
-    outer = shims.wait_for(inner, 0.1)
-    outer_future = asyncio.ensure_future(outer)
-    await asyncio.sleep(0)
-    inner.set_result(None)  # inner is done
-    outer_future.cancel()  # AND outer got cancelled
-
-    with pytest.raises(asyncio.CancelledError):
-        await outer_future
+    # shim should always work regardless of the Python version
+    await _check_wait_for(
+        shims.wait_for,
+        should_propagate_cancellation=True
+    )

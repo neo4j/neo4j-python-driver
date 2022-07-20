@@ -52,6 +52,7 @@ class QuickConnection:
     def __init__(self, socket):
         self.socket = socket
         self.address = socket.getpeername()
+        self.local_port = self.address[1]
 
     @property
     def is_reset(self):

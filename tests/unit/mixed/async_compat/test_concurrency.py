@@ -176,19 +176,13 @@ async def test_async_r_lock_acquire_cancellation(waits):
     async def acquire_task():
         while True:
             count = lock._count
-            cancellation = None
-            try:
-                print("try")
-                await lock.acquire(timeout=0.1)
-                print("acquired")
-            except asyncio.CancelledError as exc:
-                print("cancelled")
-                cancellation = exc
-
-            if cancellation is not None:
-                assert lock._count == count
-                raise cancellation
+            await lock.acquire(timeout=0.1)
             assert lock._count == count + 1
+            try:
+                await asyncio.sleep(0)
+            except asyncio.CancelledError:
+                raise
+            assert count < 50  # safety guard, we shouldn't ever get there!
 
     fut = asyncio.ensure_future(acquire_task())
     for _ in range(waits):

@@ -99,13 +99,13 @@ async def _do_the_read(session_, i=1):
         raise
 
 
-REPEATS = 1000
+REPETITIONS = 1000
 
 
 @mark_async_test
 @pytest.mark.parametrize(("i", "read_func", "waits", "cancel_count"), (
     (
-        f"{i + 1:0{len(str(REPEATS))}}/{REPEATS}",
+        f"{i + 1:0{len(str(REPETITIONS))}}/{REPETITIONS}",
         random.choice((
             _do_the_read, _do_the_read_tx_context, _do_the_read_explicit_tx,
             _do_the_read_tx_func
@@ -113,7 +113,7 @@ REPEATS = 1000
         random.randint(0, 1000),
         random.randint(1, 20),
     )
-    for i in range(REPEATS)  # repeats
+    for i in range(REPETITIONS)
 ))
 async def test_async_cancellation(
     uri, auth, mocker, read_func, waits, cancel_count, i
@@ -175,7 +175,7 @@ async def test_async_cancellation(
             assert bookmarks != new_bookmarks
 
 
-SESSION_REPEATS = 100
+SESSION_REPETITIONS = 100
 READS_PER_SESSION = 20
 
 
@@ -187,7 +187,7 @@ async def test_async_cancellation_does_not_leak(uri, auth):
         # driver needs to cope with a single connection in the pool!
         max_connection_pool_size=1,
     ) as driver:
-        for session_number in range(SESSION_REPEATS):
+        for session_number in range(SESSION_REPETITIONS):
             async with driver.session() as session:
                 for read_number in range(READS_PER_SESSION):
                     read_func = random.choice((
