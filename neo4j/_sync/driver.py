@@ -392,6 +392,23 @@ class Driver:
             session._connect(READ_ACCESS)
             return session._connection.supports_multiple_databases
 
+    def query(self, query, parameters=None, **kwargs):
+        """
+        :param query: cypher query
+        :type query: str, neo4j.Query
+        :param parameters: dictionary of parameters
+        :type parameters: dict
+        :param kwargs: additional keyword parameters
+        :returns: a new :class:`neo4j.QueryResult` object
+        :rtype: QueryResult
+        """
+        session_kwargs = {}
+        if "database" in kwargs:
+            session_kwargs["database"] = kwargs.pop("database")
+
+        with self.session(**session_kwargs) as session:
+            return session.query(query, parameters, **kwargs)
+
 
 class BoltDriver(_Direct, Driver):
     """:class:`.BoltDriver` is instantiated for ``bolt`` URIs and

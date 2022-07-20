@@ -707,3 +707,13 @@ class Result:
         .. versionadded:: 5.0
         """
         return self._out_of_scope or self._consumed
+
+
+class QueryResult:
+    """The result of Cypher query execution. Instances
+    of this class are typically constructed and returned by
+    :meth:`.Session.query` and :meth:`.Transaction.query`.
+    """
+    def __init__(self, summary, records):
+        self.summary = summary
+        self.records = records

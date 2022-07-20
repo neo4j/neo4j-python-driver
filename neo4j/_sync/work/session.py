@@ -30,6 +30,9 @@ from ...api import (
     Bookmarks,
     READ_ACCESS,
     WRITE_ACCESS,
+    CLUSTER_AUTO_ACCESS,
+    CLUSTER_READERS_ACCESS,
+    CLUSTER_WRITERS_ACCESS
 )
 from ...exceptions import (
     ClientError,
@@ -40,7 +43,7 @@ from ...exceptions import (
     TransactionError,
 )
 from ...work import Query
-from .result import Result
+from .result import QueryResult, Result
 from .transaction import (
     ManagedTransaction,
     Transaction,
@@ -238,6 +241,42 @@ class Session(Workspace):
         )
 
         return self._auto_result
+
+    def query(self, query, parameters=None, **kwargs):
+        """
+        :param query: cypher query
+        :type query: str, neo4j.Query
+        :param parameters: dictionary of parameters
+        :type parameters: dict
+        :param kwargs: additional keyword parameters
+        :returns: a new :class:`neo4j.QueryResult` object
+        :rtype: QueryResult
+        """
+        cluster_member_access = kwargs.pop(
+            "cluster_member_access", CLUSTER_AUTO_ACCESS)
+        skip_records = kwargs.pop("skip_records", False)
+        tx_kargs = {}
+
+        if "timeout" in kwargs:
+            tx_kargs["timeout"] = kwargs.pop("timeout")
+
+        if "metadata" in kwargs:
+            tx_kargs["metadata"] = kwargs.pop("metadata")
+
+        def job(tx):
+            if skip_records:
+                summary = tx.run(query, parameters, **kwargs)
+                return QueryResult(summary, [])
+            return tx.query(query, parameters, **kwargs)
+
+        # This logic will be moved to the Session.execute method
+        if cluster_member_access == CLUSTER_READERS_ACCESS:
+            return self.read_transaction(job, **tx_kargs)
+
+        if cluster_member_access == CLUSTER_WRITERS_ACCESS:
+            return self.write_transaction(job, **tx_kargs)
+
+        raise ValueError("Invalid cluster_member_access")
 
     @deprecated(
         "`last_bookmark` has been deprecated in favor of `last_bookmarks`. "
