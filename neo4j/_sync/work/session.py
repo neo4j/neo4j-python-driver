@@ -325,7 +325,12 @@ class Session(Workspace):
         cluster_member_access = kwargs.pop(
             "cluster_member_access", CLUSTER_AUTO_ACCESS)
 
-        if cluster_member_access == CLUSTER_READERS_ACCESS:
+        if cluster_member_access == CLUSTER_AUTO_ACCESS:
+            if self._supports_auto_routing():
+                access_mode = READ_ACCESS
+            else:
+                raise ValueError('Server does not support CLUSTER_AUTO_ACCESS')
+        elif cluster_member_access == CLUSTER_READERS_ACCESS:
             access_mode = READ_ACCESS
         elif cluster_member_access == CLUSTER_WRITERS_ACCESS:
             access_mode = WRITE_ACCESS

@@ -18,6 +18,8 @@
 
 import asyncio
 
+from neo4j.api import READ_ACCESS
+
 from ..._conf import WorkspaceConfig
 from ..._deadline import Deadline
 from ..._meta import (
@@ -124,6 +126,16 @@ class Workspace:
                 self._pool.release(self._connection)
                 self._connection = None
             self._connection_access_mode = None
+
+    def _supports_auto_routing(self):
+        if self._pool.is_direct():
+            return True
+
+        self._connect(READ_ACCESS)
+        supports_auto_routing = self._connection.configuration_hints.get(
+            'server_side_routing', False)
+        self._disconnect()
+        return supports_auto_routing
 
     def close(self):
         if self._closed:
