@@ -252,31 +252,89 @@ class Session(Workspace):
         :returns: a new :class:`neo4j.QueryResult` object
         :rtype: QueryResult
         """
+        skip_records = kwargs.pop("skip_records", False)
+        
+        def job(tx, **job_kwargs):
+            if skip_records:
+                summary = tx.run(query, parameters, **job_kwargs)
+                return QueryResult(summary, [])
+            return tx.query(query, parameters, **job_kwargs)
+
+        return self.execute(job, **kwargs)
+
+    def execute(self, transaction_function, *args, **kwargs):
+        """Execute a unit of work in a managed transaction.
+
+        .. note::
+            This does not necessarily imply access control, see the session
+            configuration option :ref:`default-access-mode-ref`.
+
+        This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
+        Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
+
+        Managed transactions should not generally be explicitly committed
+        (via ``tx.commit()``).
+
+        Example::
+
+            def do_cypher_tx(tx, cypher):
+                query_result = tx.query(cypher)
+                return query_result.records
+
+            with driver.session() as session:
+                values = session.execute(do_cypher_tx, "RETURN 1 AS x")
+
+        Example::
+
+            def do_cypher_tx(tx):
+                query_result = tx.query("RETURN 1 AS x")
+                return query_result.records
+
+            with driver.session() as session:
+                values = session.execute(do_cypher_tx, 
+                    cluster_member_access=neo4j.api.CLUSTER_READERS_ACCESS)
+
+        Example::
+
+            def get_two_tx(tx):
+                result = tx.run("UNWIND [1,2,3,4] AS x RETURN x")
+                values = []
+                for record in result:
+                    if len(values) >= 2:
+                        break
+                    values.append(record.values())
+                # or shorter: values = [record.values()
+                #                       for record in result.fetch(2)]
+
+                # discard the remaining records if there are any
+                summary = result.consume()
+                # use the summary for logging etc.
+                return values
+
+            with driver.session() as session:
+                values = session.execute(get_two_tx)
+
+        :param transaction_function: a function that takes a transaction as an
+            argument and does work with the transaction.
+            `transaction_function(tx, *args, **kwargs)` where `tx` is a
+            :class:`.Transaction`.
+        :param args: arguments for the `transaction_function`
+        :param kwargs: key word arguments for the `transaction_function`
+        :return: a result as returned by the given unit of work
+        """
         cluster_member_access = kwargs.pop(
             "cluster_member_access", CLUSTER_AUTO_ACCESS)
-        skip_records = kwargs.pop("skip_records", False)
-        tx_kargs = {}
 
-        if "timeout" in kwargs:
-            tx_kargs["timeout"] = kwargs.pop("timeout")
-
-        if "metadata" in kwargs:
-            tx_kargs["metadata"] = kwargs.pop("metadata")
-
-        def job(tx):
-            if skip_records:
-                summary = tx.run(query, parameters, **kwargs)
-                return QueryResult(summary, [])
-            return tx.query(query, parameters, **kwargs)
-
-        # This logic will be moved to the Session.execute method
         if cluster_member_access == CLUSTER_READERS_ACCESS:
-            return self.read_transaction(job, **tx_kargs)
+            access_mode = READ_ACCESS
+        elif cluster_member_access == CLUSTER_WRITERS_ACCESS:
+            access_mode = WRITE_ACCESS
+        else:
+            raise ValueError("Invalid cluster_member_access")
 
-        if cluster_member_access == CLUSTER_WRITERS_ACCESS:
-            return self.write_transaction(job, **tx_kargs)
-
-        raise ValueError("Invalid cluster_member_access")
+        return self._run_transaction(
+            access_mode, transaction_function, *args, **kwargs
+        )
 
     @deprecated(
         "`last_bookmark` has been deprecated in favor of `last_bookmarks`. "
