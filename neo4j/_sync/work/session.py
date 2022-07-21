@@ -247,6 +247,20 @@ class Session(Workspace):
 
     def query(self, query, parameters=None, **kwargs):
         """
+        Run a Cypher query within an managed transaction and
+        all the retries policy will be applied.
+
+        The query is sent and the result header received
+        immediately and the :class:`neo4j.QueryResult`is
+        fetched.
+
+        For more usage details, see :meth:`.Transaction.query`.
+
+        For auto-commit queries, use `Session.run`.
+
+        For access to the neo4j.Result object,
+        use `Session.execute` and `.Transaction.run`
+
         :param query: cypher query
         :type query: str, neo4j.Query
         :param parameters: dictionary of parameters

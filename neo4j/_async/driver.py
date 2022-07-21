@@ -394,6 +394,20 @@ class AsyncDriver:
 
     async def query(self, query, parameters=None, **kwargs):
         """
+        Run a Cypher query within an managed transaction and
+        all the retries policy will be applied.
+
+        The query is sent and the result header received
+        immediately and the :class:`neo4j.QueryResult`is
+        fetched.
+
+        For more usage details, see :meth:`.AsyncTransaction.query`.
+
+        For auto-commit queries, use `AsyncSession.run`.
+
+        For access to the neo4j.AsyncResult object,
+        use `AsyncDriver.execute` and `.AsyncTransaction.run`
+
         :param query: cypher query
         :type query: str, neo4j.Query
         :param parameters: dictionary of parameters
