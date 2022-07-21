@@ -403,10 +403,10 @@ class AsyncDriver:
 
         For more usage details, see :meth:`.AsyncTransaction.query`.
 
-        For auto-commit queries, use `AsyncSession.run`.
+        For auto-commit queries, use :meth:`AsyncSession.run`.
 
-        For access to the neo4j.AsyncResult object,
-        use `AsyncDriver.execute` and `.AsyncTransaction.run`
+        For access to the :class:`neo4j.AsyncResult` object,
+        use :meth:`AsyncDriver.execute` and :meth:`.AsyncTransaction.run`
 
         :param query: cypher query
         :type query: str, neo4j.Query

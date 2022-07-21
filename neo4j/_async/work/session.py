@@ -256,10 +256,10 @@ class AsyncSession(AsyncWorkspace):
 
         For more usage details, see :meth:`.AsyncTransaction.query`.
 
-        For auto-commit queries, use `AsyncSession.run`.
+        For auto-commit queries, use :class:`AsyncSession.run`.
 
-        For access to the neo4j.AsyncResult object,
-        use `AsyncSession.execute` and `.AsyncTransaction.run`
+        For access to the :class:`neo4j.AsyncResult` object,
+        use :meth:`AsyncSession.execute` and :meth:`.AsyncTransaction.run`
 
         :param query: cypher query
         :type query: str, neo4j.Query

@@ -256,10 +256,10 @@ class Session(Workspace):
 
         For more usage details, see :meth:`.Transaction.query`.
 
-        For auto-commit queries, use `Session.run`.
+        For auto-commit queries, use :meth:`Session.run`.
 
-        For access to the neo4j.Result object,
-        use `Session.execute` and `.Transaction.run`
+        For access to the :class:`neo4j.Result` object,
+        use :meth:`Session.execute` and :meth:`.Transaction.run`
 
         :param query: cypher query
         :type query: str, neo4j.Query
