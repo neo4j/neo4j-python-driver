@@ -96,8 +96,8 @@ class BookmarksExample:
 
 
 def test(uri, auth):
+    eg = BookmarksExample(uri, auth)
     try:
-        eg = BookmarksExample(uri, auth)
         with eg.driver.session() as session:
             session.run("MATCH (_) DETACH DELETE _")
         eg.main()
@@ -106,3 +106,5 @@ def test(uri, auth):
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
+    finally:
+        eg.close()
