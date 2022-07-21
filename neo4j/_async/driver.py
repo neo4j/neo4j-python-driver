@@ -392,6 +392,72 @@ class AsyncDriver:
             await session._connect(READ_ACCESS)
             return session._connection.supports_multiple_databases
 
+    async def execute(self, transaction_function, *args, **kwargs):
+        """Execute a unit of work in a managed transaction.
+
+        .. note::
+            This does not necessarily imply access control, see the session
+            configuration option :ref:`default-access-mode-ref`.
+
+        This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
+        Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
+
+        Managed transactions should not generally be explicitly committed
+        (via ``tx.commit()``).
+
+        Example::
+
+            async def do_cypher_tx(tx, cypher):
+                records, _ = await tx.query(cypher)
+                return records
+
+            values = await driver.execute(do_cypher_tx, "RETURN 1 AS x")
+
+        Example::
+
+            async def do_cypher_tx(tx):
+                records, _ = await tx.query("RETURN 1 AS x")
+                return records
+
+            values = await driver.execute(do_cypher_tx,
+                database="neo4j",
+                cluster_member_access=neo4j.api.CLUSTER_READERS_ACCESS)
+
+        Example::
+
+            async def get_two_tx(tx):
+                result = await tx.run("UNWIND [1,2,3,4] AS x RETURN x")
+                values = []
+                async for record in result:
+                    if len(values) >= 2:
+                        break
+                    values.append(record.values())
+                # or shorter: values = [record.values()
+                #                       for record in await result.fetch(2)]
+
+                # discard the remaining records if there are any
+                summary = await result.consume()
+                # use the summary for logging etc.
+                return values
+
+            
+            values = await driver.execute(get_two_tx)
+
+        :param transaction_function: a function that takes a transaction as an
+            argument and does work with the transaction.
+            `transaction_function(tx, *args, **kwargs)` where `tx` is a
+            :class:`.Transaction`.
+        :param args: arguments for the `transaction_function`
+        :param kwargs: key word arguments for the `transaction_function`
+        :return: a result as returned by the given unit of work
+        """
+        session_kwargs = {}
+        if "database" in kwargs:
+            session_kwargs["database"] = kwargs.pop("database")
+
+        async with self.session(**session_kwargs) as session:
+            return await session.execute(transaction_function, *args, **kwargs)
+
 
 class AsyncBoltDriver(_Direct, AsyncDriver):
     """:class:`.AsyncBoltDriver` is instantiated for ``bolt`` URIs and
