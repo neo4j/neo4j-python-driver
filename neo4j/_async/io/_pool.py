@@ -316,7 +316,7 @@ class AsyncIOPool(abc.ABC):
             try:
                 await connection.close()
             except asyncio.CancelledError as e:
-                # We've got cancelled: not time to gracefully close these
+                # We've got cancelled: no more time to gracefully close these
                 # connections. Time to burn down the place.
                 cancelled = e
                 connection.kill()

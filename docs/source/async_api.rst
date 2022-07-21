@@ -610,7 +610,7 @@ after catching a :class:`asyncio.CancelledError`, you should not try to use
 transactions or results created earlier. They are likely to not be valid
 anymore.
 
-Furthermore, there is no a guarantee as to whether a piece of ongoing work got
+Furthermore, there is no guarantee as to whether a piece of ongoing work got
 successfully executed on the server side or not, when a cancellation happens:
 ``await transaction.commit()`` and other methods can throw
 :exc:`asyncio.CancelledError` but still have managed to complete from the

@@ -129,6 +129,7 @@ class AsyncRLock(asyncio.Lock):
                 if already_finished:
                     # Too late to cancel the acquisition.
                     # This can only happen in Python 3.7's asyncio
+                    # as well as in our wait_for shim.
                     self._release(me)
                 raise
             return True
