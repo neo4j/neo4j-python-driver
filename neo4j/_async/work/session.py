@@ -249,6 +249,7 @@ class AsyncSession(AsyncWorkspace):
         :param parameters: dictionary of parameters
         :type parameters: dict
         :param kwargs: additional keyword parameters
+
         :returns: a new :class:`neo4j.QueryResult` object
         :rtype: QueryResult
         """
@@ -292,8 +293,10 @@ class AsyncSession(AsyncWorkspace):
                 return records
 
             async with driver.session() as session:
-                values = await session.execute(do_cypher_tx,
-                    cluster_member_access=neo4j.api.CLUSTER_READERS_ACCESS)
+                values = await session.execute(
+                    do_cypher_tx,
+                    cluster_member_access=neo4j.api.CLUSTER_READERS_ACCESS
+                )
 
         Example::
 
