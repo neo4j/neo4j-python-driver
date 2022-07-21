@@ -252,6 +252,7 @@ class Session(Workspace):
         :param parameters: dictionary of parameters
         :type parameters: dict
         :param kwargs: additional keyword parameters
+
         :returns: a new :class:`neo4j.QueryResult` object
         :rtype: QueryResult
         """
@@ -295,8 +296,10 @@ class Session(Workspace):
                 return records
 
             with driver.session() as session:
-                values = session.execute(do_cypher_tx,
-                    cluster_member_access=neo4j.api.CLUSTER_READERS_ACCESS)
+                values = session.execute(
+                    do_cypher_tx,
+                    cluster_member_access=neo4j.api.CLUSTER_READERS_ACCESS
+                )
 
         Example::
 

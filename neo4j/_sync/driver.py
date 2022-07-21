@@ -399,6 +399,7 @@ class Driver:
         :param parameters: dictionary of parameters
         :type parameters: dict
         :param kwargs: additional keyword parameters
+
         :returns: a new :class:`neo4j.QueryResult` object
         :rtype: QueryResult
         """
@@ -436,9 +437,11 @@ class Driver:
                 records, _ = tx.query("RETURN 1 AS x")
                 return records
 
-            values = driver.execute(do_cypher_tx,
+            values = driver.execute(
+                do_cypher_tx,
                 database="neo4j",
-                cluster_member_access=neo4j.api.CLUSTER_READERS_ACCESS)
+                cluster_member_access=neo4j.api.CLUSTER_READERS_ACCESS
+            )
 
         Example::
 

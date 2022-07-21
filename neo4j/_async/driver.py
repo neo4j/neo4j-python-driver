@@ -399,6 +399,7 @@ class AsyncDriver:
         :param parameters: dictionary of parameters
         :type parameters: dict
         :param kwargs: additional keyword parameters
+
         :returns: a new :class:`neo4j.QueryResult` object
         :rtype: QueryResult
         """
@@ -459,7 +460,7 @@ class AsyncDriver:
                 # use the summary for logging etc.
                 return values
 
-            
+
             values = await driver.execute(get_two_tx)
 
         :param transaction_function: a function that takes a transaction as an
