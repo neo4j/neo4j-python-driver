@@ -43,7 +43,7 @@ from ...exceptions import (
     TransactionError,
 )
 from ...work import Query
-from .result import AsyncResult
+from .result import AsyncResult, QueryResult
 from .transaction import (
     AsyncManagedTransaction,
     AsyncTransaction,
@@ -241,6 +241,27 @@ class AsyncSession(AsyncWorkspace):
         )
 
         return self._auto_result
+
+    async def query(self, query, parameters=None, **kwargs):
+        """
+        :param query: cypher query
+        :type query: str, neo4j.Query
+        :param parameters: dictionary of parameters
+        :type parameters: dict
+        :param kwargs: additional keyword parameters
+        :returns: a new :class:`neo4j.QueryResult` object
+        :rtype: QueryResult
+        """
+        skip_records = kwargs.pop("skip_records", False)
+
+        async def job(tx, **job_kwargs):
+            if skip_records:
+                result = await tx.run(query, parameters, **job_kwargs)
+                summary = await result.consume()
+                return QueryResult([], summary)
+            return await tx.query(query, parameters, **job_kwargs)
+
+        return await self.execute(job, **kwargs)
 
     async def execute(self, transaction_function, *args, **kwargs):
         """Execute a unit of work in a managed transaction.
