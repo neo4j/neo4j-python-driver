@@ -22,7 +22,7 @@ from ..._async_compat.util import AsyncUtil
 from ...exceptions import TransactionError
 from ...work import Query
 from ..io import ConnectionErrorHandler
-from .result import AsyncResult
+from .result import AsyncResult, QueryResult
 
 
 __all__ = ("AsyncTransaction", "AsyncManagedTransaction")
@@ -130,6 +130,43 @@ class _AsyncTransactionBase:
         await result._tx_ready_run(query, parameters, **kwparameters)
 
         return result
+
+    async def query(self, query, parameters=None, **kwparameters):
+        """ Run a Cypher query within the context of this transaction.
+
+        Cypher is typically expressed as a query template plus a
+        set of named parameters. In Python, parameters may be expressed
+        through a dictionary of parameters, through individual parameter
+        arguments, or as a mixture of both. For example, the `run`
+        queries below are all equivalent::
+
+            >>> query = "CREATE (a:Person { name: $name, age: $age })"
+            >>> query_result = await tx.query(query, {"name": "Alice", "age": 33})
+            >>> query_result = await tx.query(query, {"name": "Alice"}, age=33)
+            >>> query_result = await tx.query(query, name="Alice", age=33)
+
+        Parameter values can be of any type supported by the Neo4j type
+        system. In Python, this includes :class:`bool`, :class:`int`,
+        :class:`str`, :class:`list` and :class:`dict`. Note however that
+        :class:`list` properties must be homogenous.
+
+        :param query: cypher query
+        :type query: str
+        :param parameters: dictionary of parameters
+        :type parameters: dict
+        :param kwparameters: additional keyword parameters
+
+        :returns: a new :class:`neo4j.QueryResult` object
+        :rtype: :class:`neo4j.QueryResult`
+
+        :raise TransactionError: if the transaction is already closed
+        """
+        result = await self.run(query, parameters, **kwparameters)
+        records = []
+        async for x in result:
+            records.append(x)
+        summary = await result.consume()
+        return QueryResult(records, summary)
 
     async def _commit(self):
         """Mark this transaction as successful and close in order to trigger a COMMIT.

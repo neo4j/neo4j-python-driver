@@ -18,6 +18,7 @@
 
 from collections import deque
 from warnings import warn
+from collections import namedtuple
 
 from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import BrokenHydrationObject
@@ -707,3 +708,5 @@ class AsyncResult:
         .. versionadded:: 5.0
         """
         return self._out_of_scope or self._consumed
+
+QueryResult = namedtuple("QueryResult", ("records", "summary"))
