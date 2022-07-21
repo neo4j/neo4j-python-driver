@@ -291,7 +291,7 @@ class Session(Workspace):
         This transaction will automatically be committed unless an exception
         is thrown during query execution or by the user code.
         Note, that this function perform retries and that the supplied
-        `transaction_function` might get invoked more than once.
+        ``transaction_function`` might get invoked more than once.
 
         Managed transactions should not generally be explicitly committed
         (via ``tx.commit()``).
@@ -341,8 +341,8 @@ class Session(Workspace):
             argument and does work with the transaction.
             `transaction_function(tx, *args, **kwargs)` where `tx` is a
             :class:`.Transaction`.
-        :param args: arguments for the `transaction_function`
-        :param kwargs: key word arguments for the `transaction_function`
+        :param args: arguments for the ``transaction_function``
+        :param kwargs: key word arguments for the ``transaction_function``
         :return: a result as returned by the given unit of work
         """
         cluster_member_access = kwargs.pop(
