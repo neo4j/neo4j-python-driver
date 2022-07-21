@@ -481,10 +481,10 @@ class Driver:
 
         :param transaction_function: a function that takes a transaction as an
             argument and does work with the transaction.
-            `transaction_function(tx, *args, **kwargs)` where `tx` is a
+            ``transaction_function(tx, *args, **kwargs)`` where ``tx`` is a
             :class:`.Transaction`.
-        :param args: arguments for the `transaction_function`
-        :param kwargs: key word arguments for the `transaction_function`
+        :param args: arguments for the ``transaction_function``
+        :param kwargs: key word arguments for the ``transaction_function``
         :return: a result as returned by the given unit of work
         """
         session_kwargs = {}

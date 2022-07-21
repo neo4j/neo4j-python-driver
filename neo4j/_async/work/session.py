@@ -339,20 +339,21 @@ class AsyncSession(AsyncWorkspace):
 
         :param transaction_function: a function that takes a transaction as an
             argument and does work with the transaction.
-            `transaction_function(tx, *args, **kwargs)` where `tx` is a
+            ``transaction_function(tx, *args, **kwargs)`` where ``tx`` is a
             :class:`.Transaction`.
-        :param args: arguments for the `transaction_function`
-        :param kwargs: key word arguments for the `transaction_function`
+        :param args: arguments for the ``transaction_function``
+        :param kwargs: key word arguments for the ``transaction_function``
         :return: a result as returned by the given unit of work
         """
         cluster_member_access = kwargs.pop(
-            "cluster_member_access", CLUSTER_AUTO_ACCESS)
+            "cluster_member_access", CLUSTER_AUTO_ACCESS
+        )
 
         if cluster_member_access == CLUSTER_AUTO_ACCESS:
             if await self._supports_auto_routing():
                 access_mode = READ_ACCESS
             else:
-                raise ValueError('Server does not support CLUSTER_AUTO_ACCESS')
+                raise ValueError("Server does not support CLUSTER_AUTO_ACCESS")
         elif cluster_member_access == CLUSTER_READERS_ACCESS:
             access_mode = READ_ACCESS
         elif cluster_member_access == CLUSTER_WRITERS_ACCESS:

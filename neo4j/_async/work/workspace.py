@@ -133,7 +133,8 @@ class AsyncWorkspace:
 
         await self._connect(READ_ACCESS)
         supports_auto_routing = self._connection.configuration_hints.get(
-            'server_side_routing', False)
+            "server_side_routing", False
+        )
         await self._disconnect()
         return supports_auto_routing
     
