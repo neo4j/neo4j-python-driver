@@ -22,7 +22,10 @@ from ..._async_compat.util import AsyncUtil
 from ...exceptions import TransactionError
 from ...work import Query
 from ..io import ConnectionErrorHandler
-from .result import AsyncResult, QueryResult
+from .result import (
+    AsyncResult,
+    QueryResult,
+)
 
 
 __all__ = ("AsyncTransaction", "AsyncManagedTransaction")
