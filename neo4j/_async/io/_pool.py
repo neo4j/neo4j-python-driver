@@ -348,6 +348,9 @@ class AsyncBoltPool(AsyncIOPool):
             self.address, deadline, liveness_check_timeout
         )
 
+    def is_direct(self):
+        return True
+
 
 class AsyncNeo4jPool(AsyncIOPool):
     """ Connection pool with routing table.
@@ -789,3 +792,6 @@ class AsyncNeo4jPool(AsyncIOPool):
         for database in self.routing_tables.keys():
             self.routing_tables[database].writers.discard(address)
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_tables)
+
+    def is_direct(self):
+        return False

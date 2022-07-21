@@ -30,6 +30,9 @@ from ...api import (
     Bookmarks,
     READ_ACCESS,
     WRITE_ACCESS,
+    CLUSTER_AUTO_ACCESS,
+    CLUSTER_READERS_ACCESS,
+    CLUSTER_WRITERS_ACCESS,
 )
 from ...exceptions import (
     ClientError,
@@ -238,6 +241,85 @@ class AsyncSession(AsyncWorkspace):
         )
 
         return self._auto_result
+
+    async def execute(self, transaction_function, *args, **kwargs):
+        """Execute a unit of work in a managed transaction.
+
+        .. note::
+            This does not necessarily imply access control, see the session
+            configuration option :ref:`default-access-mode-ref`.
+
+        This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
+        Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
+
+        Managed transactions should not generally be explicitly committed
+        (via ``tx.commit()``).
+
+        Example::
+
+            async def do_cypher_tx(tx, cypher):
+                records, _ = await tx.query(cypher)
+                return records
+
+            async with driver.session() as session:
+                values = session.execute(do_cypher_tx, "RETURN 1 AS x")
+
+        Example::
+
+            async def do_cypher_tx(tx):
+                records, _ = await tx.query("RETURN 1 AS x")
+                return records
+
+            async with driver.session() as session:
+                values = await session.execute(do_cypher_tx,
+                    cluster_member_access=neo4j.api.CLUSTER_READERS_ACCESS)
+
+        Example::
+
+            async def get_two_tx(tx):
+                result = await tx.run("UNWIND [1,2,3,4] AS x RETURN x")
+                values = []
+                async for record in result:
+                    if len(values) >= 2:
+                        break
+                    values.append(record.values())
+                # or shorter: values = [record.values()
+                #                       for record in await result.fetch(2)]
+
+                # discard the remaining records if there are any
+                summary = await result.consume()
+                # use the summary for logging etc.
+                return values
+
+            async with driver.session() as session:
+                values = await session.execute(get_two_tx)
+
+        :param transaction_function: a function that takes a transaction as an
+            argument and does work with the transaction.
+            `transaction_function(tx, *args, **kwargs)` where `tx` is a
+            :class:`.Transaction`.
+        :param args: arguments for the `transaction_function`
+        :param kwargs: key word arguments for the `transaction_function`
+        :return: a result as returned by the given unit of work
+        """
+        cluster_member_access = kwargs.pop(
+            "cluster_member_access", CLUSTER_AUTO_ACCESS)
+
+        if cluster_member_access == CLUSTER_AUTO_ACCESS:
+            if await self._supports_auto_routing():
+                access_mode = READ_ACCESS
+            else:
+                raise ValueError('Server does not support CLUSTER_AUTO_ACCESS')
+        elif cluster_member_access == CLUSTER_READERS_ACCESS:
+            access_mode = READ_ACCESS
+        elif cluster_member_access == CLUSTER_WRITERS_ACCESS:
+            access_mode = WRITE_ACCESS
+        else:
+            raise ValueError("Invalid cluster_member_access")
+
+        return await self._run_transaction(
+            access_mode, transaction_function, *args, **kwargs
+        )
 
     @deprecated(
         "`last_bookmark` has been deprecated in favor of `last_bookmarks`. "
