@@ -22,7 +22,10 @@ from ..._async_compat.util import Util
 from ...exceptions import TransactionError
 from ...work import Query
 from ..io import ConnectionErrorHandler
-from .result import QueryResult, Result
+from .result import (
+    QueryResult,
+    Result,
+)
 
 
 __all__ = ("Transaction", "ManagedTransaction")
@@ -141,9 +144,9 @@ class _TransactionBase:
         queries below are all equivalent::
 
             >>> query = "CREATE (a:Person { name: $name, age: $age })"
-            >>> query_result = tx.run(query, {"name": "Alice", "age": 33})
-            >>> query_result = tx.run(query, {"name": "Alice"}, age=33)
-            >>> query_result = tx.run(query, name="Alice", age=33)
+            >>> query_result = tx.query(query, {"name": "Alice", "age": 33})
+            >>> query_result = tx.query(query, {"name": "Alice"}, age=33)
+            >>> query_result = tx.query(query, name="Alice", age=33)
 
         Parameter values can be of any type supported by the Neo4j type
         system. In Python, this includes :class:`bool`, :class:`int`,
@@ -162,7 +165,9 @@ class _TransactionBase:
         :raise TransactionError: if the transaction is already closed
         """
         result = self.run(query, parameters, **kwparameters)
-        records = list(result)
+        records = []
+        for x in result:
+            records.append(x)
         summary = result.consume()
         return QueryResult(records, summary)
 

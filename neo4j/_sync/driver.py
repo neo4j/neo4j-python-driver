@@ -436,7 +436,7 @@ class Driver:
                 records, _ = tx.query("RETURN 1 AS x")
                 return records
 
-            values = driver.execute(do_cypher_tx, 
+            values = driver.execute(do_cypher_tx,
                 database="neo4j",
                 cluster_member_access=neo4j.api.CLUSTER_READERS_ACCESS)
 
@@ -456,6 +456,7 @@ class Driver:
                 summary = result.consume()
                 # use the summary for logging etc.
                 return values
+
 
             values = driver.execute(get_two_tx)
 

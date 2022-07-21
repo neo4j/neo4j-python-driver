@@ -16,9 +16,11 @@
 # limitations under the License.
 
 
-from collections import deque
+from collections import (
+    deque,
+    namedtuple,
+)
 from warnings import warn
-from collections import namedtuple
 
 from ..._async_compat.util import Util
 from ..._codec.hydration import BrokenHydrationObject
@@ -708,6 +710,5 @@ class Result:
         .. versionadded:: 5.0
         """
         return self._out_of_scope or self._consumed
-
 
 QueryResult = namedtuple("QueryResult", ("records", "summary"))

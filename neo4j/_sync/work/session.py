@@ -28,11 +28,11 @@ from ..._meta import (
 )
 from ...api import (
     Bookmarks,
-    READ_ACCESS,
-    WRITE_ACCESS,
     CLUSTER_AUTO_ACCESS,
     CLUSTER_READERS_ACCESS,
-    CLUSTER_WRITERS_ACCESS
+    CLUSTER_WRITERS_ACCESS,
+    READ_ACCESS,
+    WRITE_ACCESS,
 )
 from ...exceptions import (
     ClientError,
@@ -43,7 +43,10 @@ from ...exceptions import (
     TransactionError,
 )
 from ...work import Query
-from .result import QueryResult, Result
+from .result import (
+    QueryResult,
+    Result,
+)
 from .transaction import (
     ManagedTransaction,
     Transaction,
@@ -253,10 +256,11 @@ class Session(Workspace):
         :rtype: QueryResult
         """
         skip_records = kwargs.pop("skip_records", False)
-        
+
         def job(tx, **job_kwargs):
             if skip_records:
-                summary = tx.run(query, parameters, **job_kwargs)
+                result = tx.run(query, parameters, **job_kwargs)
+                summary = result.consume()
                 return QueryResult([], summary)
             return tx.query(query, parameters, **job_kwargs)
 
@@ -291,7 +295,7 @@ class Session(Workspace):
                 return records
 
             with driver.session() as session:
-                values = session.execute(do_cypher_tx, 
+                values = session.execute(do_cypher_tx,
                     cluster_member_access=neo4j.api.CLUSTER_READERS_ACCESS)
 
         Example::

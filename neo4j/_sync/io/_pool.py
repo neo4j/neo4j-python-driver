@@ -351,6 +351,7 @@ class BoltPool(IOPool):
     def is_direct(self):
         return True
 
+
 class Neo4jPool(IOPool):
     """ Connection pool with routing table.
     """
@@ -398,9 +399,6 @@ class Neo4jPool(IOPool):
         self.address = address
         self.routing_tables = {workspace_config.database: RoutingTable(database=workspace_config.database, routers=[address])}
         self.refresh_lock = RLock()
-
-    def is_direct(self):
-        return False
 
     def __repr__(self):
         """ The representation shows the initial routing addresses.
@@ -794,3 +792,6 @@ class Neo4jPool(IOPool):
         for database in self.routing_tables.keys():
             self.routing_tables[database].writers.discard(address)
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_tables)
+
+    def is_direct(self):
+        return False
