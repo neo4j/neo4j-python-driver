@@ -394,9 +394,9 @@ class Driver:
             return session._connection.supports_multiple_databases
 
     def query(
-            self, query, parameters=None, database=None,
-            cluster_member_access=CLUSTER_AUTO_ACCESS, skip_records=False,
-            **kwargs
+        self, query, parameters=None, database=None,
+        cluster_member_access=CLUSTER_AUTO_ACCESS, skip_records=False,
+        **kwargs
     ):
         """
         Run a Cypher query within an managed transaction.

@@ -394,9 +394,9 @@ class AsyncDriver:
             return session._connection.supports_multiple_databases
 
     async def query(
-            self, query, parameters=None, database=None,
-            cluster_member_access=CLUSTER_AUTO_ACCESS, skip_records=False,
-            **kwargs
+        self, query, parameters=None, database=None,
+        cluster_member_access=CLUSTER_AUTO_ACCESS, skip_records=False,
+        **kwargs
     ):
         """
         Run a Cypher query within an managed transaction.
@@ -432,9 +432,9 @@ class AsyncDriver:
             )
 
     async def execute(
-            self, transaction_function, *args,
-            database=None, cluster_member_access=CLUSTER_AUTO_ACCESS,
-            **kwargs
+        self, transaction_function, *args,
+        database=None, cluster_member_access=CLUSTER_AUTO_ACCESS,
+        **kwargs
     ):
         """Execute a unit of work in a managed transaction.
 
