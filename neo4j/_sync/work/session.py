@@ -246,10 +246,11 @@ class Session(Workspace):
 
         return self._auto_result
 
-    def query(self, query, parameters=None,
-                    cluster_member_access=CLUSTER_AUTO_ACCESS,
-                    skip_records=False,
-                    **kwargs):
+    def query(
+        self, query, parameters=None,
+        cluster_member_access=CLUSTER_AUTO_ACCESS, skip_records=False,
+        **kwargs
+    ):
         """
         Run a Cypher query within an managed transaction.
 
@@ -286,9 +287,10 @@ class Session(Workspace):
             **kwargs
         )
 
-    def execute(self, transaction_function, *args,
-                      cluster_member_access=CLUSTER_AUTO_ACCESS,
-                      **kwargs):
+    def execute(
+        self, transaction_function, *args,
+        cluster_member_access=CLUSTER_AUTO_ACCESS, **kwargs
+    ):
         """Execute a unit of work in a managed transaction.
 
         This transaction will automatically be committed unless an exception
