@@ -253,7 +253,6 @@ class Clock:
 
     """
 
-    _Clock__implementations = None
     __implementations = None
 
     def __new__(cls):
