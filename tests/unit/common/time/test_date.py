@@ -49,7 +49,7 @@ class TestDate:
         assert d.year == 0
         assert d.month == 0
         assert d.day == 0
-        assert d == ZeroDate
+        assert d is ZeroDate
 
     def test_zero_ordinal(self):
         d = Date.from_ordinal(0)
@@ -467,11 +467,13 @@ class TestDate:
         d1 = Date(2000, 1, 1)
         assert d1 != object()
 
-    def test_year_week_day(self):
-        for ordinal in range(Date(2001, 1, 1).to_ordinal(),
-                             Date(2008, 1, 1).to_ordinal()):
-            assert Date.from_ordinal(ordinal).iso_calendar() \
-                   == date.fromordinal(ordinal).isocalendar()
+    @pytest.mark.parametrize("ordinal", (
+        Date(2001, 1, 1).to_ordinal(),
+        Date(2008, 1, 1).to_ordinal(),
+    ))
+    def test_year_week_day(self, ordinal):
+        assert Date.from_ordinal(ordinal).iso_calendar() \
+               == date.fromordinal(ordinal).isocalendar()
 
     def test_time_tuple(self):
         d = Date(2018, 4, 30)
@@ -532,7 +534,7 @@ class TestDate:
     def test_date_copy(self):
         d = Date(2010, 10, 1)
         d2 = copy.copy(d)
-        assert d != d2
+        assert d is not d2
         assert d == d2
 
     def test_date_deep_copy(self):
