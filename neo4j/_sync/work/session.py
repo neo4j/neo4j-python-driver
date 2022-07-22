@@ -276,10 +276,14 @@ class Session(Workspace):
 
         def job(tx, **job_kwargs):
             if skip_records:
-                result = tx.run(query, parameters, **job_kwargs)
+                result = tx.run(
+                    query,
+                    parameters=parameters,
+                    **job_kwargs
+                )
                 summary = result.consume()
                 return QueryResult([], summary)
-            return tx.query(query, parameters, **job_kwargs)
+            return tx.query(query, parameters=parameters, **job_kwargs)
 
         return self.execute(
             job,

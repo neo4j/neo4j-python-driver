@@ -276,10 +276,14 @@ class AsyncSession(AsyncWorkspace):
 
         async def job(tx, **job_kwargs):
             if skip_records:
-                result = await tx.run(query, parameters, **job_kwargs)
+                result = await tx.run(
+                    query,
+                    parameters=parameters,
+                    **job_kwargs
+                )
                 summary = await result.consume()
                 return QueryResult([], summary)
-            return await tx.query(query, parameters, **job_kwargs)
+            return await tx.query(query, parameters=parameters, **job_kwargs)
 
         return await self.execute(
             job,
