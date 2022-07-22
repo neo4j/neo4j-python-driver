@@ -16,7 +16,7 @@
 # limitations under the License.
 
 
-from unittest import TestCase
+import pytest
 
 from neo4j._spatial import (
     Point,
@@ -24,29 +24,27 @@ from neo4j._spatial import (
 )
 
 
-class PointTestCase(TestCase):
+class PointTestCase:
 
-    def test_wrong_type_arguments(self):
-        for argument in (("a", "b"), ({"x": 1.0, "y": 2.0})):
-            with self.subTest():
-                with self.assertRaises(ValueError):
-                    Point(argument)
+    @pytest.mark.parametrize("argument", ("a", "b"), ({"x": 1.0, "y": 2.0}))
+    def test_wrong_type_arguments(self, argument):
+        with pytest.raises(ValueError):
+            Point(argument)
 
-    def test_number_arguments(self):
-        for argument in ((1, 2), (1.2, 2.1)):
-            with self.subTest():
-                p = Point(argument)
-                assert tuple(p) == argument
+    @pytest.mark.parametrize("argument", (1, 2), (1.2, 2.1))
+    def test_number_arguments(self, argument):
+        p = Point(argument)
+        assert tuple(p) == argument
 
     def test_immutable_coordinates(self):
         MyPoint = point_type("MyPoint", ["x", "y"], {2: 1234})
         coordinates = (.1, 0)
         p = MyPoint(coordinates)
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             p.x = 2.0
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             p.y = 2.0
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             p[0] = 2.0
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             p[1] = 2.0
