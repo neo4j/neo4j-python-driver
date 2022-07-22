@@ -33,6 +33,7 @@ from .._meta import (
 )
 from ..addressing import Address
 from ..api import (
+    CLUSTER_AUTO_ACCESS,
     READ_ACCESS,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
@@ -392,7 +393,11 @@ class AsyncDriver:
             await session._connect(READ_ACCESS)
             return session._connection.supports_multiple_databases
 
-    async def query(self, query, parameters=None, **kwargs):
+    async def query(self, query, parameters=None,
+                    database=None,
+                    cluster_member_access=CLUSTER_AUTO_ACCESS,
+                    skip_records=False,
+                    **kwargs):
         """
         Run a Cypher query within an managed transaction.
 
@@ -416,14 +421,20 @@ class AsyncDriver:
         :returns: a new :class:`neo4j.QueryResult` object
         :rtype: QueryResult
         """
-        session_kwargs = {}
-        if "database" in kwargs:
-            session_kwargs["database"] = kwargs.pop("database")
 
-        async with self.session(**session_kwargs) as session:
-            return await session.query(query, parameters, **kwargs)
+        async with self.session(database=database) as session:
+            return await session.query(
+                query,
+                parameters,
+                cluster_member_access=cluster_member_access,
+                skip_records=skip_records,
+                **kwargs
+            )
 
-    async def execute(self, transaction_function, *args, **kwargs):
+    async def execute(self, transaction_function, *args,
+                      database=None,
+                      cluster_member_access=CLUSTER_AUTO_ACCESS,
+                      **kwargs):
         """Execute a unit of work in a managed transaction.
 
         This transaction will automatically be committed unless an exception
@@ -480,12 +491,14 @@ class AsyncDriver:
 
         :return: a result as returned by the given unit of work
         """
-        session_kwargs = {}
-        if "database" in kwargs:
-            session_kwargs["database"] = kwargs.pop("database")
 
-        async with self.session(**session_kwargs) as session:
-            return await session.execute(transaction_function, *args, **kwargs)
+        async with self.session(database=database) as session:
+            return await session.execute(
+                transaction_function,
+                *args,
+                cluster_member_access=cluster_member_access,
+                **kwargs
+            )
 
 
 class AsyncBoltDriver(_Direct, AsyncDriver):

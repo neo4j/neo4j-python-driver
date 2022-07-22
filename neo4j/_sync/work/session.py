@@ -246,7 +246,10 @@ class Session(Workspace):
 
         return self._auto_result
 
-    def query(self, query, parameters=None, **kwargs):
+    def query(self, query, parameters=None,
+                    cluster_member_access=CLUSTER_AUTO_ACCESS,
+                    skip_records=False,
+                    **kwargs):
         """
         Run a Cypher query within an managed transaction.
 
@@ -269,7 +272,6 @@ class Session(Workspace):
         :returns: a new :class:`neo4j.QueryResult` object
         :rtype: QueryResult
         """
-        skip_records = kwargs.pop("skip_records", False)
 
         def job(tx, **job_kwargs):
             if skip_records:
@@ -278,9 +280,15 @@ class Session(Workspace):
                 return QueryResult([], summary)
             return tx.query(query, parameters, **job_kwargs)
 
-        return self.execute(job, **kwargs)
+        return self.execute(
+            job,
+            cluster_member_access=cluster_member_access,
+            **kwargs
+        )
 
-    def execute(self, transaction_function, *args, **kwargs):
+    def execute(self, transaction_function, *args,
+                      cluster_member_access=CLUSTER_AUTO_ACCESS,
+                      **kwargs):
         """Execute a unit of work in a managed transaction.
 
         This transaction will automatically be committed unless an exception
@@ -339,10 +347,6 @@ class Session(Workspace):
 
         :return: a result as returned by the given unit of work
         """
-        cluster_member_access = kwargs.pop(
-            "cluster_member_access", CLUSTER_AUTO_ACCESS
-        )
-
         if cluster_member_access == CLUSTER_AUTO_ACCESS:
             if self._supports_auto_routing():
                 access_mode = READ_ACCESS

@@ -246,7 +246,10 @@ class AsyncSession(AsyncWorkspace):
 
         return self._auto_result
 
-    async def query(self, query, parameters=None, **kwargs):
+    async def query(self, query, parameters=None,
+                    cluster_member_access=CLUSTER_AUTO_ACCESS,
+                    skip_records=False,
+                    **kwargs):
         """
         Run a Cypher query within an managed transaction.
 
@@ -269,7 +272,6 @@ class AsyncSession(AsyncWorkspace):
         :returns: a new :class:`neo4j.QueryResult` object
         :rtype: QueryResult
         """
-        skip_records = kwargs.pop("skip_records", False)
 
         async def job(tx, **job_kwargs):
             if skip_records:
@@ -278,9 +280,15 @@ class AsyncSession(AsyncWorkspace):
                 return QueryResult([], summary)
             return await tx.query(query, parameters, **job_kwargs)
 
-        return await self.execute(job, **kwargs)
+        return await self.execute(
+            job,
+            cluster_member_access=cluster_member_access,
+            **kwargs
+        )
 
-    async def execute(self, transaction_function, *args, **kwargs):
+    async def execute(self, transaction_function, *args,
+                      cluster_member_access=CLUSTER_AUTO_ACCESS,
+                      **kwargs):
         """Execute a unit of work in a managed transaction.
 
         This transaction will automatically be committed unless an exception
@@ -339,10 +347,6 @@ class AsyncSession(AsyncWorkspace):
 
         :return: a result as returned by the given unit of work
         """
-        cluster_member_access = kwargs.pop(
-            "cluster_member_access", CLUSTER_AUTO_ACCESS
-        )
-
         if cluster_member_access == CLUSTER_AUTO_ACCESS:
             if await self._supports_auto_routing():
                 access_mode = READ_ACCESS
