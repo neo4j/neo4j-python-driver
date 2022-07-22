@@ -237,8 +237,8 @@ class TestDate:
             _ = Date.from_clock_time(object(), None)
 
     def test_is_leap_year(self):
-        assert (Date.is_leap_year(2000))
-        assert not (Date.is_leap_year(2001))
+        assert Date.is_leap_year(2000)
+        assert not Date.is_leap_year(2001)
 
     def test_days_in_year(self):
         assert Date.days_in_year(2000) == 366
