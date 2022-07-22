@@ -36,6 +36,7 @@ from ...api import (
 )
 from ...exceptions import (
     ClientError,
+    ConfigurationError,
     DriverError,
     Neo4jError,
     ServiceUnavailable,
@@ -247,8 +248,7 @@ class AsyncSession(AsyncWorkspace):
 
     async def query(self, query, parameters=None, **kwargs):
         """
-        Run a Cypher query within an managed transaction and
-        all the retries policy will be applied.
+        Run a Cypher query within an managed transaction.
 
         The query is sent and the full result is fetched and returned as
         :class:`neo4j.QueryResult`.
@@ -282,10 +282,6 @@ class AsyncSession(AsyncWorkspace):
 
     async def execute(self, transaction_function, *args, **kwargs):
         """Execute a unit of work in a managed transaction.
-
-        .. note::
-            This does not necessarily imply access control, see the session
-            configuration option :ref:`default-access-mode-ref`.
 
         This transaction will automatically be committed unless an exception
         is thrown during query execution or by the user code.
@@ -351,13 +347,15 @@ class AsyncSession(AsyncWorkspace):
             if await self._supports_auto_routing():
                 access_mode = READ_ACCESS
             else:
-                raise ValueError("Server does not support CLUSTER_AUTO_ACCESS")
+                raise ConfigurationError(
+                    "Server does not support CLUSTER_AUTO_ACCESS"
+                )
         elif cluster_member_access == CLUSTER_READERS_ACCESS:
             access_mode = READ_ACCESS
         elif cluster_member_access == CLUSTER_WRITERS_ACCESS:
             access_mode = WRITE_ACCESS
         else:
-            raise ValueError("Invalid cluster_member_access")
+            raise ClientError("Invalid cluster_member_access")
 
         return await self._run_transaction(
             access_mode, transaction_function, *args, **kwargs

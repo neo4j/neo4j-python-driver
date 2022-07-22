@@ -36,6 +36,7 @@ from ...api import (
 )
 from ...exceptions import (
     ClientError,
+    ConfigurationError,
     DriverError,
     Neo4jError,
     ServiceUnavailable,
@@ -247,16 +248,14 @@ class Session(Workspace):
 
     def query(self, query, parameters=None, **kwargs):
         """
-        Run a Cypher query within an managed transaction and
-        all the retries policy will be applied.
+        Run a Cypher query within an managed transaction.
 
-        The query is sent and the result header received
-        immediately and the :class:`neo4j.QueryResult`is
-        fetched.
+        The query is sent and the full result is fetched and returned as
+        :class:`neo4j.QueryResult`.
 
         For more usage details, see :meth:`.Transaction.query`.
 
-        For auto-commit queries, use :meth:`Session.run`.
+        For auto-commit queries, use :class:`Session.run`.
 
         For access to the :class:`neo4j.Result` object,
         use :meth:`Session.execute` and :meth:`.Transaction.run`
@@ -284,17 +283,11 @@ class Session(Workspace):
     def execute(self, transaction_function, *args, **kwargs):
         """Execute a unit of work in a managed transaction.
 
-        .. note::
-            This does not necessarily imply access control, see the session
-            configuration option :ref:`default-access-mode-ref`.
-
         This transaction will automatically be committed unless an exception
         is thrown during query execution or by the user code.
         Note, that this function perform retries and that the supplied
         ``transaction_function`` might get invoked more than once.
 
-        Managed transactions should not generally be explicitly committed
-        (via ``tx.commit()``).
 
         Example::
 
@@ -339,26 +332,30 @@ class Session(Workspace):
 
         :param transaction_function: a function that takes a transaction as an
             argument and does work with the transaction.
-            `transaction_function(tx, *args, **kwargs)` where `tx` is a
+            ``transaction_function(tx, *args, **kwargs)`` where ``tx`` is a
             :class:`.Transaction`.
         :param args: arguments for the ``transaction_function``
         :param kwargs: key word arguments for the ``transaction_function``
+
         :return: a result as returned by the given unit of work
         """
         cluster_member_access = kwargs.pop(
-            "cluster_member_access", CLUSTER_AUTO_ACCESS)
+            "cluster_member_access", CLUSTER_AUTO_ACCESS
+        )
 
         if cluster_member_access == CLUSTER_AUTO_ACCESS:
             if self._supports_auto_routing():
                 access_mode = READ_ACCESS
             else:
-                raise ValueError('Server does not support CLUSTER_AUTO_ACCESS')
+                raise ConfigurationError(
+                    "Server does not support CLUSTER_AUTO_ACCESS"
+                )
         elif cluster_member_access == CLUSTER_READERS_ACCESS:
             access_mode = READ_ACCESS
         elif cluster_member_access == CLUSTER_WRITERS_ACCESS:
             access_mode = WRITE_ACCESS
         else:
-            raise ValueError("Invalid cluster_member_access")
+            raise ClientError("Invalid cluster_member_access")
 
         return self._run_transaction(
             access_mode, transaction_function, *args, **kwargs

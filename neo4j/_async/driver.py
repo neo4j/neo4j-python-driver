@@ -427,10 +427,6 @@ class AsyncDriver:
     async def execute(self, transaction_function, *args, **kwargs):
         """Execute a unit of work in a managed transaction.
 
-        .. note::
-            This does not necessarily imply access control, see the session
-            configuration option :ref:`default-access-mode-ref`.
-
         This transaction will automatically be committed unless an exception
         is thrown during query execution or by the user code.
         Note, that this function perform retries and that the supplied
