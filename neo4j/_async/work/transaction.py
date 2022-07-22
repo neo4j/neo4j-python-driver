@@ -159,15 +159,13 @@ class _AsyncTransactionBase:
         :type parameters: dict
         :param kwparameters: additional keyword parameters
 
-        :returns: a new :class:`neo4j.QueryResult` object
+        :returns: the result of the query
         :rtype: :class:`neo4j.QueryResult`
 
         :raise TransactionError: if the transaction is already closed
         """
         result = await self.run(query, parameters, **kwparameters)
-        records = []
-        async for x in result:
-            records.append(x)
+        records = await AsyncUtil.list(result)
         summary = await result.consume()
         return QueryResult(records, summary)
 

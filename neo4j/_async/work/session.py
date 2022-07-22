@@ -250,9 +250,8 @@ class AsyncSession(AsyncWorkspace):
         Run a Cypher query within an managed transaction and
         all the retries policy will be applied.
 
-        The query is sent and the result header received
-        immediately and the :class:`neo4j.QueryResult`is
-        fetched.
+        The query is sent and the full result is fetched and returned as
+        :class:`neo4j.QueryResult`.
 
         For more usage details, see :meth:`.AsyncTransaction.query`.
 
@@ -293,8 +292,6 @@ class AsyncSession(AsyncWorkspace):
         Note, that this function perform retries and that the supplied
         ``transaction_function`` might get invoked more than once.
 
-        Managed transactions should not generally be explicitly committed
-        (via ``tx.commit()``).
 
         Example::
 
@@ -343,6 +340,7 @@ class AsyncSession(AsyncWorkspace):
             :class:`.Transaction`.
         :param args: arguments for the ``transaction_function``
         :param kwargs: key word arguments for the ``transaction_function``
+
         :return: a result as returned by the given unit of work
         """
         cluster_member_access = kwargs.pop(
