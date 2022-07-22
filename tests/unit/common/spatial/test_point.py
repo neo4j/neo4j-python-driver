@@ -32,7 +32,7 @@ class PointTestCase:
             Point(argument)
 
     @pytest.mark.parametrize((1, 2), (1.2, 2.1))
-    def test_wrong_type_arguments(self, argument):
+    def test_number_arguments(self, argument):
         p = Point(argument)
         assert tuple(p) == argument
 
