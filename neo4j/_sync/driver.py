@@ -394,8 +394,7 @@ class Driver:
 
     def query(self, query, parameters=None, **kwargs):
         """
-        Run a Cypher query within an managed transaction and
-        all the retries policy will be applied.
+        Run a Cypher query within an managed transaction.
 
         The query is sent and the result header received
         immediately and the :class:`neo4j.QueryResult`is
