@@ -57,7 +57,7 @@ class TestDate:
         assert d.year == 0
         assert d.month == 0
         assert d.day == 0
-        assert d == ZeroDate
+        assert d is ZeroDate
 
     def test_ordinal_at_start_of_1970(self):
         d = Date.from_ordinal(719163)
@@ -238,7 +238,7 @@ class TestDate:
 
     def test_is_leap_year(self):
         assert (Date.is_leap_year(2000))
-        assert (Date.is_leap_year(2001))
+        assert not (Date.is_leap_year(2001))
 
     def test_days_in_year(self):
         assert Date.days_in_year(2000) == 366
@@ -477,8 +477,8 @@ class TestDate:
 
     def test_time_tuple(self):
         d = Date(2018, 4, 30)
-        assert d.time_tuple() == struct_time(
-            (2018, 4, 30, 0, 0, 0, 0, 120, -1))
+        expected = struct_time((2018, 4, 30, 0, 0, 0, 0, 120, -1))
+        assert d.time_tuple() == expected
 
     def test_to_clock_time(self):
         d = Date(2018, 4, 30)

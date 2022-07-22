@@ -16,7 +16,6 @@
 # limitations under the License.
 
 
-
 import pytest
 
 from neo4j.time import (
