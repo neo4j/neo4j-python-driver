@@ -26,17 +26,15 @@ from neo4j._spatial import (
 
 class PointTestCase:
 
-    def test_wrong_type_arguments(self):
-        for argument in (("a", "b"), ({"x": 1.0, "y": 2.0})):
-            with pytest.subtests():
-                with pytest.raises(ValueError):
-                    Point(argument)
+    @pytest.mark.parametrize("argument", ("a", "b"), ({"x": 1.0, "y": 2.0}))
+    def test_wrong_type_arguments(self, argument):
+        with pytest.raises(ValueError):
+            Point(argument)
 
-    def test_number_arguments(self):
-        for argument in ((1, 2), (1.2, 2.1)):
-            with pytest.subtests():
-                p = Point(argument)
-                assert tuple(p) == argument
+    @pytest.mark.parametrize((1, 2), (1.2, 2.1))
+    def test_wrong_type_arguments(self, argument):
+        p = Point(argument)
+        assert tuple(p) == argument
 
     def test_immutable_coordinates(self):
         MyPoint = point_type("MyPoint", ["x", "y"], {2: 1234})
