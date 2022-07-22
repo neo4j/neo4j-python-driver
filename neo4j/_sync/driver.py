@@ -425,7 +425,7 @@ class Driver:
         with self.session(database=database) as session:
             return session.query(
                 query,
-                parameters,
+                parameters=parameters,
                 cluster_member_access=cluster_member_access,
                 skip_records=skip_records,
                 **kwargs

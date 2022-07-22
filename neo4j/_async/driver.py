@@ -425,7 +425,7 @@ class AsyncDriver:
         async with self.session(database=database) as session:
             return await session.query(
                 query,
-                parameters,
+                parameters=parameters,
                 cluster_member_access=cluster_member_access,
                 skip_records=skip_records,
                 **kwargs
