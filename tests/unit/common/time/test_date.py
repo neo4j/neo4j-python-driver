@@ -540,7 +540,7 @@ class TestDate:
     def test_date_deep_copy(self):
         d = Date(2010, 10, 1)
         d2 = copy.deepcopy(d)
-        assert d != d2
+        assert d is not d2
         assert d == d2
 
 
