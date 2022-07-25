@@ -396,7 +396,7 @@ class AsyncDriver:
     async def query(
         self, query, parameters=None, database=None,
         cluster_member_access=CLUSTER_AUTO_ACCESS, skip_records=False,
-        **kwargs
+        timeout=None, metadata=None, **kwargs
     ):
         """
         Run a Cypher query within an managed transaction.
@@ -428,13 +428,15 @@ class AsyncDriver:
                 parameters=parameters,
                 cluster_member_access=cluster_member_access,
                 skip_records=skip_records,
+                timeout=timeout,
+                metadata=metadata,
                 **kwargs
             )
 
     async def execute(
         self, transaction_function, *args,
         database=None, cluster_member_access=CLUSTER_AUTO_ACCESS,
-        **kwargs
+        timeout=None, metadata=None
     ):
         """Execute a unit of work in a managed transaction.
 
@@ -496,9 +498,9 @@ class AsyncDriver:
         async with self.session(database=database) as session:
             return await session.execute(
                 transaction_function,
-                *args,
                 cluster_member_access=cluster_member_access,
-                **kwargs
+                timeout=timeout,
+                metadata=metadata
             )
 
 

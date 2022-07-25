@@ -249,6 +249,7 @@ class AsyncSession(AsyncWorkspace):
     async def query(
         self, query, parameters=None,
         cluster_member_access=CLUSTER_AUTO_ACCESS, skip_records=False,
+        timeout=None, metadata=None,
         **kwargs
     ):
         """
@@ -274,26 +275,27 @@ class AsyncSession(AsyncWorkspace):
         :rtype: QueryResult
         """
 
-        async def job(tx, **job_kwargs):
+        async def job(tx,):
             if skip_records:
                 result = await tx.run(
                     query,
                     parameters=parameters,
-                    **job_kwargs
+                    **kwargs
                 )
                 summary = await result.consume()
                 return QueryResult([], summary)
-            return await tx.query(query, parameters=parameters, **job_kwargs)
+            return await tx.query(query, parameters=parameters, **kwargs)
 
         return await self.execute(
             job,
             cluster_member_access=cluster_member_access,
-            **kwargs
+            timeout=timeout, metadata=metadata
         )
 
     async def execute(
-        self, transaction_function, *args,
-        cluster_member_access=CLUSTER_AUTO_ACCESS, **kwargs
+        self, transaction_function,
+        cluster_member_access=CLUSTER_AUTO_ACCESS,
+        timeout=None, metadata=None
     ):
         """Execute a unit of work in a managed transaction.
 
@@ -368,7 +370,8 @@ class AsyncSession(AsyncWorkspace):
             raise ClientError("Invalid cluster_member_access")
 
         return await self._run_transaction(
-            access_mode, transaction_function, *args, **kwargs
+            access_mode, transaction_function,
+            metadata=metadata, timeout=timeout
         )
 
     @deprecated(
@@ -514,13 +517,14 @@ class AsyncSession(AsyncWorkspace):
         return self._transaction
 
     async def _run_transaction(
-        self, access_mode, transaction_function, *args, **kwargs
+        self, access_mode, transaction_function, func_args=[], func_kwargs={},
+        metadata=None, timeout=None
     ):
         if not callable(transaction_function):
             raise TypeError("Unit of work is not callable")
 
-        metadata = getattr(transaction_function, "metadata", None)
-        timeout = getattr(transaction_function, "timeout", None)
+        metadata = getattr(transaction_function, "metadata", metadata)
+        timeout = getattr(transaction_function, "timeout", timeout)
 
         retry_delay = retry_delay_generator(
             self._config.initial_retry_delay,
@@ -541,7 +545,9 @@ class AsyncSession(AsyncWorkspace):
                 )
                 tx = self._transaction
                 try:
-                    result = await transaction_function(tx, *args, **kwargs)
+                    result = await transaction_function(
+                        tx, *func_args, **func_kwargs
+                    )
                 except Exception:
                     await tx._close()
                     raise
@@ -622,7 +628,7 @@ class AsyncSession(AsyncWorkspace):
         :return: a result as returned by the given unit of work
         """
         return await self._run_transaction(
-            READ_ACCESS, transaction_function, *args, **kwargs
+            READ_ACCESS, transaction_function, args, kwargs
         )
 
     async def write_transaction(self, transaction_function, *args, **kwargs):
@@ -657,7 +663,7 @@ class AsyncSession(AsyncWorkspace):
         :return: a result as returned by the given unit of work
         """
         return await self._run_transaction(
-            WRITE_ACCESS, transaction_function, *args, **kwargs
+            WRITE_ACCESS, transaction_function, args, kwargs
         )
 
 
