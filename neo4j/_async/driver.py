@@ -396,7 +396,7 @@ class AsyncDriver:
     async def query(
         self, query, parameters=None, database=None,
         cluster_member_access=CLUSTER_AUTO_ACCESS, skip_records=False,
-        timeout=None, metadata=None, **kwargs
+        metadata=None, timeout=None, **kwargs
     ):
         """
         Run a Cypher query within an managed transaction.
@@ -414,8 +414,28 @@ class AsyncDriver:
 
         :param query: cypher query
         :type query: str, neo4j.Query
+
         :param parameters: dictionary of parameters
         :type parameters: dict
+
+        :param database: the name of the database to be used
+        :type database: str
+
+        :param cluster_member_access: the kind of cluster member used
+            for running the work
+
+        :param metadata:
+            a dictionary with metadata.
+            For more usage details,
+            see :meth:`.AsyncSession.begin_transaction`.
+        :type metadata: dict
+
+        :param timeout:
+            the transaction timeout in seconds.
+            For more usage details,
+            see :meth:`.AsyncSession.begin_transaction`.
+        :type timeout: int
+
         :param kwargs: additional keyword parameters
 
         :returns: a new :class:`neo4j.QueryResult` object
@@ -434,9 +454,9 @@ class AsyncDriver:
             )
 
     async def execute(
-        self, transaction_function, *args,
+        self, transaction_function,
         database=None, cluster_member_access=CLUSTER_AUTO_ACCESS,
-        timeout=None, metadata=None
+        metadata=None, timeout=None
     ):
         """Execute a unit of work in a managed transaction.
 
@@ -451,7 +471,7 @@ class AsyncDriver:
                 records, _ = await tx.query(cypher)
                 return records
 
-            values = await driver.execute(do_cypher_tx, "RETURN 1 AS x")
+            values = await driver.execute(lambda tx: do_cypher_tx(tx, "RETURN 1 AS x"))
 
         Example::
 
@@ -487,10 +507,29 @@ class AsyncDriver:
 
         :param transaction_function: a function that takes a transaction as an
             argument and does work with the transaction.
-            ``transaction_function(tx, *args, **kwargs)`` where ``tx`` is a
+            ``transaction_function(tx)`` where ``tx`` is a
             :class:`.Transaction`.
-        :param args: arguments for the ``transaction_function``
-        :param kwargs: key word arguments for the ``transaction_function``
+
+        :param parameters: dictionary of parameters
+        :type parameters: dict
+
+        :param database: the name of the database to be used
+        :type database: str
+
+        :param cluster_member_access: the kind of cluster member used
+            for running the work
+
+        :param metadata:
+            a dictionary with metadata.
+            For more usage details,
+            see :meth:`.AsyncSession.begin_transaction`.
+        :type metadata: dict
+
+        :param timeout:
+            the transaction timeout in seconds.
+            For more usage details,
+            see :meth:`.AsyncSession.begin_transaction`.
+        :type timeout: int
 
         :return: a result as returned by the given unit of work
         """

@@ -267,8 +267,25 @@ class Session(Workspace):
 
         :param query: cypher query
         :type query: str, neo4j.Query
+
         :param parameters: dictionary of parameters
         :type parameters: dict
+
+        :param cluster_member_access: the kind of cluster member used
+            for running the work
+
+        :param metadata:
+            a dictionary with metadata.
+            For more usage details,
+            see :meth:`.Session.begin_transaction`.
+        :type metadata: dict
+
+        :param timeout:
+            the transaction timeout in seconds.
+            For more usage details,
+            see :meth:`.Session.begin_transaction`.
+        :type timeout: int
+
         :param kwargs: additional keyword parameters
 
         :returns: a new :class:`neo4j.QueryResult` object
@@ -295,7 +312,7 @@ class Session(Workspace):
     def execute(
         self, transaction_function,
         cluster_member_access=CLUSTER_AUTO_ACCESS,
-        timeout=None, metadata=None
+        metadata=None, timeout=None
     ):
         """Execute a unit of work in a managed transaction.
 
@@ -312,7 +329,7 @@ class Session(Workspace):
                 return records
 
             with driver.session() as session:
-                values = session.execute(do_cypher_tx, "RETURN 1 AS x")
+                values = session.execute(lambda tx: do_cypher_tx(tx,"RETURN 1 AS x"))
 
         Example::
 
@@ -348,10 +365,23 @@ class Session(Workspace):
 
         :param transaction_function: a function that takes a transaction as an
             argument and does work with the transaction.
-            ``transaction_function(tx, *args, **kwargs)`` where ``tx`` is a
+            ``transaction_function(tx)`` where ``tx`` is a
             :class:`.Transaction`.
-        :param args: arguments for the ``transaction_function``
-        :param kwargs: key word arguments for the ``transaction_function``
+
+        :param cluster_member_access: the kind of cluster member used
+            for running the work
+
+        :param metadata:
+            a dictionary with metadata.
+            For more usage details,
+            see :meth:`.Session.begin_transaction`.
+        :type metadata: dict
+
+        :param timeout:
+            the transaction timeout in seconds.
+            For more usage details,
+            see :meth:`.Session.begin_transaction`.
+        :type timeout: int
 
         :return: a result as returned by the given unit of work
         """
