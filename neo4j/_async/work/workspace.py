@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import asyncio
 
 from ..._conf import WorkspaceConfig
@@ -64,7 +66,7 @@ class AsyncWorkspace:
         except (OSError, ServiceUnavailable, SessionExpired):
             pass
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> AsyncWorkspace:
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):

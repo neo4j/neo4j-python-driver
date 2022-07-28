@@ -118,6 +118,8 @@
   be used by client code. `Record` should be imported directly from `neo4j`
   instead. `neo4j.data.DataHydrator` and `neo4j.data.DataDeydrator` have been
   removed without replacement.
+- Removed undocumented config options that had no effect:
+  `protocol_version` and `init_size`.
 
 
 ## Version 4.4

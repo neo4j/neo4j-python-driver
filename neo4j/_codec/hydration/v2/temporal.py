@@ -19,7 +19,7 @@
 from ..v1.temporal import *
 
 
-def hydrate_datetime(seconds, nanoseconds, tz=None):
+def hydrate_datetime(seconds, nanoseconds, tz=None):  # type: ignore[no-redef]
     """ Hydrator for `DateTime` and `LocalDateTime` values.
 
     :param seconds:
@@ -47,7 +47,7 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):
     return t.as_timezone(zone)
 
 
-def dehydrate_datetime(value):
+def dehydrate_datetime(value):  # type: ignore[no-redef]
     """ Dehydrator for `datetime` values.
 
     :param value:

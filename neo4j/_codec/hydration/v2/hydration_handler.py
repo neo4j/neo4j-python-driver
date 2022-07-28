@@ -18,10 +18,10 @@
 
 from ..v1.hydration_handler import *
 from ..v1.hydration_handler import _GraphHydrator
-from . import temporal
+from . import temporal  # type: ignore[no-redef]
 
 
-class HydrationHandler(HydrationHandlerABC):
+class HydrationHandler(HydrationHandlerABC):  # type: ignore[no-redef]
     def __init__(self):
         super().__init__()
         self._created_scope = False

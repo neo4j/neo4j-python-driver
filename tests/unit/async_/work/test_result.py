@@ -829,12 +829,12 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
         (
             ["n"],
             list(zip((
-                Node(None, "00", 0, ["LABEL_A"],
-                     {"a": 1, "b": 2, "d": 1}),
-                Node(None, "02", 2, ["LABEL_B"],
-                     {"a": 1, "c": 1.2, "d": 2}),
-                Node(None, "01", 1, ["LABEL_A", "LABEL_B"],
-                     {"a": [1, "a"], "d": 3}),
+                Node(None,  # type: ignore[arg-type]
+                     "00", 0, ["LABEL_A"], {"a": 1, "b": 2, "d": 1}),
+                Node(None,  # type: ignore[arg-type]
+                     "02", 2, ["LABEL_B"], {"a": 1, "c": 1.2, "d": 2}),
+                Node(None,  # type: ignore[arg-type]
+                     "01", 1, ["LABEL_A", "LABEL_B"], {"a": [1, "a"], "d": 3}),
             ))),
             [
                 "n().element_id", "n().labels", "n().prop.a", "n().prop.b",
@@ -1009,8 +1009,8 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
         (
             ["mixed"],
             [
-                [neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6),],
-                [neo4j_time.Date(2222, 2, 22),],
+                [neo4j_time.DateTime(2022, 1, 2, 3, 4, 5, 6)],
+                [neo4j_time.Date(2222, 2, 22)],
                 [
                     pytz.timezone("Europe/Stockholm").localize(
                         neo4j_time.DateTime(1970, 1, 1, 0, 0, 0, 0)
@@ -1105,7 +1105,7 @@ async def test_broken_hydration(nested):
     assert len(record_out) == 2
     assert record_out[0] == "foobar"
     with pytest.raises(BrokenRecordError) as exc:
-        record_out[1]
+        _ = record_out[1]
     cause = exc.value.__cause__
     assert isinstance(cause, ValueError)
     assert repr(b"a") in str(cause)

@@ -24,13 +24,15 @@ from .session import (
 from .transaction import (
     ManagedTransaction,
     Transaction,
+    TransactionBase,
 )
 
 
 __all__ = [
     "Result",
     "Session",
-    "Transaction",
     "ManagedTransaction",
+    "Transaction",
+    "TransactionBase",
     "Workspace",
 ]

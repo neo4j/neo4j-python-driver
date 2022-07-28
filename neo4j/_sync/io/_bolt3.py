@@ -20,11 +20,7 @@ from enum import Enum
 from logging import getLogger
 from ssl import SSLSocket
 
-from ..._async_compat.util import Util
-from ..._exceptions import (
-    BoltError,
-    BoltProtocolError,
-)
+from ..._exceptions import BoltProtocolError
 from ...api import (
     READ_ACCESS,
     Version,
@@ -32,7 +28,6 @@ from ...api import (
 from ...exceptions import (
     ConfigurationError,
     DatabaseUnavailable,
-    DriverError,
     ForbiddenOnReadOnlyDatabase,
     Neo4jError,
     NotALeader,

@@ -74,22 +74,6 @@ def dehydrate_point(value):
 
 # TODO: 6.0 remove
 @deprecated(
-    "hydrate_point is considered an internal function and will be removed in "
-    "a future version"
-)
-@wraps(_hydration.dehydrate_point)
-def dehydrate_point(value):
-    """ Dehydrator for Point data.
-
-    :param value:
-    :type value: Point
-    :return:
-    """
-    return _hydration.dehydrate_point(value)
-
-
-# TODO: 6.0 remove
-@deprecated(
     "point_type is considered an internal function and will be removed in "
     "a future version"
 )

@@ -18,42 +18,51 @@
 """ Base classes and helpers.
 """
 
+from __future__ import annotations
 
+import typing as t
 from urllib.parse import (
     parse_qs,
     urlparse,
 )
 
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+    from .addressing import Address
+
 from ._meta import deprecated
 from .exceptions import ConfigurationError
 
 
-READ_ACCESS = "READ"
-WRITE_ACCESS = "WRITE"
+READ_ACCESS: te.Final[str] = "READ"
+WRITE_ACCESS: te.Final[str] = "WRITE"
 
-DRIVER_BOLT = "DRIVER_BOLT"
-DRIVER_NEO4j = "DRIVER_NEO4J"
+DRIVER_BOLT: te.Final[str] = "DRIVER_BOLT"
+DRIVER_NEO4J: te.Final[str] = "DRIVER_NEO4J"
 
-SECURITY_TYPE_NOT_SECURE = "SECURITY_TYPE_NOT_SECURE"
-SECURITY_TYPE_SELF_SIGNED_CERTIFICATE = "SECURITY_TYPE_SELF_SIGNED_CERTIFICATE"
-SECURITY_TYPE_SECURE = "SECURITY_TYPE_SECURE"
+SECURITY_TYPE_NOT_SECURE: te.Final[str] = "SECURITY_TYPE_NOT_SECURE"
+SECURITY_TYPE_SELF_SIGNED_CERTIFICATE: te.Final[str] = \
+    "SECURITY_TYPE_SELF_SIGNED_CERTIFICATE"
+SECURITY_TYPE_SECURE: te.Final[str] = "SECURITY_TYPE_SECURE"
 
-URI_SCHEME_BOLT = "bolt"
-URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE = "bolt+ssc"
-URI_SCHEME_BOLT_SECURE = "bolt+s"
+URI_SCHEME_BOLT: te.Final[str] = "bolt"
+URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE: te.Final[str] = "bolt+ssc"
+URI_SCHEME_BOLT_SECURE: te.Final[str] = "bolt+s"
 
-URI_SCHEME_NEO4J = "neo4j"
-URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE = "neo4j+ssc"
-URI_SCHEME_NEO4J_SECURE = "neo4j+s"
+URI_SCHEME_NEO4J: te.Final[str] = "neo4j"
+URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE: te.Final[str] = "neo4j+ssc"
+URI_SCHEME_NEO4J_SECURE: te.Final[str] = "neo4j+s"
 
-URI_SCHEME_BOLT_ROUTING = "bolt+routing"
+URI_SCHEME_BOLT_ROUTING: te.Final[str] = "bolt+routing"
 
 # TODO: 6.0 - remove TRUST constants
-TRUST_SYSTEM_CA_SIGNED_CERTIFICATES = "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"  # Default
-TRUST_ALL_CERTIFICATES = "TRUST_ALL_CERTIFICATES"
+TRUST_SYSTEM_CA_SIGNED_CERTIFICATES: te.Final[str] = \
+    "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"  # Default
+TRUST_ALL_CERTIFICATES: te.Final[str] = "TRUST_ALL_CERTIFICATES"
 
-SYSTEM_DATABASE = "system"
-DEFAULT_DATABASE = None  # Must be a non string hashable value
+SYSTEM_DATABASE: te.Final[str] = "system"
+DEFAULT_DATABASE: te.Final[None] = None  # Must be a non string hashable value
 
 
 # TODO: This class is not tested
@@ -62,19 +71,21 @@ class Auth:
 
     :param scheme: specifies the type of authentication, examples: "basic",
                    "kerberos"
-    :type scheme: str
     :param principal: specifies who is being authenticated
-    :type principal: str or None
     :param credentials: authenticates the principal
-    :type credentials: str or None
     :param realm: specifies the authentication provider
-    :type realm: str or None
     :param parameters: extra key word parameters passed along to the
                        authentication provider
-    :type parameters: Dict[str, Any]
     """
 
-    def __init__(self, scheme, principal, credentials, realm=None, **parameters):
+    def __init__(
+        self,
+        scheme: t.Optional[str],
+        principal: t.Optional[str],
+        credentials: t.Optional[str],
+        realm: str = None,
+        **parameters: t.Any
+    ) -> None:
         self.scheme = scheme
         # Neo4j servers pre 4.4 require the principal field to always be
         # present. Therefore, we transmit it even if it's an empty sting.
@@ -92,75 +103,67 @@ class Auth:
 AuthToken = Auth
 
 
-def basic_auth(user, password, realm=None):
+def basic_auth(user: str, password: str, realm: str = None) -> Auth:
     """Generate a basic auth token for a given user and password.
 
     This will set the scheme to "basic" for the auth token.
 
     :param user: user name, this will set the
-    :type user: str
     :param password: current password, this will set the credentials
-    :type password: str
     :param realm: specifies the authentication provider
-    :type realm: str or None
 
     :return: auth token for use with :meth:`GraphDatabase.driver` or
         :meth:`AsyncGraphDatabase.driver`
-    :rtype: :class:`neo4j.Auth`
     """
     return Auth("basic", user, password, realm)
 
 
-def kerberos_auth(base64_encoded_ticket):
+def kerberos_auth(base64_encoded_ticket: str) -> Auth:
     """Generate a kerberos auth token with the base64 encoded ticket.
 
     This will set the scheme to "kerberos" for the auth token.
 
     :param base64_encoded_ticket: a base64 encoded service ticket, this will set
                                   the credentials
-    :type base64_encoded_ticket: str
 
     :return: auth token for use with :meth:`GraphDatabase.driver` or
         :meth:`AsyncGraphDatabase.driver`
-    :rtype: :class:`neo4j.Auth`
     """
     return Auth("kerberos", "", base64_encoded_ticket)
 
 
-def bearer_auth(base64_encoded_token):
+def bearer_auth(base64_encoded_token: str) -> Auth:
     """Generate an auth token for Single-Sign-On providers.
 
     This will set the scheme to "bearer" for the auth token.
 
     :param base64_encoded_token: a base64 encoded authentication token generated
                                  by a Single-Sign-On provider.
-    :type base64_encoded_token: str
 
     :return: auth token for use with :meth:`GraphDatabase.driver` or
         :meth:`AsyncGraphDatabase.driver`
-    :rtype: :class:`neo4j.Auth`
     """
     return Auth("bearer", None, base64_encoded_token)
 
 
-def custom_auth(principal, credentials, realm, scheme, **parameters):
+def custom_auth(
+    principal: t.Optional[str],
+    credentials: t.Optional[str],
+    realm: t.Optional[str],
+    scheme: t.Optional[str],
+    **parameters: t.Any
+) -> Auth:
     """Generate a custom auth token.
 
     :param principal: specifies who is being authenticated
-    :type principal: str or None
     :param credentials: authenticates the principal
-    :type credentials: str or None
     :param realm: specifies the authentication provider
-    :type realm: str or None
     :param scheme: specifies the type of authentication
-    :type scheme: str or None
     :param parameters: extra key word parameters passed along to the
                        authentication provider
-    :type parameters: Dict[str, Any]
 
     :return: auth token for use with :meth:`GraphDatabase.driver` or
         :meth:`AsyncGraphDatabase.driver`
-    :rtype: :class:`neo4j.Auth`
     """
     return Auth(scheme, principal, credentials, realm, **parameters)
 
@@ -177,7 +180,7 @@ class Bookmark:
     """
 
     @deprecated("Use the `Bookmarks`` class instead.")
-    def __init__(self, *values):
+    def __init__(self, *values: str) -> None:
         if values:
             bookmarks = []
             for ix in values:
@@ -191,20 +194,19 @@ class Bookmark:
         else:
             self._values = frozenset()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         :return: repr string with sorted values
         """
         return "<Bookmark values={{{}}}>".format(", ".join(["'{}'".format(ix) for ix in sorted(self._values)]))
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._values)
 
     @property
-    def values(self):
+    def values(self) -> frozenset:
         """
         :return: immutable list of bookmark string values
-        :rtype: frozenset
         """
         return self._values
 
@@ -224,7 +226,7 @@ class Bookmarks:
     def __init__(self):
         self._raw_values = frozenset()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         :return: repr string with sorted values
         """
@@ -232,10 +234,10 @@ class Bookmarks:
             ", ".join(map(repr, sorted(self._raw_values)))
         )
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._raw_values)
 
-    def __add__(self, other):
+    def __add__(self, other: Bookmarks) -> Bookmarks:
         if isinstance(other, Bookmarks):
             if not other:
                 return self
@@ -245,7 +247,7 @@ class Bookmarks:
         return NotImplemented
 
     @property
-    def raw_values(self):
+    def raw_values(self) -> t.FrozenSet[str]:
         """The raw bookmark values.
 
         You should not need to access them unless you want to serialize
@@ -257,7 +259,7 @@ class Bookmarks:
         return self._raw_values
 
     @classmethod
-    def from_raw_values(cls, values):
+    def from_raw_values(cls, values: t.Iterable[str]) -> Bookmarks:
         """Create a Bookmarks object from a list of raw bookmark string values.
 
         You should not need to use this method unless you want to deserialize
@@ -285,19 +287,19 @@ class ServerInfo:
     """ Represents a package of information relating to a Neo4j server.
     """
 
-    def __init__(self, address, protocol_version):
+    def __init__(self, address: Address, protocol_version: Version):
         self._address = address
         self._protocol_version = protocol_version
-        self._metadata = {}
+        self._metadata: dict = {}
 
     @property
-    def address(self):
+    def address(self) -> Address:
         """ Network address of the remote server.
         """
         return self._address
 
     @property
-    def protocol_version(self):
+    def protocol_version(self) -> Version:
         """ Bolt protocol version with which the remote server
         communicates. This is returned as a :class:`.Version`
         object, which itself extends a simple 2-tuple of
@@ -306,13 +308,13 @@ class ServerInfo:
         return self._protocol_version
 
     @property
-    def agent(self):
+    def agent(self) -> str:
         """ Server agent string by which the remote server identifies
         itself.
         """
-        return self._metadata.get("server")
+        return str(self._metadata.get("server"))
 
-    @property
+    @property  # type: ignore
     @deprecated("The connection id is considered internal information "
                 "and will no longer be exposed in future versions.")
     def connection_id(self):
@@ -320,7 +322,7 @@ class ServerInfo:
         """
         return self._metadata.get("connection_id")
 
-    def update(self, metadata):
+    def update(self, metadata: dict) -> None:
         """ Update server information with extra metadata. This is
         typically drawn from the metadata received after successful
         connection initialisation.
@@ -339,7 +341,7 @@ class Version(tuple):
     def __str__(self):
         return ".".join(map(str, self))
 
-    def to_bytes(self):
+    def to_bytes(self) -> bytes:
         b = bytearray(4)
         for i, v in enumerate(self):
             if not 0 <= i < 2:
@@ -352,7 +354,7 @@ class Version(tuple):
         return bytes(b)
 
     @classmethod
-    def from_bytes(cls, b):
+    def from_bytes(cls, b: bytes) -> Version:
         b = bytearray(b)
         if len(b) != 4:
             raise ValueError("Byte representation must be exactly four bytes")
@@ -382,13 +384,13 @@ def parse_neo4j_uri(uri):
         driver_type = DRIVER_BOLT
         security_type = SECURITY_TYPE_SECURE
     elif parsed.scheme == URI_SCHEME_NEO4J:
-        driver_type = DRIVER_NEO4j
+        driver_type = DRIVER_NEO4J
         security_type = SECURITY_TYPE_NOT_SECURE
     elif parsed.scheme == URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE:
-        driver_type = DRIVER_NEO4j
+        driver_type = DRIVER_NEO4J
         security_type = SECURITY_TYPE_SELF_SIGNED_CERTIFICATE
     elif parsed.scheme == URI_SCHEME_NEO4J_SECURE:
-        driver_type = DRIVER_NEO4j
+        driver_type = DRIVER_NEO4J
         security_type = SECURITY_TYPE_SECURE
     else:
         raise ConfigurationError("URI scheme {!r} is not supported. Supported URI schemes are {}. Examples: bolt://host[:port] or neo4j://host[:port][?routing_context]".format(

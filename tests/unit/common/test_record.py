@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import traceback
 
 import pytest
@@ -30,7 +32,7 @@ from neo4j.graph import Node
 # python -m pytest -s -v tests/unit/test_record.py
 
 
-def test_record_equality():
+def test_record_equality() -> None:
     record1 = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
     record2 = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
     record3 = Record(zip(["name", "empire"], ["Stefan", "Das Deutschland"]))
@@ -39,7 +41,7 @@ def test_record_equality():
     assert record2 != record3
 
 
-def test_record_hashing():
+def test_record_hashing() -> None:
     record1 = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
     record2 = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
     record3 = Record(zip(["name", "empire"], ["Stefan", "Das Deutschland"]))
@@ -48,32 +50,32 @@ def test_record_hashing():
     assert hash(record2) != hash(record3)
 
 
-def test_record_iter():
+def test_record_iter() -> None:
     a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
     assert list(a_record.__iter__()) == ["Nigel", "The British Empire"]
 
 
-def test_record_as_dict():
+def test_record_as_dict() -> None:
     a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
     assert dict(a_record) == {"name": "Nigel", "empire": "The British Empire"}
 
 
-def test_record_as_list():
+def test_record_as_list() -> None:
     a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
     assert list(a_record) == ["Nigel", "The British Empire"]
 
 
-def test_record_len():
+def test_record_len() -> None:
     a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
     assert len(a_record) == 2
 
 
-def test_record_repr():
+def test_record_repr() -> None:
     a_record = Record(zip(["name", "empire"], ["Nigel", "The British Empire"]))
     assert repr(a_record) == "<Record name='Nigel' empire='The British Empire'>"
 
 
-def test_record_data():
+def test_record_data() -> None:
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert r.data() == {"name": "Alice", "age": 33, "married": True}
     assert r.data("name") == {"name": "Alice"}
@@ -86,12 +88,12 @@ def test_record_data():
         _ = r.data(1, 0, 999)
 
 
-def test_record_keys():
+def test_record_keys() -> None:
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert r.keys() == ["name", "age", "married"]
 
 
-def test_record_values():
+def test_record_values() -> None:
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert r.values() == ["Alice", 33, True]
     assert r.values("name") == ["Alice"]
@@ -104,7 +106,7 @@ def test_record_values():
         _ = r.values(1, 0, 999)
 
 
-def test_record_items():
+def test_record_items() -> None:
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert r.items() == [("name", "Alice"), ("age", 33), ("married", True)]
     assert r.items("name") == [("name", "Alice")]
@@ -117,7 +119,7 @@ def test_record_items():
         _ = r.items(1, 0, 999)
 
 
-def test_record_index():
+def test_record_index() -> None:
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert r.index("name") == 0
     assert r.index("age") == 1
@@ -130,10 +132,10 @@ def test_record_index():
     with pytest.raises(IndexError):
         _ = r.index(3)
     with pytest.raises(TypeError):
-        _ = r.index(None)
+        _ = r.index(None)  # type: ignore[arg-type]
 
 
-def test_record_value():
+def test_record_value() -> None:
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert r.value() == "Alice"
     assert r.value("name") == "Alice"
@@ -147,10 +149,10 @@ def test_record_value():
     assert r.value(3) is None
     assert r.value(3, 6) == 6
     with pytest.raises(TypeError):
-        _ = r.value(None)
+        _ = r.value(None)  # type: ignore[arg-type]
 
 
-def test_record_value_kwargs():
+def test_record_value_kwargs() -> None:
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert r.value() == "Alice"
     assert r.value(key="name") == "Alice"
@@ -165,60 +167,60 @@ def test_record_value_kwargs():
     assert r.value(key=3, default=6) == 6
 
 
-def test_record_contains():
+def test_record_contains() -> None:
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert "Alice" in r
     assert 33 in r
     assert True in r
     assert 7.5 not in r
     with pytest.raises(TypeError):
-        _ = r.index(None)
+        _ = r.index(None)  # type: ignore[arg-type]
 
 
-def test_record_from_dict():
+def test_record_from_dict() -> None:
     r = Record({"name": "Alice", "age": 33})
     assert r["name"] == "Alice"
     assert r["age"] == 33
 
 
-def test_record_get_slice():
+def test_record_get_slice() -> None:
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert Record(zip(["name", "age"], ["Alice", 33])) == r[0:2]
 
 
-def test_record_get_by_index():
+def test_record_get_by_index() -> None:
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert r[0] == "Alice"
 
 
-def test_record_get_by_name():
+def test_record_get_by_name() -> None:
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert r["name"] == "Alice"
 
 
-def test_record_get_by_out_of_bounds_index():
+def test_record_get_by_out_of_bounds_index() -> None:
     r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
     assert r[9] is None
 
 
-def test_record_get_item():
+def test_record_get_item() -> None:
     r = Record(zip(["x", "y"], ["foo", "bar"]))
     assert r["x"] == "foo"
     assert r["y"] == "bar"
     with pytest.raises(KeyError):
         _ = r["z"]
     with pytest.raises(TypeError):
-        _ = r[object()]
+        _ = r[object()]  # type: ignore[index]
 
 
 @pytest.mark.parametrize("len_", (0, 1, 2, 42))
-def test_record_len(len_):
+def test_record_len_generic(len_) -> None:
     r = Record(("key_%i" % i, "val_%i" % i) for i in range(len_))
     assert len(r) == len_
 
 
 @pytest.mark.parametrize("len_", range(3))
-def test_record_repr(len_):
+def test_record_repr_generic(len_) -> None:
     r = Record(("key_%i" % i, "val_%i" % i) for i in range(len_))
     assert repr(r)
 
@@ -275,16 +277,21 @@ def test_record_repr(len_):
         {"x": {"one": 1, "two": 2}}
     ),
     (
-        zip(["a"], [Node("graph", "42", 42, "Person", {"name": "Alice"})]),
+        zip(
+            ["a"],
+            [Node(
+                None,  # type: ignore[arg-type]
+                "42", 42, "Person", {"name": "Alice"}
+            )]),
         (),
         {"a": {"name": "Alice"}}
     ),
 ))
-def test_data(raw, keys, serialized):
+def test_data(raw, keys, serialized) -> None:
     assert Record(raw).data(*keys) == serialized
 
 
-def test_data_relationship():
+def test_data_relationship() -> None:
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
@@ -303,7 +310,7 @@ def test_data_relationship():
     }
 
 
-def test_data_unbound_relationship():
+def test_data_unbound_relationship() -> None:
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     some_one_knows_some_one = gh.hydrate_relationship(
@@ -314,7 +321,7 @@ def test_data_unbound_relationship():
 
 
 @pytest.mark.parametrize("cyclic", (True, False))
-def test_data_path(cyclic):
+def test_data_path(cyclic) -> None:
     hydration_scope = HydrationHandler().new_hydration_scope()
     gh = hydration_scope._graph_hydrator
     alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice", "age": 33})
@@ -385,7 +392,7 @@ def test_data_path(cyclic):
     (lambda r: r.index(1), False),
     (lambda r: r.index(2), False),
 ))
-def test_record_with_error(accessor, should_raise):
+def test_record_with_error(accessor, should_raise) -> None:
     class TestException(Exception):
         pass
 
@@ -401,6 +408,6 @@ def test_record_with_error(accessor, should_raise):
         return
     with pytest.raises(BrokenRecordError) as raised:
         accessor(r)
-    raised = raised.value
-    assert raised.__cause__ is exc
-    assert list(traceback.walk_tb(raised.__cause__.__traceback__)) == frames
+    exc_value = raised.value
+    assert exc_value.__cause__ is exc
+    assert list(traceback.walk_tb(exc_value.__cause__.__traceback__)) == frames

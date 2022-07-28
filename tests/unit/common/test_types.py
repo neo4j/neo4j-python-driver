@@ -95,7 +95,7 @@ def test_node_with_null_properties():
     (*n1, *n2)
     for n1, n2 in product(
         (
-            (g, id_, element_id, props)
+            (g, id_, element_id, props)  # type: ignore
             for g in (0, 1)
             for id_, element_id in (
                 (1, "1"),

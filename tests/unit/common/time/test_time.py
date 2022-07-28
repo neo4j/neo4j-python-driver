@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import itertools
 import operator
 from datetime import (
@@ -45,12 +47,12 @@ timezone_utc = timezone("UTC")
 
 class TestTime:
 
-    def test_bad_attribute(self):
+    def test_bad_attribute(self) -> None:
         t = Time(12, 34, 56, 789000000)
         with pytest.raises(AttributeError):
             _ = t.x
 
-    def test_simple_time(self):
+    def test_simple_time(self) -> None:
         t = Time(12, 34, 56, 789000000)
         assert t.hour_minute_second_nanosecond == (12, 34, 56, 789000000)
         assert t.ticks == 45296789000000
@@ -59,7 +61,7 @@ class TestTime:
         assert t.second == 56
         assert t.nanosecond == 789000000
 
-    def test_midnight(self):
+    def test_midnight(self) -> None:
         t = Time(0, 0, 0)
         assert t.hour_minute_second_nanosecond == (0, 0, 0, 0)
         assert t.ticks == 0
@@ -68,7 +70,7 @@ class TestTime:
         assert t.second == 0
         assert t.nanosecond == 0
 
-    def test_nanosecond_precision(self):
+    def test_nanosecond_precision(self) -> None:
         t = Time(12, 34, 56, 789123456)
         assert t.hour_minute_second_nanosecond == (12, 34, 56, 789123456)
         assert t.ticks == 45296789123456
@@ -77,7 +79,7 @@ class TestTime:
         assert t.second == 56
         assert t.nanosecond == 789123456
 
-    def test_str(self):
+    def test_str(self) -> None:
         t = Time(12, 34, 56, 789123456)
         assert str(t) == "12:34:56.789123456"
 
@@ -89,19 +91,19 @@ class TestTime:
         (datetime_timezone(timedelta(hours=1)), (13, 34, 56, 789000001)),
         (timezone_us_eastern, (7, 34, 56, 789000001)),
     ))
-    def test_now(self, tz, expected):
+    def test_now(self, tz, expected) -> None:
         t = Time.now(tz=tz)
         assert isinstance(t, Time)
         assert t.hour_minute_second_nanosecond == expected
         assert str(t.tzinfo) == str(tz)
 
-    def test_utc_now(self):
+    def test_utc_now(self) -> None:
         t = Time.utc_now()
         assert isinstance(t, Time)
         assert t.hour_minute_second_nanosecond == (12, 34, 56, 789000001)
         assert t.tzinfo is None
 
-    def test_from_native(self):
+    def test_from_native(self) -> None:
         native = time(12, 34, 56, 789123)
         t = Time.from_native(native)
         assert t.hour == native.hour
@@ -109,7 +111,7 @@ class TestTime:
         assert t.second == native.second
         assert t.nanosecond == native.microsecond * 1000
 
-    def test_to_native(self):
+    def test_to_native(self) -> None:
         t = Time(12, 34, 56, 789123456)
         native = t.to_native()
         assert t.hour == native.hour
@@ -167,75 +169,72 @@ class TestTime:
             "12:34:56.123456+01:23"
         ),
     ))
-    def test_iso_format(self, t, expected):
+    def test_iso_format(self, t, expected) -> None:
         assert t.isoformat() == expected
 
-    def test_from_iso_format_hour_only(self):
+    def test_from_iso_format_hour_only(self) -> None:
         expected = Time(12, 0, 0)
         actual = Time.from_iso_format("12")
         assert expected == actual
 
-    def test_from_iso_format_hour_and_minute(self):
+    def test_from_iso_format_hour_and_minute(self) -> None:
         expected = Time(12, 34, 0)
         actual = Time.from_iso_format("12:34")
         assert expected == actual
 
-    def test_from_iso_format_hour_minute_second(self):
+    def test_from_iso_format_hour_minute_second(self) -> None:
         expected = Time(12, 34, 56)
         actual = Time.from_iso_format("12:34:56")
         assert expected == actual
 
-    def test_from_iso_format_hour_minute_second_milliseconds(self):
+    def test_from_iso_format_hour_minute_second_milliseconds(self) -> None:
         expected = Time(12, 34, 56, 123000000)
         actual = Time.from_iso_format("12:34:56.123")
         assert expected == actual
 
-    def test_from_iso_format_hour_minute_second_microseconds(self):
+    def test_from_iso_format_hour_minute_second_microseconds(self) -> None:
         expected = Time(12, 34, 56, 123456000)
         actual = Time.from_iso_format("12:34:56.123456")
         assert expected == actual
 
-    def test_from_iso_format_hour_minute_second_nanosecond(self):
+    def test_from_iso_format_hour_minute_second_nanosecond(self) -> None:
         expected = Time(12, 34, 56, 123456789)
         actual = Time.from_iso_format("12:34:56.123456789")
         assert expected == actual
 
-    def test_from_iso_format_with_positive_tz(self):
+    def test_from_iso_format_with_positive_tz(self) -> None:
         expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(754))
         actual = Time.from_iso_format("12:34:56.123456789+12:34")
         assert expected == actual
 
-    def test_from_iso_format_with_negative_tz(self):
+    def test_from_iso_format_with_negative_tz(self) -> None:
         expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(-754))
         actual = Time.from_iso_format("12:34:56.123456789-12:34")
         assert expected == actual
 
-    def test_from_iso_format_with_positive_long_tz(self):
+    def test_from_iso_format_with_positive_long_tz(self) -> None:
         expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(754))
         actual = Time.from_iso_format("12:34:56.123456789+12:34:56.123456")
         assert expected == actual
 
-    def test_from_iso_format_with_negative_long_tz(self):
+    def test_from_iso_format_with_negative_long_tz(self) -> None:
         expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(-754))
         actual = Time.from_iso_format("12:34:56.123456789-12:34:56.123456")
         assert expected == actual
 
-    def test_from_iso_format_with_hour_only_tz(self):
+    def test_from_iso_format_with_hour_only_tz(self) -> None:
         expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(120))
         actual = Time.from_iso_format("12:34:56.123456789+02:00")
         assert expected == actual
 
-    def test_utc_offset_fixed(self):
+    def test_utc_offset_fixed(self) -> None:
         expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(-754))
         actual = -754 * 60
-        assert expected.utc_offset().total_seconds() == actual
+        offset = expected.utc_offset()
+        assert offset is not None
+        assert offset.total_seconds() == actual
 
-    def test_utc_offset_variable(self):
-        expected = Time(12, 34, 56, 123456789, tzinfo=FixedOffset(-754))
-        actual = -754 * 60
-        assert expected.utc_offset().total_seconds() == actual
-
-    def test_iso_format_with_time_zone_case_1(self):
+    def test_iso_format_with_time_zone_case_1(self) -> None:
         # python -m pytest tests/unit/time/test_time.py -s -v -k test_iso_format_with_time_zone_case_1
         expected = Time(7, 54, 2, 129790999, tzinfo=timezone_utc)
         assert expected.iso_format() == "07:54:02.129790999+00:00"
@@ -243,13 +242,13 @@ class TestTime:
         actual = Time.from_iso_format("07:54:02.129790999+00:00")
         assert expected == actual
 
-    def test_iso_format_with_time_zone_case_2(self):
+    def test_iso_format_with_time_zone_case_2(self) -> None:
         # python -m pytest tests/unit/time/test_time.py -s -v -k test_iso_format_with_time_zone_case_2
         expected = Time.from_iso_format("07:54:02.129790999+01:00")
         assert expected.tzinfo == FixedOffset(60)
         assert expected.iso_format() == "07:54:02.129790999+01:00"
 
-    def test_to_native_case_1(self):
+    def test_to_native_case_1(self) -> None:
         # python -m pytest tests/unit/time/test_time.py -s -v -k test_to_native_case_1
         t = Time(12, 34, 56, 789123456)
         native = t.to_native()
@@ -260,7 +259,7 @@ class TestTime:
         assert native.tzinfo is None
         assert native.isoformat() == "12:34:56.789123"
 
-    def test_to_native_case_2(self):
+    def test_to_native_case_2(self) -> None:
         # python -m pytest tests/unit/time/test_time.py -s -v -k test_to_native_case_2
         t = Time(12, 34, 56, 789123456, tzinfo=timezone_utc)
         native = t.to_native()
@@ -271,7 +270,7 @@ class TestTime:
         assert native.tzinfo == FixedOffset(0)
         assert native.isoformat() == "12:34:56.789123+00:00"
 
-    def test_from_native_case_1(self):
+    def test_from_native_case_1(self) -> None:
         # python -m pytest tests/unit/time/test_time.py -s -v -k test_from_native_case_1
         native = time(12, 34, 56, 789123)
         t = Time.from_native(native)
@@ -281,7 +280,7 @@ class TestTime:
         assert t.nanosecond == native.microsecond * 1000
         assert t.tzinfo is None
 
-    def test_from_native_case_2(self):
+    def test_from_native_case_2(self) -> None:
         # python -m pytest tests/unit/time/test_time.py -s -v -k test_from_native_case_2
         native = time(12, 34, 56, 789123, FixedOffset(0))
         t = Time.from_native(native)
@@ -329,7 +328,7 @@ class TestTime:
             Time(12, 34, 56, 789123123, FixedOffset(0))
         ),
     ))
-    def test_equality(self, t1, t2):
+    def test_equality(self, t1, t2) -> None:
         assert t1 == t2
         assert t2 == t1
         assert t1 <= t2
@@ -380,7 +379,7 @@ class TestTime:
             Time(12, 34, 56, 789123456, FixedOffset(0))
         ),
     ))
-    def test_inequality(self, t1, t2):
+    def test_inequality(self, t1, t2) -> None:
         assert t1 != t2
         assert t2 != t1
 
@@ -406,7 +405,7 @@ class TestTime:
             repeat=2
         )
     )
-    def test_hashed_equality(self, t1, t2):
+    def test_hashed_equality(self, t1, t2) -> None:
         if t1 == t2:
             s = {t1}
             assert t1 in s
@@ -438,7 +437,9 @@ class TestTime:
     @pytest.mark.parametrize("op", (
         operator.lt, operator.le, operator.gt, operator.ge,
     ))
-    def test_comparison_with_only_one_naive_fails(self, t1, t2, tz, op):
+    def test_comparison_with_only_one_naive_fails(
+        self, t1, t2, tz, op
+    ) -> None:
         t1 = t1.replace(tzinfo=tz)
         with pytest.raises(TypeError, match="naive"):
             op(t1, t2)
@@ -460,7 +461,9 @@ class TestTime:
     @pytest.mark.parametrize("op", (
         operator.lt, operator.le, operator.gt, operator.ge,
     ))
-    def test_comparison_with_one_naive_and_not_fixed_tz(self, t1, t2, tz, op):
+    def test_comparison_with_one_naive_and_not_fixed_tz(
+        self, t1, t2, tz, op
+    ) -> None:
         t1tz = t1.replace(tzinfo=tz)
         res = op(t1tz, t2)
         expected = op(t1, t2)
@@ -505,7 +508,7 @@ class TestTime:
             Time(12, 34, 56, 789123001, FixedOffset(-1)),
         ),
     ))
-    def test_comparison(self, t1, t2):
+    def test_comparison(self, t1, t2) -> None:
         assert t1 < t2
         assert not t2 < t1
         assert t1 <= t2

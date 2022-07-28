@@ -16,6 +16,16 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
+import typing as t
+
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
+    import ssl
+
 from .._async_compat.util import AsyncUtil
 from .._conf import (
     Config,
@@ -33,125 +43,175 @@ from .._meta import (
 )
 from ..addressing import Address
 from ..api import (
+    Auth,
+    Bookmarks,
+    DRIVER_BOLT,
+    DRIVER_NEO4J,
+    parse_neo4j_uri,
+    parse_routing_context,
     READ_ACCESS,
+    SECURITY_TYPE_SECURE,
+    SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
+    ServerInfo,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    URI_SCHEME_BOLT,
+    URI_SCHEME_BOLT_SECURE,
+    URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
+    URI_SCHEME_NEO4J,
+    URI_SCHEME_NEO4J_SECURE,
+    URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
 )
+from .work import AsyncSession
 
 
 class AsyncGraphDatabase:
     """Accessor for :class:`neo4j.Driver` construction.
     """
 
-    @classmethod
-    @AsyncUtil.experimental_async(
-        "neo4j async is in experimental phase. It might be removed or changed "
-        "at any time (including patch releases)."
-    )
-    def driver(cls, uri, *, auth=None, **config):
-        """Create a driver.
+    if t.TYPE_CHECKING:
 
-        :param uri: the connection URI for the driver, see :ref:`async-uri-ref` for available URIs.
-        :param auth: the authentication details, see :ref:`auth-ref` for available authentication details.
-        :param config: driver configuration key-word arguments, see :ref:`async-driver-configuration-ref` for available key-word arguments.
+        @classmethod
+        def driver(
+            cls,
+            uri: str,
+            *,
+            auth: t.Union[t.Tuple[t.Any, t.Any], Auth, None] = ...,
+            max_connection_lifetime: float = ...,
+            max_connection_pool_size: int = ...,
+            connection_timeout: float = ...,
+            update_routing_table_timeout: float = ...,
+            trust: t.Union[
+                te.Literal["TRUST_ALL_CERTIFICATES"],
+                te.Literal["TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"]
+            ] = ...,
+            resolver: t.Union[
+                t.Callable[[Address], t.Iterable[Address]],
+                t.Callable[[Address], t.Awaitable[t.Iterable[Address]]],
+            ] = ...,
+            encrypted: bool = ...,
+            trusted_certificates: TrustStore = ...,
+            ssl_context: ssl.SSLContext = ...,
+            user_agent: str = ...,
+            keep_alive: bool = ...,
 
-        :rtype: AsyncNeo4jDriver or AsyncBoltDriver
-        """
+            # undocumented/unsupported options
+            session_connection_timeout: float = ...,
+            connection_acquisition_timeout: float = ...,
+            max_transaction_retry_time: float = ...,
+            initial_retry_delay: float = ...,
+            retry_delay_multiplier: float = ...,
+            retry_delay_jitter_factor: float = ...,
+            database: t.Optional[str] = ...,
+            fetch_size: int = ...,
+            impersonated_user: t.Optional[str] = ...
+        ) -> AsyncDriver:
+            ...
 
-        from ..api import (
-            DRIVER_BOLT,
-            DRIVER_NEO4j,
-            parse_neo4j_uri,
-            parse_routing_context,
-            SECURITY_TYPE_SECURE,
-            SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
-            URI_SCHEME_BOLT,
-            URI_SCHEME_BOLT_SECURE,
-            URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
-            URI_SCHEME_NEO4J,
-            URI_SCHEME_NEO4J_SECURE,
-            URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
+    else:
+
+        @classmethod
+        @AsyncUtil.experimental_async(
+            "neo4j async is in experimental phase. It might be removed or "
+            "changed at any time (including patch releases)."
         )
+        def driver(
+            cls,
+            uri: str,
+            *,
+            auth: t.Union[t.Tuple[t.Any, t.Any], Auth] = None,
+            **config  # TODO: type config
+        ) -> AsyncDriver:
+            """Create a driver.
 
-        driver_type, security_type, parsed = parse_neo4j_uri(uri)
+            :param uri: the connection URI for the driver, see :ref:`async-uri-ref` for available URIs.
+            :param auth: the authentication details, see :ref:`auth-ref` for available authentication details.
+            :param config: driver configuration key-word arguments, see :ref:`async-driver-configuration-ref` for available key-word arguments.
+            """
 
-        # TODO: 6.0 remove "trust" config option
-        if "trust" in config.keys():
-            if config["trust"] not in (TRUST_ALL_CERTIFICATES,
-                                       TRUST_SYSTEM_CA_SIGNED_CERTIFICATES):
+            driver_type, security_type, parsed = parse_neo4j_uri(uri)
+
+            # TODO: 6.0 remove "trust" config option
+            if "trust" in config.keys():
+                if config["trust"] not in (
+                    TRUST_ALL_CERTIFICATES,
+                    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
+                ):
+                    from neo4j.exceptions import ConfigurationError
+                    raise ConfigurationError(
+                        "The config setting `trust` values are {!r}"
+                        .format(
+                            [
+                                TRUST_ALL_CERTIFICATES,
+                                TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+                            ]
+                        )
+                    )
+
+            if ("trusted_certificates" in config.keys()
+                and not isinstance(config["trusted_certificates"],
+                                   TrustStore)):
+                raise ConnectionError(
+                    "The config setting `trusted_certificates` must be of "
+                    "type neo4j.TrustAll, neo4j.TrustCustomCAs, or"
+                    "neo4j.TrustSystemCAs but was {}".format(
+                        type(config["trusted_certificates"])
+                    )
+                )
+
+            if (security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE]
+                and ("encrypted" in config.keys()
+                     or "trust" in config.keys()
+                     or "trusted_certificates" in config.keys()
+                     or "ssl_context" in config.keys())):
                 from neo4j.exceptions import ConfigurationError
+
+                # TODO: 6.0 remove "trust" from error message
                 raise ConfigurationError(
-                    "The config setting `trust` values are {!r}"
+                    'The config settings "encrypted", "trust", '
+                    '"trusted_certificates", and "ssl_context" can only be '
+                    "used with the URI schemes {!r}. Use the other URI "
+                    "schemes {!r} for setting encryption settings."
                     .format(
                         [
-                            TRUST_ALL_CERTIFICATES,
-                            TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+                            URI_SCHEME_BOLT,
+                            URI_SCHEME_NEO4J,
+                        ],
+                        [
+                            URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
+                            URI_SCHEME_BOLT_SECURE,
+                            URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
+                            URI_SCHEME_NEO4J_SECURE,
                         ]
                     )
                 )
 
-        if ("trusted_certificates" in config.keys()
-            and not isinstance(config["trusted_certificates"],
-                               TrustStore)):
-            raise ConnectionError(
-                "The config setting `trusted_certificates` must be of type "
-                "neo4j.TrustAll, neo4j.TrustCustomCAs, or"
-                "neo4j.TrustSystemCAs but was {}".format(
-                    type(config["trusted_certificates"])
-                )
-            )
+            if security_type == SECURITY_TYPE_SECURE:
+                config["encrypted"] = True
+            elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
+                config["encrypted"] = True
+                config["trusted_certificates"] = TrustAll()
 
-        if (security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE]
-            and ("encrypted" in config.keys()
-                 or "trust" in config.keys()
-                 or "trusted_certificates" in config.keys()
-                 or "ssl_context" in config.keys())):
-            from neo4j.exceptions import ConfigurationError
-
-            # TODO: 6.0 remove "trust" from error message
-            raise ConfigurationError(
-                'The config settings "encrypted", "trust", '
-                '"trusted_certificates", and "ssl_context" can only be used '
-                "with the URI schemes {!r}. Use the other URI schemes {!r} "
-                "for setting encryption settings."
-                .format(
-                    [
-                        URI_SCHEME_BOLT,
-                        URI_SCHEME_NEO4J,
-                    ],
-                    [
-                        URI_SCHEME_BOLT_SELF_SIGNED_CERTIFICATE,
-                        URI_SCHEME_BOLT_SECURE,
-                        URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
-                        URI_SCHEME_NEO4J_SECURE,
-                    ]
-                )
-            )
-
-        if security_type == SECURITY_TYPE_SECURE:
-            config["encrypted"] = True
-        elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
-            config["encrypted"] = True
-            config["trusted_certificates"] = TrustAll()
-
-        if driver_type == DRIVER_BOLT:
-            if parse_routing_context(parsed.query):
-                deprecation_warn(
-                    "Creating a direct driver (`bolt://` scheme) with routing "
-                    "context (URI parameters) is deprecated. They will be "
-                    "ignored. This will raise an error in a future release. "
-                    'Given URI "{}"'.format(uri),
-                    stack_level=2
-                )
-                # TODO: 6.0 - raise instead of warning
-                # raise ValueError(
-                #     'Routing parameters are not supported with scheme '
-                #     '"bolt". Given URI "{}".'.format(uri)
-                # )
-            return cls.bolt_driver(parsed.netloc, auth=auth, **config)
-        elif driver_type == DRIVER_NEO4j:
+            assert driver_type in (DRIVER_BOLT, DRIVER_NEO4J)
+            if driver_type == DRIVER_BOLT:
+                if parse_routing_context(parsed.query):
+                    deprecation_warn(
+                        "Creating a direct driver (`bolt://` scheme) with "
+                        "routing context (URI parameters) is deprecated. They "
+                        "will be ignored. This will raise an error in a "
+                        'future release. Given URI "{}"'.format(uri),
+                        stack_level=2
+                    )
+                    # TODO: 6.0 - raise instead of warning
+                    # raise ValueError(
+                    #     'Routing parameters are not supported with scheme '
+                    #     '"bolt". Given URI "{}".'.format(uri)
+                    # )
+                return cls.bolt_driver(parsed.netloc, auth=auth, **config)
+            # else driver_type == DRIVER_NEO4J
             routing_context = parse_routing_context(parsed.query)
-            return cls.neo4j_driver(parsed.netloc, auth=auth, routing_context=routing_context, **config)
+            return cls.neo4j_driver(parsed.netloc, auth=auth,
+                                    routing_context=routing_context, **config)
 
     @classmethod
     def bolt_driver(cls, target, *, auth=None, **config):
@@ -243,7 +303,7 @@ class AsyncDriver:
     """
 
     #: Connection pool
-    _pool = None
+    _pool: t.Any = None
 
     #: Flag if the driver has been closed
     _closed = False
@@ -254,7 +314,7 @@ class AsyncDriver:
         self._pool = pool
         self._default_workspace_config = default_workspace_config
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> AsyncDriver:
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
@@ -276,31 +336,49 @@ class AsyncDriver:
                 self.close()
 
     @property
-    def encrypted(self):
-        """Indicate whether the driver was configured to use encryption.
-
-        :rtype: bool"""
+    def encrypted(self) -> bool:
+        """Indicate whether the driver was configured to use encryption."""
         return bool(self._pool.pool_config.encrypted)
 
-    def session(self, **config):
-        """Create a session, see :ref:`async-session-construction-ref`
+    if t.TYPE_CHECKING:
 
-        :param config: session configuration key-word arguments,
-            see :ref:`async-session-configuration-ref` for available key-word
-            arguments.
+        def session(
+            self,
+            session_connection_timeout: float = ...,
+            connection_acquisition_timeout: float = ...,
+            max_transaction_retry_time: float = ...,
+            initial_retry_delay: float = ...,
+            retry_delay_multiplier: float = ...,
+            retry_delay_jitter_factor: float = ...,
+            database: t.Optional[str] = ...,
+            fetch_size: int = ...,
+            impersonated_user: t.Optional[str] = ...,
+            bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
+            default_access_mode: str = ...,
+        ) -> AsyncSession:
+            ...
 
-        :returns: new :class:`neo4j.AsyncSession` object
-        """
-        raise NotImplementedError
+    else:
 
-    async def close(self):
+        def session(self, **config) -> AsyncSession:
+            """Create a session, see :ref:`async-session-construction-ref`
+
+            :param config: session configuration key-word arguments,
+                see :ref:`async-session-configuration-ref` for available
+                key-word arguments.
+
+            :returns: new :class:`neo4j.AsyncSession` object
+            """
+            raise NotImplementedError
+
+    async def close(self) -> None:
         """ Shut down, closing any open connections in the pool.
         """
         await self._pool.close()
         self._closed = True
 
     # TODO: 6.0 - remove config argument
-    async def verify_connectivity(self, **config):
+    async def verify_connectivity(self, **config) -> None:
         """Verify that the driver can establish a connection to the server.
 
         This verifies if the driver can establish a reading connection to a
@@ -337,7 +415,7 @@ class AsyncDriver:
         async with self.session(**config) as session:
             await session._get_server_info()
 
-    async def get_server_info(self, **config):
+    async def get_server_info(self, **config) -> ServerInfo:
         """Get information about the connected Neo4j server.
 
         Try to establish a working read connection to the remote server or a
@@ -378,11 +456,10 @@ class AsyncDriver:
             return await session._get_server_info()
 
     @experimental("Feature support query, based on Bolt protocol version and Neo4j server version will change in the future.")
-    async def supports_multi_db(self):
+    async def supports_multi_db(self) -> bool:
         """ Check if the server or cluster supports multi-databases.
 
         :return: Returns true if the server or cluster the driver connects to supports multi-databases, otherwise false.
-        :rtype: bool
 
         .. note::
             Feature support query, based on Bolt Protocol Version and Neo4j
@@ -390,6 +467,7 @@ class AsyncDriver:
         """
         async with self.session() as session:
             await session._connect(READ_ACCESS)
+            assert session._connection
             return session._connection.supports_multiple_databases
 
 
@@ -426,17 +504,20 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
         AsyncDriver.__init__(self, pool, default_workspace_config)
         self._default_workspace_config = default_workspace_config
 
-    def session(self, **config):
-        """
-        :param config: The values that can be specified are found in :class: `neo4j.SessionConfig`
+    if not t.TYPE_CHECKING:
 
-        :return:
-        :rtype: :class: `neo4j.AsyncSession`
-        """
-        from .work import AsyncSession
-        session_config = SessionConfig(self._default_workspace_config, config)
-        SessionConfig.consume(config)  # Consume the config
-        return AsyncSession(self._pool, session_config)
+        def session(self, **config) -> AsyncSession:
+            """
+            :param config: The values that can be specified are found in
+                :class: `neo4j.SessionConfig`
+
+            :return:
+            :rtype: :class: `neo4j.AsyncSession`
+            """
+            session_config = SessionConfig(self._default_workspace_config,
+                                           config)
+            SessionConfig.consume(config)  # Consume the config
+            return AsyncSession(self._pool, session_config)
 
 
 class AsyncNeo4jDriver(_Routing, AsyncDriver):
@@ -462,8 +543,10 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
         _Routing.__init__(self, pool.get_default_database_initial_router_addresses())
         AsyncDriver.__init__(self, pool, default_workspace_config)
 
-    def session(self, **config):
-        from .work import AsyncSession
-        session_config = SessionConfig(self._default_workspace_config, config)
-        SessionConfig.consume(config)  # Consume the config
-        return AsyncSession(self._pool, session_config)
+    if not t.TYPE_CHECKING:
+
+        def session(self, **config) -> AsyncSession:
+            session_config = SessionConfig(self._default_workspace_config,
+                                           config)
+            SessionConfig.consume(config)  # Consume the config
+            return AsyncSession(self._pool, session_config)

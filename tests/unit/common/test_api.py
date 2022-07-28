@@ -16,8 +16,10 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import itertools
-from contextlib import contextmanager
+import typing as t
 
 import pytest
 
@@ -29,12 +31,12 @@ standard_ascii = [chr(i) for i in range(128)]
 not_ascii = "♥O◘♦♥O◘♦"
 
 
-def test_bookmark_is_deprecated():
+def test_bookmark_is_deprecated() -> None:
     with pytest.deprecated_call():
         neo4j.Bookmark()
 
 
-def test_bookmark_initialization_with_no_values():
+def test_bookmark_initialization_with_no_values() -> None:
     with pytest.deprecated_call():
         bookmark = neo4j.Bookmark()
     assert bookmark.values == frozenset()
@@ -52,7 +54,9 @@ def test_bookmark_initialization_with_no_values():
         ((None, "bookmark1", None, "bookmark2", None, None, "bookmark3"), frozenset({"bookmark1", "bookmark2", "bookmark3"}), True, "<Bookmark values={'bookmark1', 'bookmark2', 'bookmark3'}>"),
     ]
 )
-def test_bookmark_initialization_with_values_none(test_input, expected_values, expected_bool, expected_repr):
+def test_bookmark_initialization_with_values_none(
+    test_input, expected_values, expected_bool, expected_repr
+) -> None:
     with pytest.deprecated_call():
         bookmark = neo4j.Bookmark(*test_input)
     assert bookmark.values == expected_values
@@ -70,7 +74,9 @@ def test_bookmark_initialization_with_values_none(test_input, expected_values, e
         (("", "bookmark1", "", "bookmark2", "", "", "bookmark3"), frozenset({"bookmark1", "bookmark2", "bookmark3"}), True, "<Bookmark values={'bookmark1', 'bookmark2', 'bookmark3'}>"),
     ]
 )
-def test_bookmark_initialization_with_values_empty_string(test_input, expected_values, expected_bool, expected_repr):
+def test_bookmark_initialization_with_values_empty_string(
+    test_input, expected_values, expected_bool, expected_repr
+) -> None:
     with pytest.deprecated_call():
         bookmark = neo4j.Bookmark(*test_input)
     assert bookmark.values == expected_values
@@ -86,7 +92,9 @@ def test_bookmark_initialization_with_values_empty_string(test_input, expected_v
         (standard_ascii, frozenset(standard_ascii), True, "<Bookmark values={{'{values}'}}>".format(values="', '".join(standard_ascii)))
     ]
 )
-def test_bookmark_initialization_with_valid_strings(test_input, expected_values, expected_bool, expected_repr):
+def test_bookmark_initialization_with_valid_strings(
+    test_input, expected_values, expected_bool, expected_repr
+) -> None:
     with pytest.deprecated_call():
         bookmark = neo4j.Bookmark(*test_input)
     assert bookmark.values == expected_values
@@ -94,35 +102,31 @@ def test_bookmark_initialization_with_valid_strings(test_input, expected_values,
     assert repr(bookmark) == expected_repr
 
 
-@pytest.mark.parametrize(
-    "test_input, expected",
+_bm_input_mark = pytest.mark.parametrize(
+    ("test_input", "expected"),
     [
         ((not_ascii,), ValueError),
         (("", not_ascii,), ValueError),
         (("bookmark1", chr(129),), ValueError),
     ]
 )
-@pytest.mark.parametrize(("method", "deprecated", "splat_args"), (
-    (neo4j.Bookmark, True, True),
-    (neo4j.Bookmarks.from_raw_values, False, False),
-))
-def test_bookmark_initialization_with_invalid_strings(
-    test_input, expected, method, deprecated, splat_args
-):
-    @contextmanager
-    def deprecation_assertion():
-        if deprecated:
-            with pytest.warns(DeprecationWarning):
-                yield
-        else:
-            yield
 
+
+@_bm_input_mark
+def test_bookmark_initialization_with_invalid_strings(
+    test_input: t.Tuple[str], expected
+) -> None:
     with pytest.raises(expected):
-        with deprecation_assertion():
-            if splat_args:
-                method(*test_input)
-            else:
-                method(test_input)
+        with pytest.warns(DeprecationWarning):
+            neo4j.Bookmark(*test_input)
+
+
+@_bm_input_mark
+def test_bookmarks_initialization_with_invalid_strings(
+    test_input: t.Tuple[str], expected
+) -> None:
+    with pytest.raises(expected):
+        neo4j.Bookmarks.from_raw_values(test_input)
 
 
 @pytest.mark.parametrize("test_as_generator", [True, False])
@@ -136,7 +140,7 @@ def test_bookmark_initialization_with_invalid_strings(
     ("bookmark1",),
     (),
 ))
-def test_bookmarks_raw_values(test_as_generator, values):
+def test_bookmarks_raw_values(test_as_generator, values) -> None:
     expected = frozenset(values)
     if test_as_generator:
         values = (v for v in values)
@@ -160,7 +164,7 @@ def test_bookmarks_raw_values(test_as_generator, values):
     ((["bookmark1", "bookmark2"],), TypeError),
     ((not_ascii,), ValueError),
 ))
-def test_bookmarks_invalid_raw_values(values, exc_type):
+def test_bookmarks_invalid_raw_values(values, exc_type) -> None:
     with pytest.raises(exc_type):
         neo4j.Bookmarks().from_raw_values(values)
 
@@ -171,7 +175,7 @@ def test_bookmarks_invalid_raw_values(values, exc_type):
     (("bm42",), "<Bookmarks values={'bm42'}>"),
     ((), "<Bookmarks values={}>"),
 ))
-def test_bookmarks_repr(values, expected_repr):
+def test_bookmarks_repr(values, expected_repr) -> None:
     bookmarks = neo4j.Bookmarks().from_raw_values(values)
     assert repr(bookmarks) == expected_repr
 
@@ -188,7 +192,7 @@ def test_bookmarks_repr(values, expected_repr):
          2
      ))
 ))
-def test_bookmarks_combination(values1, values2):
+def test_bookmarks_combination(values1, values2) -> None:
     bookmarks1 = neo4j.Bookmarks().from_raw_values(values1)
     bookmarks2 = neo4j.Bookmarks().from_raw_values(values2)
     bookmarks3 = bookmarks1 + bookmarks2
@@ -209,7 +213,9 @@ def test_bookmarks_combination(values1, values2):
         ((3, 0, 0, 0), "3.0.0.0", "Version(3, 0, 0, 0)"),
     ]
 )
-def test_version_initialization(test_input, expected_str, expected_repr):
+def test_version_initialization(
+    test_input, expected_str, expected_repr
+) -> None:
     version = neo4j.Version(*test_input)
     assert str(version) == expected_str
     assert repr(version) == expected_repr
@@ -225,7 +231,9 @@ def test_version_initialization(test_input, expected_str, expected_repr):
         (bytearray([0, 0, 254, 254]), "254.254", "Version(254, 254)"),
     ]
 )
-def test_version_from_bytes_with_valid_bolt_version_handshake(test_input, expected_str, expected_repr):
+def test_version_from_bytes_with_valid_bolt_version_handshake(
+    test_input, expected_str, expected_repr
+) -> None:
     version = neo4j.Version.from_bytes(test_input)
     assert str(version) == expected_str
     assert repr(version) == expected_repr
@@ -241,9 +249,11 @@ def test_version_from_bytes_with_valid_bolt_version_handshake(test_input, expect
         (bytearray([1, 1, 0, 0]), ValueError),
     ]
 )
-def test_version_from_bytes_with_not_valid_bolt_version_handshake(test_input, expected):
+def test_version_from_bytes_with_not_valid_bolt_version_handshake(
+    test_input, expected
+) -> None:
     with pytest.raises(expected):
-        version = neo4j.Version.from_bytes(test_input)
+        _ = neo4j.Version.from_bytes(test_input)
 
 
 @pytest.mark.parametrize(
@@ -258,12 +268,14 @@ def test_version_from_bytes_with_not_valid_bolt_version_handshake(test_input, ex
         ((255, 255), bytearray([0, 0, 255, 255])),
     ]
 )
-def test_version_to_bytes_with_valid_bolt_version(test_input, expected):
+def test_version_to_bytes_with_valid_bolt_version(
+    test_input, expected
+) -> None:
     version = neo4j.Version(*test_input)
     assert version.to_bytes() == expected
 
 
-def test_serverinfo_initialization():
+def test_serverinfo_initialization() -> None:
 
     from neo4j.addressing import Address
 
@@ -273,7 +285,6 @@ def test_serverinfo_initialization():
     server_info = neo4j.ServerInfo(address, version)
     assert server_info.address is address
     assert server_info.protocol_version is version
-    assert server_info.agent is None
     with pytest.warns(DeprecationWarning):
         assert server_info.connection_id is None
 
@@ -287,8 +298,9 @@ def test_serverinfo_initialization():
     ]
 )
 @pytest.mark.parametrize("protocol_version", ((3, 0), (4, 3), (42, 1337)))
-def test_serverinfo_with_metadata(test_input, expected_agent,
-                                  protocol_version):
+def test_serverinfo_with_metadata(
+    test_input, expected_agent, protocol_version
+) -> None:
     from neo4j.addressing import Address
 
     address = Address(("bolt://localhost", 7687))
@@ -308,18 +320,20 @@ def test_serverinfo_with_metadata(test_input, expected_agent,
         ("bolt://localhost:7676", neo4j.api.DRIVER_BOLT, neo4j.api.SECURITY_TYPE_NOT_SECURE, None),
         ("bolt+ssc://localhost:7676", neo4j.api.DRIVER_BOLT, neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, None),
         ("bolt+s://localhost:7676", neo4j.api.DRIVER_BOLT, neo4j.api.SECURITY_TYPE_SECURE, None),
-        ("neo4j://localhost:7676", neo4j.api.DRIVER_NEO4j, neo4j.api.SECURITY_TYPE_NOT_SECURE, None),
-        ("neo4j+ssc://localhost:7676", neo4j.api.DRIVER_NEO4j, neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, None),
-        ("neo4j+s://localhost:7676", neo4j.api.DRIVER_NEO4j, neo4j.api.SECURITY_TYPE_SECURE, None),
+        ("neo4j://localhost:7676", neo4j.api.DRIVER_NEO4J, neo4j.api.SECURITY_TYPE_NOT_SECURE, None),
+        ("neo4j+ssc://localhost:7676", neo4j.api.DRIVER_NEO4J, neo4j.api.SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, None),
+        ("neo4j+s://localhost:7676", neo4j.api.DRIVER_NEO4J, neo4j.api.SECURITY_TYPE_SECURE, None),
         ("undefined://localhost:7676", None, None, ConfigurationError),
         ("localhost:7676", None, None, ConfigurationError),
         ("://localhost:7676", None, None, ConfigurationError),
-        ("bolt+routing://localhost:7676", neo4j.api.DRIVER_NEO4j, neo4j.api.SECURITY_TYPE_NOT_SECURE, ConfigurationError),
+        ("bolt+routing://localhost:7676", neo4j.api.DRIVER_NEO4J, neo4j.api.SECURITY_TYPE_NOT_SECURE, ConfigurationError),
         ("bolt://username@localhost:7676", None, None, ConfigurationError),
         ("bolt://username:password@localhost:7676", None, None, ConfigurationError),
     ]
 )
-def test_uri_scheme(test_input, expected_driver_type, expected_security_type, expected_error):
+def test_uri_scheme(
+    test_input, expected_driver_type, expected_security_type, expected_error
+) -> None:
     if expected_error:
         with pytest.raises(expected_error):
             neo4j.api.parse_neo4j_uri(test_input)
@@ -329,16 +343,16 @@ def test_uri_scheme(test_input, expected_driver_type, expected_security_type, ex
         assert security_type == expected_security_type
 
 
-def test_parse_routing_context():
+def test_parse_routing_context() -> None:
     context = neo4j.api.parse_routing_context(query="name=molly&color=white")
     assert context == {"name": "molly", "color": "white"}
 
 
-def test_parse_routing_context_should_error_when_value_missing():
+def test_parse_routing_context_should_error_when_value_missing() -> None:
     with pytest.raises(ConfigurationError):
         neo4j.api.parse_routing_context("name=&color=white")
 
 
-def test_parse_routing_context_should_error_when_key_duplicate():
+def test_parse_routing_context_should_error_when_key_duplicate() -> None:
     with pytest.raises(ConfigurationError):
         neo4j.api.parse_routing_context("name=molly&name=white")

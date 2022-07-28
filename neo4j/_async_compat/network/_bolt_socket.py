@@ -16,11 +16,13 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import selectors
-import socket
 import struct
+import typing as t
 from socket import (
     AF_INET,
     AF_INET6,
@@ -34,8 +36,10 @@ from ssl import (
     CertificateError,
     HAS_SNI,
     SSLError,
+    SSLSocket,
 )
-from time import perf_counter
+
+import typing_extensions as te
 
 from ... import addressing
 from ..._deadline import Deadline
@@ -68,7 +72,7 @@ def _sanitize_deadline(deadline):
 
 
 class AsyncBoltSocket:
-    Bolt = None
+    Bolt: te.Final[t.Type] = None  # type: ignore[assignment]
 
     def __init__(self, reader, protocol, writer):
         self._reader = reader  # type: asyncio.StreamReader
@@ -372,7 +376,7 @@ class AsyncBoltSocket:
 
 
 class BoltSocket:
-    Bolt = None
+    Bolt: te.Final[t.Type] = None  # type: ignore[assignment]
 
     def __init__(self, socket_: socket):
         self._socket = socket_
@@ -383,12 +387,12 @@ class BoltSocket:
         return self.__socket
 
     @_socket.setter
-    def _socket(self, socket_: socket):
+    def _socket(self, socket_: t.Union[socket, SSLSocket]):
         self.__socket = socket_
         self.getsockname = socket_.getsockname
         self.getpeername = socket_.getpeername
         if hasattr(socket, "getpeercert"):
-            self.getpeercert = socket_.getpeercert
+            self.getpeercert = socket_.getpeercert  # type: ignore
         elif hasattr(self, "getpeercert"):
             del self.getpeercert
         self.gettimeout = socket_.gettimeout
