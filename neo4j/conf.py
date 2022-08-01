@@ -21,9 +21,13 @@
 
 from abc import ABCMeta
 from collections.abc import Mapping
+import warnings
 from warnings import warn
 
-from neo4j.meta import get_user_agent
+from neo4j.meta import (
+    deprecation_warn,
+    get_user_agent,
+)
 
 from neo4j.api import (
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
@@ -57,43 +61,57 @@ class DeprecatedAlias:
         self.new = new
 
 
+class DeprecatedOption:
+
+    def __init__(self, value):
+        self.value = value
+
+
 class ConfigType(ABCMeta):
 
     def __new__(mcs, name, bases, attributes):
         fields = []
         deprecated_aliases = {}
+        deprecated_options = {}
 
         for base in bases:
             if type(base) is mcs:
                 fields += base.keys()
                 deprecated_aliases.update(base._deprecated_aliases())
+                deprecated_options.update(base._deprecated_options())
 
         for k, v in attributes.items():
             if isinstance(v, DeprecatedAlias):
                 deprecated_aliases[k] = v.new
             elif not k.startswith("_") and not callable(v):
                 fields.append(k)
+            if isinstance(v, DeprecatedOption):
+                deprecated_options[k] = v.value
 
         def keys(_):
-            return fields
+            return set(fields)
 
         def _deprecated_aliases(_):
             return deprecated_aliases
 
+        def _deprecated_options(_):
+            return deprecated_options
+
         def _deprecated_keys(_):
-            return list(deprecated_aliases)
+            return set(deprecated_aliases.keys())
 
         def _get_new(_, key):
             return deprecated_aliases.get(key)
 
         attributes.setdefault("keys", classmethod(keys))
         attributes.setdefault("_deprecated_aliases", classmethod(_deprecated_aliases))
+        attributes.setdefault("_deprecated_options", classmethod(_deprecated_options))
         attributes.setdefault("_deprecated_keys", classmethod(_deprecated_keys))
         attributes.setdefault("_get_new", classmethod(_get_new))
 
         return super(ConfigType, mcs).__new__(mcs, name, bases,
                                               {k: v for k, v in attributes.items()
-                                               if k not in deprecated_aliases})
+                                               if k not in _deprecated_keys(None)})
 
 
 class Config(Mapping, metaclass=ConfigType):
@@ -120,7 +138,7 @@ class Config(Mapping, metaclass=ConfigType):
     def _consume(cls, data):
         config = {}
         if data:
-            for key in list(cls.keys()) + list(cls._deprecated_keys()):
+            for key in cls.keys() | cls._deprecated_keys():
                 try:
                     value = data.pop(key)
                 except KeyError:
@@ -134,12 +152,19 @@ class Config(Mapping, metaclass=ConfigType):
 
         def set_attr(k, v):
             if k in self.keys():
+                if k in self._deprecated_options():
+                    deprecation_warn("The '{}' config key is "
+                                     "deprecated".format(k))
                 setattr(self, k, v)
             elif k in self._deprecated_keys():
                 k0 = self._get_new(k)
                 if k0 in data_dict:
-                    raise ValueError("Cannot specify both '{}' and '{}' in config".format(k0, k))
-                warn("The '{}' config key is deprecated, please use '{}' instead".format(k, k0))
+                    raise ValueError("Cannot specify both '{}' and '{}' in "
+                                     "config".format(k0, k))
+                deprecation_warn(
+                    "The '{}' config key is deprecated, please use "
+                    "'{}' instead".format(k, k0)
+                )
                 set_attr(k0, v)
             else:
                 raise AttributeError(k)
@@ -150,7 +175,13 @@ class Config(Mapping, metaclass=ConfigType):
 
     def __init__(self, *args, **kwargs):
         for arg in args:
-            self.__update(arg)
+            if isinstance(arg, Config):
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore",
+                                            category=DeprecationWarning)
+                    self.__update(arg)
+            else:
+                self.__update(arg)
         self.__update(kwargs)
 
     def __repr__(self):
@@ -186,7 +217,7 @@ class PoolConfig(Config):
     # The maximum amount of time to wait for a TCP connection to be established.
 
     #: Update Routing Table Timout
-    update_routing_table_timeout = 90.0  # seconds
+    update_routing_table_timeout = DeprecatedOption(90.0)  # seconds
     # The maximum amount of time to wait for updating the routing table.
     # This includes everything necessary for this to happen.
     # Including opening sockets, requesting and receiving the routing table,
@@ -264,7 +295,7 @@ class WorkspaceConfig(Config):
     """
 
     #: Session Connection Timeout
-    session_connection_timeout = float("inf")  # seconds
+    session_connection_timeout = DeprecatedOption(float("inf"))  # seconds
     # The maximum amount of time to wait for a session to obtain a usable
     # read/write connection. This includes everything necessary for this to
     # happen. Including fetching routing tables, opening sockets, etc.
