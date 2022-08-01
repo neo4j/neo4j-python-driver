@@ -36,6 +36,7 @@ Driver API Errors
     + ForbiddenOnReadOnlyDatabase
 
 + DriverError
+  + SessionError
   + TransactionError
     + TransactionNestingError
   + ResultError
@@ -357,6 +358,16 @@ class DriverError(Exception):
         return False
 
 
+# DriverError > SessionError
+class SessionError(DriverError):
+    """ Raised when an error occurs while using a session.
+    """
+
+    def __init__(self, session, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.session = session
+
+
 # DriverError > TransactionError
 class TransactionError(DriverError):
     """ Raised when an error occurs while using a transaction.
@@ -367,7 +378,7 @@ class TransactionError(DriverError):
         self.transaction = transaction
 
 
-# DriverError > TransactionNestingError
+# DriverError > TransactionError > TransactionNestingError
 class TransactionNestingError(TransactionError):
     """ Raised when transactions are nested incorrectly.
     """
@@ -411,8 +422,8 @@ class SessionExpired(DriverError):
     the purpose described by its original parameters.
     """
 
-    def __init__(self, session, *args, **kwargs):
-        super().__init__(session, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def is_retryable(self):
         return True

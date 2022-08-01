@@ -21,12 +21,18 @@ import collections
 import re
 import threading
 
+from neo4j._async_compat.shims import wait_for
+
 
 __all__ = [
     "AsyncCondition",
+    "AsyncCooperativeLock",
+    "AsyncCooperativeRLock",
     "AsyncLock",
     "AsyncRLock",
     "Condition",
+    "CooperativeLock",
+    "CooperativeRLock",
     "Lock",
     "RLock",
 ]
@@ -79,7 +85,14 @@ class AsyncRLock(asyncio.Lock):
         task = asyncio.ensure_future(acquire_coro)
         # yielding one cycle is as close to non-blocking as it gets
         # (at least without implementing the lock from the ground up)
-        await asyncio.sleep(0)
+        try:
+            await asyncio.sleep(0)
+        except asyncio.CancelledError:
+            # This is emulating non-blocking. There is no cancelling this!
+            # Still, we don't want to silently swallow the cancellation.
+            # Hence, we flag this task as cancelled again, so that the next
+            # `await` will raise the CancelledError.
+            asyncio.current_task().cancel()
         if task.done() and task.exception() is None:
             self._owner = me
             self._count = 1
@@ -108,7 +121,17 @@ class AsyncRLock(asyncio.Lock):
             await self._acquire(me)
             return True
         try:
-            await asyncio.wait_for(self._acquire(me), timeout)
+            fut = asyncio.ensure_future(self._acquire(me))
+            try:
+                await wait_for(fut, timeout)
+            except asyncio.CancelledError:
+                already_finished = not fut.cancel()
+                if already_finished:
+                    # Too late to cancel the acquisition.
+                    # This can only happen in Python 3.7's asyncio
+                    # as well as in our wait_for shim.
+                    self._release(me)
+                raise
             return True
         except asyncio.TimeoutError:
             return False
@@ -131,6 +154,131 @@ class AsyncRLock(asyncio.Lock):
         return self._release(me)
 
     async def __aexit__(self, t, v, tb):
+        self.release()
+
+
+class AsyncCooperativeLock:
+    """Lock placeholder for asyncio Python when working fully cooperatively.
+
+    This lock doesn't do anything in async Python. It's threaded counterpart,
+    however, is an ordinary :class:`threading.Lock`.
+    The AsyncCooperativeLock only works if there is no await being used
+    while the lock is acquired.
+    """
+
+    def __init__(self):
+        self._locked = False
+
+    def __repr__(self):
+        res = super().__repr__()
+        extra = "locked" if self._locked else "unlocked"
+        return f"<{res[1:-1]} [{extra}]>"
+
+    def locked(self):
+        """Return True if lock is acquired."""
+        return self._locked
+
+    def acquire(self):
+        """Acquire a lock.
+
+        This method will raise a RuntimeError where an ordinary
+        (non-placeholder) lock would need to block. I.e., when the lock is
+        already taken.
+
+        Returns True if the lock was successfully acquired.
+        """
+        if self._locked:
+            raise RuntimeError("Cannot acquire a locked cooperative lock.")
+        self._locked = True
+        return True
+
+    def release(self):
+        """Release a lock.
+
+        When the lock is locked, reset it to unlocked, and return.
+
+        When invoked on an unlocked lock, a RuntimeError is raised.
+
+        There is no return value.
+        """
+        if self._locked:
+            self._locked = False
+        else:
+            raise RuntimeError("Lock is not acquired.")
+
+    __enter__ = acquire
+
+    def __exit__(self, t, v, tb):
+        self.release()
+
+
+class AsyncCooperativeRLock:
+    """Reentrant lock placeholder for cooperative asyncio Python.
+
+    This lock doesn't do anything in async Python. It's threaded counterpart,
+    however, is an ordinary :class:`threading.Lock`.
+    The AsyncCooperativeLock only works if there is no await being used
+    while the lock is acquired.
+    """
+
+    def __init__(self):
+        self._owner = None
+        self._count = 0
+
+    def __repr__(self):
+        res = super().__repr__()
+        if self._owner is not None:
+            extra = f"locked {self._count} times by owner:{self._owner}"
+        else:
+            extra = "unlocked"
+        return f'<{res[1:-1]} [{extra}]>'
+
+    def locked(self):
+        """Return True if lock is acquired."""
+        return self._owner is not None
+
+    def acquire(self):
+        """Acquire a lock.
+
+        This method will raise a RuntimeError where an ordinary
+        (non-placeholder) lock would need to block. I.e., when the lock is
+        already taken by another Task.
+
+        Returns True if the lock was successfully acquired.
+        """
+        me = asyncio.current_task()
+        if self._owner is None:
+            self._owner = me
+            self._count = 1
+            return True
+        if self._owner is me:
+            self._count += 1
+            return True
+        raise RuntimeError(
+            "Cannot acquire a foreign locked cooperative lock."
+        )
+
+    def release(self):
+        """Release a lock.
+
+        When the lock is locked, reset it to unlocked, and return.
+
+        When invoked on an unlocked or foreign lock, a RuntimeError is raised.
+
+        There is no return value.
+        """
+        me = asyncio.current_task()
+        if self._owner is None:
+            raise RuntimeError("Lock is not acquired.")
+        if self._owner is not me:
+            raise RuntimeError("Cannot release a foreign lock.")
+        self._count -= 1
+        if not self._count:
+            self._owner = None
+
+    __enter__ = acquire
+
+    def __exit__(self, t, v, tb):
         self.release()
 
 
@@ -168,7 +316,11 @@ class AsyncCondition:
         self._waiters = collections.deque()
 
     async def __aenter__(self):
-        await self.acquire()
+        if isinstance(self._lock, (AsyncCooperativeLock,
+                                   AsyncCooperativeRLock)):
+            self._lock.acquire()
+        else:
+            await self.acquire()
         # We have no use for the "as ..."  clause in the with
         # statement for locks.
         return None
@@ -183,7 +335,7 @@ class AsyncCondition:
             extra = f'{extra}, waiters:{len(self._waiters)}'
         return f'<{res[1:-1]} [{extra}]>'
 
-    async def _wait(self, me=None):
+    async def _wait(self, timeout=None, me=None):
         """Wait until notified.
 
         If the calling coroutine has not acquired the lock when this
@@ -197,6 +349,7 @@ class AsyncCondition:
         if not self.locked():
             raise RuntimeError('cannot wait on un-acquired lock')
 
+        cancelled = False
         if isinstance(self._lock, AsyncRLock):
             self._lock._release(me)
         else:
@@ -205,36 +358,37 @@ class AsyncCondition:
             fut = self._loop.create_future()
             self._waiters.append(fut)
             try:
-                await fut
+                await wait_for(fut, timeout)
                 return True
+            except asyncio.TimeoutError:
+                return False
+            except asyncio.CancelledError:
+                cancelled = True
+                raise
             finally:
                 self._waiters.remove(fut)
 
         finally:
             # Must reacquire lock even if wait is cancelled
-            cancelled = False
-            while True:
-                try:
-                    if isinstance(self._lock, AsyncRLock):
-                        await self._lock._acquire(me)
-                    else:
-                        await self._lock.acquire()
-                    break
-                except asyncio.CancelledError:
-                    cancelled = True
-
+            if isinstance(self._lock, (AsyncCooperativeLock,
+                                       AsyncCooperativeRLock)):
+                self._lock.acquire()
+            else:
+                while True:
+                    try:
+                        if isinstance(self._lock, AsyncRLock):
+                            await self._lock._acquire(me)
+                        else:
+                            await self._lock.acquire()
+                        break
+                    except asyncio.CancelledError:
+                        cancelled = True
             if cancelled:
                 raise asyncio.CancelledError
 
     async def wait(self, timeout=None):
-        if not timeout:
-            return await self._wait()
         me = asyncio.current_task()
-        try:
-            await asyncio.wait_for(self._wait(me), timeout)
-            return True
-        except asyncio.TimeoutError:
-            return False
+        return await self._wait(timeout=timeout, me=me)
 
     def notify(self, n=1):
         """By default, wake up one coroutine waiting on this condition, if any.
@@ -270,5 +424,5 @@ class AsyncCondition:
 
 
 Condition = threading.Condition
-Lock = threading.Lock
-RLock = threading.RLock
+CooperativeLock = Lock = threading.Lock
+CooperativeRLock = RLock = threading.RLock

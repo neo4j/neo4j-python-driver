@@ -87,8 +87,9 @@
   they have been removed.
 - Deprecated Nodes' and Relationships' `id` property (`int`) in favor of
   `element_id` (`str`).  
-  This also affects `Graph` objects as `graph.nodes[...]` and
- `graph.relationships[...]` now prefers strings over integers.
+  This also affects `Graph` objects as indexing `graph.nodes[...]` and
+  `graph.relationships[...]` with integers has been deprecated in favor of
+  indexing them with strings.
 - `ServerInfo.connection_id` has been deprecated and will be removed in a
   future release. There is no replacement as this is considered internal
   information.
@@ -118,6 +119,8 @@
   be used by client code. `Record` should be imported directly from `neo4j`
   instead. `neo4j.data.DataHydrator` and `neo4j.data.DataDeydrator` have been
   removed without replacement.
+- Introduced `neo4j.exceptions.SessionError` that is raised when trying to
+  execute work on a closed or otherwise terminated session.
 
 
 ## Version 4.4
