@@ -18,7 +18,6 @@
 
 import asyncio
 import logging
-import socket
 from struct import pack as struct_pack
 
 from ..._async_compat.util import Util
@@ -64,8 +63,9 @@ class Inbox:
                 if chunk_size == 0:
                     # chunk_size was the end marker for the message
                     return
-
-        except (OSError, socket.timeout, SocketDeadlineExceeded) as error:
+        except (
+            OSError, SocketDeadlineExceeded, asyncio.CancelledError
+        ) as error:
             self._broken = True
             Util.callback(self.on_error, error)
             raise
@@ -139,8 +139,8 @@ class Outbox:
         if data:
             try:
                 self.socket.sendall(data)
-            except OSError as error:
-                self.on_error(error)
+            except (OSError, asyncio.CancelledError) as error:
+                Util.callback(self.on_error, error)
                 return False
             self._clear()
             return True
@@ -186,7 +186,8 @@ class ConnectionErrorHandler:
             def inner(*args, **kwargs):
                 try:
                     coroutine_func(*args, **kwargs)
-                except (Neo4jError, ServiceUnavailable, SessionExpired) as exc:
+                except (Neo4jError, ServiceUnavailable, SessionExpired,
+                        asyncio.CancelledError) as exc:
                     Util.callback(self.__on_error, exc)
                     raise
             return inner

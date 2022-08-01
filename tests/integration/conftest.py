@@ -33,7 +33,7 @@ def cypher_eval(driver):
         raise ForcedRollback(value)
 
     def f(cypher, **parameters):
-        with bolt_driver.session() as session:
+        with driver.session() as session:
             try:
                 session.write_transaction(run_and_rollback, cypher,
                                           **parameters)

@@ -16,7 +16,9 @@
 # limitations under the License.
 
 
+import asyncio
 import inspect
+from functools import wraps
 
 from .._meta import experimental
 
@@ -51,6 +53,16 @@ class AsyncUtil:
 
     experimental_async = experimental
 
+    @staticmethod
+    def shielded(coro_function):
+        assert asyncio.iscoroutinefunction(coro_function)
+
+        @wraps(coro_function)
+        async def shielded_function(*args, **kwargs):
+            return await asyncio.shield(coro_function(*args, **kwargs))
+
+        return shielded_function
+
     is_async_code = True
 
 
@@ -69,5 +81,9 @@ class Util:
         def f_(f):
             return f
         return f_
+
+    @staticmethod
+    def shielded(coro_function):
+        return coro_function
 
     is_async_code = False

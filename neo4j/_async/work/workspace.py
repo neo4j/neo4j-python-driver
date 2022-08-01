@@ -28,6 +28,7 @@ from ..._meta import (
 )
 from ...exceptions import (
     ServiceUnavailable,
+    SessionError,
     SessionExpired,
 )
 from ..io import AsyncNeo4jPool
@@ -127,8 +128,19 @@ class AsyncWorkspace:
                 self._connection = None
             self._connection_access_mode = None
 
-    async def close(self):
+    async def close(self) -> None:
         if self._closed:
             return
         await self._disconnect(sync=True)
         self._closed = True
+
+    def closed(self) -> bool:
+        """Indicate whether the session has been closed.
+
+        :return: :const:`True` if closed, :const:`False` otherwise.
+        """
+        return self._closed
+
+    def _check_state(self):
+        if self._closed:
+            raise SessionError(self, "Session closed")

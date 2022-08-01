@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import typing as t
 from functools import wraps
 
@@ -36,7 +37,8 @@ __all__ = (
 
 
 class AsyncTransactionBase:
-    def __init__(self, connection, fetch_size, on_closed, on_error):
+    def __init__(self, connection, fetch_size, on_closed, on_error,
+                 on_cancel):
         self._connection = connection
         self._error_handling_connection = ConnectionErrorHandler(
             connection, self._error_handler
@@ -48,6 +50,7 @@ class AsyncTransactionBase:
         self._fetch_size = fetch_size
         self._on_closed = on_closed
         self._on_error = on_error
+        self._on_cancel = on_cancel
 
     async def _enter(self):
         return self
@@ -58,6 +61,9 @@ class AsyncTransactionBase:
         success = not bool(exception_type)
         if success:
             await self._commit()
+        elif issubclass(exception_type, asyncio.CancelledError):
+            self._cancel()
+            return
         await self._close()
 
     async def _begin(
@@ -75,6 +81,9 @@ class AsyncTransactionBase:
 
     async def _error_handler(self, exc):
         self._last_error = exc
+        if isinstance(exc, asyncio.CancelledError):
+            self._cancel()
+            return
         await AsyncUtil.callback(self._on_error, exc)
 
     async def _consume_results(self):
@@ -159,6 +168,9 @@ class AsyncTransactionBase:
             await self._connection.send_all()
             await self._connection.fetch_all()
             self._bookmark = metadata.get("bookmark")
+        except asyncio.CancelledError:
+            self._on_cancel()
+            raise
         finally:
             self._closed_flag = True
             await AsyncUtil.callback(self._on_closed)
@@ -183,6 +195,9 @@ class AsyncTransactionBase:
                 self._connection.rollback(on_success=metadata.update)
                 await self._connection.send_all()
                 await self._connection.fetch_all()
+        except asyncio.CancelledError:
+            self._on_cancel()
+            raise
         finally:
             self._closed_flag = True
             await AsyncUtil.callback(self._on_closed)
@@ -194,10 +209,39 @@ class AsyncTransactionBase:
             return
         await self._rollback()
 
-    def _closed(self):
-        """Indicator to show whether the transaction has been closed.
+    if AsyncUtil.is_async_code:
+        def _cancel(self) -> None:
+            """Cancel this transaction.
 
-        :return: :const:`True` if closed, :const:`False` otherwise.
+            If the transaction is already closed, this method does nothing.
+            Else, it will close the connection without ROLLBACK or COMMIT in
+            a non-blocking manner.
+
+            The primary purpose of this function is to handle
+            :class:`asyncio.CancelledError`.
+
+            ::
+
+                tx = await session.begin_transaction()
+                try:
+                    ...  # do some work
+                except asyncio.CancelledError:
+                    tx.cancel()
+                    raise
+
+            """
+            if self._closed_flag:
+                return
+            try:
+                self._on_cancel()
+            finally:
+                self._closed_flag = True
+
+    def _closed(self):
+        """Indicate whether the transaction has been closed or cancelled.
+
+        :return:
+            :const:`True` if closed or cancelled, :const:`False` otherwise.
         :rtype: bool
         """
         return self._closed_flag
@@ -237,6 +281,11 @@ class AsyncTransaction(AsyncTransactionBase):
     @wraps(AsyncTransactionBase._closed)
     def closed(self) -> bool:
         return self._closed()
+
+    if AsyncUtil.is_async_code:
+        @wraps(AsyncTransactionBase._cancel)
+        def cancel(self) -> None:
+            return self._cancel()
 
 
 class AsyncManagedTransaction(AsyncTransactionBase):

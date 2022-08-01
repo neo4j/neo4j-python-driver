@@ -36,6 +36,7 @@ Driver API Errors
     + ForbiddenOnReadOnlyDatabase
 
 + DriverError
+  + SessionError
   + TransactionError
     + TransactionNestingError
   + ResultError
@@ -388,6 +389,18 @@ class DriverError(Exception):
         return False
 
 
+# DriverError > SessionError
+class SessionError(DriverError):
+    """ Raised when an error occurs while using a session.
+    """
+
+    session: _T_Session
+
+    def __init__(self, session_, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.session = session_
+
+
 # DriverError > TransactionError
 class TransactionError(DriverError):
     """ Raised when an error occurs while using a transaction.
@@ -400,7 +413,7 @@ class TransactionError(DriverError):
         self.transaction = transaction_
 
 
-# DriverError > TransactionNestingError
+# DriverError > TransactionError > TransactionNestingError
 class TransactionNestingError(TransactionError):
     """ Raised when transactions are nested incorrectly.
     """

@@ -287,6 +287,8 @@ To construct a :class:`neo4j.AsyncSession` use the :meth:`neo4j.AsyncDriver.sess
 
 
 Sessions will often be created and destroyed using a *with block context*.
+This is the recommended approach as it takes care of closing the session
+properly even when an exception is raised.
 
 .. code-block:: python
 
@@ -311,7 +313,42 @@ AsyncSession
 
 .. autoclass:: neo4j.AsyncSession()
 
+    .. note::
+
+        Some asyncio utility functions (e.g., :func:`asyncio.wait_for` and
+        :func:`asyncio.shield`) will wrap work in a :class:`asyncio.Task`.
+        This introduces concurrency and can lead to undefined behavior as
+        :class:`AsyncSession` is not concurrency-safe.
+
+        Consider this **wrong** example::
+
+            async def dont_do_this(driver):
+                async with driver.session() as session:
+                    await asyncio.shield(session.run("RETURN 1"))
+
+        If ``dont_do_this`` gets cancelled while waiting for ``session.run``,
+        ``session.run`` itself won't get cancelled (it's shielded) so it will
+        continue to use the session in another Task. Concurrently, will the
+        async context manager (``async with driver.session()``) on exit clean
+        up the session. That's two Tasks handling the session concurrently.
+        Therefore, this yields undefined behavior.
+
+        In this particular example, the problem could be solved by shielding
+        the whole coroutine ``dont_do_this`` instead of only the
+        ``session.run``. Like so::
+
+            async def thats_better(driver):
+                async def inner()
+                    async with driver.session() as session:
+                        await session.run("RETURN 1")
+
+                await asyncio.shield(inner())
+
     .. automethod:: close
+
+    .. automethod:: cancel
+
+    .. automethod:: closed
 
     .. automethod:: run
 
@@ -346,7 +383,7 @@ Neo4j supports three kinds of async transaction:
 + :ref:`async-explicit-transactions-ref`
 + :ref:`async-managed-transactions-ref`
 
-Each has pros and cons but if in doubt, use a managed transaction with a `transaction function`.
+Each has pros and cons but if in doubt, use a managed transaction with a *transaction function*.
 
 
 .. _async-auto-commit-transactions-ref:
@@ -354,7 +391,7 @@ Each has pros and cons but if in doubt, use a managed transaction with a `transa
 Auto-commit Transactions
 ========================
 Auto-commit transactions are the simplest form of transaction, available via
-:py:meth:`neo4j.Session.run`. These are easy to use but support only one
+:meth:`neo4j.Session.run`. These are easy to use but support only one
 statement per transaction and are not automatically retried on failure.
 
 Auto-commit transactions are also the only way to run ``PERIODIC COMMIT``
@@ -398,7 +435,7 @@ Example:
 
 Explicit Async Transactions
 ===========================
-Explicit transactions support multiple statements and must be created with an explicit :py:meth:`neo4j.AsyncSession.begin_transaction` call.
+Explicit transactions support multiple statements and must be created with an explicit :meth:`neo4j.AsyncSession.begin_transaction` call.
 
 This creates a new :class:`neo4j.AsyncTransaction` object that can be used to run Cypher.
 
@@ -408,16 +445,18 @@ It also gives applications the ability to directly control ``commit`` and ``roll
 
     .. automethod:: run
 
-    .. automethod:: close
-
-    .. automethod:: closed
-
     .. automethod:: commit
 
     .. automethod:: rollback
 
+    .. automethod:: close
+
+    .. automethod:: cancel
+
+    .. automethod:: closed
+
 Closing an explicit transaction can either happen automatically at the end of a ``async with`` block,
-or can be explicitly controlled through the :py:meth:`neo4j.AsyncTransaction.commit`, :py:meth:`neo4j.AsyncTransaction.rollback` or :py:meth:`neo4j.AsyncTransaction.close` methods.
+or can be explicitly controlled through the :meth:`neo4j.AsyncTransaction.commit`, :meth:`neo4j.AsyncTransaction.rollback`, :meth:`neo4j.AsyncTransaction.close` or :meth:`neo4j.AsyncTransaction.cancel` methods.
 
 Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction.
 
@@ -456,8 +495,8 @@ Managed Async Transactions (`transaction functions`)
 ====================================================
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
 
-+ :py:meth:`neo4j.AsyncSession.write_transaction`
-+ :py:meth:`neo4j.AsyncSession.read_transaction`
++ :meth:`neo4j.AsyncSession.write_transaction`
++ :meth:`neo4j.AsyncSession.read_transaction`
 
 These allow a function object representing the transactional unit of work to be passed as a parameter.
 This function is called one or more times, within a configurable time limit, until it succeeds.
@@ -531,3 +570,48 @@ A :class:`neo4j.AsyncResult` is attached to an active connection, through a :cla
     .. automethod:: closed
 
 See https://neo4j.com/docs/python-manual/current/cypher-workflow/#python-driver-type-mapping for more about type mapping.
+
+
+
+******************
+Async Cancellation
+******************
+
+Async Python provides a mechanism for cancelling futures
+(:meth:`asyncio.Future.cancel`). The driver and its components can handle this.
+However, generally, it's not advised to rely on cancellation as it forces the
+driver to close affected connections to avoid leaving them in an undefined
+state. This makes the driver less efficient.
+
+The easiest way to make sure your application code's interaction with the driver
+is playing nicely with cancellation is to always use the async context manager
+provided by :class:`neo4j.AsyncSession` like so: ::
+
+    async with driver.session() as session:
+        ...  # do what you need to do with the session
+
+If, for whatever reason, you need handle the session manually, you can it like
+so: ::
+
+    session = await with driver.session()
+    try:
+        ...  # do what you need to do with the session
+    except asyncio.CancelledError:
+        session.cancel()
+        raise
+    finally:
+        # this becomes a no-op if the session has been cancelled before
+        await session.close()
+
+As mentioned above, any cancellation of I/O work will cause the driver to close
+the affected connection. This will kill any :class:`neo4j.AsyncTransaction` and
+:class:`neo4j.AsyncResult` objects that are attached to that connection. Hence,
+after catching a :class:`asyncio.CancelledError`, you should not try to use
+transactions or results created earlier. They are likely to not be valid
+anymore.
+
+Furthermore, there is no guarantee as to whether a piece of ongoing work got
+successfully executed on the server side or not, when a cancellation happens:
+``await transaction.commit()`` and other methods can throw
+:exc:`asyncio.CancelledError` but still have managed to complete from the
+server's perspective.

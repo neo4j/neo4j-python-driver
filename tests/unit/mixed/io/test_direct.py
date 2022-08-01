@@ -32,6 +32,7 @@ from threading import (
 
 import pytest
 
+from neo4j._async_compat.shims import wait_for
 from neo4j._deadline import Deadline
 
 from ...async_.io.test_direct import AsyncFakeBoltPool
@@ -127,7 +128,7 @@ class AsyncMultiEvent:
                     if time_left <= 0:
                         return False
                 try:
-                    await asyncio.wait_for(self._cond.wait(), time_left)
+                    await wait_for(self._cond.wait(), time_left)
                 except asyncio.TimeoutError:
                     return False
 
