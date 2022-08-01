@@ -27,7 +27,9 @@ from socket import (
     getservbyname,
 )
 
-import typing_extensions as te
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
 
 
 log = logging.getLogger("neo4j")
@@ -36,8 +38,10 @@ log = logging.getLogger("neo4j")
 _T = t.TypeVar("_T")
 
 
-class _WithPeerName(te.Protocol):
-    def getpeername(self) -> tuple: ...
+if t.TYPE_CHECKING:
+
+    class _WithPeerName(te.Protocol):
+        def getpeername(self) -> tuple: ...
 
 
 assert type(tuple) is type

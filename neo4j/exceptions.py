@@ -76,19 +76,28 @@ if t.TYPE_CHECKING:
     import typing_extensions as te
 
     from ._async.work import (
+        AsyncManagedTransaction,
         AsyncResult,
         AsyncSession,
-        AsyncTransactionBase,
+        AsyncTransaction,
     )
     from ._sync.work import (
+        ManagedTransaction,
         Result,
         Session,
-        TransactionBase,
+        Transaction,
     )
 
-    _T_Transaction = t.Union[AsyncTransactionBase, TransactionBase]
+    _T_Transaction = t.Union[AsyncManagedTransaction, AsyncTransaction,
+                             ManagedTransaction, Transaction]
     _T_Result = t.Union[AsyncResult, Result]
     _T_Session = t.Union[AsyncSession, Session]
+else:
+    _T_Transaction = t.Union["AsyncManagedTransaction", "AsyncTransaction",
+                             "ManagedTransaction", "Transaction"]
+    _T_Result = t.Union["AsyncResult", "Result"]
+    _T_Session = t.Union["AsyncSession", "Session"]
+
 
 from ._meta import deprecated
 
@@ -384,12 +393,11 @@ class TransactionError(DriverError):
     """ Raised when an error occurs while using a transaction.
     """
 
-    def __init__(
-        self, transaction: _T_Transaction,
-        *args, **kwargs
-    ) -> None:
+    transaction: _T_Transaction
+
+    def __init__(self, transaction_, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.transaction = transaction
+        self.transaction = transaction_
 
 
 # DriverError > TransactionNestingError
@@ -397,23 +405,16 @@ class TransactionNestingError(TransactionError):
     """ Raised when transactions are nested incorrectly.
     """
 
-    def __init__(
-        self, transaction: _T_Transaction,
-        *args, **kwargs
-    ) -> None:
-        super().__init__(*args, **kwargs)
-        self.transaction = transaction
-
 
 # DriverError > ResultError
 class ResultError(DriverError):
     """Raised when an error occurs while using a result object."""
 
-    def __init__(
-        self, result: _T_Result, *args, **kwargs
-    ) -> None:
+    result: _T_Result
+
+    def __init__(self, result_, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.result = result
+        self.result = result_
 
 
 # DriverError > ResultError > ResultConsumedError
@@ -440,11 +441,6 @@ class SessionExpired(DriverError):
     """ Raised when a session is no longer able to fulfil
     the purpose described by its original parameters.
     """
-
-    def __init__(
-        self, session: _T_Session, *args, **kwargs
-    ) -> None:
-        super().__init__(session, *args, **kwargs)
 
     def is_retryable(self) -> bool:
         return True

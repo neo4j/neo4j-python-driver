@@ -22,7 +22,9 @@ import typing as t
 from collections import deque
 from warnings import warn
 
-import typing_extensions as te
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
 
 from ..._async_compat.util import Util
 from ..._codec.hydration import BrokenHydrationObject
@@ -50,7 +52,7 @@ if t.TYPE_CHECKING:
 
 
 _T = t.TypeVar("_T")
-_T_ResultKey: te.TypeAlias = t.Union[int, str]
+_T_ResultKey = t.Union[int, str]
 
 
 _RESULT_OUT_OF_SCOPE_ERROR = (

@@ -96,7 +96,6 @@ class GraphDatabase:
             keep_alive: bool = ...,
 
             # undocumented/unsupported options
-            # might be removed/changed without warning, even in patch versions
             session_connection_timeout: float = ...,
             connection_acquisition_timeout: float = ...,
             max_transaction_retry_time: float = ...,

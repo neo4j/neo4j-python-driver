@@ -41,7 +41,9 @@ from time import (
     struct_time,
 )
 
-import typing_extensions as te
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
 
 from ._arithmetic import (
     nano_add,
@@ -1218,7 +1220,6 @@ class Date(date_base_class, metaclass=DateType):
 
     # INSTANCE METHODS #
 
-
     if t.TYPE_CHECKING:
 
         def replace(
@@ -1567,6 +1568,7 @@ class Time(time_base_class, metaclass=TimeType):
     # CLASS METHOD ALIASES #
 
     if t.TYPE_CHECKING:
+
         @classmethod
         def from_iso_format(cls, s: str) -> Time:
             ...
@@ -1895,6 +1897,7 @@ class Time(time_base_class, metaclass=TimeType):
             raise AttributeError("Date has no attribute %r" % name)
 
     if t.TYPE_CHECKING:
+
         def isoformat(self) -> str:  # type: ignore[override]
             ...
 
@@ -2130,6 +2133,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
     # CLASS METHOD ALIASES #
 
     if t.TYPE_CHECKING:
+
         @classmethod
         def fromisoformat(cls, s) -> DateTime:
             ...
@@ -2161,8 +2165,6 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         @classmethod
         def utcnow(cls) -> DateTime:
             ...
-
-
 
     # CLASS ATTRIBUTES #
 
@@ -2665,6 +2667,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             raise AttributeError("DateTime has no attribute %r" % name)
 
     if t.TYPE_CHECKING:
+
         def astimezone( # type: ignore[override]
             self, tz: _tzinfo
         ) -> DateTime:

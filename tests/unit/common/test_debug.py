@@ -24,14 +24,19 @@ import sys
 import typing as t
 
 import pytest
-import typing_extensions as te
+
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
 
 from neo4j import debug as neo4j_debug
 
 
-class _TSetupMockProtocol(te.Protocol):
-    def __call__(self, *args: str) -> t.Sequence[t.Any]:
-        ...
+if t.TYPE_CHECKING:
+
+    class _TSetupMockProtocol(te.Protocol):
+        def __call__(self, *args: str) -> t.Sequence[t.Any]:
+            ...
 
 
 @pytest.fixture

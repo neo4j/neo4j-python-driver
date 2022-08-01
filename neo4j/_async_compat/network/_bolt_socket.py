@@ -39,7 +39,9 @@ from ssl import (
     SSLSocket,
 )
 
-import typing_extensions as te
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
 
 from ... import addressing
 from ..._deadline import Deadline

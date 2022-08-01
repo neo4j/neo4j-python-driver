@@ -42,9 +42,8 @@ from .graph import (
 )
 
 
-if t.TYPE_CHECKING:
-    _T = t.TypeVar("_T")
-    _T_K = t.Union[int, str]
+_T = t.TypeVar("_T")
+_T_K = t.Union[int, str]
 
 
 class Record(tuple, Mapping):
