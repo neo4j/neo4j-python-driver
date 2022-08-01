@@ -21,6 +21,15 @@ import functools
 import sys
 
 
+# === patch asyncio.wait_for ===
+# The shipped wait_for can swallow cancellation errors (starting with 3.8).
+# See: https://github.com/python/cpython/pull/26097
+# and https://github.com/python/cpython/pull/28149
+# Since 3.8 and 3.9 already received their final maintenance release, there
+# will be now fix for this. So this patch needs to stick around at least until
+# we remove support for Python 3.9.
+
+
 if sys.version_info >= (3, 8):
     # copied from asyncio 3.10 with applied patch
     def _release_waiter(waiter, *args):
@@ -90,9 +99,8 @@ if sys.version_info >= (3, 8):
                     # See: https://github.com/python/cpython/pull/26097
                     # and https://github.com/python/cpython/pull/28149
 
-                    # We got cancelled, but we are already done. Therefore,
-                    # we defer the cancellation until next time the task yields
-                    # to the event loop.
+                    # Even though the future we're waiting for is already done,
+                    # we should not swallow the cancellation.
                     raise
                     # [/PATCH]
                 else:
