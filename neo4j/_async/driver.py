@@ -96,6 +96,7 @@ class AsyncGraphDatabase:
             keep_alive: bool = ...,
 
             # undocumented/unsupported options
+            # they may be change or removed any time without prior notice
             session_connection_timeout: float = ...,
             connection_acquisition_timeout: float = ...,
             max_transaction_retry_time: float = ...,
@@ -347,14 +348,17 @@ class AsyncDriver:
             session_connection_timeout: float = ...,
             connection_acquisition_timeout: float = ...,
             max_transaction_retry_time: float = ...,
-            initial_retry_delay: float = ...,
-            retry_delay_multiplier: float = ...,
-            retry_delay_jitter_factor: float = ...,
             database: t.Optional[str] = ...,
             fetch_size: int = ...,
             impersonated_user: t.Optional[str] = ...,
             bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
             default_access_mode: str = ...,
+
+            # undocumented/unsupported options
+            # they may be change or removed any time without prior notice
+            initial_retry_delay: float = ...,
+            retry_delay_multiplier: float = ...,
+            retry_delay_jitter_factor: float = ...,
         ) -> AsyncSession:
             ...
 
@@ -377,83 +381,129 @@ class AsyncDriver:
         await self._pool.close()
         self._closed = True
 
-    # TODO: 6.0 - remove config argument
-    async def verify_connectivity(self, **config) -> None:
-        """Verify that the driver can establish a connection to the server.
+    if t.TYPE_CHECKING:
 
-        This verifies if the driver can establish a reading connection to a
-        remote server or a cluster. Some data will be exchanged.
+        async def verify_connectivity(
+            self,
+            # all arguments are experimental
+            # they may be change or removed any time without prior notice
+            session_connection_timeout: float = ...,
+            connection_acquisition_timeout: float = ...,
+            max_transaction_retry_time: float = ...,
+            database: t.Optional[str] = ...,
+            fetch_size: int = ...,
+            impersonated_user: t.Optional[str] = ...,
+            bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
+            default_access_mode: str = ...,
 
-        .. note::
-            Even if this method raises an exception, the driver still needs to
-            be closed via :meth:`close` to free up all resources.
+            # undocumented/unsupported options
+            initial_retry_delay: float = ...,
+            retry_delay_multiplier: float = ...,
+            retry_delay_jitter_factor: float = ...,
+        ) -> None:
+            ...
 
-        :param config: accepts the same configuration key-word arguments as
-            :meth:`session`.
+    else:
 
-            .. warning::
-                All configuration key-word arguments are experimental.
-                They might be changed or removed in any future version without
-                prior notice.
+        # TODO: 6.0 - remove config argument
+        async def verify_connectivity(self, **config) -> None:
+            """Verify that the driver can establish a connection to the server.
 
-        :raises DriverError: if the driver cannot connect to the remote.
-            Use the exception to further understand the cause of the
-            connectivity problem.
+            This verifies if the driver can establish a reading connection to a
+            remote server or a cluster. Some data will be exchanged.
 
-        .. versionchanged:: 5.0
-            The undocumented return value has been removed.
-            If you need information about the remote server, use
-            :meth:`get_server_info` instead.
-        """
-        if config:
-            experimental_warn(
-                "All configuration key-word arguments to "
-                "verify_connectivity() are experimental. They might be "
-                "changed or removed in any future version without prior "
-                "notice."
-            )
-        async with self.session(**config) as session:
-            await session._get_server_info()
+            .. note::
+                Even if this method raises an exception, the driver still needs
+                to be closed via :meth:`close` to free up all resources.
 
-    async def get_server_info(self, **config) -> ServerInfo:
-        """Get information about the connected Neo4j server.
+            :param config: accepts the same configuration key-word arguments as
+                :meth:`session`.
 
-        Try to establish a working read connection to the remote server or a
-        member of a cluster and exchange some data. Then return the contacted
-        server's information.
+                .. warning::
+                    All configuration key-word arguments are experimental.
+                    They might be changed or removed in any future version
+                    without prior notice.
 
-        In a cluster, there is no guarantee about which server will be
-        contacted.
+            :raises DriverError: if the driver cannot connect to the remote.
+                Use the exception to further understand the cause of the
+                connectivity problem.
 
-        .. note::
-            Even if this method raises an exception, the driver still needs to
-            be closed via :meth:`close` to free up all resources.
+            .. versionchanged:: 5.0
+                The undocumented return value has been removed.
+                If you need information about the remote server, use
+                :meth:`get_server_info` instead.
+            """
+            if config:
+                experimental_warn(
+                    "All configuration key-word arguments to "
+                    "verify_connectivity() are experimental. They might be "
+                    "changed or removed in any future version without prior "
+                    "notice."
+                )
+            async with self.session(**config) as session:
+                await session._get_server_info()
 
-        :param config: accepts the same configuration key-word arguments as
-            :meth:`session`.
+    if t.TYPE_CHECKING:
 
-            .. warning::
-                All configuration key-word arguments are experimental.
-                They might be changed or removed in any future version without
-                prior notice.
+        async def get_server_info(
+            self,
+            # all arguments are experimental
+            # they may be change or removed any time without prior notice
+            session_connection_timeout: float = ...,
+            connection_acquisition_timeout: float = ...,
+            max_transaction_retry_time: float = ...,
+            database: t.Optional[str] = ...,
+            fetch_size: int = ...,
+            impersonated_user: t.Optional[str] = ...,
+            bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
+            default_access_mode: str = ...,
 
-        :rtype: ServerInfo
+            # undocumented/unsupported options
+            initial_retry_delay: float = ...,
+            retry_delay_multiplier: float = ...,
+            retry_delay_jitter_factor: float = ...,
+        ) -> ServerInfo:
+            ...
 
-        :raises DriverError: if the driver cannot connect to the remote.
-            Use the exception to further understand the cause of the
-            connectivity problem.
+    else:
 
-        .. versionadded:: 5.0
-        """
-        if config:
-            experimental_warn(
-                "All configuration key-word arguments to "
-                "verify_connectivity() are experimental. They might be "
-                "changed or removed in any future version without prior "
-                "notice."
-            )
-        async with self.session(**config) as session:
-            return await session._get_server_info()
+        async def get_server_info(self, **config) -> ServerInfo:
+            """Get information about the connected Neo4j server.
+
+            Try to establish a working read connection to the remote server or
+            a member of a cluster and exchange some data. Then return the
+            contacted server's information.
+
+            In a cluster, there is no guarantee about which server will be
+            contacted.
+
+            .. note::
+                Even if this method raises an exception, the driver still needs
+                to be closed via :meth:`close` to free up all resources.
+
+            :param config: accepts the same configuration key-word arguments as
+                :meth:`session`.
+
+                .. warning::
+                    All configuration key-word arguments are experimental.
+                    They might be changed or removed in any future version
+                    without prior notice.
+
+            :raises DriverError: if the driver cannot connect to the remote.
+                Use the exception to further understand the cause of the
+                connectivity problem.
+
+            .. versionadded:: 5.0
+            """
+            if config:
+                experimental_warn(
+                    "All configuration key-word arguments to "
+                    "verify_connectivity() are experimental. They might be "
+                    "changed or removed in any future version without prior "
+                    "notice."
+                )
+            async with self.session(**config) as session:
+                return await session._get_server_info()
 
     @experimental("Feature support query, based on Bolt protocol version and Neo4j server version will change in the future.")
     async def supports_multi_db(self) -> bool:
