@@ -1328,7 +1328,9 @@ class Date(date_base_class, metaclass=DateType):
             raise AttributeError("Date has no attribute %r" % name)
 
     if t.TYPE_CHECKING:
-        isocalendar = iso_calendar
+        def iso_calendar(self) -> t.Tuple[int, int, int]:
+            ...
+
         isoformat = iso_format
         isoweekday = iso_weekday
         strftime = __format__
@@ -2668,12 +2670,15 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
     if t.TYPE_CHECKING:
 
-        def astimezone( # type: ignore[override]
+        def astimezone(  # type: ignore[override]
             self, tz: _tzinfo
         ) -> DateTime:
             ...
 
-        isocalendar = iso_calendar
+        def isocalendar(  # type: ignore[override]
+            self
+        ) -> t.Tuple[int, int, int]:
+            ...
 
         def iso_format(self, sep: str = "T") -> str:  # type: ignore[override]
             ...
