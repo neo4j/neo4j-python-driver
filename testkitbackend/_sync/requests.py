@@ -123,11 +123,12 @@ def NewDriver(backend, data):
         ("connectionTimeoutMs", "connection_timeout"),
         ("maxTxRetryTimeMs", "max_transaction_retry_time"),
         ("connectionAcquisitionTimeoutMs", "connection_acquisition_timeout"),
-        ("sessionConnectionTimeoutMs", "session_connection_timeout"),
-        ("updateRoutingTableTimeoutMs", "update_routing_table_timeout"),
     ):
         if data.get(timeout_testkit) is not None:
             kwargs[timeout_driver] = data[timeout_testkit] / 1000
+    for k in ("sessionConnectionTimeoutMs", "updateRoutingTableTimeoutMs"):
+        if k in data:
+            data.mark_item_as_read_if_equals(k, None)
     if data.get("maxConnectionPoolSize"):
         kwargs["max_connection_pool_size"] = data["maxConnectionPoolSize"]
     if data.get("fetchSize"):

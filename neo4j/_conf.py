@@ -295,13 +295,6 @@ class PoolConfig(Config):
     connection_timeout = 30.0  # seconds
     # The maximum amount of time to wait for a TCP connection to be established.
 
-    #: Update Routing Table Timout
-    update_routing_table_timeout = 90.0  # seconds
-    # The maximum amount of time to wait for updating the routing table.
-    # This includes everything necessary for this to happen.
-    # Including opening sockets, requesting and receiving the routing table,
-    # etc.
-
     #: Trust
     trust = DeprecatedAlternative(
         "trusted_certificates", _trust_to_trusted_certificates
@@ -391,12 +384,6 @@ class PoolConfig(Config):
 class WorkspaceConfig(Config):
     """ WorkSpace configuration.
     """
-
-    #: Session Connection Timeout
-    session_connection_timeout = 120.0  # seconds
-    # The maximum amount of time to wait for a session to obtain a usable
-    # read/write connection. This includes everything necessary for this to
-    # happen. Including fetching routing tables, opening sockets, etc.
 
     #: Connection Acquisition Timeout
     connection_acquisition_timeout = 60.0  # seconds

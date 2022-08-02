@@ -80,7 +80,6 @@ class AsyncGraphDatabase:
             max_connection_lifetime: float = ...,
             max_connection_pool_size: int = ...,
             connection_timeout: float = ...,
-            update_routing_table_timeout: float = ...,
             trust: t.Union[
                 te.Literal["TRUST_ALL_CERTIFICATES"],
                 te.Literal["TRUST_SYSTEM_CA_SIGNED_CERTIFICATES"]
@@ -97,7 +96,6 @@ class AsyncGraphDatabase:
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
-            session_connection_timeout: float = ...,
             connection_acquisition_timeout: float = ...,
             max_transaction_retry_time: float = ...,
             initial_retry_delay: float = ...,
@@ -339,7 +337,6 @@ class AsyncDriver:
 
         def session(
             self,
-            session_connection_timeout: float = ...,
             connection_acquisition_timeout: float = ...,
             max_transaction_retry_time: float = ...,
             database: t.Optional[str] = ...,
