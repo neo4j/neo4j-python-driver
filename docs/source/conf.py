@@ -115,6 +115,9 @@ pygments_style = 'friendly'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
+# Don't include type hints in function signatures
+autodoc_typehints = "description"
+
 
 # -- Options for HTML output ----------------------------------------------
 

@@ -32,11 +32,6 @@ PACKED_UINT_16 = [struct_pack(">H", value) for value in range(0x10000)]
 UNPACKED_UINT_8 = {bytes(bytearray([x])): x for x in range(0x100)}
 UNPACKED_UINT_16 = {struct_pack(">H", x): x for x in range(0x10000)}
 
-UNPACKED_MARKERS = {b"\xC0": None, b"\xC2": False, b"\xC3": True}
-UNPACKED_MARKERS.update({bytes(bytearray([z])): z for z in range(0x00, 0x80)})
-UNPACKED_MARKERS.update({bytes(bytearray([z + 256])): z for z in range(-0x10, 0x00)})
-
-
 INT64_MIN = -(2 ** 63)
 INT64_MAX = 2 ** 63
 

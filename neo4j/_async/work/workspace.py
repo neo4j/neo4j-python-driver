@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import asyncio
 
 from ..._conf import WorkspaceConfig
@@ -65,7 +67,7 @@ class AsyncWorkspace:
         except (OSError, ServiceUnavailable, SessionExpired):
             pass
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> AsyncWorkspace:
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
@@ -126,17 +128,16 @@ class AsyncWorkspace:
                 self._connection = None
             self._connection_access_mode = None
 
-    async def close(self):
+    async def close(self) -> None:
         if self._closed:
             return
         await self._disconnect(sync=True)
         self._closed = True
 
-    def closed(self):
+    def closed(self) -> bool:
         """Indicate whether the session has been closed.
 
         :return: :const:`True` if closed, :const:`False` otherwise.
-        :rtype: bool
         """
         return self._closed
 

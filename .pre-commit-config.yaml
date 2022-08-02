@@ -34,3 +34,11 @@ repos:
         entry: bin/make-unasync
         language: system
         files: "^(neo4j/_async|tests/(unit|integration)/async_|testkitbackend/_async)/.*"
+      - id: mypy
+        name: mypy static type check
+        entry: mypy
+        args: [ --show-error-codes, neo4j, tests, testkitbackend ]
+        'types_or': [ python, pyi ]
+        language: system
+        pass_filenames: false
+        require_serial: true

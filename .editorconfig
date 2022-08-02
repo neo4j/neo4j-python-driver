@@ -16,7 +16,12 @@ trim_trailing_whitespace = true
 [*.bat]
 end_of_line = crlf
 
-[*.py]
-max_line_length = 79
+[*{.py,pyi}]
 indent_style = space
 indent_size = 4
+
+[*.py]
+max_line_length = 79
+
+[*.pyi]
+max_line_length = 130

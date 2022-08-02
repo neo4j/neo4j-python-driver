@@ -16,6 +16,10 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
+import typing as t
+
 import pytest
 
 from neo4j._spatial import (
@@ -24,27 +28,36 @@ from neo4j._spatial import (
 )
 
 
-class PointTestCase:
+class TestPoint:
 
-    @pytest.mark.parametrize("argument", ("a", "b"), ({"x": 1.0, "y": 2.0}))
-    def test_wrong_type_arguments(self, argument):
+    @pytest.mark.parametrize("argument", (
+        ("a", "b"), {"x": 1.0, "y": 2.0}
+    ))
+    def test_wrong_type_arguments(self, argument) -> None:
         with pytest.raises(ValueError):
             Point(argument)
 
-    @pytest.mark.parametrize("argument", (1, 2), (1.2, 2.1))
-    def test_number_arguments(self, argument):
+    @pytest.mark.parametrize("argument", (
+        (1, 2), (1.2, 2.1)
+    ))
+    def test_number_arguments(self, argument: t.Iterable[float]) -> None:
+        print(argument)
         p = Point(argument)
         assert tuple(p) == argument
 
-    def test_immutable_coordinates(self):
-        MyPoint = point_type("MyPoint", ["x", "y"], {2: 1234})
+    def test_immutable_coordinates(self) -> None:
+        MyPoint = point_type("MyPoint", ("x", "y", "z"), {2: 1234, 3: 5678})
         coordinates = (.1, 0)
         p = MyPoint(coordinates)
         with pytest.raises(AttributeError):
-            p.x = 2.0
+            p.x = 2.0  # type: ignore[misc]
         with pytest.raises(AttributeError):
-            p.y = 2.0
+            p.y = 2.0  # type: ignore[misc]
+        with pytest.raises(AttributeError):
+            p.z = 2.0  # type: ignore[misc]
         with pytest.raises(TypeError):
-            p[0] = 2.0
+            p[0] = 2.0  # type: ignore[index]
         with pytest.raises(TypeError):
-            p[1] = 2.0
+            p[1] = 2.0  # type: ignore[index]
+        with pytest.raises(TypeError):
+            p[2] = 2.0  # type: ignore[index]

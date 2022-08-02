@@ -18,6 +18,8 @@
 
 import abc
 import sys
+import types
+import typing as t
 from os import environ
 
 
@@ -28,7 +30,7 @@ class _LazyEval(abc.ABC):
 
 
 class _LazyEvalEnv(_LazyEval):
-    def __init__(self, env_key, type_=str, default=...):
+    def __init__(self, env_key, type_: t.Type = str, default=...):
         self.env_key = env_key
         self.type_ = type_
         self.default = default
@@ -41,7 +43,7 @@ class _LazyEvalEnv(_LazyEval):
                 value = environ[self.env_key]
             except KeyError as e:
                 raise Exception(
-                    f"Missing environemnt variable {self.env_key}"
+                    f"Missing environment variable {self.env_key}"
                 ) from e
         if self.type_ is bool:
             return value.lower() in ("yes", "y", "1", "on", "true")
@@ -59,19 +61,19 @@ class _LazyEvalFunc(_LazyEval):
 
 class _Module:
     def __init__(self, module):
-        self._moudle = module
+        self._module = module
 
     def __getattr__(self, item):
-        val = getattr(self._moudle, item)
+        val = getattr(self._module, item)
         if isinstance(val, _LazyEval):
             val = val.eval()
-            setattr(self._moudle, item, val)
+            setattr(self._module, item, val)
         return val
 
 
 _module = _Module(sys.modules[__name__])
 
-sys.modules[__name__] = _module
+sys.modules[__name__] = _module  # type: ignore[assignment]
 
 
 NEO4J_HOST = _LazyEvalEnv("TEST_NEO4J_HOST")

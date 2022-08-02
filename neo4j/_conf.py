@@ -335,14 +335,6 @@ class PoolConfig(Config):
     user_agent = get_user_agent()
     # Specify the client agent name.
 
-    #: Protocol Version (Python Driver Specific)
-    protocol_version = None  # Version(4, 0)
-    # Specify a specific Bolt Protocol Version
-
-    #: Initial Connection Pool Size (Python Driver Specific)
-    init_size = 1  # The other drivers do not seed from the start.
-    # This will seed the pool with the specified number of connections.
-
     #: Socket Keep Alive (Python and .NET Driver Specific)
     keep_alive = True
     # Specify whether TCP keep-alive should be enabled.

@@ -14,11 +14,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
+from __future__ import annotations
+
 import asyncio
-from functools import wraps
+import typing as t
 from logging import getLogger
 from random import random
 from time import perf_counter
+
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
+    from ..io import Bolt
+
+    _R = t.TypeVar("_R")
+    _P = te.ParamSpec("_P")
 
 from ..._async_compat import sleep
 from ..._async_compat.util import Util
@@ -37,7 +50,6 @@ from ...exceptions import (
     DriverError,
     Neo4jError,
     ServiceUnavailable,
-    SessionError,
     SessionExpired,
     TransactionError,
 )
@@ -75,10 +87,11 @@ class Session(Workspace):
     """
 
     # The current connection.
-    _connection = None
+    _connection: t.Optional[Bolt] = None
 
-    # The current :class:`.Transaction` instance, if any.
-    _transaction = None
+    # The current transaction instance, if any.
+    _transaction: t.Union[Transaction, ManagedTransaction, None] = \
+        None
 
     # The current auto-transaction result, if any.
     _auto_result = None
@@ -91,7 +104,7 @@ class Session(Workspace):
         assert isinstance(session_config, SessionConfig)
         self._bookmarks = self._prepare_bookmarks(session_config.bookmarks)
 
-    def __enter__(self):
+    def __enter__(self) -> Session:
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
@@ -170,7 +183,7 @@ class Session(Workspace):
         self._disconnect()
         return server_info
 
-    def close(self):
+    def close(self) -> None:
         """Close the session.
 
         This will release any borrowed resources, such as connections, and will
@@ -215,7 +228,7 @@ class Session(Workspace):
         self._closed = True
 
     if Util.is_async_code:
-        def cancel(self):
+        def cancel(self) -> None:
             """Cancel this session.
 
             If the session is already closed, this method does nothing.
@@ -237,7 +250,12 @@ class Session(Workspace):
             """
             self._handle_cancellation(message="manual cancel")
 
-    def run(self, query, parameters=None, **kwargs):
+    def run(
+        self,
+        query: t.Union[str, Query],
+        parameters: t.Dict[str, t.Any] = None,
+        **kwargs: t.Any
+    ) -> Result:
         """Run a Cypher query within an auto-commit transaction.
 
         The query is sent and the result header received
@@ -256,14 +274,12 @@ class Session(Workspace):
         For more usage details, see :meth:`.Transaction.run`.
 
         :param query: cypher query
-        :type query: str, neo4j.Query
         :param parameters: dictionary of parameters
-        :type parameters: dict
         :param kwargs: additional keyword parameters
-        :returns: a new :class:`neo4j.Result` object
-        :rtype: Result
 
         :raises SessionError: if the session has been closed.
+
+        :returns: a new :class:`neo4j.Result` object
         """
         self._check_state()
         if not query:
@@ -281,8 +297,6 @@ class Session(Workspace):
         if not self._connection:
             self._connect(self._config.default_access_mode)
         cx = self._connection
-        protocol_version = cx.PROTOCOL_VERSION
-        server_info = cx.server_info
 
         self._auto_result = Result(
             cx, self._config.fetch_size, self._result_closed,
@@ -300,7 +314,7 @@ class Session(Workspace):
         "`last_bookmark` has been deprecated in favor of `last_bookmarks`. "
         "This method can lead to unexpected behaviour."
     )
-    def last_bookmark(self):
+    def last_bookmark(self) -> t.Optional[str]:
         """Return the bookmark received following the last completed transaction.
 
         Note: For auto-transactions (:meth:`Session.run`), this will trigger
@@ -315,7 +329,6 @@ class Session(Workspace):
             Use :meth:`last_bookmarks` instead.
 
         :returns: last bookmark
-        :rtype: str or None
         """
         # The set of bookmarks to be passed into the next transaction.
 
@@ -330,7 +343,7 @@ class Session(Workspace):
             return self._bookmarks[-1]
         return None
 
-    def last_bookmarks(self):
+    def last_bookmarks(self) -> Bookmarks:
         """Return most recent bookmarks of the session.
 
         Bookmarks can be used to causally chain sessions. For example,
@@ -357,7 +370,6 @@ class Session(Workspace):
         :meth:`Result.consume` for the current result.
 
         :returns: the session's last known bookmarks
-        :rtype: Bookmarks
         """
         # The set of bookmarks to be passed into the next transaction.
 
@@ -401,7 +413,11 @@ class Session(Workspace):
             self._bookmarks, access_mode, metadata, timeout
         )
 
-    def begin_transaction(self, metadata=None, timeout=None):
+    def begin_transaction(
+        self,
+        metadata: t.Dict[str, t.Any] = None,
+        timeout: float = None
+    ) -> Transaction:
         """ Begin a new unmanaged transaction. Creates a new :class:`.Transaction` within this session.
             At most one transaction may exist in a session at any point in time.
             To maintain multiple concurrent transactions, use multiple concurrent sessions.
@@ -413,7 +429,6 @@ class Session(Workspace):
             Specified metadata will be attached to the executing transaction and visible in the output of ``dbms.listQueries`` and ``dbms.listTransactions`` procedures.
             It will also get logged to the ``query.log``.
             This functionality makes it easier to tag transactions and is equivalent to ``dbms.setTXMetaData`` procedure, see https://neo4j.com/docs/operations-manual/current/reference/procedures/ for procedure reference.
-        :type metadata: dict
 
         :param timeout:
             the transaction timeout in seconds.
@@ -421,13 +436,11 @@ class Session(Workspace):
             This functionality allows to limit query/transaction execution time.
             Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
             Value should not represent a duration of zero or negative duration.
-        :type timeout: int
-
-        :returns: A new transaction instance.
-        :rtype: Transaction
 
         :raises TransactionError: if a transaction is already open.
         :raises SessionError: if the session has been closed.
+
+        :returns: A new transaction instance.
         """
         self._check_state()
         # TODO: Implement TransactionConfig consumption
@@ -436,7 +449,9 @@ class Session(Workspace):
             self._auto_result.consume()
 
         if self._transaction:
-            raise TransactionError("Explicit transaction already open")
+            raise TransactionError(
+                self._transaction, "Explicit transaction already open"
+            )
 
         self._open_transaction(
             tx_cls=Transaction,
@@ -444,7 +459,7 @@ class Session(Workspace):
             timeout=timeout
         )
 
-        return self._transaction
+        return t.cast(Transaction, self._transaction)
 
     def _run_transaction(
         self, access_mode, transaction_function, *args, **kwargs
@@ -515,7 +530,13 @@ class Session(Workspace):
         else:
             raise ServiceUnavailable("Transaction failed")
 
-    def read_transaction(self, transaction_function, *args, **kwargs):
+    def read_transaction(
+        self,
+        transaction_function: t.Callable[
+            te.Concatenate[ManagedTransaction, _P], t.Union[_R]
+        ],
+        *args: _P.args, **kwargs: _P.kwargs
+    ) -> _R:
         """Execute a unit of work in a managed read transaction.
 
         .. note::
@@ -564,15 +585,22 @@ class Session(Workspace):
             :class:`.Transaction`.
         :param args: arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
-        :return: a result as returned by the given unit of work
 
         :raises SessionError: if the session has been closed.
+
+        :return: a result as returned by the given unit of work
         """
         return self._run_transaction(
             READ_ACCESS, transaction_function, *args, **kwargs
         )
 
-    def write_transaction(self, transaction_function, *args, **kwargs):
+    def write_transaction(
+        self,
+        transaction_function: t.Callable[
+            te.Concatenate[ManagedTransaction, _P], t.Union[_R]
+        ],
+        *args: _P.args,  **kwargs: _P.kwargs
+    ) -> _R:
         """Execute a unit of work in a managed write transaction.
 
         .. note::
@@ -601,9 +629,10 @@ class Session(Workspace):
             :class:`.Transaction`.
         :param args: key word arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
-        :return: a result as returned by the given unit of work
 
         :raises SessionError: if the session has been closed.
+
+        :return: a result as returned by the given unit of work
         """
         return self._run_transaction(
             WRITE_ACCESS, transaction_function, *args, **kwargs

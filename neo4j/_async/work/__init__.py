@@ -24,13 +24,15 @@ from .session import (
 from .transaction import (
     AsyncManagedTransaction,
     AsyncTransaction,
+    AsyncTransactionBase,
 )
 
 
 __all__ = [
     "AsyncResult",
     "AsyncSession",
-    "AsyncTransaction",
     "AsyncManagedTransaction",
+    "AsyncTransaction",
+    "AsyncTransactionBase",
     "AsyncWorkspace",
 ]

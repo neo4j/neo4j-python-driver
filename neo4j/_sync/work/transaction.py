@@ -16,7 +16,10 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import asyncio
+import typing as t
 from functools import wraps
 
 from ..._async_compat.util import Util
@@ -26,10 +29,14 @@ from ..io import ConnectionErrorHandler
 from .result import Result
 
 
-__all__ = ("Transaction", "ManagedTransaction")
+__all__ = (
+    "ManagedTransaction",
+    "Transaction",
+    "TransactionBase",
+)
 
 
-class _TransactionBase:
+class TransactionBase:
     def __init__(self, connection, fetch_size, on_closed, on_error,
                  on_cancel):
         self._connection = connection
@@ -84,7 +91,12 @@ class _TransactionBase:
             result._tx_end()
         self._results = []
 
-    def run(self, query, parameters=None, **kwparameters):
+    def run(
+        self,
+        query: str,
+        parameters: t.Dict[str, t.Any] = None,
+        **kwparameters: t.Any
+    ) -> Result:
         """ Run a Cypher query within the context of this transaction.
 
         Cypher is typically expressed as a query template plus a
@@ -104,15 +116,12 @@ class _TransactionBase:
         :class:`list` properties must be homogenous.
 
         :param query: cypher query
-        :type query: str
         :param parameters: dictionary of parameters
-        :type parameters: dict
         :param kwparameters: additional keyword parameters
 
-        :returns: a new :class:`neo4j.Result` object
-        :rtype: :class:`neo4j.Result`
-
         :raise TransactionError: if the transaction is already closed
+
+        :returns: a new :class:`neo4j.Result` object
         """
         if isinstance(query, Query):
             raise ValueError("Query object is only supported for session.run")
@@ -201,7 +210,7 @@ class _TransactionBase:
         self._rollback()
 
     if Util.is_async_code:
-        def _cancel(self):
+        def _cancel(self) -> None:
             """Cancel this transaction.
 
             If the transaction is already closed, this method does nothing.
@@ -238,7 +247,7 @@ class _TransactionBase:
         return self._closed_flag
 
 
-class Transaction(_TransactionBase):
+class Transaction(TransactionBase):
     """ Container for multiple Cypher queries to be executed within a single
     context. :class:`Transaction` objects can be used as a context
     managers (:py:const:`with` block) where the transaction is committed
@@ -249,37 +258,37 @@ class Transaction(_TransactionBase):
 
     """
 
-    @wraps(_TransactionBase._enter)
-    def __enter__(self):
+    @wraps(TransactionBase._enter)
+    def __enter__(self) -> Transaction:
         return self._enter()
 
-    @wraps(_TransactionBase._exit)
+    @wraps(TransactionBase._exit)
     def __exit__(self, exception_type, exception_value, traceback):
         self._exit(exception_type, exception_value, traceback)
 
-    @wraps(_TransactionBase._commit)
-    def commit(self):
+    @wraps(TransactionBase._commit)
+    def commit(self) -> None:
         return self._commit()
 
-    @wraps(_TransactionBase._rollback)
-    def rollback(self):
+    @wraps(TransactionBase._rollback)
+    def rollback(self) -> None:
         return self._rollback()
 
-    @wraps(_TransactionBase._close)
-    def close(self):
+    @wraps(TransactionBase._close)
+    def close(self) -> None:
         return self._close()
 
-    @wraps(_TransactionBase._closed)
-    def closed(self):
+    @wraps(TransactionBase._closed)
+    def closed(self) -> bool:
         return self._closed()
 
     if Util.is_async_code:
-        @wraps(_TransactionBase._cancel)
-        def cancel(self):
+        @wraps(TransactionBase._cancel)
+        def cancel(self) -> None:
             return self._cancel()
 
 
-class ManagedTransaction(_TransactionBase):
+class ManagedTransaction(TransactionBase):
     """Transaction object provided to transaction functions.
 
     Inside a transaction function, the driver is responsible for managing

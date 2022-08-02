@@ -1267,43 +1267,44 @@ Server-side errors
     * :class:`neo4j.exceptions.ForbiddenOnReadOnlyDatabase`
 
 
-.. autoclass:: neo4j.exceptions.Neo4jError
+.. autoexception:: neo4j.exceptions.Neo4jError()
+    :show-inheritance:
     :members: message, code, is_retriable, is_retryable
 
-.. autoclass:: neo4j.exceptions.ClientError
+.. autoexception:: neo4j.exceptions.ClientError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.CypherSyntaxError
+.. autoexception:: neo4j.exceptions.CypherSyntaxError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.CypherTypeError
+.. autoexception:: neo4j.exceptions.CypherTypeError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ConstraintError
+.. autoexception:: neo4j.exceptions.ConstraintError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.AuthError
+.. autoexception:: neo4j.exceptions.AuthError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.TokenExpired
+.. autoexception:: neo4j.exceptions.TokenExpired()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.Forbidden
+.. autoexception:: neo4j.exceptions.Forbidden()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.DatabaseError
+.. autoexception:: neo4j.exceptions.DatabaseError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.TransientError
+.. autoexception:: neo4j.exceptions.TransientError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.DatabaseUnavailable
+.. autoexception:: neo4j.exceptions.DatabaseUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.NotALeader
+.. autoexception:: neo4j.exceptions.NotALeader()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ForbiddenOnReadOnlyDatabase
+.. autoexception:: neo4j.exceptions.ForbiddenOnReadOnlyDatabase()
     :show-inheritance:
 
 
@@ -1350,55 +1351,59 @@ Client-side errors
     * :class:`neo4j.exceptions.CertificateConfigurationError`
 
 
-.. autoclass:: neo4j.exceptions.DriverError
+.. autoexception:: neo4j.exceptions.DriverError()
+    :show-inheritance:
     :members: is_retryable
 
-.. autoclass:: neo4j.exceptions.SessionError
+.. autoexception:: neo4j.exceptions.SessionError()
+    :show-inheritance:
+    :members: session
+
+.. autoexception:: neo4j.exceptions.TransactionError()
+    :show-inheritance:
+    :members: transaction
+
+.. autoexception:: neo4j.exceptions.TransactionNestingError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.TransactionError
+.. autoexception:: neo4j.exceptions.ResultError()
+    :show-inheritance:
+    :members: result
+
+.. autoexception:: neo4j.exceptions.ResultConsumedError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.TransactionNestingError
+.. autoexception:: neo4j.exceptions.ResultNotSingleError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ResultError
+.. autoexception:: neo4j.exceptions.BrokenRecordError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ResultConsumedError
+.. autoexception:: neo4j.exceptions.SessionExpired()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ResultNotSingleError
+.. autoexception:: neo4j.exceptions.ServiceUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.BrokenRecordError
+.. autoexception:: neo4j.exceptions.RoutingServiceUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.SessionExpired
+.. autoexception:: neo4j.exceptions.WriteServiceUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ServiceUnavailable
+.. autoexception:: neo4j.exceptions.ReadServiceUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.RoutingServiceUnavailable
+.. autoexception:: neo4j.exceptions.IncompleteCommit()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.WriteServiceUnavailable
+.. autoexception:: neo4j.exceptions.ConfigurationError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ReadServiceUnavailable
+.. autoexception:: neo4j.exceptions.AuthConfigurationError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.IncompleteCommit
-    :show-inheritance:
-
-.. autoclass:: neo4j.exceptions.ConfigurationError
-    :show-inheritance:
-
-.. autoclass:: neo4j.exceptions.AuthConfigurationError
-    :show-inheritance:
-
-.. autoclass:: neo4j.exceptions.CertificateConfigurationError
+.. autoexception:: neo4j.exceptions.CertificateConfigurationError()
     :show-inheritance:
 
 

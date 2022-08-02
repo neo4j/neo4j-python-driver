@@ -16,6 +16,9 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
+import typing as t
 from abc import (
     ABCMeta,
     abstractmethod,
@@ -39,6 +42,10 @@ from .graph import (
 )
 
 
+_T = t.TypeVar("_T")
+_T_K = t.Union[int, str]
+
+
 class Record(tuple, Mapping):
     """ A :class:`.Record` is an immutable ordered collection of key-value
     pairs. It is generally closer to a :py:class:`namedtuple` than to a
@@ -46,7 +53,7 @@ class Record(tuple, Mapping):
     yield values rather than keys.
     """
 
-    __keys = None
+    __keys: t.Tuple[str]
 
     def __new__(cls, iterable=()):
         keys = []
@@ -69,17 +76,16 @@ class Record(tuple, Mapping):
             raise self._broken_record_error(index) from value.error
         return value
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<%s %s>" % (
             self.__class__.__name__,
             " ".join("%s=%r" % (field, value)
                      for field, value in zip(self.__keys, super().__iter__()))
         )
 
-    def __str__(self):
-        return self.__repr__()
+    __str__ = __repr__
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """ In order to be flexible regarding comparison, the equality rules
         for a record permit comparison with any other Sequence or Mapping.
 
@@ -89,27 +95,32 @@ class Record(tuple, Mapping):
         compare_as_sequence = isinstance(other, Sequence)
         compare_as_mapping = isinstance(other, Mapping)
         if compare_as_sequence and compare_as_mapping:
+            other = t.cast(t.Mapping, other)
             return list(self) == list(other) and dict(self) == dict(other)
         elif compare_as_sequence:
+            other = t.cast(t.Sequence, other)
             return list(self) == list(other)
         elif compare_as_mapping:
+            other = t.cast(t.Mapping, other)
             return dict(self) == dict(other)
         else:
             return False
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
 
     def __hash__(self):
         return reduce(xor_operator, map(hash, self.items()))
 
-    def __iter__(self):
+    def __iter__(self) -> t.Iterator[t.Any]:
         for i, v in enumerate(super().__iter__()):
             if isinstance(v, BrokenHydrationObject):
                 raise self._broken_record_error(i) from v.error
             yield v
 
-    def __getitem__(self, key):
+    def __getitem__(  # type: ignore[override]
+        self, key: t.Union[_T_K, slice]
+    ) -> t.Any:
         if isinstance(key, slice):
             keys = self.__keys[key]
             values = super().__getitem__(key)
@@ -129,12 +140,13 @@ class Record(tuple, Mapping):
         values = tuple(self)[key]
         return self.__class__(zip(keys, values))
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: object = None) -> t.Any:
         """ Obtain a value from the record by key, returning a default
         value if the key does not exist.
 
         :param key: a key
         :param default: default value
+
         :return: a value
         """
         try:
@@ -146,12 +158,12 @@ class Record(tuple, Mapping):
         else:
             return default
 
-    def index(self, key):
+    def index(self, key: _T_K) -> int:  # type: ignore[override]
         """ Return the index of the given item.
 
         :param key: a key
+
         :return: index
-        :rtype: int
         """
         if isinstance(key, int):
             if 0 <= key < len(self.__keys):
@@ -165,13 +177,14 @@ class Record(tuple, Mapping):
         else:
             raise TypeError(key)
 
-    def value(self, key=0, default=None):
+    def value(self, key: _T_K = 0, default: object = None) -> t.Any:
         """ Obtain a single value from the record by index or key. If no
         index or key is specified, the first value is returned. If the
         specified item does not exist, the default value is returned.
 
         :param key: an index or key
         :param default: default value
+
         :return: a single value
         """
         try:
@@ -181,24 +194,24 @@ class Record(tuple, Mapping):
         else:
             return self[index]
 
-    def keys(self):
+    def keys(self) -> t.List[str]:  # type: ignore[override]
         """ Return the keys of the record.
 
         :return: list of key names
         """
         return list(self.__keys)
 
-    def values(self, *keys):
+    def values(self, *keys: _T_K) -> t.List[t.Any]:  # type: ignore[override]
         """ Return the values of the record, optionally filtering to
         include only certain values by index or key.
 
         :param keys: indexes or keys of the items to include; if none
                      are provided, all values will be included
+
         :return: list of values
-        :rtype: list
         """
         if keys:
-            d = []
+            d: t.List[t.Any] = []
             for key in keys:
                 try:
                     i = self.index(key)
@@ -213,7 +226,6 @@ class Record(tuple, Mapping):
         """ Return the fields of the record as a list of key and value tuples
 
         :return: a list of value tuples
-        :rtype: list
         """
         if keys:
             d = []
@@ -228,7 +240,7 @@ class Record(tuple, Mapping):
         return list((self.__keys[i], self._super_getitem_single(i))
                     for i in range(len(self)))
 
-    def data(self, *keys):
+    def data(self, *keys: _T_K) -> t.Dict[str, t.Any]:
         """ Return the keys and values of this record as a dictionary,
         optionally including only certain values by index or key. Keys
         provided in the items that are not in the record will be
@@ -237,8 +249,10 @@ class Record(tuple, Mapping):
 
         :param keys: indexes or keys of the items to include; if none
                       are provided, all values will be included
-        :return: dictionary of values, keyed by field name
+
         :raises: :exc:`IndexError` if an out-of-bounds index is specified
+
+        :return: dictionary of values, keyed by field name
         """
         return RecordExporter().transform(dict(self.items(*keys)))
 

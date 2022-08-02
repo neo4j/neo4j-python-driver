@@ -16,14 +16,16 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import pytest
 
 from neo4j.spatial import WGS84Point
 
 
-class WGS84PointTestCase:
+class TestWGS84Point:
 
-    def test_alias_3d(self):
+    def test_alias_3d(self) -> None:
         x, y, z = 3.2, 4.0, -1.2
         p = WGS84Point((x, y, z))
 
@@ -42,7 +44,7 @@ class WGS84PointTestCase:
         assert hasattr(p, "z")
         assert p.z == z
 
-    def test_alias_2d(self):
+    def test_alias_2d(self) -> None:
         x, y = 3.2, 4.0
         p = WGS84Point((x, y))
 

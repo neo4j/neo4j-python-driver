@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import abc
 import asyncio
 import socket
@@ -24,14 +26,12 @@ from logging import getLogger
 from time import perf_counter
 
 from ..._async_compat.network import AsyncBoltSocket
-from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import v1 as hydration_v1
 from ..._codec.packstream import v1 as packstream_v1
 from ..._conf import PoolConfig
 from ..._exceptions import (
     BoltError,
     BoltHandshakeError,
-    SocketDeadlineExceeded,
 )
 from ..._meta import get_user_agent
 from ...addressing import Address
@@ -76,7 +76,7 @@ class AsyncBolt:
 
     MAGIC_PREAMBLE = b"\x60\x60\xB0\x17"
 
-    PROTOCOL_VERSION = None
+    PROTOCOL_VERSION: Version = None  # type: ignore[assignment]
 
     # flag if connection needs RESET to go back to READY state
     is_reset = False
@@ -786,4 +786,4 @@ class AsyncBolt:
         return perf_counter() - self.idle_since > timeout
 
 
-AsyncBoltSocket.Bolt = AsyncBolt
+AsyncBoltSocket.Bolt = AsyncBolt  # type: ignore

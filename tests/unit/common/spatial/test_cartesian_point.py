@@ -16,14 +16,16 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import pytest
 
 from neo4j.spatial import CartesianPoint
 
 
-class CartesianPointTestCase:
+class TestCartesianPoint:
 
-    def test_alias_3d(self):
+    def test_alias_3d(self) -> None:
         x, y, z = 3.2, 4.0, -1.2
         p = CartesianPoint((x, y, z))
         assert hasattr(p, "x")
@@ -33,7 +35,7 @@ class CartesianPointTestCase:
         assert hasattr(p, "z")
         assert p.z == z
 
-    def test_alias_2d(self):
+    def test_alias_2d(self) -> None:
         x, y = 3.2, 4.0
         p = CartesianPoint((x, y))
         assert hasattr(p, "x")
@@ -41,4 +43,4 @@ class CartesianPointTestCase:
         assert hasattr(p, "y")
         assert p.y == y
         with pytest.raises(AttributeError):
-            p.z
+            _ = p.z

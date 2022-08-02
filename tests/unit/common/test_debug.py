@@ -16,17 +16,31 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import io
 import logging
 import sys
+import typing as t
 
 import pytest
+
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
 
 from neo4j import debug as neo4j_debug
 
 
+if t.TYPE_CHECKING:
+
+    class _TSetupMockProtocol(te.Protocol):
+        def __call__(self, *args: str) -> t.Sequence[t.Any]:
+            ...
+
+
 @pytest.fixture
-def add_handler_mocker(mocker):
+def add_handler_mocker(mocker) -> _TSetupMockProtocol:
     def setup_mock(*logger_names):
         loggers = [logging.getLogger(name) for name in logger_names]
         for logger in loggers:
@@ -38,7 +52,7 @@ def add_handler_mocker(mocker):
     return setup_mock
 
 
-def test_watch_returns_watcher(add_handler_mocker):
+def test_watch_returns_watcher(add_handler_mocker) -> None:
     logger_name = "neo4j"
     add_handler_mocker(logger_name)
     watcher = neo4j_debug.watch(logger_name)
@@ -47,14 +61,14 @@ def test_watch_returns_watcher(add_handler_mocker):
 
 @pytest.mark.parametrize("logger_names",
                          (("neo4j",), ("foobar",), ("neo4j", "foobar")))
-def test_watch_enables_logging(logger_names, add_handler_mocker):
+def test_watch_enables_logging(logger_names, add_handler_mocker) -> None:
     loggers = add_handler_mocker(*logger_names)
     neo4j_debug.watch(*logger_names)
     for logger in loggers:
         logger.addHandler.assert_called_once()
 
 
-def test_watcher_watch_adds_logger(add_handler_mocker):
+def test_watcher_watch_adds_logger(add_handler_mocker) -> None:
     logger_name = "neo4j"
     logger = add_handler_mocker(logger_name)[0]
     watcher = neo4j_debug.Watcher(logger_name)
@@ -64,7 +78,7 @@ def test_watcher_watch_adds_logger(add_handler_mocker):
     logger.addHandler.assert_called_once()
 
 
-def test_watcher_stop_removes_logger(add_handler_mocker):
+def test_watcher_stop_removes_logger(add_handler_mocker) -> None:
     logger_name = "neo4j"
     logger = add_handler_mocker(logger_name)[0]
     watcher = neo4j_debug.Watcher(logger_name)
@@ -77,9 +91,9 @@ def test_watcher_stop_removes_logger(add_handler_mocker):
     logger.removeHandler.assert_called_once_with(handler)
 
 
-def test_watcher_context_manager(mocker):
+def test_watcher_context_manager(mocker) -> None:
     logger_name = "neo4j"
-    watcher = neo4j_debug.Watcher(logger_name)
+    watcher: t.Any = neo4j_debug.Watcher(logger_name)
     watcher.watch = mocker.Mock()
     watcher.stop = mocker.Mock()
 
@@ -100,8 +114,9 @@ def test_watcher_context_manager(mocker):
         (None, 1, 1),
     )
 )
-def test_watcher_level(add_handler_mocker, default_level, level,
-                       expected_level):
+def test_watcher_level(
+    add_handler_mocker, default_level, level, expected_level
+) -> None:
     logger_name = "neo4j"
     logger = add_handler_mocker(logger_name)[0]
     kwargs = {}
@@ -131,8 +146,9 @@ custom_log_out = io.StringIO()
         (None, custom_log_out, custom_log_out),
     )
 )
-def test_watcher_out(add_handler_mocker, default_out, out,
-                       expected_out):
+def test_watcher_out(
+    add_handler_mocker, default_out, out, expected_out
+) -> None:
     logger_name = "neo4j"
     logger = add_handler_mocker(logger_name)[0]
     kwargs = {}
@@ -150,7 +166,7 @@ def test_watcher_out(add_handler_mocker, default_out, out,
 
 
 @pytest.mark.parametrize("colour", (True, False))
-def test_watcher_colour(add_handler_mocker, colour):
+def test_watcher_colour(add_handler_mocker, colour) -> None:
     logger_name = "neo4j"
     logger = add_handler_mocker(logger_name)[0]
     watcher = neo4j_debug.Watcher(logger_name, colour=colour)
@@ -166,7 +182,7 @@ def test_watcher_colour(add_handler_mocker, colour):
 
 
 @pytest.mark.parametrize("colour", (True, False))
-def test_watcher_format(add_handler_mocker, colour):
+def test_watcher_format(add_handler_mocker, colour) -> None:
     logger_name = "neo4j"
     logger = add_handler_mocker(logger_name)[0]
     watcher = neo4j_debug.Watcher(logger_name, colour=colour)

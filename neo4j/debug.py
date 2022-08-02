@@ -16,6 +16,9 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
+import typing as t
 from logging import (
     CRITICAL,
     DEBUG,
@@ -71,36 +74,37 @@ class Watcher:
         enable logging for all threads.
 
     :param logger_names: Names of loggers to watch.
-    :type logger_names: str
     :param default_level: Default minimum log level to show.
         The level can be overridden by setting the level a level when calling
         :meth:`.watch`.
-    :type default_level: int
     :param default_out: Default output stream for all loggers.
         The level can be overridden by setting the level a level when calling
         :meth:`.watch`.
-    :type default_out: stream or file-like object
     :param colour: Whether the log levels should be indicated with ANSI colour
         codes.
-    :type colour: bool
     """
 
-    def __init__(self, *logger_names, default_level=DEBUG, default_out=stderr,
-                 colour=False):
+    def __init__(
+        self,
+        *logger_names: str,
+        default_level: int = DEBUG,
+        default_out: t.TextIO = stderr,
+        colour: bool = False
+    ) -> None:
         super(Watcher, self).__init__()
         self.logger_names = logger_names
         self._loggers = [getLogger(name) for name in self.logger_names]
         self.default_level = default_level
         self.default_out = default_out
-        self._handlers = {}
+        self._handlers: t.Dict[str, StreamHandler] = {}
 
-        format = "%(threadName)s(%(thread)d) %(asctime)s  %(message)s"
+        format_ = "%(threadName)s(%(thread)d) %(asctime)s  %(message)s"
         if not colour:
-            format = "[%(levelname)-8s] " + format
+            format_ = "[%(levelname)-8s] " + format_
         formatter_cls = ColourFormatter if colour else Formatter
-        self.formatter = formatter_cls(format)
+        self.formatter = formatter_cls(format_)
 
-    def __enter__(self):
+    def __enter__(self) -> Watcher:
         """Enable logging for all loggers."""
         self.watch()
         return self
@@ -109,15 +113,13 @@ class Watcher:
         """Disable logging for all loggers."""
         self.stop()
 
-    def watch(self, level=None, out=None):
+    def watch(self, level: int = None, out: t.TextIO = None):
         """Enable logging for all loggers.
 
         :param level: Minimum log level to show.
             If :const:`None`, the ``default_level`` is used.
-        :type level: int or :const:`None`
         :param out: Output stream for all loggers.
             If :const:`None`, the ``default_out`` is used.
-        :type out: stream or file-like object or :const:`None`
         """
         if level is None:
             level = self.default_level
@@ -131,7 +133,7 @@ class Watcher:
             logger.addHandler(handler)
             logger.setLevel(level)
 
-    def stop(self):
+    def stop(self) -> None:
         """Disable logging for all loggers."""
         for logger in self._loggers:
             try:
@@ -140,7 +142,12 @@ class Watcher:
                 pass
 
 
-def watch(*logger_names, level=DEBUG, out=stderr, colour=False):
+def watch(
+    *logger_names: str,
+    level: int = DEBUG,
+    out: t.TextIO = stderr,
+    colour: bool = False
+) -> Watcher:
     """Quick wrapper for using  :class:`.Watcher`.
 
     Create a Wathcer with the given configuration, enable watching and return

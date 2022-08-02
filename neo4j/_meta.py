@@ -43,7 +43,18 @@ def deprecation_warn(message, stack_level=1):
     warn(message, category=DeprecationWarning, stacklevel=stack_level + 1)
 
 
-def deprecated(message):
+from typing import (
+    Callable,
+    cast,
+    TypeVar,
+)
+
+
+T = TypeVar("T")
+FuncT = TypeVar("FuncT", bound=Callable[..., object])
+
+
+def deprecated(message: str) -> Callable[[FuncT], FuncT]:
     """ Decorator for deprecating functions and methods.
 
     ::
@@ -53,23 +64,29 @@ def deprecated(message):
             pass
 
     """
-    def decorator(f):
+    def decorator(f: FuncT) -> FuncT:
         if asyncio.iscoroutinefunction(f):
             @wraps(f)
             async def inner(*args, **kwargs):
                 deprecation_warn(message, stack_level=2)
                 return await f(*args, **kwargs)
 
-            return inner
+            return cast(FuncT, inner)
         else:
             @wraps(f)
             def inner(*args, **kwargs):
                 deprecation_warn(message, stack_level=2)
                 return f(*args, **kwargs)
 
-            return inner
+            return cast(FuncT, inner)
 
     return decorator
+
+
+def deprecated_property(message: str):
+    def decorator(f):
+        return property(deprecated(message)(f))
+    return cast(property, decorator)
 
 
 class ExperimentalWarning(Warning):
