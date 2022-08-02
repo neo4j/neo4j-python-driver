@@ -116,13 +116,7 @@ class GraphDatabase:
             "neo4j is in experimental phase. It might be removed or "
             "changed at any time (including patch releases)."
         )
-        def driver(
-            cls,
-            uri: str,
-            *,
-            auth: t.Union[t.Tuple[t.Any, t.Any], Auth] = None,
-            **config  # TODO: type config
-        ) -> Driver:
+        def driver(cls, uri, *, auth=None, **config) -> Driver:
             """Create a driver.
 
             :param uri: the connection URI for the driver, see :ref:`uri-ref` for available URIs.

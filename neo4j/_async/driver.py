@@ -116,13 +116,7 @@ class AsyncGraphDatabase:
             "neo4j async is in experimental phase. It might be removed or "
             "changed at any time (including patch releases)."
         )
-        def driver(
-            cls,
-            uri: str,
-            *,
-            auth: t.Union[t.Tuple[t.Any, t.Any], Auth] = None,
-            **config  # TODO: type config
-        ) -> AsyncDriver:
+        def driver(cls, uri, *, auth=None, **config) -> AsyncDriver:
             """Create a driver.
 
             :param uri: the connection URI for the driver, see :ref:`async-uri-ref` for available URIs.
