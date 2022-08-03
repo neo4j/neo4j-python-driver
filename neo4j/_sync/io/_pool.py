@@ -493,7 +493,7 @@ class Neo4jPool(IOPool):
             return self.routing_tables[database]
 
     def fetch_routing_info(
-        self, address, database, imp_user, bookmarks, timeout
+        self, address, database, imp_user, bookmarks, acquisition_timeout
     ):
         """ Fetch raw routing info from a given router address.
 
@@ -504,14 +504,14 @@ class Neo4jPool(IOPool):
         :type imp_user: str or None
         :param bookmarks: iterable of bookmark values after which the routing
                           info should be fetched
-        :param timeout: connection acquisition timeout
+        :param acquisition_timeout: connection acquisition timeout
 
         :return: list of routing records, or None if no connection
             could be established or if no readers or writers are present
         :raise ServiceUnavailable: if the server does not support
             routing, or if routing support is broken or outdated
         """
-        deadline = Deadline.from_timeout_or_deadline(timeout)
+        deadline = Deadline.from_timeout_or_deadline(acquisition_timeout)
         cx = self._acquire(address, deadline, None)
         try:
             routing_table = cx.route(
@@ -524,12 +524,12 @@ class Neo4jPool(IOPool):
         return routing_table
 
     def fetch_routing_table(
-        self, *, address, timeout, database, imp_user, bookmarks
+        self, *, address, acquisition_timeout, database, imp_user, bookmarks
     ):
         """ Fetch a routing table from a given router address.
 
         :param address: router address
-        :param timeout: connection acquisition timeout
+        :param acquisition_timeout: connection acquisition timeout
         :param database: the database name
         :type: str
         :param imp_user: the user to impersonate while fetching the routing
@@ -543,7 +543,7 @@ class Neo4jPool(IOPool):
         new_routing_info = None
         try:
             new_routing_info = self.fetch_routing_info(
-                address, database, imp_user, bookmarks, timeout
+                address, database, imp_user, bookmarks, acquisition_timeout
             )
         except Neo4jError as e:
             # checks if the code is an error that is caused by the client. In
@@ -586,7 +586,7 @@ class Neo4jPool(IOPool):
         return new_routing_table
 
     def _update_routing_table_from(
-        self, *routers, database, imp_user, bookmarks, timeout,
+        self, *routers, database, imp_user, bookmarks, acquisition_timeout,
         database_callback
     ):
         """ Try to update routing tables with the given routers.
@@ -602,8 +602,8 @@ class Neo4jPool(IOPool):
                 router, resolver=self.pool_config.resolver
             ):
                 new_routing_table = self.fetch_routing_table(
-                    address=address, timeout=timeout, database=database,
-                    imp_user=imp_user, bookmarks=bookmarks
+                    address=address, acquisition_timeout=acquisition_timeout,
+                    database=database, imp_user=imp_user, bookmarks=bookmarks
                 )
                 if new_routing_table is not None:
                     new_database = new_routing_table.database
@@ -622,7 +622,7 @@ class Neo4jPool(IOPool):
         return False
 
     def update_routing_table(
-        self, *, database, imp_user, bookmarks, timeout=None,
+        self, *, database, imp_user, bookmarks, acquisition_timeout=None,
         database_callback=None
     ):
         """ Update the routing table from the first router able to provide
@@ -633,7 +633,7 @@ class Neo4jPool(IOPool):
                          table
         :type imp_user: str or None
         :param bookmarks: bookmarks used when fetching routing table
-        :param timeout: connection acquisition timeout
+        :param acquisition_timeout: connection acquisition timeout
         :param database_callback: A callback function that will be called with
             the database name as only argument when a new routing table has been
             acquired. This database name might different from `database` if that
@@ -655,14 +655,16 @@ class Neo4jPool(IOPool):
                 if self._update_routing_table_from(
                     self.first_initial_routing_address, database=database,
                     imp_user=imp_user, bookmarks=bookmarks,
-                    timeout=timeout, database_callback=database_callback
+                    acquisition_timeout=acquisition_timeout,
+                    database_callback=database_callback
                 ):
                     # Why is only the first initial routing address used?
                     return
             if self._update_routing_table_from(
                 *(existing_routers - {self.first_initial_routing_address}),
                 database=database, imp_user=imp_user, bookmarks=bookmarks,
-                timeout=timeout, database_callback=database_callback
+                acquisition_timeout=acquisition_timeout,
+                database_callback=database_callback
             ):
                 return
 
@@ -670,7 +672,8 @@ class Neo4jPool(IOPool):
                 if self._update_routing_table_from(
                     self.first_initial_routing_address, database=database,
                     imp_user=imp_user, bookmarks=bookmarks,
-                    timeout=timeout, database_callback=database_callback
+                    acquisition_timeout=acquisition_timeout,
+                    database_callback=database_callback
                 ):
                     # Why is only the first initial routing address used?
                     return
@@ -687,8 +690,8 @@ class Neo4jPool(IOPool):
                 super(Neo4jPool, self).deactivate(address)
 
     def ensure_routing_table_is_fresh(
-        self, *, access_mode, database, imp_user, bookmarks, timeout=None,
-        database_callback=None
+        self, *, access_mode, database, imp_user, bookmarks,
+        acquisition_timeout=None, database_callback=None
     ):
         """ Update the routing table if stale.
 
@@ -711,7 +714,8 @@ class Neo4jPool(IOPool):
 
             self.update_routing_table(
                 database=database, imp_user=imp_user, bookmarks=bookmarks,
-                timeout=timeout, database_callback=database_callback
+                acquisition_timeout=acquisition_timeout,
+                database_callback=database_callback
             )
             self.update_connection_pool(database=database)
 
@@ -766,7 +770,7 @@ class Neo4jPool(IOPool):
                       self.routing_tables)
             self.ensure_routing_table_is_fresh(
                 access_mode=access_mode, database=database, imp_user=None,
-                bookmarks=bookmarks, timeout=timeout
+                bookmarks=bookmarks, acquisition_timeout=timeout
             )
 
         while True:
