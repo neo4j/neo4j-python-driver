@@ -429,6 +429,10 @@ class WorkspaceConfig(Config):
     impersonated_user = None
     # Note that you need appropriate permissions to do so.
 
+    #: Bookmark Manager
+    bookmark_manager = None
+    # Specify the bookmark manager to be used for sessions by default.
+
 
 class SessionConfig(WorkspaceConfig):
     """ Session configuration.

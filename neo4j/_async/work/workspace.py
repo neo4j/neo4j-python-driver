@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 
+from ..._async_compat.util import AsyncUtil
 from ..._conf import WorkspaceConfig
 from ..._deadline import Deadline
 from ..._meta import (
@@ -44,7 +45,9 @@ class AsyncWorkspace:
         self._connection_access_mode = None
         # Sessions are supposed to cache the database on which to operate.
         self._cached_database = False
-        self._bookmarks = None
+        self._bookmarks = ()
+        self._bookmark_manager = None
+        self._last_from_bookmark_manager = None
         # Workspace has been closed.
         self._closed = False
 
@@ -76,6 +79,40 @@ class AsyncWorkspace:
     def _set_cached_database(self, database):
         self._cached_database = True
         self._config.database = database
+
+    async def _get_bookmarks(self, database):
+        if self._bookmark_manager is not None:
+            self._bookmarks = tuple(
+                await AsyncUtil.callback(
+                    self._bookmark_manager.get_bookmarks, database
+                )
+            )
+        return self._bookmarks
+
+    async def _get_all_bookmarks(self, must_included_databases):
+        if self._bookmark_manager is not None:
+            self._bookmarks = tuple(
+                await AsyncUtil.callback(
+                    self._bookmark_manager.get_all_bookmarks,
+                    must_included_databases
+                )
+            )
+        return self._bookmarks
+
+    async def _update_bookmarks(self, database, new_bookmarks):
+        if not new_bookmarks:
+            return
+        previous_bookmarks = self._bookmarks
+        self._bookmarks = new_bookmarks
+        if self._bookmark_manager is None:
+            return
+        await self._bookmark_manager.update_bookmarks(
+            database, previous_bookmarks, new_bookmarks
+        )
+
+    async def _update_bookmark(self, bookmark):
+        if bookmark:
+            await self._update_bookmarks(self._config.database, (bookmark,))
 
     async def _connect(self, access_mode, **acquire_kwargs):
         timeout = Deadline(self._config.session_connection_timeout)

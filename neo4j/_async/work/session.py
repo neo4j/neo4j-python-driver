@@ -100,9 +100,12 @@ class AsyncSession(AsyncWorkspace):
     _state_failed = False
 
     def __init__(self, pool, session_config):
-        super().__init__(pool, session_config)
         assert isinstance(session_config, SessionConfig)
-        self._bookmarks = self._prepare_bookmarks(session_config.bookmarks)
+        super().__init__(pool, session_config)
+        if session_config.bookmarks is not None:
+            self._bookmarks = self._prepare_bookmarks(session_config.bookmarks)
+        else:
+            self._bookmark_manager = session_config.bookmark_manager
 
     async def __aenter__(self) -> AsyncSession:
         return self
@@ -147,10 +150,6 @@ class AsyncSession(AsyncWorkspace):
             self._handle_cancellation(message="_disconnect")
             raise
 
-    def _collect_bookmark(self, bookmark):
-        if bookmark:
-            self._bookmarks = bookmark,
-
     def _handle_cancellation(self, message="General"):
         self._transaction = None
         self._auto_result = None
@@ -165,7 +164,7 @@ class AsyncSession(AsyncWorkspace):
 
     async def _result_closed(self):
         if self._auto_result:
-            self._collect_bookmark(self._auto_result._bookmark)
+            await self._update_bookmark(self._auto_result._bookmark)
             self._auto_result = None
             await self._disconnect()
 
@@ -196,7 +195,7 @@ class AsyncSession(AsyncWorkspace):
                 if self._state_failed is False:
                     try:
                         await self._auto_result.consume()
-                        self._collect_bookmark(self._auto_result._bookmark)
+                        await self._update_bookmark(self._auto_result._bookmark)
                     except Exception as error:
                         # TODO: Investigate potential non graceful close states
                         self._auto_result = None
@@ -336,7 +335,7 @@ class AsyncSession(AsyncWorkspace):
             await self._auto_result.consume()
 
         if self._transaction and self._transaction._closed:
-            self._collect_bookmark(self._transaction._bookmark)
+            await self._update_bookmark(self._transaction._bookmark)
             self._transaction = None
 
         if self._bookmarks:
@@ -377,14 +376,14 @@ class AsyncSession(AsyncWorkspace):
             await self._auto_result.consume()
 
         if self._transaction and self._transaction._closed():
-            self._collect_bookmark(self._transaction._bookmark)
+            await self._update_bookmark(self._transaction._bookmark)
             self._transaction = None
 
         return Bookmarks.from_raw_values(self._bookmarks)
 
     async def _transaction_closed_handler(self):
         if self._transaction:
-            self._collect_bookmark(self._transaction._bookmark)
+            await self._update_bookmark(self._transaction._bookmark)
             self._transaction = None
             await self._disconnect()
 

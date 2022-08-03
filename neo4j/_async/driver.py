@@ -43,7 +43,9 @@ from .._meta import (
 )
 from ..addressing import Address
 from ..api import (
+    AsyncBookmarkManager,
     Auth,
+    BookmarkManager,
     Bookmarks,
     DRIVER_BOLT,
     DRIVER_NEO4J,
@@ -62,7 +64,12 @@ from ..api import (
     URI_SCHEME_NEO4J_SECURE,
     URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
 )
+from .bookmark_manager import AsyncNeo4jBookmarkManager
 from .work import AsyncSession
+
+
+_T_BmSupplier = t.Callable[[str], t.Union[Bookmarks, t.Awaitable[Bookmarks]]]
+_T_NotifyBm = t.Callable[[str, Bookmarks], t.Union[None, t.Awaitable[None]]]
 
 
 class AsyncGraphDatabase:
@@ -94,6 +101,8 @@ class AsyncGraphDatabase:
             ssl_context: ssl.SSLContext = ...,
             user_agent: str = ...,
             keep_alive: bool = ...,
+            bookmark_manager: t.Union[AsyncBookmarkManager,
+                                      BookmarkManager, None] = ...,
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
@@ -207,6 +216,36 @@ class AsyncGraphDatabase:
             routing_context = parse_routing_context(parsed.query)
             return cls.neo4j_driver(parsed.netloc, auth=auth,
                                     routing_context=routing_context, **config)
+
+    @classmethod
+    def bookmark_manager(
+        cls, initial_bookmarks: Bookmarks = None,
+        bookmark_supplier: _T_BmSupplier = None,
+        notify_bookmarks: _T_NotifyBm = None
+    ) -> AsyncBookmarkManager:
+        """Create a default :class:`AsyncBookmarkManager`.
+
+        :param initial_bookmarks:
+            The initial set of bookmarks. The default bookmark manager will
+            seed the set of bookmarks for each database with this value.
+        :param bookmark_supplier:
+            Function which will be called every time the default bookmark
+            manager's method :meth:`.AsyncBookmarkManager.get_bookmarks`
+            gets called. The result of ``bookmark_supplier`` will be
+            concatenated with the internal set of bookmarks and used to
+            configure the session in creation.
+        :param notify_bookmarks:
+            Function which will be called whenever the set of bookmarks
+            handled by the bookmark manager gets updated with the new
+            internal bookmark set.
+
+        :returns: A default implementation of :class:`AsyncBookmarkManager`.
+        """
+        return AsyncNeo4jBookmarkManager(
+            initial_bookmarks=initial_bookmarks,
+            bookmark_supplier=bookmark_supplier,
+            notify_bookmarks=notify_bookmarks
+        )
 
     @classmethod
     def bolt_driver(cls, target, *, auth=None, **config):
@@ -353,6 +392,8 @@ class AsyncDriver:
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
             retry_delay_jitter_factor: float = ...,
+            bookmark_manager: t.Union[AsyncBookmarkManager,
+                                      BookmarkManager, None] = ...,
         ) -> AsyncSession:
             ...
 
@@ -394,6 +435,8 @@ class AsyncDriver:
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
             retry_delay_jitter_factor: float = ...,
+            bookmark_manager: t.Union[AsyncBookmarkManager,
+                                      BookmarkManager, None] = ...,
         ) -> None:
             ...
 
@@ -456,6 +499,8 @@ class AsyncDriver:
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
             retry_delay_jitter_factor: float = ...,
+            bookmark_manager: t.Union[AsyncBookmarkManager,
+                                      BookmarkManager, None] = ...,
         ) -> ServerInfo:
             ...
 

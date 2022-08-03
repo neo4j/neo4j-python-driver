@@ -20,6 +20,7 @@
 
 from __future__ import annotations
 
+import abc
 import typing as t
 from urllib.parse import (
     parse_qs,
@@ -361,6 +362,93 @@ class Version(tuple):
         if b[0] != 0 or b[1] != 0:
             raise ValueError("First two bytes must contain zero")
         return Version(b[-1], b[-2])
+
+
+class BookmarkManager(abc.ABC):
+    """Class to manage bookmarks throughout the driver's lifetime.
+
+    Neo4j clusters are eventually consistent, meaning that there is no
+    guarantee a query will be able to read changes made by a previous query.
+    For cases where such a guarantee is necessary, the server provides
+    bookmarks to the client. A bookmark is an abstract token that represents
+    some state of the database. By passing one or multiple bookmarks along
+    with a query, the server will make sure that the query will not get
+    executed before the represented state(s) (or a later state) have been
+    established.
+
+    The bookmark manager is an interface used by the driver for keeping
+    track of the bookmarks and this way keeping sessions automatically
+    consistent.
+
+    .. note::
+        All methods must be concurrency safe.
+    """
+
+    @abc.abstractmethod
+    def update_bookmarks(
+        self, database: str, previous_bookmarks: t.Iterable[str],
+        new_bookmarks: t.Iterable[str]
+    ) -> None:
+        """Handle bookmark updates.
+
+        :param database:
+            The database which the bookmarks belong to
+        :param previous_bookmarks:
+            The bookmarks used at the start of a transaction
+        :param new_bookmarks:
+            The new bookmarks retrieved at the end of a transaction
+        """
+        ...
+
+    @abc.abstractmethod
+    def get_bookmarks(self, database: str) -> t.Collection[str]:
+        """Return the bookmarks for a given database.
+
+        :param database: The database which the bookmarks belong to
+
+        :returns: The bookmarks for the given database
+        """
+        ...
+
+    @abc.abstractmethod
+    def get_all_bookmarks(
+        self, must_included_databases: t.Iterable[str]
+    ) -> t.Collection[str]:
+        """Return all bookmarks.
+
+        The prototypical implementation of this method iterates over all known
+        databases plus the ones provided in the `must_included_databases`
+        parameter and calls :meth:`get_bookmarks` for each of them. It then
+        returns the union of all the bookmarks.
+
+        :param must_included_databases:
+            The databases which must be included in the result even if they
+            don't have been initialized yet.
+
+        :returns: The collected bookmarks.
+        """
+        ...
+
+
+class AsyncBookmarkManager(abc.ABC):
+    """Same as :class:`BookmarkManager` but with async methods."""
+
+    @abc.abstractmethod
+    async def update_bookmarks(
+        self, database: str, previous_bookmarks: t.Iterable[str],
+        new_bookmarks: t.Iterable[str]
+    ) -> None:
+        ...
+
+    @abc.abstractmethod
+    async def get_bookmarks(self, database: str) -> t.Collection[str]:
+        ...
+
+    @abc.abstractmethod
+    async def get_all_bookmarks(
+        self, must_included_databases: t.Iterable[str]
+    ) -> t.Collection[str]:
+        ...
 
 
 def parse_neo4j_uri(uri):
