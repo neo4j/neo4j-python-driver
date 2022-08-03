@@ -68,6 +68,7 @@ test_session_config = {
     "database": None,
     "impersonated_user": None,
     "fetch_size": 100,
+    "bookmark_manager": object(),
 }
 
 
