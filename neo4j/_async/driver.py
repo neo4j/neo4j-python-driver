@@ -219,7 +219,9 @@ class AsyncGraphDatabase:
 
     @classmethod
     def bookmark_manager(
-        cls, initial_bookmarks: Bookmarks = None,
+        cls,
+        initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
+                                                  t.Iterable[str]]] = None,
         bookmark_supplier: _T_BmSupplier = None,
         notify_bookmarks: _T_NotifyBm = None
     ) -> AsyncBookmarkManager:
@@ -227,7 +229,9 @@ class AsyncGraphDatabase:
 
         :param initial_bookmarks:
             The initial set of bookmarks. The default bookmark manager will
-            seed the set of bookmarks for each database with this value.
+            use this to initialize its internal bookmarks per database.
+            If present, this parameter must be a mapping of database names
+            to :class:`.Bookmarks` or an iterable of raw bookmark values (str).
         :param bookmark_supplier:
             Function which will be called every time the default bookmark
             manager's method :meth:`.AsyncBookmarkManager.get_bookmarks`

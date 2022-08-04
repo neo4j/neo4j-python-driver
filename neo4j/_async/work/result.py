@@ -80,6 +80,7 @@ class AsyncResult:
         self._keys = None
         self._record_buffer = deque()
         self._summary = None
+        self._database = None
         self._bookmark = None
         self._raw_qid = -1
         self._fetch_size = fetch_size
@@ -127,7 +128,9 @@ class AsyncResult:
             "query": query_text,
             "parameters": parameters,
             "server": self._connection.server_info,
+            "database": db,
         }
+        self._database = db
 
         def on_attached(metadata):
             self._metadata.update(metadata)
@@ -189,6 +192,7 @@ class AsyncResult:
                 return
             self._metadata.update(summary_metadata)
             self._bookmark = summary_metadata.get("bookmark")
+            self._database = summary_metadata.get("db", self._database)
 
         self._connection.pull(
             n=self._fetch_size,
@@ -220,6 +224,7 @@ class AsyncResult:
             self._discarding = False
             self._metadata.update(summary_metadata)
             self._bookmark = summary_metadata.get("bookmark")
+            self._database = summary_metadata.get("db", self._database)
 
         # This was the last page received, discard the rest
         self._connection.discard(

@@ -236,9 +236,11 @@ class Bookmarks:
         )
 
     def __bool__(self) -> bool:
+        """True if there are bookmarks in the container."""
         return bool(self._raw_values)
 
     def __add__(self, other: Bookmarks) -> Bookmarks:
+        """Add multiple containers together."""
         if isinstance(other, Bookmarks):
             if not other:
                 return self
@@ -246,6 +248,17 @@ class Bookmarks:
             ret._raw_values = self._raw_values | other._raw_values
             return ret
         return NotImplemented
+
+    def __iter__(self) -> t.Iterator[str]:
+        """Iterate over the raw bookmark values.
+
+        This is equivalent to::
+
+            bookmarks.raw_values.__iter__()
+
+        :return: iterator over the raw bookmark values
+        """
+        return iter(self._raw_values)
 
     @property
     def raw_values(self) -> t.FrozenSet[str]:

@@ -16,10 +16,13 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import asyncio
 import collections
 import re
 import threading
+import typing as t
 
 from neo4j._async_compat.shims import wait_for
 
@@ -210,6 +213,12 @@ class AsyncCooperativeLock:
 
     def __exit__(self, t, v, tb):
         self.release()
+
+    async def __aenter__(self):
+        return self.__enter__()
+
+    async def __aexit__(self, t, v, tb):
+        self.__exit__(t, v, tb)
 
 
 class AsyncCooperativeRLock:
@@ -423,6 +432,8 @@ class AsyncCondition:
         self.notify(len(self._waiters))
 
 
-Condition = threading.Condition
-CooperativeLock = Lock = threading.Lock
-CooperativeRLock = RLock = threading.RLock
+Condition: t.TypeAlias = threading.Condition
+CooperativeLock: t.TypeAlias = threading.Lock
+Lock: t.TypeAlias = threading.Lock
+CooperativeRLock: t.TypeAlias = threading.RLock
+RLock: t.TypeAlias = threading.RLock

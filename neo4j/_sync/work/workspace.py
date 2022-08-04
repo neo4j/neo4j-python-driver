@@ -80,16 +80,19 @@ class Workspace:
         self._cached_database = True
         self._config.database = database
 
-    def _get_bookmarks(self, database):
+    def _get_system_bookmarks(self):
         if self._bookmark_manager is not None:
             self._bookmarks = tuple(
                 Util.callback(
-                    self._bookmark_manager.get_bookmarks, database
+                    self._bookmark_manager.get_bookmarks, "system"
                 )
             )
         return self._bookmarks
 
-    def _get_all_bookmarks(self, must_included_databases):
+    def _get_all_bookmarks(self):
+        must_included_databases = ["system"]
+        if self._config.database:
+            must_included_databases.append(self._config.database)
         if self._bookmark_manager is not None:
             self._bookmarks = tuple(
                 Util.callback(
@@ -100,19 +103,21 @@ class Workspace:
         return self._bookmarks
 
     def _update_bookmarks(self, database, new_bookmarks):
-        if not new_bookmarks:
-            return
         previous_bookmarks = self._bookmarks
         self._bookmarks = new_bookmarks
         if self._bookmark_manager is None:
             return
-        self._bookmark_manager.update_bookmarks(
+        Util.callback(
+            self._bookmark_manager.update_bookmarks,
             database, previous_bookmarks, new_bookmarks
         )
 
-    def _update_bookmark(self, bookmark):
-        if bookmark:
-            self._update_bookmarks(self._config.database, (bookmark,))
+    def _update_bookmark(self, database, bookmark):
+        if not bookmark:
+            return
+        if not database:
+            database = self._config.database
+        self._update_bookmarks(database, (bookmark,))
 
     def _connect(self, access_mode, **acquire_kwargs):
         timeout = Deadline(self._config.session_connection_timeout)
@@ -133,10 +138,11 @@ class Workspace:
                 # to try to fetch the home database. If provided by the server,
                 # we shall use this database explicitly for all subsequent
                 # actions within this session.
+                bookmarks = self._get_system_bookmarks()
                 self._pool.update_routing_table(
                     database=self._config.database,
                     imp_user=self._config.impersonated_user,
-                    bookmarks=self._bookmarks,
+                    bookmarks=bookmarks,
                     timeout=timeout,
                     database_callback=self._set_cached_database
                 )

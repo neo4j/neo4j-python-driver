@@ -33,10 +33,14 @@ class Neo4jBookmarkManager(BookmarkManager):
     def __init__(self, initial_bookmarks=None, bookmark_supplier=None,
                  notify_bookmarks=None):
         super().__init__()
-        self._initial_bookmarks = initial_bookmarks
         self._bookmark_supplier = bookmark_supplier
         self._notify_bookmarks = notify_bookmarks
-        self._bookmarks = defaultdict(set)
+        if initial_bookmarks is None:
+            initial_bookmarks = {}
+        self._bookmarks = defaultdict(
+            set, ((k, set(v)) for k, v in initial_bookmarks.items())
+        )
+        self._lock: t.Union[Lock, CooperativeLock]
         if bookmark_supplier or notify_bookmarks:
             self._lock = Lock()
         else:

@@ -1522,6 +1522,7 @@ Bookmarks
 
 .. autoclass:: neo4j.Bookmarks
     :members:
+    :special-members: __bool__, __add__, __iter__
 
 .. autoclass:: neo4j.Bookmark
     :members:

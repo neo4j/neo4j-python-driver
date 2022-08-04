@@ -44,6 +44,7 @@ class AsyncTransactionBase:
             connection, self._error_handler
         )
         self._bookmark = None
+        self._database = None
         self._results = []
         self._closed_flag = False
         self._last_error = None
@@ -69,6 +70,7 @@ class AsyncTransactionBase:
     async def _begin(
         self, database, imp_user, bookmarks, access_mode, metadata, timeout
     ):
+        self._database = database
         self._connection.begin(
             bookmarks=bookmarks, metadata=metadata, timeout=timeout,
             mode=access_mode, db=database, imp_user=imp_user
@@ -168,6 +170,7 @@ class AsyncTransactionBase:
             await self._connection.send_all()
             await self._connection.fetch_all()
             self._bookmark = metadata.get("bookmark")
+            self._database = metadata.get("db", self._database)
         except asyncio.CancelledError:
             self._on_cancel()
             raise

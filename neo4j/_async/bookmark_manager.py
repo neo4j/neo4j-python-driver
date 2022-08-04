@@ -33,10 +33,14 @@ class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):
     def __init__(self, initial_bookmarks=None, bookmark_supplier=None,
                  notify_bookmarks=None):
         super().__init__()
-        self._initial_bookmarks = initial_bookmarks
         self._bookmark_supplier = bookmark_supplier
         self._notify_bookmarks = notify_bookmarks
-        self._bookmarks = defaultdict(set)
+        if initial_bookmarks is None:
+            initial_bookmarks = {}
+        self._bookmarks = defaultdict(
+            set, ((k, set(v)) for k, v in initial_bookmarks.items())
+        )
+        self._lock: t.Union[AsyncLock, AsyncCooperativeLock]
         if bookmark_supplier or notify_bookmarks:
             self._lock = AsyncLock()
         else:
@@ -46,7 +50,7 @@ class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):
         self, database: str, previous_bookmarks: t.Iterable[str],
         new_bookmarks: t.Iterable[str]
     ) -> None:
-        with self._lock:
+        async with self._lock:
             new_bms = set(new_bookmarks)
             if not new_bms:
                 return
@@ -71,13 +75,13 @@ class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):
         return bms
 
     async def get_bookmarks(self, database: str) -> t.Set[str]:
-        with self._lock:
+        async with self._lock:
             return await self._get_bookmarks(database)
 
     async def get_all_bookmarks(
         self, must_included_databases: t.Iterable[str]
     ) -> t.Set[str]:
-        with self._lock:
+        async with self._lock:
             bms = set()
             databases = (set(must_included_databases)
                          | set(self._bookmarks.keys()))
