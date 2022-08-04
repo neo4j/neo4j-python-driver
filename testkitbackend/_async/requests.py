@@ -144,6 +144,21 @@ async def NewDriver(backend, data):
                           for cert in data["trustedCertificates"])
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
+    bookmark_manager_config = data.get("bookmarkManager", {})
+    if bookmark_manager_config:
+        bookmark_manager_config.mark_item_as_read_if_equals(
+            "bookmarkSupplier", False
+        )
+        bookmark_manager_config.mark_item_as_read_if_equals(
+            "notifyBookmarks", False
+        )
+        bookmark_manager_config.mark_item_as_read("initialBookmarks",
+                                                  recursive=True)
+        kwargs["bookmark_manager"] = neo4j.AsyncGraphDatabase.bookmark_manager(
+            initial_bookmarks=bookmark_manager_config.get("initialBookmarks"),
+            bookmark_supplier=None,
+            notify_bookmarks=None,
+        )
 
     data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.AsyncGraphDatabase.driver(
@@ -277,7 +292,7 @@ async def NewSession(backend, data):
     else:
         raise ValueError("Unknown access mode:" + access_mode)
     bookmarks = None
-    if "bookmarks" in data and data["bookmarks"]:
+    if "bookmarks" in data and data["bookmarks"] is not None:
         bookmarks = neo4j.Bookmarks.from_raw_values(data["bookmarks"])
     config = {
             "default_access_mode": access_mode,

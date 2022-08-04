@@ -16,6 +16,7 @@
       "test_subtest_skips.tz_id"
   },
   "features": {
+    "Feature:API:BookmarkManager": true,
     "Feature:API:ConnectionAcquisitionTimeout": true,
     "Feature:API:Driver:GetServerInfo": true,
     "Feature:API:Driver.IsEncrypted": true,
