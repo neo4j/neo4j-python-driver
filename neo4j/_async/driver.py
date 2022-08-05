@@ -389,6 +389,7 @@ class AsyncDriver:
             fetch_size: int = ...,
             impersonated_user: t.Optional[str] = ...,
             bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
+            ignore_bookmark_manager: bool = ...,
             default_access_mode: str = ...,
 
             # undocumented/unsupported options

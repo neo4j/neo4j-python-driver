@@ -102,9 +102,8 @@ class AsyncSession(AsyncWorkspace):
     def __init__(self, pool, session_config):
         assert isinstance(session_config, SessionConfig)
         super().__init__(pool, session_config)
-        if session_config.bookmarks is not None:
-            self._bookmarks = self._prepare_bookmarks(session_config.bookmarks)
-        else:
+        self._initialize_bookmarks(session_config.bookmarks)
+        if not session_config.ignore_bookmark_manager:
             self._bookmark_manager = session_config.bookmark_manager
 
     async def __aenter__(self) -> AsyncSession:
@@ -118,21 +117,6 @@ class AsyncSession(AsyncWorkspace):
                 return
             self._state_failed = True
         await self.close()
-
-    def _prepare_bookmarks(self, bookmarks):
-        if isinstance(bookmarks, Bookmarks):
-            return tuple(bookmarks.raw_values)
-        if hasattr(bookmarks, "__iter__"):
-            deprecation_warn(
-                "Passing an iterable as `bookmarks` to `Session` is "
-                "deprecated. Please use a `Bookmarks` instance.",
-                stack_level=5
-            )
-            return tuple(bookmarks)
-        if not bookmarks:
-            return ()
-        raise TypeError("Bookmarks must be an instance of Bookmarks or an "
-                        "iterable of raw bookmarks (deprecated).")
 
     async def _connect(self, access_mode, **access_kwargs):
         if access_mode is None:

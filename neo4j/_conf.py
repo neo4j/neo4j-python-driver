@@ -444,6 +444,9 @@ class SessionConfig(WorkspaceConfig):
     #: Default AccessMode
     default_access_mode = WRITE_ACCESS
 
+    #: Whether to ignore the bookmark manager configured at driver level
+    ignore_bookmark_manager = False
+
 
 class TransactionConfig(Config):
     """ Transaction configuration. This is internal for now.

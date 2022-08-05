@@ -27,6 +27,7 @@ from ..._meta import (
     deprecation_warn,
     unclosed_resource_warn,
 )
+from ...api import Bookmarks
 from ...exceptions import (
     ServiceUnavailable,
     SessionError,
@@ -46,6 +47,7 @@ class AsyncWorkspace:
         # Sessions are supposed to cache the database on which to operate.
         self._cached_database = False
         self._bookmarks = ()
+        self._initial_bookmarks = ()
         self._bookmark_manager = None
         self._last_from_bookmark_manager = None
         # Workspace has been closed.
@@ -80,13 +82,31 @@ class AsyncWorkspace:
         self._cached_database = True
         self._config.database = database
 
+    def _initialize_bookmarks(self, bookmarks):
+        if isinstance(bookmarks, Bookmarks):
+            prepared_bookmarks = tuple(bookmarks.raw_values)
+        elif hasattr(bookmarks, "__iter__"):
+            deprecation_warn(
+                "Passing an iterable as `bookmarks` to `Session` is "
+                "deprecated. Please use a `Bookmarks` instance.",
+                stack_level=5
+            )
+            prepared_bookmarks = tuple(bookmarks)
+        elif not bookmarks:
+            prepared_bookmarks = ()
+        else:
+            raise TypeError("Bookmarks must be an instance of Bookmarks or an "
+                            "iterable of raw bookmarks (deprecated).")
+        self._initial_bookmarks = self._bookmarks = prepared_bookmarks
+
     async def _get_system_bookmarks(self):
         if self._bookmark_manager is not None:
-            self._bookmarks = tuple(
-                await AsyncUtil.callback(
+            self._bookmarks = tuple({
+                *await AsyncUtil.callback(
                     self._bookmark_manager.get_bookmarks, "system"
-                )
-            )
+                ),
+                *self._initial_bookmarks
+            })
         return self._bookmarks
 
     async def _get_all_bookmarks(self):
@@ -94,15 +114,19 @@ class AsyncWorkspace:
         if self._config.database:
             must_included_databases.append(self._config.database)
         if self._bookmark_manager is not None:
-            self._bookmarks = tuple(
-                await AsyncUtil.callback(
+            self._bookmarks = tuple({
+                *await AsyncUtil.callback(
                     self._bookmark_manager.get_all_bookmarks,
                     must_included_databases
-                )
-            )
+                ),
+                *self._initial_bookmarks
+            })
         return self._bookmarks
 
     async def _update_bookmarks(self, database, new_bookmarks):
+        if not new_bookmarks:
+            return
+        self._initial_bookmarks = ()
         previous_bookmarks = self._bookmarks
         self._bookmarks = new_bookmarks
         if self._bookmark_manager is None:

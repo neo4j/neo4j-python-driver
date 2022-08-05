@@ -291,17 +291,21 @@ def NewSession(backend, data):
         access_mode = neo4j.WRITE_ACCESS
     else:
         raise ValueError("Unknown access mode:" + access_mode)
-    bookmarks = None
-    if "bookmarks" in data and data["bookmarks"] is not None:
-        bookmarks = neo4j.Bookmarks.from_raw_values(data["bookmarks"])
     config = {
-            "default_access_mode": access_mode,
-            "bookmarks": bookmarks,
-            "database": data["database"],
-            "fetch_size": data.get("fetchSize", None),
-            "impersonated_user": data.get("impersonatedUser", None),
-
+        "default_access_mode": access_mode,
+        "database": data["database"],
     }
+    if data.get("bookmarks") is not None:
+        config["bookmarks"] = neo4j.Bookmarks.from_raw_values(
+            data["bookmarks"]
+        )
+    for (conf_name, data_name) in (
+        ("fetch_size", "fetchSize"),
+        ("impersonated_user", "impersonatedUser"),
+        ("ignore_bookmark_manager", "ignoreBookmarkManager"),
+    ):
+        if data_name in data:
+            config[conf_name] = data[data_name]
     session = driver.session(**config)
     key = backend.next_key()
     backend.sessions[key] = SessionTracker(session)
