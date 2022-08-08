@@ -21,10 +21,7 @@ from __future__ import annotations
 import typing as t
 from collections import defaultdict
 
-from .._async_compat.concurrency import (
-    CooperativeLock,
-    Lock,
-)
+from .._async_compat.concurrency import CooperativeLock
 from .._async_compat.util import Util
 from ..api import BookmarkManager
 
@@ -40,51 +37,47 @@ class Neo4jBookmarkManager(BookmarkManager):
         self._bookmarks = defaultdict(
             set, ((k, set(v)) for k, v in initial_bookmarks.items())
         )
-        self._lock: t.Union[Lock, CooperativeLock]
-        if bookmark_supplier or notify_bookmarks:
-            self._lock = Lock()
-        else:
-            self._lock = CooperativeLock()
+        # the value of self._bookmarks[db] may only be changed with
+        # self._per_db_lock[db] acquired
+        self._per_db_lock = defaultdict(CooperativeLock)
 
     def update_bookmarks(
         self, database: str, previous_bookmarks: t.Iterable[str],
         new_bookmarks: t.Iterable[str]
     ) -> None:
-        with self._lock:
-            new_bms = set(new_bookmarks)
+        new_bms = set(new_bookmarks)
+        prev_bms = set(previous_bookmarks)
+        with self._per_db_lock[database]:
             if not new_bms:
                 return
-            prev_bms = set(previous_bookmarks)
             curr_bms = self._bookmarks[database]
             curr_bms.difference_update(prev_bms)
             curr_bms.update(new_bms)
-
             if self._notify_bookmarks:
-                Util.callback(
-                    self._notify_bookmarks, database, tuple(curr_bms)
-                )
+                curr_bms_snapshot = tuple(curr_bms)
+        if self._notify_bookmarks:
+            Util.callback(self._notify_bookmarks,
+                                     database, curr_bms_snapshot)
 
     def _get_bookmarks(self, database: str) -> t.Set[str]:
-        bms = self._bookmarks[database]
+        with self._per_db_lock[database]:
+            bms = set(self._bookmarks[database])
         if self._bookmark_supplier:
-            extra_bms = Util.callback(
-                self._bookmark_supplier, database
-            )
+            extra_bms = Util.callback(self._bookmark_supplier,
+                                                 database)
             if extra_bms is not None:
                 bms &= set(extra_bms)
         return bms
 
     def get_bookmarks(self, database: str) -> t.Set[str]:
-        with self._lock:
-            return self._get_bookmarks(database)
+        return self._get_bookmarks(database)
 
     def get_all_bookmarks(
         self, must_included_databases: t.Iterable[str]
     ) -> t.Set[str]:
-        with self._lock:
-            bms = set()
-            databases = (set(must_included_databases)
-                         | set(self._bookmarks.keys()))
-            for database in databases:
-                bms.update(self._get_bookmarks(database))
-            return bms
+        bms = set()
+        databases = (set(must_included_databases)
+                     | set(self._bookmarks.keys()))
+        for database in databases:
+            bms.update(self._get_bookmarks(database))
+        return bms

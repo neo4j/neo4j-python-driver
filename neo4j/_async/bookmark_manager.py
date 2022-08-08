@@ -21,10 +21,7 @@ from __future__ import annotations
 import typing as t
 from collections import defaultdict
 
-from .._async_compat.concurrency import (
-    AsyncCooperativeLock,
-    AsyncLock,
-)
+from .._async_compat.concurrency import AsyncCooperativeLock
 from .._async_compat.util import AsyncUtil
 from ..api import AsyncBookmarkManager
 
@@ -40,51 +37,47 @@ class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):
         self._bookmarks = defaultdict(
             set, ((k, set(v)) for k, v in initial_bookmarks.items())
         )
-        self._lock: t.Union[AsyncLock, AsyncCooperativeLock]
-        if bookmark_supplier or notify_bookmarks:
-            self._lock = AsyncLock()
-        else:
-            self._lock = AsyncCooperativeLock()
+        # the value of self._bookmarks[db] may only be changed with
+        # self._per_db_lock[db] acquired
+        self._per_db_lock = defaultdict(AsyncCooperativeLock)
 
     async def update_bookmarks(
         self, database: str, previous_bookmarks: t.Iterable[str],
         new_bookmarks: t.Iterable[str]
     ) -> None:
-        async with self._lock:
-            new_bms = set(new_bookmarks)
+        new_bms = set(new_bookmarks)
+        prev_bms = set(previous_bookmarks)
+        with self._per_db_lock[database]:
             if not new_bms:
                 return
-            prev_bms = set(previous_bookmarks)
             curr_bms = self._bookmarks[database]
             curr_bms.difference_update(prev_bms)
             curr_bms.update(new_bms)
-
             if self._notify_bookmarks:
-                await AsyncUtil.callback(
-                    self._notify_bookmarks, database, tuple(curr_bms)
-                )
+                curr_bms_snapshot = tuple(curr_bms)
+        if self._notify_bookmarks:
+            await AsyncUtil.callback(self._notify_bookmarks,
+                                     database, curr_bms_snapshot)
 
     async def _get_bookmarks(self, database: str) -> t.Set[str]:
-        bms = self._bookmarks[database]
+        with self._per_db_lock[database]:
+            bms = set(self._bookmarks[database])
         if self._bookmark_supplier:
-            extra_bms = await AsyncUtil.callback(
-                self._bookmark_supplier, database
-            )
+            extra_bms = await AsyncUtil.callback(self._bookmark_supplier,
+                                                 database)
             if extra_bms is not None:
                 bms &= set(extra_bms)
         return bms
 
     async def get_bookmarks(self, database: str) -> t.Set[str]:
-        async with self._lock:
-            return await self._get_bookmarks(database)
+        return await self._get_bookmarks(database)
 
     async def get_all_bookmarks(
         self, must_included_databases: t.Iterable[str]
     ) -> t.Set[str]:
-        async with self._lock:
-            bms = set()
-            databases = (set(must_included_databases)
-                         | set(self._bookmarks.keys()))
-            for database in databases:
-                bms.update(await self._get_bookmarks(database))
-            return bms
+        bms = set()
+        databases = (set(must_included_databases)
+                     | set(self._bookmarks.keys()))
+        for database in databases:
+            bms.update(await self._get_bookmarks(database))
+        return bms
