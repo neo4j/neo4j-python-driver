@@ -119,7 +119,7 @@ async def test_async_cancellation(
     uri, auth, mocker, read_func, waits, cancel_count, i
 ):
     async with get_async_driver_no_warning(
-        uri, auth=auth, session_connection_timeout=10
+        uri, auth=auth, connection_acquisition_timeout=10
     ) as driver:
         async with driver.session() as session:
             session._handle_cancellation = mocker.Mock(
@@ -183,7 +183,7 @@ READS_PER_SESSION = 20
 async def test_async_cancellation_does_not_leak(uri, auth):
     async with get_async_driver_no_warning(
         uri, auth=auth,
-        session_connection_timeout=10,
+        connection_acquisition_timeout=10,
         # driver needs to cope with a single connection in the pool!
         max_connection_pool_size=1,
     ) as driver:

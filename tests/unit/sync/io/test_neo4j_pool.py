@@ -76,13 +76,13 @@ def test_acquires_new_routing_table_if_deleted(opener):
     pool = Neo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
-    cx = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     pool.release(cx)
     assert pool.routing_tables.get("test_db")
 
     del pool.routing_tables["test_db"]
 
-    cx = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     pool.release(cx)
     assert pool.routing_tables.get("test_db")
 
@@ -92,14 +92,14 @@ def test_acquires_new_routing_table_if_stale(opener):
     pool = Neo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
-    cx = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     pool.release(cx)
     assert pool.routing_tables.get("test_db")
 
     old_value = pool.routing_tables["test_db"].last_updated_time
     pool.routing_tables["test_db"].ttl = 0
 
-    cx = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     pool.release(cx)
     assert pool.routing_tables["test_db"].last_updated_time > old_value
 
@@ -109,10 +109,10 @@ def test_removes_old_routing_table(opener):
     pool = Neo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
-    cx = pool.acquire(READ_ACCESS, 30, 60, "test_db1", None, None)
+    cx = pool.acquire(READ_ACCESS, 30, "test_db1", None, None)
     pool.release(cx)
     assert pool.routing_tables.get("test_db1")
-    cx = pool.acquire(READ_ACCESS, 30, 60, "test_db2", None, None)
+    cx = pool.acquire(READ_ACCESS, 30, "test_db2", None, None)
     pool.release(cx)
     assert pool.routing_tables.get("test_db2")
 
@@ -121,7 +121,7 @@ def test_removes_old_routing_table(opener):
     pool.routing_tables["test_db2"].ttl = \
         -RoutingConfig.routing_table_purge_delay
 
-    cx = pool.acquire(READ_ACCESS, 30, 60, "test_db1", None, None)
+    cx = pool.acquire(READ_ACCESS, 30, "test_db1", None, None)
     pool.release(cx)
     assert pool.routing_tables["test_db1"].last_updated_time > old_value
     assert "test_db2" not in pool.routing_tables
@@ -135,7 +135,7 @@ def test_chooses_right_connection_type(opener, type_):
     )
     cx1 = pool.acquire(
         READ_ACCESS if type_ == "r" else WRITE_ACCESS,
-        30, 60, "test_db", None, None
+        30, "test_db", None, None
     )
     pool.release(cx1)
     if type_ == "r":
@@ -149,9 +149,9 @@ def test_reuses_connection(opener):
     pool = Neo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
-    cx1 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     pool.release(cx1)
-    cx2 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx2 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     assert cx1 is cx2
 
 
@@ -169,7 +169,7 @@ def test_closes_stale_connections(opener, break_on_close):
     pool = Neo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
-    cx1 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     pool.release(cx1)
     assert cx1 in pool.connections[cx1.addr]
     # simulate connection going stale (e.g. exceeding) and then breaking when
@@ -179,7 +179,7 @@ def test_closes_stale_connections(opener, break_on_close):
     if break_on_close:
         cx_close_mock_side_effect = cx_close_mock.side_effect
         cx_close_mock.side_effect = break_connection
-    cx2 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx2 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     pool.release(cx2)
     if break_on_close:
         cx1.close.assert_called()
@@ -196,11 +196,11 @@ def test_does_not_close_stale_connections_in_use(opener):
     pool = Neo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
-    cx1 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     assert cx1 in pool.connections[cx1.addr]
     # simulate connection going stale (e.g. exceeding) while being in use
     cx1.stale.return_value = True
-    cx2 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx2 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     pool.release(cx2)
     cx1.close.assert_not_called()
     assert cx2 is not cx1
@@ -213,7 +213,7 @@ def test_does_not_close_stale_connections_in_use(opener):
     # it should be closed when trying to acquire the next connection
     cx1.close.assert_not_called()
 
-    cx3 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx3 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     pool.release(cx3)
     cx1.close.assert_called_once()
     assert cx2 is cx3
@@ -227,7 +227,7 @@ def test_release_resets_connections(opener):
     pool = Neo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
-    cx1 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     cx1.is_reset_mock.return_value = False
     cx1.is_reset_mock.reset_mock()
     pool.release(cx1)
@@ -240,7 +240,7 @@ def test_release_does_not_resets_closed_connections(opener):
     pool = Neo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
-    cx1 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     cx1.closed.return_value = True
     cx1.closed.reset_mock()
     cx1.is_reset_mock.reset_mock()
@@ -255,7 +255,7 @@ def test_release_does_not_resets_defunct_connections(opener):
     pool = Neo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
-    cx1 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     cx1.defunct.return_value = True
     cx1.defunct.reset_mock()
     cx1.is_reset_mock.reset_mock()
@@ -408,8 +408,8 @@ def test_multiple_broken_connections_on_close(opener, mocker):
     pool = Neo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
-    cx1 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
-    cx2 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
+    cx2 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     pool.release(cx1)
     pool.release(cx2)
 
@@ -421,7 +421,7 @@ def test_multiple_broken_connections_on_close(opener, mocker):
     # unreachable
     cx1.stale.return_value = True
 
-    cx3 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx3 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
 
     assert cx3 is not cx1
     assert cx3 is not cx2
@@ -432,9 +432,9 @@ def test_failing_opener_leaves_connections_in_use_alone(opener):
     pool = Neo4jPool(
         opener, PoolConfig(), WorkspaceConfig(), ROUTER_ADDRESS
     )
-    cx1 = pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+    cx1 = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
 
     opener.side_effect = ServiceUnavailable("Server overloaded")
     with pytest.raises((ServiceUnavailable, SessionExpired)):
-        pool.acquire(READ_ACCESS, 30, 60, "test_db", None, None)
+        pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     assert not cx1.closed()
