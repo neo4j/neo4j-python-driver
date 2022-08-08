@@ -81,3 +81,8 @@ class Neo4jBookmarkManager(BookmarkManager):
         for database in databases:
             bms.update(self._get_bookmarks(database))
         return bms
+
+    def forget(self, databases: t.Iterable[str]) -> None:
+        for database in databases:
+            with self._per_db_lock[database]:
+                del self._bookmarks[database]

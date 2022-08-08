@@ -442,6 +442,18 @@ class BookmarkManager(abc.ABC):
         """
         ...
 
+    @abc.abstractmethod
+    def forget(self, databases: t.Iterable[str]) -> None:
+        """Forget the bookmarks for the given databases.
+
+        This method is not called by the driver.
+        Forgetting unused databases is the user's responsibility.
+
+        :param databases:
+            The databases which the bookmarks will be removed for.
+        """
+        ...
+
 
 class AsyncBookmarkManager(abc.ABC):
     """Same as :class:`BookmarkManager` but with async methods."""
@@ -461,6 +473,10 @@ class AsyncBookmarkManager(abc.ABC):
     async def get_all_bookmarks(
         self, must_included_databases: t.Iterable[str]
     ) -> t.Collection[str]:
+        ...
+
+    @abc.abstractmethod
+    async def forget(self, databases: t.Iterable[str]) -> None:
         ...
 
 

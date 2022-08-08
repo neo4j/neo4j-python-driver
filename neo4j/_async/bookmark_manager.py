@@ -81,3 +81,8 @@ class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):
         for database in databases:
             bms.update(await self._get_bookmarks(database))
         return bms
+
+    async def forget(self, databases: t.Iterable[str]) -> None:
+        for database in databases:
+            with self._per_db_lock[database]:
+                del self._bookmarks[database]
