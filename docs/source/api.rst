@@ -194,6 +194,11 @@ larger than :ref:`update-routing-table-timeout-ref`,
 
 .. versionadded:: 4.4.5
 
+.. deprecated:: 4.4.6
+    Will be removed in 5.0. Use server-side bolt-keep-alive together with
+    :ref:`connection-acquisition-timeout-ref` instead to ensure the driver
+    cannot hang.
+
 
 .. _update-routing-table-timeout-ref:
 
@@ -215,6 +220,11 @@ This setting only has an effect for :ref:`neo4j-driver-ref`, but not for
 :Default: ``90.0``
 
 .. versionadded:: 4.4.5
+
+.. deprecated:: 4.4.6
+    Will be removed in 5.0. Use server-side bolt-keep-alive together with
+    :ref:`connection-acquisition-timeout-ref` instead to ensure the driver
+    cannot hang.
 
 
 .. _connection-acquisition-timeout-ref:

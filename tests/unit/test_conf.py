@@ -19,6 +19,9 @@
 # limitations under the License.
 
 
+from contextlib import contextmanager
+import warnings
+
 import pytest
 
 from neo4j.exceptions import (
@@ -72,11 +75,26 @@ test_session_config = {
 config_function_names = ["consume_chain", "consume"]
 
 
+@contextmanager
+def _pool_config_deprecations():
+    with pytest.warns(DeprecationWarning,
+                      match="update_routing_table_timeout") as warnings:
+        yield warnings
+
+
+@contextmanager
+def _session_config_deprecations():
+    with pytest.warns(DeprecationWarning,
+                      match="session_connection_timeout") as warnings:
+        yield warnings
+
+
 def test_pool_config_consume():
 
     test_config = dict(test_pool_config)
 
-    consumed_pool_config = PoolConfig.consume(test_config)
+    with _pool_config_deprecations():
+        consumed_pool_config = PoolConfig.consume(test_config)
 
     assert isinstance(consumed_pool_config, PoolConfig)
 
@@ -89,7 +107,8 @@ def test_pool_config_consume():
         if key not in config_function_names:
             assert test_pool_config[key] == consumed_pool_config[key]
 
-    assert len(consumed_pool_config) - len(config_function_names) == len(test_pool_config)
+    assert (len(consumed_pool_config) - len(config_function_names)
+            == len(test_pool_config))
 
 
 def test_pool_config_consume_default_values():
@@ -114,7 +133,11 @@ def test_pool_config_consume_key_not_valid():
     test_config["not_valid_key"] = "test"
 
     with pytest.raises(ConfigurationError) as error:
-        consumed_pool_config = PoolConfig.consume(test_config)
+        # might or might not warn DeprecationWarning, but we're only
+        # interested in the error
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            _ = PoolConfig.consume(test_config)
 
     error.match("Unexpected config keys: not_valid_key")
 
@@ -123,7 +146,8 @@ def test_pool_config_set_value():
 
     test_config = dict(test_pool_config)
 
-    consumed_pool_config = PoolConfig.consume(test_config)
+    with _pool_config_deprecations():
+        consumed_pool_config = PoolConfig.consume(test_config)
 
     assert consumed_pool_config.get("encrypted") is False
     assert consumed_pool_config["encrypted"] is False
@@ -141,15 +165,22 @@ def test_pool_config_set_value():
 def test_pool_config_consume_and_then_consume_again():
 
     test_config = dict(test_pool_config)
-    consumed_pool_config = PoolConfig.consume(test_config)
+    with _pool_config_deprecations():
+        consumed_pool_config = PoolConfig.consume(test_config)
     assert consumed_pool_config.encrypted is False
     consumed_pool_config.encrypted = "test"
 
     with pytest.raises(AttributeError):
-        consumed_pool_config = PoolConfig.consume(consumed_pool_config)
+        _ = PoolConfig.consume(consumed_pool_config)
 
-    consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
-    consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
+    with _pool_config_deprecations():
+        consumed_pool_config = PoolConfig.consume(
+            dict(consumed_pool_config.items())
+        )
+    with _pool_config_deprecations():
+        consumed_pool_config = PoolConfig.consume(
+            dict(consumed_pool_config.items())
+        )
 
     assert consumed_pool_config.encrypted == "test"
 
@@ -157,12 +188,14 @@ def test_pool_config_consume_and_then_consume_again():
 def test_config_consume_chain():
 
     test_config = {}
-
     test_config.update(test_pool_config)
-
     test_config.update(test_session_config)
 
-    consumed_pool_config, consumed_session_config = Config.consume_chain(test_config, PoolConfig, SessionConfig)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        consumed_pool_config, consumed_session_config = Config.consume_chain(
+            test_config, PoolConfig, SessionConfig
+        )
 
     assert isinstance(consumed_pool_config, PoolConfig)
     assert isinstance(consumed_session_config, SessionConfig)
@@ -176,9 +209,11 @@ def test_config_consume_chain():
         if key not in config_function_names:
             assert test_pool_config[key] == val
 
-    assert len(consumed_pool_config) - len(config_function_names) == len(test_pool_config)
+    assert (len(consumed_pool_config) - len(config_function_names)
+            == len(test_pool_config))
 
-    assert len(consumed_session_config) - len(config_function_names) == len(test_session_config)
+    assert (len(consumed_session_config) - len(config_function_names)
+            == len(test_session_config))
 
 
 def test_init_session_config_merge():
@@ -226,3 +261,21 @@ def test_init_session_config_with_not_valid_key():
         _ = SessionConfig.consume(test_config_b)
 
     assert session_config.connection_acquisition_timeout == 333
+
+
+def test_pool_config_deprecated_update_routing_table_timeout():
+    with _pool_config_deprecations():
+        _ = PoolConfig.consume({"update_routing_table_timeout": 1})
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _ = PoolConfig.consume({})
+
+
+def test_session_config_deprecated_session_connection_timeout():
+    with _session_config_deprecations():
+        _ = SessionConfig.consume({"session_connection_timeout": 1})
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _ = SessionConfig.consume({})
