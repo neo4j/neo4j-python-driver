@@ -137,7 +137,7 @@ class AsyncWorkspace:
         )
         await self._disconnect()
         return supports_auto_routing
-    
+
     async def close(self):
         if self._closed:
             return
