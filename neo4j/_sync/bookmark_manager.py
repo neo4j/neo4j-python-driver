@@ -23,23 +23,34 @@ from collections import defaultdict
 
 from .._async_compat.concurrency import CooperativeLock
 from .._async_compat.util import Util
-from ..api import BookmarkManager
+from ..api import (
+    BookmarkManager,
+    Bookmarks,
+)
+
+
+T_BmSupplier = t.Callable[[t.Optional[str]],
+                          t.Union[Bookmarks, t.Union[Bookmarks]]]
+T_BmConsumer = t.Callable[[str, Bookmarks], t.Union[None, t.Union[None]]]
 
 
 class Neo4jBookmarkManager(BookmarkManager):
-    def __init__(self, initial_bookmarks=None, bookmark_supplier=None,
-                 notify_bookmarks=None):
+    def __init__(
+        self,
+        initial_bookmarks: t.Mapping[str, t.Iterable[str]] = None,
+        bookmark_supplier: T_BmSupplier = None,
+        bookmarks_consumer: T_BmConsumer = None
+    ) -> None:
         super().__init__()
         self._bookmark_supplier = bookmark_supplier
-        self._notify_bookmarks = notify_bookmarks
+        self._bookmarks_consumer = bookmarks_consumer
         if initial_bookmarks is None:
             initial_bookmarks = {}
         self._bookmarks = defaultdict(
-            set, ((k, set(v)) for k, v in initial_bookmarks.items())
+            set, ((k, set(map(str, v)))
+                  for k, v in initial_bookmarks.items())
         )
-        # the value of self._bookmarks[db] may only be changed with
-        # self._per_db_lock[db] acquired
-        self._per_db_lock = defaultdict(CooperativeLock)
+        self._lock = CooperativeLock()
 
     def update_bookmarks(
         self, database: str, previous_bookmarks: t.Iterable[str],
@@ -47,42 +58,42 @@ class Neo4jBookmarkManager(BookmarkManager):
     ) -> None:
         new_bms = set(new_bookmarks)
         prev_bms = set(previous_bookmarks)
-        with self._per_db_lock[database]:
+        with self._lock:
             if not new_bms:
                 return
             curr_bms = self._bookmarks[database]
             curr_bms.difference_update(prev_bms)
             curr_bms.update(new_bms)
-            if self._notify_bookmarks:
-                curr_bms_snapshot = tuple(curr_bms)
-        if self._notify_bookmarks:
-            Util.callback(self._notify_bookmarks,
-                                     database, curr_bms_snapshot)
-
-    def _get_bookmarks(self, database: str) -> t.Set[str]:
-        with self._per_db_lock[database]:
-            bms = set(self._bookmarks[database])
-        if self._bookmark_supplier:
-            extra_bms = Util.callback(self._bookmark_supplier,
-                                                 database)
-            if extra_bms is not None:
-                bms &= set(extra_bms)
-        return bms
+            if self._bookmarks_consumer:
+                curr_bms_snapshot = Bookmarks.from_raw_values(curr_bms)
+        if self._bookmarks_consumer:
+            Util.callback(
+                self._bookmarks_consumer, database, curr_bms_snapshot
+            )
 
     def get_bookmarks(self, database: str) -> t.Set[str]:
-        return self._get_bookmarks(database)
+        with self._lock:
+            bms = set(self._bookmarks[database])
+        if self._bookmark_supplier:
+            extra_bms = Util.callback(
+                self._bookmark_supplier, database
+            )
+            bms.update(extra_bms)
+        return bms
 
-    def get_all_bookmarks(
-        self, must_included_databases: t.Iterable[str]
-    ) -> t.Set[str]:
-        bms = set()
-        databases = (set(must_included_databases)
-                     | set(self._bookmarks.keys()))
-        for database in databases:
-            bms.update(self._get_bookmarks(database))
+    def get_all_bookmarks(self) -> t.Set[str]:
+        bms: t.Set[str] = set()
+        with self._lock:
+            for database in self._bookmarks.keys():
+                bms.update(self._bookmarks[database])
+        if self._bookmark_supplier:
+            extra_bms = Util.callback(
+                self._bookmark_supplier, None
+            )
+            bms.update(extra_bms)
         return bms
 
     def forget(self, databases: t.Iterable[str]) -> None:
         for database in databases:
-            with self._per_db_lock[database]:
+            with self._lock:
                 del self._bookmarks[database]

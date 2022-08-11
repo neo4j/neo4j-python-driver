@@ -63,12 +63,12 @@ from ..api import (
     URI_SCHEME_NEO4J_SECURE,
     URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
 )
-from .bookmark_manager import Neo4jBookmarkManager
+from .bookmark_manager import (
+    Neo4jBookmarkManager,
+    T_BmConsumer as _T_BmConsumer,
+    T_BmSupplier as _T_BmSupplier,
+)
 from .work import Session
-
-
-_T_BmSupplier = t.Callable[[str], t.Union[Bookmarks, t.Union[Bookmarks]]]
-_T_NotifyBm = t.Callable[[str, Bookmarks], t.Union[None, t.Union[None]]]
 
 
 class GraphDatabase:
@@ -222,7 +222,7 @@ class GraphDatabase:
         initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
                                                   t.Iterable[str]]] = None,
         bookmark_supplier: _T_BmSupplier = None,
-        notify_bookmarks: _T_NotifyBm = None
+        bookmarks_consumer: _T_BmConsumer = None
     ) -> BookmarkManager:
         """Create a default :class:`.BookmarkManager`.
 
@@ -248,13 +248,18 @@ class GraphDatabase:
         :param bookmark_supplier:
             Function which will be called every time the default bookmark
             manager's method :meth:`.BookmarkManager.get_bookmarks`
-            gets called. The result of ``bookmark_supplier`` will be
-            concatenated with the internal set of bookmarks and used to
-            configure the session in creation.
-        :param notify_bookmarks:
+            or :meth:`.BookmarkManager.get_all_bookmarks` gets called.
+            The function will be passed the name of the database (``str``) if
+            ``.get_bookmarks`` is called or ``None`` if ``.get_all_bookmarks``
+            is called. The function must return a :class:`.Bookmarks` object.
+            The result of ``bookmark_supplier`` will then be concatenated with
+            the internal set of bookmarks and used to configure the session in
+            creation.
+        :param bookmarks_consumer:
             Function which will be called whenever the set of bookmarks
             handled by the bookmark manager gets updated with the new
-            internal bookmark set.
+            internal bookmark set. It will receive the name of the database
+            and the new set of bookmarks.
 
         :returns: A default implementation of :class:`BookmarkManager`.
 
@@ -263,7 +268,7 @@ class GraphDatabase:
         return Neo4jBookmarkManager(
             initial_bookmarks=initial_bookmarks,
             bookmark_supplier=bookmark_supplier,
-            notify_bookmarks=notify_bookmarks
+            bookmarks_consumer=bookmarks_consumer
         )
 
     @classmethod

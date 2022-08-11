@@ -430,19 +430,8 @@ class BookmarkManager(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def get_all_bookmarks(
-        self, must_included_databases: t.Iterable[str]
-    ) -> t.Collection[str]:
-        """Return all bookmarks.
-
-        The prototypical implementation of this method iterates over all known
-        databases plus the ones provided in the `must_included_databases`
-        parameter and calls :meth:`get_bookmarks` for each of them. It then
-        returns the union of all the bookmarks.
-
-        :param must_included_databases:
-            The databases which must be included in the result even if they
-            don't have been initialized yet.
+    def get_all_bookmarks(self) -> t.Collection[str]:
+        """Return all bookmarks for all known databases.
 
         :returns: The collected bookmarks.
         """
@@ -486,9 +475,7 @@ class AsyncBookmarkManager(abc.ABC):
     get_bookmarks.__doc__ = BookmarkManager.get_bookmarks.__doc__
 
     @abc.abstractmethod
-    async def get_all_bookmarks(
-        self, must_included_databases: t.Iterable[str]
-    ) -> t.Collection[str]:
+    async def get_all_bookmarks(self) -> t.Collection[str]:
         ...
 
     get_all_bookmarks.__doc__ = BookmarkManager.get_all_bookmarks.__doc__
