@@ -391,10 +391,16 @@ class BookmarkManager(abc.ABC):
 
     The bookmark manager is an interface used by the driver for keeping
     track of the bookmarks and this way keeping sessions automatically
-    consistent.
+    consistent. Configure the driver to use a specific bookmark manager with
+    :ref:`bookmark-manager-ref`.
+
+    The driver comes with a default implementation of the bookmark manager
+    accessible through :attr:`.GraphDatabase.bookmark_manager()`.
 
     .. note::
         All methods must be concurrency safe.
+
+    .. versionadded:: 5.0
     """
 
     @abc.abstractmethod
@@ -456,7 +462,13 @@ class BookmarkManager(abc.ABC):
 
 
 class AsyncBookmarkManager(abc.ABC):
-    """Same as :class:`BookmarkManager` but with async methods."""
+    """Same as :class:`.BookmarkManager` but with async methods.
+
+    The driver comes with a default implementation of the async bookmark
+    manager accessible through :attr:`.AsyncGraphDatabase.bookmark_manager()`.
+
+    .. versionadded:: 5.0
+    """
 
     @abc.abstractmethod
     async def update_bookmarks(
@@ -465,9 +477,13 @@ class AsyncBookmarkManager(abc.ABC):
     ) -> None:
         ...
 
+    update_bookmarks.__doc__ = BookmarkManager.update_bookmarks.__doc__
+
     @abc.abstractmethod
     async def get_bookmarks(self, database: str) -> t.Collection[str]:
         ...
+
+    get_bookmarks.__doc__ = BookmarkManager.get_bookmarks.__doc__
 
     @abc.abstractmethod
     async def get_all_bookmarks(
@@ -475,9 +491,13 @@ class AsyncBookmarkManager(abc.ABC):
     ) -> t.Collection[str]:
         ...
 
+    get_all_bookmarks.__doc__ = BookmarkManager.get_all_bookmarks.__doc__
+
     @abc.abstractmethod
     async def forget(self, databases: t.Iterable[str]) -> None:
         ...
+
+    forget.__doc__ = BookmarkManager.forget.__doc__
 
 
 def parse_neo4j_uri(uri):

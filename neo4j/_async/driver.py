@@ -73,7 +73,7 @@ _T_NotifyBm = t.Callable[[str, Bookmarks], t.Union[None, t.Awaitable[None]]]
 
 
 class AsyncGraphDatabase:
-    """Accessor for :class:`neo4j.Driver` construction.
+    """Accessor for :class:`neo4j.AsyncDriver` construction.
     """
 
     if t.TYPE_CHECKING:
@@ -225,7 +225,21 @@ class AsyncGraphDatabase:
         bookmark_supplier: _T_BmSupplier = None,
         notify_bookmarks: _T_NotifyBm = None
     ) -> AsyncBookmarkManager:
-        """Create a default :class:`AsyncBookmarkManager`.
+        """Create a default :class:`.AsyncBookmarkManager`.
+
+        Basic usage example to configure the driver with the default
+        bookmark manger implementation so that all work is automatically
+        causally chained (i.e., all reads can observe all previous writes
+        even in a clustered setup)::
+
+            import neo4j
+
+            driver = neo4j.AsyncGraphDatabase.driver(
+                uri, auth=..., # ...
+                bookmark_manager=neo4j.AsyncGraphDatabase.bookmark_manager(
+                    # ... configure the bookmark manager
+                )
+            )
 
         :param initial_bookmarks:
             The initial set of bookmarks. The default bookmark manager will
@@ -244,6 +258,8 @@ class AsyncGraphDatabase:
             internal bookmark set.
 
         :returns: A default implementation of :class:`AsyncBookmarkManager`.
+
+        .. versionadded:: 5.0
         """
         return AsyncNeo4jBookmarkManager(
             initial_bookmarks=initial_bookmarks,

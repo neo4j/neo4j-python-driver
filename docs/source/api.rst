@@ -14,40 +14,41 @@ Driver Construction
 The :class:`neo4j.Driver` construction is done via a ``classmethod`` on the :class:`neo4j.GraphDatabase` class.
 
 .. autoclass:: neo4j.GraphDatabase
-   :members: driver
+   :members: bookmark_manager
+
+    .. method:: driver
+
+        Driver creation example:
+
+        .. code-block:: python
+
+            from neo4j import GraphDatabase
+
+            uri = "neo4j://example.com:7687"
+            driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
+
+            driver.close()  # close the driver object
 
 
-Driver creation example:
+        For basic authentication, ``auth`` can be a simple tuple, for example:
 
-.. code-block:: python
+        .. code-block:: python
 
-    from neo4j import GraphDatabase
+           auth = ("neo4j", "password")
 
-    uri = "neo4j://example.com:7687"
-    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
-
-    driver.close()  # close the driver object
+        This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
+        Other authentication methods are described under :ref:`auth-ref`.
 
 
-For basic authentication, ``auth`` can be a simple tuple, for example:
+        ``with`` block context example:
 
-.. code-block:: python
+        .. code-block:: python
 
-   auth = ("neo4j", "password")
+            from neo4j import GraphDatabase
 
-This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
-Other authentication methods are described under :ref:`auth-ref`.
-
-
-``with`` block context example:
-
-.. code-block:: python
-
-    from neo4j import GraphDatabase
-
-    uri = "neo4j://example.com:7687"
-    with GraphDatabase.driver(uri, auth=("neo4j", "password")) as driver:
-        # use the driver
+            uri = "neo4j://example.com:7687"
+            with GraphDatabase.driver(uri, auth=("neo4j", "password")) as driver:
+                # use the driver
 
 
 
@@ -138,7 +139,7 @@ Alternatively, one of the auth token helper functions can be used.
 Driver
 ******
 
-Every Neo4j-backed application will require a :class:`neo4j.Driver` object.
+Every Neo4j-backed application will require a driver object.
 
 This object holds the details required to establish connections with a Neo4j database, including server URIs, credentials and other configuration.
 :class:`neo4j.Driver` objects hold a connection pool from which :class:`neo4j.Session` objects can borrow connections.
@@ -174,6 +175,7 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`ssl-context-ref`
 + :ref:`trusted-certificates-ref`
 + :ref:`user-agent-ref`
++ :ref:`bookmark-manager-ref`
 
 
 .. _session-connection-timeout-ref:
@@ -415,6 +417,21 @@ Specify the client agent name.
 
 :Type: ``str``
 :Default: *The Python Driver will generate a user agent name.*
+
+
+.. _bookmark-manager-ref:
+
+``bookmark_manager``
+--------------------
+Specify a bookmark manager for the driver to use. If present, the bookmark
+manger is used to keep all work on the driver causally consistent.
+
+See :class:`.BookmarkManager` for more information.
+
+:Type: :const:`None` or :class:`.BookmarkManager`
+:Default: :const:`None`
+
+.. versionadded:: 5.0
 
 
 
@@ -1225,6 +1242,15 @@ Temporal Data Types
 .. include:: types/_temporal_overview.rst
 
 See topic :ref:`temporal-data-types` for more details.
+
+
+***************
+BookmarkManager
+***************
+
+.. autoclass:: neo4j.api.BookmarkManager
+    :show-inheritance:
+    :members:
 
 
 .. _errors-ref:

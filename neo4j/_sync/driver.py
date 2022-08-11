@@ -224,7 +224,21 @@ class GraphDatabase:
         bookmark_supplier: _T_BmSupplier = None,
         notify_bookmarks: _T_NotifyBm = None
     ) -> BookmarkManager:
-        """Create a default :class:`BookmarkManager`.
+        """Create a default :class:`.BookmarkManager`.
+
+        Basic usage example to configure the driver with the default
+        bookmark manger implementation so that all work is automatically
+        causally chained (i.e., all reads can observe all previous writes
+        even in a clustered setup)::
+
+            import neo4j
+
+            driver = neo4j.GraphDatabase.driver(
+                uri, auth=..., # ...
+                bookmark_manager=neo4j.GraphDatabase.bookmark_manager(
+                    # ... configure the bookmark manager
+                )
+            )
 
         :param initial_bookmarks:
             The initial set of bookmarks. The default bookmark manager will
@@ -243,6 +257,8 @@ class GraphDatabase:
             internal bookmark set.
 
         :returns: A default implementation of :class:`BookmarkManager`.
+
+        .. versionadded:: 5.0
         """
         return Neo4jBookmarkManager(
             initial_bookmarks=initial_bookmarks,
