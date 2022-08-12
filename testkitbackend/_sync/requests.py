@@ -22,6 +22,7 @@ import warnings
 from os import path
 
 import neo4j
+import neo4j.api
 from neo4j._async_compat.util import Util
 
 from .. import (
@@ -147,21 +148,19 @@ def NewDriver(backend, data):
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
     bookmark_manager_config = data.get("bookmarkManager", {})
     if bookmark_manager_config:
-        bookmark_manager_config.mark_item_as_read_if_equals(
-            "bookmarkSupplier", False
-        )
-        bookmark_manager_config.mark_item_as_read_if_equals(
-            "notifyBookmarks", False
-        )
+        bmm_kwargs = {}
         bookmark_manager_config.mark_item_as_read("initialBookmarks",
                                                   recursive=True)
-        kwargs["bookmark_manager"] = neo4j.GraphDatabase.bookmark_manager(
-            initial_bookmarks=bookmark_manager_config.get("initialBookmarks"),
-            bookmark_supplier=None,
-            notify_bookmarks=None,
-        )
+        bmm_kwargs["initial_bookmarks"] = \
+            bookmark_manager_config.get("initialBookmarks")
+        if bookmark_manager_config.get("bookmarksSupplierRegistered"):
+            bmm_kwargs["bookmark_supplier"] = bookmark_supplier(backend)
+        if bookmark_manager_config.get("bookmarksConsumerRegistered"):
+            bmm_kwargs["bookmarks_consumer"] = bookmark_consumer(backend)
 
-    data.mark_item_as_read("domainNameResolverRegistered")
+        kwargs["bookmark_manager"] = \
+            neo4j.GraphDatabase.bookmark_manager(**bmm_kwargs)
+
     driver = neo4j.GraphDatabase.driver(
         data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs
     )
@@ -256,6 +255,56 @@ def ResolverResolutionCompleted(backend, data):
 
 def DomainNameResolutionCompleted(backend, data):
     backend.dns_resolutions[data["requestId"]] = data["addresses"]
+
+
+def bookmark_supplier(backend):
+    def supplier(database):
+        key = backend.next_key()
+        backend.send_response("BookmarksSupplierRequest", {
+            "id": key,
+            "database": database
+        })
+        if not backend.process_request():
+            # connection was closed before end of next message
+            return []
+        if key not in backend.bookmark_supplies:
+            raise RuntimeError(
+                "Backend did not receive expected "
+                "BookmarksSupplierCompleted message for id %s" % key
+            )
+        return backend.bookmark_supplies.pop(key)
+
+    return supplier
+
+
+def BookmarksSupplierCompleted(backend, data):
+    backend.bookmark_supplies[data["requestId"]] = \
+        neo4j.Bookmarks.from_raw_values(data["bookmarks"])
+
+
+def bookmark_consumer(backend):
+    def consumer(database, bookmarks):
+        key = backend.next_key()
+        backend.send_response("BookmarksConsumerRequest", {
+            "id": key,
+            "database": database,
+            "bookmarks": list(bookmarks.raw_values)
+        })
+        if not backend.process_request():
+            # connection was closed before end of next message
+            return []
+        if key not in backend.bookmark_consumptions:
+            raise RuntimeError(
+                "Backend did not receive expected "
+                "BookmarksConsumerCompleted message for id %s" % key
+            )
+        del backend.bookmark_consumptions[key]
+
+    return consumer
+
+
+def BookmarksConsumerCompleted(backend, data):
+    backend.bookmark_consumptions[data["requestId"]] = True
 
 
 def DriverClose(backend, data):
