@@ -36,10 +36,7 @@ if t.TYPE_CHECKING:
 from ..._async_compat import sleep
 from ..._async_compat.util import Util
 from ..._conf import SessionConfig
-from ..._meta import (
-    deprecated,
-    deprecation_warn,
-)
+from ..._meta import deprecated
 from ...api import (
     Bookmarks,
     READ_ACCESS,

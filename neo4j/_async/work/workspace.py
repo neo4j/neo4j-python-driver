@@ -99,25 +99,28 @@ class AsyncWorkspace:
                             "iterable of raw bookmarks (deprecated).")
         self._initial_bookmarks = self._bookmarks = prepared_bookmarks
 
-    async def _get_system_bookmarks(self):
+    async def _get_bookmarks(self, database):
         if self._bookmark_manager is not None:
+            # For 4.3- support: the server will not send the resolved home
+            # database back. To avoid confusion between `None` as in "all
+            # database" and `None` as in "home database" we re-write the
+            # home database to `""`, which otherwise is an invalid database
+            # name.
+            if database is None:
+                database = ""
             self._bookmarks = tuple({
                 *await AsyncUtil.callback(
-                    self._bookmark_manager.get_bookmarks, "system"
+                    self._bookmark_manager.get_bookmarks, database
                 ),
                 *self._initial_bookmarks
             })
         return self._bookmarks
 
     async def _get_all_bookmarks(self):
-        must_included_databases = ["system"]
-        if self._config.database:
-            must_included_databases.append(self._config.database)
         if self._bookmark_manager is not None:
             self._bookmarks = tuple({
                 *await AsyncUtil.callback(
                     self._bookmark_manager.get_all_bookmarks,
-                    must_included_databases
                 ),
                 *self._initial_bookmarks
             })
@@ -131,6 +134,12 @@ class AsyncWorkspace:
         self._bookmarks = new_bookmarks
         if self._bookmark_manager is None:
             return
+        # For 4.3- support: the server will not send the resolved home
+        # database back. To avoid confusion between `None` as in "all
+        # database" and `None` as in "home database" we re-write the home
+        # database to `""`, which otherwise is an invalid database name.
+        if database is None:
+            database = ""
         await AsyncUtil.callback(
             self._bookmark_manager.update_bookmarks,
             database, previous_bookmarks, new_bookmarks
@@ -162,11 +171,10 @@ class AsyncWorkspace:
                 # to try to fetch the home database. If provided by the server,
                 # we shall use this database explicitly for all subsequent
                 # actions within this session.
-                bookmarks = await self._get_system_bookmarks()
                 await self._pool.update_routing_table(
                     database=self._config.database,
                     imp_user=self._config.impersonated_user,
-                    bookmarks=bookmarks,
+                    bookmarks=await self._get_bookmarks("system"),
                     acquisition_timeout=acquisition_timeout,
                     database_callback=self._set_cached_database
                 )
@@ -174,7 +182,7 @@ class AsyncWorkspace:
             "access_mode": access_mode,
             "timeout": acquisition_timeout,
             "database": self._config.database,
-            "bookmarks": self._bookmarks,
+            "bookmarks": await self._get_bookmarks("system"),
             "liveness_check_timeout": None,
         }
         acquire_kwargs_.update(acquire_kwargs)
