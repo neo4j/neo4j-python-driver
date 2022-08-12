@@ -123,6 +123,11 @@
   `protocol_version` and `init_size`.
 - Introduced `neo4j.exceptions.SessionError` that is raised when trying to
   execute work on a closed or otherwise terminated session.
+- Removed deprecated config options `update_routing_table_timeout` and
+  `session_connection_timeout`.  
+  Server-side keep-alives communicated through configuration hints together with
+  the config option `connection_acquisition_timeout` are sufficient to avoid the
+  driver getting stuck.
 
 
 ## Version 4.4

@@ -144,7 +144,7 @@ class Workspace:
         self._update_bookmarks(database, (bookmark,))
 
     def _connect(self, access_mode, **acquire_kwargs):
-        timeout = Deadline(self._config.session_connection_timeout)
+        acquisition_timeout = self._config.connection_acquisition_timeout
         if self._connection:
             # TODO: Investigate this
             # log.warning("FIXME: should always disconnect before connect")
@@ -167,13 +167,12 @@ class Workspace:
                     database=self._config.database,
                     imp_user=self._config.impersonated_user,
                     bookmarks=bookmarks,
-                    timeout=timeout,
+                    acquisition_timeout=acquisition_timeout,
                     database_callback=self._set_cached_database
                 )
         acquire_kwargs_ = {
             "access_mode": access_mode,
-            "timeout": timeout,
-            "acquisition_timeout": self._config.connection_acquisition_timeout,
+            "timeout": acquisition_timeout,
             "database": self._config.database,
             "bookmarks": self._bookmarks,
             "liveness_check_timeout": None,

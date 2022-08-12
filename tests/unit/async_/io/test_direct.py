@@ -91,8 +91,7 @@ class AsyncFakeBoltPool(AsyncIOPool):
         self.address = address
 
     async def acquire(
-        self, access_mode, timeout, acquisition_timeout,
-        database, bookmarks, liveness_check_timeout
+        self, access_mode, timeout, database, bookmarks, liveness_check_timeout
     ):
         return await self._acquire(
             self.address, timeout, liveness_check_timeout
