@@ -34,10 +34,19 @@ T_BmSupplier = t.Callable[[t.Optional[str]],
 T_BmConsumer = t.Callable[[str, Bookmarks], t.Union[None, t.Union[None]]]
 
 
+def _bookmarks_to_set(
+    bookmarks: t.Union[Bookmarks, t.Iterable[str]]
+) -> t.Set[str]:
+    if isinstance(bookmarks, Bookmarks):
+        return set(bookmarks.raw_values)
+    return set(map(str, bookmarks))
+
+
 class Neo4jBookmarkManager(BookmarkManager):
     def __init__(
         self,
-        initial_bookmarks: t.Mapping[str, t.Iterable[str]] = None,
+        initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
+                                                  t.Iterable[str]]] = None,
         bookmark_supplier: T_BmSupplier = None,
         bookmarks_consumer: T_BmConsumer = None
     ) -> None:
@@ -47,7 +56,7 @@ class Neo4jBookmarkManager(BookmarkManager):
         if initial_bookmarks is None:
             initial_bookmarks = {}
         self._bookmarks = defaultdict(
-            set, ((k, set(map(str, v)))
+            set, ((k, _bookmarks_to_set(v))
                   for k, v in initial_bookmarks.items())
         )
         self._lock = CooperativeLock()
@@ -78,7 +87,7 @@ class Neo4jBookmarkManager(BookmarkManager):
             extra_bms = Util.callback(
                 self._bookmark_supplier, database
             )
-            bms.update(extra_bms)
+            bms.update(extra_bms.raw_values)
         return bms
 
     def get_all_bookmarks(self) -> t.Set[str]:
@@ -90,7 +99,7 @@ class Neo4jBookmarkManager(BookmarkManager):
             extra_bms = Util.callback(
                 self._bookmark_supplier, None
             )
-            bms.update(extra_bms)
+            bms.update(extra_bms.raw_values)
         return bms
 
     def forget(self, databases: t.Iterable[str]) -> None:

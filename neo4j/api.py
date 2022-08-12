@@ -249,17 +249,6 @@ class Bookmarks:
             return ret
         return NotImplemented
 
-    def __iter__(self) -> t.Iterator[str]:
-        """Iterate over the raw bookmark values.
-
-        This is equivalent to::
-
-            bookmarks.raw_values.__iter__()
-
-        :return: iterator over the raw bookmark values
-        """
-        return iter(self._raw_values)
-
     @property
     def raw_values(self) -> t.FrozenSet[str]:
         """The raw bookmark values.
