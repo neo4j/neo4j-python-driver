@@ -16,8 +16,11 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import ssl
-from functools import wraps
+import typing as t
+from contextlib import contextmanager
 
 import pytest
 
@@ -34,27 +37,25 @@ from neo4j import (
 )
 from neo4j._async_compat.util import Util
 from neo4j.api import (
+    BookmarkManager,
     READ_ACCESS,
     WRITE_ACCESS,
 )
 from neo4j.exceptions import ConfigurationError
 
-from ..._async_compat import mark_sync_test
+from ..._async_compat import (
+    mark_sync_test,
+    TestDecorators,
+)
 
 
-@wraps(GraphDatabase.driver)
-def create_driver(*args, **kwargs):
+@contextmanager
+def expect_async_experimental_warning():
     if Util.is_async_code:
-        with pytest.warns(ExperimentalWarning, match="async") as warnings:
-            driver = GraphDatabase.driver(*args, **kwargs)
-        print(warnings)
-        return driver
+        with pytest.warns(ExperimentalWarning, match="async"):
+            yield
     else:
-        return GraphDatabase.driver(*args, **kwargs)
-
-
-def driver(*args, **kwargs):
-    return Neo4jDriver(*args, **kwargs)
+        yield
 
 
 @pytest.mark.parametrize("protocol", ("bolt://", "bolt+s://", "bolt+ssc://"))
@@ -70,7 +71,8 @@ def test_direct_driver_constructor(protocol, host, port, params, auth_token):
         with pytest.warns(DeprecationWarning, match="routing context"):
             driver = GraphDatabase.driver(uri, auth=auth_token)
     else:
-        driver = create_driver(uri, auth=auth_token)
+        with expect_async_experimental_warning():
+            driver = GraphDatabase.driver(uri, auth=auth_token)
     assert isinstance(driver, BoltDriver)
     driver.close()
 
@@ -85,7 +87,8 @@ def test_direct_driver_constructor(protocol, host, port, params, auth_token):
 @mark_sync_test
 def test_routing_driver_constructor(protocol, host, port, params, auth_token):
     uri = protocol + host + port + params
-    driver = create_driver(uri, auth=auth_token)
+    with expect_async_experimental_warning():
+        driver = GraphDatabase.driver(uri, auth=auth_token)
     assert isinstance(driver, Neo4jDriver)
     driver.close()
 
@@ -136,7 +139,7 @@ def test_routing_driver_constructor(protocol, host, port, params, auth_token):
             ConfigurationError, "The config settings"
         ),
         (
-            {"ssl_context": ssl.SSLContext(ssl.PROTOCOL_TLSv1)},
+            {"ssl_context": ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)},
             ConfigurationError, "The config settings"
         ),
     )
@@ -150,7 +153,8 @@ def test_driver_config_error(
             with pytest.warns(DeprecationWarning, match="trust"):
                 return GraphDatabase.driver(test_uri, **test_config)
         else:
-            return create_driver(test_uri, **test_config)
+            with expect_async_experimental_warning():
+                return GraphDatabase.driver(test_uri, **test_config)
 
     if "+" in test_uri:
         # `+s` and `+ssc` are short hand syntax for not having to configure the
@@ -169,7 +173,8 @@ def test_driver_config_error(
 ))
 def test_invalid_protocol(test_uri):
     with pytest.raises(ConfigurationError, match="scheme"):
-        create_driver(test_uri)
+        with expect_async_experimental_warning():
+            GraphDatabase.driver(test_uri)
 
 
 @pytest.mark.parametrize(
@@ -184,7 +189,8 @@ def test_driver_trust_config_error(
     test_config, expected_failure, expected_failure_message
 ):
     with pytest.raises(expected_failure, match=expected_failure_message):
-        create_driver("bolt://127.0.0.1:9001", **test_config)
+        with expect_async_experimental_warning():
+            GraphDatabase.driver("bolt://127.0.0.1:9001", **test_config)
 
 
 @pytest.mark.parametrize("uri", (
@@ -192,28 +198,29 @@ def test_driver_trust_config_error(
     "neo4j://127.0.0.1:9000",
 ))
 @mark_sync_test
-def test_driver_opens_write_session_by_default(uri, mocker):
-    driver = create_driver(uri)
+def test_driver_opens_write_session_by_default(uri, fake_pool, mocker):
+    with expect_async_experimental_warning():
+        driver = GraphDatabase.driver(uri)
     from neo4j import Transaction
 
     # we set a specific db, because else the driver would try to fetch a RT
     # to get hold of the actual home database (which won't work in this
     # unittest)
+    driver._pool = fake_pool
     with driver.session(database="foobar") as session:
-        acquire_mock = mocker.patch.object(session._pool, "acquire",
-                                           autospec=True)
-        tx_begin_mock = mocker.patch.object(Transaction, "_begin",
-                                            autospec=True)
+        # acquire_mock = mocker.patch.object(session._pool, "acquire",
+        #                                    autospec=True)
+        tx_mock = mocker.patch("neo4j._sync.work.session.Transaction",
+                               autospec=True)
         tx = session.begin_transaction()
-    acquire_mock.assert_called_once_with(
+    fake_pool.acquire.assert_called_once_with(
         access_mode=WRITE_ACCESS,
         timeout=mocker.ANY,
         database=mocker.ANY,
         bookmarks=mocker.ANY,
         liveness_check_timeout=mocker.ANY
     )
-    tx_begin_mock.assert_called_once_with(
-        tx,
+    tx._begin.assert_called_once_with(
         mocker.ANY,
         mocker.ANY,
         mocker.ANY,
@@ -231,7 +238,8 @@ def test_driver_opens_write_session_by_default(uri, mocker):
 ))
 @mark_sync_test
 def test_verify_connectivity(uri, mocker):
-    driver = create_driver(uri)
+    with expect_async_experimental_warning():
+        driver = GraphDatabase.driver(uri)
     pool_mock = mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
@@ -258,7 +266,8 @@ def test_verify_connectivity(uri, mocker):
 def test_verify_connectivity_parameters_are_deprecated(
     uri, kwargs, mocker
 ):
-    driver = create_driver(uri)
+    with expect_async_experimental_warning():
+        driver = GraphDatabase.driver(uri)
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
@@ -281,7 +290,8 @@ def test_verify_connectivity_parameters_are_deprecated(
 def test_get_server_info_parameters_are_experimental(
     uri, kwargs, mocker
 ):
-    driver = create_driver(uri)
+    with expect_async_experimental_warning():
+        driver = GraphDatabase.driver(uri)
     mocker.patch.object(driver, "_pool", autospec=True)
 
     try:
@@ -289,3 +299,152 @@ def test_get_server_info_parameters_are_experimental(
             driver.get_server_info(**kwargs)
     finally:
         driver.close()
+
+
+@mark_sync_test
+def test_with_default_bookmark_manager(mocker) -> None:
+    bmm = GraphDatabase.bookmark_manager()
+    # could be one line, but want to make sure the type checker assigns
+    # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with expect_async_experimental_warning():
+        driver = GraphDatabase.driver(
+            "bolt://localhost", bookmark_manager=bmm
+        )
+    with driver as driver:
+        _ = driver.session()
+        session_cls_mock.assert_called_once()
+        assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
+
+
+@TestDecorators.mark_async_only_test
+def test_with_custom_inherited_async_bookmark_manager(mocker) -> None:
+    class BMM(BookmarkManager):
+        def update_bookmarks(
+            self, database: str, previous_bookmarks: t.Iterable[str],
+            new_bookmarks: t.Iterable[str]
+        ) -> None:
+            ...
+
+        def get_bookmarks(self, database: str) -> t.Collection[str]:
+            ...
+
+        def get_all_bookmarks(self) -> t.Collection[str]:
+            ...
+
+        def forget(self, databases: t.Iterable[str]) -> None:
+            ...
+
+    bmm = BMM()
+    # could be one line, but want to make sure the type checker assigns
+    # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with expect_async_experimental_warning():
+        driver = GraphDatabase.driver(
+            "bolt://localhost", bookmark_manager=bmm
+        )
+    with driver as driver:
+        _ = driver.session()
+        session_cls_mock.assert_called_once()
+        assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
+
+
+@mark_sync_test
+def test_with_custom_inherited_sync_bookmark_manager(mocker) -> None:
+    class BMM(BookmarkManager):
+        def update_bookmarks(
+            self, database: str, previous_bookmarks: t.Iterable[str],
+            new_bookmarks: t.Iterable[str]
+        ) -> None:
+            ...
+
+        def get_bookmarks(self, database: str) -> t.Collection[str]:
+            ...
+
+        def get_all_bookmarks(self) -> t.Collection[str]:
+            ...
+
+        def forget(self, databases: t.Iterable[str]) -> None:
+            ...
+
+    bmm = BMM()
+    # could be one line, but want to make sure the type checker assigns
+    # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with expect_async_experimental_warning():
+        driver = GraphDatabase.driver(
+            "bolt://localhost", bookmark_manager=bmm
+        )
+    with driver as driver:
+        _ = driver.session()
+        session_cls_mock.assert_called_once()
+        assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
+
+
+@TestDecorators.mark_async_only_test
+def test_with_custom_ducktype_async_bookmark_manager(mocker) -> None:
+    class BMM:
+        def update_bookmarks(
+            self, database: str, previous_bookmarks: t.Iterable[str],
+            new_bookmarks: t.Iterable[str]
+        ) -> None:
+            ...
+
+        def get_bookmarks(self, database: str) -> t.Collection[str]:
+            ...
+
+        def get_all_bookmarks(self) -> t.Collection[str]:
+            ...
+
+        def forget(self, databases: t.Iterable[str]) -> None:
+            ...
+
+    bmm = BMM()
+    # could be one line, but want to make sure the type checker assigns
+    # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with expect_async_experimental_warning():
+        driver = GraphDatabase.driver(
+            "bolt://localhost", bookmark_manager=bmm
+        )
+    with driver as driver:
+        _ = driver.session()
+        session_cls_mock.assert_called_once()
+        assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
+
+
+@mark_sync_test
+def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
+    class BMM:
+        def update_bookmarks(
+            self, database: str, previous_bookmarks: t.Iterable[str],
+            new_bookmarks: t.Iterable[str]
+        ) -> None:
+            ...
+
+        def get_bookmarks(self, database: str) -> t.Collection[str]:
+            ...
+
+        def get_all_bookmarks(self) -> t.Collection[str]:
+            ...
+
+        def forget(self, databases: t.Iterable[str]) -> None:
+            ...
+
+    bmm = BMM()
+    # could be one line, but want to make sure the type checker assigns
+    # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with expect_async_experimental_warning():
+        driver = GraphDatabase.driver(
+            "bolt://localhost", bookmark_manager=bmm
+        )
+    with driver as driver:
+        _ = driver.session()
+        session_cls_mock.assert_called_once()
+        assert session_cls_mock.call_args[0][1].bookmark_manager is bmm

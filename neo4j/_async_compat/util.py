@@ -78,7 +78,7 @@ class AsyncUtil:
                 return await res
             return res
 
-    experimental_async = experimental
+    experimental_async: t.ClassVar = experimental
 
     @staticmethod
     def shielded(coro_function):
@@ -90,13 +90,13 @@ class AsyncUtil:
 
         return shielded_function
 
-    is_async_code = True
+    is_async_code: t.ClassVar = True
 
 
 class Util:
-    iter = iter
-    next = next
-    list = list
+    iter: t.ClassVar = iter
+    next: t.ClassVar = next
+    list: t.ClassVar = list
 
     @staticmethod
     @t.overload
@@ -124,4 +124,4 @@ class Util:
     def shielded(coro_function):
         return coro_function
 
-    is_async_code = False
+    is_async_code: t.ClassVar = False

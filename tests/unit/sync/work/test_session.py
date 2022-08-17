@@ -28,24 +28,13 @@ from neo4j import (
     unit_of_work,
 )
 from neo4j._conf import SessionConfig
-from neo4j._sync.io._pool import IOPool
+from neo4j._sync.io import (
+    BoltPool,
+    Neo4jPool,
+)
+from neo4j.api import BookmarkManager
 
 from ...._async_compat import mark_sync_test
-
-
-@pytest.fixture()
-def pool(fake_connection_generator, mocker):
-    pool = mocker.Mock(spec=IOPool)
-    assert not hasattr(pool, "acquired_connection_mocks")
-    pool.acquired_connection_mocks = []
-
-    def acquire_side_effect(*_, **__):
-        connection = fake_connection_generator()
-        pool.acquired_connection_mocks.append(connection)
-        return connection
-
-    pool.acquire.side_effect = acquire_side_effect
-    return pool
 
 
 @mark_sync_test
@@ -66,9 +55,9 @@ def test_session_context_calls_close(mocker):
 ))
 @mark_sync_test
 def test_opens_connection_on_run(
-    pool, test_run_args, repetitions, consume
+    fake_pool, test_run_args, repetitions, consume
 ):
-    with Session(pool, SessionConfig()) as session:
+    with Session(fake_pool, SessionConfig()) as session:
         assert session._connection is None
         result = session.run(*test_run_args)
         assert session._connection is not None
@@ -82,9 +71,9 @@ def test_opens_connection_on_run(
 @pytest.mark.parametrize("repetitions", range(1, 3))
 @mark_sync_test
 def test_closes_connection_after_consume(
-    pool, test_run_args, repetitions
+    fake_pool, test_run_args, repetitions
 ):
-    with Session(pool, SessionConfig()) as session:
+    with Session(fake_pool, SessionConfig()) as session:
         result = session.run(*test_run_args)
         result.consume()
         assert session._connection is None
@@ -96,9 +85,9 @@ def test_closes_connection_after_consume(
 ))
 @mark_sync_test
 def test_keeps_connection_until_last_result_consumed(
-    pool, test_run_args
+    fake_pool, test_run_args
 ):
-    with Session(pool, SessionConfig()) as session:
+    with Session(fake_pool, SessionConfig()) as session:
         result1 = session.run(*test_run_args)
         result2 = session.run(*test_run_args)
         assert session._connection is not None
@@ -109,8 +98,8 @@ def test_keeps_connection_until_last_result_consumed(
 
 
 @mark_sync_test
-def test_opens_connection_on_tx_begin(pool):
-    with Session(pool, SessionConfig()) as session:
+def test_opens_connection_on_tx_begin(fake_pool):
+    with Session(fake_pool, SessionConfig()) as session:
         assert session._connection is None
         with session.begin_transaction() as _:
             assert session._connection is not None
@@ -121,8 +110,10 @@ def test_opens_connection_on_tx_begin(pool):
 ))
 @pytest.mark.parametrize("repetitions", range(1, 3))
 @mark_sync_test
-def test_keeps_connection_on_tx_run(pool, test_run_args, repetitions):
-    with Session(pool, SessionConfig()) as session:
+def test_keeps_connection_on_tx_run(
+    fake_pool, test_run_args, repetitions
+):
+    with Session(fake_pool, SessionConfig()) as session:
         with session.begin_transaction() as tx:
             for _ in range(repetitions):
                 tx.run(*test_run_args)
@@ -135,9 +126,9 @@ def test_keeps_connection_on_tx_run(pool, test_run_args, repetitions):
 @pytest.mark.parametrize("repetitions", range(1, 3))
 @mark_sync_test
 def test_keeps_connection_on_tx_consume(
-    pool, test_run_args, repetitions
+    fake_pool, test_run_args, repetitions
 ):
-    with Session(pool, SessionConfig()) as session:
+    with Session(fake_pool, SessionConfig()) as session:
         with session.begin_transaction() as tx:
             for _ in range(repetitions):
                 result = tx.run(*test_run_args)
@@ -149,8 +140,8 @@ def test_keeps_connection_on_tx_consume(
         ("RETURN $x", {"x": 1}), ("RETURN 1",)
 ))
 @mark_sync_test
-def test_closes_connection_after_tx_close(pool, test_run_args):
-    with Session(pool, SessionConfig()) as session:
+def test_closes_connection_after_tx_close(fake_pool, test_run_args):
+    with Session(fake_pool, SessionConfig()) as session:
         with session.begin_transaction() as tx:
             for _ in range(2):
                 result = tx.run(*test_run_args)
@@ -164,8 +155,8 @@ def test_closes_connection_after_tx_close(pool, test_run_args):
         ("RETURN $x", {"x": 1}), ("RETURN 1",)
 ))
 @mark_sync_test
-def test_closes_connection_after_tx_commit(pool, test_run_args):
-    with Session(pool, SessionConfig()) as session:
+def test_closes_connection_after_tx_commit(fake_pool, test_run_args):
+    with Session(fake_pool, SessionConfig()) as session:
         with session.begin_transaction() as tx:
             for _ in range(2):
                 result = tx.run(*test_run_args)
@@ -180,13 +171,13 @@ def test_closes_connection_after_tx_commit(pool, test_run_args):
     (None, [], ["abc"], ["foo", "bar"], {"a", "b"}, ("1", "two"))
 )
 @mark_sync_test
-def test_session_returns_bookmarks_directly(pool, bookmark_values):
+def test_session_returns_bookmarks_directly(fake_pool, bookmark_values):
     if bookmark_values is not None:
         bookmarks = Bookmarks.from_raw_values(bookmark_values)
     else:
         bookmarks = Bookmarks()
     with Session(
-        pool, SessionConfig(bookmarks=bookmarks)
+        fake_pool, SessionConfig(bookmarks=bookmarks)
     ) as session:
         ret_bookmarks = (session.last_bookmarks())
         assert isinstance(ret_bookmarks, Bookmarks)
@@ -202,12 +193,13 @@ def test_session_returns_bookmarks_directly(pool, bookmark_values):
     (None, [], ["abc"], ["foo", "bar"], ("1", "two"))
 )
 @mark_sync_test
-def test_session_last_bookmark_is_deprecated(pool, bookmarks):
+def test_session_last_bookmark_is_deprecated(fake_pool, bookmarks):
     if bookmarks is not None:
         with pytest.warns(DeprecationWarning):
-            session = Session(pool, SessionConfig(bookmarks=bookmarks))
+            session = Session(fake_pool,
+                                   SessionConfig(bookmarks=bookmarks))
     else:
-        session = Session(pool, SessionConfig(bookmarks=bookmarks))
+        session = Session(fake_pool, SessionConfig(bookmarks=bookmarks))
     with session:
         with pytest.warns(DeprecationWarning):
             if bookmarks:
@@ -221,9 +213,11 @@ def test_session_last_bookmark_is_deprecated(pool, bookmarks):
     (("foo",), ("foo", "bar"), (), ["foo", "bar"], {"a", "b"})
 )
 @mark_sync_test
-def test_session_bookmarks_as_iterable_is_deprecated(pool, bookmarks):
+def test_session_bookmarks_as_iterable_is_deprecated(
+    fake_pool, bookmarks
+):
     with pytest.warns(DeprecationWarning):
-        with Session(pool, SessionConfig(
+        with Session(fake_pool, SessionConfig(
             bookmarks=bookmarks
         )) as session:
             ret_bookmarks = (session.last_bookmarks()).raw_values
@@ -237,19 +231,19 @@ def test_session_bookmarks_as_iterable_is_deprecated(pool, bookmarks):
     (["I don't", "think so"], TypeError),
 ))
 @mark_sync_test
-def test_session_run_wrong_types(pool, query, error_type):
-    with Session(pool, SessionConfig()) as session:
+def test_session_run_wrong_types(fake_pool, query, error_type):
+    with Session(fake_pool, SessionConfig()) as session:
         with pytest.raises(error_type):
             session.run(query)
 
 
 @pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction"))
 @mark_sync_test
-def test_tx_function_argument_type(pool, tx_type):
+def test_tx_function_argument_type(fake_pool, tx_type):
     def work(tx):
         assert isinstance(tx, ManagedTransaction)
 
-    with Session(pool, SessionConfig()) as session:
+    with Session(fake_pool, SessionConfig()) as session:
         getattr(session, tx_type)(work)
 
 
@@ -262,18 +256,20 @@ def test_tx_function_argument_type(pool, tx_type):
 
 ))
 @mark_sync_test
-def test_decorated_tx_function_argument_type(pool, tx_type, decorator_kwargs):
+def test_decorated_tx_function_argument_type(
+    fake_pool, tx_type, decorator_kwargs
+):
     @unit_of_work(**decorator_kwargs)
     def work(tx):
         assert isinstance(tx, ManagedTransaction)
 
-    with Session(pool, SessionConfig()) as session:
+    with Session(fake_pool, SessionConfig()) as session:
         getattr(session, tx_type)(work)
 
 
 @mark_sync_test
-def test_session_tx_type(pool):
-    with Session(pool, SessionConfig()) as session:
+def test_session_tx_type(fake_pool):
+    with Session(fake_pool, SessionConfig()) as session:
         tx = session.begin_transaction()
         assert isinstance(tx, Transaction)
 
@@ -300,9 +296,9 @@ def test_session_tx_type(pool):
 @pytest.mark.parametrize("run_type", ("auto", "unmanaged", "managed"))
 @mark_sync_test
 def test_session_run_with_parameters(
-    pool, parameters, run_type, mocker
+    fake_pool, parameters, run_type, mocker
 ):
-    with Session(pool, SessionConfig()) as session:
+    with Session(fake_pool, SessionConfig()) as session:
         if run_type == "auto":
             session.run("RETURN $x", **parameters)
         elif run_type == "unmanaged":
@@ -315,9 +311,133 @@ def test_session_run_with_parameters(
         else:
             raise ValueError(run_type)
 
-    assert len(pool.acquired_connection_mocks) == 1
-    connection_mock = pool.acquired_connection_mocks[0]
+    assert len(fake_pool.acquired_connection_mocks) == 1
+    connection_mock = fake_pool.acquired_connection_mocks[0]
     assert connection_mock.run.called_once()
     call = connection_mock.run.call_args
     assert call.args[0] == "RETURN $x"
     assert call.kwargs["parameters"] == parameters
+
+
+@pytest.mark.parametrize("db", (None, "adb"))
+@pytest.mark.parametrize("routing", (True, False))
+# no home db resolution when connected to Neo4j 4.3 or earlier
+@pytest.mark.parametrize("home_db_gets_resolved", (True, False))
+@pytest.mark.parametrize("additional_session_bookmarks",
+                         (None, ["session", "bookmarks"]))
+@mark_sync_test
+def test_with_bookmark_manager(
+    fake_pool, db, routing, scripted_connection, home_db_gets_resolved,
+    additional_session_bookmarks, mocker
+):
+    def update_routing_table_side_effect(
+        database, imp_user, bookmarks, acquisition_timeout=None,
+        database_callback=None
+    ):
+        if home_db_gets_resolved:
+            database_callback("homedb")
+
+    def bmm_get_bookmarks(database):
+        return [f"{database}:bm1"]
+
+    def bmm_gat_all_bookmarks():
+        return ["all", "bookmarks"]
+
+    scripted_connection.set_script([
+        ("run", {"on_success": None, "on_summary": None}),
+        ("pull", {
+            "on_success": ({"bookmark": "res:bm1", "has_more": False},),
+            "on_summary": None,
+            "on_records": None,
+        })
+    ])
+    fake_pool.buffered_connection_mocks.append(scripted_connection)
+
+    bmm = mocker.Mock(spec=BookmarkManager)
+    # res_cls_mock = mocker.patch("neo4j._async.work.session.AsyncResult",
+    #                             autospec=True)
+    bmm.get_bookmarks.side_effect = bmm_get_bookmarks
+    bmm.get_all_bookmarks.side_effect = bmm_gat_all_bookmarks
+
+    if routing:
+        fake_pool.mock_add_spec(Neo4jPool)
+        fake_pool.update_routing_table.side_effect = \
+            update_routing_table_side_effect
+    else:
+        fake_pool.mock_add_spec(BoltPool)
+
+    config = SessionConfig()
+    config.bookmark_manager = bmm
+    if db is not None:
+        config.database = db
+    if additional_session_bookmarks:
+        config.bookmarks = Bookmarks.from_raw_values(
+            additional_session_bookmarks
+        )
+    with Session(fake_pool, config) as session:
+        assert not bmm.method_calls
+
+        session.run("RETURN 1")
+
+        # assert called bmm accordingly
+        expected_bmm_method_calls = [mocker.call.get_bookmarks("system"),
+                                     mocker.call.get_all_bookmarks()]
+        if routing and db is None:
+            expected_bmm_method_calls = [
+                # extra call for resolving the home database
+                mocker.call.get_bookmarks("system"),
+                *expected_bmm_method_calls
+            ]
+        assert bmm.method_calls == expected_bmm_method_calls
+        assert (bmm.get_bookmarks.call_count
+                == len(expected_bmm_method_calls) - 1)
+        bmm.get_all_bookmarks.assert_called_once()
+        bmm.method_calls.clear()
+
+    expected_update_for_db = db
+    if not db:
+        if home_db_gets_resolved and routing:
+            expected_update_for_db = "homedb"
+        else:
+            expected_update_for_db = ""
+    assert [call[0] for call in bmm.method_calls] == ["update_bookmarks"]
+    assert bmm.method_calls[0].kwargs == {}
+    assert len(bmm.method_calls[0].args) == 3
+    assert bmm.method_calls[0].args[0] == expected_update_for_db
+    assert (set(bmm.method_calls[0].args[1])
+            == {"all", "bookmarks", *(additional_session_bookmarks or [])})
+    assert set(bmm.method_calls[0].args[2]) == {"res:bm1"}
+
+    expected_pool_method_calls = ["acquire", "release"]
+    if routing and db is None:
+        expected_pool_method_calls = ["update_routing_table",
+                                      *expected_pool_method_calls]
+    assert ([call[0] for call in fake_pool.method_calls]
+            == expected_pool_method_calls)
+    assert (set(fake_pool.acquire.call_args.kwargs["bookmarks"])
+            == {"system:bm1", *(additional_session_bookmarks or [])})
+    if routing and db is None:
+        assert (
+            set(fake_pool.update_routing_table.call_args.kwargs["bookmarks"])
+            == {"system:bm1", *(additional_session_bookmarks or [])}
+        )
+
+    assert len(fake_pool.acquired_connection_mocks) == 1
+    connection_mock = fake_pool.acquired_connection_mocks[0]
+    assert connection_mock.run.called_once()
+    connection_run_call_kwargs = connection_mock.run.call_args.kwargs
+    assert (set(connection_run_call_kwargs["bookmarks"])
+            == {"all", "bookmarks", *(additional_session_bookmarks or [])})
+
+
+@mark_sync_test
+def test_with_ignored_bookmark_manager(fake_pool, mocker):
+    bmm = mocker.Mock(spec=BookmarkManager)
+    session_config = SessionConfig()
+    session_config.bookmark_manager = bmm
+    session_config.ignore_bookmark_manager = True
+    with Session(fake_pool, session_config) as session:
+        session.run("RETURN 1")
+
+    bmm.assert_not_called()
+    assert not bmm.method_calls

@@ -221,7 +221,7 @@ class AsyncGraphDatabase:
         initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
                                                   t.Iterable[str]]] = None,
         bookmark_supplier: _T_BmSupplier = None,
-        bookmarks_consumer: _T_BmConsumer = None
+        bookmark_consumer: _T_BmConsumer = None
     ) -> AsyncBookmarkManager:
         """Create a default :class:`.AsyncBookmarkManager`.
 
@@ -254,7 +254,7 @@ class AsyncGraphDatabase:
             The result of ``bookmark_supplier`` will then be concatenated with
             the internal set of bookmarks and used to configure the session in
             creation.
-        :param bookmarks_consumer:
+        :param bookmark_consumer:
             Function which will be called whenever the set of bookmarks
             handled by the bookmark manager gets updated with the new
             internal bookmark set. It will receive the name of the database
@@ -267,7 +267,7 @@ class AsyncGraphDatabase:
         return AsyncNeo4jBookmarkManager(
             initial_bookmarks=initial_bookmarks,
             bookmark_supplier=bookmark_supplier,
-            bookmarks_consumer=bookmarks_consumer
+            bookmark_consumer=bookmark_consumer
         )
 
     @classmethod

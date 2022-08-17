@@ -109,7 +109,7 @@ class Session(Workspace):
     def __exit__(self, exception_type, exception_value, traceback):
         if exception_type:
             if issubclass(exception_type, asyncio.CancelledError):
-                self._handle_cancellation(message="__aexit__")
+                self._handle_cancellation(message="__exit__")
                 self._closed = True
                 return
             self._state_failed = True

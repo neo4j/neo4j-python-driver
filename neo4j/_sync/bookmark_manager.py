@@ -48,11 +48,11 @@ class Neo4jBookmarkManager(BookmarkManager):
         initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
                                                   t.Iterable[str]]] = None,
         bookmark_supplier: T_BmSupplier = None,
-        bookmarks_consumer: T_BmConsumer = None
+        bookmark_consumer: T_BmConsumer = None
     ) -> None:
         super().__init__()
         self._bookmark_supplier = bookmark_supplier
-        self._bookmarks_consumer = bookmarks_consumer
+        self._bookmark_consumer = bookmark_consumer
         if initial_bookmarks is None:
             initial_bookmarks = {}
         self._bookmarks = defaultdict(
@@ -73,11 +73,11 @@ class Neo4jBookmarkManager(BookmarkManager):
             curr_bms = self._bookmarks[database]
             curr_bms.difference_update(prev_bms)
             curr_bms.update(new_bms)
-            if self._bookmarks_consumer:
+            if self._bookmark_consumer:
                 curr_bms_snapshot = Bookmarks.from_raw_values(curr_bms)
-        if self._bookmarks_consumer:
+        if self._bookmark_consumer:
             Util.callback(
-                self._bookmarks_consumer, database, curr_bms_snapshot
+                self._bookmark_consumer, database, curr_bms_snapshot
             )
 
     def get_bookmarks(self, database: str) -> t.Set[str]:
@@ -103,6 +103,6 @@ class Neo4jBookmarkManager(BookmarkManager):
         return bms
 
     def forget(self, databases: t.Iterable[str]) -> None:
-        for database in databases:
-            with self._lock:
-                del self._bookmarks[database]
+        with self._lock:
+            for database in databases:
+                self._bookmarks.pop(database, None)

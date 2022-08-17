@@ -525,7 +525,7 @@ Returning a live result object would prevent the driver from correctly managing 
 
 This function will receive a :class:`neo4j.AsyncManagedTransaction` object as its first parameter.
 
-.. autoclass:: neo4j.AsyncManagedTransaction
+.. autoclass:: neo4j.AsyncManagedTransaction()
 
     .. automethod:: run
 
@@ -596,7 +596,6 @@ AsyncBookmarkManager
 ********************
 
 .. autoclass:: neo4j.api.AsyncBookmarkManager
-    :show-inheritance:
     :members:
 
 

@@ -842,7 +842,7 @@ Returning a live result object would prevent the driver from correctly managing 
 
 This function will receive a :class:`neo4j.ManagedTransaction` object as its first parameter.
 
-.. autoclass:: neo4j.ManagedTransaction
+.. autoclass:: neo4j.ManagedTransaction()
 
     .. automethod:: run
 
@@ -1249,7 +1249,6 @@ BookmarkManager
 ***************
 
 .. autoclass:: neo4j.api.BookmarkManager
-    :show-inheritance:
     :members:
 
 

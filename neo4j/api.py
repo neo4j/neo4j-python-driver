@@ -36,6 +36,12 @@ from ._meta import deprecated
 from .exceptions import ConfigurationError
 
 
+if t.TYPE_CHECKING:
+    from typing_extensions import Protocol as _Protocol
+else:
+    _Protocol = object
+
+
 READ_ACCESS: te.Final[str] = "READ"
 WRITE_ACCESS: te.Final[str] = "WRITE"
 
@@ -366,7 +372,7 @@ class Version(tuple):
         return Version(b[-1], b[-2])
 
 
-class BookmarkManager(abc.ABC):
+class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     """Class to manage bookmarks throughout the driver's lifetime.
 
     Neo4j clusters are eventually consistent, meaning that there is no
@@ -383,11 +389,16 @@ class BookmarkManager(abc.ABC):
     consistent. Configure the driver to use a specific bookmark manager with
     :ref:`bookmark-manager-ref`.
 
-    The driver comes with a default implementation of the bookmark manager
-    accessible through :attr:`.GraphDatabase.bookmark_manager()`.
+    This class is just an abstract base class that defines the required
+    interface. Create a child class to implement a specific bookmark manager
+    or make user of the default implementation provided by the driver through
+    :meth:`.GraphDatabase.bookmark_manager()`.
 
     .. note::
         All methods must be concurrency safe.
+
+    Generally, all methods need to be able to cope with getting passed a
+    ``database`` parameter that is (until then) unknown to the manager.
 
     .. versionadded:: 5.0
     """
@@ -439,7 +450,7 @@ class BookmarkManager(abc.ABC):
         ...
 
 
-class AsyncBookmarkManager(abc.ABC):
+class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     """Same as :class:`.BookmarkManager` but with async methods.
 
     The driver comes with a default implementation of the async bookmark
