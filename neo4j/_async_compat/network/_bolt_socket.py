@@ -605,7 +605,7 @@ class BoltSocket:
     def close_socket(cls, socket_):
         try:
             if isinstance(socket_, BoltSocket):
-                socket.close()
+                socket_.close()
             else:
                 socket_.shutdown(SHUT_RDWR)
                 socket_.close()
