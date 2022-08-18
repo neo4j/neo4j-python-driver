@@ -543,11 +543,11 @@ class Session(Workspace):
             This does not necessarily imply access control, see the session
             configuration option :ref:`default-access-mode-ref`.
 
-        This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
-        Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
-
-        Managed transactions should not generally be explicitly committed
-        (via ``tx.commit()``).
+        This transaction will automatically be committed when the function
+        returns, unless an exception is thrown during query execution or by
+        the user code. Note, that this function performs retries and that the
+        supplied `transaction_function` might get invoked more than once.
+        Therefore, it needs to be idempotent (i.e., have no side effects).
 
         Example::
 
@@ -582,8 +582,8 @@ class Session(Workspace):
         :param transaction_function: a function that takes a transaction as an
             argument and does work with the transaction.
             `transaction_function(tx, *args, **kwargs)` where `tx` is a
-            :class:`.Transaction`.
-        :param args: arguments for the `transaction_function`
+            :class:`.ManagedTransaction`.
+        :param args: additional arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
 
         :raises SessionError: if the session has been closed.
@@ -607,10 +607,11 @@ class Session(Workspace):
             This does not necessarily imply access control, see the session
             configuration option :ref:`default-access-mode-ref`.
 
-        This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
-        Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
-
-        Managed transactions should not generally be explicitly committed (via tx.commit()).
+        This transaction will automatically be committed when the function
+        returns unless, an exception is thrown during query execution or by
+        the user code. Note, that this function performs retries and that the
+        supplied `transaction_function` might get invoked more than once.
+        Therefore, it needs to be idempotent (i.e., have no side effects).
 
         Example::
 
@@ -626,8 +627,8 @@ class Session(Workspace):
         :param transaction_function: a function that takes a transaction as an
             argument and does work with the transaction.
             `transaction_function(tx, *args, **kwargs)` where `tx` is a
-            :class:`.Transaction`.
-        :param args: key word arguments for the `transaction_function`
+            :class:`.ManagedTransaction`.
+        :param args: additional arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
 
         :raises SessionError: if the session has been closed.
