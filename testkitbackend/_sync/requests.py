@@ -154,9 +154,9 @@ def NewDriver(backend, data):
         bmm_kwargs["initial_bookmarks"] = \
             bookmark_manager_config.get("initialBookmarks")
         if bookmark_manager_config.get("bookmarksSupplierRegistered"):
-            bmm_kwargs["bookmark_supplier"] = bookmark_supplier(backend)
+            bmm_kwargs["bookmarks_supplier"] = bookmarks_supplier(backend)
         if bookmark_manager_config.get("bookmarksConsumerRegistered"):
-            bmm_kwargs["bookmark_consumer"] = bookmark_consumer(backend)
+            bmm_kwargs["bookmarks_consumer"] = bookmarks_consumer(backend)
 
         kwargs["bookmark_manager"] = \
             neo4j.GraphDatabase.bookmark_manager(**bmm_kwargs)
@@ -257,7 +257,7 @@ def DomainNameResolutionCompleted(backend, data):
     backend.dns_resolutions[data["requestId"]] = data["addresses"]
 
 
-def bookmark_supplier(backend):
+def bookmarks_supplier(backend):
     def supplier(database):
         key = backend.next_key()
         backend.send_response("BookmarksSupplierRequest", {
@@ -267,22 +267,22 @@ def bookmark_supplier(backend):
         if not backend.process_request():
             # connection was closed before end of next message
             return []
-        if key not in backend.bookmark_supplies:
+        if key not in backend.bookmarks_supplies:
             raise RuntimeError(
                 "Backend did not receive expected "
                 "BookmarksSupplierCompleted message for id %s" % key
             )
-        return backend.bookmark_supplies.pop(key)
+        return backend.bookmarks_supplies.pop(key)
 
     return supplier
 
 
 def BookmarksSupplierCompleted(backend, data):
-    backend.bookmark_supplies[data["requestId"]] = \
+    backend.bookmarks_supplies[data["requestId"]] = \
         neo4j.Bookmarks.from_raw_values(data["bookmarks"])
 
 
-def bookmark_consumer(backend):
+def bookmarks_consumer(backend):
     def consumer(database, bookmarks):
         key = backend.next_key()
         backend.send_response("BookmarksConsumerRequest", {
@@ -293,18 +293,18 @@ def bookmark_consumer(backend):
         if not backend.process_request():
             # connection was closed before end of next message
             return []
-        if key not in backend.bookmark_consumptions:
+        if key not in backend.bookmarks_consumptions:
             raise RuntimeError(
                 "Backend did not receive expected "
                 "BookmarksConsumerCompleted message for id %s" % key
             )
-        del backend.bookmark_consumptions[key]
+        del backend.bookmarks_consumptions[key]
 
     return consumer
 
 
 def BookmarksConsumerCompleted(backend, data):
-    backend.bookmark_consumptions[data["requestId"]] = True
+    backend.bookmarks_consumptions[data["requestId"]] = True
 
 
 def DriverClose(backend, data):

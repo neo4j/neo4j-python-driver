@@ -47,12 +47,12 @@ class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):
         self,
         initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
                                                   t.Iterable[str]]] = None,
-        bookmark_supplier: T_BmSupplier = None,
-        bookmark_consumer: T_BmConsumer = None
+        bookmarks_supplier: T_BmSupplier = None,
+        bookmarks_consumer: T_BmConsumer = None
     ) -> None:
         super().__init__()
-        self._bookmark_supplier = bookmark_supplier
-        self._bookmark_consumer = bookmark_consumer
+        self._bookmarks_supplier = bookmarks_supplier
+        self._bookmarks_consumer = bookmarks_consumer
         if initial_bookmarks is None:
             initial_bookmarks = {}
         self._bookmarks = defaultdict(
@@ -73,19 +73,19 @@ class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):
             curr_bms = self._bookmarks[database]
             curr_bms.difference_update(prev_bms)
             curr_bms.update(new_bms)
-            if self._bookmark_consumer:
+            if self._bookmarks_consumer:
                 curr_bms_snapshot = Bookmarks.from_raw_values(curr_bms)
-        if self._bookmark_consumer:
+        if self._bookmarks_consumer:
             await AsyncUtil.callback(
-                self._bookmark_consumer, database, curr_bms_snapshot
+                self._bookmarks_consumer, database, curr_bms_snapshot
             )
 
     async def get_bookmarks(self, database: str) -> t.Set[str]:
         with self._lock:
             bms = set(self._bookmarks[database])
-        if self._bookmark_supplier:
+        if self._bookmarks_supplier:
             extra_bms = await AsyncUtil.callback(
-                self._bookmark_supplier, database
+                self._bookmarks_supplier, database
             )
             bms.update(extra_bms.raw_values)
         return bms
@@ -95,9 +95,9 @@ class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):
         with self._lock:
             for database in self._bookmarks.keys():
                 bms.update(self._bookmarks[database])
-        if self._bookmark_supplier:
+        if self._bookmarks_supplier:
             extra_bms = await AsyncUtil.callback(
-                self._bookmark_supplier, None
+                self._bookmarks_supplier, None
             )
             bms.update(extra_bms.raw_values)
         return bms

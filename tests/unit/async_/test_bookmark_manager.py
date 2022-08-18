@@ -58,7 +58,7 @@ async def test_return_initial_bookmarks_for_the_given_db(db) -> None:
 @pytest.mark.parametrize("db", ("db1", "db2", "db3"))
 @pytest.mark.parametrize("supplier_async", (True, False))
 @mark_async_test
-async def test_return_get_bookmarks_from_bookmark_supplier(
+async def test_return_get_bookmarks_from_bookmarks_supplier(
     db, mocker, supplier_async
 ) -> None:
     if supplier_async and not AsyncUtil.is_async_code:
@@ -77,7 +77,7 @@ async def test_return_get_bookmarks_from_bookmark_supplier(
     )
     bmm = neo4j.AsyncGraphDatabase.bookmark_manager(
         initial_bookmarks=initial_bookmarks,
-        bookmark_supplier=supplier
+        bookmarks_supplier=supplier
     )
 
     assert set(await bmm.get_bookmarks(db)) == {
@@ -136,7 +136,7 @@ async def test_return_enriched_bookmarks_list_with_supplied_bookmarks(
     bmm = neo4j.AsyncGraphDatabase.bookmark_manager(
         initial_bookmarks=(initial_bookmarks
                            if with_initial_bookmarks else None),
-        bookmark_supplier=supplier
+        bookmarks_supplier=supplier
     )
 
     all_bookmarks = await bmm.get_all_bookmarks()
@@ -216,7 +216,7 @@ async def test_notify_on_new_bookmarks(
     bmm = neo4j.AsyncGraphDatabase.bookmark_manager(
         initial_bookmarks=(initial_bookmarks
                            if with_initial_bookmarks else None),
-        bookmark_consumer=consumer
+        bookmarks_consumer=consumer
     )
     bookmarks_old = {"db1:bm1", "db3:bm1"}
     bookmarks_new = {"db1:bm4"}
@@ -257,7 +257,7 @@ async def test_does_not_notify_on_empty_new_bookmark_set(
     bmm = neo4j.AsyncGraphDatabase.bookmark_manager(
         initial_bookmarks=(initial_bookmarks
                            if with_initial_bookmarks else None),
-        bookmark_consumer=consumer
+        bookmarks_consumer=consumer
     )
     await bmm.update_bookmarks(db, ["db1:bm1"], [])
 

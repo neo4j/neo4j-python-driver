@@ -55,8 +55,8 @@ class Backend:
         self.drivers = {}
         self.custom_resolutions = {}
         self.dns_resolutions = {}
-        self.bookmark_consumptions = {}
-        self.bookmark_supplies = {}
+        self.bookmarks_consumptions = {}
+        self.bookmarks_supplies = {}
         self.sessions = {}
         self.results = {}
         self.errors = {}

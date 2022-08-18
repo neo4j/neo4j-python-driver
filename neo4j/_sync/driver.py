@@ -219,8 +219,8 @@ class GraphDatabase:
         cls,
         initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
                                                   t.Iterable[str]]] = None,
-        bookmark_supplier: _T_BmSupplier = None,
-        bookmark_consumer: _T_BmConsumer = None
+        bookmarks_supplier: _T_BmSupplier = None,
+        bookmarks_consumer: _T_BmConsumer = None
     ) -> BookmarkManager:
         """Create a default :class:`.BookmarkManager`.
 
@@ -243,17 +243,17 @@ class GraphDatabase:
             use this to initialize its internal bookmarks per database.
             If present, this parameter must be a mapping of database names
             to :class:`.Bookmarks` or an iterable of raw bookmark values (str).
-        :param bookmark_supplier:
+        :param bookmarks_supplier:
             Function which will be called every time the default bookmark
             manager's method :meth:`.BookmarkManager.get_bookmarks`
             or :meth:`.BookmarkManager.get_all_bookmarks` gets called.
             The function will be passed the name of the database (``str``) if
             ``.get_bookmarks`` is called or ``None`` if ``.get_all_bookmarks``
             is called. The function must return a :class:`.Bookmarks` object.
-            The result of ``bookmark_supplier`` will then be concatenated with
+            The result of ``bookmarks_supplier`` will then be concatenated with
             the internal set of bookmarks and used to configure the session in
             creation.
-        :param bookmark_consumer:
+        :param bookmarks_consumer:
             Function which will be called whenever the set of bookmarks
             handled by the bookmark manager gets updated with the new
             internal bookmark set. It will receive the name of the database
@@ -265,8 +265,8 @@ class GraphDatabase:
         """
         return Neo4jBookmarkManager(
             initial_bookmarks=initial_bookmarks,
-            bookmark_supplier=bookmark_supplier,
-            bookmark_consumer=bookmark_consumer
+            bookmarks_supplier=bookmarks_supplier,
+            bookmarks_consumer=bookmarks_consumer
         )
 
     @classmethod
