@@ -633,7 +633,7 @@ class Bolt(abc.ABC):
         finally:
             self._closed = True
 
-    async def close_non_blocking(self):
+    def close_non_blocking(self):
         """Set the socket to non-blocking and close it.
         This will try to send the `GOODBYE` message (given the socket is not
         marked as defunct). However, should the write operation require
