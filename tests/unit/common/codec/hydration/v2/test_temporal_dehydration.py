@@ -60,15 +60,15 @@ class TestTimeDehydration(_TestTemporalDehydrationV1):
         assert struct == Structure(b"I", 1539347861, 474716000, -3600)
 
     def test_date_time_zone_id(self, hydration_scope):
-        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
-                      pytz.timezone("Europe/Stockholm"))
+        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862)
+        dt = pytz.timezone("Europe/Stockholm").localize(dt)
         struct = hydration_scope.dehydration_hooks[type(dt)](dt)
-        assert struct == Structure(b"i", 1539339941, 474716862,
+        assert struct == Structure(b"i", 1539337061, 474716862,
                                    "Europe/Stockholm")
 
     def test_native_date_time_zone_id(self, hydration_scope):
-        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716,
-                               pytz.timezone("Europe/Stockholm"))
+        dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716)
+        dt = pytz.timezone("Europe/Stockholm").localize(dt)
         struct = hydration_scope.dehydration_hooks[type(dt)](dt)
-        assert struct == Structure(b"i", 1539339941, 474716000,
+        assert struct == Structure(b"i", 1539337061, 474716000,
                                    "Europe/Stockholm")
