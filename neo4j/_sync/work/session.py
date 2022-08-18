@@ -547,7 +547,8 @@ class Session(Workspace):
         returns, unless an exception is thrown during query execution or by
         the user code. Note, that this function performs retries and that the
         supplied `transaction_function` might get invoked more than once.
-        Therefore, it needs to be idempotent (i.e., have no side effects).
+        Therefore, it needs to be idempotent (i.e., have the same effect,
+        regardless if called once or many times).
 
         Example::
 
@@ -611,7 +612,8 @@ class Session(Workspace):
         returns unless, an exception is thrown during query execution or by
         the user code. Note, that this function performs retries and that the
         supplied `transaction_function` might get invoked more than once.
-        Therefore, it needs to be idempotent (i.e., have no side effects).
+        Therefore, it needs to be idempotent (i.e., have the same effect,
+        regardless if called once or many times).
 
         Example::
 
