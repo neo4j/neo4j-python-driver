@@ -156,7 +156,7 @@ async def NewDriver(backend, data):
         if bookmark_manager_config.get("bookmarksSupplierRegistered"):
             bmm_kwargs["bookmark_supplier"] = bookmark_supplier(backend)
         if bookmark_manager_config.get("bookmarksConsumerRegistered"):
-            bmm_kwargs["bookmarks_consumer"] = bookmark_consumer(backend)
+            bmm_kwargs["bookmark_consumer"] = bookmark_consumer(backend)
 
         kwargs["bookmark_manager"] = \
             neo4j.AsyncGraphDatabase.bookmark_manager(**bmm_kwargs)
