@@ -428,6 +428,14 @@ manger is used to keep all work on the driver causally consistent.
 
 See :class:`.BookmarkManager` for more information.
 
+.. warning::
+    Enabling the BookmarkManager can have a negative impact on performance since
+    all queries will wait for the latest changes to be propagated across the
+    cluster.
+
+    For simpler use-cases, sessions (:class:`.Session`) can be used to group
+    a series of queries together that will be causally chained automatically.
+
 :Type: :const:`None` or :class:`.BookmarkManager`
 :Default: :const:`None`
 
