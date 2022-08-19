@@ -43,6 +43,9 @@ from ssl import (
 if t.TYPE_CHECKING:
     import typing_extensions as te
 
+    from ..._async.io import AsyncBolt
+    from ..._sync.io import Bolt
+
 from ... import addressing
 from ..._deadline import Deadline
 from ..._exceptions import (
@@ -75,7 +78,7 @@ def _sanitize_deadline(deadline):
 
 
 class AsyncBoltSocket:
-    Bolt: te.Final[t.Type] = None  # type: ignore[assignment]
+    Bolt: te.Final[t.Type[AsyncBolt]] = None  # type: ignore[assignment]
 
     def __init__(self, reader, protocol, writer):
         self._reader = reader  # type: asyncio.StreamReader
@@ -405,7 +408,7 @@ class AsyncBoltSocket:
 
 
 class BoltSocket:
-    Bolt: te.Final[t.Type] = None  # type: ignore[assignment]
+    Bolt: te.Final[t.Type[Bolt]] = None  # type: ignore[assignment]
 
     def __init__(self, socket_: socket):
         self._socket = socket_
@@ -605,7 +608,7 @@ class BoltSocket:
     def close_socket(cls, socket_):
         try:
             if isinstance(socket_, BoltSocket):
-                socket.close()
+                socket_.close()
             else:
                 socket_.shutdown(SHUT_RDWR)
                 socket_.close()
