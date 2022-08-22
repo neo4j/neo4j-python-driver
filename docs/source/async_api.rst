@@ -154,7 +154,7 @@ Async Driver Configuration
 (see :ref:`driver-configuration-ref`). The only differences are:
 * the async driver accepts an async custom resolver function,
 see :ref:`async-resolver-ref`.
-* the async driver accepts accepts either a :class:`neo4j.api.BookmarkManager`
+* the async driver accepts either a :class:`neo4j.api.BookmarkManager`
 object or a :class:`neo4j.api.AsyncBookmarkManager` as bookmark manager.
 see :ref:`async-bookmark-manager-ref`.
 

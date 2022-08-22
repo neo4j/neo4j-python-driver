@@ -62,17 +62,15 @@ class Neo4jBookmarkManager(BookmarkManager):
         self._lock = CooperativeLock()
 
     def update_bookmarks(
-        self, database: str, previous_bookmarks: t.Iterable[str],
-        new_bookmarks: t.Iterable[str]
+        self, database: str, previous_bookmarks: t.Collection[str],
+        new_bookmarks: t.Collection[str]
     ) -> None:
-        new_bms = set(new_bookmarks)
-        prev_bms = set(previous_bookmarks)
+        if not new_bookmarks:
+            return
         with self._lock:
-            if not new_bms:
-                return
             curr_bms = self._bookmarks[database]
-            curr_bms.difference_update(prev_bms)
-            curr_bms.update(new_bms)
+            curr_bms.difference_update(previous_bookmarks)
+            curr_bms.update(new_bookmarks)
             if self._bookmarks_consumer:
                 curr_bms_snapshot = Bookmarks.from_raw_values(curr_bms)
         if self._bookmarks_consumer:

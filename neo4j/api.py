@@ -405,8 +405,8 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def update_bookmarks(
-        self, database: str, previous_bookmarks: t.Iterable[str],
-        new_bookmarks: t.Iterable[str]
+        self, database: str, previous_bookmarks: t.Collection[str],
+        new_bookmarks: t.Collection[str]
     ) -> None:
         """Handle bookmark updates.
 
@@ -461,8 +461,8 @@ class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def update_bookmarks(
-        self, database: str, previous_bookmarks: t.Iterable[str],
-        new_bookmarks: t.Iterable[str]
+        self, database: str, previous_bookmarks: t.Collection[str],
+        new_bookmarks: t.Collection[str]
     ) -> None:
         ...
 
