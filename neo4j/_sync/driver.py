@@ -225,7 +225,7 @@ class GraphDatabase:
         """Create a default :class:`.BookmarkManager`.
 
         Basic usage example to configure the driver with the default
-        bookmark manger implementation so that all work is automatically
+        bookmark manager implementation so that all work is automatically
         causally chained (i.e., all reads can observe all previous writes
         even in a clustered setup)::
 

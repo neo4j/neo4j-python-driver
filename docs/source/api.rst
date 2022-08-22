@@ -424,7 +424,7 @@ Specify the client agent name.
 ``bookmark_manager``
 --------------------
 Specify a bookmark manager for the driver to use. If present, the bookmark
-manger is used to keep all work on the driver causally consistent.
+manager is used to keep all work on the driver causally consistent.
 
 See :class:`.BookmarkManager` for more information.
 
