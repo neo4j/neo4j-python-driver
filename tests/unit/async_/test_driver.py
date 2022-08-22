@@ -140,7 +140,7 @@ async def test_routing_driver_constructor(protocol, host, port, params, auth_tok
             ConfigurationError, "The config settings"
         ),
         (
-            {"ssl_context": ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)},
+            {"ssl_context": ssl.SSLContext(ssl.PROTOCOL_TLSv1)},
             ConfigurationError, "The config settings"
         ),
     )
