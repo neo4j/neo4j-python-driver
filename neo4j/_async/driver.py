@@ -223,7 +223,7 @@ class AsyncGraphDatabase:
         bookmarks_supplier: _T_BmSupplier = None,
         bookmarks_consumer: _T_BmConsumer = None
     ) -> AsyncBookmarkManager:
-        """Create a default :class:`.AsyncBookmarkManager`.
+        """Create a :class:`.AsyncBookmarkManager` with default implementation.
 
         Basic usage example to configure the driver with the default
         bookmark manager implementation so that all work is automatically
@@ -240,7 +240,7 @@ class AsyncGraphDatabase:
             )
 
         :param initial_bookmarks:
-            The initial set of bookmarks. The default bookmark manager will
+            The initial set of bookmarks. The returned bookmark manager will
             use this to initialize its internal bookmarks per database.
             If present, this parameter must be a mapping of database names
             to :class:`.Bookmarks` or an iterable of raw bookmark values (str).

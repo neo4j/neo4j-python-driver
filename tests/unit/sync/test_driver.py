@@ -201,17 +201,13 @@ def test_driver_trust_config_error(
 def test_driver_opens_write_session_by_default(uri, fake_pool, mocker):
     with expect_async_experimental_warning():
         driver = GraphDatabase.driver(uri)
-    from neo4j import Transaction
-
     # we set a specific db, because else the driver would try to fetch a RT
     # to get hold of the actual home database (which won't work in this
     # unittest)
     driver._pool = fake_pool
     with driver.session(database="foobar") as session:
-        # acquire_mock = mocker.patch.object(session._pool, "acquire",
-        #                                    autospec=True)
-        tx_mock = mocker.patch("neo4j._sync.work.session.Transaction",
-                               autospec=True)
+        mocker.patch("neo4j._sync.work.session.Transaction",
+                     autospec=True)
         tx = session.begin_transaction()
     fake_pool.acquire.assert_called_once_with(
         access_mode=WRITE_ACCESS,
@@ -302,7 +298,7 @@ def test_get_server_info_parameters_are_experimental(
 
 
 @mark_sync_test
-def test_with_default_bookmark_manager(mocker) -> None:
+def test_with_builtin_bookmark_manager(mocker) -> None:
     bmm = GraphDatabase.bookmark_manager()
     # could be one line, but want to make sure the type checker assigns
     # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
