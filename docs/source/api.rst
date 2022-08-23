@@ -175,7 +175,6 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`ssl-context-ref`
 + :ref:`trusted-certificates-ref`
 + :ref:`user-agent-ref`
-+ :ref:`bookmark-manager-ref`
 
 
 .. _session-connection-timeout-ref:
@@ -276,6 +275,7 @@ Specify whether TCP keep-alive should be enabled.
 :Default: ``True``
 
 **This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
 
 
 .. _max-connection-lifetime-ref:
@@ -417,29 +417,6 @@ Specify the client agent name.
 
 :Type: ``str``
 :Default: *The Python Driver will generate a user agent name.*
-
-
-.. _bookmark-manager-ref:
-
-``bookmark_manager``
---------------------
-Specify a bookmark manager for the driver to use. If present, the bookmark
-manager is used to keep all work on the driver causally consistent.
-
-See :class:`.BookmarkManager` for more information.
-
-.. warning::
-    Enabling the BookmarkManager can have a negative impact on performance since
-    all queries will wait for the latest changes to be propagated across the
-    cluster.
-
-    For simpler use-cases, sessions (:class:`.Session`) can be used to group
-    a series of queries together that will be causally chained automatically.
-
-:Type: :const:`None` or :class:`.BookmarkManager`
-:Default: :const:`None`
-
-.. versionadded:: 5.0
 
 
 
@@ -597,6 +574,7 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 + :ref:`database-ref`
 + :ref:`default-access-mode-ref`
 + :ref:`fetch-size-ref`
++ :ref:`bookmark-manager-ref`
 
 
 .. _bookmarks-ref:
@@ -723,6 +701,33 @@ The fetch size used for requesting messages from Neo4j.
 
 :Type: ``int``
 :Default: ``1000``
+
+
+.. _bookmark-manager-ref:
+
+``bookmark_manager``
+--------------------
+Specify a bookmark manager for the session to use. If present, the bookmark
+manager is used to keep all work within the session causally consistent with
+all work in other sessions using the same bookmark manager.
+
+See :class:`.BookmarkManager` for more information.
+
+.. warning::
+    Enabling the BookmarkManager can have a negative impact on performance since
+    all queries will wait for the latest changes to be propagated across the
+    cluster.
+
+    For simple use-cases, it often suffices that work within a single session
+    is automatically causally consistent.
+
+:Type: :const:`None` or :class:`.BookmarkManager`
+:Default: :const:`None`
+
+.. versionadded:: 5.0
+
+**This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
 
 
 
@@ -932,6 +937,7 @@ Graph
     .. automethod:: relationship_type
 
 **This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
 
 
 ******

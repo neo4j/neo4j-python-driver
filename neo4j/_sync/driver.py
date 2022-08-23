@@ -99,8 +99,6 @@ class GraphDatabase:
             ssl_context: ssl.SSLContext = ...,
             user_agent: str = ...,
             keep_alive: bool = ...,
-            bookmark_manager: t.Union[BookmarkManager,
-                                      BookmarkManager, None] = ...,
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
@@ -111,7 +109,9 @@ class GraphDatabase:
             retry_delay_jitter_factor: float = ...,
             database: t.Optional[str] = ...,
             fetch_size: int = ...,
-            impersonated_user: t.Optional[str] = ...
+            impersonated_user: t.Optional[str] = ...,
+            bookmark_manager: t.Union[BookmarkManager,
+                                      BookmarkManager, None] = ...
         ) -> Driver:
             ...
 
@@ -215,6 +215,10 @@ class GraphDatabase:
                                     routing_context=routing_context, **config)
 
     @classmethod
+    @experimental(
+        "The bookmark manager feature is experimental. "
+        "It might be changed or removed any time even without prior notice."
+    )
     def bookmark_manager(
         cls,
         initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
@@ -224,19 +228,32 @@ class GraphDatabase:
     ) -> BookmarkManager:
         """Create a :class:`.BookmarkManager` with default implementation.
 
-        Basic usage example to configure the driver with the default
-        bookmark manager implementation so that all work is automatically
-        causally chained (i.e., all reads can observe all previous writes
-        even in a clustered setup)::
+        Basic usage example to configure sessions with the builtin bookmark
+        manager implementation so that all work is automatically causally
+        chained (i.e., all reads can observe all previous writes even in a
+        clustered setup)::
 
             import neo4j
 
-            driver = neo4j.GraphDatabase.driver(
-                uri, auth=..., # ...
-                bookmark_manager=neo4j.GraphDatabase.bookmark_manager(
-                    # ... configure the bookmark manager
-                )
-            )
+            driver = neo4j.GraphDatabase.driver(...)
+            bookmark_manager = neo4j.BookmarkManager(...)
+
+            with driver.session(
+                bookmark_manager=bookmark_manager
+            ) as session1:
+                with driver.session(
+                    bookmark_manager=bookmark_manager
+                ) as session2:
+                    session1.run("<WRITE_QUERY>")
+                    # READ_QUERY is guaranteed to see what WRITE_QUERY wrote.
+                    session2.run("<READ_QUERY>")
+
+        This is a very contrived example, and in this particular case, having
+        both queries in the same session has the exact same effect and might
+        even be more performant. However, when dealing with sessions spanning
+        multiple threads, Tasks, processes, or even hosts, the bookmark
+        manager can come in handy as sessions are not safe to be used
+        concurrently.
 
         :param initial_bookmarks:
             The initial set of bookmarks. The returned bookmark manager will
@@ -260,6 +277,9 @@ class GraphDatabase:
             and the new set of bookmarks.
 
         :returns: A default implementation of :class:`BookmarkManager`.
+
+        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        It might be changed or removed any time even without prior notice.
 
         .. versionadded:: 5.0
         """
@@ -408,14 +428,14 @@ class Driver:
             bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
             ignore_bookmark_manager: bool = ...,
             default_access_mode: str = ...,
+            bookmark_manager: t.Union[BookmarkManager,
+                                      BookmarkManager, None] = ...,
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
-            retry_delay_jitter_factor: float = ...,
-            bookmark_manager: t.Union[BookmarkManager,
-                                      BookmarkManager, None] = ...,
+            retry_delay_jitter_factor: float = ...
         ) -> Session:
             ...
 
@@ -452,13 +472,13 @@ class Driver:
             impersonated_user: t.Optional[str] = ...,
             bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
             default_access_mode: str = ...,
+            bookmark_manager: t.Union[BookmarkManager,
+                                      BookmarkManager, None] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
-            retry_delay_jitter_factor: float = ...,
-            bookmark_manager: t.Union[BookmarkManager,
-                                      BookmarkManager, None] = ...,
+            retry_delay_jitter_factor: float = ...
         ) -> None:
             ...
 
@@ -516,13 +536,13 @@ class Driver:
             impersonated_user: t.Optional[str] = ...,
             bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
             default_access_mode: str = ...,
+            bookmark_manager: t.Union[BookmarkManager,
+                                      BookmarkManager, None] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
-            retry_delay_jitter_factor: float = ...,
-            bookmark_manager: t.Union[BookmarkManager,
-                                      BookmarkManager, None] = ...,
+            retry_delay_jitter_factor: float = ...
         ) -> ServerInfo:
             ...
 

@@ -25,16 +25,27 @@ import pytest
 
 import neo4j
 from neo4j._async_compat.util import Util
+from neo4j._meta import copy_signature
 from neo4j._sync.bookmark_manager import Neo4jBookmarkManager
 from neo4j.api import Bookmarks
 
 from ..._async_compat import mark_sync_test
 
 
+supplier_async_options = (True, False) if Util.is_async_code else (False,)
+consumer_async_options = supplier_async_options
+
+
+@copy_signature(neo4j.GraphDatabase.bookmark_manager)
+def bookmark_manager(*args, **kwargs):
+    with pytest.warns(neo4j.ExperimentalWarning, match="bookmark manager"):
+        return neo4j.GraphDatabase.bookmark_manager(*args, **kwargs)
+
+
 @pytest.mark.parametrize("db", ("foobar", "system"))
 @mark_sync_test
 def test_return_empty_if_db_doesnt_exists(db) -> None:
-    bmm = neo4j.GraphDatabase.bookmark_manager()
+    bmm = bookmark_manager()
 
     assert set(bmm.get_bookmarks(db)) == set()
 
@@ -48,22 +59,17 @@ def test_return_initial_bookmarks_for_the_given_db(db) -> None:
         "db3": ["db3:bm1", "db3:bm2"],
         "db4": ["db4:bm4"]
     }
-    bmm = neo4j.GraphDatabase.bookmark_manager(
-        initial_bookmarks=initial_bookmarks
-    )
+    bmm = bookmark_manager(initial_bookmarks=initial_bookmarks)
 
     assert set(bmm.get_bookmarks(db)) == set(initial_bookmarks[db])
 
 
 @pytest.mark.parametrize("db", ("db1", "db2", "db3"))
-@pytest.mark.parametrize("supplier_async", (True, False))
+@pytest.mark.parametrize("supplier_async", supplier_async_options)
 @mark_sync_test
 def test_return_get_bookmarks_from_bookmarks_supplier(
     db, mocker, supplier_async
 ) -> None:
-    if supplier_async and not Util.is_async_code:
-        pytest.skip("Async only test")
-
     extra_bookmarks = ["foo:bm1", "bar:bm2", "foo:bm1"]
     initial_bookmarks: t.Dict[str, t.List[str]] = {
         "db1": ["db1:bm1", "db1:bm1"],
@@ -75,10 +81,8 @@ def test_return_get_bookmarks_from_bookmarks_supplier(
     supplier = mock_cls(
         return_value=Bookmarks.from_raw_values(extra_bookmarks)
     )
-    bmm = neo4j.GraphDatabase.bookmark_manager(
-        initial_bookmarks=initial_bookmarks,
-        bookmarks_supplier=supplier
-    )
+    bmm = bookmark_manager(initial_bookmarks=initial_bookmarks,
+                           bookmarks_supplier=supplier)
 
     assert set(bmm.get_bookmarks(db)) == {
         *extra_bookmarks, *initial_bookmarks.get(db, [])
@@ -99,7 +103,7 @@ def test_return_all_bookmarks(with_initial_bookmarks) -> None:
         "db4": ["db4:bm4"],
         "db5": ["db3:bm1"]
     }
-    bmm = neo4j.GraphDatabase.bookmark_manager(
+    bmm = bookmark_manager(
         initial_bookmarks=initial_bookmarks if with_initial_bookmarks else None
     )
 
@@ -114,14 +118,11 @@ def test_return_all_bookmarks(with_initial_bookmarks) -> None:
 
 
 @pytest.mark.parametrize("with_initial_bookmarks", (True, False))
-@pytest.mark.parametrize("supplier_async", (True, False))
+@pytest.mark.parametrize("supplier_async", supplier_async_options)
 @mark_sync_test
 def test_return_enriched_bookmarks_list_with_supplied_bookmarks(
     with_initial_bookmarks, supplier_async, mocker
 ) -> None:
-    if supplier_async and not Util.is_async_code:
-        pytest.skip("Async only test")
-
     initial_bookmarks: t.Dict[str, t.List[str]] = {
         "db1": ["db1:bm1", "db1:bm1"],
         "db2": [],
@@ -133,7 +134,7 @@ def test_return_enriched_bookmarks_list_with_supplied_bookmarks(
     supplier = mock_cls(
         return_value=Bookmarks.from_raw_values(extra_bookmarks)
     )
-    bmm = neo4j.GraphDatabase.bookmark_manager(
+    bmm = bookmark_manager(
         initial_bookmarks=(initial_bookmarks
                            if with_initial_bookmarks else None),
         bookmarks_supplier=supplier
@@ -161,9 +162,7 @@ def test_chains_bookmarks_for_existing_db() -> None:
         "db3": ["db3:bm1", "db3:bm2"],
         "db4": ["db4:bm4"],
     }
-    bmm = neo4j.GraphDatabase.bookmark_manager(
-        initial_bookmarks=initial_bookmarks,
-    )
+    bmm = bookmark_manager(initial_bookmarks=initial_bookmarks)
     bmm.update_bookmarks("db3", ["db3:bm1"], ["db3:bm3"])
     new_bookmarks = bmm.get_bookmarks("db3")
     all_bookmarks = bmm.get_all_bookmarks()
@@ -182,9 +181,7 @@ def test_add_bookmarks_for_a_non_existing_database() -> None:
         "db3": ["db3:bm1", "db3:bm2"],
         "db4": ["db4:bm4"],
     }
-    bmm = neo4j.GraphDatabase.bookmark_manager(
-        initial_bookmarks=initial_bookmarks,
-    )
+    bmm = bookmark_manager(initial_bookmarks=initial_bookmarks)
     bmm.update_bookmarks(
         "db5", ["db3:bm1", "db5:bm1"], ["db3:bm3", "db3:bm5"]
     )
@@ -198,22 +195,19 @@ def test_add_bookmarks_for_a_non_existing_database() -> None:
 
 
 @pytest.mark.parametrize("with_initial_bookmarks", (True, False))
-@pytest.mark.parametrize("consumer_async", (True, False))
+@pytest.mark.parametrize("consumer_async", consumer_async_options)
 @pytest.mark.parametrize("db", ("db1", "db2", "db3"))
 @mark_sync_test
 def test_notify_on_new_bookmarks(
     with_initial_bookmarks, consumer_async, db, mocker
 ) -> None:
-    if consumer_async and not Util.is_async_code:
-        pytest.skip("Async only test")
-
     initial_bookmarks: t.Dict[str, t.List[str]] = {
         "db1": ["db1:bm1", "db1:bm1", "db1:bm2"],
         "db2": ["db2:bm1"],
     }
     mock_cls = mocker.Mock if consumer_async else mocker.Mock
     consumer = mock_cls()
-    bmm = neo4j.GraphDatabase.bookmark_manager(
+    bmm = bookmark_manager(
         initial_bookmarks=(initial_bookmarks
                            if with_initial_bookmarks else None),
         bookmarks_consumer=consumer
@@ -239,22 +233,19 @@ def test_notify_on_new_bookmarks(
     assert args[1].raw_values == expected_bms
 
 
-@pytest.mark.parametrize("consumer_async", (True, False))
+@pytest.mark.parametrize("consumer_async", consumer_async_options)
 @pytest.mark.parametrize("with_initial_bookmarks", (True, False))
 @pytest.mark.parametrize("db", ("db1", "db2"))
 @mark_sync_test
 def test_does_not_notify_on_empty_new_bookmark_set(
     with_initial_bookmarks, consumer_async, db, mocker
 ) -> None:
-    if consumer_async and not Util.is_async_code:
-        pytest.skip("Async only test")
-
     initial_bookmarks: t.Dict[str, t.List[str]] = {
         "db1": ["db1:bm1", "db1:bm2"]
     }
     mock_cls = mocker.Mock if consumer_async else mocker.Mock
     consumer = mock_cls()
-    bmm = neo4j.GraphDatabase.bookmark_manager(
+    bmm = bookmark_manager(
         initial_bookmarks=(initial_bookmarks
                            if with_initial_bookmarks else None),
         bookmarks_consumer=consumer
@@ -273,9 +264,7 @@ def test_forget_database(dbs) -> None:
         "db1": ["db1:bm1", "db1:bm1", "db1:bm2"],
         "db2": ["db2:bm1"],
     }
-    bmm = neo4j.GraphDatabase.bookmark_manager(
-        initial_bookmarks=initial_bookmarks
-    )
+    bmm = bookmark_manager(initial_bookmarks=initial_bookmarks)
 
     for db in dbs:
         assert (bmm.get_bookmarks(db)

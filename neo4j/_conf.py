@@ -16,11 +16,14 @@
 # limitations under the License.
 
 
+import warnings
 from abc import ABCMeta
 from collections.abc import Mapping
 
 from ._meta import (
     deprecation_warn,
+    experimental_warn,
+    ExperimentalWarning,
     get_user_agent,
 )
 from .api import (
@@ -132,28 +135,59 @@ class DeprecatedAlternative:
         self.converter = converter
 
 
+class DeprecatedOption:
+    """Used for deprecated config options without alternative."""
+
+    def __init__(self, value):
+        self.value = value
+
+
+class ExperimentalOption:
+    """Used for experimental config options."""
+
+    def __init__(self, value):
+        self.value = value
+
+
 class ConfigType(ABCMeta):
 
     def __new__(mcs, name, bases, attributes):
         fields = []
         deprecated_aliases = {}
         deprecated_alternatives = {}
+        deprecated_options = {}
+        experimental_options = {}
 
         for base in bases:
             if type(base) is mcs:
                 fields += base.keys()
                 deprecated_aliases.update(base._deprecated_aliases())
                 deprecated_alternatives.update(base._deprecated_alternatives())
+                deprecated_options.update(base._deprecated_options())
+                experimental_options.update(base._experimental_options())
 
         for k, v in attributes.items():
+            if (
+                k.startswith("_")
+                or callable(v)
+                or isinstance(v, (staticmethod, classmethod))
+            ):
+                continue
             if isinstance(v, DeprecatedAlias):
                 deprecated_aliases[k] = v.new
-            elif isinstance(v, DeprecatedAlternative):
+                continue
+            if isinstance(v, DeprecatedAlternative):
                 deprecated_alternatives[k] = v.new, v.converter
-            elif not (k.startswith("_")
-                      or callable(v)
-                      or isinstance(v, (staticmethod, classmethod))):
-                fields.append(k)
+                continue
+            fields.append(k)
+            if isinstance(v, DeprecatedOption):
+                deprecated_options[k] = v.value
+                attributes[k] = v.value
+                continue
+            if isinstance(v, ExperimentalOption):
+                experimental_options[k] = v.value
+                attributes[k] = v.value
+                continue
 
         def keys(_):
             return set(fields)
@@ -173,6 +207,12 @@ class ConfigType(ABCMeta):
         def _deprecated_alternatives(_):
             return deprecated_alternatives
 
+        def _deprecated_options(_):
+            return deprecated_options
+
+        def _experimental_options(_):
+            return experimental_options
+
         attributes.setdefault("keys", classmethod(keys))
         attributes.setdefault("_get_new",
                               classmethod(_get_new))
@@ -182,6 +222,10 @@ class ConfigType(ABCMeta):
                               classmethod(_deprecated_aliases))
         attributes.setdefault("_deprecated_alternatives",
                               classmethod(_deprecated_alternatives))
+        attributes.setdefault("_deprecated_options",
+                              classmethod(_deprecated_options))
+        attributes.setdefault("_experimental_options",
+                              classmethod(_experimental_options))
 
         return super(ConfigType, mcs).__new__(
             mcs, name, bases, {k: v for k, v in attributes.items()
@@ -227,6 +271,15 @@ class Config(Mapping, metaclass=ConfigType):
 
         def set_attr(k, v):
             if k in self.keys():
+                if k in self._deprecated_options():
+                    deprecation_warn("The '{}' config key is "
+                                     "deprecated.".format(k))
+                if k in self._experimental_options():
+                    experimental_warn(
+                        "The '{}' config key is experimental. "
+                        "It might be changed or removed any time even without "
+                        "prior notice.".format(k)
+                    )
                 setattr(self, k, v)
             elif k in self._deprecated_keys():
                 k0 = self._get_new(k)
@@ -253,7 +306,13 @@ class Config(Mapping, metaclass=ConfigType):
 
     def __init__(self, *args, **kwargs):
         for arg in args:
-            self.__update(arg)
+            if isinstance(arg, Config):
+                with warnings.catch_warnings():
+                    for cat in (DeprecationWarning, ExperimentalWarning):
+                        warnings.filterwarnings("ignore", category=cat)
+                    self.__update(arg)
+            else:
+                self.__update(arg)
         self.__update(kwargs)
 
     def __repr__(self):
@@ -417,7 +476,7 @@ class WorkspaceConfig(Config):
     # Note that you need appropriate permissions to do so.
 
     #: Bookmark Manager
-    bookmark_manager = None
+    bookmark_manager = ExperimentalOption(None)
     # Specify the bookmark manager to be used for sessions by default.
 
 

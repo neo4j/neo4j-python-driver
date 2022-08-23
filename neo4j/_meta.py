@@ -17,8 +17,12 @@
 
 
 import asyncio
+import typing as t
 from functools import wraps
 from warnings import warn
+
+
+_FuncT = t.TypeVar("_FuncT", bound=t.Callable)
 
 
 # Can be automatically overridden in builds
@@ -39,22 +43,19 @@ def get_user_agent():
     return template.format(*fields)
 
 
+def _id(x):
+    return x
+
+
+def copy_signature(_: _FuncT) -> t.Callable[[t.Callable], _FuncT]:
+    return _id
+
+
 def deprecation_warn(message, stack_level=1):
     warn(message, category=DeprecationWarning, stacklevel=stack_level + 1)
 
 
-from typing import (
-    Callable,
-    cast,
-    TypeVar,
-)
-
-
-T = TypeVar("T")
-FuncT = TypeVar("FuncT", bound=Callable[..., object])
-
-
-def deprecated(message: str) -> Callable[[FuncT], FuncT]:
+def deprecated(message: str) -> t.Callable[[_FuncT], _FuncT]:
     """ Decorator for deprecating functions and methods.
 
     ::
@@ -64,21 +65,21 @@ def deprecated(message: str) -> Callable[[FuncT], FuncT]:
             pass
 
     """
-    def decorator(f: FuncT) -> FuncT:
+    def decorator(f):
         if asyncio.iscoroutinefunction(f):
             @wraps(f)
             async def inner(*args, **kwargs):
                 deprecation_warn(message, stack_level=2)
                 return await f(*args, **kwargs)
 
-            return cast(FuncT, inner)
+            return inner
         else:
             @wraps(f)
             def inner(*args, **kwargs):
                 deprecation_warn(message, stack_level=2)
                 return f(*args, **kwargs)
 
-            return cast(FuncT, inner)
+            return inner
 
     return decorator
 
@@ -86,7 +87,7 @@ def deprecated(message: str) -> Callable[[FuncT], FuncT]:
 def deprecated_property(message: str):
     def decorator(f):
         return property(deprecated(message)(f))
-    return cast(property, decorator)
+    return t.cast(property, decorator)
 
 
 class ExperimentalWarning(Warning):
@@ -98,7 +99,7 @@ def experimental_warn(message, stack_level=1):
     warn(message, category=ExperimentalWarning, stacklevel=stack_level + 1)
 
 
-def experimental(message):
+def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
     """ Decorator for tagging experimental functions and methods.
 
     ::

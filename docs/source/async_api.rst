@@ -151,12 +151,8 @@ Async Driver Configuration
 ==========================
 
 :class:`neo4j.AsyncDriver` is configured exactly like :class:`neo4j.Driver`
-(see :ref:`driver-configuration-ref`). The only differences are:
-* the async driver accepts an async custom resolver function,
-see :ref:`async-resolver-ref`.
-* the async driver accepts either a :class:`neo4j.api.BookmarkManager`
-object or a :class:`neo4j.api.AsyncBookmarkManager` as bookmark manager.
-see :ref:`async-bookmark-manager-ref`.
+(see :ref:`driver-configuration-ref`). The only difference is that the async
+driver accepts an async custom resolver function:
 
 
 .. _async-resolver-ref:
@@ -193,28 +189,6 @@ For example:
                                        resolver=custom_resolver)
 
 
-:Default: ``None``
-
-
-.. _async-bookmark-manager-ref:
-
-``bookmark_manager``
---------------------
-Specify a bookmark manager for the driver to use. If present, the bookmark
-manager is used to keep all work on the driver causally consistent.
-
-See :class:`BookmarkManager` for more information.
-
-.. warning::
-    Enabling the BookmarkManager can have a negative impact on performance since
-    all queries will wait for the latest changes to be propagated across the
-    cluster.
-
-    For simpler use-cases, sessions (:class:`.AsyncSession`) can be used to
-    group a series of queries together that will be causally chained
-    automatically.
-
-:Type: :const:`None`, :class:`BookmarkManager`, or :class:`AsyncBookmarkManager`
 :Default: ``None``
 
 
@@ -399,7 +373,35 @@ Session Configuration
 =====================
 
 :class:`neo4j.AsyncSession` is configured exactly like :class:`neo4j.Session`
-(see :ref:`session-configuration-ref`).
+(see :ref:`session-configuration-ref`). The only difference is the async session
+accepts either a :class:`neo4j.api.BookmarkManager` object or a
+:class:`neo4j.api.AsyncBookmarkManager` as bookmark manager:
+
+
+.. _async-bookmark-manager-ref:
+
+``bookmark_manager``
+--------------------
+Specify a bookmark manager for the driver to use. If present, the bookmark
+manager is used to keep all work on the driver causally consistent.
+
+See :class:`BookmarkManager` for more information.
+
+.. warning::
+    Enabling the BookmarkManager can have a negative impact on performance since
+    all queries will wait for the latest changes to be propagated across the
+    cluster.
+
+    For simpler use-cases, sessions (:class:`.AsyncSession`) can be used to
+    group a series of queries together that will be causally chained
+    automatically.
+
+:Type: :const:`None`, :class:`BookmarkManager`, or :class:`AsyncBookmarkManager`
+:Default: :const:`None`
+
+**This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
+
 
 
 ****************
