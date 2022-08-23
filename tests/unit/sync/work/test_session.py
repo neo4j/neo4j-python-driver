@@ -354,8 +354,6 @@ def test_with_bookmark_manager(
     fake_pool.buffered_connection_mocks.append(scripted_connection)
 
     bmm = mocker.Mock(spec=BookmarkManager)
-    # res_cls_mock = mocker.patch("neo4j._async.work.session.AsyncResult",
-    #                             autospec=True)
     bmm.get_bookmarks.side_effect = bmm_get_bookmarks
     bmm.get_all_bookmarks.side_effect = bmm_gat_all_bookmarks
 
@@ -428,6 +426,40 @@ def test_with_bookmark_manager(
     connection_run_call_kwargs = connection_mock.run.call_args.kwargs
     assert (set(connection_run_call_kwargs["bookmarks"])
             == {"all", "bookmarks", *(additional_session_bookmarks or [])})
+
+
+@pytest.mark.parametrize("routing", (True, False))
+@pytest.mark.parametrize("session_method", ("run", "get_server_info"))
+@mark_sync_test
+def test_last_bookmarks_do_not_leak_bookmark_managers_bookmarks(
+    fake_pool, routing, session_method, mocker
+):
+    def bmm_get_bookmarks(database):
+        return [f"bmm:{database}"]
+
+    def bmm_gat_all_bookmarks():
+        return ["bmm:all", "bookmarks"]
+
+    fake_pool.mock_add_spec(Neo4jPool if routing else BoltPool)
+
+    bmm = mocker.Mock(spec=BookmarkManager)
+    bmm.get_bookmarks.side_effect = bmm_get_bookmarks
+    bmm.get_all_bookmarks.side_effect = bmm_gat_all_bookmarks
+
+    config = SessionConfig()
+    config.bookmark_manager = bmm
+    config.bookmarks = Bookmarks.from_raw_values(["session", "bookmarks"])
+    with Session(fake_pool, config) as session:
+        if session_method == "run":
+            session.run("RETURN 1")
+        elif session_method == "get_server_info":
+            session._get_server_info()
+        else:
+            assert False
+        last_bookmarks = session.last_bookmarks()
+
+        assert last_bookmarks.raw_values == {"session", "bookmarks"}
+    assert last_bookmarks.raw_values == {"session", "bookmarks"}
 
 
 @mark_sync_test

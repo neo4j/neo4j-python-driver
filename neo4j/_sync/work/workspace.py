@@ -100,40 +100,45 @@ class Workspace:
         self._initial_bookmarks = self._bookmarks = prepared_bookmarks
 
     def _get_bookmarks(self, database):
-        if self._bookmark_manager is not None:
-            # For 4.3- support: the server will not send the resolved home
-            # database back. To avoid confusion between `None` as in "all
-            # database" and `None` as in "home database" we re-write the
-            # home database to `""`, which otherwise is an invalid database
-            # name.
-            if database is None:
-                database = ""
-            self._bookmarks = tuple({
-                *Util.callback(
-                    self._bookmark_manager.get_bookmarks, database
-                ),
-                *self._initial_bookmarks
-            })
-        return self._bookmarks
+        if self._bookmark_manager is None:
+            return self._bookmarks
+
+        # For 4.3- support: the server will not send the resolved home
+        # database back. To avoid confusion between `None` as in "all
+        # database" and `None` as in "home database" we re-write the
+        # home database to `""`, which otherwise is an invalid database
+        # name. It will not work properly either way, as the home database
+        # can change (server config change or client side user change).
+        if database is None:
+            database = ""
+        self._last_from_bookmark_manager = tuple({
+            *Util.callback(
+                self._bookmark_manager.get_bookmarks, database
+            ),
+            *self._initial_bookmarks
+        })
+        return self._last_from_bookmark_manager
 
     def _get_all_bookmarks(self):
-        if self._bookmark_manager is not None:
-            self._bookmarks = tuple({
-                *Util.callback(
-                    self._bookmark_manager.get_all_bookmarks,
-                ),
-                *self._initial_bookmarks
-            })
-        return self._bookmarks
+        if self._bookmark_manager is None:
+            return self._bookmarks
+
+        self._last_from_bookmark_manager = tuple({
+            *Util.callback(
+                self._bookmark_manager.get_all_bookmarks,
+            ),
+            *self._initial_bookmarks
+        })
+        return self._last_from_bookmark_manager
 
     def _update_bookmarks(self, database, new_bookmarks):
         if not new_bookmarks:
             return
         self._initial_bookmarks = ()
-        previous_bookmarks = self._bookmarks
         self._bookmarks = new_bookmarks
         if self._bookmark_manager is None:
             return
+        previous_bookmarks = self._last_from_bookmark_manager
         # For 4.3- support: the server will not send the resolved home
         # database back. To avoid confusion between `None` as in "all
         # database" and `None` as in "home database" we re-write the home
