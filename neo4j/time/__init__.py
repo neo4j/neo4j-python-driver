@@ -2642,14 +2642,9 @@ class DateTime(metaclass=DateTimeType):
 
         :rtype: ClockTime
         """
-        total_seconds = 0
-        for year in range(1, self.year):
-            total_seconds += 86400 * DAYS_IN_YEAR[year]
-        for month in range(1, self.month):
-            total_seconds += 86400 * Date.days_in_month(self.year, month)
-        total_seconds += 86400 * (self.day - 1)
-        seconds, nanoseconds = divmod(self.__time.ticks_ns, NANO_SECONDS)
-        return ClockTime(total_seconds + seconds, nanoseconds)
+        ordinal_seconds = 86400 * (self.__date.to_ordinal() - 1)
+        time_seconds, nanoseconds = divmod(self.__time.ticks_ns, NANO_SECONDS)
+        return ClockTime(ordinal_seconds + time_seconds, nanoseconds)
 
     def to_native(self):
         """Convert to a native Python :class:`datetime.datetime` value.
