@@ -244,33 +244,37 @@ async def DomainNameResolutionCompleted(backend, data):
 
 
 async def NewBookmarkManager(backend, data):
-    bmm_id = backend.next_key()
+    bookmark_manager_id = backend.next_key()
 
     bmm_kwargs = {}
     data.mark_item_as_read("initialBookmarks", recursive=True)
     bmm_kwargs["initial_bookmarks"] = data.get("initialBookmarks")
     if data.get("bookmarksSupplierRegistered"):
-        bmm_kwargs["bookmarks_supplier"] = bookmarks_supplier(backend, bmm_id)
+        bmm_kwargs["bookmarks_supplier"] = bookmarks_supplier(
+            backend, bookmark_manager_id
+        )
     if data.get("bookmarksConsumerRegistered"):
-        bmm_kwargs["bookmarks_consumer"] = bookmarks_consumer(backend, bmm_id)
+        bmm_kwargs["bookmarks_consumer"] = bookmarks_consumer(
+            backend, bookmark_manager_id
+        )
 
-    bmm = neo4j.AsyncGraphDatabase.bookmark_manager(**bmm_kwargs)
-    backend.bookmark_managers[bmm_id] = bmm
-    await backend.send_response("BookmarkManager", {"id": bmm_id})
+    bookmark_manager = neo4j.AsyncGraphDatabase.bookmark_manager(**bmm_kwargs)
+    backend.bookmark_managers[bookmark_manager_id] = bookmark_manager
+    await backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
 
 
 async def BookmarkManagerClose(backend, data):
-    bmm_id = data["id"]
-    del backend.bookmark_managers[bmm_id]
-    await backend.send_response("BookmarkManager", {"id": bmm_id})
+    bookmark_manager_id = data["id"]
+    del backend.bookmark_managers[bookmark_manager_id]
+    await backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
 
 
-def bookmarks_supplier(backend, bmm_id):
+def bookmarks_supplier(backend, bookmark_manager_id):
     async def supplier(database):
         key = backend.next_key()
         await backend.send_response("BookmarksSupplierRequest", {
             "id": key,
-            "bookmarkManagerId": bmm_id,
+            "bookmarkManagerId": bookmark_manager_id,
             "database": database
         })
         if not await backend.process_request():
@@ -291,12 +295,12 @@ async def BookmarksSupplierCompleted(backend, data):
         neo4j.Bookmarks.from_raw_values(data["bookmarks"])
 
 
-def bookmarks_consumer(backend, bmm_id):
+def bookmarks_consumer(backend, bookmark_manager_id):
     async def consumer(database, bookmarks):
         key = backend.next_key()
         await backend.send_response("BookmarksConsumerRequest", {
             "id": key,
-            "bookmarkManagerId": bmm_id,
+            "bookmarkManagerId": bookmark_manager_id,
             "database": database,
             "bookmarks": list(bookmarks.raw_values)
         })
