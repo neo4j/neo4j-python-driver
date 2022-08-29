@@ -146,20 +146,6 @@ def NewDriver(backend, data):
                           for cert in data["trustedCertificates"])
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
-    bookmark_manager_config = data.get("bookmarkManager", {})
-    if bookmark_manager_config:
-        bmm_kwargs = {}
-        bookmark_manager_config.mark_item_as_read("initialBookmarks",
-                                                  recursive=True)
-        bmm_kwargs["initial_bookmarks"] = \
-            bookmark_manager_config.get("initialBookmarks")
-        if bookmark_manager_config.get("bookmarksSupplierRegistered"):
-            bmm_kwargs["bookmarks_supplier"] = bookmarks_supplier(backend)
-        if bookmark_manager_config.get("bookmarksConsumerRegistered"):
-            bmm_kwargs["bookmarks_consumer"] = bookmarks_consumer(backend)
-
-        kwargs["bookmark_manager"] = \
-            neo4j.GraphDatabase.bookmark_manager(**bmm_kwargs)
 
     driver = neo4j.GraphDatabase.driver(
         data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs
@@ -257,11 +243,34 @@ def DomainNameResolutionCompleted(backend, data):
     backend.dns_resolutions[data["requestId"]] = data["addresses"]
 
 
-def bookmarks_supplier(backend):
+def NewBookmarkManager(backend, data):
+    bmm_id = backend.next_key()
+
+    bmm_kwargs = {}
+    data.mark_item_as_read("initialBookmarks", recursive=True)
+    bmm_kwargs["initial_bookmarks"] = data.get("initialBookmarks")
+    if data.get("bookmarksSupplierRegistered"):
+        bmm_kwargs["bookmarks_supplier"] = bookmarks_supplier(backend, bmm_id)
+    if data.get("bookmarksConsumerRegistered"):
+        bmm_kwargs["bookmarks_consumer"] = bookmarks_consumer(backend, bmm_id)
+
+    bmm = neo4j.GraphDatabase.bookmark_manager(**bmm_kwargs)
+    backend.bookmark_managers[bmm_id] = bmm
+    backend.send_response("BookmarkManager", {"id": bmm_id})
+
+
+def BookmarkManagerClose(backend, data):
+    bmm_id = data["id"]
+    del backend.bookmark_managers[bmm_id]
+    backend.send_response("BookmarkManager", {"id": bmm_id})
+
+
+def bookmarks_supplier(backend, bmm_id):
     def supplier(database):
         key = backend.next_key()
         backend.send_response("BookmarksSupplierRequest", {
             "id": key,
+            "bookmarkManagerId": bmm_id,
             "database": database
         })
         if not backend.process_request():
@@ -282,11 +291,12 @@ def BookmarksSupplierCompleted(backend, data):
         neo4j.Bookmarks.from_raw_values(data["bookmarks"])
 
 
-def bookmarks_consumer(backend):
+def bookmarks_consumer(backend, bmm_id):
     def consumer(database, bookmarks):
         key = backend.next_key()
         backend.send_response("BookmarksConsumerRequest", {
             "id": key,
+            "bookmarkManagerId": bmm_id,
             "database": database,
             "bookmarks": list(bookmarks.raw_values)
         })
@@ -349,6 +359,10 @@ def NewSession(backend, data):
         config["bookmarks"] = neo4j.Bookmarks.from_raw_values(
             data["bookmarks"]
         )
+    if data.get("bookmarkManagerId") is not None:
+        config["bookmark_manager"] = backend.bookmark_managers[
+            data["bookmarkManagerId"]
+        ]
     for (conf_name, data_name) in (
         ("fetch_size", "fetchSize"),
         ("impersonated_user", "impersonatedUser"),

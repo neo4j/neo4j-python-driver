@@ -55,6 +55,7 @@ class AsyncBackend:
         self.drivers = {}
         self.custom_resolutions = {}
         self.dns_resolutions = {}
+        self.bookmark_managers = {}
         self.bookmarks_consumptions = {}
         self.bookmarks_supplies = {}
         self.sessions = {}
