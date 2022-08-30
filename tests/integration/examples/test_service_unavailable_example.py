@@ -34,7 +34,7 @@ def service_unavailable_example(driver):
     def add_item():
         try:
             with driver.session() as session:
-                session.write_transaction(lambda tx: tx.run("CREATE (a:Item)"))
+                session.execute_write(lambda tx: tx.run("CREATE (a:Item)"))
             return True
         except ServiceUnavailable:
             return False

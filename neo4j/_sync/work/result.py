@@ -359,7 +359,7 @@ class Result:
                 return value, summary
 
             with driver.session() as session:
-                node_id, summary = session.write_transaction(
+                node_id, summary = session.execute_write(
                     create_node_tx, "example"
                 )
 
@@ -381,7 +381,7 @@ class Result:
                 return values, summary
 
             with driver.session() as session:
-                values, summary = session.read_transaction(get_two_tx)
+                values, summary = session.execute_read(get_two_tx)
 
         :returns: The :class:`neo4j.ResultSummary` for this result
 

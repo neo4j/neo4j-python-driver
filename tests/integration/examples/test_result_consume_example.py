@@ -35,7 +35,7 @@ def result_consume_example(driver):
         return [record["a.name"] for record in result]
 
     with driver.session() as session:
-        people = session.read_transaction(match_person_nodes)
+        people = session.execute_read(match_person_nodes)
     # end::result-consume[]
 
     with driver.session() as session:

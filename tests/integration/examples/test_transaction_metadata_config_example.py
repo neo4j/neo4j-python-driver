@@ -31,7 +31,7 @@ def create_person(tx, name):
 
 def add_person(driver, name):
     with driver.session() as session:
-        return session.write_transaction(create_person, name)
+        return session.execute_write(create_person, name)
 # end::transaction-metadata-config[]
 
 
@@ -52,9 +52,9 @@ def work(tx, query, **parameters):
 def test_example(driver):
     eg = TransactionMetadataConfigExample(driver)
     with eg.driver.session() as session:
-        session.write_transaction(work, "MATCH (_) DETACH DELETE _")
+        session.execute_write(work, "MATCH (_) DETACH DELETE _")
         eg.add_person("Alice")
-        records, _ = session.read_transaction(
+        records, _ = session.execute_read(
             work, "MATCH (a:Person) RETURN count(a)"
         )
         assert records == [[1]]

@@ -35,8 +35,7 @@ def cypher_eval(driver):
     def f(cypher, **parameters):
         with driver.session() as session:
             try:
-                session.write_transaction(run_and_rollback, cypher,
-                                          **parameters)
+                session.execute_write(run_and_rollback, cypher, **parameters)
                 raise RuntimeError("Expected rollback")
             except ForcedRollback as e:
                 return e.return_value

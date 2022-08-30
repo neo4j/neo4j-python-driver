@@ -440,9 +440,9 @@ async def transactionFunc(backend, data, is_read):
                     raise FrontendError("Client said no")
 
     if is_read:
-        await session.read_transaction(func)
+        await session.execute_read(func)
     else:
-        await session.write_transaction(func)
+        await session.execute_write(func)
     await backend.send_response("RetryableDone", {})
 
 

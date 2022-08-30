@@ -50,7 +50,7 @@ def test_datetime(driver):
     in_dt = dt  # stored for later assertions
 
     with driver.session() as session:
-        record = session.read_transaction(_echo, dt)
+        record = session.execute_read(_echo, dt)
 
     # tag::temporal-types-datetime[]
 
@@ -69,7 +69,7 @@ def test_datetime(driver):
     assert native == py_dt
 
     with driver.session() as session:
-        record = session.read_transaction(_echo, py_dt)
+        record = session.execute_read(_echo, py_dt)
 
     dt = record.get("fieldName")
     assert isinstance(dt, DateTime)
@@ -101,7 +101,7 @@ def test_date(driver):
     in_d = d  # stored for later assertions
 
     with driver.session() as session:
-        record = session.read_transaction(_echo, d)
+        record = session.execute_read(_echo, d)
 
     # tag::temporal-types-date[]
 
@@ -120,7 +120,7 @@ def test_date(driver):
     assert native == py_d
 
     with driver.session() as session:
-        record = session.read_transaction(_echo, py_d)
+        record = session.execute_read(_echo, py_d)
 
     d = record.get("fieldName")
     assert isinstance(d, Date)
@@ -152,7 +152,7 @@ def test_time(driver):
     in_t = t  # stored for later assertions
 
     with driver.session() as session:
-        record = session.read_transaction(_echo, t)
+        record = session.execute_read(_echo, t)
 
     # tag::temporal-types-time[]
 
@@ -171,7 +171,7 @@ def test_time(driver):
     assert native == py_t
 
     with driver.session() as session:
-        record = session.read_transaction(_echo, py_t)
+        record = session.execute_read(_echo, py_t)
 
     t = record.get("fieldName")
     assert isinstance(t, Time)
@@ -203,7 +203,7 @@ def test_local_datetime(driver):
     in_dt = dt  # stored for later assertions
 
     with driver.session() as session:
-        record = session.read_transaction(_echo, dt)
+        record = session.execute_read(_echo, dt)
 
     # tag::temporal-types-local-datetime[]
 
@@ -222,7 +222,7 @@ def test_local_datetime(driver):
     assert native == py_dt
 
     with driver.session() as session:
-        record = session.read_transaction(_echo, py_dt)
+        record = session.execute_read(_echo, py_dt)
 
     dt = record.get("fieldName")
     assert isinstance(dt, DateTime)
@@ -253,7 +253,7 @@ def test_local_time(driver):
     in_t = t  # stored for later assertions
 
     with driver.session() as session:
-        record = session.read_transaction(_echo, t)
+        record = session.execute_read(_echo, t)
 
     # tag::temporal-types-local-time[]
 
@@ -272,7 +272,7 @@ def test_local_time(driver):
     assert native == py_t
 
     with driver.session() as session:
-        record = session.read_transaction(_echo, py_t)
+        record = session.execute_read(_echo, py_t)
 
     t = record.get("fieldName")
     assert isinstance(t, Time)
@@ -300,7 +300,7 @@ def test_duration_example(driver):
     in_duration = duration  # stored for later assertions
 
     with driver.session() as session:
-        record = session.read_transaction(_echo, duration)
+        record = session.execute_read(_echo, duration)
 
     # tag::temporal-types-duration[]
 
@@ -314,7 +314,7 @@ def test_duration_example(driver):
     assert duration == in_duration
 
     with driver.session() as session:
-        record = session.read_transaction(_echo, py_duration)
+        record = session.execute_read(_echo, py_duration)
 
     duration = record.get("fieldName")
     assert isinstance(duration, Duration)
