@@ -30,80 +30,112 @@ from neo4j.exceptions import (
 # python -m pytest tests/integration/test_tx_functions.py -s -v
 
 
-def test_simple_read(session):
+@pytest.fixture(params=["read_transaction", "execute_read"])
+def read_transaction(request):
+    def executor(session, *args, **kwargs):
+        if request.param == "read_transaction":
+            with pytest.warns(
+                DeprecationWarning,
+                match="^read_transaction has been renamed to execute_read$"
+            ):
+                return session.read_transaction(*args, **kwargs)
+        elif request.param == "execute_read":
+            return session.execute_read(*args, **kwargs)
+        raise ValueError(request.param)
+
+    return executor
+
+
+@pytest.fixture(params=["write_transaction", "execute_write"])
+def write_transaction(request):
+    def executor(session, *args, **kwargs):
+        if request.param == "write_transaction":
+            with pytest.warns(
+                DeprecationWarning,
+                match="^write_transaction has been renamed to execute_write$"
+            ):
+                return session.write_transaction(*args, **kwargs)
+        elif request.param == "execute_write":
+            return session.execute_write(*args, **kwargs)
+        raise ValueError(request.param)
+
+    return executor
+
+
+def test_simple_read(session, read_transaction):
 
     def work(tx):
         return tx.run("RETURN 1").single().value()
 
-    value = session.read_transaction(work)
+    value = read_transaction(session, work)
     assert value == 1
 
 
-def test_read_with_arg(session):
+def test_read_with_arg(session, read_transaction):
 
     def work(tx, x):
         return tx.run("RETURN $x", x=x).single().value()
 
-    value = session.read_transaction(work, x=1)
+    value = read_transaction(session, work, x=1)
     assert value == 1
 
 
-def test_read_with_arg_and_metadata(session):
+def test_read_with_arg_and_metadata(session, read_transaction):
 
     @unit_of_work(timeout=25, metadata={"foo": "bar"})
     def work(tx):
         return tx.run("CALL dbms.getTXMetaData").single().value()
 
     try:
-        value = session.read_transaction(work)
+        value = read_transaction(session, work)
     except ClientError:
         pytest.skip("Transaction metadata and timeout only supported in Neo4j EE 3.5+")
     else:
         assert value == {"foo": "bar"}
 
 
-def test_simple_write(session):
+def test_simple_write(session, write_transaction):
 
     def work(tx):
         return tx.run("CREATE (a {x: 1}) RETURN a.x").single().value()
 
-    value = session.write_transaction(work)
+    value = write_transaction(session, work)
     assert value == 1
 
 
-def test_write_with_arg(session):
+def test_write_with_arg(session, write_transaction):
 
     def work(tx, x):
         return tx.run("CREATE (a {x: $x}) RETURN a.x", x=x).single().value()
 
-    value = session.write_transaction(work, x=1)
+    value = write_transaction(session, work, x=1)
     assert value == 1
 
 
-def test_write_with_arg_and_metadata(session):
+def test_write_with_arg_and_metadata(session, write_transaction):
 
     @unit_of_work(timeout=25, metadata={"foo": "bar"})
     def work(tx, x):
         return tx.run("CREATE (a {x: $x}) RETURN a.x", x=x).single().value()
 
     try:
-        value = session.write_transaction(work, x=1)
+        value = write_transaction(session, work, x=1)
     except ClientError:
         pytest.skip("Transaction metadata and timeout only supported in Neo4j EE 3.5+")
     else:
         assert value == 1
 
 
-def test_error_on_write_transaction(session):
+def test_error_on_write_transaction(session, write_transaction):
 
     def f(tx, uuid):
         tx.run("CREATE (a:Thing {uuid:$uuid})", uuid=uuid), uuid4()
 
     with pytest.raises(TypeError):
-        session.write_transaction(f)
+        write_transaction(session, f)
 
 
-def test_retry_logic(driver):
+def test_retry_logic(driver, read_transaction):
     # python -m pytest tests/integration/test_tx_functions.py -s -v -k test_retry_logic
 
     pytest.global_counter = 0
@@ -120,7 +152,7 @@ def test_retry_logic(driver):
         return records
 
     with driver.session() as session:
-        records = session.read_transaction(get_one)
+        records = read_transaction(session, get_one)
 
         assert pytest.global_counter == 3
 

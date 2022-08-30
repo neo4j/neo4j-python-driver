@@ -311,7 +311,7 @@ async def test_session_run_with_parameters(
         elif run_type == "managed":
             async def work(tx):
                 await tx.run("RETURN $x", **parameters)
-            await session.write_transaction(work)
+            await session.execute_write(work)
         else:
             raise ValueError(run_type)
 

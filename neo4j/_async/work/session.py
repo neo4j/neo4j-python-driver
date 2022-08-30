@@ -530,6 +530,75 @@ class AsyncSession(AsyncWorkspace):
         else:
             raise ServiceUnavailable("Transaction failed")
 
+    async def execute_read(
+        self,
+        transaction_function: t.Callable[
+            te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
+        ],
+        *args: _P.args, **kwargs: _P.kwargs
+    ) -> _R:
+        """Execute a unit of work in a managed read transaction.
+
+        .. note::
+            This does not necessarily imply access control, see the session
+            configuration option :ref:`default-access-mode-ref`.
+
+        This transaction will automatically be committed when the function
+        returns, unless an exception is thrown during query execution or by
+        the user code. Note, that this function performs retries and that the
+        supplied `transaction_function` might get invoked more than once.
+        Therefore, it needs to be idempotent (i.e., have the same effect,
+        regardless if called once or many times).
+
+        Example::
+
+            async def do_cypher_tx(tx, cypher):
+                result = await tx.run(cypher)
+                values = [record.values() async for record in result]
+                return values
+
+            async with driver.session() as session:
+                values = await session.execute_read(do_cypher_tx, "RETURN 1 AS x")
+
+        Example::
+
+            async def get_two_tx(tx):
+                result = await tx.run("UNWIND [1,2,3,4] AS x RETURN x")
+                values = []
+                async for record in result:
+                    if len(values) >= 2:
+                        break
+                    values.append(record.values())
+                # or shorter: values = [record.values()
+                #                       for record in await result.fetch(2)]
+
+                # discard the remaining records if there are any
+                summary = await result.consume()
+                # use the summary for logging etc.
+                return values
+
+            async with driver.session() as session:
+                values = await session.execute_read(get_two_tx)
+
+        :param transaction_function: a function that takes a transaction as an
+            argument and does work with the transaction.
+            `transaction_function(tx, *args, **kwargs)` where `tx` is a
+            :class:`.AsyncManagedTransaction`.
+        :param args: additional arguments for the `transaction_function`
+        :param kwargs: key word arguments for the `transaction_function`
+
+        :raises SessionError: if the session has been closed.
+
+        :return: a result as returned by the given unit of work
+
+        .. versionadded:: 5.0
+        """
+        return await self._run_transaction(
+            READ_ACCESS, transaction_function, *args, **kwargs
+        )
+
+    # TODO 6.0: Remove this method
+    @deprecated("read_transaction has been renamed to execute_read")
     async def read_transaction(
         self,
         transaction_function: t.Callable[
@@ -590,11 +659,64 @@ class AsyncSession(AsyncWorkspace):
         :raises SessionError: if the session has been closed.
 
         :return: a result as returned by the given unit of work
+
+        .. deprecated:: 5.0
+            Method was renamed to :meth:`.execute_read`.
         """
         return await self._run_transaction(
             READ_ACCESS, transaction_function, *args, **kwargs
         )
 
+    async def execute_write(
+        self,
+        transaction_function: t.Callable[
+            te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
+        ],
+        *args: _P.args,  **kwargs: _P.kwargs
+    ) -> _R:
+        """Execute a unit of work in a managed write transaction.
+
+        .. note::
+            This does not necessarily imply access control, see the session
+            configuration option :ref:`default-access-mode-ref`.
+
+        This transaction will automatically be committed when the function
+        returns unless, an exception is thrown during query execution or by
+        the user code. Note, that this function performs retries and that the
+        supplied `transaction_function` might get invoked more than once.
+        Therefore, it needs to be idempotent (i.e., have the same effect,
+        regardless if called once or many times).
+
+        Example::
+
+            async def create_node_tx(tx, name):
+                query = "CREATE (n:NodeExample { name: $name }) RETURN id(n) AS node_id"
+                result = await tx.run(query, name=name)
+                record = await result.single()
+                return record["node_id"]
+
+            async with driver.session() as session:
+                node_id = await session.execute_write(create_node_tx, "example")
+
+        :param transaction_function: a function that takes a transaction as an
+            argument and does work with the transaction.
+            `transaction_function(tx, *args, **kwargs)` where `tx` is a
+            :class:`.AsyncManagedTransaction`.
+        :param args: additional arguments for the `transaction_function`
+        :param kwargs: key word arguments for the `transaction_function`
+
+        :raises SessionError: if the session has been closed.
+
+        :return: a result as returned by the given unit of work
+
+        .. versionadded:: 5.0
+        """
+        return await self._run_transaction(
+            WRITE_ACCESS, transaction_function, *args, **kwargs
+        )
+
+    # TODO 6.0: Remove this method
+    @deprecated("write_transaction has been renamed to execute_write")
     async def write_transaction(
         self,
         transaction_function: t.Callable[
@@ -636,6 +758,9 @@ class AsyncSession(AsyncWorkspace):
         :raises SessionError: if the session has been closed.
 
         :return: a result as returned by the given unit of work
+
+        .. deprecated:: 5.0
+            Method was renamed to :meth:`.execute_write`.
         """
         return await self._run_transaction(
             WRITE_ACCESS, transaction_function, *args, **kwargs

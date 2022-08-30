@@ -311,7 +311,7 @@ def test_session_run_with_parameters(
         elif run_type == "managed":
             def work(tx):
                 tx.run("RETURN $x", **parameters)
-            session.write_transaction(work)
+            session.execute_write(work)
         else:
             raise ValueError(run_type)
 

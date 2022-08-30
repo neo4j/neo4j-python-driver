@@ -36,7 +36,7 @@ class Neo4jErrorExample:
     def get_employee_number(self, name):
         with self.driver.session() as session:
             try:
-                session.read_transaction(self.select_employee, name)
+                session.execute_read(self.select_employee, name)
             except ClientError as error:
                 print(error.message)
                 return -1

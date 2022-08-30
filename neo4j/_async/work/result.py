@@ -354,7 +354,7 @@ class AsyncResult:
                 return value, summary
 
             async with driver.session() as session:
-                node_id, summary = await session.write_transaction(
+                node_id, summary = await session.execute_write(
                     create_node_tx, "example"
                 )
 
@@ -376,7 +376,7 @@ class AsyncResult:
                 return values, summary
 
             async with driver.session() as session:
-                values, summary = await session.read_transaction(get_two_tx)
+                values, summary = await session.execute_read(get_two_tx)
 
         :returns: The :class:`neo4j.ResultSummary` for this result
 

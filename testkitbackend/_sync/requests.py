@@ -354,9 +354,9 @@ def transactionFunc(backend, data, is_read):
                     raise FrontendError("Client said no")
 
     if is_read:
-        session.read_transaction(func)
+        session.execute_read(func)
     else:
-        session.write_transaction(func)
+        session.execute_write(func)
     backend.send_response("RetryableDone", {})
 
 

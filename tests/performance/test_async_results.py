@@ -25,7 +25,7 @@ def work(async_driver, *units_of_work):
     async def runner():
         async with async_driver.session() as session:
             for unit_of_work in units_of_work:
-                await session.read_transaction(unit_of_work)
+                await session.execute_read(unit_of_work)
     return runner
 
 

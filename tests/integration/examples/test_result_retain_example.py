@@ -44,10 +44,10 @@ def result_retain_example(driver):
     def add_employees(company_name):
         employees = 0
         with driver.session() as session:
-            persons = session.read_transaction(match_person_nodes)
+            persons = session.execute_read(match_person_nodes)
 
             for person in persons:
-                employees += session.write_transaction(add_employee_to_company, person, company_name)
+                employees += session.execute_write(add_employee_to_company, person, company_name)
 
         return employees
     # end::result-retain[]
