@@ -25,7 +25,7 @@ def work(driver, *units_of_work):
     def runner():
         with driver.session() as session:
             for unit_of_work in units_of_work:
-                session.read_transaction(unit_of_work)
+                session.execute_read(unit_of_work)
     return runner
 
 

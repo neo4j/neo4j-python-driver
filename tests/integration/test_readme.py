@@ -46,10 +46,10 @@ def test_should_run_readme(uri, auth):
     with driver.session() as session:
         session.run("MATCH (a) DETACH DELETE a")
 
-        session.write_transaction(add_friend, "Arthur", "Guinevere")
-        session.write_transaction(add_friend, "Arthur", "Lancelot")
-        session.write_transaction(add_friend, "Arthur", "Merlin")
-        session.read_transaction(print_friends, "Arthur")
+        session.execute_write(add_friend, "Arthur", "Guinevere")
+        session.execute_write(add_friend, "Arthur", "Lancelot")
+        session.execute_write(add_friend, "Arthur", "Merlin")
+        session.execute_read(print_friends, "Arthur")
 
         session.run("MATCH (a) DETACH DELETE a")
 

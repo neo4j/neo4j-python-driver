@@ -128,6 +128,8 @@
   Server-side keep-alives communicated through configuration hints together with
   the config option `connection_acquisition_timeout` are sufficient to avoid the
   driver getting stuck.
+- Deprecate `Session.read_transaction` and `Session.write_transaction` in favor
+  of `Session.execute_read` and `Session.execute_write` respectively.
 
 
 ## Version 4.4

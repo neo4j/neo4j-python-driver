@@ -56,7 +56,7 @@ def _get_work():
 
 
 async def _do_the_read_tx_func(session_, i=1):
-    await session_.read_transaction(_get_work(), i=i)
+    await session_.execute_read(_get_work(), i=i)
 
 
 def _with_retry(outer):
