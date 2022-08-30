@@ -44,17 +44,7 @@ from ..._async_compat import mark_sync_test
 
 @wraps(GraphDatabase.driver)
 def create_driver(*args, **kwargs):
-    if Util.is_async_code:
-        with pytest.warns(ExperimentalWarning, match="async") as warnings:
-            driver = GraphDatabase.driver(*args, **kwargs)
-        print(warnings)
-        return driver
-    else:
-        return GraphDatabase.driver(*args, **kwargs)
-
-
-def driver(*args, **kwargs):
-    return Neo4jDriver(*args, **kwargs)
+    return GraphDatabase.driver(*args, **kwargs)
 
 
 @pytest.mark.parametrize("protocol", ("bolt://", "bolt+s://", "bolt+ssc://"))
