@@ -21,10 +21,8 @@ from ssl import SSLContext
 import pytest
 
 import neo4j
-from neo4j._async_compat.util import Util
 
 from ..._async_compat import mark_sync_test
-from ...conftest import get_async_driver_no_warning
 
 
 @mark_sync_test
@@ -42,15 +40,9 @@ def test_custom_ssl_context_wraps_connection(uri, auth, mocker):
     fake_ssl_context.wrap_socket.side_effect = wrap_fail
     fake_ssl_context.wrap_bio.side_effect = wrap_fail
 
-    if Util.is_async_code:
-        driver = get_async_driver_no_warning(
-            uri, auth=auth, ssl_context=fake_ssl_context
-        )
-    else:
-        driver = neo4j.GraphDatabase.driver(
-            uri, auth=auth, ssl_context=fake_ssl_context
-        )
-    with driver:
+    with neo4j.GraphDatabase.driver(
+        uri, auth=auth, ssl_context=fake_ssl_context
+    ) as driver:
         with driver.session() as session:
             with pytest.raises(NoNeedToGoFurtherException):
                 session.run("RETURN 1")

@@ -4,14 +4,6 @@
 Async API Documentation
 #######################
 
-.. warning::
-    The whole async API is currently in experimental phase.
-
-    This means everything documented on this page might be removed or change
-    its API at any time (including in patch releases).
-
-    (See :ref:`filter-warnings-ref`)
-
 .. versionadded:: 5.0
 
 .. warning::
