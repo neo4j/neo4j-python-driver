@@ -9,7 +9,7 @@
   Remark: It's recommended to import everything needed directly from `noe4j` if
   available, not its submodules or subpackages.
 - Experimental pipelines feature has been removed.
-- Experimental async driver has been added.
+- Async driver (i.e., support for asyncio) has been added.
 - `ResultSummary.server.version_info` has been removed.  
   Use `ResultSummary.server.agent`, `ResultSummary.server.protocol_version`,
   or call the `dbms.components` procedure instead.

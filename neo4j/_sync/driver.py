@@ -118,10 +118,6 @@ class GraphDatabase:
     else:
 
         @classmethod
-        @Util.experimental_async(
-            "neo4j is in experimental phase. It might be removed or "
-            "changed at any time (including patch releases)."
-        )
         def driver(cls, uri, *, auth=None, **config) -> Driver:
             """Create a driver.
 

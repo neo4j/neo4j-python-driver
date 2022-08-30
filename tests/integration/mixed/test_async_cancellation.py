@@ -26,7 +26,7 @@ import neo4j
 from neo4j import exceptions as neo4j_exceptions
 
 from ..._async_compat import mark_async_test
-from ...conftest import get_async_driver_no_warning
+from ...conftest import get_async_driver
 
 
 def _get_work():
@@ -118,7 +118,7 @@ REPETITIONS = 1000
 async def test_async_cancellation(
     uri, auth, mocker, read_func, waits, cancel_count, i
 ):
-    async with get_async_driver_no_warning(
+    async with get_async_driver(
         uri, auth=auth, connection_acquisition_timeout=10
     ) as driver:
         async with driver.session() as session:
@@ -181,7 +181,7 @@ READS_PER_SESSION = 20
 
 @mark_async_test
 async def test_async_cancellation_does_not_leak(uri, auth):
-    async with get_async_driver_no_warning(
+    async with get_async_driver(
         uri, auth=auth,
         connection_acquisition_timeout=10,
         # driver needs to cope with a single connection in the pool!

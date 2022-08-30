@@ -78,8 +78,6 @@ class AsyncUtil:
                 return await res
             return res
 
-    experimental_async: t.ClassVar = experimental
-
     @staticmethod
     def shielded(coro_function):
         assert asyncio.iscoroutinefunction(coro_function)
@@ -113,12 +111,6 @@ class Util:
     def callback(cb, *args, **kwargs):
         if callable(cb):
             return cb(*args, **kwargs)
-
-    @staticmethod
-    def experimental_async(message):
-        def f_(f):
-            return f
-        return f_
 
     @staticmethod
     def shielded(coro_function):
