@@ -94,28 +94,25 @@ def neo4j_driver(neo4j_uri, auth):
 
 
 @wraps(AsyncGraphDatabase.driver)
-def get_async_driver_no_warning(*args, **kwargs):
-    # with warnings.catch_warnings():
-    #     warnings.filterwarnings("ignore", "neo4j async", ExperimentalWarning)
-    with pytest.warns(ExperimentalWarning, match="neo4j async"):
-        return AsyncGraphDatabase.driver(*args, **kwargs)
+def get_async_driver(*args, **kwargs):
+    return AsyncGraphDatabase.driver(*args, **kwargs)
 
 
 @pytest_asyncio.fixture
 async def async_driver(uri, auth):
-    async with get_async_driver_no_warning(uri, auth=auth) as driver:
+    async with get_async_driver(uri, auth=auth) as driver:
         yield driver
 
 
 @pytest_asyncio.fixture
 async def async_bolt_driver(bolt_uri, auth):
-    async with get_async_driver_no_warning(bolt_uri, auth=auth) as driver:
+    async with get_async_driver(bolt_uri, auth=auth) as driver:
         yield driver
 
 
 @pytest_asyncio.fixture
 async def async_neo4j_driver(neo4j_uri, auth):
-    async with get_async_driver_no_warning(neo4j_uri, auth=auth) as driver:
+    async with get_async_driver(neo4j_uri, auth=auth) as driver:
         yield driver
 
 
