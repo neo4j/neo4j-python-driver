@@ -229,7 +229,7 @@ class AsyncGraphDatabase:
     ) -> AsyncBookmarkManager:
         """Create a :class:`.AsyncBookmarkManager` with default implementation.
 
-        Basic usage example to configure sessions with the builtin bookmark
+        Basic usage example to configure sessions with the built-in bookmark
         manager implementation so that all work is automatically causally
         chained (i.e., all reads can observe all previous writes even in a
         clustered setup)::
