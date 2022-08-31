@@ -509,8 +509,6 @@ class Result:
         in the result. After calling this method, the result becomes
         detached, buffering all remaining records.
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
-
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
             consumed.
@@ -583,8 +581,6 @@ class Result:
         """
         return [record.data(*keys) for record in self]
 
-    @experimental("pandas support is experimental and might be changed or "
-                  "removed in future versions")
     def to_df(
         self,
         expand: bool = False,
@@ -674,10 +670,6 @@ class Result:
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
             consumed.
-
-        **This is experimental.**
-        ``pandas`` support might be changed or removed in future versions
-        without warning. (See :ref:`filter-warnings-ref`)
         """
         import pandas as pd  # type: ignore[import]
 
