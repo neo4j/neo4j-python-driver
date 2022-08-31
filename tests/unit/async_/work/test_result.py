@@ -725,11 +725,10 @@ async def test_to_df(keys, values, types, instances, test_default_expand):
     connection = AsyncConnectionStub(records=Records(keys, values))
     result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
-    with pytest.warns(ExperimentalWarning, match="pandas"):
-        if test_default_expand:
-            df = await result.to_df()
-        else:
-            df = await result.to_df(expand=False)
+    if test_default_expand:
+        df = await result.to_df()
+    else:
+        df = await result.to_df(expand=False)
 
     assert isinstance(df, pd.DataFrame)
     assert df.keys().to_list() == keys
@@ -883,8 +882,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
     connection = AsyncConnectionStub(records=Records(keys, values))
     result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
-    with pytest.warns(ExperimentalWarning, match="pandas"):
-        df = await result.to_df(expand=True)
+    df = await result.to_df(expand=True)
 
     assert isinstance(df, pd.DataFrame)
     assert len(set(expected_columns)) == len(expected_columns)
@@ -1083,8 +1081,7 @@ async def test_to_df_parse_dates(keys, values, expected_df, expand):
     connection = AsyncConnectionStub(records=Records(keys, values))
     result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
-    with pytest.warns(ExperimentalWarning, match="pandas"):
-        df = await result.to_df(expand=expand, parse_dates=True)
+    df = await result.to_df(expand=expand, parse_dates=True)
 
     pd.testing.assert_frame_equal(df, expected_df)
 
