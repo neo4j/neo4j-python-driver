@@ -849,8 +849,8 @@ Managed Transactions (`transaction functions`)
 ==============================================
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
 
-+ :meth:`neo4j.Session.write_transaction`
-+ :meth:`neo4j.Session.read_transaction`
++ :meth:`neo4j.Session.execute_write`
++ :meth:`neo4j.Session.execute_read`
 
 These allow a function object representing the transactional unit of work to be passed as a parameter.
 This function is called one or more times, within a configurable time limit, until it succeeds.
@@ -869,7 +869,7 @@ Example:
 
     def create_person(driver, name)
         with driver.session() as session:
-            node_id = session.write_transaction(create_person_tx, name)
+            node_id = session.execute_write(create_person_tx, name)
 
     def create_person_tx(tx, name):
         query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"

@@ -522,8 +522,8 @@ Managed Async Transactions (`transaction functions`)
 ====================================================
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
 
-+ :meth:`neo4j.AsyncSession.write_transaction`
-+ :meth:`neo4j.AsyncSession.read_transaction`
++ :meth:`neo4j.AsyncSession.execute_write`
++ :meth:`neo4j.AsyncSession.execute_read`
 
 These allow a function object representing the transactional unit of work to be passed as a parameter.
 This function is called one or more times, within a configurable time limit, until it succeeds.
@@ -542,7 +542,7 @@ Example:
 
     async def create_person(driver, name)
         async with driver.session() as session:
-            node_id = await session.write_transaction(create_person_tx, name)
+            node_id = await session.execute_write(create_person_tx, name)
 
     async def create_person_tx(tx, name):
         query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
