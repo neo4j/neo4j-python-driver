@@ -25,6 +25,14 @@ from neo4j._deadline import Deadline
 from neo4j._sync.io import Bolt
 
 
+__all__ = [
+    "fake_connection_generator",
+    "fake_connection",
+    "scripted_connection_generator",
+    "scripted_connection",
+]
+
+
 @pytest.fixture
 def fake_connection_generator(session_mocker):
     mock = session_mocker.mock_module

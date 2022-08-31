@@ -27,25 +27,14 @@ from neo4j import (
     Bookmarks,
     unit_of_work,
 )
-from neo4j._async.io._pool import AsyncIOPool
+from neo4j._async.io import (
+    AsyncBoltPool,
+    AsyncNeo4jPool,
+)
 from neo4j._conf import SessionConfig
+from neo4j.api import AsyncBookmarkManager
 
 from ...._async_compat import mark_async_test
-
-
-@pytest.fixture()
-def pool(async_fake_connection_generator, mocker):
-    pool = mocker.AsyncMock(spec=AsyncIOPool)
-    assert not hasattr(pool, "acquired_connection_mocks")
-    pool.acquired_connection_mocks = []
-
-    def acquire_side_effect(*_, **__):
-        connection = async_fake_connection_generator()
-        pool.acquired_connection_mocks.append(connection)
-        return connection
-
-    pool.acquire.side_effect = acquire_side_effect
-    return pool
 
 
 @mark_async_test
@@ -66,9 +55,9 @@ async def test_session_context_calls_close(mocker):
 ))
 @mark_async_test
 async def test_opens_connection_on_run(
-    pool, test_run_args, repetitions, consume
+    fake_pool, test_run_args, repetitions, consume
 ):
-    async with AsyncSession(pool, SessionConfig()) as session:
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         assert session._connection is None
         result = await session.run(*test_run_args)
         assert session._connection is not None
@@ -82,9 +71,9 @@ async def test_opens_connection_on_run(
 @pytest.mark.parametrize("repetitions", range(1, 3))
 @mark_async_test
 async def test_closes_connection_after_consume(
-    pool, test_run_args, repetitions
+    fake_pool, test_run_args, repetitions
 ):
-    async with AsyncSession(pool, SessionConfig()) as session:
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         result = await session.run(*test_run_args)
         await result.consume()
         assert session._connection is None
@@ -96,9 +85,9 @@ async def test_closes_connection_after_consume(
 ))
 @mark_async_test
 async def test_keeps_connection_until_last_result_consumed(
-    pool, test_run_args
+    fake_pool, test_run_args
 ):
-    async with AsyncSession(pool, SessionConfig()) as session:
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         result1 = await session.run(*test_run_args)
         result2 = await session.run(*test_run_args)
         assert session._connection is not None
@@ -109,8 +98,8 @@ async def test_keeps_connection_until_last_result_consumed(
 
 
 @mark_async_test
-async def test_opens_connection_on_tx_begin(pool):
-    async with AsyncSession(pool, SessionConfig()) as session:
+async def test_opens_connection_on_tx_begin(fake_pool):
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         assert session._connection is None
         async with await session.begin_transaction() as _:
             assert session._connection is not None
@@ -121,8 +110,10 @@ async def test_opens_connection_on_tx_begin(pool):
 ))
 @pytest.mark.parametrize("repetitions", range(1, 3))
 @mark_async_test
-async def test_keeps_connection_on_tx_run(pool, test_run_args, repetitions):
-    async with AsyncSession(pool, SessionConfig()) as session:
+async def test_keeps_connection_on_tx_run(
+    fake_pool, test_run_args, repetitions
+):
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         async with await session.begin_transaction() as tx:
             for _ in range(repetitions):
                 await tx.run(*test_run_args)
@@ -135,9 +126,9 @@ async def test_keeps_connection_on_tx_run(pool, test_run_args, repetitions):
 @pytest.mark.parametrize("repetitions", range(1, 3))
 @mark_async_test
 async def test_keeps_connection_on_tx_consume(
-    pool, test_run_args, repetitions
+    fake_pool, test_run_args, repetitions
 ):
-    async with AsyncSession(pool, SessionConfig()) as session:
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         async with await session.begin_transaction() as tx:
             for _ in range(repetitions):
                 result = await tx.run(*test_run_args)
@@ -149,8 +140,8 @@ async def test_keeps_connection_on_tx_consume(
         ("RETURN $x", {"x": 1}), ("RETURN 1",)
 ))
 @mark_async_test
-async def test_closes_connection_after_tx_close(pool, test_run_args):
-    async with AsyncSession(pool, SessionConfig()) as session:
+async def test_closes_connection_after_tx_close(fake_pool, test_run_args):
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         async with await session.begin_transaction() as tx:
             for _ in range(2):
                 result = await tx.run(*test_run_args)
@@ -164,8 +155,8 @@ async def test_closes_connection_after_tx_close(pool, test_run_args):
         ("RETURN $x", {"x": 1}), ("RETURN 1",)
 ))
 @mark_async_test
-async def test_closes_connection_after_tx_commit(pool, test_run_args):
-    async with AsyncSession(pool, SessionConfig()) as session:
+async def test_closes_connection_after_tx_commit(fake_pool, test_run_args):
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         async with await session.begin_transaction() as tx:
             for _ in range(2):
                 result = await tx.run(*test_run_args)
@@ -180,13 +171,13 @@ async def test_closes_connection_after_tx_commit(pool, test_run_args):
     (None, [], ["abc"], ["foo", "bar"], {"a", "b"}, ("1", "two"))
 )
 @mark_async_test
-async def test_session_returns_bookmarks_directly(pool, bookmark_values):
+async def test_session_returns_bookmarks_directly(fake_pool, bookmark_values):
     if bookmark_values is not None:
         bookmarks = Bookmarks.from_raw_values(bookmark_values)
     else:
         bookmarks = Bookmarks()
     async with AsyncSession(
-        pool, SessionConfig(bookmarks=bookmarks)
+        fake_pool, SessionConfig(bookmarks=bookmarks)
     ) as session:
         ret_bookmarks = (await session.last_bookmarks())
         assert isinstance(ret_bookmarks, Bookmarks)
@@ -202,12 +193,13 @@ async def test_session_returns_bookmarks_directly(pool, bookmark_values):
     (None, [], ["abc"], ["foo", "bar"], ("1", "two"))
 )
 @mark_async_test
-async def test_session_last_bookmark_is_deprecated(pool, bookmarks):
+async def test_session_last_bookmark_is_deprecated(fake_pool, bookmarks):
     if bookmarks is not None:
         with pytest.warns(DeprecationWarning):
-            session = AsyncSession(pool, SessionConfig(bookmarks=bookmarks))
+            session = AsyncSession(fake_pool,
+                                   SessionConfig(bookmarks=bookmarks))
     else:
-        session = AsyncSession(pool, SessionConfig(bookmarks=bookmarks))
+        session = AsyncSession(fake_pool, SessionConfig(bookmarks=bookmarks))
     async with session:
         with pytest.warns(DeprecationWarning):
             if bookmarks:
@@ -221,9 +213,11 @@ async def test_session_last_bookmark_is_deprecated(pool, bookmarks):
     (("foo",), ("foo", "bar"), (), ["foo", "bar"], {"a", "b"})
 )
 @mark_async_test
-async def test_session_bookmarks_as_iterable_is_deprecated(pool, bookmarks):
+async def test_session_bookmarks_as_iterable_is_deprecated(
+    fake_pool, bookmarks
+):
     with pytest.warns(DeprecationWarning):
-        async with AsyncSession(pool, SessionConfig(
+        async with AsyncSession(fake_pool, SessionConfig(
             bookmarks=bookmarks
         )) as session:
             ret_bookmarks = (await session.last_bookmarks()).raw_values
@@ -237,19 +231,19 @@ async def test_session_bookmarks_as_iterable_is_deprecated(pool, bookmarks):
     (["I don't", "think so"], TypeError),
 ))
 @mark_async_test
-async def test_session_run_wrong_types(pool, query, error_type):
-    async with AsyncSession(pool, SessionConfig()) as session:
+async def test_session_run_wrong_types(fake_pool, query, error_type):
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         with pytest.raises(error_type):
             await session.run(query)
 
 
 @pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction"))
 @mark_async_test
-async def test_tx_function_argument_type(pool, tx_type):
+async def test_tx_function_argument_type(fake_pool, tx_type):
     async def work(tx):
         assert isinstance(tx, AsyncManagedTransaction)
 
-    async with AsyncSession(pool, SessionConfig()) as session:
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         await getattr(session, tx_type)(work)
 
 
@@ -262,18 +256,20 @@ async def test_tx_function_argument_type(pool, tx_type):
 
 ))
 @mark_async_test
-async def test_decorated_tx_function_argument_type(pool, tx_type, decorator_kwargs):
+async def test_decorated_tx_function_argument_type(
+    fake_pool, tx_type, decorator_kwargs
+):
     @unit_of_work(**decorator_kwargs)
     async def work(tx):
         assert isinstance(tx, AsyncManagedTransaction)
 
-    async with AsyncSession(pool, SessionConfig()) as session:
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         await getattr(session, tx_type)(work)
 
 
 @mark_async_test
-async def test_session_tx_type(pool):
-    async with AsyncSession(pool, SessionConfig()) as session:
+async def test_session_tx_type(fake_pool):
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         tx = await session.begin_transaction()
         assert isinstance(tx, AsyncTransaction)
 
@@ -300,9 +296,9 @@ async def test_session_tx_type(pool):
 @pytest.mark.parametrize("run_type", ("auto", "unmanaged", "managed"))
 @mark_async_test
 async def test_session_run_with_parameters(
-    pool, parameters, run_type, mocker
+    fake_pool, parameters, run_type, mocker
 ):
-    async with AsyncSession(pool, SessionConfig()) as session:
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
         if run_type == "auto":
             await session.run("RETURN $x", **parameters)
         elif run_type == "unmanaged":
@@ -315,9 +311,165 @@ async def test_session_run_with_parameters(
         else:
             raise ValueError(run_type)
 
-    assert len(pool.acquired_connection_mocks) == 1
-    connection_mock = pool.acquired_connection_mocks[0]
+    assert len(fake_pool.acquired_connection_mocks) == 1
+    connection_mock = fake_pool.acquired_connection_mocks[0]
     assert connection_mock.run.called_once()
     call = connection_mock.run.call_args
     assert call.args[0] == "RETURN $x"
     assert call.kwargs["parameters"] == parameters
+
+
+@pytest.mark.parametrize("db", (None, "adb"))
+@pytest.mark.parametrize("routing", (True, False))
+# no home db resolution when connected to Neo4j 4.3 or earlier
+@pytest.mark.parametrize("home_db_gets_resolved", (True, False))
+@pytest.mark.parametrize("additional_session_bookmarks",
+                         (None, ["session", "bookmarks"]))
+@mark_async_test
+async def test_with_bookmark_manager(
+    fake_pool, db, routing, async_scripted_connection, home_db_gets_resolved,
+    additional_session_bookmarks, mocker
+):
+    async def update_routing_table_side_effect(
+        database, imp_user, bookmarks, acquisition_timeout=None,
+        database_callback=None
+    ):
+        if home_db_gets_resolved:
+            database_callback("homedb")
+
+    async def bmm_get_bookmarks(database):
+        return [f"{database}:bm1"]
+
+    async def bmm_gat_all_bookmarks():
+        return ["all", "bookmarks"]
+
+    async_scripted_connection.set_script([
+        ("run", {"on_success": None, "on_summary": None}),
+        ("pull", {
+            "on_success": ({"bookmark": "res:bm1", "has_more": False},),
+            "on_summary": None,
+            "on_records": None,
+        })
+    ])
+    fake_pool.buffered_connection_mocks.append(async_scripted_connection)
+
+    bmm = mocker.Mock(spec=AsyncBookmarkManager)
+    bmm.get_bookmarks.side_effect = bmm_get_bookmarks
+    bmm.get_all_bookmarks.side_effect = bmm_gat_all_bookmarks
+
+    if routing:
+        fake_pool.mock_add_spec(AsyncNeo4jPool)
+        fake_pool.update_routing_table.side_effect = \
+            update_routing_table_side_effect
+    else:
+        fake_pool.mock_add_spec(AsyncBoltPool)
+
+    config = SessionConfig()
+    config.bookmark_manager = bmm
+    if db is not None:
+        config.database = db
+    if additional_session_bookmarks:
+        config.bookmarks = Bookmarks.from_raw_values(
+            additional_session_bookmarks
+        )
+    async with AsyncSession(fake_pool, config) as session:
+        assert not bmm.method_calls
+
+        await session.run("RETURN 1")
+
+        # assert called bmm accordingly
+        expected_bmm_method_calls = [mocker.call.get_bookmarks("system"),
+                                     mocker.call.get_all_bookmarks()]
+        if routing and db is None:
+            expected_bmm_method_calls = [
+                # extra call for resolving the home database
+                mocker.call.get_bookmarks("system"),
+                *expected_bmm_method_calls
+            ]
+        assert bmm.method_calls == expected_bmm_method_calls
+        assert (bmm.get_bookmarks.await_count
+                == len(expected_bmm_method_calls) - 1)
+        bmm.get_all_bookmarks.assert_awaited_once()
+        bmm.method_calls.clear()
+
+    expected_update_for_db = db
+    if not db:
+        if home_db_gets_resolved and routing:
+            expected_update_for_db = "homedb"
+        else:
+            expected_update_for_db = ""
+    assert [call[0] for call in bmm.method_calls] == ["update_bookmarks"]
+    assert bmm.method_calls[0].kwargs == {}
+    assert len(bmm.method_calls[0].args) == 3
+    assert bmm.method_calls[0].args[0] == expected_update_for_db
+    assert (set(bmm.method_calls[0].args[1])
+            == {"all", "bookmarks", *(additional_session_bookmarks or [])})
+    assert set(bmm.method_calls[0].args[2]) == {"res:bm1"}
+
+    expected_pool_method_calls = ["acquire", "release"]
+    if routing and db is None:
+        expected_pool_method_calls = ["update_routing_table",
+                                      *expected_pool_method_calls]
+    assert ([call[0] for call in fake_pool.method_calls]
+            == expected_pool_method_calls)
+    assert (set(fake_pool.acquire.call_args.kwargs["bookmarks"])
+            == {"system:bm1", *(additional_session_bookmarks or [])})
+    if routing and db is None:
+        assert (
+            set(fake_pool.update_routing_table.call_args.kwargs["bookmarks"])
+            == {"system:bm1", *(additional_session_bookmarks or [])}
+        )
+
+    assert len(fake_pool.acquired_connection_mocks) == 1
+    connection_mock = fake_pool.acquired_connection_mocks[0]
+    assert connection_mock.run.called_once()
+    connection_run_call_kwargs = connection_mock.run.call_args.kwargs
+    assert (set(connection_run_call_kwargs["bookmarks"])
+            == {"all", "bookmarks", *(additional_session_bookmarks or [])})
+
+
+@pytest.mark.parametrize("routing", (True, False))
+@pytest.mark.parametrize("session_method", ("run", "get_server_info"))
+@mark_async_test
+async def test_last_bookmarks_do_not_leak_bookmark_managers_bookmarks(
+    fake_pool, routing, session_method, mocker
+):
+    async def bmm_get_bookmarks(database):
+        return [f"bmm:{database}"]
+
+    async def bmm_gat_all_bookmarks():
+        return ["bmm:all", "bookmarks"]
+
+    fake_pool.mock_add_spec(AsyncNeo4jPool if routing else AsyncBoltPool)
+
+    bmm = mocker.Mock(spec=AsyncBookmarkManager)
+    bmm.get_bookmarks.side_effect = bmm_get_bookmarks
+    bmm.get_all_bookmarks.side_effect = bmm_gat_all_bookmarks
+
+    config = SessionConfig()
+    config.bookmark_manager = bmm
+    config.bookmarks = Bookmarks.from_raw_values(["session", "bookmarks"])
+    async with AsyncSession(fake_pool, config) as session:
+        if session_method == "run":
+            await session.run("RETURN 1")
+        elif session_method == "get_server_info":
+            await session._get_server_info()
+        else:
+            assert False
+        last_bookmarks = await session.last_bookmarks()
+
+        assert last_bookmarks.raw_values == {"session", "bookmarks"}
+    assert last_bookmarks.raw_values == {"session", "bookmarks"}
+
+
+@mark_async_test
+async def test_with_ignored_bookmark_manager(fake_pool, mocker):
+    bmm = mocker.Mock(spec=AsyncBookmarkManager)
+    session_config = SessionConfig()
+    session_config.bookmark_manager = bmm
+    session_config.ignore_bookmark_manager = True
+    async with AsyncSession(fake_pool, session_config) as session:
+        await session.run("RETURN 1")
+
+    bmm.assert_not_called()
+    assert not bmm.method_calls

@@ -14,40 +14,41 @@ Driver Construction
 The :class:`neo4j.Driver` construction is done via a ``classmethod`` on the :class:`neo4j.GraphDatabase` class.
 
 .. autoclass:: neo4j.GraphDatabase
-   :members: driver
+   :members: bookmark_manager
+
+    .. method:: driver
+
+        Driver creation example:
+
+        .. code-block:: python
+
+            from neo4j import GraphDatabase
+
+            uri = "neo4j://example.com:7687"
+            driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
+
+            driver.close()  # close the driver object
 
 
-Driver creation example:
+        For basic authentication, ``auth`` can be a simple tuple, for example:
 
-.. code-block:: python
+        .. code-block:: python
 
-    from neo4j import GraphDatabase
+           auth = ("neo4j", "password")
 
-    uri = "neo4j://example.com:7687"
-    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
-
-    driver.close()  # close the driver object
+        This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
+        Other authentication methods are described under :ref:`auth-ref`.
 
 
-For basic authentication, ``auth`` can be a simple tuple, for example:
+        ``with`` block context example:
 
-.. code-block:: python
+        .. code-block:: python
 
-   auth = ("neo4j", "password")
+            from neo4j import GraphDatabase
 
-This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
-Other authentication methods are described under :ref:`auth-ref`.
-
-
-``with`` block context example:
-
-.. code-block:: python
-
-    from neo4j import GraphDatabase
-
-    uri = "neo4j://example.com:7687"
-    with GraphDatabase.driver(uri, auth=("neo4j", "password")) as driver:
-        # use the driver
+            uri = "neo4j://example.com:7687"
+            with GraphDatabase.driver(uri, auth=("neo4j", "password")) as driver:
+                # use the driver
 
 
 
@@ -138,7 +139,7 @@ Alternatively, one of the auth token helper functions can be used.
 Driver
 ******
 
-Every Neo4j-backed application will require a :class:`neo4j.Driver` object.
+Every Neo4j-backed application will require a driver object.
 
 This object holds the details required to establish connections with a Neo4j database, including server URIs, credentials and other configuration.
 :class:`neo4j.Driver` objects hold a connection pool from which :class:`neo4j.Session` objects can borrow connections.
@@ -274,6 +275,7 @@ Specify whether TCP keep-alive should be enabled.
 :Default: ``True``
 
 **This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
 
 
 .. _max-connection-lifetime-ref:
@@ -576,6 +578,7 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 + :ref:`database-ref`
 + :ref:`default-access-mode-ref`
 + :ref:`fetch-size-ref`
++ :ref:`bookmark-manager-ref`
 
 
 .. _bookmarks-ref:
@@ -704,6 +707,33 @@ The fetch size used for requesting messages from Neo4j.
 :Default: ``1000``
 
 
+.. _bookmark-manager-ref:
+
+``bookmark_manager``
+--------------------
+Specify a bookmark manager for the session to use. If present, the bookmark
+manager is used to keep all work within the session causally consistent with
+all work in other sessions using the same bookmark manager.
+
+See :class:`.BookmarkManager` for more information.
+
+.. warning::
+    Enabling the BookmarkManager can have a negative impact on performance since
+    all queries will wait for the latest changes to be propagated across the
+    cluster.
+
+    For simple use-cases, it often suffices that work within a single session
+    is automatically causally consistent.
+
+:Type: :const:`None` or :class:`.BookmarkManager`
+:Default: :const:`None`
+
+.. versionadded:: 5.0
+
+**This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
+
+
 
 
 ***********
@@ -829,7 +859,7 @@ Returning a live result object would prevent the driver from correctly managing 
 
 This function will receive a :class:`neo4j.ManagedTransaction` object as its first parameter.
 
-.. autoclass:: neo4j.ManagedTransaction
+.. autoclass:: neo4j.ManagedTransaction()
 
     .. automethod:: run
 
@@ -911,6 +941,7 @@ Graph
     .. automethod:: relationship_type
 
 **This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
 
 
 ******
@@ -1231,6 +1262,14 @@ Temporal Data Types
 See topic :ref:`temporal-data-types` for more details.
 
 
+***************
+BookmarkManager
+***************
+
+.. autoclass:: neo4j.api.BookmarkManager
+    :members:
+
+
 .. _errors-ref:
 
 ******
@@ -1526,6 +1565,7 @@ Bookmarks
 
 .. autoclass:: neo4j.Bookmarks
     :members:
+    :special-members: __bool__, __add__, __iter__
 
 .. autoclass:: neo4j.Bookmark
     :members:

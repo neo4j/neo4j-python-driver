@@ -36,10 +36,7 @@ if t.TYPE_CHECKING:
 from ..._async_compat import sleep
 from ..._async_compat.util import Util
 from ..._conf import SessionConfig
-from ..._meta import (
-    deprecated,
-    deprecation_warn,
-)
+from ..._meta import deprecated
 from ...api import (
     Bookmarks,
     READ_ACCESS,
@@ -100,9 +97,11 @@ class Session(Workspace):
     _state_failed = False
 
     def __init__(self, pool, session_config):
-        super().__init__(pool, session_config)
         assert isinstance(session_config, SessionConfig)
-        self._bookmarks = self._prepare_bookmarks(session_config.bookmarks)
+        super().__init__(pool, session_config)
+        self._initialize_bookmarks(session_config.bookmarks)
+        if not session_config.ignore_bookmark_manager:
+            self._bookmark_manager = session_config.bookmark_manager
 
     def __enter__(self) -> Session:
         return self
@@ -110,26 +109,11 @@ class Session(Workspace):
     def __exit__(self, exception_type, exception_value, traceback):
         if exception_type:
             if issubclass(exception_type, asyncio.CancelledError):
-                self._handle_cancellation(message="__aexit__")
+                self._handle_cancellation(message="__exit__")
                 self._closed = True
                 return
             self._state_failed = True
         self.close()
-
-    def _prepare_bookmarks(self, bookmarks):
-        if isinstance(bookmarks, Bookmarks):
-            return tuple(bookmarks.raw_values)
-        if hasattr(bookmarks, "__iter__"):
-            deprecation_warn(
-                "Passing an iterable as `bookmarks` to `Session` is "
-                "deprecated. Please use a `Bookmarks` instance.",
-                stack_level=5
-            )
-            return tuple(bookmarks)
-        if not bookmarks:
-            return ()
-        raise TypeError("Bookmarks must be an instance of Bookmarks or an "
-                        "iterable of raw bookmarks (deprecated).")
 
     def _connect(self, access_mode, **access_kwargs):
         if access_mode is None:
@@ -147,10 +131,6 @@ class Session(Workspace):
             self._handle_cancellation(message="_disconnect")
             raise
 
-    def _collect_bookmark(self, bookmark):
-        if bookmark:
-            self._bookmarks = bookmark,
-
     def _handle_cancellation(self, message="General"):
         self._transaction = None
         self._auto_result = None
@@ -165,7 +145,8 @@ class Session(Workspace):
 
     def _result_closed(self):
         if self._auto_result:
-            self._collect_bookmark(self._auto_result._bookmark)
+            self._update_bookmark(self._auto_result._database,
+                                        self._auto_result._bookmark)
             self._auto_result = None
             self._disconnect()
 
@@ -196,7 +177,10 @@ class Session(Workspace):
                 if self._state_failed is False:
                     try:
                         self._auto_result.consume()
-                        self._collect_bookmark(self._auto_result._bookmark)
+                        self._update_bookmark(
+                            self._auto_result._database,
+                            self._auto_result._bookmark
+                        )
                     except Exception as error:
                         # TODO: Investigate potential non graceful close states
                         self._auto_result = None
@@ -302,10 +286,11 @@ class Session(Workspace):
             cx, self._config.fetch_size, self._result_closed,
             self._result_error
         )
+        bookmarks = self._get_all_bookmarks()
         self._auto_result._run(
             query, parameters, self._config.database,
             self._config.impersonated_user, self._config.default_access_mode,
-            self._bookmarks, **kwargs
+            bookmarks, **kwargs
         )
 
         return self._auto_result
@@ -336,7 +321,8 @@ class Session(Workspace):
             self._auto_result.consume()
 
         if self._transaction and self._transaction._closed:
-            self._collect_bookmark(self._transaction._bookmark)
+            self._update_bookmark(self._transaction._database,
+                                        self._transaction._bookmark)
             self._transaction = None
 
         if self._bookmarks:
@@ -377,14 +363,16 @@ class Session(Workspace):
             self._auto_result.consume()
 
         if self._transaction and self._transaction._closed():
-            self._collect_bookmark(self._transaction._bookmark)
+            self._update_bookmark(self._transaction._database,
+                                        self._transaction._bookmark)
             self._transaction = None
 
         return Bookmarks.from_raw_values(self._bookmarks)
 
     def _transaction_closed_handler(self):
         if self._transaction:
-            self._collect_bookmark(self._transaction._bookmark)
+            self._update_bookmark(self._transaction._database,
+                                        self._transaction._bookmark)
             self._transaction = None
             self._disconnect()
 
@@ -408,9 +396,10 @@ class Session(Workspace):
             self._transaction_error_handler,
             self._transaction_cancel_handler
         )
+        bookmarks = self._get_all_bookmarks()
         self._transaction._begin(
             self._config.database, self._config.impersonated_user,
-            self._bookmarks, access_mode, metadata, timeout
+            bookmarks, access_mode, metadata, timeout
         )
 
     def begin_transaction(

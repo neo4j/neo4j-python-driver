@@ -25,6 +25,14 @@ from neo4j._async.io import AsyncBolt
 from neo4j._deadline import Deadline
 
 
+__all__ = [
+    "async_fake_connection_generator",
+    "async_fake_connection",
+    "async_scripted_connection_generator",
+    "async_scripted_connection",
+]
+
+
 @pytest.fixture
 def async_fake_connection_generator(session_mocker):
     mock = session_mocker.mock_module
@@ -158,15 +166,15 @@ def async_scripted_connection_generator(async_fake_connection_generator):
             parent = super()
 
             def build_message_handler(name):
-                try:
-                    expected_message, scripted_callbacks = \
-                        self._script[self._script_pos]
-                except IndexError:
-                    pytest.fail("End of scripted connection reached.")
-                assert name == expected_message
-                self._script_pos += 1
-
                 def func(*args, **kwargs):
+                    try:
+                        expected_message, scripted_callbacks = \
+                            self._script[self._script_pos]
+                    except IndexError:
+                        pytest.fail("End of scripted connection reached.")
+                    assert name == expected_message
+                    self._script_pos += 1
+
                     async def callback():
                         for cb_name, default_cb_args in (
                             ("on_ignored", ({},)),
@@ -176,8 +184,10 @@ def async_scripted_connection_generator(async_fake_connection_generator):
                             ("on_summary", ()),
                         ):
                             cb = kwargs.get(cb_name, None)
-                            if (not callable(cb)
-                                or cb_name not in scripted_callbacks):
+                            if (
+                                not callable(cb)
+                                or cb_name not in scripted_callbacks
+                            ):
                                 continue
                             cb_args = scripted_callbacks[cb_name]
                             if cb_args is None:

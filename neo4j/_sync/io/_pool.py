@@ -515,9 +515,9 @@ class Neo4jPool(IOPool):
         cx = self._acquire(address, deadline, None)
         try:
             routing_table = cx.route(
-                database or self.workspace_config.database,
-                imp_user or self.workspace_config.impersonated_user,
-                bookmarks
+                database=database or self.workspace_config.database,
+                imp_user=imp_user or self.workspace_config.impersonated_user,
+                bookmarks=bookmarks
             )
         finally:
             self.release(cx)

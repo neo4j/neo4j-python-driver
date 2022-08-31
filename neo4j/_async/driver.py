@@ -43,7 +43,9 @@ from .._meta import (
 )
 from ..addressing import Address
 from ..api import (
+    AsyncBookmarkManager,
     Auth,
+    BookmarkManager,
     Bookmarks,
     DRIVER_BOLT,
     DRIVER_NEO4J,
@@ -62,11 +64,16 @@ from ..api import (
     URI_SCHEME_NEO4J_SECURE,
     URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
 )
+from .bookmark_manager import (
+    AsyncNeo4jBookmarkManager,
+    T_BmConsumer as _T_BmConsumer,
+    T_BmSupplier as _T_BmSupplier,
+)
 from .work import AsyncSession
 
 
 class AsyncGraphDatabase:
-    """Accessor for :class:`neo4j.Driver` construction.
+    """Accessor for :class:`neo4j.AsyncDriver` construction.
     """
 
     if t.TYPE_CHECKING:
@@ -103,7 +110,9 @@ class AsyncGraphDatabase:
             retry_delay_jitter_factor: float = ...,
             database: t.Optional[str] = ...,
             fetch_size: int = ...,
-            impersonated_user: t.Optional[str] = ...
+            impersonated_user: t.Optional[str] = ...,
+            bookmark_manager: t.Union[AsyncBookmarkManager,
+                                      BookmarkManager, None] = ...
         ) -> AsyncDriver:
             ...
 
@@ -201,6 +210,81 @@ class AsyncGraphDatabase:
             routing_context = parse_routing_context(parsed.query)
             return cls.neo4j_driver(parsed.netloc, auth=auth,
                                     routing_context=routing_context, **config)
+
+    @classmethod
+    @experimental(
+        "The bookmark manager feature is experimental. "
+        "It might be changed or removed any time even without prior notice."
+    )
+    def bookmark_manager(
+        cls,
+        initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
+                                                  t.Iterable[str]]] = None,
+        bookmarks_supplier: _T_BmSupplier = None,
+        bookmarks_consumer: _T_BmConsumer = None
+    ) -> AsyncBookmarkManager:
+        """Create a :class:`.AsyncBookmarkManager` with default implementation.
+
+        Basic usage example to configure sessions with the built-in bookmark
+        manager implementation so that all work is automatically causally
+        chained (i.e., all reads can observe all previous writes even in a
+        clustered setup)::
+
+            import neo4j
+
+            driver = neo4j.AsyncGraphDatabase.driver(...)
+            bookmark_manager = neo4j.AsyncBookmarkManager(...)
+
+            async with driver.session(
+                bookmark_manager=bookmark_manager
+            ) as session1:
+                async with driver.session(
+                    bookmark_manager=bookmark_manager
+                ) as session2:
+                    session1.run("<WRITE_QUERY>")
+                    # READ_QUERY is guaranteed to see what WRITE_QUERY wrote.
+                    session2.run("<READ_QUERY>")
+
+        This is a very contrived example, and in this particular case, having
+        both queries in the same session has the exact same effect and might
+        even be more performant. However, when dealing with sessions spanning
+        multiple threads, async Tasks, processes, or even hosts, the bookmark
+        manager can come in handy as sessions are not safe to be used
+        concurrently.
+
+        :param initial_bookmarks:
+            The initial set of bookmarks. The returned bookmark manager will
+            use this to initialize its internal bookmarks per database.
+            If present, this parameter must be a mapping of database names
+            to :class:`.Bookmarks` or an iterable of raw bookmark values (str).
+        :param bookmarks_supplier:
+            Function which will be called every time the default bookmark
+            manager's method :meth:`.AsyncBookmarkManager.get_bookmarks`
+            or :meth:`.AsyncBookmarkManager.get_all_bookmarks` gets called.
+            The function will be passed the name of the database (``str``) if
+            ``.get_bookmarks`` is called or ``None`` if ``.get_all_bookmarks``
+            is called. The function must return a :class:`.Bookmarks` object.
+            The result of ``bookmarks_supplier`` will then be concatenated with
+            the internal set of bookmarks and used to configure the session in
+            creation.
+        :param bookmarks_consumer:
+            Function which will be called whenever the set of bookmarks
+            handled by the bookmark manager gets updated with the new
+            internal bookmark set. It will receive the name of the database
+            and the new set of bookmarks.
+
+        :returns: A default implementation of :class:`AsyncBookmarkManager`.
+
+        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        It might be changed or removed any time even without prior notice.
+
+        .. versionadded:: 5.0
+        """
+        return AsyncNeo4jBookmarkManager(
+            initial_bookmarks=initial_bookmarks,
+            bookmarks_supplier=bookmarks_supplier,
+            bookmarks_consumer=bookmarks_consumer
+        )
 
     @classmethod
     def bolt_driver(cls, target, *, auth=None, **config):
@@ -339,13 +423,16 @@ class AsyncDriver:
             fetch_size: int = ...,
             impersonated_user: t.Optional[str] = ...,
             bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
+            ignore_bookmark_manager: bool = ...,
             default_access_mode: str = ...,
+            bookmark_manager: t.Union[AsyncBookmarkManager,
+                                      BookmarkManager, None] = ...,
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
-            retry_delay_jitter_factor: float = ...,
+            retry_delay_jitter_factor: float = ...
         ) -> AsyncSession:
             ...
 
@@ -382,11 +469,13 @@ class AsyncDriver:
             impersonated_user: t.Optional[str] = ...,
             bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
             default_access_mode: str = ...,
+            bookmark_manager: t.Union[AsyncBookmarkManager,
+                                      BookmarkManager, None] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
-            retry_delay_jitter_factor: float = ...,
+            retry_delay_jitter_factor: float = ...
         ) -> None:
             ...
 
@@ -444,11 +533,13 @@ class AsyncDriver:
             impersonated_user: t.Optional[str] = ...,
             bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
             default_access_mode: str = ...,
+            bookmark_manager: t.Union[AsyncBookmarkManager,
+                                      BookmarkManager, None] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
-            retry_delay_jitter_factor: float = ...,
+            retry_delay_jitter_factor: float = ...
         ) -> ServerInfo:
             ...
 

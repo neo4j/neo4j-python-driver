@@ -20,6 +20,7 @@
 
 from __future__ import annotations
 
+import abc
 import typing as t
 from urllib.parse import (
     parse_qs,
@@ -33,6 +34,12 @@ if t.TYPE_CHECKING:
 
 from ._meta import deprecated
 from .exceptions import ConfigurationError
+
+
+if t.TYPE_CHECKING:
+    from typing_extensions import Protocol as _Protocol
+else:
+    _Protocol = object
 
 
 READ_ACCESS: te.Final[str] = "READ"
@@ -235,9 +242,11 @@ class Bookmarks:
         )
 
     def __bool__(self) -> bool:
+        """True if there are bookmarks in the container."""
         return bool(self._raw_values)
 
     def __add__(self, other: Bookmarks) -> Bookmarks:
+        """Add multiple containers together."""
         if isinstance(other, Bookmarks):
             if not other:
                 return self
@@ -361,6 +370,121 @@ class Version(tuple):
         if b[0] != 0 or b[1] != 0:
             raise ValueError("First two bytes must contain zero")
         return Version(b[-1], b[-2])
+
+
+class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
+    """Class to manage bookmarks throughout the driver's lifetime.
+
+    Neo4j clusters are eventually consistent, meaning that there is no
+    guarantee a query will be able to read changes made by a previous query.
+    For cases where such a guarantee is necessary, the server provides
+    bookmarks to the client. A bookmark is an abstract token that represents
+    some state of the database. By passing one or multiple bookmarks along
+    with a query, the server will make sure that the query will not get
+    executed before the represented state(s) (or a later state) have been
+    established.
+
+    The bookmark manager is an interface used by the driver for keeping
+    track of the bookmarks and this way keeping sessions automatically
+    consistent. Configure the driver to use a specific bookmark manager with
+    :ref:`bookmark-manager-ref`.
+
+    This class is just an abstract base class that defines the required
+    interface. Create a child class to implement a specific bookmark manager
+    or make user of the default implementation provided by the driver through
+    :meth:`.GraphDatabase.bookmark_manager()`.
+
+    .. note::
+        All methods must be concurrency safe.
+
+    Generally, all methods need to be able to cope with getting passed a
+    ``database`` parameter that is (until then) unknown to the manager.
+
+    .. versionadded:: 5.0
+    """
+
+    @abc.abstractmethod
+    def update_bookmarks(
+        self, database: str, previous_bookmarks: t.Collection[str],
+        new_bookmarks: t.Collection[str]
+    ) -> None:
+        """Handle bookmark updates.
+
+        :param database:
+            The database which the bookmarks belong to
+        :param previous_bookmarks:
+            The bookmarks used at the start of a transaction
+        :param new_bookmarks:
+            The new bookmarks retrieved at the end of a transaction
+        """
+        ...
+
+    @abc.abstractmethod
+    def get_bookmarks(self, database: str) -> t.Collection[str]:
+        """Return the bookmarks for a given database.
+
+        :param database: The database which the bookmarks belong to
+
+        :returns: The bookmarks for the given database
+        """
+        ...
+
+    @abc.abstractmethod
+    def get_all_bookmarks(self) -> t.Collection[str]:
+        """Return all bookmarks for all known databases.
+
+        :returns: The collected bookmarks.
+        """
+        ...
+
+    @abc.abstractmethod
+    def forget(self, databases: t.Iterable[str]) -> None:
+        """Forget the bookmarks for the given databases.
+
+        This method is not called by the driver.
+        Forgetting unused databases is the user's responsibility.
+
+        :param databases:
+            The databases which the bookmarks will be removed for.
+        """
+        ...
+
+
+class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
+    """Same as :class:`.BookmarkManager` but with async methods.
+
+    The driver comes with a default implementation of the async bookmark
+    manager accessible through :attr:`.AsyncGraphDatabase.bookmark_manager()`.
+
+    .. versionadded:: 5.0
+    """
+
+    @abc.abstractmethod
+    async def update_bookmarks(
+        self, database: str, previous_bookmarks: t.Collection[str],
+        new_bookmarks: t.Collection[str]
+    ) -> None:
+        ...
+
+    update_bookmarks.__doc__ = BookmarkManager.update_bookmarks.__doc__
+
+    @abc.abstractmethod
+    async def get_bookmarks(self, database: str) -> t.Collection[str]:
+        ...
+
+    get_bookmarks.__doc__ = BookmarkManager.get_bookmarks.__doc__
+
+    @abc.abstractmethod
+    async def get_all_bookmarks(self) -> t.Collection[str]:
+        ...
+
+    get_all_bookmarks.__doc__ = BookmarkManager.get_all_bookmarks.__doc__
+
+    @abc.abstractmethod
+    async def forget(self, databases: t.Iterable[str]) -> None:
+        ...
+
+    forget.__doc__ = BookmarkManager.forget.__doc__
 
 
 def parse_neo4j_uri(uri):

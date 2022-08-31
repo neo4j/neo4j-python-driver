@@ -22,6 +22,7 @@ import warnings
 from os import path
 
 import neo4j
+import neo4j.api
 from neo4j._async_compat.util import AsyncUtil
 
 from .. import (
@@ -146,7 +147,6 @@ async def NewDriver(backend, data):
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
-    data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.AsyncGraphDatabase.driver(
         data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs
     )
@@ -243,6 +243,84 @@ async def DomainNameResolutionCompleted(backend, data):
     backend.dns_resolutions[data["requestId"]] = data["addresses"]
 
 
+async def NewBookmarkManager(backend, data):
+    bookmark_manager_id = backend.next_key()
+
+    bmm_kwargs = {}
+    data.mark_item_as_read("initialBookmarks", recursive=True)
+    bmm_kwargs["initial_bookmarks"] = data.get("initialBookmarks")
+    if data.get("bookmarksSupplierRegistered"):
+        bmm_kwargs["bookmarks_supplier"] = bookmarks_supplier(
+            backend, bookmark_manager_id
+        )
+    if data.get("bookmarksConsumerRegistered"):
+        bmm_kwargs["bookmarks_consumer"] = bookmarks_consumer(
+            backend, bookmark_manager_id
+        )
+
+    bookmark_manager = neo4j.AsyncGraphDatabase.bookmark_manager(**bmm_kwargs)
+    backend.bookmark_managers[bookmark_manager_id] = bookmark_manager
+    await backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
+
+
+async def BookmarkManagerClose(backend, data):
+    bookmark_manager_id = data["id"]
+    del backend.bookmark_managers[bookmark_manager_id]
+    await backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
+
+
+def bookmarks_supplier(backend, bookmark_manager_id):
+    async def supplier(database):
+        key = backend.next_key()
+        await backend.send_response("BookmarksSupplierRequest", {
+            "id": key,
+            "bookmarkManagerId": bookmark_manager_id,
+            "database": database
+        })
+        if not await backend.process_request():
+            # connection was closed before end of next message
+            return []
+        if key not in backend.bookmarks_supplies:
+            raise RuntimeError(
+                "Backend did not receive expected "
+                "BookmarksSupplierCompleted message for id %s" % key
+            )
+        return backend.bookmarks_supplies.pop(key)
+
+    return supplier
+
+
+async def BookmarksSupplierCompleted(backend, data):
+    backend.bookmarks_supplies[data["requestId"]] = \
+        neo4j.Bookmarks.from_raw_values(data["bookmarks"])
+
+
+def bookmarks_consumer(backend, bookmark_manager_id):
+    async def consumer(database, bookmarks):
+        key = backend.next_key()
+        await backend.send_response("BookmarksConsumerRequest", {
+            "id": key,
+            "bookmarkManagerId": bookmark_manager_id,
+            "database": database,
+            "bookmarks": list(bookmarks.raw_values)
+        })
+        if not await backend.process_request():
+            # connection was closed before end of next message
+            return []
+        if key not in backend.bookmarks_consumptions:
+            raise RuntimeError(
+                "Backend did not receive expected "
+                "BookmarksConsumerCompleted message for id %s" % key
+            )
+        del backend.bookmarks_consumptions[key]
+
+    return consumer
+
+
+async def BookmarksConsumerCompleted(backend, data):
+    backend.bookmarks_consumptions[data["requestId"]] = True
+
+
 async def DriverClose(backend, data):
     key = data["driverId"]
     driver = backend.drivers[key]
@@ -277,17 +355,25 @@ async def NewSession(backend, data):
         access_mode = neo4j.WRITE_ACCESS
     else:
         raise ValueError("Unknown access mode:" + access_mode)
-    bookmarks = None
-    if "bookmarks" in data and data["bookmarks"]:
-        bookmarks = neo4j.Bookmarks.from_raw_values(data["bookmarks"])
     config = {
-            "default_access_mode": access_mode,
-            "bookmarks": bookmarks,
-            "database": data["database"],
-            "fetch_size": data.get("fetchSize", None),
-            "impersonated_user": data.get("impersonatedUser", None),
-
+        "default_access_mode": access_mode,
+        "database": data["database"],
     }
+    if data.get("bookmarks") is not None:
+        config["bookmarks"] = neo4j.Bookmarks.from_raw_values(
+            data["bookmarks"]
+        )
+    if data.get("bookmarkManagerId") is not None:
+        config["bookmark_manager"] = backend.bookmark_managers[
+            data["bookmarkManagerId"]
+        ]
+    for (conf_name, data_name) in (
+        ("fetch_size", "fetchSize"),
+        ("impersonated_user", "impersonatedUser"),
+        ("ignore_bookmark_manager", "ignoreBookmarkManager"),
+    ):
+        if data_name in data:
+            config[conf_name] = data[data_name]
     session = driver.session(**config)
     key = backend.next_key()
     backend.sessions[key] = SessionTracker(session)

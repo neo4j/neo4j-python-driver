@@ -154,12 +154,12 @@ class CustomRule(unasync.Rule):
                     start += 1
                     end += 1
                 else:
-                    out += self._unasync_prefix(name[start:(end - 1)])
+                    out += self._unasync_name(name[start:(end - 1)])
                     start = end - 1
 
         sub_name = name[start:]
         if sub_name.isidentifier():
-            out += self._unasync_prefix(name[start:])
+            out += self._unasync_name(name[start:])
         else:
             out += sub_name
 
@@ -221,6 +221,7 @@ def apply_unasync(files):
         "mark_async_test": "mark_sync_test",
         "assert_awaited_once": "assert_called_once",
         "assert_awaited_once_with": "assert_called_once_with",
+        "await_count": "call_count",
     }
     additional_testkit_backend_replacements = {}
     rules = [

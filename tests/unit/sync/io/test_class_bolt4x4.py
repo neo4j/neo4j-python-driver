@@ -244,7 +244,7 @@ def test_hint_recv_timeout_seconds(
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt4x4.PACKER_CLS,
                                unpacker_cls=Bolt4x4.UNPACKER_CLS)
-    sockets.client.settimeout = mocker.MagicMock()
+    sockets.client.settimeout = mocker.Mock()
     sockets.server.send_message(
         b"\x70", {"server": "Neo4j/4.3.4", "hints": hints}
     )

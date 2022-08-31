@@ -21,51 +21,53 @@ Async Driver Construction
 The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the :class:`neo4j.AsyncGraphDatabase` class.
 
 .. autoclass:: neo4j.AsyncGraphDatabase
-   :members: driver
+    :members: bookmark_manager
+
+    .. automethod:: driver
+
+        Driver creation example:
+
+        .. code-block:: python
+
+            import asyncio
+
+            from neo4j import AsyncGraphDatabase
+
+            async def main():
+                uri = "neo4j://example.com:7687"
+                driver = AsyncGraphDatabase.driver(uri, auth=("neo4j", "password"))
+
+                await driver.close()  # close the driver object
+
+             asyncio.run(main())
 
 
-Driver creation example:
+        For basic authentication, ``auth`` can be a simple tuple, for example:
 
-.. code-block:: python
+        .. code-block:: python
 
-    import asyncio
+           auth = ("neo4j", "password")
 
-    from neo4j import AsyncGraphDatabase
+        This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
+        Other authentication methods are described under :ref:`auth-ref`.
 
-    async def main():
-        uri = "neo4j://example.com:7687"
-        driver = AsyncGraphDatabase.driver(uri, auth=("neo4j", "password"))
+        ``with`` block context example:
 
-        await driver.close()  # close the driver object
+        .. code-block:: python
 
-     asyncio.run(main())
+            import asyncio
 
+            from neo4j import AsyncGraphDatabase
 
-For basic authentication, ``auth`` can be a simple tuple, for example:
+            async def main():
+                uri = "neo4j://example.com:7687"
+                auth = ("neo4j", "password")
+                async with AsyncGraphDatabase.driver(uri, auth=auth) as driver:
+                    # use the driver
+                    ...
 
-.. code-block:: python
+             asyncio.run(main())
 
-   auth = ("neo4j", "password")
-
-This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
-Other authentication methods are described under :ref:`auth-ref`.
-
-``with`` block context example:
-
-.. code-block:: python
-
-    import asyncio
-
-    from neo4j import AsyncGraphDatabase
-
-    async def main():
-        uri = "neo4j://example.com:7687"
-        auth = ("neo4j", "password")
-        async with AsyncGraphDatabase.driver(uri, auth=auth) as driver:
-            # use the driver
-            ...
-
-     asyncio.run(main())
 
 
 .. _async-uri-ref:
@@ -120,7 +122,7 @@ Each supported scheme maps to a particular :class:`neo4j.AsyncDriver` subclass t
 AsyncDriver
 ***********
 
-Every Neo4j-backed application will require a :class:`neo4j.AsyncDriver` object.
+Every Neo4j-backed application will require a driver object.
 
 This object holds the details required to establish connections with a Neo4j database, including server URIs, credentials and other configuration.
 :class:`neo4j.AsyncDriver` objects hold a connection pool from which :class:`neo4j.AsyncSession` objects can borrow connections.
@@ -143,6 +145,7 @@ Async Driver Configuration
 :class:`neo4j.AsyncDriver` is configured exactly like :class:`neo4j.Driver`
 (see :ref:`driver-configuration-ref`). The only difference is that the async
 driver accepts an async custom resolver function:
+
 
 .. _async-resolver-ref:
 
@@ -366,7 +369,35 @@ Session Configuration
 =====================
 
 :class:`neo4j.AsyncSession` is configured exactly like :class:`neo4j.Session`
-(see :ref:`session-configuration-ref`).
+(see :ref:`session-configuration-ref`). The only difference is the async session
+accepts either a :class:`neo4j.api.BookmarkManager` object or a
+:class:`neo4j.api.AsyncBookmarkManager` as bookmark manager:
+
+
+.. _async-bookmark-manager-ref:
+
+``bookmark_manager``
+--------------------
+Specify a bookmark manager for the driver to use. If present, the bookmark
+manager is used to keep all work on the driver causally consistent.
+
+See :class:`BookmarkManager` for more information.
+
+.. warning::
+    Enabling the BookmarkManager can have a negative impact on performance since
+    all queries will wait for the latest changes to be propagated across the
+    cluster.
+
+    For simpler use-cases, sessions (:class:`.AsyncSession`) can be used to
+    group a series of queries together that will be causally chained
+    automatically.
+
+:Type: :const:`None`, :class:`BookmarkManager`, or :class:`AsyncBookmarkManager`
+:Default: :const:`None`
+
+**This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
+
 
 
 ****************
@@ -501,7 +532,7 @@ Returning a live result object would prevent the driver from correctly managing 
 
 This function will receive a :class:`neo4j.AsyncManagedTransaction` object as its first parameter.
 
-.. autoclass:: neo4j.AsyncManagedTransaction
+.. autoclass:: neo4j.AsyncManagedTransaction()
 
     .. automethod:: run
 
@@ -520,7 +551,6 @@ Example:
         return record["node_id"]
 
 To exert more control over how a transaction function is carried out, the :func:`neo4j.unit_of_work` decorator can be used.
-
 
 
 ***********
@@ -567,6 +597,13 @@ A :class:`neo4j.AsyncResult` is attached to an active connection, through a :cla
 
 See https://neo4j.com/docs/python-manual/current/cypher-workflow/#python-driver-type-mapping for more about type mapping.
 
+
+********************
+AsyncBookmarkManager
+********************
+
+.. autoclass:: neo4j.api.AsyncBookmarkManager
+    :members:
 
 
 ******************

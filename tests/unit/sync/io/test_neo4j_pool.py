@@ -38,7 +38,6 @@ from neo4j.exceptions import (
 )
 
 from ...._async_compat import mark_sync_test
-from ..work import fake_connection_generator  # needed as fixture
 
 
 ROUTER_ADDRESS = ResolvedAddress(("1.2.3.1", 9001), host_name="host")
