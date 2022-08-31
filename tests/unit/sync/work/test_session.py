@@ -37,6 +37,16 @@ from neo4j.api import BookmarkManager
 from ...._async_compat import mark_sync_test
 
 
+@contextmanager
+def assert_warns_tx_func_deprecation(tx_func_name):
+    if tx_func_name.endswith("_transaction"):
+        with pytest.warns(DeprecationWarning,
+                          match=f"{tx_func_name}.*execute_"):
+            yield
+    else:
+        yield
+
+
 @mark_sync_test
 def test_session_context_calls_close(mocker):
     s = Session(None, SessionConfig())
@@ -237,17 +247,25 @@ def test_session_run_wrong_types(fake_pool, query, error_type):
             session.run(query)
 
 
-@pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction"))
+@pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction",
+                                     "execute_write", "execute_read",))
 @mark_sync_test
 def test_tx_function_argument_type(fake_pool, tx_type):
+    called = False
+
     def work(tx):
+        nonlocal called
+        called = True
         assert isinstance(tx, ManagedTransaction)
 
     with Session(fake_pool, SessionConfig()) as session:
-        getattr(session, tx_type)(work)
+        with assert_warns_tx_func_deprecation(tx_type):
+            getattr(session, tx_type)(work)
+        assert called
 
 
-@pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction"))
+@pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction",
+                                     "execute_write", "execute_read"))
 @pytest.mark.parametrize("decorator_kwargs", (
     {},
     {"timeout": 5},
@@ -259,12 +277,18 @@ def test_tx_function_argument_type(fake_pool, tx_type):
 def test_decorated_tx_function_argument_type(
     fake_pool, tx_type, decorator_kwargs
 ):
+    called = False
+
     @unit_of_work(**decorator_kwargs)
     def work(tx):
+        nonlocal called
+        called = True
         assert isinstance(tx, ManagedTransaction)
 
     with Session(fake_pool, SessionConfig()) as session:
-        getattr(session, tx_type)(work)
+        with assert_warns_tx_func_deprecation(tx_type):
+            getattr(session, tx_type)(work)
+        assert called
 
 
 @mark_sync_test

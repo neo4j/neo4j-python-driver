@@ -37,6 +37,16 @@ from neo4j.api import AsyncBookmarkManager
 from ...._async_compat import mark_async_test
 
 
+@contextmanager
+def assert_warns_tx_func_deprecation(tx_func_name):
+    if tx_func_name.endswith("_transaction"):
+        with pytest.warns(DeprecationWarning,
+                          match=f"{tx_func_name}.*execute_"):
+            yield
+    else:
+        yield
+
+
 @mark_async_test
 async def test_session_context_calls_close(mocker):
     s = AsyncSession(None, SessionConfig())
@@ -237,17 +247,25 @@ async def test_session_run_wrong_types(fake_pool, query, error_type):
             await session.run(query)
 
 
-@pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction"))
+@pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction",
+                                     "execute_write", "execute_read",))
 @mark_async_test
 async def test_tx_function_argument_type(fake_pool, tx_type):
+    called = False
+
     async def work(tx):
+        nonlocal called
+        called = True
         assert isinstance(tx, AsyncManagedTransaction)
 
     async with AsyncSession(fake_pool, SessionConfig()) as session:
-        await getattr(session, tx_type)(work)
+        with assert_warns_tx_func_deprecation(tx_type):
+            await getattr(session, tx_type)(work)
+        assert called
 
 
-@pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction"))
+@pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction",
+                                     "execute_write", "execute_read"))
 @pytest.mark.parametrize("decorator_kwargs", (
     {},
     {"timeout": 5},
@@ -259,12 +277,18 @@ async def test_tx_function_argument_type(fake_pool, tx_type):
 async def test_decorated_tx_function_argument_type(
     fake_pool, tx_type, decorator_kwargs
 ):
+    called = False
+
     @unit_of_work(**decorator_kwargs)
     async def work(tx):
+        nonlocal called
+        called = True
         assert isinstance(tx, AsyncManagedTransaction)
 
     async with AsyncSession(fake_pool, SessionConfig()) as session:
-        await getattr(session, tx_type)(work)
+        with assert_warns_tx_func_deprecation(tx_type):
+            await getattr(session, tx_type)(work)
+        assert called
 
 
 @mark_async_test
