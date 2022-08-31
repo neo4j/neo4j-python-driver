@@ -31,7 +31,8 @@ Quick Example
 
     from neo4j import GraphDatabase
 
-    driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "password"))
+    driver = GraphDatabase.driver("neo4j://localhost:7687",
+                                  auth=("neo4j", "password"))
 
     def add_friend(tx, name, friend_name):
         tx.run("MERGE (a:Person {name: $name}) "
@@ -39,15 +40,16 @@ Quick Example
                name=name, friend_name=friend_name)
 
     def print_friends(tx, name):
-        for record in tx.run("MATCH (a:Person)-[:KNOWS]->(friend) WHERE a.name = $name "
-                             "RETURN friend.name ORDER BY friend.name", name=name):
+        query = ("MATCH (a:Person)-[:KNOWS]->(friend) WHERE a.name = $name "
+                 "RETURN friend.name ORDER BY friend.name")
+        for record in tx.run(query, name=name):
             print(record["friend.name"])
 
     with driver.session() as session:
-        session.write_transaction(add_friend, "Arthur", "Guinevere")
-        session.write_transaction(add_friend, "Arthur", "Lancelot")
-        session.write_transaction(add_friend, "Arthur", "Merlin")
-        session.read_transaction(print_friends, "Arthur")
+        session.execute_write(add_friend, "Arthur", "Guinevere")
+        session.execute_write(add_friend, "Arthur", "Lancelot")
+        session.execute_write(add_friend, "Arthur", "Merlin")
+        session.execute_read(print_friends, "Arthur")
 
     driver.close()
 
