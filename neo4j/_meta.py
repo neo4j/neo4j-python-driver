@@ -17,6 +17,7 @@
 
 
 import asyncio
+import tracemalloc
 import typing as t
 from functools import wraps
 from warnings import warn
@@ -130,8 +131,6 @@ def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
 
 
 def unclosed_resource_warn(obj):
-    import tracemalloc
-    from warnings import warn
     msg = f"Unclosed {obj!r}."
     trace = tracemalloc.get_object_traceback(obj)
     if trace:

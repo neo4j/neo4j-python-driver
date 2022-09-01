@@ -674,6 +674,5 @@ class Neo4jDriver(_Routing, Driver):
 
         def session(self, **config) -> Session:
             session_config = SessionConfig(self._default_workspace_config,
-                                           config)
-            SessionConfig.consume(config)  # Consume the config
+                                           SessionConfig.consume(config))
             return Session(self._pool, session_config)

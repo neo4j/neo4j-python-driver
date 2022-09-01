@@ -21,8 +21,6 @@ import re
 import warnings
 from os import path
 
-import pytest
-
 import neo4j
 import neo4j.api
 from neo4j._async_compat.util import AsyncUtil
@@ -32,6 +30,7 @@ from .. import (
     test_subtest_skips,
     totestkit,
 )
+from .._warning_check import warning_check
 from ..exceptions import MarkdAsDriverException
 
 
@@ -178,10 +177,10 @@ async def GetServerInfo(backend, data):
 async def CheckMultiDBSupport(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
-    with pytest.warns(
-        DeprecationWarning,
-        match="Feature support query, based on Bolt protocol version and "
-              "Neo4j server version will change in the future."
+    with warning_check(
+        neo4j.ExperimentalWarning,
+        "Feature support query, based on Bolt protocol version and Neo4j "
+        "server version will change in the future."
     ):
         available = await driver.supports_multi_db()
     await backend.send_response("MultiDBSupport", {
@@ -266,7 +265,14 @@ async def NewBookmarkManager(backend, data):
             backend, bookmark_manager_id
         )
 
-    bookmark_manager = neo4j.AsyncGraphDatabase.bookmark_manager(**bmm_kwargs)
+    with warning_check(
+        neo4j.ExperimentalWarning,
+        "The bookmark manager feature is experimental. It might be changed or "
+        "removed any time even without prior notice."
+    ):
+        bookmark_manager = neo4j.AsyncGraphDatabase.bookmark_manager(
+            **bmm_kwargs
+        )
     backend.bookmark_managers[bookmark_manager_id] = bookmark_manager
     await backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
 
@@ -382,7 +388,15 @@ async def NewSession(backend, data):
     ):
         if data_name in data:
             config[conf_name] = data[data_name]
-    session = driver.session(**config)
+    if "bookmark_manager" in config:
+        with warning_check(
+            neo4j.ExperimentalWarning,
+            "The 'bookmark_manager' config key is experimental. It might be "
+            "changed or removed any time even without prior notice."
+        ):
+            session = driver.session(**config)
+    else:
+        session = driver.session(**config)
     key = backend.next_key()
     backend.sessions[key] = SessionTracker(session)
     await backend.send_response("Session", {"id": key})

@@ -18,8 +18,6 @@
 
 import math
 
-import pytest
-
 from neo4j.graph import (
     Node,
     Path,
@@ -35,6 +33,8 @@ from neo4j.time import (
     Duration,
     Time,
 )
+
+from ._warning_check import warning_check
 
 
 def record(rec):
@@ -75,9 +75,8 @@ def field(v):
     if isinstance(v, (bytes, bytearray)):
         return to("CypherBytes", " ".join("{:02x}".format(byte) for byte in v))
     if isinstance(v, Node):
-        with pytest.warns(
-            DeprecationWarning,
-            match="`id` is deprecated, use `element_id` instead"
+        with warning_check(
+            DeprecationWarning, "`id` is deprecated, use `element_id` instead"
         ):
             id_ = v.id
         node = {
@@ -88,19 +87,16 @@ def field(v):
         }
         return {"name": "Node", "data": node}
     if isinstance(v, Relationship):
-        with pytest.warns(
-            DeprecationWarning,
-            match="`id` is deprecated, use `element_id` instead"
+        with warning_check(
+            DeprecationWarning, "`id` is deprecated, use `element_id` instead"
         ):
             id_ = v.id
-        with pytest.warns(
-            DeprecationWarning,
-            match="`id` is deprecated, use `element_id` instead"
+        with warning_check(
+            DeprecationWarning, "`id` is deprecated, use `element_id` instead"
         ):
             start_id = v.start_node.id
-        with pytest.warns(
-            DeprecationWarning,
-            match="`id` is deprecated, use `element_id` instead"
+        with warning_check(
+            DeprecationWarning, "`id` is deprecated, use `element_id` instead"
         ):
             end_id = v.end_node.id
         rel = {
