@@ -370,7 +370,6 @@ def NewSession(backend, data):
     for (conf_name, data_name) in (
         ("fetch_size", "fetchSize"),
         ("impersonated_user", "impersonatedUser"),
-        ("ignore_bookmark_manager", "ignoreBookmarkManager"),
     ):
         if data_name in data:
             config[conf_name] = data[data_name]

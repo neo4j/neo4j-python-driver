@@ -484,16 +484,3 @@ async def test_last_bookmarks_do_not_leak_bookmark_managers_bookmarks(
 
         assert last_bookmarks.raw_values == {"session", "bookmarks"}
     assert last_bookmarks.raw_values == {"session", "bookmarks"}
-
-
-@mark_async_test
-async def test_with_ignored_bookmark_manager(fake_pool, mocker):
-    bmm = mocker.Mock(spec=AsyncBookmarkManager)
-    session_config = SessionConfig()
-    session_config.bookmark_manager = bmm
-    session_config.ignore_bookmark_manager = True
-    async with AsyncSession(fake_pool, session_config) as session:
-        await session.run("RETURN 1")
-
-    bmm.assert_not_called()
-    assert not bmm.method_calls

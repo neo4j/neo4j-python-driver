@@ -484,16 +484,3 @@ def test_last_bookmarks_do_not_leak_bookmark_managers_bookmarks(
 
         assert last_bookmarks.raw_values == {"session", "bookmarks"}
     assert last_bookmarks.raw_values == {"session", "bookmarks"}
-
-
-@mark_sync_test
-def test_with_ignored_bookmark_manager(fake_pool, mocker):
-    bmm = mocker.Mock(spec=BookmarkManager)
-    session_config = SessionConfig()
-    session_config.bookmark_manager = bmm
-    session_config.ignore_bookmark_manager = True
-    with Session(fake_pool, session_config) as session:
-        session.run("RETURN 1")
-
-    bmm.assert_not_called()
-    assert not bmm.method_calls
