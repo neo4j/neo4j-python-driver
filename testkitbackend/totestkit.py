@@ -18,6 +18,8 @@
 
 import math
 
+import pytest
+
 from neo4j.graph import (
     Node,
     Path,
@@ -73,18 +75,38 @@ def field(v):
     if isinstance(v, (bytes, bytearray)):
         return to("CypherBytes", " ".join("{:02x}".format(byte) for byte in v))
     if isinstance(v, Node):
+        with pytest.warns(
+            DeprecationWarning,
+            match="`id` is deprecated, use `element_id` instead"
+        ):
+            id_ = v.id
         node = {
-            "id": field(v.id),
+            "id": field(id_),
             "labels": field(v.labels),
             "props": field(v._properties),
             "elementId": field(v.element_id),
         }
         return {"name": "Node", "data": node}
     if isinstance(v, Relationship):
+        with pytest.warns(
+            DeprecationWarning,
+            match="`id` is deprecated, use `element_id` instead"
+        ):
+            id_ = v.id
+        with pytest.warns(
+            DeprecationWarning,
+            match="`id` is deprecated, use `element_id` instead"
+        ):
+            start_id = v.start_node.id
+        with pytest.warns(
+            DeprecationWarning,
+            match="`id` is deprecated, use `element_id` instead"
+        ):
+            end_id = v.end_node.id
         rel = {
-            "id": field(v.id),
-            "startNodeId": field(v.start_node.id),
-            "endNodeId": field(v.end_node.id),
+            "id": field(id_),
+            "startNodeId": field(start_id),
+            "endNodeId": field(end_id),
             "type": field(v.type),
             "props": field(v._properties),
             "elementId": field(v.element_id),

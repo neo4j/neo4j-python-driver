@@ -21,6 +21,8 @@ import re
 import warnings
 from os import path
 
+import pytest
+
 import neo4j
 import neo4j.api
 from neo4j._async_compat.util import Util
@@ -176,8 +178,14 @@ def GetServerInfo(backend, data):
 def CheckMultiDBSupport(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
+    with pytest.warns(
+        DeprecationWarning,
+        match="Feature support query, based on Bolt protocol version and "
+              "Neo4j server version will change in the future."
+    ):
+        available = driver.supports_multi_db()
     backend.send_response("MultiDBSupport", {
-        "id": backend.next_key(), "available": driver.supports_multi_db()
+        "id": backend.next_key(), "available": available
     })
 
 
@@ -534,6 +542,7 @@ def ResultSingle(backend, data):
 def ResultSingleOptional(backend, data):
     result = backend.results[data["resultId"]]
     with warnings.catch_warnings(record=True) as warning_list:
+        warnings.simplefilter("always")
         record = result.single(strict=False)
     if record:
         record = totestkit.record(record)
