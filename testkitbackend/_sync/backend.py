@@ -68,6 +68,14 @@ class Backend:
         self._requestHandlers = dict(
             [m for m in getmembers(requests, isfunction)])
 
+    def close(self):
+        for _, transaction in self.transactions:
+            transaction.close()
+        for _, session in self.sessions:
+            session.close()
+        for _, driver in self.drivers:
+            driver.close()
+
     def next_key(self):
         self.key = self.key + 1
         return self.key

@@ -35,6 +35,7 @@ class Server(TCPServer):
                 backend = Backend(self.rfile, self.wfile)
                 while backend.process_request():
                     pass
+                backend.close()
                 print("Disconnected")
         super(Server, self).__init__(address, Handler)
 
@@ -49,6 +50,8 @@ class AsyncServer:
         backend = AsyncBackend(reader, writer)
         while await backend.process_request():
             pass
+        writer.close()
+        await backend.close()
         print("Disconnected")
 
     async def start(self):
