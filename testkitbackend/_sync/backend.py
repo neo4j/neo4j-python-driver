@@ -69,11 +69,11 @@ class Backend:
             [m for m in getmembers(requests, isfunction)])
 
     def close(self):
-        for _, transaction in self.transactions:
+        for transaction in self.transactions.values():
             transaction.close()
-        for _, session in self.sessions:
+        for session in self.sessions.values():
             session.close()
-        for _, driver in self.drivers:
+        for driver in self.drivers.values():
             driver.close()
 
     def next_key(self):

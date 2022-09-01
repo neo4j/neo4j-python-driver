@@ -69,11 +69,11 @@ class AsyncBackend:
             [m for m in getmembers(requests, isfunction)])
 
     async def close(self):
-        for _, transaction in self.transactions:
+        for transaction in self.transactions.values():
             await transaction.close()
-        for _, session in self.sessions:
+        for session in self.sessions.values():
             await session.close()
-        for _, driver in self.drivers:
+        for driver in self.drivers.values():
             await driver.close()
 
     def next_key(self):
