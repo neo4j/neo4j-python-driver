@@ -264,7 +264,7 @@ class Bolt:
         agreed Bolt protocol version if successful.
         """
         if pool_config is None:
-            pool_config = PoolConfig
+            pool_config = PoolConfig()
         try:
             s, protocol_version, handshake, data = \
                 BoltSocket.connect(
