@@ -21,6 +21,7 @@
 
 import pytest
 
+import neo4j
 from neo4j.exceptions import (
     ServiceUnavailable,
     ConfigurationError,
@@ -80,7 +81,9 @@ def test_direct_driver_with_wrong_port(driver_info):
     uri = "bolt://127.0.0.1:9002"
     with pytest.raises(ServiceUnavailable):
         driver = GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config)
-        driver.verify_connectivity()
+        with pytest.warns(neo4j.ExperimentalWarning,
+                          match="The configuration may change in the future."):
+            driver.verify_connectivity()
 
 
 @pytest.mark.parametrize(
@@ -96,7 +99,13 @@ def test_direct_verify_connectivity(driver_info, test_script, test_expected):
         uri = "bolt://localhost:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
             assert isinstance(driver, BoltDriver)
-            assert driver.verify_connectivity(default_access_mode=READ_ACCESS) == test_expected
+            with pytest.warns(
+                    neo4j.ExperimentalWarning,
+                    match="The configuration may change in the future."
+            ):
+                assert driver.verify_connectivity(
+                    default_access_mode=READ_ACCESS
+                ) == test_expected
 
 
 @pytest.mark.parametrize(
@@ -112,4 +121,8 @@ def test_direct_verify_connectivity_disconnect_on_run(driver_info, test_script):
         uri = "bolt://127.0.0.1:9001"
         with GraphDatabase.driver(uri, auth=driver_info["auth_token"], **driver_config) as driver:
             with pytest.raises(ServiceUnavailable):
-                driver.verify_connectivity(default_access_mode=READ_ACCESS)
+                with pytest.warns(
+                        neo4j.ExperimentalWarning,
+                        match="The configuration may change in the future."
+                ):
+                    driver.verify_connectivity(default_access_mode=READ_ACCESS)

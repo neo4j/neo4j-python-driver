@@ -26,7 +26,71 @@ import copy
 import pytest
 
 from neo4j import time
-from neo4j.time import Duration
+from neo4j.time import Duration as _Duration
+
+
+class Duration(_Duration):
+    def __new__(cls, *args, **kwargs):
+        # seconds = kwargs.get("seconds", args[6] if len(args) > 6 else None)
+        subseconds = kwargs.get("subseconds",
+                                args[7] if len(args) > 7 else None)
+        # if (
+        #     isinstance(seconds, float) and not seconds.is_integer()
+        #     or isinstance(seconds, Decimal) and not seconds % 1 != 0
+        # ):
+        #     with pytest.warns(DeprecationWarning,
+        #                       match="Float support second will be removed in "
+        #                             "5.0. Use `nanosecond` instead."):
+        #         return super().__new__(cls, *args, **kwargs)
+        if subseconds is not None:
+            with pytest.warns(
+                    DeprecationWarning,
+                    match="`subseconds` will be removed in 5.0. "
+                          "Use `nanoseconds` instead."
+            ):
+                return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls, *args, **kwargs)
+
+    @property
+    def hours_minutes_seconds(self):
+        with pytest.warns(
+                DeprecationWarning,
+                match="Will be removed in 5.0. "
+                      "Use `hours_minutes_seconds_nanoseconds` instead."
+        ):
+            return super().hours_minutes_seconds
+
+    @property
+    def subseconds(self):
+        with pytest.warns(
+                DeprecationWarning,
+                match="Will be removed in 5.0. Use `nanoseconds` instead."
+        ):
+            return super().subseconds
+
+    def __mul__(self, other):
+        if isinstance(other, float):
+            with pytest.warns(DeprecationWarning,
+                              match="Multiplication with float will be "
+                                    "removed in 5.0."):
+                return super().__mul__(other)
+        return super().__mul__(other)
+
+    def __floordiv__(self, other):
+        with pytest.warns(DeprecationWarning, match="Will be removed in 5.0."):
+            return super().__floordiv__(other)
+
+    def __mod__(self, other):
+        with pytest.warns(DeprecationWarning, match="Will be removed in 5.0."):
+            return super().__mod__(other)
+
+    def __divmod__(self, other):
+        with pytest.warns(DeprecationWarning, match="Will be removed in 5.0."):
+            return super().__divmod__(other)
+
+    def __truediv__(self, other):
+        with pytest.warns(DeprecationWarning, match="Will be removed in 5.0."):
+            return super().__truediv__(other)
 
 
 def seconds_options(seconds, nanoseconds):

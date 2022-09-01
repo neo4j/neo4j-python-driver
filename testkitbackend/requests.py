@@ -16,6 +16,7 @@
 # limitations under the License.
 import json
 from os import path
+import warnings
 
 import neo4j
 import testkitbackend.fromtestkit as fromtestkit
@@ -108,7 +109,9 @@ def NewDriver(backend, data):
 def VerifyConnectivity(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
-    driver.verify_connectivity()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=neo4j.ExperimentalWarning)
+        driver.verify_connectivity()
     backend.send_response("Driver", {"id": driver_id})
 
 

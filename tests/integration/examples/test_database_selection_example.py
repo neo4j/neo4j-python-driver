@@ -42,12 +42,12 @@ class DatabaseSelectionExample:
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
         with self.driver.session(database="system") as session:
-            session.run("DROP DATABASE example IF EXISTS").consume()
-            session.run("CREATE DATABASE example").consume()
+            session.run("DROP DATABASE example IF EXISTS WAIT").consume()
+            session.run("CREATE DATABASE example WAIT").consume()
 
     def close(self):
         with self.driver.session(database="system") as session:
-            session.run("DROP DATABASE example").consume()
+            session.run("DROP DATABASE example WAIT").consume()
         self.driver.close()
 
     def run_example_code(self):

@@ -35,11 +35,47 @@ from pytz import (
     utc,
 )
 
-from neo4j.time import Time
+from neo4j.time import Time as _Time
 from neo4j.time.arithmetic import (
     nano_add,
     nano_div,
 )
+
+
+class _TimeMeta(type(_Time)):
+    def __instancecheck__(self, instance):
+        return (isinstance(instance, _Time)
+                or super().__instancecheck__(instance))
+
+    def __subclasscheck__(self, subclass):
+        return (issubclass(subclass, _Time)
+                or super().__subclasscheck__(subclass))
+
+
+class Time(_Time, metaclass=_TimeMeta):
+    def __new__(cls, *args, **kwargs):
+        second = kwargs.get("second", args[2] if len(args) > 2 else None)
+        if isinstance(second, float) and not second.is_integer():
+            with pytest.warns(
+                DeprecationWarning,
+                match="Float support for `second` will be removed in 5.0. "
+                      "Use `nanosecond` instead."
+            ):
+                return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls, *args, **kwargs)
+
+    @property
+    def hour_minute_second(self):
+        with pytest.warns(
+            DeprecationWarning,
+            match="`hour_minute_second` will be removed in 5.0. "
+                  "Use `hour_minute_second_nanosecond` instead."
+        ):
+            return super().hour_minute_second
+
+    @classmethod
+    def utc_now(cls):
+        return super().utc_now()
 
 
 timezone_us_eastern = timezone("US/Eastern")

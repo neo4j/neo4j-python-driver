@@ -20,12 +20,14 @@
 
 
 from unittest import mock
+import warnings
 
 import pandas as pd
 import pytest
 
 from neo4j import (
     Address,
+    ExperimentalWarning,
     Record,
     ResultSummary,
     ServerInfo,
@@ -306,7 +308,8 @@ def test_result_single(records, fetch_size):
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, HydratorStub(), fetch_size, noop, noop)
     result._run("CYPHER", {}, None, None, "r", None)
-    with pytest.warns(None) as warning_record:
+    with warnings.catch_warnings(record=True) as warning_record:
+        warnings.simplefilter("always")
         record = result.single()
     if not records:
         assert not warning_record
@@ -350,7 +353,13 @@ def test_consume(records, consume_one, summary_meta):
         assert summary.database is None
     server_info = summary.server
     assert isinstance(server_info, ServerInfo)
-    assert server_info.version_info() == Version(4, 3)
+    with pytest.warns(
+            DeprecationWarning,
+            match="The version_info method is deprecated, please use "
+                  "ServerInfo.agent, ServerInfo.protocol_version, or call "
+                  "the dbms.components procedure instead"
+    ):
+        assert server_info.version_info() == Version(4, 3)
     assert server_info.protocol_version == Version(4, 3)
     assert isinstance(summary.counters, SummaryCounters)
 
@@ -463,7 +472,8 @@ def test_to_df(keys, values, types, instances):
     connection = ConnectionStub(records=Records(keys, values))
     result = Result(connection, DataHydrator(), 1, noop, noop)
     result._run("CYPHER", {}, None, None, "r", None)
-    df = result.to_df()
+    with pytest.warns(ExperimentalWarning, match="pandas support"):
+        df = result.to_df()
 
     assert isinstance(df, pd.DataFrame)
     assert df.keys().to_list() == keys
