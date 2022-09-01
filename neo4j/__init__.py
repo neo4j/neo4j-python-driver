@@ -383,13 +383,11 @@ class BoltDriver(Direct, Driver):
         """
         from neo4j.work.simple import Session
         session_config = SessionConfig(self._default_workspace_config, config)
-        SessionConfig.consume(config)  # Consume the config
         return Session(self._pool, session_config)
 
     def pipeline(self, **config):
         from neo4j.work.pipelining import Pipeline, PipelineConfig
         pipeline_config = PipelineConfig(self._default_workspace_config, config)
-        PipelineConfig.consume(config)  # Consume the config
         return Pipeline(self._pool, pipeline_config)
 
     @experimental("The configuration may change in the future.")
@@ -427,13 +425,11 @@ class Neo4jDriver(Routing, Driver):
 
     def session(self, **config):
         session_config = SessionConfig(self._default_workspace_config, config)
-        SessionConfig.consume(config)  # Consume the config
         return Session(self._pool, session_config)
 
     def pipeline(self, **config):
         from neo4j.work.pipelining import Pipeline, PipelineConfig
         pipeline_config = PipelineConfig(self._default_workspace_config, config)
-        PipelineConfig.consume(config)  # Consume the config
         return Pipeline(self._pool, pipeline_config)
 
     @experimental("The configuration may change in the future.")
