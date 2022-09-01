@@ -14,14 +14,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
 import json
 from os import path
-import warnings
 
 import neo4j
 import testkitbackend.fromtestkit as fromtestkit
 import testkitbackend.totestkit as totestkit
 from testkitbackend.fromtestkit import to_meta_and_timeout
+
+from ._warning_check import (
+    warning_check,
+    warnings_check,
+)
 
 
 class FrontendError(Exception):
@@ -98,9 +104,21 @@ def NewDriver(backend, data):
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
     data.mark_item_as_read("domainNameResolverRegistered")
-    driver = neo4j.GraphDatabase.driver(
-        data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs
-    )
+    expected_warnings = []
+    if "update_routing_table_timeout" in kwargs:
+        expected_warnings.append((
+            DeprecationWarning,
+            "The 'update_routing_table_timeout' config key is deprecated"
+        ))
+    if "session_connection_timeout" in kwargs:
+        expected_warnings.append((
+            DeprecationWarning,
+            "The 'session_connection_timeout' config key is deprecated"
+        ))
+    with warnings_check(expected_warnings):
+        driver = neo4j.GraphDatabase.driver(
+            data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs
+        )
     key = backend.next_key()
     backend.drivers[key] = driver
     backend.send_response("Driver", {"id": key})
@@ -109,8 +127,10 @@ def NewDriver(backend, data):
 def VerifyConnectivity(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=neo4j.ExperimentalWarning)
+    with warning_check(
+        neo4j.ExperimentalWarning,
+        "The configuration may change in the future."
+    ):
         driver.verify_connectivity()
     backend.send_response("Driver", {"id": driver_id})
 
@@ -118,10 +138,15 @@ def VerifyConnectivity(backend, data):
 def CheckMultiDBSupport(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
-    backend.send_response(
-        "MultiDBSupport",
-        {"id": backend.next_key(), "available": driver.supports_multi_db()}
-    )
+    with warning_check(
+        neo4j.ExperimentalWarning,
+        "Feature support query, based on Bolt protocol version and Neo4j "
+        "server version will change in the future."
+    ):
+        available = driver.supports_multi_db()
+    backend.send_response("MultiDBSupport", {
+        "id": backend.next_key(), "available": available
+    })
 
 
 def resolution_func(backend, custom_resolver=False, custom_dns_resolver=False):
