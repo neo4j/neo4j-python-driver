@@ -643,7 +643,6 @@ class BoltDriver(_Direct, Driver):
             """
             session_config = SessionConfig(self._default_workspace_config,
                                            config)
-            SessionConfig.consume(config)  # Consume the config
             return Session(self._pool, session_config)
 
 
@@ -674,5 +673,5 @@ class Neo4jDriver(_Routing, Driver):
 
         def session(self, **config) -> Session:
             session_config = SessionConfig(self._default_workspace_config,
-                                           SessionConfig.consume(config))
+                                           config)
             return Session(self._pool, session_config)
