@@ -43,14 +43,14 @@ from neo4j.io import Bolt
 NEO4J_RELEASES = getenv("NEO4J_RELEASES", "snapshot-enterprise 3.5-enterprise").split()
 NEO4J_HOST = "localhost"
 NEO4J_PORTS = {
-    "bolt": 7687,
+    "bolt": 17601,
     "http": 17401,
     "https": 17301,
 }
-NEO4J_CORES = 1
-NEO4J_REPLICAS = 0
+NEO4J_CORES = 3
+NEO4J_REPLICAS = 2
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "pass"
+NEO4J_PASSWORD = "password"
 NEO4J_AUTH = (NEO4J_USER, NEO4J_PASSWORD)
 NEO4J_LOCK = RLock()
 NEO4J_SERVICE = None
