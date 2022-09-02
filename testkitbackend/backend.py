@@ -110,6 +110,23 @@ class Backend:
         self._requestHandlers = dict(
             [m for m in getmembers(requests, isfunction)])
 
+    def close(self):
+        for dict_of_closables in (
+            self.transactions,
+            {key: tracker.session for key, tracker in self.sessions.items()},
+            self.drivers,
+        ):
+            for key, closable in dict_of_closables.items():
+                try:
+                    closable.close()
+                except (Neo4jError, DriverError, OSError):
+                    log.error(
+                        "Error during TestKit backend garbage collection. "
+                        "While collecting: (key: %s) %s\n%s",
+                        key, closable, traceback.format_exc()
+                    )
+            dict_of_closables.clear()
+
     def next_key(self):
         self.key = self.key + 1
         return self.key

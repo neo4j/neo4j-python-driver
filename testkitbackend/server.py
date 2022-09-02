@@ -25,7 +25,10 @@ class Server(TCPServer):
         class Handler(StreamRequestHandler):
             def handle(self):
                 backend = Backend(self.rfile, self.wfile)
-                while backend.process_request():
-                    pass
+                try:
+                    while backend.process_request():
+                        pass
+                finally:
+                    backend.close()
                 print("Disconnected")
         super(Server, self).__init__(address, Handler)
