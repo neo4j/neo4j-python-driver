@@ -69,12 +69,21 @@ class AsyncBackend:
             [m for m in getmembers(requests, isfunction)])
 
     async def close(self):
-        for transaction in self.transactions.values():
-            await transaction.close()
-        for session in self.sessions.values():
-            await session.close()
-        for driver in self.drivers.values():
-            await driver.close()
+        for dict_of_closables in (
+            self.transactions,
+            {key: tracker.session for key, tracker in self.sessions.items()},
+            self.drivers,
+        ):
+            for key, closable in dict_of_closables.items():
+                try:
+                    await closable.close()
+                except (Neo4jError, DriverError, OSError):
+                    log.error(
+                        "Error during TestKit backend garbage collection. "
+                        "While collecting: (key: %s) %s\n%s",
+                        key, closable, traceback.format_exc()
+                    )
+            dict_of_closables.clear()
 
     def next_key(self):
         self.key = self.key + 1

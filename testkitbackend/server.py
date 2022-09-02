@@ -33,9 +33,11 @@ class Server(TCPServer):
         class Handler(StreamRequestHandler):
             def handle(self):
                 backend = Backend(self.rfile, self.wfile)
-                while backend.process_request():
-                    pass
-                backend.close()
+                try:
+                    while backend.process_request():
+                        pass
+                finally:
+                    backend.close()
                 print("Disconnected")
         super(Server, self).__init__(address, Handler)
 
@@ -48,10 +50,12 @@ class AsyncServer:
     @staticmethod
     async def _handler(reader, writer):
         backend = AsyncBackend(reader, writer)
-        while await backend.process_request():
-            pass
-        writer.close()
-        await backend.close()
+        try:
+            while await backend.process_request():
+                pass
+        finally:
+            writer.close()
+            await backend.close()
         print("Disconnected")
 
     async def start(self):
