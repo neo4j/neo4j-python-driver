@@ -46,8 +46,10 @@ class DatabaseSelectionExample:
         with self.driver.session(database="system") as session:
             while True:
                 try:
-                    session.run(f"DROP DATABASE example IF EXISTS{self._wait}")\
+                    session\
+                        .run(f"DROP DATABASE example IF EXISTS{self._wait}")\
                         .consume()
+                    break
                 except neo4j.exceptions.CypherSyntaxError:
                     if not self._wait:
                         raise
