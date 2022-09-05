@@ -23,7 +23,7 @@ Topics
 
 + :ref:`api-documentation`
 
-+ :ref:`async-api-documentation` (experimental)
++ :ref:`async-api-documentation`
 
 + :ref:`spatial-data-types`
 
