@@ -277,18 +277,19 @@ class Bolt(abc.ABC):
         return b"".join(version.to_bytes() for version in offered_versions).ljust(16, b"\x00")
 
     @classmethod
-    def ping(cls, address, *, timeout=None, **config):
+    def ping(cls, address, *, timeout=None, pool_config=None):
         """ Attempt to establish a Bolt connection, returning the
         agreed Bolt protocol version if successful.
         """
-        config = PoolConfig.consume(config)
+        if pool_config is None:
+            pool_config = PoolConfig()
         try:
             s, protocol_version, handshake, data = BoltSocket.connect(
                 address,
                 timeout=timeout,
-                custom_resolver=config.resolver,
-                ssl_context=config.get_ssl_context(),
-                keep_alive=config.keep_alive,
+                custom_resolver=pool_config.resolver,
+                ssl_context=pool_config.get_ssl_context(),
+                keep_alive=pool_config.keep_alive,
             )
         except (ServiceUnavailable, SessionExpired, BoltHandshakeError):
             return None
@@ -297,7 +298,8 @@ class Bolt(abc.ABC):
             return protocol_version
 
     @classmethod
-    def open(cls, address, *, auth=None, timeout=None, routing_context=None, **pool_config):
+    def open(cls, address, *, auth=None, timeout=None, routing_context=None,
+             pool_config=None):
         """ Open a new Bolt connection to a given server address.
 
         :param address:
@@ -316,7 +318,8 @@ class Bolt(abc.ABC):
             return t if t > 0 else 0
 
         t0 = perf_counter()
-        pool_config = PoolConfig.consume(pool_config)
+        if pool_config is None:
+            pool_config = PoolConfig()
 
         socket_connection_timeout = pool_config.connection_timeout
         if socket_connection_timeout is None:
@@ -906,7 +909,7 @@ class BoltPool(IOPool):
         def opener(addr, timeout):
             return Bolt.open(
                 addr, auth=auth, timeout=timeout, routing_context=None,
-                **pool_config
+                pool_config=pool_config
             )
 
         pool = cls(opener, pool_config, workspace_config, address)
@@ -951,7 +954,8 @@ class Neo4jPool(IOPool):
 
         def opener(addr, timeout):
             return Bolt.open(addr, auth=auth, timeout=timeout,
-                             routing_context=routing_context, **pool_config)
+                             routing_context=routing_context,
+                             pool_config=pool_config)
 
         pool = cls(opener, pool_config, workspace_config, address)
         return pool

@@ -28,6 +28,7 @@ from io import StringIO
 from neo4j import GraphDatabase
 # tag::database-selection-import[]
 from neo4j import READ_ACCESS
+import neo4j.exceptions
 # end::database-selection-import[]
 
 from neo4j.exceptions import ServiceUnavailable
@@ -41,13 +42,23 @@ class DatabaseSelectionExample:
 
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
+        self._wait = " WAIT"
         with self.driver.session(database="system") as session:
-            session.run("DROP DATABASE example IF EXISTS").consume()
-            session.run("CREATE DATABASE example").consume()
+            while True:
+                try:
+                    session\
+                        .run(f"DROP DATABASE example IF EXISTS{self._wait}")\
+                        .consume()
+                    break
+                except neo4j.exceptions.CypherSyntaxError:
+                    if not self._wait:
+                        raise
+                    self._wait = ""
+            session.run(f"CREATE DATABASE example{self._wait}").consume()
 
     def close(self):
         with self.driver.session(database="system") as session:
-            session.run("DROP DATABASE example").consume()
+            session.run(f"DROP DATABASE example{self._wait}").consume()
         self.driver.close()
 
     def run_example_code(self):

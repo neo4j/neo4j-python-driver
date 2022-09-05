@@ -22,6 +22,7 @@
 import pytest
 
 from neo4j import (
+    ExperimentalWarning,
     GraphDatabase,
     Neo4jDriver,
     TRUST_ALL_CERTIFICATES,
@@ -58,7 +59,11 @@ def test_neo4j_driver_verify_connectivity(driver_info, test_script):
     with StubCluster(test_script):
         with GraphDatabase.driver(driver_info["uri_neo4j"], auth=driver_info["auth_token"], user_agent="test") as driver:
             assert isinstance(driver, Neo4jDriver)
-            assert driver.verify_connectivity() is not None
+            with pytest.warns(
+                    ExperimentalWarning,
+                    match="The configuration may change in the future."
+            ):
+                assert driver.verify_connectivity() is not None
 
 
 # @pytest.mark.skip(reason="Flaky")
@@ -75,4 +80,8 @@ def test_neo4j_driver_verify_connectivity_server_down(driver_info, test_script):
         assert isinstance(driver, Neo4jDriver)
 
         with pytest.raises(ServiceUnavailable):
-            driver.verify_connectivity()
+            with pytest.warns(
+                    ExperimentalWarning,
+                    match="The configuration may change in the future."
+            ):
+                driver.verify_connectivity()

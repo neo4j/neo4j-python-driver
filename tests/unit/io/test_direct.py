@@ -116,6 +116,7 @@ class BoltTestCase(TestCase):
             connection = Bolt.open(("localhost", 9999), auth=("test", "test"))
 
     def test_open_timeout(self):
+        conf = PoolConfig()
         with pytest.raises(ServiceUnavailable):
             connection = Bolt.open(("localhost", 9999), auth=("test", "test"), timeout=1)
 

@@ -32,11 +32,11 @@ class CartesianPointTestCase(TestCase):
     def test_alias(self):
         x, y, z = 3.2, 4.0, -1.2
         p = CartesianPoint((x, y, z))
-        self.assert_(hasattr(p, "x"))
+        self.assertTrue(hasattr(p, "x"))
         self.assertEqual(p.x, x)
-        self.assert_(hasattr(p, "y"))
+        self.assertTrue(hasattr(p, "y"))
         self.assertEqual(p.y, y)
-        self.assert_(hasattr(p, "z"))
+        self.assertTrue(hasattr(p, "z"))
         self.assertEqual(p.z, z)
 
     def test_dehydration_3d(self):

@@ -170,9 +170,19 @@ class Config(Mapping, metaclass=ConfigType):
             else:
                 raise AttributeError(k)
 
+        rejected_keys = []
         for key, value in data_dict.items():
             if value is not None:
-                set_attr(key, value)
+                try:
+                    set_attr(key, value)
+                except AttributeError as exc:
+                    if not exc.args == (key,):
+                        raise
+                    rejected_keys.append(key)
+
+            if rejected_keys:
+                raise ConfigurationError("Unexpected config keys: "
+                                         + ", ".join(rejected_keys))
 
     def __init__(self, *args, **kwargs):
         for arg in args:

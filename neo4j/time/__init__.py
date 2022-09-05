@@ -482,7 +482,7 @@ class Duration(tuple):
         :rtype: Duration
         """
         if isinstance(other, float):
-            deprecation_warn("Multiplication with float will be deprecated in "
+            deprecation_warn("Multiplication with float will be removed in "
                              "5.0.")
         if isinstance(other, (int, float)):
             return Duration(
@@ -1627,7 +1627,7 @@ class Time(metaclass=TimeType):
         ts = clock_time.seconds % 86400
         nanoseconds = int(NANO_SECONDS * ts + clock_time.nanoseconds)
         ticks = (epoch.time().ticks_ns + nanoseconds) % (86400 * NANO_SECONDS)
-        return Time.from_ticks_ns(ticks)
+        return cls.from_ticks_ns(ticks)
 
     @classmethod
     def __normalize_hour(cls, hour):
@@ -1657,8 +1657,8 @@ class Time(metaclass=TimeType):
         # TODO 5.0: remove -----------------------------------------------------
         seconds, extra_ns = divmod(second, 1)
         if extra_ns:
-            deprecation_warn("Float support second will be removed in 5.0. "
-                             "Use `nanosecond` instead.")
+            deprecation_warn("Float support for `second` will be removed in "
+                             "5.0. Use `nanosecond` instead.")
         # ----------------------------------------------------------------------
         hour, minute, second = cls.__normalize_second(hour, minute, second)
         nanosecond = int(nanosecond
@@ -1753,7 +1753,7 @@ class Time(metaclass=TimeType):
         return self.__nanosecond
 
     @property
-    @deprecated("hour_minute_second will be removed in 5.0. "
+    @deprecated("`hour_minute_second` will be removed in 5.0. "
                 "Use `hour_minute_second_nanosecond` instead.")
     def hour_minute_second(self):
         """The time as a tuple of (hour, minute, second).

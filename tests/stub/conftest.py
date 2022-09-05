@@ -21,7 +21,6 @@
 
 import subprocess
 import os
-import time
 
 from platform import system
 from threading import Thread
@@ -65,12 +64,14 @@ class StubServer:
                     pass
                 log.debug(line)
 
+        self._process.__exit__(None, None, None)
         return True
 
     def kill(self):
         # Kill process if not already dead
         if self._process.poll() is None:
             self._process.kill()
+        self._process.__exit__(None, None, None)
 
 
 class StubCluster:

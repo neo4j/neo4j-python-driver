@@ -32,11 +32,11 @@ class WGS84PointTestCase(TestCase):
     def test_alias(self):
         x, y, z = 3.2, 4.0, -1.2
         p = WGS84Point((x, y, z))
-        self.assert_(hasattr(p, "longitude"))
+        self.assertTrue(hasattr(p, "longitude"))
         self.assertEqual(p.longitude, x)
-        self.assert_(hasattr(p, "latitude"))
+        self.assertTrue(hasattr(p, "latitude"))
         self.assertEqual(p.latitude, y)
-        self.assert_(hasattr(p, "height"))
+        self.assertTrue(hasattr(p, "height"))
         self.assertEqual(p.height, z)
 
     def test_dehydration_3d(self):

@@ -36,7 +36,7 @@ from pytz import (
 )
 
 from neo4j.time import (
-    DateTime,
+    DateTime as _DateTime,
     MIN_YEAR,
     MAX_YEAR,
     Duration,
@@ -51,6 +51,19 @@ timezone_us_eastern = timezone("US/Eastern")
 timezone_london = timezone("Europe/London")
 timezone_berlin = timezone("Europe/Berlin")
 timezone_utc = timezone("UTC")
+
+
+class DateTime(_DateTime):
+    def __new__(cls, *args, **kwargs):
+        second = kwargs.get("seconds", args[5] if len(args) > 5 else None)
+        if isinstance(second, float) and not second.is_integer():
+            with pytest.warns(
+                DeprecationWarning,
+                match="Float support for `second` will be removed in 5.0. "
+                      "Use `nanosecond` instead."
+            ):
+                return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls, *args, **kwargs)
 
 
 def seconds_options(seconds, nanoseconds):
@@ -71,7 +84,10 @@ class TestDateTime:
 
     @pytest.mark.parametrize("seconds_args", [*seconds_options(17, 914390409)])
     def test_non_zero_naive(self, seconds_args):
-        t = DateTime(2018, 4, 26, 23, 0, *seconds_args)
+        if isinstance(seconds_args[0], float):
+            t = DateTime(2018, 4, 26, 23, 0, *seconds_args)
+        else:
+            t = DateTime(2018, 4, 26, 23, 0, *seconds_args)
         assert t.year == 2018
         assert t.month == 4
         assert t.day == 26
@@ -433,7 +449,8 @@ class TestDateTime:
 
 def test_iso_format_with_time_zone_case_1():
     # python -m pytest tests/unit/time/test_datetime.py -s -v -k test_iso_format_with_time_zone_case_1
-    expected = DateTime(2019, 10, 30, 7, 54, 2.129790999, tzinfo=timezone_utc)
+    expected = DateTime(2019, 10, 30, 7, 54, 2.129790999,
+                                         tzinfo=timezone_utc)
     assert expected.iso_format() == "2019-10-30T07:54:02.129790999+00:00"
     assert expected.tzinfo == FixedOffset(0)
     actual = DateTime.from_iso_format("2019-10-30T07:54:02.129790999+00:00")
