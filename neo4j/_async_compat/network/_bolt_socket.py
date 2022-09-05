@@ -342,7 +342,6 @@ class AsyncBoltSocket:
                 await socket_.close()
             except OSError:
                 pass
-
         else:
             try:
                 socket_.shutdown(SHUT_RDWR)
