@@ -241,9 +241,11 @@ class AsyncGraphDatabase:
                 async with driver.session(
                     bookmark_manager=bookmark_manager
                 ) as session2:
-                    session1.run("<WRITE_QUERY>")
+                    result1 = await session1.run("<WRITE_QUERY>")
+                    await result1.consume()
                     # READ_QUERY is guaranteed to see what WRITE_QUERY wrote.
-                    session2.run("<READ_QUERY>")
+                    result2 = await session2.run("<READ_QUERY>")
+                    await result2.consume()
 
         This is a very contrived example, and in this particular case, having
         both queries in the same session has the exact same effect and might

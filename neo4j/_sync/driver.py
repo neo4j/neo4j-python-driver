@@ -240,9 +240,11 @@ class GraphDatabase:
                 with driver.session(
                     bookmark_manager=bookmark_manager
                 ) as session2:
-                    session1.run("<WRITE_QUERY>")
+                    result1 = session1.run("<WRITE_QUERY>")
+                    result1.consume()
                     # READ_QUERY is guaranteed to see what WRITE_QUERY wrote.
-                    session2.run("<READ_QUERY>")
+                    result2 = session2.run("<READ_QUERY>")
+                    result2.consume()
 
         This is a very contrived example, and in this particular case, having
         both queries in the same session has the exact same effect and might
