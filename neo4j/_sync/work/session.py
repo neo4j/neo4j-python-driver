@@ -100,8 +100,7 @@ class Session(Workspace):
         assert isinstance(session_config, SessionConfig)
         super().__init__(pool, session_config)
         self._initialize_bookmarks(session_config.bookmarks)
-        if not session_config.ignore_bookmark_manager:
-            self._bookmark_manager = session_config.bookmark_manager
+        self._bookmark_manager = session_config.bookmark_manager
 
     def __enter__(self) -> Session:
         return self
