@@ -34,6 +34,8 @@ from neo4j.time import (
     Time,
 )
 
+from ._warning_check import warning_check
+
 
 def record(rec):
     fields = []
@@ -73,18 +75,34 @@ def field(v):
     if isinstance(v, (bytes, bytearray)):
         return to("CypherBytes", " ".join("{:02x}".format(byte) for byte in v))
     if isinstance(v, Node):
+        with warning_check(
+            DeprecationWarning, "`id` is deprecated, use `element_id` instead"
+        ):
+            id_ = v.id
         node = {
-            "id": field(v.id),
+            "id": field(id_),
             "labels": field(v.labels),
             "props": field(v._properties),
             "elementId": field(v.element_id),
         }
         return {"name": "Node", "data": node}
     if isinstance(v, Relationship):
+        with warning_check(
+            DeprecationWarning, "`id` is deprecated, use `element_id` instead"
+        ):
+            id_ = v.id
+        with warning_check(
+            DeprecationWarning, "`id` is deprecated, use `element_id` instead"
+        ):
+            start_id = v.start_node.id
+        with warning_check(
+            DeprecationWarning, "`id` is deprecated, use `element_id` instead"
+        ):
+            end_id = v.end_node.id
         rel = {
-            "id": field(v.id),
-            "startNodeId": field(v.start_node.id),
-            "endNodeId": field(v.end_node.id),
+            "id": field(id_),
+            "startNodeId": field(start_id),
+            "endNodeId": field(end_id),
             "type": field(v.type),
             "props": field(v._properties),
             "elementId": field(v.element_id),

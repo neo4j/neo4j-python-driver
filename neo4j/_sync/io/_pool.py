@@ -379,7 +379,7 @@ class BoltPool(IOPool):
         def opener(addr, timeout):
             return Bolt.open(
                 addr, auth=auth, timeout=timeout, routing_context=None,
-                **pool_config
+                pool_config=pool_config
             )
 
         pool = cls(opener, pool_config, workspace_config, address)
@@ -431,7 +431,7 @@ class Neo4jPool(IOPool):
         def opener(addr, timeout):
             return Bolt.open(
                 addr, auth=auth, timeout=timeout,
-                routing_context=routing_context, **pool_config
+                routing_context=routing_context, pool_config=pool_config
             )
 
         pool = cls(opener, pool_config, workspace_config, address)

@@ -32,6 +32,7 @@ def test_should_run_readme(uri, auth):
     driver = GraphDatabase.driver("neo4j://localhost:7687",
                                   auth=("neo4j", "password"))
     # === END: README ===
+    driver.close()
     driver = GraphDatabase.driver(uri, auth=auth)
     # === START: README ===
 

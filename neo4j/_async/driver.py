@@ -644,7 +644,6 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
             """
             session_config = SessionConfig(self._default_workspace_config,
                                            config)
-            SessionConfig.consume(config)  # Consume the config
             return AsyncSession(self._pool, session_config)
 
 
@@ -676,5 +675,4 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
         def session(self, **config) -> AsyncSession:
             session_config = SessionConfig(self._default_workspace_config,
                                            config)
-            SessionConfig.consume(config)  # Consume the config
             return AsyncSession(self._pool, session_config)

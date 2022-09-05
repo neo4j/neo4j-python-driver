@@ -27,4 +27,4 @@ def run(args):
 
 
 if __name__ == "__main__":
-    run(["python", "-m", "tox", "-f", "integration"])
+    run(["python", "-W", "error", "-m", "tox", "-f", "integration"])

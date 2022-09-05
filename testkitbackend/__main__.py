@@ -20,6 +20,7 @@
 
 import asyncio
 import sys
+import warnings
 
 from .server import (
     AsyncServer,
@@ -46,6 +47,7 @@ def async_main():
 
 
 if __name__ == "__main__":
+    warnings.simplefilter("error")
     if len(sys.argv) == 2 and sys.argv[1].lower().strip() == "async":
         async_main()
     else:
