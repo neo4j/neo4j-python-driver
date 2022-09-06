@@ -352,7 +352,7 @@ class AsyncBolt:
             bolt_cls = AsyncBolt5x0
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getsockname()[1])
-            AsyncBoltSocket.close_socket(s)
+            await AsyncBoltSocket.close_socket(s)
 
             supported_versions = cls.protocol_handlers().keys()
             raise BoltHandshakeError(
@@ -374,7 +374,7 @@ class AsyncBolt:
             finally:
                 connection.socket.set_deadline(None)
         except Exception as e:
-            log.debug("[#%04X]  C: <OPEN FAILED> %r", s.getsockname()[1], e)
+            log.debug("[#%04X]  C: <OPEN FAILED> %r", connection.local_port, e)
             connection.kill()
             raise
 

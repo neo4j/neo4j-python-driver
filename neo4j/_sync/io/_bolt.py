@@ -374,7 +374,7 @@ class Bolt:
             finally:
                 connection.socket.set_deadline(None)
         except Exception as e:
-            log.debug("[#%04X]  C: <OPEN FAILED> %r", s.getsockname()[1], e)
+            log.debug("[#%04X]  C: <OPEN FAILED> %r", connection.local_port, e)
             connection.kill()
             raise
 
