@@ -75,6 +75,8 @@ class AsyncBackend:
             self.drivers,
         ):
             for key, closable in dict_of_closables.items():
+                if not hasattr(closable, "close"):  # e.g., ManagedTransaction
+                    continue
                 try:
                     await closable.close()
                 except (Neo4jError, DriverError, OSError):
