@@ -1045,7 +1045,7 @@ class Date(metaclass=DateType):
 
         :param year: the year to look up
         :type year: int
-        :param year: the month to look up
+        :param month: the month to look up
         :type year: int
 
         :rtype: int
