@@ -968,7 +968,7 @@ class Date(date_base_class, metaclass=DateType):
         """Return the number of days in `month` of `year`.
 
         :param year: the year to look up
-        :param year: the month to look up
+        :param month: the month to look up
 
         :raises ValueError: if `year` or `month` is out of range:
             :attr:`MIN_YEAR` <= year <= :attr:`MAX_YEAR`;
@@ -1380,6 +1380,9 @@ class Time(time_base_class, metaclass=TimeType):
     :param tzinfo: timezone or None to get a local :class:`.Time`.
 
     :raises ValueError: if one of the parameters is out of range.
+
+    ..versionchanged:: 5.0
+        The parameter ``second`` no longer accepts :class:`float` values.
     """
 
     # CONSTRUCTOR #
@@ -1497,6 +1500,11 @@ class Time(time_base_class, metaclass=TimeType):
 
         :raises ValueError: if ticks is out of bounds
             (0 <= ticks < 86400000000000)
+
+        ..versionchanged:: 5.0
+            The parameter ``ticks`` no longer accepts :class:`float` values
+            but only :class:`int`. It's now nanoseconds since midnight instead
+            of seconds.
         """
         if not isinstance(ticks, int):
             raise TypeError("Ticks must be int")
@@ -1606,7 +1614,12 @@ class Time(time_base_class, metaclass=TimeType):
 
     @property
     def ticks(self) -> int:
-        """The total number of nanoseconds since midnight."""
+        """The total number of nanoseconds since midnight.
+
+        .. versionchanged:: 5.0
+            The property's type changed from :class:`float` to :class:`int`.
+            It's now nanoseconds since midnight instead of seconds.
+        """
         return self.__ticks
 
     @property
@@ -1621,7 +1634,17 @@ class Time(time_base_class, metaclass=TimeType):
 
     @property
     def second(self) -> int:
-        """The seconds of the time."""
+        """The seconds of the time.
+
+        .. versionchanged:: 4.4
+            The property's type changed from :class:`float` to
+            :class:`decimal.Decimal` to mitigate rounding issues.
+
+        .. versionchanged:: 5.0
+            The  property's type changed from :class:`decimal.Decimal` to
+            :class:`int`. It does not longer cary sub-second information.
+            Use `attr:`nanosecond` instead.
+        """
         return self.__second
 
     @property
