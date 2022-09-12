@@ -128,40 +128,34 @@ class Session(Workspace):
         This will release any borrowed resources, such as connections, and will
         roll back any outstanding transactions.
         """
-        if self._connection:
+        ignored_exceptions = (Neo4jError, ServiceUnavailable, SessionExpired)
+
+        if self._closed:
+            return
+        try:
             if self._autoResult:
-                if self._state_failed is False:
-                    try:
-                        self._autoResult.consume()
-                        self._collect_bookmark(self._autoResult._bookmark)
-                    except Exception as error:
-                        # TODO: Investigate potential non graceful close states
-                        self._autoResult = None
-                        self._state_failed = True
-
+                try:
+                    self._autoResult.consume()
+                except ignored_exceptions:
+                    pass
             if self._transaction:
-                if self._transaction.closed() is False:
-                    self._transaction.rollback()  # roll back the transaction if it is not closed
-                self._transaction = None
-
-            try:
-                if self._connection:
+                try:
+                    self._transaction.close()
+                except ignored_exceptions:
+                    pass
+            if self._connection:
+                try:
                     self._connection.send_all()
                     self._connection.fetch_all()
-                    # TODO: Investigate potential non graceful close states
-            except Neo4jError:
-                pass
-            except TransactionError:
-                pass
-            except ServiceUnavailable:
-                pass
-            except SessionExpired:
-                pass
-            finally:
+                except ignored_exceptions:
+                    pass
+        finally:
+            self._autoResult = None
+            self._transaction = None
+            try:
                 self._disconnect()
-
-            self._state_failed = False
-            self._closed = True
+            finally:
+                self._closed = True
 
     def run(self, query, parameters=None, **kwparameters):
         """Run a Cypher query within an auto-commit transaction.
