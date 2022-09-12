@@ -169,46 +169,38 @@ class AsyncSession(AsyncWorkspace):
         This will release any borrowed resources, such as connections, and will
         roll back any outstanding transactions.
         """
+        ignored_exceptions = (Neo4jError, ServiceUnavailable, SessionExpired)
+
         if self._closed:
             return
-        if self._connection:
+        try:
             if self._auto_result:
-                if self._state_failed is False:
-                    try:
-                        await self._auto_result.consume()
-                        await self._update_bookmark(
-                            self._auto_result._database,
-                            self._auto_result._bookmark
-                        )
-                    except Exception as error:
-                        # TODO: Investigate potential non graceful close states
-                        self._auto_result = None
-                        self._state_failed = True
-
+                try:
+                    await self._auto_result.consume()
+                except ignored_exceptions:
+                    pass
             if self._transaction:
-                if self._transaction._closed() is False:
-                    # roll back the transaction if it is not closed
-                    await self._transaction._rollback()
-                self._transaction = None
-
-            try:
-                if self._connection:
+                try:
+                    await self._transaction._close()
+                except ignored_exceptions:
+                    pass
+            if self._connection:
+                try:
                     await self._connection.send_all()
                     await self._connection.fetch_all()
                     # TODO: Investigate potential non graceful close states
-            except Neo4jError:
-                pass
-            except TransactionError:
-                pass
-            except ServiceUnavailable:
-                pass
-            except SessionExpired:
-                pass
-            finally:
+                except ignored_exceptions:
+                    pass
+        except asyncio.CancelledError:
+            self._handle_cancellation(message="close")
+            raise
+        finally:
+            self._auto_result = None
+            self._transaction = None
+            try:
                 await self._disconnect()
-
-            self._state_failed = False
-        self._closed = True
+            finally:
+                self._closed = True
 
     if AsyncUtil.is_async_code:
         def cancel(self) -> None:
@@ -376,6 +368,10 @@ class AsyncSession(AsyncWorkspace):
             await self._disconnect()
 
     async def _transaction_error_handler(self, error):
+        if isinstance(error, asyncio.CancelledError):
+            return self._handle_cancellation(
+                message="_transaction_error_handler"
+            )
         if self._transaction:
             self._transaction = None
             await self._disconnect()

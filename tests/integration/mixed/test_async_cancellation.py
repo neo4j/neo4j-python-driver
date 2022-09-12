@@ -215,3 +215,105 @@ async def test_async_cancellation_does_not_leak(uri, auth):
                     pool_connections = driver._pool.connections
                     for connections in pool_connections.values():
                         assert len(connections) <= 1
+
+
+@mark_async_test
+async def test_async_cancelled_consume_on_close(uri, auth):
+    session = None
+
+    async def shenanigans(driver_):
+        nonlocal session
+        reached_session_end = False
+
+        session = driver_.session()
+
+        with pytest.raises(asyncio.CancelledError) as exc:
+            async with session as session:
+                result = await session.run(
+                    "UNWIND [2, 1, 0, -1] AS n RETURN n"
+                )
+
+                original_consume = result.consume
+
+                async def _cancelling_consume(*args, **kwargs):
+                    asyncio.current_task().cancel()
+                    return await original_consume(*args, **kwargs)
+
+                result.consume = _cancelling_consume
+
+                reached_session_end = True
+
+        assert reached_session_end
+
+        raise exc.value
+
+    async with get_async_driver(
+        uri, auth=auth,
+        max_connection_pool_size=1,
+        fetch_size=1,
+    ) as driver:
+        fut = asyncio.ensure_future(shenanigans(driver))
+        with pytest.raises(asyncio.CancelledError):
+            await fut
+
+        assert isinstance(session, neo4j.AsyncSession)
+        assert session._connection is None
+        pool = driver._pool
+        for address in pool.connections.keys():
+            connections = pool.connections[address]
+            reservations = pool.connections_reservations[address]
+            assert reservations == 0
+            assert len(connections) <= 1
+            assert all(not connection.in_use for connection in connections)
+        assert session.closed()
+
+
+@mark_async_test
+async def test_async_cancelled_bookmark_manager_consumer(uri, auth):
+    session = None
+
+    async def shenanigans(driver_):
+        nonlocal session
+        reached_session_end = False
+        session = driver_.session()
+        with pytest.raises(asyncio.CancelledError) as exc:
+            async with session as session:
+                await session.run("UNWIND [2, 1, 0, -1] AS n RETURN n")
+                reached_session_end = True
+
+        assert reached_session_end
+
+        raise exc.value
+
+    async def cancelling_consumer(*_):
+        asyncio.current_task().cancel()
+        await asyncio.sleep(0)
+
+    with pytest.warns(neo4j.ExperimentalWarning):
+        bookmark_manager = neo4j.AsyncGraphDatabase.bookmark_manager(
+            bookmarks_consumer=cancelling_consumer
+        )
+
+    with pytest.warns(neo4j.ExperimentalWarning, match="bookmark_manager"):
+        driver = get_async_driver(
+            uri, auth=auth,
+            max_connection_pool_size=1,
+            fetch_size=1,
+            bookmark_manager=bookmark_manager,
+        )
+
+    async with driver as driver:
+        fut = asyncio.ensure_future(shenanigans(driver))
+        with pytest.raises(asyncio.CancelledError):
+            await fut
+
+        assert isinstance(session, neo4j.AsyncSession)
+        assert session._connection is None
+        pool = driver._pool
+        for address in pool.connections.keys():
+            connections = pool.connections[address]
+            reservations = pool.connections_reservations[address]
+            assert reservations == 0
+            assert len(connections) <= 1
+            assert all(not connection.in_use for connection in connections)
+        assert session.closed()
