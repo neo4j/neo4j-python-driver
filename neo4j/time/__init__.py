@@ -1045,7 +1045,7 @@ class Date(metaclass=DateType):
 
         :param year: the year to look up
         :type year: int
-        :param year: the month to look up
+        :param month: the month to look up
         :type year: int
 
         :rtype: int
@@ -1738,7 +1738,11 @@ class Time(metaclass=TimeType):
         This contains seconds and nanoseconds of the time.
         `int(:attr:`.seconds`)` will yield the seconds without nanoseconds.
 
-        :type: float
+        :type: decimal.Decimal
+
+        .. versionchanged:: 4.4
+            The property's type changed from :class:`float` to
+            :class:`decimal.Decimal` to mitigate rounding issues.
         """
         # TODO 5.0: return plain self.__second
         with _decimal_context(prec=11):
@@ -1762,7 +1766,12 @@ class Time(metaclass=TimeType):
             Will be removed in 5.0.
             Use :attr:`.hour_minute_second_nanosecond` instead.
 
-        :type: (int, int, float)"""
+        :type: (int, int, decimal.Decimal)
+
+        .. versionchanged:: 4.4
+            Last element of the property changed from :class:`float` to
+            :class:`decimal.Decimal` to mitigate rounding issues.
+        """
         return self.__hour, self.__minute, self.second
 
     @property
