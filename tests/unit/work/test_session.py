@@ -23,10 +23,17 @@ from contextlib import contextmanager
 import pytest
 
 from neo4j import (
+    Result,
     Session,
     SessionConfig,
     Transaction,
     unit_of_work,
+)
+from neo4j.exceptions import (
+    DriverError,
+    ServiceUnavailable,
+    SessionExpired,
+    Neo4jError,
 )
 
 from ._fake_connection import FakeConnection
@@ -41,10 +48,99 @@ def pool(mocker):
 
 def test_session_context_calls_close(mocker):
     s = Session(None, SessionConfig())
-    mock_close = mocker.patch.object(s, 'close', autospec=True)
+    original_close = s.close
+
+    def mock_close(*args, **kwargs):
+        assert not s._state_failed
+        return original_close(*args, **kwargs)
+
+    mock_close = mocker.patch.object(s, 'close', autospec=True,
+                                     side_effect=mock_close)
     with s:
         pass
     mock_close.assert_called_once_with()
+
+
+def test_session_context_calls_close_exception_case(mocker):
+    exc = Exception("test")
+
+    s = Session(None, SessionConfig())
+    original_close = s.close
+
+    def mock_close(*args, **kwargs):
+        assert s._state_failed
+        return original_close(*args, **kwargs)
+
+    mock_close = mocker.patch.object(s, 'close', autospec=True,
+                                     side_effect=mock_close)
+
+    with pytest.raises(type(exc)) as exc_info:
+        with s:
+            raise exc
+    assert exc_info.value is exc
+    mock_close.assert_called_once_with()
+
+
+@pytest.mark.parametrize(
+    ("pending_tx", "pending_auto_commit"),
+    (
+            (True, False),
+            (False, True),
+            (False, False),
+    )
+)
+@pytest.mark.parametrize(
+    ("cleanup_fail", "silent_fail"),
+    (
+            (None, True),
+            (AttributeError("the dev sucks"), False),
+            (Exception("test"), False),
+            (DriverError("test"), False),
+            (ServiceUnavailable("test"), True),
+            (SessionExpired("test"), True),
+            (Neo4jError("test", "Neo.TransientError.What.Ever"), True),
+    )
+)
+@pytest.mark.parametrize("user_code_raised", (True, False))
+def test_close_with_failed_state(
+        pending_tx, pending_auto_commit, cleanup_fail, silent_fail,
+        user_code_raised, mocker,
+):
+    s = Session(None, SessionConfig())
+    s._state_failed = user_code_raised
+    tx_mock = mocker.Mock(spec=Transaction)
+    res_mock = mocker.Mock(spec=Result)
+    if pending_tx:
+        s._transaction = tx_mock
+        if cleanup_fail:
+            s._transaction.close.side_effect = cleanup_fail
+    if pending_auto_commit:
+        s._autoResult = res_mock
+        if cleanup_fail:
+            s._autoResult.consume.side_effect = cleanup_fail
+
+    if not pending_tx and not pending_auto_commit:
+        expected_to_fail = False
+    elif pending_auto_commit:
+        expected_to_fail = not user_code_raised and cleanup_fail
+    else:
+        expected_to_fail = not silent_fail
+
+    if expected_to_fail:
+        with pytest.raises(type(cleanup_fail)) as exc_info:
+            s.close()
+        assert exc_info.value is cleanup_fail
+    else:
+        s.close()
+
+    assert s._closed
+    if pending_tx:
+        tx_mock.close.assert_called_once_with()
+    if pending_auto_commit:
+        if user_code_raised:
+            res_mock.consume.assert_not_called()
+        else:
+            res_mock.consume.assert_called_once_with()
 
 
 @pytest.mark.parametrize("test_run_args", (
