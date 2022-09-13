@@ -22,6 +22,7 @@ import pytest
 
 from neo4j import (
     AsyncManagedTransaction,
+    AsyncResult,
     AsyncSession,
     AsyncTransaction,
     Bookmarks,
@@ -33,6 +34,12 @@ from neo4j._async.io import (
 )
 from neo4j._conf import SessionConfig
 from neo4j.api import AsyncBookmarkManager
+from neo4j.exceptions import (
+    DriverError,
+    Neo4jError,
+    ServiceUnavailable,
+    SessionExpired,
+)
 
 from ...._async_compat import mark_async_test
 
@@ -50,11 +57,101 @@ def assert_warns_tx_func_deprecation(tx_func_name):
 @mark_async_test
 async def test_session_context_calls_close(mocker):
     s = AsyncSession(None, SessionConfig())
+    original_close = s.close
+
+    async def mock_close(*args, **kwargs):
+        assert not s._state_failed
+        return await original_close(*args, **kwargs)
+
     mock_close = mocker.patch.object(s, 'close', autospec=True,
-                                     side_effect=s.close)
+                                     side_effect=mock_close)
     async with s:
         pass
     mock_close.assert_called_once_with()
+
+
+@mark_async_test
+async def test_session_context_calls_close_exception_case(mocker):
+    exc = Exception("test")
+
+    s = AsyncSession(None, SessionConfig())
+    original_close = s.close
+
+    async def mock_close(*args, **kwargs):
+        assert s._state_failed
+        return await original_close(*args, **kwargs)
+
+    mock_close = mocker.patch.object(s, 'close', autospec=True,
+                                     side_effect=mock_close)
+
+    with pytest.raises(type(exc)) as exc_info:
+        async with s:
+            raise exc
+    assert exc_info.value is exc
+    mock_close.assert_called_once_with()
+
+
+@pytest.mark.parametrize(
+    ("pending_tx", "pending_auto_commit"),
+    (
+        (True, False),
+        (False, True),
+        (False, False),
+    )
+)
+@pytest.mark.parametrize(
+    ("cleanup_fail", "silent_fail"),
+    (
+        (None, True),
+        (AttributeError("the dev sucks"), False),
+        (Exception("test"), False),
+        (DriverError("test"), False),
+        (ServiceUnavailable("test"), True),
+        (SessionExpired("test"), True),
+        (Neo4jError("test", "Neo.TransientError.What.Ever"), True),
+    )
+)
+@pytest.mark.parametrize("user_code_raised", (True, False))
+@mark_async_test
+async def test_close_with_failed_state(
+    pending_tx, pending_auto_commit, cleanup_fail, silent_fail,
+    user_code_raised, mocker,
+):
+    s = AsyncSession(None, SessionConfig())
+    s._state_failed = user_code_raised
+    tx_mock = mocker.AsyncMock(spec=AsyncTransaction)
+    res_mock = mocker.AsyncMock(spec=AsyncResult)
+    if pending_tx:
+        s._transaction = tx_mock
+        if cleanup_fail:
+            s._transaction._close.side_effect = cleanup_fail
+    if pending_auto_commit:
+        s._auto_result = res_mock
+        if cleanup_fail:
+            s._auto_result.consume.side_effect = cleanup_fail
+
+    if not pending_tx and not pending_auto_commit:
+        expected_to_fail = False
+    elif pending_auto_commit:
+        expected_to_fail = not user_code_raised and cleanup_fail
+    else:
+        expected_to_fail = not silent_fail
+
+    if expected_to_fail:
+        with pytest.raises(type(cleanup_fail)) as exc_info:
+            await s.close()
+        assert exc_info.value is cleanup_fail
+    else:
+        await s.close()
+
+    assert s.closed()
+    if pending_tx:
+        tx_mock._close.assert_awaited_once_with()
+    if pending_auto_commit:
+        if user_code_raised:
+            res_mock.consume.assert_not_called()
+        else:
+            res_mock.consume.assert_awaited_once_with()
 
 
 @pytest.mark.parametrize("test_run_args", (
