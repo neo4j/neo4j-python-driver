@@ -174,27 +174,29 @@ class AsyncSession(AsyncWorkspace):
         if self._closed:
             return
         try:
-            if self._auto_result:
-                try:
+            try:
+                # consume outstanding auto-commit result
+                if self._auto_result:
                     await self._auto_result.consume()
-                except ignored_exceptions:
-                    pass
-            if self._transaction:
-                try:
-                    await self._transaction._close()
-                except ignored_exceptions:
-                    pass
+            finally:
+                # close any outstanding transaction
+                if self._transaction:
+                    try:
+                        await self._transaction._close()
+                    except ignored_exceptions:
+                        pass
+            # flush connection just in case
             if self._connection:
                 try:
                     await self._connection.send_all()
                     await self._connection.fetch_all()
-                    # TODO: Investigate potential non graceful close states
                 except ignored_exceptions:
                     pass
         except asyncio.CancelledError:
             self._handle_cancellation(message="close")
             raise
         finally:
+            # disconnect, clean up, and mark as closed
             self._auto_result = None
             self._transaction = None
             try:
