@@ -135,7 +135,7 @@ class Session(Workspace):
         try:
             try:
                 # consume outstanding auto-commit result
-                if self._autoResult:
+                if not self._state_failed and self._autoResult:
                     self._autoResult.consume()
             finally:
                 # close any outstanding transaction
@@ -144,7 +144,7 @@ class Session(Workspace):
                         self._transaction.close()
                     except ignored_exceptions:
                         pass
-            # flush connection just in case
+            # flush connection
             if self._connection:
                 try:
                     self._connection.send_all()
