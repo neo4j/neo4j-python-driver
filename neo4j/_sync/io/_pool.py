@@ -23,7 +23,6 @@ from collections import (
     defaultdict,
     deque,
 )
-from contextlib import contextmanager
 from logging import getLogger
 from random import choice
 
@@ -161,11 +160,10 @@ class IOPool(abc.ABC):
             connections = self.connections[address]
             pool_size = (len(connections)
                          + self.connections_reservations[address])
-            can_create_new_connection = (infinite_pool_size
-                                         or pool_size < max_pool_size)
-            self.connections_reservations[address] += 1
-        if can_create_new_connection:
-            return connection_creator
+            if infinite_pool_size or pool_size < max_pool_size:
+                # there's room for a new connection
+                self.connections_reservations[address] += 1
+                return connection_creator
         return None
 
     def _acquire(self, address, deadline, liveness_check_timeout):
