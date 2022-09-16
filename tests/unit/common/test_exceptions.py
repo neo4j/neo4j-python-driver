@@ -257,3 +257,20 @@ def test_error_rewrite(code, expected_cls, expected_code):
     assert error.is_retryable() is expected_retryable
     with pytest.warns(DeprecationWarning, match=".*is_retryable.*"):
         assert error.is_retriable() is expected_retryable
+
+
+def test_neo4j_error_from_server_as_str():
+    error = Neo4jError.hydrate(message="Test error message",
+                               code="Neo.ClientError.General.UnknownError")
+
+    assert isinstance(error, ClientError)
+    assert str(error) == ("{code: Neo.ClientError.General.UnknownError} "
+                          "{message: Test error message}")
+
+
+@pytest.mark.parametrize("cls", (Neo4jError, ClientError))
+def test_neo4j_error_from_code_as_str(cls):
+    error = cls("Generated somewhere in the driver")
+
+    assert isinstance(error, cls)
+    assert str(error) == "Generated somewhere in the driver"
