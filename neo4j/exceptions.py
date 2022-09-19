@@ -146,7 +146,7 @@ class Neo4jError(Exception):
         return False
 
     def __str__(self):
-        if self.code and self.message:
+        if self.code or self.message:
             return "{{code: {code}}} {{message: {message}}}".format(
                 code=self.code, message=self.message
             )
