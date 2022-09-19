@@ -756,9 +756,9 @@ class IOPool:
                          + self.connections_reservations[address])
             can_create_new_connection = (infinite_pool_size
                                          or pool_size < max_pool_size)
-            self.connections_reservations[address] += 1
-        if can_create_new_connection:
-            return connection_creator
+            if can_create_new_connection:
+                self.connections_reservations[address] += 1
+                return connection_creator
 
     def _acquire(self, address, deadline):
 
