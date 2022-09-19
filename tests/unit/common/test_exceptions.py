@@ -259,18 +259,57 @@ def test_error_rewrite(code, expected_cls, expected_code):
         assert error.is_retriable() is expected_retryable
 
 
-def test_neo4j_error_from_server_as_str():
-    error = Neo4jError.hydrate(message="Test error message",
-                               code="Neo.ClientError.General.UnknownError")
+@pytest.mark.parametrize(
+    ("code", "message", "expected_cls", "expected_str"),
+    (
+        (
+            "Neo.ClientError.General.UnknownError",
+            "Test error message",
+            ClientError,
+            "{code: Neo.ClientError.General.UnknownError} "
+            "{message: Test error message}"
+        ),
+        (
+            None,
+            "Test error message",
+            DatabaseError,
+            "{code: Neo.DatabaseError.General.UnknownError} "
+            "{message: Test error message}"
+        ),
+        (
+            "",
+            "Test error message",
+            DatabaseError,
+            "{code: Neo.DatabaseError.General.UnknownError} "
+            "{message: Test error message}"
+        ),
+        (
+            "Neo.ClientError.General.UnknownError",
+            None,
+            ClientError,
+            "{code: Neo.ClientError.General.UnknownError} "
+            "{message: An unknown error occurred}"
+        ),
+        (
+            "Neo.ClientError.General.UnknownError",
+            "",
+            ClientError,
+            "{code: Neo.ClientError.General.UnknownError} "
+            "{message: An unknown error occurred}"
+        ),
+    )
+)
+def test_neo4j_error_from_server_as_str(code, message, expected_cls,
+                                        expected_str):
+    error = Neo4jError.hydrate(code=code, message=message)
 
-    assert isinstance(error, ClientError)
-    assert str(error) == ("{code: Neo.ClientError.General.UnknownError} "
-                          "{message: Test error message}")
+    assert type(error) == expected_cls
+    assert str(error) == expected_str
 
 
 @pytest.mark.parametrize("cls", (Neo4jError, ClientError))
 def test_neo4j_error_from_code_as_str(cls):
     error = cls("Generated somewhere in the driver")
 
-    assert isinstance(error, cls)
+    assert type(error)== cls
     assert str(error) == "Generated somewhere in the driver"
