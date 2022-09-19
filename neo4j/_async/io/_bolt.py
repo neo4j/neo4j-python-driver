@@ -373,7 +373,11 @@ class AsyncBolt:
                 await connection.hello()
             finally:
                 connection.socket.set_deadline(None)
-        except Exception as e:
+        except (
+            Exception,
+            # Python 3.8+: CancelledError is a subclass of BaseException
+            asyncio.CancelledError,
+        ) as e:
             log.debug("[#%04X]  C: <OPEN FAILED> %r", connection.local_port, e)
             connection.kill()
             raise
