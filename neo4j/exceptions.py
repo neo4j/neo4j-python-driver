@@ -146,14 +146,16 @@ class Neo4jError(Exception):
         return False
 
     def __str__(self):
-        return "{{code: {code}}} {{message: {message}}}".format(code=self.code, message=self.message)
+        if self.code or self.message:
+            return "{{code: {code}}} {{message: {message}}}".format(
+                code=self.code, message=self.message
+            )
+        return super().__str__()
 
 
 class ClientError(Neo4jError):
     """ The Client sent a bad request - changing the request might yield a successful outcome.
     """
-    def __str__(self):
-        return super(Neo4jError, self).__str__()
 
 
 class DatabaseError(Neo4jError):

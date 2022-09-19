@@ -35,6 +35,7 @@ from neo4j.conf import (
     RoutingConfig,
     WorkspaceConfig
 )
+from neo4j._deadline import Deadline
 from neo4j.exceptions import (
     ServiceUnavailable,
     SessionExpired
@@ -271,3 +272,29 @@ def test_failing_opener_leaves_connections_in_use_alone(opener):
         pool.acquire(READ_ACCESS, 30, 60, "test_db", None)
 
     assert not cx1.closed()
+
+
+def test__acquire_new_later_with_room(opener):
+    config = PoolConfig()
+    config.max_connection_pool_size = 1
+    pool = Neo4jPool(
+        opener, config, WorkspaceConfig(), ROUTER_ADDRESS
+    )
+    assert pool.connections_reservations[READER_ADDRESS] == 0
+    creator = pool._acquire_new_later(READER_ADDRESS, Deadline(1))
+    assert pool.connections_reservations[READER_ADDRESS] == 1
+    assert callable(creator)
+
+
+def test__acquire_new_later_without_room(opener):
+    config = PoolConfig()
+    config.max_connection_pool_size = 1
+    pool = Neo4jPool(
+        opener, config, WorkspaceConfig(), ROUTER_ADDRESS
+    )
+    _ = pool.acquire(READ_ACCESS, 30, 60, "test_db", None)
+    # pool is full now
+    assert pool.connections_reservations[READER_ADDRESS] == 0
+    creator = pool._acquire_new_later(READER_ADDRESS, Deadline(1))
+    assert pool.connections_reservations[READER_ADDRESS] == 0
+    assert creator is None
