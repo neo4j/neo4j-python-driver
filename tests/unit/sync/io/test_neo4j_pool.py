@@ -24,6 +24,7 @@ from neo4j import (
     READ_ACCESS,
     WRITE_ACCESS,
 )
+from neo4j._async_compat.util import Util
 from neo4j._conf import (
     PoolConfig,
     RoutingConfig,
@@ -437,3 +438,33 @@ def test_failing_opener_leaves_connections_in_use_alone(opener):
     with pytest.raises((ServiceUnavailable, SessionExpired)):
         pool.acquire(READ_ACCESS, 30, "test_db", None, None)
     assert not cx1.closed()
+
+
+@mark_sync_test
+def test__acquire_new_later_with_room(opener):
+    config = PoolConfig()
+    config.max_connection_pool_size = 1
+    pool = Neo4jPool(
+        opener, config, WorkspaceConfig(), ROUTER_ADDRESS
+    )
+    assert pool.connections_reservations[READER_ADDRESS] == 0
+    creator = pool._acquire_new_later(READER_ADDRESS, Deadline(1))
+    assert pool.connections_reservations[READER_ADDRESS] == 1
+    assert callable(creator)
+    if Util.is_async_code:
+        assert inspect.iscoroutinefunction(creator)
+
+
+@mark_sync_test
+def test__acquire_new_later_without_room(opener):
+    config = PoolConfig()
+    config.max_connection_pool_size = 1
+    pool = Neo4jPool(
+        opener, config, WorkspaceConfig(), ROUTER_ADDRESS
+    )
+    _ = pool.acquire(READ_ACCESS, 30, "test_db", None, None)
+    # pool is full now
+    assert pool.connections_reservations[READER_ADDRESS] == 0
+    creator = pool._acquire_new_later(READER_ADDRESS, Deadline(1))
+    assert pool.connections_reservations[READER_ADDRESS] == 0
+    assert creator is None
