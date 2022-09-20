@@ -15,108 +15,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import asyncio
-from functools import wraps
-from warnings import warn
+# TODO: 6.0 - remove this file
 
 
-# Can be automatically overridden in builds
-package = "neo4j"
-version = "5.0.dev0"
+from ._meta import (
+    deprecated,
+    deprecation_warn,
+    experimental,
+    ExperimentalWarning,
+    get_user_agent,
+    package,
+    version,
+)
 
 
-def get_user_agent():
-    """ Obtain the default user agent string sent to the server after
-    a successful handshake.
-    """
-    from sys import (
-        platform,
-        version_info,
-    )
-    template = "neo4j-python/{} Python/{}.{}.{}-{}-{} ({})"
-    fields = (version,) + tuple(version_info) + (platform,)
-    return template.format(*fields)
+__all__ = [
+    "package",
+    "version",
+    "get_user_agent",
+    "deprecation_warn",
+    "deprecated",
+    "ExperimentalWarning",
+    "experimental",
+]
 
-
-def deprecation_warn(message, stack_level=2):
-    warn(message, category=DeprecationWarning, stacklevel=stack_level)
-
-
-def deprecated(message):
-    """ Decorator for deprecating functions and methods.
-
-    ::
-
-        @deprecated("'foo' has been deprecated in favour of 'bar'")
-        def foo(x):
-            pass
-
-    """
-    def decorator(f):
-        if asyncio.iscoroutinefunction(f):
-            @wraps(f)
-            async def inner(*args, **kwargs):
-                deprecation_warn(message, stack_level=3)
-                return await f(*args, **kwargs)
-
-            return inner
-        else:
-            @wraps(f)
-            def inner(*args, **kwargs):
-                deprecation_warn(message, stack_level=3)
-                return f(*args, **kwargs)
-
-            return inner
-
-    return decorator
-
-
-class ExperimentalWarning(Warning):
-    """ Base class for warnings about experimental features.
-    """
-
-
-def experimental(message):
-    """ Decorator for tagging experimental functions and methods.
-
-    ::
-
-        @experimental("'foo' is an experimental function and may be "
-                      "removed in a future release")
-        def foo(x):
-            pass
-
-    """
-    def decorator(f):
-        if asyncio.iscoroutinefunction(f):
-            @wraps(f)
-            async def inner(*args, **kwargs):
-                from warnings import warn
-                warn(message, category=ExperimentalWarning, stacklevel=2)
-                return await f(*args, **kwargs)
-
-            return inner
-        else:
-            @wraps(f)
-            def inner(*args, **kwargs):
-                from warnings import warn
-                warn(message, category=ExperimentalWarning, stacklevel=2)
-                return f(*args, **kwargs)
-
-            return inner
-
-    return decorator
-
-
-def unclosed_resource_warn(obj):
-    import tracemalloc
-    from warnings import warn
-    msg = f"Unclosed {obj!r}."
-    trace = tracemalloc.get_object_traceback(obj)
-    if trace:
-        msg += "\nObject allocated at (most recent call last):\n"
-        msg += "\n".join(trace.format())
-    else:
-        msg += "\nEnable tracemalloc to get the object allocation traceback."
-    warn(msg, ResourceWarning, stacklevel=2, source=obj)
+deprecation_warn(
+    "The module 'neo4j.meta' was made internal and will "
+    "no longer be available for import in future versions."
+    "`ExperimentalWarning` can be imported from `neo4j` directly and "
+    "`neo4j.meta.version` is exposed as `neo4j.__version__`.",
+    stack_level=2
+)

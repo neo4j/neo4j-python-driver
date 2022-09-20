@@ -45,8 +45,8 @@ def test_cartesian_point(driver):
     in_point3d = point3d
 
     with driver.session() as session:
-        record_with_2d_point = session.read_transaction(_echo, point2d)
-        record_with_3d_point = session.read_transaction(_echo, point3d)
+        record_with_2d_point = session.execute_read(_echo, point2d)
+        record_with_3d_point = session.execute_read(_echo, point3d)
 
     # tag::geospatial-types-cartesian[]
 
@@ -106,8 +106,8 @@ def test_wgs84_point(driver):
     in_point3d = point3d
 
     with driver.session() as session:
-        record_with_2d_point = session.read_transaction(_echo, point2d)
-        record_with_3d_point = session.read_transaction(_echo, point3d)
+        record_with_2d_point = session.execute_read(_echo, point2d)
+        record_with_3d_point = session.execute_read(_echo, point3d)
 
     # tag::geospatial-types-wgs84[]
 

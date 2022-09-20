@@ -57,7 +57,7 @@ class App:
     def create_friendship(self, person1_name, person2_name, knows_from):
         with self.driver.session() as session:
             # Write transactions allow the driver to handle retries and transient errors
-            result = session.write_transaction(
+            result = session.execute_write(
                 self._create_and_return_friendship, person1_name, person2_name, knows_from)
             for row in result:
                 print("Created friendship between: {p1}, {p2} from {knows_from}"
@@ -93,7 +93,7 @@ class App:
 
     def find_person(self, person_name):
         with self.driver.session() as session:
-            result = session.read_transaction(self._find_and_return_person, person_name)
+            result = session.execute_read(self._find_and_return_person, person_name)
             for row in result:
                 print("Found person: {row}".format(row=row))
 

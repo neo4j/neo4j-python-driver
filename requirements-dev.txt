@@ -2,6 +2,9 @@
 unasync>=0.5.0
 pre-commit>=2.15.0
 isort>=5.10.0
+mypy>=0.971
+typing-extensions>=4.3.0
+types-pytz>=2022.1.2
 
 # needed for running tests
 -r tests/requirements.txt

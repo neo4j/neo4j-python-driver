@@ -16,71 +16,35 @@
 # limitations under the License.
 
 
-import asyncio
-from itertools import product
+import pytest
 
-from pytest import mark
-
-from neo4j import AsyncGraphDatabase
-
-from .tools import RemoteGraphDatabaseServer
+from neo4j import GraphDatabase
 
 
-class AsyncReadWorkload(object):
-
-    server = None
-    driver = None
-    loop = None
-
-    @classmethod
-    def setup_class(cls):
-        cls.server = server = RemoteGraphDatabaseServer()
-        server.start()
-        cls.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(cls.loop)
-        cls.driver = AsyncGraphDatabase.driver(server.server_uri,
-                                               auth=server.auth_token,
-                                               encrypted=server.encrypted)
-
-    @classmethod
-    def teardown_class(cls):
-        try:
-            cls.loop.run_until_complete(cls.driver.close())
-            cls.server.stop()
-        finally:
-            cls.loop.stop()
-            asyncio.set_event_loop(None)
-
-    def work(self, *units_of_work):
-        async def runner():
-            async with self.driver.session() as session:
-                for unit_of_work in units_of_work:
-                    await session.read_transaction(unit_of_work)
-
-        def sync_runner():
-            self.loop.run_until_complete(runner())
-
-        return sync_runner
+def work(async_driver, *units_of_work):
+    async def runner():
+        async with async_driver.session() as session:
+            for unit_of_work in units_of_work:
+                await session.execute_read(unit_of_work)
+    return runner
 
 
-class TestAsyncReadWorkload(AsyncReadWorkload):
+def unit_of_work_generator(record_count, record_width, value):
+    async def transaction_function(tx):
+        s = "UNWIND range(1, $record_count) AS _ RETURN {}".format(
+            ", ".join("$x AS x{}".format(i) for i in range(record_width)))
+        p = {"record_count": record_count, "x": value}
+        async for record in await tx.run(s, p):
+            assert all(x == value for x in record.values())
 
-    @staticmethod
-    def uow(record_count, record_width, value):
+    return transaction_function
 
-        async def _(tx):
-            s = "UNWIND range(1, $record_count) AS _ RETURN {}".format(
-                ", ".join("$x AS x{}".format(i) for i in range(record_width)))
-            p = {"record_count": record_count, "x": value}
-            async for record in await tx.run(s, p):
-                assert all(x == value for x in record.values())
 
-        return _
-
-    @mark.parametrize("record_count,record_width,value", product(
-        [1, 1000],  # record count
-        [1, 10],    # record width
-        [1, u'hello, world'],        # value
+@pytest.mark.parametrize("record_count", [1, 1000])
+@pytest.mark.parametrize("record_width", [1, 10])
+@pytest.mark.parametrize("value", [1, u'hello, world'])
+def test_async_1x1(async_driver, aio_benchmark, record_count, record_width, value):
+    aio_benchmark(work(
+        async_driver,
+        unit_of_work_generator(record_count, record_width, value)
     ))
-    def test_1x1(self, benchmark, record_count, record_width, value):
-        benchmark(self.work(self.uow(record_count, record_width, value)))

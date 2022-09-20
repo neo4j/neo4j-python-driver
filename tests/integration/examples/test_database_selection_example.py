@@ -19,6 +19,11 @@
 from contextlib import redirect_stdout
 from io import StringIO
 
+from ...conftest import (
+    mark_requires_edition,
+    mark_requires_min_bolt_version,
+)
+
 
 # isort: off
 # tag::database-selection-import[]
@@ -37,12 +42,12 @@ class DatabaseSelectionExample:
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
         with self.driver.session(database="system") as session:
-            session.run("DROP DATABASE example IF EXISTS").consume()
-            session.run("CREATE DATABASE example").consume()
+            session.run("DROP DATABASE example IF EXISTS WAIT").consume()
+            session.run("CREATE DATABASE example WAIT").consume()
 
     def close(self):
         with self.driver.session(database="system") as session:
-            session.run("DROP DATABASE example").consume()
+            session.run("DROP DATABASE example WAIT").consume()
         self.driver.close()
 
     def run_example_code(self):
@@ -58,10 +63,12 @@ class DatabaseSelectionExample:
         # end::database-selection[]
 
 
-def test_database_selection_example(neo4j_uri, auth, requires_bolt_4x):
+@mark_requires_min_bolt_version("4")
+@mark_requires_edition("enterprise")
+def test_database_selection_example(uri, auth):
     s = StringIO()
     with redirect_stdout(s):
-        example = DatabaseSelectionExample(neo4j_uri, auth[0], auth[1])
+        example = DatabaseSelectionExample(uri, auth[0], auth[1])
         example.run_example_code()
         example.close()
     assert s.getvalue().startswith("Hello, Example-Database")

@@ -19,7 +19,7 @@
 from neo4j import unit_of_work
 
 
-# python -m pytest tests/integration/examples/test_transaction_timeout_config_example.py -s -v
+# python -m pytest tests/integration/examples/execute_test_timeout_config_example.py -s -v
 
 # tag::transaction-timeout-config[]
 @unit_of_work(timeout=5)
@@ -31,7 +31,7 @@ def create_person(tx, name):
 
 def add_person(driver, name):
     with driver.session() as session:
-        return session.write_transaction(create_person, name)
+        return session.execute_write(create_person, name)
 # end::transaction-timeout-config[]
 
 
@@ -44,10 +44,17 @@ class TransactionTimeoutConfigExample:
         return add_person(self.driver, name)
 
 
-def test_example(bolt_driver):
-    eg = TransactionTimeoutConfigExample(bolt_driver)
+def work(tx, query, **parameters):
+    res = tx.run(query, **parameters)
+    return [rec.values() for rec in res], res.consume()
+
+
+def test_example(driver):
+    eg = TransactionTimeoutConfigExample(driver)
     with eg.driver.session() as session:
-        session.run("MATCH (_) DETACH DELETE _")
+        session.execute_write(work, "MATCH (_) DETACH DELETE _")
         eg.add_person("Alice")
-        n = session.run("MATCH (a:Person) RETURN count(a)").single().value()
-        assert n == 1
+        records, _ = session.execute_read(
+            work, "MATCH (a:Person) RETURN count(a)"
+        )
+        assert records == [[1]]

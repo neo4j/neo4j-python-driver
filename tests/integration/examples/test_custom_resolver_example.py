@@ -50,11 +50,13 @@ def create_driver(uri, user, password):
 
 
 def add_person(name):
-    driver = create_driver("neo4j://x.example.com", user="neo4j", password="password")
-    session = driver.session(default_access_mode=WRITE_ACCESS)
-    session.run("CREATE (a:Person {name: $name})", {"name", name})
-    session.close()
-    driver.close()
+    driver = create_driver("neo4j://x.example.com",
+                           user="neo4j", password="password")
+    try:
+        with driver.session(default_access_mode=WRITE_ACCESS) as session:
+            session.run("CREATE (a:Person {name: $name})", {"name", name})
+    finally:
+        driver.close()
 # end::custom-resolver[]
 
 

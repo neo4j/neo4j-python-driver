@@ -23,7 +23,7 @@ Topics
 
 + :ref:`api-documentation`
 
-+ :ref:`async-api-documentation` (experimental)
++ :ref:`async-api-documentation`
 
 + :ref:`spatial-data-types`
 
@@ -91,7 +91,7 @@ To deactivate the current active virtual environment, use:
 Quick Example
 *************
 
-Creating nodes.
+Creating nodes and relationships.
 
 .. code-block:: python
 
@@ -100,16 +100,18 @@ Creating nodes.
     uri = "neo4j://localhost:7687"
     driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
 
+    def create_person(tx, name):
+        tx.run("CREATE (a:Person {name: $name})", name=name)
+
     def create_friend_of(tx, name, friend):
         tx.run("MATCH (a:Person) WHERE a.name = $name "
                "CREATE (a)-[:KNOWS]->(:Person {name: $friend})",
                name=name, friend=friend)
 
     with driver.session() as session:
-        session.write_transaction(create_friend_of, "Alice", "Bob")
-
-    with driver.session() as session:
-        session.write_transaction(create_friend_of, "Alice", "Carl")
+        session.execute_write(create_person, "Alice")
+        session.execute_write(create_friend_of, "Alice", "Bob")
+        session.execute_write(create_friend_of, "Alice", "Carl")
 
     driver.close()
 
@@ -126,14 +128,14 @@ Finding nodes.
     def get_friends_of(tx, name):
         friends = []
         result = tx.run("MATCH (a:Person)-[:KNOWS]->(f) "
-                             "WHERE a.name = $name "
-                             "RETURN f.name AS friend", name=name)
+                        "WHERE a.name = $name "
+                        "RETURN f.name AS friend", name=name)
         for record in result:
             friends.append(record["friend"])
         return friends
 
     with driver.session() as session:
-        friends = session.read_transaction(get_friends_of, "Alice")
+        friends = session.execute_read(get_friends_of, "Alice")
         for friend in friends:
             print(friend)
 
@@ -162,7 +164,7 @@ Example Application
         def create_friendship(self, person1_name, person2_name):
             with self.driver.session() as session:
                 # Write transactions allow the driver to handle retries and transient errors
-                result = session.write_transaction(
+                result = session.execute_write(
                     self._create_and_return_friendship, person1_name, person2_name)
                 for record in result:
                     print("Created friendship between: {p1}, {p2}".format(
@@ -195,7 +197,7 @@ Example Application
 
         def find_person(self, person_name):
             with self.driver.session() as session:
-                result = session.read_transaction(self._find_and_return_person, person_name)
+                result = session.execute_read(self._find_and_return_person, person_name)
                 for record in result:
                     print("Found person: {record}".format(record=record))
 

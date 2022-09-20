@@ -35,8 +35,8 @@ def read_write_transaction_example(driver):
 
     def add_person(name):
         with driver.session() as session:
-            session.write_transaction(create_person_node, name)
-            persons = session.read_transaction(match_person_node, name)
+            session.execute_write(create_person_node, name)
+            persons = session.execute_read(match_person_node, name)
             return persons
     # end::read-write-transaction[]
 

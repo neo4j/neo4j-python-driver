@@ -16,18 +16,32 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
+import asyncio
+import typing as t
 from logging import getLogger
 from random import random
 from time import perf_counter
 
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
+    from ..io import AsyncBolt
+
+    _R = t.TypeVar("_R")
+    _P = te.ParamSpec("_P")
+
 from ..._async_compat import async_sleep
+from ..._async_compat.util import AsyncUtil
+from ..._conf import SessionConfig
+from ..._meta import deprecated
 from ...api import (
     Bookmarks,
     READ_ACCESS,
     WRITE_ACCESS,
 )
-from ...conf import SessionConfig
-from ...data import DataHydrator
 from ...exceptions import (
     ClientError,
     DriverError,
@@ -35,10 +49,6 @@ from ...exceptions import (
     ServiceUnavailable,
     SessionExpired,
     TransactionError,
-)
-from ...meta import (
-    deprecated,
-    deprecation_warn,
 )
 from ...work import Query
 from .result import AsyncResult
@@ -60,7 +70,7 @@ class AsyncSession(AsyncWorkspace):
     Session creation is a lightweight operation and sessions are not safe to
     be used in concurrent contexts (multiple threads/coroutines).
     Therefore, a session should generally be short-lived, and must not
-    span multiple threads/coroutines.
+    span multiple threads/asynchronous Tasks.
 
     In general, sessions will be created and destroyed within a `with`
     context. For example::
@@ -74,10 +84,11 @@ class AsyncSession(AsyncWorkspace):
     """
 
     # The current connection.
-    _connection = None
+    _connection: t.Optional[AsyncBolt] = None
 
-    # The current :class:`.Transaction` instance, if any.
-    _transaction = None
+    # The current transaction instance, if any.
+    _transaction: t.Union[AsyncTransaction, AsyncManagedTransaction, None] = \
+        None
 
     # The current auto-transaction result, if any.
     _auto_result = None
@@ -86,49 +97,61 @@ class AsyncSession(AsyncWorkspace):
     _state_failed = False
 
     def __init__(self, pool, session_config):
-        super().__init__(pool, session_config)
         assert isinstance(session_config, SessionConfig)
-        self._bookmarks = self._prepare_bookmarks(session_config.bookmarks)
+        super().__init__(pool, session_config)
+        self._initialize_bookmarks(session_config.bookmarks)
+        self._bookmark_manager = session_config.bookmark_manager
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> AsyncSession:
         return self
 
     async def __aexit__(self, exception_type, exception_value, traceback):
         if exception_type:
+            if issubclass(exception_type, asyncio.CancelledError):
+                self._handle_cancellation(message="__aexit__")
+                self._closed = True
+                return
             self._state_failed = True
         await self.close()
-
-    def _prepare_bookmarks(self, bookmarks):
-        if isinstance(bookmarks, Bookmarks):
-            return tuple(bookmarks.raw_values)
-        if hasattr(bookmarks, "__iter__"):
-            deprecation_warn(
-                "Passing an iterable as `bookmarks` to `Session` is "
-                "deprecated. Please use a `Bookmarks` instance.",
-                stack_level=5
-            )
-            return tuple(bookmarks)
-        if not bookmarks:
-            return ()
-        raise TypeError("Bookmarks must be an instance of Bookmarks or an "
-                        "iterable of raw bookmarks (deprecated).")
 
     async def _connect(self, access_mode, **access_kwargs):
         if access_mode is None:
             access_mode = self._config.default_access_mode
-        await super()._connect(access_mode, **access_kwargs)
+        try:
+            await super()._connect(access_mode, **access_kwargs)
+        except asyncio.CancelledError:
+            self._handle_cancellation(message="_connect")
+            raise
 
-    def _collect_bookmark(self, bookmark):
-        if bookmark:
-            self._bookmarks = bookmark,
+    async def _disconnect(self, sync=False):
+        try:
+            return await super()._disconnect(sync=sync)
+        except asyncio.CancelledError:
+            self._handle_cancellation(message="_disconnect")
+            raise
+
+    def _handle_cancellation(self, message="General"):
+        self._transaction = None
+        self._auto_result = None
+        connection = self._connection
+        self._connection = None
+        if connection:
+            log.debug("[#%04X]  %s cancellation clean-up",
+                      connection.local_port, message)
+            self._pool.kill_and_release(connection)
+        else:
+            log.debug("[#0000]  %s cancellation clean-up", message)
 
     async def _result_closed(self):
         if self._auto_result:
-            self._collect_bookmark(self._auto_result._bookmark)
+            await self._update_bookmark(self._auto_result._database,
+                                        self._auto_result._bookmark)
             self._auto_result = None
             await self._disconnect()
 
-    async def _result_error(self, _):
+    async def _result_error(self, error):
+        if isinstance(error, asyncio.CancelledError):
+            return self._handle_cancellation(message="_result_error")
         if self._auto_result:
             self._auto_result = None
             await self._disconnect()
@@ -140,7 +163,7 @@ class AsyncSession(AsyncWorkspace):
         await self._disconnect()
         return server_info
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the session.
 
         This will release any borrowed resources, such as connections, and will
@@ -153,7 +176,10 @@ class AsyncSession(AsyncWorkspace):
                 if self._state_failed is False:
                     try:
                         await self._auto_result.consume()
-                        self._collect_bookmark(self._auto_result._bookmark)
+                        await self._update_bookmark(
+                            self._auto_result._database,
+                            self._auto_result._bookmark
+                        )
                     except Exception as error:
                         # TODO: Investigate potential non graceful close states
                         self._auto_result = None
@@ -184,7 +210,35 @@ class AsyncSession(AsyncWorkspace):
             self._state_failed = False
         self._closed = True
 
-    async def run(self, query, parameters=None, **kwargs):
+    if AsyncUtil.is_async_code:
+        def cancel(self) -> None:
+            """Cancel this session.
+
+            If the session is already closed, this method does nothing.
+            Else, it will if present, forcefully close the connection the
+            session holds. This will violently kill all work in flight.
+
+            The primary purpose of this function is to handle
+            :class:`asyncio.CancelledError`.
+
+            ::
+
+                session = await driver.session()
+                try:
+                    ...  # do some work
+                except asyncio.CancelledError:
+                    session.cancel()
+                    raise
+
+            """
+            self._handle_cancellation(message="manual cancel")
+
+    async def run(
+        self,
+        query: t.Union[str, Query],
+        parameters: t.Dict[str, t.Any] = None,
+        **kwargs: t.Any
+    ) -> AsyncResult:
         """Run a Cypher query within an auto-commit transaction.
 
         The query is sent and the result header received
@@ -203,13 +257,14 @@ class AsyncSession(AsyncWorkspace):
         For more usage details, see :meth:`.AsyncTransaction.run`.
 
         :param query: cypher query
-        :type query: str, neo4j.Query
         :param parameters: dictionary of parameters
-        :type parameters: dict
         :param kwargs: additional keyword parameters
+
+        :raises SessionError: if the session has been closed.
+
         :returns: a new :class:`neo4j.AsyncResult` object
-        :rtype: AsyncResult
         """
+        self._check_state()
         if not query:
             raise ValueError("Cannot run an empty query")
         if not isinstance(query, (str, Query)):
@@ -225,19 +280,16 @@ class AsyncSession(AsyncWorkspace):
         if not self._connection:
             await self._connect(self._config.default_access_mode)
         cx = self._connection
-        protocol_version = cx.PROTOCOL_VERSION
-        server_info = cx.server_info
-
-        hydrant = DataHydrator()
 
         self._auto_result = AsyncResult(
-            cx, hydrant, self._config.fetch_size, self._result_closed,
+            cx, self._config.fetch_size, self._result_closed,
             self._result_error
         )
+        bookmarks = await self._get_all_bookmarks()
         await self._auto_result._run(
             query, parameters, self._config.database,
             self._config.impersonated_user, self._config.default_access_mode,
-            self._bookmarks, **kwargs
+            bookmarks, **kwargs
         )
 
         return self._auto_result
@@ -246,7 +298,7 @@ class AsyncSession(AsyncWorkspace):
         "`last_bookmark` has been deprecated in favor of `last_bookmarks`. "
         "This method can lead to unexpected behaviour."
     )
-    async def last_bookmark(self):
+    async def last_bookmark(self) -> t.Optional[str]:
         """Return the bookmark received following the last completed transaction.
 
         Note: For auto-transactions (:meth:`Session.run`), this will trigger
@@ -261,7 +313,6 @@ class AsyncSession(AsyncWorkspace):
             Use :meth:`last_bookmarks` instead.
 
         :returns: last bookmark
-        :rtype: str or None
         """
         # The set of bookmarks to be passed into the next transaction.
 
@@ -269,14 +320,15 @@ class AsyncSession(AsyncWorkspace):
             await self._auto_result.consume()
 
         if self._transaction and self._transaction._closed:
-            self._collect_bookmark(self._transaction._bookmark)
+            await self._update_bookmark(self._transaction._database,
+                                        self._transaction._bookmark)
             self._transaction = None
 
         if self._bookmarks:
             return self._bookmarks[-1]
         return None
 
-    async def last_bookmarks(self):
+    async def last_bookmarks(self) -> Bookmarks:
         """Return most recent bookmarks of the session.
 
         Bookmarks can be used to causally chain sessions. For example,
@@ -303,7 +355,6 @@ class AsyncSession(AsyncWorkspace):
         :meth:`Result.consume` for the current result.
 
         :returns: the session's last known bookmarks
-        :rtype: Bookmarks
         """
         # The set of bookmarks to be passed into the next transaction.
 
@@ -311,21 +362,28 @@ class AsyncSession(AsyncWorkspace):
             await self._auto_result.consume()
 
         if self._transaction and self._transaction._closed():
-            self._collect_bookmark(self._transaction._bookmark)
+            await self._update_bookmark(self._transaction._database,
+                                        self._transaction._bookmark)
             self._transaction = None
 
         return Bookmarks.from_raw_values(self._bookmarks)
 
     async def _transaction_closed_handler(self):
         if self._transaction:
-            self._collect_bookmark(self._transaction._bookmark)
+            await self._update_bookmark(self._transaction._database,
+                                        self._transaction._bookmark)
             self._transaction = None
             await self._disconnect()
 
-    async def _transaction_error_handler(self, _):
+    async def _transaction_error_handler(self, error):
         if self._transaction:
             self._transaction = None
             await self._disconnect()
+
+    def _transaction_cancel_handler(self):
+        return self._handle_cancellation(
+            message="_transaction_cancel_handler"
+        )
 
     async def _open_transaction(
         self, *, tx_cls, access_mode, metadata=None, timeout=None
@@ -334,14 +392,20 @@ class AsyncSession(AsyncWorkspace):
         self._transaction = tx_cls(
             self._connection, self._config.fetch_size,
             self._transaction_closed_handler,
-            self._transaction_error_handler
+            self._transaction_error_handler,
+            self._transaction_cancel_handler
         )
+        bookmarks = await self._get_all_bookmarks()
         await self._transaction._begin(
             self._config.database, self._config.impersonated_user,
-            self._bookmarks, access_mode, metadata, timeout
+            bookmarks, access_mode, metadata, timeout
         )
 
-    async def begin_transaction(self, metadata=None, timeout=None):
+    async def begin_transaction(
+        self,
+        metadata: t.Dict[str, t.Any] = None,
+        timeout: float = None
+    ) -> AsyncTransaction:
         """ Begin a new unmanaged transaction. Creates a new :class:`.AsyncTransaction` within this session.
             At most one transaction may exist in a session at any point in time.
             To maintain multiple concurrent transactions, use multiple concurrent sessions.
@@ -353,7 +417,6 @@ class AsyncSession(AsyncWorkspace):
             Specified metadata will be attached to the executing transaction and visible in the output of ``dbms.listQueries`` and ``dbms.listTransactions`` procedures.
             It will also get logged to the ``query.log``.
             This functionality makes it easier to tag transactions and is equivalent to ``dbms.setTXMetaData`` procedure, see https://neo4j.com/docs/operations-manual/current/reference/procedures/ for procedure reference.
-        :type metadata: dict
 
         :param timeout:
             the transaction timeout in seconds.
@@ -361,20 +424,22 @@ class AsyncSession(AsyncWorkspace):
             This functionality allows to limit query/transaction execution time.
             Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
             Value should not represent a duration of zero or negative duration.
-        :type timeout: int
+
+        :raises TransactionError: if a transaction is already open.
+        :raises SessionError: if the session has been closed.
 
         :returns: A new transaction instance.
-        :rtype: AsyncTransaction
-
-        :raises TransactionError: :class:`neo4j.exceptions.TransactionError` if a transaction is already open.
         """
+        self._check_state()
         # TODO: Implement TransactionConfig consumption
 
         if self._auto_result:
             await self._auto_result.consume()
 
         if self._transaction:
-            raise TransactionError("Explicit transaction already open")
+            raise TransactionError(
+                self._transaction, "Explicit transaction already open"
+            )
 
         await self._open_transaction(
             tx_cls=AsyncTransaction,
@@ -382,11 +447,12 @@ class AsyncSession(AsyncWorkspace):
             timeout=timeout
         )
 
-        return self._transaction
+        return t.cast(AsyncTransaction, self._transaction)
 
     async def _run_transaction(
         self, access_mode, transaction_function, *args, **kwargs
     ):
+        self._check_state()
         if not callable(transaction_function):
             raise TypeError("Unit of work is not callable")
 
@@ -413,6 +479,13 @@ class AsyncSession(AsyncWorkspace):
                 tx = self._transaction
                 try:
                     result = await transaction_function(tx, *args, **kwargs)
+                except asyncio.CancelledError:
+                    # if cancellation callback has not been called yet:
+                    if self._transaction is not None:
+                        self._handle_cancellation(
+                            message="transaction function"
+                        )
+                    raise
                 except Exception:
                     await tx._close()
                     raise
@@ -420,7 +493,7 @@ class AsyncSession(AsyncWorkspace):
                     await tx._commit()
             except (DriverError, Neo4jError) as error:
                 await self._disconnect()
-                if not error.is_retriable():
+                if not error.is_retryable():
                     raise
                 errors.append(error)
             else:
@@ -434,20 +507,105 @@ class AsyncSession(AsyncWorkspace):
             delay = next(retry_delay)
             log.warning("Transaction failed and will be retried in {}s ({})"
                         "".format(delay, "; ".join(errors[-1].args)))
-            await async_sleep(delay)
+            try:
+                await async_sleep(delay)
+            except asyncio.CancelledError:
+                log.debug("[#0000]  Retry cancelled")
+                raise
 
         if errors:
             raise errors[-1]
         else:
             raise ServiceUnavailable("Transaction failed")
 
-    async def read_transaction(self, transaction_function, *args, **kwargs):
+    async def execute_read(
+        self,
+        transaction_function: t.Callable[
+            te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
+        ],
+        *args: _P.args, **kwargs: _P.kwargs
+    ) -> _R:
         """Execute a unit of work in a managed read transaction.
-        This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
-        Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
 
-        Managed transactions should not generally be explicitly committed
-        (via ``await tx.commit()``).
+        .. note::
+            This does not necessarily imply access control, see the session
+            configuration option :ref:`default-access-mode-ref`.
+
+        This transaction will automatically be committed when the function
+        returns, unless an exception is thrown during query execution or by
+        the user code. Note, that this function performs retries and that the
+        supplied `transaction_function` might get invoked more than once.
+        Therefore, it needs to be idempotent (i.e., have the same effect,
+        regardless if called once or many times).
+
+        Example::
+
+            async def do_cypher_tx(tx, cypher):
+                result = await tx.run(cypher)
+                values = [record.values() async for record in result]
+                return values
+
+            async with driver.session() as session:
+                values = await session.execute_read(do_cypher_tx, "RETURN 1 AS x")
+
+        Example::
+
+            async def get_two_tx(tx):
+                result = await tx.run("UNWIND [1,2,3,4] AS x RETURN x")
+                values = []
+                async for record in result:
+                    if len(values) >= 2:
+                        break
+                    values.append(record.values())
+                # or shorter: values = [record.values()
+                #                       for record in await result.fetch(2)]
+
+                # discard the remaining records if there are any
+                summary = await result.consume()
+                # use the summary for logging etc.
+                return values
+
+            async with driver.session() as session:
+                values = await session.execute_read(get_two_tx)
+
+        :param transaction_function: a function that takes a transaction as an
+            argument and does work with the transaction.
+            `transaction_function(tx, *args, **kwargs)` where `tx` is a
+            :class:`.AsyncManagedTransaction`.
+        :param args: additional arguments for the `transaction_function`
+        :param kwargs: key word arguments for the `transaction_function`
+
+        :raises SessionError: if the session has been closed.
+
+        :return: a result as returned by the given unit of work
+
+        .. versionadded:: 5.0
+        """
+        return await self._run_transaction(
+            READ_ACCESS, transaction_function, *args, **kwargs
+        )
+
+    # TODO 6.0: Remove this method
+    @deprecated("read_transaction has been renamed to execute_read")
+    async def read_transaction(
+        self,
+        transaction_function: t.Callable[
+            te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
+        ],
+        *args: _P.args, **kwargs: _P.kwargs
+    ) -> _R:
+        """Execute a unit of work in a managed read transaction.
+
+        .. note::
+            This does not necessarily imply access control, see the session
+            configuration option :ref:`default-access-mode-ref`.
+
+        This transaction will automatically be committed when the function
+        returns, unless an exception is thrown during query execution or by
+        the user code. Note, that this function performs retries and that the
+        supplied `transaction_function` might get invoked more than once.
+        Therefore, it needs to be idempotent (i.e., have the same effect,
+        regardless if called once or many times).
 
         Example::
 
@@ -468,9 +626,12 @@ class AsyncSession(AsyncWorkspace):
                     if len(values) >= 2:
                         break
                     values.append(record.values())
+                # or shorter: values = [record.values()
+                #                       for record in await result.fetch(2)]
+
                 # discard the remaining records if there are any
-                info = await result.consume()
-                # use the info for logging etc.
+                summary = await result.consume()
+                # use the summary for logging etc.
                 return values
 
             async with driver.session() as session:
@@ -479,21 +640,90 @@ class AsyncSession(AsyncWorkspace):
         :param transaction_function: a function that takes a transaction as an
             argument and does work with the transaction.
             `transaction_function(tx, *args, **kwargs)` where `tx` is a
-            :class:`.AsyncTransaction`.
-        :param args: arguments for the `transaction_function`
+            :class:`.AsyncManagedTransaction`.
+        :param args: additional arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
+
+        :raises SessionError: if the session has been closed.
+
         :return: a result as returned by the given unit of work
+
+        .. deprecated:: 5.0
+            Method was renamed to :meth:`.execute_read`.
         """
         return await self._run_transaction(
             READ_ACCESS, transaction_function, *args, **kwargs
         )
 
-    async def write_transaction(self, transaction_function, *args, **kwargs):
+    async def execute_write(
+        self,
+        transaction_function: t.Callable[
+            te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
+        ],
+        *args: _P.args,  **kwargs: _P.kwargs
+    ) -> _R:
         """Execute a unit of work in a managed write transaction.
-        This transaction will automatically be committed unless an exception is thrown during query execution or by the user code.
-        Note, that this function perform retries and that the supplied `transaction_function` might get invoked more than once.
 
-        Managed transactions should not generally be explicitly committed (via tx.commit()).
+        .. note::
+            This does not necessarily imply access control, see the session
+            configuration option :ref:`default-access-mode-ref`.
+
+        This transaction will automatically be committed when the function
+        returns unless, an exception is thrown during query execution or by
+        the user code. Note, that this function performs retries and that the
+        supplied `transaction_function` might get invoked more than once.
+        Therefore, it needs to be idempotent (i.e., have the same effect,
+        regardless if called once or many times).
+
+        Example::
+
+            async def create_node_tx(tx, name):
+                query = "CREATE (n:NodeExample { name: $name }) RETURN id(n) AS node_id"
+                result = await tx.run(query, name=name)
+                record = await result.single()
+                return record["node_id"]
+
+            async with driver.session() as session:
+                node_id = await session.execute_write(create_node_tx, "example")
+
+        :param transaction_function: a function that takes a transaction as an
+            argument and does work with the transaction.
+            `transaction_function(tx, *args, **kwargs)` where `tx` is a
+            :class:`.AsyncManagedTransaction`.
+        :param args: additional arguments for the `transaction_function`
+        :param kwargs: key word arguments for the `transaction_function`
+
+        :raises SessionError: if the session has been closed.
+
+        :return: a result as returned by the given unit of work
+
+        .. versionadded:: 5.0
+        """
+        return await self._run_transaction(
+            WRITE_ACCESS, transaction_function, *args, **kwargs
+        )
+
+    # TODO 6.0: Remove this method
+    @deprecated("write_transaction has been renamed to execute_write")
+    async def write_transaction(
+        self,
+        transaction_function: t.Callable[
+            te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
+        ],
+        *args: _P.args,  **kwargs: _P.kwargs
+    ) -> _R:
+        """Execute a unit of work in a managed write transaction.
+
+        .. note::
+            This does not necessarily imply access control, see the session
+            configuration option :ref:`default-access-mode-ref`.
+
+        This transaction will automatically be committed when the function
+        returns unless, an exception is thrown during query execution or by
+        the user code. Note, that this function performs retries and that the
+        supplied `transaction_function` might get invoked more than once.
+        Therefore, it needs to be idempotent (i.e., have the same effect,
+        regardless if called once or many times).
 
         Example::
 
@@ -509,10 +739,16 @@ class AsyncSession(AsyncWorkspace):
         :param transaction_function: a function that takes a transaction as an
             argument and does work with the transaction.
             `transaction_function(tx, *args, **kwargs)` where `tx` is a
-            :class:`.AsyncTransaction`.
-        :param args: key word arguments for the `transaction_function`
+            :class:`.AsyncManagedTransaction`.
+        :param args: additional arguments for the `transaction_function`
         :param kwargs: key word arguments for the `transaction_function`
+
+        :raises SessionError: if the session has been closed.
+
         :return: a result as returned by the given unit of work
+
+        .. deprecated:: 5.0
+            Method was renamed to :meth:`.execute_write`.
         """
         return await self._run_transaction(
             WRITE_ACCESS, transaction_function, *args, **kwargs

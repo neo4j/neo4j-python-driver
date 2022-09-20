@@ -4,14 +4,6 @@
 Async API Documentation
 #######################
 
-.. warning::
-    The whole async API is currently in experimental phase.
-
-    This means everything documented on this page might be removed or change
-    its API at any time (including in patch releases).
-
-    (See :ref:`filter-warnings-ref`)
-
 .. versionadded:: 5.0
 
 .. warning::
@@ -29,51 +21,53 @@ Async Driver Construction
 The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the :class:`neo4j.AsyncGraphDatabase` class.
 
 .. autoclass:: neo4j.AsyncGraphDatabase
-   :members: driver
+    :members: bookmark_manager
+
+    .. automethod:: driver
+
+        Driver creation example:
+
+        .. code-block:: python
+
+            import asyncio
+
+            from neo4j import AsyncGraphDatabase
+
+            async def main():
+                uri = "neo4j://example.com:7687"
+                driver = AsyncGraphDatabase.driver(uri, auth=("neo4j", "password"))
+
+                await driver.close()  # close the driver object
+
+             asyncio.run(main())
 
 
-Driver creation example:
+        For basic authentication, ``auth`` can be a simple tuple, for example:
 
-.. code-block:: python
+        .. code-block:: python
 
-    import asyncio
+           auth = ("neo4j", "password")
 
-    from neo4j import AsyncGraphDatabase
+        This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
+        Other authentication methods are described under :ref:`auth-ref`.
 
-    async def main():
-        uri = "neo4j://example.com:7687"
-        driver = AsyncGraphDatabase.driver(uri, auth=("neo4j", "password"))
+        ``with`` block context example:
 
-        await driver.close()  # close the driver object
+        .. code-block:: python
 
-     asyncio.run(main())
+            import asyncio
 
+            from neo4j import AsyncGraphDatabase
 
-For basic authentication, ``auth`` can be a simple tuple, for example:
+            async def main():
+                uri = "neo4j://example.com:7687"
+                auth = ("neo4j", "password")
+                async with AsyncGraphDatabase.driver(uri, auth=auth) as driver:
+                    # use the driver
+                    ...
 
-.. code-block:: python
+             asyncio.run(main())
 
-   auth = ("neo4j", "password")
-
-This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
-Other authentication methods are described under :ref:`auth-ref`.
-
-``with`` block context example:
-
-.. code-block:: python
-
-    import asyncio
-
-    from neo4j import AsyncGraphDatabase
-
-    async def main():
-        uri = "neo4j://example.com:7687"
-        auth = ("neo4j", "password")
-        async with AsyncGraphDatabase.driver(uri, auth=auth) as driver:
-            # use the driver
-            ...
-
-     asyncio.run(main())
 
 
 .. _async-uri-ref:
@@ -128,7 +122,7 @@ Each supported scheme maps to a particular :class:`neo4j.AsyncDriver` subclass t
 AsyncDriver
 ***********
 
-Every Neo4j-backed application will require a :class:`neo4j.AsyncDriver` object.
+Every Neo4j-backed application will require a driver object.
 
 This object holds the details required to establish connections with a Neo4j database, including server URIs, credentials and other configuration.
 :class:`neo4j.AsyncDriver` objects hold a connection pool from which :class:`neo4j.AsyncSession` objects can borrow connections.
@@ -151,6 +145,7 @@ Async Driver Configuration
 :class:`neo4j.AsyncDriver` is configured exactly like :class:`neo4j.Driver`
 (see :ref:`driver-configuration-ref`). The only difference is that the async
 driver accepts an async custom resolver function:
+
 
 .. _async-resolver-ref:
 
@@ -287,6 +282,8 @@ To construct a :class:`neo4j.AsyncSession` use the :meth:`neo4j.AsyncDriver.sess
 
 
 Sessions will often be created and destroyed using a *with block context*.
+This is the recommended approach as it takes care of closing the session
+properly even when an exception is raised.
 
 .. code-block:: python
 
@@ -311,7 +308,42 @@ AsyncSession
 
 .. autoclass:: neo4j.AsyncSession()
 
+    .. note::
+
+        Some asyncio utility functions (e.g., :func:`asyncio.wait_for` and
+        :func:`asyncio.shield`) will wrap work in a :class:`asyncio.Task`.
+        This introduces concurrency and can lead to undefined behavior as
+        :class:`AsyncSession` is not concurrency-safe.
+
+        Consider this **wrong** example::
+
+            async def dont_do_this(driver):
+                async with driver.session() as session:
+                    await asyncio.shield(session.run("RETURN 1"))
+
+        If ``dont_do_this`` gets cancelled while waiting for ``session.run``,
+        ``session.run`` itself won't get cancelled (it's shielded) so it will
+        continue to use the session in another Task. Concurrently, will the
+        async context manager (``async with driver.session()``) on exit clean
+        up the session. That's two Tasks handling the session concurrently.
+        Therefore, this yields undefined behavior.
+
+        In this particular example, the problem could be solved by shielding
+        the whole coroutine ``dont_do_this`` instead of only the
+        ``session.run``. Like so::
+
+            async def thats_better(driver):
+                async def inner()
+                    async with driver.session() as session:
+                        await session.run("RETURN 1")
+
+                await asyncio.shield(inner())
+
     .. automethod:: close
+
+    .. automethod:: cancel
+
+    .. automethod:: closed
 
     .. automethod:: run
 
@@ -323,7 +355,11 @@ AsyncSession
 
     .. automethod:: read_transaction
 
+    .. automethod:: execute_read
+
     .. automethod:: write_transaction
+
+    .. automethod:: execute_write
 
 
 
@@ -333,7 +369,35 @@ Session Configuration
 =====================
 
 :class:`neo4j.AsyncSession` is configured exactly like :class:`neo4j.Session`
-(see :ref:`session-configuration-ref`).
+(see :ref:`session-configuration-ref`). The only difference is the async session
+accepts either a :class:`neo4j.api.BookmarkManager` object or a
+:class:`neo4j.api.AsyncBookmarkManager` as bookmark manager:
+
+
+.. _async-bookmark-manager-ref:
+
+``bookmark_manager``
+--------------------
+Specify a bookmark manager for the driver to use. If present, the bookmark
+manager is used to keep all work on the driver causally consistent.
+
+See :class:`BookmarkManager` for more information.
+
+.. warning::
+    Enabling the BookmarkManager can have a negative impact on performance since
+    all queries will wait for the latest changes to be propagated across the
+    cluster.
+
+    For simpler use-cases, sessions (:class:`.AsyncSession`) can be used to
+    group a series of queries together that will be causally chained
+    automatically.
+
+:Type: :const:`None`, :class:`BookmarkManager`, or :class:`AsyncBookmarkManager`
+:Default: :const:`None`
+
+**This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
+
 
 
 ****************
@@ -346,7 +410,7 @@ Neo4j supports three kinds of async transaction:
 + :ref:`async-explicit-transactions-ref`
 + :ref:`async-managed-transactions-ref`
 
-Each has pros and cons but if in doubt, use a managed transaction with a `transaction function`.
+Each has pros and cons but if in doubt, use a managed transaction with a *transaction function*.
 
 
 .. _async-auto-commit-transactions-ref:
@@ -354,7 +418,7 @@ Each has pros and cons but if in doubt, use a managed transaction with a `transa
 Auto-commit Transactions
 ========================
 Auto-commit transactions are the simplest form of transaction, available via
-:py:meth:`neo4j.Session.run`. These are easy to use but support only one
+:meth:`neo4j.Session.run`. These are easy to use but support only one
 statement per transaction and are not automatically retried on failure.
 
 Auto-commit transactions are also the only way to run ``PERIODIC COMMIT``
@@ -398,7 +462,7 @@ Example:
 
 Explicit Async Transactions
 ===========================
-Explicit transactions support multiple statements and must be created with an explicit :py:meth:`neo4j.AsyncSession.begin_transaction` call.
+Explicit transactions support multiple statements and must be created with an explicit :meth:`neo4j.AsyncSession.begin_transaction` call.
 
 This creates a new :class:`neo4j.AsyncTransaction` object that can be used to run Cypher.
 
@@ -408,16 +472,18 @@ It also gives applications the ability to directly control ``commit`` and ``roll
 
     .. automethod:: run
 
-    .. automethod:: close
-
-    .. automethod:: closed
-
     .. automethod:: commit
 
     .. automethod:: rollback
 
+    .. automethod:: close
+
+    .. automethod:: cancel
+
+    .. automethod:: closed
+
 Closing an explicit transaction can either happen automatically at the end of a ``async with`` block,
-or can be explicitly controlled through the :py:meth:`neo4j.AsyncTransaction.commit`, :py:meth:`neo4j.AsyncTransaction.rollback` or :py:meth:`neo4j.AsyncTransaction.close` methods.
+or can be explicitly controlled through the :meth:`neo4j.AsyncTransaction.commit`, :meth:`neo4j.AsyncTransaction.rollback`, :meth:`neo4j.AsyncTransaction.close` or :meth:`neo4j.AsyncTransaction.cancel` methods.
 
 Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction.
 
@@ -446,8 +512,8 @@ Example:
     async def set_person_name(tx, node_id, name):
         query = "MATCH (a:Person) WHERE id(a) = $id SET a.name = $name"
         result = await tx.run(query, id=node_id, name=name)
-        info = await result.consume()
-        # use the info for logging etc.
+        summary = await result.consume()
+        # use the summary for logging etc.
 
 .. _async-managed-transactions-ref:
 
@@ -456,8 +522,8 @@ Managed Async Transactions (`transaction functions`)
 ====================================================
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
 
-+ :py:meth:`neo4j.AsyncSession.write_transaction`
-+ :py:meth:`neo4j.AsyncSession.read_transaction`
++ :meth:`neo4j.AsyncSession.execute_write`
++ :meth:`neo4j.AsyncSession.execute_read`
 
 These allow a function object representing the transactional unit of work to be passed as a parameter.
 This function is called one or more times, within a configurable time limit, until it succeeds.
@@ -466,7 +532,7 @@ Returning a live result object would prevent the driver from correctly managing 
 
 This function will receive a :class:`neo4j.AsyncManagedTransaction` object as its first parameter.
 
-.. autoclass:: neo4j.AsyncManagedTransaction
+.. autoclass:: neo4j.AsyncManagedTransaction()
 
     .. automethod:: run
 
@@ -476,7 +542,7 @@ Example:
 
     async def create_person(driver, name)
         async with driver.session() as session:
-            node_id = await session.write_transaction(create_person_tx, name)
+            node_id = await session.execute_write(create_person_tx, name)
 
     async def create_person_tx(tx, name):
         query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
@@ -485,7 +551,6 @@ Example:
         return record["node_id"]
 
 To exert more control over how a transaction function is carried out, the :func:`neo4j.unit_of_work` decorator can be used.
-
 
 
 ***********
@@ -531,3 +596,55 @@ A :class:`neo4j.AsyncResult` is attached to an active connection, through a :cla
     .. automethod:: closed
 
 See https://neo4j.com/docs/python-manual/current/cypher-workflow/#python-driver-type-mapping for more about type mapping.
+
+
+********************
+AsyncBookmarkManager
+********************
+
+.. autoclass:: neo4j.api.AsyncBookmarkManager
+    :members:
+
+
+******************
+Async Cancellation
+******************
+
+Async Python provides a mechanism for cancelling futures
+(:meth:`asyncio.Future.cancel`). The driver and its components can handle this.
+However, generally, it's not advised to rely on cancellation as it forces the
+driver to close affected connections to avoid leaving them in an undefined
+state. This makes the driver less efficient.
+
+The easiest way to make sure your application code's interaction with the driver
+is playing nicely with cancellation is to always use the async context manager
+provided by :class:`neo4j.AsyncSession` like so: ::
+
+    async with driver.session() as session:
+        ...  # do what you need to do with the session
+
+If, for whatever reason, you need handle the session manually, you can it like
+so: ::
+
+    session = await with driver.session()
+    try:
+        ...  # do what you need to do with the session
+    except asyncio.CancelledError:
+        session.cancel()
+        raise
+    finally:
+        # this becomes a no-op if the session has been cancelled before
+        await session.close()
+
+As mentioned above, any cancellation of I/O work will cause the driver to close
+the affected connection. This will kill any :class:`neo4j.AsyncTransaction` and
+:class:`neo4j.AsyncResult` objects that are attached to that connection. Hence,
+after catching a :class:`asyncio.CancelledError`, you should not try to use
+transactions or results created earlier. They are likely to not be valid
+anymore.
+
+Furthermore, there is no guarantee as to whether a piece of ongoing work got
+successfully executed on the server side or not, when a cancellation happens:
+``await transaction.commit()`` and other methods can throw
+:exc:`asyncio.CancelledError` but still have managed to complete from the
+server's perspective.

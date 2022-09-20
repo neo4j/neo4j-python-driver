@@ -16,22 +16,43 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import logging
+import typing as t
 from socket import (
+    AddressFamily,
     AF_INET,
     AF_INET6,
     getservbyname,
 )
 
 
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
+
 log = logging.getLogger("neo4j")
 
 
-class _AddressMeta(type(tuple)):
+_T = t.TypeVar("_T")
 
-    def __init__(self, *args, **kwargs):
-        self._ipv4_cls = None
-        self._ipv6_cls = None
+
+if t.TYPE_CHECKING:
+
+    class _WithPeerName(te.Protocol):
+        def getpeername(self) -> tuple: ...
+
+
+assert type(tuple) is type
+
+
+class _AddressMeta(type):
+
+    def __init__(cls, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        cls._ipv4_cls = None
+        cls._ipv6_cls = None
 
     def _subclass_by_family(self, family):
         subclasses = [
@@ -63,16 +84,25 @@ class _AddressMeta(type(tuple)):
 class Address(tuple, metaclass=_AddressMeta):
 
     @classmethod
-    def from_socket(cls, socket):
+    def from_socket(
+        cls: t.Type[_T_Address],
+        socket: _WithPeerName
+    ) -> _T_Address:
         address = socket.getpeername()
         return cls(address)
 
     @classmethod
-    def parse(cls, s, default_host=None, default_port=None):
+    def parse(
+        cls: t.Type[_T_Address],
+        s: str,
+        default_host: str = None,
+        default_port: int = None
+    ) -> _T_Address:
         if not isinstance(s, str):
             raise TypeError("Address.parse requires a string argument")
         if s.startswith("["):
             # IPv6
+            port: t.Union[str, int]
             host, _, port = s[1:].rpartition("]")
             port = port.lstrip(":")
             try:
@@ -92,16 +122,21 @@ class Address(tuple, metaclass=_AddressMeta):
                         port or default_port or 0))
 
     @classmethod
-    def parse_list(cls, *s, default_host=None, default_port=None):
+    def parse_list(
+        cls: t.Type[_T_Address],
+        *s: str,
+        default_host: str = None,
+        default_port: int = None
+    ) -> t.List[_T_Address]:
         """ Parse a string containing one or more socket addresses, each
         separated by whitespace.
         """
         if not all(isinstance(s0, str) for s0 in s):
             raise TypeError("Address.parse_list requires a string argument")
-        return [Address.parse(a, default_host, default_port)
+        return [cls.parse(a, default_host, default_port)
                 for a in " ".join(s).split()]
 
-    def __new__(cls, iterable):
+    def __new__(cls, iterable: t.Collection) -> Address:
         if isinstance(iterable, cls):
             return iterable
         n_parts = len(iterable)
@@ -116,29 +151,29 @@ class Address(tuple, metaclass=_AddressMeta):
         return inst
 
     #: Address family (AF_INET or AF_INET6)
-    family = None
+    family: t.Optional[AddressFamily] = None
 
     def __repr__(self):
         return "{}({!r})".format(self.__class__.__name__, tuple(self))
 
     @property
-    def host_name(self):
+    def host_name(self) -> str:
         return self[0]
 
     @property
-    def host(self):
+    def host(self) -> str:
         return self[0]
 
     @property
-    def port(self):
+    def port(self) -> int:
         return self[1]
 
     @property
-    def unresolved(self):
+    def unresolved(self) -> Address:
         return self
 
     @property
-    def port_number(self):
+    def port_number(self) -> int:
         try:
             return getservbyname(self[1])
         except (OSError, TypeError):
@@ -150,11 +185,14 @@ class Address(tuple, metaclass=_AddressMeta):
                 raise type(e)("Unknown port value %r" % self[1])
 
 
+_T_Address = t.TypeVar("_T_Address", bound=Address)
+
+
 class IPv4Address(Address):
 
     family = AF_INET
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}:{}".format(*self)
 
 
@@ -162,22 +200,25 @@ class IPv6Address(Address):
 
     family = AF_INET6
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "[{}]:{}".format(*self)
 
 
 class ResolvedAddress(Address):
 
+    _host_name: str
+
     @property
-    def host_name(self):
+    def host_name(self) -> str:
         return self._host_name
 
     @property
-    def unresolved(self):
+    def unresolved(self) -> Address:
         return super().__new__(Address, (self._host_name, *self[1:]))
 
-    def __new__(cls, iterable, host_name=None):
+    def __new__(cls, iterable, *, host_name: str) -> ResolvedAddress:
         new = super().__new__(cls, iterable)
+        new = t.cast(ResolvedAddress, new)
         new._host_name = host_name
         return new
 

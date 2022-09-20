@@ -15,17 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from ssl import SSLContext
 
 import pytest
 
-from neo4j import AsyncGraphDatabase
+import neo4j
 
 from ..._async_compat import mark_async_test
 
 
 @mark_async_test
-async def test_custom_ssl_context_wraps_connection(target, auth, mocker):
+async def test_custom_ssl_context_wraps_connection(uri, auth, mocker):
     # Test that the driver calls either `.wrap_socket` or `.wrap_bio` on the
     # provided custom SSL context.
 
@@ -39,10 +40,9 @@ async def test_custom_ssl_context_wraps_connection(target, auth, mocker):
     fake_ssl_context.wrap_socket.side_effect = wrap_fail
     fake_ssl_context.wrap_bio.side_effect = wrap_fail
 
-    driver = AsyncGraphDatabase.neo4j_driver(
-        target, auth=auth, ssl_context=fake_ssl_context
-    )
-    async with driver:
+    async with neo4j.AsyncGraphDatabase.driver(
+        uri, auth=auth, ssl_context=fake_ssl_context
+    ) as driver:
         async with driver.session() as session:
             with pytest.raises(NoNeedToGoFurtherException):
                 await session.run("RETURN 1")

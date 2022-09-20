@@ -16,9 +16,14 @@
 # limitations under the License.
 
 
+import asyncio
+
 import pytest
 
+from neo4j._async_compat.network import BoltSocket
 from neo4j._sync.io import Bolt
+
+from ...._async_compat import TestDecorators
 
 
 # python -m pytest tests/unit/io/test_class_bolt.py -s -v
@@ -74,3 +79,27 @@ def test_magic_preamble():
     preamble = 0x6060B017
     preamble_bytes = preamble.to_bytes(4, byteorder="big")
     assert Bolt.MAGIC_PREAMBLE == preamble_bytes
+
+
+@TestDecorators.mark_async_only_test
+def test_cancel_hello_in_open(mocker):
+    address = ("localhost", 7687)
+    socket_mock = mocker.Mock(spec=BoltSocket)
+
+    socket_cls_mock = mocker.patch("neo4j._sync.io._bolt.BoltSocket",
+                                   autospec=True)
+    socket_cls_mock.connect.return_value = (
+        socket_mock, (5, 0), None, None
+    )
+    socket_mock.getpeername.return_value = address
+    bolt_cls_mock = mocker.patch("neo4j._sync.io._bolt5.Bolt5x0",
+                                 autospec=True)
+    bolt_mock = bolt_cls_mock.return_value
+    bolt_mock.socket = socket_mock
+    bolt_mock.hello.side_effect = asyncio.CancelledError()
+    bolt_mock.local_port = 1234
+
+    with pytest.raises(asyncio.CancelledError):
+        Bolt.open(address)
+
+    bolt_mock.kill.assert_called_once_with()

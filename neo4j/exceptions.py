@@ -36,11 +36,13 @@ Driver API Errors
     + ForbiddenOnReadOnlyDatabase
 
 + DriverError
+  + SessionError
   + TransactionError
     + TransactionNestingError
   + ResultError
     + ResultConsumedError
     + ResultNotSingleError
+  + BrokenRecordError
   + SessionExpired
   + ServiceUnavailable
     + RoutingServiceUnavailable
@@ -63,14 +65,71 @@ Connector API Errors
   + BoltFailure
   + BoltProtocolError
   + Bolt*
-
 """
 
-CLASSIFICATION_CLIENT = "ClientError"
-CLASSIFICATION_TRANSIENT = "TransientError"
-CLASSIFICATION_DATABASE = "DatabaseError"
+
+from __future__ import annotations
+
+import typing as t
 
 
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
+    from ._async.work import (
+        AsyncManagedTransaction,
+        AsyncResult,
+        AsyncSession,
+        AsyncTransaction,
+    )
+    from ._sync.work import (
+        ManagedTransaction,
+        Result,
+        Session,
+        Transaction,
+    )
+
+    _T_Transaction = t.Union[AsyncManagedTransaction, AsyncTransaction,
+                             ManagedTransaction, Transaction]
+    _T_Result = t.Union[AsyncResult, Result]
+    _T_Session = t.Union[AsyncSession, Session]
+else:
+    _T_Transaction = t.Union["AsyncManagedTransaction", "AsyncTransaction",
+                             "ManagedTransaction", "Transaction"]
+    _T_Result = t.Union["AsyncResult", "Result"]
+    _T_Session = t.Union["AsyncSession", "Session"]
+
+
+from ._meta import deprecated
+
+
+CLASSIFICATION_CLIENT: te.Final[str] = "ClientError"
+CLASSIFICATION_TRANSIENT: te.Final[str] = "TransientError"
+CLASSIFICATION_DATABASE: te.Final[str] = "DatabaseError"
+
+
+ERROR_REWRITE_MAP: t.Dict[str, t.Tuple[str, t.Optional[str]]] = {
+    # This error can be retried ed. The driver just needs to re-authenticate
+    # with the same credentials.
+    "Neo.ClientError.Security.AuthorizationExpired": (
+        CLASSIFICATION_TRANSIENT, None
+    ),
+    # In 5.0, this error has been re-classified as ClientError.
+    # For backwards compatibility with Neo4j 4.4 and earlier, we re-map it in
+    # the driver, too.
+    "Neo.TransientError.Transaction.Terminated": (
+        CLASSIFICATION_CLIENT, "Neo.ClientError.Transaction.Terminated"
+    ),
+    # In 5.0, this error has been re-classified as ClientError.
+    # For backwards compatibility with Neo4j 4.4 and earlier, we re-map it in
+    # the driver, too.
+    "Neo.TransientError.Transaction.LockClientStopped": (
+        CLASSIFICATION_CLIENT, "Neo.ClientError.Transaction.LockClientStopped"
+    ),
+}
+
+
+# Neo4jError
 class Neo4jError(Exception):
     """ Raised when the Cypher engine returns an error to the client.
     """
@@ -88,17 +147,24 @@ class Neo4jError(Exception):
     metadata = None
 
     @classmethod
-    def hydrate(cls, message=None, code=None, **metadata):
+    def hydrate(
+        cls, message: str = None, code: str = None, **metadata: t.Any
+    ) -> Neo4jError:
         message = message or "An unknown error occurred"
         code = code or "Neo.DatabaseError.General.UnknownError"
         try:
             _, classification, category, title = code.split(".")
-            if code == "Neo.ClientError.Security.AuthorizationExpired":
-                classification = CLASSIFICATION_TRANSIENT
         except ValueError:
             classification = CLASSIFICATION_DATABASE
             category = "General"
             title = "UnknownError"
+        else:
+            classification_override, code_override = \
+                ERROR_REWRITE_MAP.get(code, (None, None))
+            if classification_override is not None:
+                classification = classification_override
+            if code_override is not None:
+                code = code_override
 
         error_class = cls._extract_error_class(classification, code)
 
@@ -131,23 +197,41 @@ class Neo4jError(Exception):
         else:
             return cls
 
-    def is_retriable(self):
+    # TODO 6.0: Remove this alias
+    @deprecated(
+        "Neo4jError.is_retriable is deprecated and will be removed in a "
+        "future version. Please use Neo4jError.is_retryable instead."
+    )
+    def is_retriable(self) -> bool:
         """Whether the error is retryable.
 
-        Indicated whether a transaction that yielded this error makes sense to
-        retry. This methods  makes mostly sense when implementing a custom
+        See :meth:`.is_retryable`.
+
+        :return: :const:`True` if the error is retryable,
+            :const:`False` otherwise.
+
+        .. deprecated:: 5.0
+            This method will be removed in a future version.
+            Please use :meth:`.is_retryable` instead.
+        """
+        return self.is_retryable()
+
+    def is_retryable(self) -> bool:
+        """Whether the error is retryable.
+
+        Indicates whether a transaction that yielded this error makes sense to
+        retry. This method makes mostly sense when implementing a custom
         retry policy in conjunction with :ref:`explicit-transactions-ref`.
 
         :return: :const:`True` if the error is retryable,
             :const:`False` otherwise.
-        :rtype: bool
         """
         return False
 
     def invalidates_all_connections(self):
         return self.code == "Neo.ClientError.Security.AuthorizationExpired"
 
-    def is_fatal_during_discovery(self):
+    def is_fatal_during_discovery(self) -> bool:
         # checks if the code is an error that is caused by the client. In this
         # case the driver should fail fast during discovery.
         if not isinstance(self.code, str):
@@ -163,73 +247,44 @@ class Neo4jError(Exception):
         return False
 
     def __str__(self):
-        return "{{code: {code}}} {{message: {message}}}".format(code=self.code, message=self.message)
+        if self.code or self.message:
+            return "{{code: {code}}} {{message: {message}}}".format(
+                code=self.code, message=self.message
+            )
+        return super().__str__()
 
 
+# Neo4jError > ClientError
 class ClientError(Neo4jError):
     """ The Client sent a bad request - changing the request might yield a successful outcome.
     """
 
 
-class DatabaseError(Neo4jError):
-    """ The database failed to service the request.
-    """
-
-
-class TransientError(Neo4jError):
-    """ The database cannot service the request right now, retrying later might yield a successful outcome.
-    """
-
-    def is_retriable(self):
-        # Transient errors are always retriable.
-        # However, there are some errors that are misclassified by the server.
-        # They should really be ClientErrors.
-        return self.code not in (
-            "Neo.TransientError.Transaction.Terminated",
-            "Neo.TransientError.Transaction.LockClientStopped",
-        )
-
-
-class DatabaseUnavailable(TransientError):
-    """
-    """
-
-
-class ConstraintError(ClientError):
-    """
-    """
-
-
+# Neo4jError > ClientError > CypherSyntaxError
 class CypherSyntaxError(ClientError):
     """
     """
 
 
+# Neo4jError > ClientError > CypherTypeError
 class CypherTypeError(ClientError):
     """
     """
 
 
-class NotALeader(TransientError):
+# Neo4jError > ClientError > ConstraintError
+class ConstraintError(ClientError):
     """
     """
 
 
-class Forbidden(ClientError):
-    """
-    """
-
-
-class ForbiddenOnReadOnlyDatabase(TransientError):
-    """
-    """
-
-
+# Neo4jError > ClientError > AuthError
 class AuthError(ClientError):
     """ Raised when authentication failure occurs.
     """
 
 
+# Neo4jError > ClientError > AuthError > TokenExpired
 class TokenExpired(AuthError):
     """ Raised when the authentication token has expired.
 
@@ -237,7 +292,46 @@ class TokenExpired(AuthError):
     """
 
 
-client_errors = {
+# Neo4jError > ClientError > Forbidden
+class Forbidden(ClientError):
+    """
+    """
+
+
+# Neo4jError > DatabaseError
+class DatabaseError(Neo4jError):
+    """ The database failed to service the request.
+    """
+
+
+# Neo4jError > TransientError
+class TransientError(Neo4jError):
+    """ The database cannot service the request right now, retrying later might yield a successful outcome.
+    """
+
+    def is_retryable(self) -> bool:
+        return True
+
+
+# Neo4jError > TransientError > DatabaseUnavailable
+class DatabaseUnavailable(TransientError):
+    """
+    """
+
+
+# Neo4jError > TransientError > NotALeader
+class NotALeader(TransientError):
+    """
+    """
+
+
+# Neo4jError > TransientError > ForbiddenOnReadOnlyDatabase
+class ForbiddenOnReadOnlyDatabase(TransientError):
+    """
+    """
+
+
+client_errors: t.Dict[str, t.Type[Neo4jError]] = {
 
     # ConstraintError
     "Neo.ClientError.Schema.ConstraintValidationFailed": ConstraintError,
@@ -273,99 +367,131 @@ client_errors = {
     "Neo.ClientError.Cluster.NotALeader": NotALeader,
 }
 
-transient_errors = {
+transient_errors: t.Dict[str, t.Type[Neo4jError]] = {
 
     # DatabaseUnavailableError
     "Neo.TransientError.General.DatabaseUnavailable": DatabaseUnavailable
 }
 
 
+# DriverError
 class DriverError(Exception):
     """ Raised when the Driver raises an error.
     """
-    def is_retriable(self):
+    def is_retryable(self) -> bool:
         """Whether the error is retryable.
 
-        Indicated whether a transaction that yielded this error makes sense to
-        retry. This methods  makes mostly sense when implementing a custom
+        Indicates whether a transaction that yielded this error makes sense to
+        retry. This method makes mostly sense when implementing a custom
         retry policy in conjunction with :ref:`explicit-transactions-ref`.
 
         :return: :const:`True` if the error is retryable,
             :const:`False` otherwise.
-        :rtype: bool
         """
         return False
 
 
+# DriverError > SessionError
+class SessionError(DriverError):
+    """ Raised when an error occurs while using a session.
+    """
+
+    session: _T_Session
+
+    def __init__(self, session_, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.session = session_
+
+
+# DriverError > TransactionError
+class TransactionError(DriverError):
+    """ Raised when an error occurs while using a transaction.
+    """
+
+    transaction: _T_Transaction
+
+    def __init__(self, transaction_, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.transaction = transaction_
+
+
+# DriverError > TransactionError > TransactionNestingError
+class TransactionNestingError(TransactionError):
+    """ Raised when transactions are nested incorrectly.
+    """
+
+
+# DriverError > ResultError
+class ResultError(DriverError):
+    """Raised when an error occurs while using a result object."""
+
+    result: _T_Result
+
+    def __init__(self, result_, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.result = result_
+
+
+# DriverError > ResultError > ResultConsumedError
+class ResultConsumedError(ResultError):
+    """Raised when trying to access records of a consumed result."""
+
+
+# DriverError > ResultError > ResultNotSingleError
+class ResultNotSingleError(ResultError):
+    """Raised when a result should have exactly one record but does not."""
+
+
+# DriverError > BrokenRecordError
+class BrokenRecordError(DriverError):
+    """ Raised when accessing a Record's field that couldn't be decoded.
+
+    This can for instance happen when the server sends a zoned datetime with a
+    zone id unknown to the client.
+    """
+
+
+# DriverError > SessionExpired
 class SessionExpired(DriverError):
     """ Raised when a session is no longer able to fulfil
     the purpose described by its original parameters.
     """
 
-    def __init__(self, session, *args, **kwargs):
-        super(SessionExpired, self).__init__(session, *args, **kwargs)
-
-    def is_retriable(self):
+    def is_retryable(self) -> bool:
         return True
 
 
-class TransactionError(DriverError):
-    """ Raised when an error occurs while using a transaction.
-    """
-
-    def __init__(self, transaction, *args, **kwargs):
-        super(TransactionError, self).__init__(*args, **kwargs)
-        self.transaction = transaction
-
-
-class TransactionNestingError(DriverError):
-    """ Raised when transactions are nested incorrectly.
-    """
-
-    def __init__(self, transaction, *args, **kwargs):
-        super(TransactionError, self).__init__(*args, **kwargs)
-        self.transaction = transaction
-
-
-class ResultError(DriverError):
-    """Raised when an error occurs while using a result object."""
-
-    def __init__(self, result, *args, **kwargs):
-        super(ResultError, self).__init__(*args, **kwargs)
-        self.result = result
-
-
-class ResultConsumedError(ResultError):
-    """Raised when trying to access records of a consumed result."""
-
-
-class ResultNotSingleError(ResultError):
-    """Raised when a result should have exactly one record but does not."""
-
-
+# DriverError > ServiceUnavailable
 class ServiceUnavailable(DriverError):
     """ Raised when no database service is available.
+
+    This may be due to incorrect configuration or could indicate a runtime
+    failure of a database service that the driver is unable to route around.
     """
 
-    def is_retriable(self):
+    def is_retryable(self) -> bool:
         return True
 
 
+# DriverError > ServiceUnavailable > RoutingServiceUnavailable
 class RoutingServiceUnavailable(ServiceUnavailable):
     """ Raised when no routing service is available.
     """
 
 
+# DriverError > ServiceUnavailable > WriteServiceUnavailable
 class WriteServiceUnavailable(ServiceUnavailable):
     """ Raised when no write service is available.
     """
 
 
+# DriverError > ServiceUnavailable > ReadServiceUnavailable
 class ReadServiceUnavailable(ServiceUnavailable):
     """ Raised when no read service is available.
     """
 
 
+# DriverError > ServiceUnavailable > IncompleteCommit
 class IncompleteCommit(ServiceUnavailable):
     """ Raised when the client looses connection while committing a transaction
 
@@ -375,20 +501,23 @@ class IncompleteCommit(ServiceUnavailable):
     successfully or not.
     """
 
-    def is_retriable(self):
+    def is_retryable(self) -> bool:
         return False
 
 
+# DriverError > ConfigurationError
 class ConfigurationError(DriverError):
     """ Raised when there is an error concerning a configuration.
     """
 
 
+# DriverError > ConfigurationError > AuthConfigurationError
 class AuthConfigurationError(ConfigurationError):
     """ Raised when there is an error with the authentication configuration.
     """
 
 
+# DriverError > ConfigurationError > CertificateConfigurationError
 class CertificateConfigurationError(ConfigurationError):
     """ Raised when there is an error with the authentication configuration.
     """

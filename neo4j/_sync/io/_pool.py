@@ -17,28 +17,34 @@
 
 
 import abc
+import asyncio
+import logging
 from collections import (
     defaultdict,
     deque,
 )
-import logging
 from logging import getLogger
 from random import choice
-from time import perf_counter
 
 from ..._async_compat.concurrency import (
     Condition,
+    CooperativeRLock,
     RLock,
 )
 from ..._async_compat.network import NetworkUtil
+from ..._conf import (
+    PoolConfig,
+    WorkspaceConfig,
+)
+from ..._deadline import (
+    connection_deadline,
+    Deadline,
+)
 from ..._exceptions import BoltError
+from ..._routing import RoutingTable
 from ...api import (
     READ_ACCESS,
     WRITE_ACCESS,
-)
-from ...conf import (
-    PoolConfig,
-    WorkspaceConfig,
 )
 from ...exceptions import (
     ClientError,
@@ -50,7 +56,6 @@ from ...exceptions import (
     SessionExpired,
     WriteServiceUnavailable,
 )
-from ...routing import RoutingTable
 from ._bolt import Bolt
 
 
@@ -71,7 +76,8 @@ class IOPool(abc.ABC):
         self.pool_config = pool_config
         self.workspace_config = workspace_config
         self.connections = defaultdict(deque)
-        self.lock = RLock()
+        self.connections_reservations = defaultdict(lambda: 0)
+        self.lock = CooperativeRLock()
         self.cond = Condition(self.lock)
 
     def __enter__(self):
@@ -80,11 +86,24 @@ class IOPool(abc.ABC):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _acquire_from_pool(self, address, health_check):
-        for connection in list(self.connections.get(address, [])):
-            if connection.in_use:
-                continue
-            if not health_check(connection):
+    def _acquire_from_pool(self, address):
+        with self.lock:
+            for connection in list(self.connections.get(address, [])):
+                if connection.in_use:
+                    continue
+                connection.pool = self
+                connection.in_use = True
+                return connection
+        return None  # no free connection available
+
+    def _acquire_from_pool_checked(
+        self, address, health_check, deadline
+    ):
+        while not deadline.expired():
+            connection = self._acquire_from_pool(address)
+            if not connection:
+                return None  # no free connection available
+            if not health_check(connection, deadline):
                 # `close` is a noop on already closed connections.
                 # This is to make sure that the connection is
                 # gracefully closed, e.g. if it's just marked as
@@ -98,122 +117,172 @@ class IOPool(abc.ABC):
                         connection.stale(), connection.in_use
                     )
                 connection.close()
-                try:
-                    self.connections.get(address, []).remove(connection)
-                except ValueError:
-                    # If closure fails (e.g. because the server went
-                    # down), all connections to the same address will
-                    # be removed. Therefore, we silently ignore if the
-                    # connection isn't in the pool anymore.
-                    pass
-                continue
-            if not connection.in_use:
-                connection.in_use = True
+                with self.lock:
+                    try:
+                        self.connections.get(address, []).remove(connection)
+                    except ValueError:
+                        # If closure fails (e.g. because the server went
+                        # down), all connections to the same address will
+                        # be removed. Therefore, we silently ignore if the
+                        # connection isn't in the pool anymore.
+                        pass
+                continue  # try again with a new connection
+            else:
                 return connection
-        return None
 
-    def _acquire_new(self, address, timeout):
-        connections = self.connections[address]
+    def _acquire_new_later(self, address, deadline):
+        def connection_creator():
+            released_reservation = False
+            try:
+                try:
+                    connection = self.opener(
+                        address, deadline.to_timeout()
+                    )
+                except ServiceUnavailable:
+                    self.deactivate(address)
+                    raise
+                connection.pool = self
+                connection.in_use = True
+                with self.lock:
+                    self.connections_reservations[address] -= 1
+                    released_reservation = True
+                    self.connections[address].append(connection)
+                return connection
+            finally:
+                if not released_reservation:
+                    with self.lock:
+                        self.connections_reservations[address] -= 1
+
         max_pool_size = self.pool_config.max_connection_pool_size
         infinite_pool_size = (max_pool_size < 0
                               or max_pool_size == float("inf"))
-        can_create_new_connection = (infinite_pool_size
-                                     or len(connections) < max_pool_size)
-        if can_create_new_connection:
-            try:
-                connection = self.opener(address, timeout)
-            except ServiceUnavailable:
-                self.deactivate(address)
-                raise
-            else:
-                connection.pool = self
-                connection.in_use = True
-                connections.append(connection)
-                return connection
+        with self.lock:
+            connections = self.connections[address]
+            pool_size = (len(connections)
+                         + self.connections_reservations[address])
+            if infinite_pool_size or pool_size < max_pool_size:
+                # there's room for a new connection
+                self.connections_reservations[address] += 1
+                return connection_creator
         return None
 
-    def _acquire(self, address, timeout, liveness_check_timeout):
+    def _acquire(self, address, deadline, liveness_check_timeout):
         """ Acquire a connection to a given address from the pool.
         The address supplied should always be an IP address, not
         a host name.
 
         This method is thread safe.
         """
-        t0 = perf_counter()
-        if timeout is None:
-            timeout = self.workspace_config.connection_acquisition_timeout
-
-        def time_remaining():
-            t = timeout - (perf_counter() - t0)
-            return t if t > 0 else 0
-
-        def health_check(connection_):
+        def health_check(connection_, deadline_):
             if (connection_.closed()
                     or connection_.defunct()
                     or connection_.stale()):
                 return False
             if liveness_check_timeout is not None:
                 if connection_.is_idle_for(liveness_check_timeout):
-                    try:
-                        connection_.reset()
-                    except (OSError, ServiceUnavailable, SessionExpired):
-                        return False
+                    with connection_deadline(connection_, deadline_):
+                        try:
+                            log.debug("[#%04X]  C: <LIVENESS CHECK>",
+                                      connection_.local_port)
+                            connection_.reset()
+                        except (OSError, ServiceUnavailable, SessionExpired):
+                            return False
             return True
 
-        with self.lock:
-            while True:
-                # try to find a free connection in pool
-                connection = self._acquire_from_pool(
-                    address, health_check
-                )
-                if connection:
-                    return connection
-                # all connections in pool are in-use
-                connection = self._acquire_new(address, time_remaining())
-                if connection:
-                    return connection
+        while True:
+            # try to find a free connection in the pool
+            connection = self._acquire_from_pool_checked(
+                address, health_check, deadline
+            )
+            if connection:
+                return connection
+            # all connections in pool are in-use
+            with self.lock:
+                connection_creator = self._acquire_new_later(address, deadline)
+                if connection_creator:
+                    break
 
                 # failed to obtain a connection from pool because the
                 # pool is full and no free connection in the pool
-                if time_remaining():
-                    if not self.cond.wait(time_remaining()):
-                        raise ClientError("Failed to obtain a connection from pool "
-                                          "within {!r}s".format(timeout))
-                else:
-                    raise ClientError("Failed to obtain a connection from pool "
-                                      "within {!r}s".format(timeout))
+                timeout = deadline.to_timeout()
+                if (
+                    timeout == 0  # deadline expired
+                    or not self.cond.wait(timeout)
+                ):
+                    raise ClientError(
+                        "failed to obtain a connection from the pool within "
+                        "{!r}s (timeout)".format(deadline.original_timeout)
+                    )
+        return connection_creator()
 
     @abc.abstractmethod
     def acquire(
-        self, access_mode=None, timeout=None, database=None, bookmarks=None,
-        liveness_check_timeout=None
+        self, access_mode, timeout, database, bookmarks, liveness_check_timeout
     ):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
         :param access_mode:
-        :param timeout:
+        :param timeout: timeout for the core acquisition
+            (excluding potential preparation like fetching routing tables).
         :param database:
         :param bookmarks:
         :param liveness_check_timeout:
         """
+        ...
 
-    def release(self, *connections):
-        """ Release a connection back into the pool.
+    def kill_and_release(self, *connections):
+        """ Release connections back into the pool after closing them.
+
         This method is thread safe.
         """
+        for connection in connections:
+            if not (connection.defunct()
+                    or connection.closed()):
+                log.debug(
+                    "[#%04X]  C: <POOL> killing connection on release",
+                    connection.local_port
+                )
+                connection.kill()
         with self.lock:
             for connection in connections:
-                if not (connection.defunct()
-                        or connection.closed()
-                        or connection.is_reset):
-                    try:
-                        connection.reset()
-                    except (Neo4jError, DriverError, BoltError) as e:
-                        log.debug(
-                            "Failed to reset connection on release: %s", e
-                        )
                 connection.in_use = False
             self.cond.notify_all()
+
+    def release(self, *connections):
+        """ Release connections back into the pool.
+
+        This method is thread safe.
+        """
+        cancelled = None
+        for connection in connections:
+            if not (connection.defunct()
+                    or connection.closed()
+                    or connection.is_reset):
+                if cancelled is not None:
+                    log.debug(
+                        "[#%04X]  C: <POOL> released unclean connection",
+                        connection.local_port
+                    )
+                    connection.kill()
+                    continue
+                try:
+                    log.debug(
+                        "[#%04X]  C: <POOL> released unclean connection",
+                        connection.local_port
+                    )
+                    connection.reset()
+                except (Neo4jError, DriverError, BoltError) as e:
+                    log.debug("Failed to reset connection on release: %r", e)
+                except asyncio.CancelledError as e:
+                    log.debug("Cancelled reset connection on release: %r", e)
+                    cancelled = e
+                    connection.kill()
+        with self.lock:
+            for connection in connections:
+                connection.in_use = False
+            self.cond.notify_all()
+        if cancelled is not None:
+            raise cancelled
 
     def in_use_connection_count(self, address):
         """ Count the number of connections currently in use to a given
@@ -232,6 +301,23 @@ class IOPool(abc.ABC):
                 for connection in self.connections[address]:
                     connection.set_stale()
 
+    @classmethod
+    def _close_connections(cls, connections):
+        cancelled = None
+        for connection in connections:
+            if cancelled is not None:
+                connection.kill()
+                continue
+            try:
+                connection.close()
+            except asyncio.CancelledError as e:
+                # We've got cancelled: no more time to gracefully close these
+                # connections. Time to burn down the place.
+                cancelled = e
+                connection.kill()
+        if cancelled is not None:
+            raise cancelled
+
     def deactivate(self, address):
         """ Deactivate an address from the connection pool, if present, closing
         all idle connection to that address
@@ -241,40 +327,36 @@ class IOPool(abc.ABC):
                 connections = self.connections[address]
             except KeyError:  # already removed from the connection pool
                 return
-            for conn in list(connections):
-                if not conn.in_use:
-                    connections.remove(conn)
-                    try:
-                        conn.close()
-                    except OSError:
-                        pass
-            if not connections:
-                self.remove(address)
+            closable_connections = [
+                conn for conn in connections if not conn.in_use
+            ]
+            # First remove all connections in question, then try to close them.
+            # If closing of a connection fails, we will end up in this method
+            # again.
+            for conn in closable_connections:
+                connections.remove(conn)
+            if not self.connections[address]:
+                del self.connections[address]
+
+        self._close_connections(closable_connections)
 
     def on_write_failure(self, address):
         raise WriteServiceUnavailable(
             "No write service available for pool {}".format(self)
         )
 
-    def remove(self, address):
-        """ Remove an address from the connection pool, if present, closing
-        all connections to that address.
-        """
-        with self.lock:
-            for connection in self.connections.pop(address, ()):
-                try:
-                    connection.close()
-                except OSError:
-                    pass
-
     def close(self):
         """ Close all connections and empty the pool.
         This method is thread safe.
         """
+        log.debug("[#0000]  C: <POOL> close")
         try:
+            connections = []
             with self.lock:
                 for address in list(self.connections):
-                    self.remove(address)
+                    for connection in self.connections.pop(address, ()):
+                        connections.append(connection)
+            self._close_connections(connections)
         except TypeError:
             pass
 
@@ -295,7 +377,7 @@ class BoltPool(IOPool):
         def opener(addr, timeout):
             return Bolt.open(
                 addr, auth=auth, timeout=timeout, routing_context=None,
-                **pool_config
+                pool_config=pool_config
             )
 
         pool = cls(opener, pool_config, workspace_config, address)
@@ -310,13 +392,13 @@ class BoltPool(IOPool):
                                           self.address)
 
     def acquire(
-        self, access_mode=None, timeout=None, database=None, bookmarks=None,
-        liveness_check_timeout=None
+        self, access_mode, timeout, database, bookmarks, liveness_check_timeout
     ):
         # The access_mode and database is not needed for a direct connection,
         # it's just there for consistency.
+        deadline = Deadline.from_timeout_or_deadline(timeout)
         return self._acquire(
-            self.address, timeout, liveness_check_timeout
+            self.address, deadline, liveness_check_timeout
         )
 
 
@@ -347,7 +429,7 @@ class Neo4jPool(IOPool):
         def opener(addr, timeout):
             return Bolt.open(
                 addr, auth=auth, timeout=timeout,
-                routing_context=routing_context, **pool_config
+                routing_context=routing_context, pool_config=pool_config
             )
 
         pool = cls(opener, pool_config, workspace_config, address)
@@ -409,7 +491,7 @@ class Neo4jPool(IOPool):
             return self.routing_tables[database]
 
     def fetch_routing_info(
-        self, address, database, imp_user, bookmarks, timeout
+        self, address, database, imp_user, bookmarks, acquisition_timeout
     ):
         """ Fetch raw routing info from a given router address.
 
@@ -420,31 +502,32 @@ class Neo4jPool(IOPool):
         :type imp_user: str or None
         :param bookmarks: iterable of bookmark values after which the routing
                           info should be fetched
-        :param timeout: connection acquisition timeout in seconds
+        :param acquisition_timeout: connection acquisition timeout
 
         :return: list of routing records, or None if no connection
             could be established or if no readers or writers are present
         :raise ServiceUnavailable: if the server does not support
             routing, or if routing support is broken or outdated
         """
-        cx = self._acquire(address, timeout, None)
+        deadline = Deadline.from_timeout_or_deadline(acquisition_timeout)
+        cx = self._acquire(address, deadline, None)
         try:
             routing_table = cx.route(
-                database or self.workspace_config.database,
-                imp_user or self.workspace_config.impersonated_user,
-                bookmarks
+                database=database or self.workspace_config.database,
+                imp_user=imp_user or self.workspace_config.impersonated_user,
+                bookmarks=bookmarks
             )
         finally:
             self.release(cx)
         return routing_table
 
     def fetch_routing_table(
-        self, *, address, timeout, database, imp_user, bookmarks
+        self, *, address, acquisition_timeout, database, imp_user, bookmarks
     ):
         """ Fetch a routing table from a given router address.
 
         :param address: router address
-        :param timeout: seconds
+        :param acquisition_timeout: connection acquisition timeout
         :param database: the database name
         :type: str
         :param imp_user: the user to impersonate while fetching the routing
@@ -458,7 +541,7 @@ class Neo4jPool(IOPool):
         new_routing_info = None
         try:
             new_routing_info = self.fetch_routing_info(
-                address, database, imp_user, bookmarks, timeout
+                address, database, imp_user, bookmarks, acquisition_timeout
             )
         except Neo4jError as e:
             # checks if the code is an error that is caused by the client. In
@@ -501,8 +584,8 @@ class Neo4jPool(IOPool):
         return new_routing_table
 
     def _update_routing_table_from(
-        self, *routers, database=None, imp_user=None, bookmarks=None,
-        database_callback=None
+        self, *routers, database, imp_user, bookmarks, acquisition_timeout,
+        database_callback
     ):
         """ Try to update routing tables with the given routers.
 
@@ -517,28 +600,28 @@ class Neo4jPool(IOPool):
                 router, resolver=self.pool_config.resolver
             ):
                 new_routing_table = self.fetch_routing_table(
-                    address=address,
-                    timeout=self.pool_config.connection_timeout,
+                    address=address, acquisition_timeout=acquisition_timeout,
                     database=database, imp_user=imp_user, bookmarks=bookmarks
                 )
                 if new_routing_table is not None:
-                    new_databse = new_routing_table.database
+                    new_database = new_routing_table.database
                     old_routing_table = self.get_or_create_routing_table(
-                        new_databse
+                        new_database
                     )
                     old_routing_table.update(new_routing_table)
                     log.debug(
                         "[#0000]  C: <UPDATE ROUTING TABLE> address=%r (%r)",
-                        address, self.routing_tables[new_databse]
+                        address, self.routing_tables[new_database]
                     )
                     if callable(database_callback):
-                        database_callback(new_databse)
+                        database_callback(new_database)
                     return True
             self.deactivate(router)
         return False
 
     def update_routing_table(
-        self, *, database, imp_user, bookmarks, database_callback=None
+        self, *, database, imp_user, bookmarks, acquisition_timeout=None,
+        database_callback=None
     ):
         """ Update the routing table from the first router able to provide
         valid routing information.
@@ -548,6 +631,7 @@ class Neo4jPool(IOPool):
                          table
         :type imp_user: str or None
         :param bookmarks: bookmarks used when fetching routing table
+        :param acquisition_timeout: connection acquisition timeout
         :param database_callback: A callback function that will be called with
             the database name as only argument when a new routing table has been
             acquired. This database name might different from `database` if that
@@ -567,16 +651,18 @@ class Neo4jPool(IOPool):
             if prefer_initial_routing_address:
                 # TODO: Test this state
                 if self._update_routing_table_from(
-                        self.first_initial_routing_address, database=database,
-                        imp_user=imp_user, bookmarks=bookmarks,
-                        database_callback=database_callback
+                    self.first_initial_routing_address, database=database,
+                    imp_user=imp_user, bookmarks=bookmarks,
+                    acquisition_timeout=acquisition_timeout,
+                    database_callback=database_callback
                 ):
                     # Why is only the first initial routing address used?
                     return
             if self._update_routing_table_from(
-                    *(existing_routers - {self.first_initial_routing_address}),
-                    database=database, imp_user=imp_user, bookmarks=bookmarks,
-                    database_callback=database_callback
+                *(existing_routers - {self.first_initial_routing_address}),
+                database=database, imp_user=imp_user, bookmarks=bookmarks,
+                acquisition_timeout=acquisition_timeout,
+                database_callback=database_callback
             ):
                 return
 
@@ -584,6 +670,7 @@ class Neo4jPool(IOPool):
                 if self._update_routing_table_from(
                     self.first_initial_routing_address, database=database,
                     imp_user=imp_user, bookmarks=bookmarks,
+                    acquisition_timeout=acquisition_timeout,
                     database_callback=database_callback
                 ):
                     # Why is only the first initial routing address used?
@@ -602,7 +689,7 @@ class Neo4jPool(IOPool):
 
     def ensure_routing_table_is_fresh(
         self, *, access_mode, database, imp_user, bookmarks,
-        database_callback=None
+        acquisition_timeout=None, database_callback=None
     ):
         """ Update the routing table if stale.
 
@@ -625,6 +712,7 @@ class Neo4jPool(IOPool):
 
             self.update_routing_table(
                 database=database, imp_user=imp_user, bookmarks=bookmarks,
+                acquisition_timeout=acquisition_timeout,
                 database_callback=database_callback
             )
             self.update_connection_pool(database=database)
@@ -665,8 +753,7 @@ class Neo4jPool(IOPool):
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
     def acquire(
-        self, access_mode=None, timeout=None, database=None, bookmarks=None,
-        liveness_check_timeout=None
+        self, access_mode, timeout, database, bookmarks, liveness_check_timeout
     ):
         if access_mode not in (WRITE_ACCESS, READ_ACCESS):
             raise ClientError("Non valid 'access_mode'; {}".format(access_mode))
@@ -681,7 +768,7 @@ class Neo4jPool(IOPool):
                       self.routing_tables)
             self.ensure_routing_table_is_fresh(
                 access_mode=access_mode, database=database, imp_user=None,
-                bookmarks=bookmarks
+                bookmarks=bookmarks, acquisition_timeout=timeout
             )
 
         while True:
@@ -695,9 +782,10 @@ class Neo4jPool(IOPool):
                 raise SessionExpired("Failed to obtain connection towards '%s' server." % access_mode) from err
             try:
                 log.debug("[#0000]  C: <ACQUIRE ADDRESS> database=%r address=%r", database, address)
+                deadline = Deadline.from_timeout_or_deadline(timeout)
                 # should always be a resolved address
                 connection = self._acquire(
-                    address, timeout, liveness_check_timeout
+                    address, deadline, liveness_check_timeout
                 )
             except (ServiceUnavailable, SessionExpired):
                 self.deactivate(address=address)

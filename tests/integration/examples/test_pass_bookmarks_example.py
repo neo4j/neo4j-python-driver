@@ -77,27 +77,27 @@ class BookmarksExample:
 
         # Create the first person and employment relationship.
         with self.driver.session() as session_a:
-            session_a.write_transaction(self.create_person, "Alice")
-            session_a.write_transaction(self.employ, "Alice", "Wayne Enterprises")
+            session_a.execute_write(self.create_person, "Alice")
+            session_a.execute_write(self.employ, "Alice", "Wayne Enterprises")
             saved_bookmarks += session_a.last_bookmarks()
 
         # Create the second person and employment relationship.
         with self.driver.session() as session_b:
-            session_b.write_transaction(self.create_person, "Bob")
-            session_b.write_transaction(self.employ, "Bob", "LexCorp")
+            session_b.execute_write(self.create_person, "Bob")
+            session_b.execute_write(self.employ, "Bob", "LexCorp")
             saved_bookmarks += session_a.last_bookmarks()
 
         # Create a friendship between the two people created above.
         with self.driver.session(bookmarks=saved_bookmarks) as session_c:
-            session_c.write_transaction(self.create_friendship, "Alice", "Bob")
-            session_c.read_transaction(self.print_friendships)
+            session_c.execute_write(self.create_friendship, "Alice", "Bob")
+            session_c.execute_read(self.print_friendships)
 
 # end::pass-bookmarks[]
 
 
 def test(uri, auth):
+    eg = BookmarksExample(uri, auth)
     try:
-        eg = BookmarksExample(uri, auth)
         with eg.driver.session() as session:
             session.run("MATCH (_) DETACH DELETE _")
         eg.main()
@@ -106,3 +106,5 @@ def test(uri, auth):
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
+    finally:
+        eg.close()

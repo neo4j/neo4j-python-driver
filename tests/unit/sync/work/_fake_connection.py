@@ -21,6 +21,7 @@ import inspect
 import pytest
 
 from neo4j import ServerInfo
+from neo4j._deadline import Deadline
 from neo4j._sync.io import Bolt
 
 
@@ -31,6 +32,7 @@ def fake_connection_generator(session_mocker):
     class FakeConnection(mock.NonCallableMagicMock):
         callbacks = []
         server_info = ServerInfo("127.0.0.1", (4, 3))
+        local_port = 1234
 
         def __init__(self, *args, **kwargs):
             kwargs["spec"] = Bolt
@@ -39,6 +41,7 @@ def fake_connection_generator(session_mocker):
             self.attach_mock(mock.Mock(return_value=False), "defunct")
             self.attach_mock(mock.Mock(return_value=False), "stale")
             self.attach_mock(mock.Mock(return_value=False), "closed")
+            self.attach_mock(mock.Mock(return_value=False), "socket")
             self.attach_mock(mock.Mock(), "unresolved_address")
 
             def close_side_effect():
@@ -46,6 +49,18 @@ def fake_connection_generator(session_mocker):
 
             self.attach_mock(mock.Mock(side_effect=close_side_effect),
                              "close")
+
+            self.socket.attach_mock(
+                mock.Mock(return_value=None), "get_deadline"
+            )
+
+            def set_deadline_side_effect(deadline):
+                deadline = Deadline.from_timeout_or_deadline(deadline)
+                self.socket.get_deadline.return_value = deadline
+
+            self.socket.attach_mock(
+                mock.Mock(side_effect=set_deadline_side_effect), "set_deadline"
+            )
 
         @property
         def is_reset(self):
@@ -143,15 +158,15 @@ def scripted_connection_generator(fake_connection_generator):
             parent = super()
 
             def build_message_handler(name):
-                try:
-                    expected_message, scripted_callbacks = \
-                        self._script[self._script_pos]
-                except IndexError:
-                    pytest.fail("End of scripted connection reached.")
-                assert name == expected_message
-                self._script_pos += 1
-
                 def func(*args, **kwargs):
+                    try:
+                        expected_message, scripted_callbacks = \
+                            self._script[self._script_pos]
+                    except IndexError:
+                        pytest.fail("End of scripted connection reached.")
+                    assert name == expected_message
+                    self._script_pos += 1
+
                     def callback():
                         for cb_name, default_cb_args in (
                             ("on_ignored", ({},)),
@@ -161,8 +176,10 @@ def scripted_connection_generator(fake_connection_generator):
                             ("on_summary", ()),
                         ):
                             cb = kwargs.get(cb_name, None)
-                            if (not callable(cb)
-                                or cb_name not in scripted_callbacks):
+                            if (
+                                not callable(cb)
+                                or cb_name not in scripted_callbacks
+                            ):
                                 continue
                             cb_args = scripted_callbacks[cb_name]
                             if cb_args is None:

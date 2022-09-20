@@ -17,143 +17,134 @@
 
 
 import asyncio
-from contextlib import contextmanager
 import logging
-import socket
 from struct import pack as struct_pack
 
 from ..._async_compat.util import Util
+from ..._exceptions import SocketDeadlineExceeded
 from ...exceptions import (
     Neo4jError,
     ServiceUnavailable,
     SessionExpired,
     UnsupportedServerProduct,
 )
-from ...packstream import (
-    UnpackableBuffer,
-    Unpacker,
-)
 
 
 log = logging.getLogger("neo4j")
 
 
-class MessageInbox:
+class Inbox:
 
-    def __init__(self, s, on_error):
+    def __init__(self, sock, on_error, unpacker_cls):
         self.on_error = on_error
-        self._messages = self._yield_messages(s)
+        self._local_port = sock.getsockname()[1]
+        self._socket = sock
+        self._buffer = unpacker_cls.new_unpackable_buffer()
+        self._unpacker = unpacker_cls(self._buffer)
+        self._broken = False
 
-    def _yield_messages(self, sock):
+    def _buffer_one_chunk(self):
+        assert not self._broken
         try:
-            buffer = UnpackableBuffer()
-            unpacker = Unpacker(buffer)
             chunk_size = 0
             while True:
-
                 while chunk_size == 0:
                     # Determine the chunk size and skip noop
-                    receive_into_buffer(sock, buffer, 2)
-                    chunk_size = buffer.pop_u16()
+                    receive_into_buffer(self._socket, self._buffer, 2)
+                    chunk_size = self._buffer.pop_u16()
                     if chunk_size == 0:
-                        log.debug("[#%04X]  S: <NOOP>", sock.getsockname()[1])
+                        log.debug("[#%04X]  S: <NOOP>", self._local_port)
 
-                receive_into_buffer(sock, buffer, chunk_size + 2)
-                chunk_size = buffer.pop_u16()
+                receive_into_buffer(
+                    self._socket, self._buffer, chunk_size + 2
+                )
+                chunk_size = self._buffer.pop_u16()
 
                 if chunk_size == 0:
                     # chunk_size was the end marker for the message
-                    size, tag = unpacker.unpack_structure_header()
-                    fields = [unpacker.unpack() for _ in range(size)]
-                    yield tag, fields
-                    # Reset for new message
-                    unpacker.reset()
-
-        except (OSError, socket.timeout) as error:
+                    return
+        except (
+            OSError, SocketDeadlineExceeded, asyncio.CancelledError
+        ) as error:
+            self._broken = True
             Util.callback(self.on_error, error)
+            raise
 
-    def pop(self):
-        return Util.next(self._messages)
-
-
-class Inbox(MessageInbox):
-
-    def __next__(self):
-        tag, fields = self.pop()
-        if tag == b"\x71":
-            return fields, None, None
-        elif fields:
-            return [], tag, fields[0]
-        else:
-            return [], tag, None
+    def pop(self, hydration_hooks):
+        self._buffer_one_chunk()
+        try:
+            size, tag = self._unpacker.unpack_structure_header()
+            fields = [self._unpacker.unpack(hydration_hooks)
+                      for _ in range(size)]
+            return tag, fields
+        finally:
+            # Reset for new message
+            self._unpacker.reset()
 
 
 class Outbox:
 
-    def __init__(self, max_chunk_size=16384):
+    def __init__(self, sock, on_error, packer_cls, max_chunk_size=16384):
         self._max_chunk_size = max_chunk_size
         self._chunked_data = bytearray()
-        self._raw_data = bytearray()
-        self.write = self._raw_data.extend
-        self._tmp_buffering = 0
+        self._buffer = packer_cls.new_packable_buffer()
+        self._packer = packer_cls(self._buffer)
+        self.socket = sock
+        self.on_error = on_error
 
     def max_chunk_size(self):
         return self._max_chunk_size
 
-    def clear(self):
-        if self._tmp_buffering:
-            raise RuntimeError("Cannot clear while buffering")
+    def _clear(self):
+        assert not self._buffer.is_tmp_buffering()
         self._chunked_data = bytearray()
-        self._raw_data.clear()
+        self._buffer.clear()
 
     def _chunk_data(self):
-        data_len = len(self._raw_data)
+        data_len = len(self._buffer.data)
         num_full_chunks, chunk_rest = divmod(
             data_len, self._max_chunk_size
         )
         num_chunks = num_full_chunks + bool(chunk_rest)
 
-        data_view = memoryview(self._raw_data)
-        header_start = len(self._chunked_data)
-        data_start = header_start + 2
-        raw_data_start = 0
-        for i in range(num_chunks):
-            chunk_size = min(data_len - raw_data_start,
-                             self._max_chunk_size)
-            self._chunked_data[header_start:data_start] = struct_pack(
-                ">H", chunk_size
-            )
-            self._chunked_data[data_start:(data_start + chunk_size)] = \
-                data_view[raw_data_start:(raw_data_start + chunk_size)]
-            header_start += chunk_size + 2
+        with memoryview(self._buffer.data) as data_view:
+            header_start = len(self._chunked_data)
             data_start = header_start + 2
-            raw_data_start += chunk_size
-        del data_view
-        self._raw_data.clear()
+            raw_data_start = 0
+            for i in range(num_chunks):
+                chunk_size = min(data_len - raw_data_start,
+                                 self._max_chunk_size)
+                self._chunked_data[header_start:data_start] = struct_pack(
+                    ">H", chunk_size
+                )
+                self._chunked_data[data_start:(data_start + chunk_size)] = \
+                    data_view[raw_data_start:(raw_data_start + chunk_size)]
+                header_start += chunk_size + 2
+                data_start = header_start + 2
+                raw_data_start += chunk_size
+        self._buffer.clear()
 
-    def wrap_message(self):
-        if self._tmp_buffering:
-            raise RuntimeError("Cannot wrap message while buffering")
+    def _wrap_message(self):
+        assert not self._buffer.is_tmp_buffering()
         self._chunk_data()
         self._chunked_data += b"\x00\x00"
 
-    def view(self):
-        if self._tmp_buffering:
-            raise RuntimeError("Cannot view while buffering")
-        self._chunk_data()
-        return memoryview(self._chunked_data)
+    def append_message(self, tag, fields, dehydration_hooks):
+        with self._buffer.tmp_buffer():
+            self._packer.pack_struct(tag, fields, dehydration_hooks)
+        self._wrap_message()
 
-    @contextmanager
-    def tmp_buffer(self):
-        self._tmp_buffering += 1
-        old_len = len(self._raw_data)
-        try:
-            yield
-        except Exception:
-            del self._raw_data[old_len:]
-            raise
-        finally:
-            self._tmp_buffering -= 1
+    def flush(self):
+        data = self._chunked_data
+        if data:
+            try:
+                self.socket.sendall(data)
+            except (OSError, asyncio.CancelledError) as error:
+                Util.callback(self.on_error, error)
+                return False
+            self._clear()
+            return True
+        return False
 
 
 class ConnectionErrorHandler:
@@ -195,7 +186,8 @@ class ConnectionErrorHandler:
             def inner(*args, **kwargs):
                 try:
                     coroutine_func(*args, **kwargs)
-                except (Neo4jError, ServiceUnavailable, SessionExpired) as exc:
+                except (Neo4jError, ServiceUnavailable, SessionExpired,
+                        asyncio.CancelledError) as exc:
                     Util.callback(self.__on_error, exc)
                     raise
             return inner
@@ -216,8 +208,9 @@ class Response:
     more detail messages followed by one summary message).
     """
 
-    def __init__(self, connection, message, **handlers):
+    def __init__(self, connection, message, hydration_hooks, **handlers):
         self.connection = connection
+        self.hydration_hooks = hydration_hooks
         self.handlers = handlers
         self.message = message
         self.complete = False
@@ -292,9 +285,9 @@ def receive_into_buffer(sock, buffer, n_bytes):
     end = buffer.used + n_bytes
     if end > len(buffer.data):
         buffer.data += bytearray(end - len(buffer.data))
-    view = memoryview(buffer.data)
-    while buffer.used < end:
-        n = sock.recv_into(view[buffer.used:end], end - buffer.used)
-        if n == 0:
-            raise OSError("No data")
-        buffer.used += n
+    with memoryview(buffer.data) as view:
+        while buffer.used < end:
+            n = sock.recv_into(view[buffer.used:end], end - buffer.used)
+            if n == 0:
+                raise OSError("No data")
+            buffer.used += n

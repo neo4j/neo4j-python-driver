@@ -16,60 +16,7 @@
 # limitations under the License.
 
 
-__all__ = [
-    "__version__",
-    "Address",
-    "AsyncBoltDriver",
-    "AsyncDriver",
-    "AsyncGraphDatabase",
-    "AsyncManagedTransaction",
-    "AsyncNeo4jDriver",
-    "AsyncResult",
-    "AsyncSession",
-    "AsyncTransaction",
-    "Auth",
-    "AuthToken",
-    "basic_auth",
-    "bearer_auth",
-    "BoltDriver",
-    "Bookmark",
-    "Bookmarks",
-    "Config",
-    "custom_auth",
-    "DEFAULT_DATABASE",
-    "Driver",
-    "ExperimentalWarning",
-    "get_user_agent",
-    "GraphDatabase",
-    "IPv4Address",
-    "IPv6Address",
-    "kerberos_auth",
-    "ManagedTransaction",
-    "Neo4jDriver",
-    "PoolConfig",
-    "Query",
-    "READ_ACCESS",
-    "Record",
-    "Result",
-    "ResultSummary",
-    "ServerInfo",
-    "Session",
-    "SessionConfig",
-    "SummaryCounters",
-    "Transaction",
-    "TRUST_ALL_CERTIFICATES",
-    "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",
-    "TrustAll",
-    "TrustCustomCAs",
-    "TrustSystemCAs",
-    "unit_of_work",
-    "Version",
-    "WorkspaceConfig",
-    "WRITE_ACCESS",
-]
-
-
-from logging import getLogger
+from logging import getLogger as _getLogger
 
 from ._async.driver import (
     AsyncBoltDriver,
@@ -84,9 +31,19 @@ from ._async.work import (
     AsyncTransaction,
 )
 from ._conf import (
+    Config as _Config,
+    PoolConfig as _PoolConfig,
+    SessionConfig as _SessionConfig,
     TrustAll,
     TrustCustomCAs,
     TrustSystemCAs,
+    WorkspaceConfig as _WorkspaceConfig,
+)
+from ._data import Record
+from ._meta import (
+    ExperimentalWarning,
+    get_user_agent,
+    version as __version__,
 )
 from ._sync.driver import (
     BoltDriver,
@@ -125,19 +82,6 @@ from .api import (
     Version,
     WRITE_ACCESS,
 )
-from .conf import (
-    Config,
-    PoolConfig,
-    SessionConfig,
-    WorkspaceConfig,
-)
-from .data import Record
-from .meta import (
-    experimental,
-    ExperimentalWarning,
-    get_user_agent,
-    version as __version__,
-)
 from .work import (
     Query,
     ResultSummary,
@@ -146,4 +90,78 @@ from .work import (
 )
 
 
-log = getLogger("neo4j")
+__all__ = [
+    "__version__",
+    "Address",
+    "AsyncBoltDriver",
+    "AsyncDriver",
+    "AsyncGraphDatabase",
+    "AsyncManagedTransaction",
+    "AsyncNeo4jDriver",
+    "AsyncResult",
+    "AsyncSession",
+    "AsyncTransaction",
+    "Auth",
+    "AuthToken",
+    "basic_auth",
+    "bearer_auth",
+    "BoltDriver",
+    "Bookmark",
+    "Bookmarks",
+    "Config",
+    "custom_auth",
+    "DEFAULT_DATABASE",
+    "Driver",
+    "ExperimentalWarning",
+    "get_user_agent",
+    "GraphDatabase",
+    "IPv4Address",
+    "IPv6Address",
+    "kerberos_auth",
+    "log",
+    "ManagedTransaction",
+    "Neo4jDriver",
+    "PoolConfig",
+    "Query",
+    "READ_ACCESS",
+    "Record",
+    "Result",
+    "ResultSummary",
+    "ServerInfo",
+    "Session",
+    "SessionConfig",
+    "SummaryCounters",
+    "Transaction",
+    "TRUST_ALL_CERTIFICATES",
+    "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",
+    "TrustAll",
+    "TrustCustomCAs",
+    "TrustSystemCAs",
+    "unit_of_work",
+    "Version",
+    "WorkspaceConfig",
+    "WRITE_ACCESS",
+]
+
+
+_log = _getLogger("neo4j")
+
+
+def __getattr__(name):
+    # TODO 6.0 - remove this
+    if name in (
+        "log", "Config", "PoolConfig", "SessionConfig", "WorkspaceConfig"
+    ):
+        from ._meta import deprecation_warn
+        deprecation_warn(
+            "Importing {} from neo4j is deprecated without replacement. It's "
+            "internal and will be removed in a future version."
+            .format(name),
+            stack_level=2
+        )
+        return globals()[f"_{name}"]
+    raise AttributeError(f"module {__name__} has no attribute {name}")
+
+
+def __dir__():
+    return __all__

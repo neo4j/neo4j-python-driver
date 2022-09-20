@@ -34,7 +34,7 @@ from ..._async_compat import mark_async_test
 
 
 @mark_async_test
-async def test_address_resolve():
+async def test_address_resolve() -> None:
     address = Address(("127.0.0.1", 7687))
     resolved = AsyncNetworkUtil.resolve_address(address)
     resolved = await AsyncUtil.list(resolved)
@@ -45,7 +45,7 @@ async def test_address_resolve():
 
 
 @mark_async_test
-async def test_address_resolve_with_custom_resolver_none():
+async def test_address_resolve_with_custom_resolver_none() -> None:
     address = Address(("127.0.0.1", 7687))
     resolved = AsyncNetworkUtil.resolve_address(address, resolver=None)
     resolved = await AsyncUtil.list(resolved)
@@ -64,7 +64,9 @@ async def test_address_resolve_with_custom_resolver_none():
 
 )
 @mark_async_test
-async def test_address_resolve_with_unresolvable_address(test_input, expected):
+async def test_address_resolve_with_unresolvable_address(
+    test_input, expected
+) -> None:
     with pytest.raises(expected):
         await AsyncUtil.list(
             AsyncNetworkUtil.resolve_address(test_input, resolver=None)
@@ -73,7 +75,7 @@ async def test_address_resolve_with_unresolvable_address(test_input, expected):
 
 @mark_async_test
 @pytest.mark.parametrize("resolver_type", ("sync", "async"))
-async def test_address_resolve_with_custom_resolver(resolver_type):
+async def test_address_resolve_with_custom_resolver(resolver_type) -> None:
     def custom_resolver_sync(_):
         return [("127.0.0.1", 7687), ("localhost", 1234)]
 
@@ -98,9 +100,11 @@ async def test_address_resolve_with_custom_resolver(resolver_type):
 
 
 @mark_async_test
-async def test_address_unresolve():
+async def test_address_unresolve() -> None:
+    def custom_resolver(_):
+        return custom_resolved
+
     custom_resolved = [("127.0.0.1", 7687), ("localhost", 4321)]
-    custom_resolver = lambda _: custom_resolved
 
     address = Address(("foobar", 1234))
     unresolved = address.unresolved
@@ -109,9 +113,9 @@ async def test_address_unresolve():
     resolved = AsyncNetworkUtil.resolve_address(
         address, family=AF_INET, resolver=custom_resolver
     )
-    resolved = await AsyncUtil.list(resolved)
-    custom_resolved = sorted(Address(a) for a in custom_resolved)
-    unresolved = sorted(a.unresolved for a in resolved)
-    assert custom_resolved == unresolved
-    assert (list(map(lambda a: a.__class__, custom_resolved))
-            == list(map(lambda a: a.__class__, unresolved)))
+    resolved_list = await AsyncUtil.list(resolved)
+    custom_resolved_addresses = sorted(Address(a) for a in custom_resolved)
+    unresolved_list = sorted(a.unresolved for a in resolved_list)
+    assert custom_resolved_addresses == unresolved_list
+    assert (list(map(lambda a: a.__class__, custom_resolved_addresses))
+            == list(map(lambda a: a.__class__, unresolved_list)))

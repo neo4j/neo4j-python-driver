@@ -21,7 +21,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join("..", "..")))
 
 
-from neo4j.meta import version as project_version
+from neo4j import __version__ as project_version
 
 
 # -- General configuration ------------------------------------------------
@@ -57,7 +57,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Neo4j Python Driver'
-copyright = '2002-2020 Neo4j, Inc.'
+copyright = 'Neo4j, Inc.'
 author = 'Neo4j, Inc.'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -114,6 +114,9 @@ pygments_style = 'friendly'
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+# Don't include type hints in function signatures
+autodoc_typehints = "description"
 
 
 # -- Options for HTML output ----------------------------------------------

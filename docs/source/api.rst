@@ -14,40 +14,41 @@ Driver Construction
 The :class:`neo4j.Driver` construction is done via a ``classmethod`` on the :class:`neo4j.GraphDatabase` class.
 
 .. autoclass:: neo4j.GraphDatabase
-   :members: driver
+   :members: bookmark_manager
+
+    .. method:: driver
+
+        Driver creation example:
+
+        .. code-block:: python
+
+            from neo4j import GraphDatabase
+
+            uri = "neo4j://example.com:7687"
+            driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
+
+            driver.close()  # close the driver object
 
 
-Driver creation example:
+        For basic authentication, ``auth`` can be a simple tuple, for example:
 
-.. code-block:: python
+        .. code-block:: python
 
-    from neo4j import GraphDatabase
+           auth = ("neo4j", "password")
 
-    uri = "neo4j://example.com:7687"
-    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
-
-    driver.close()  # close the driver object
+        This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
+        Other authentication methods are described under :ref:`auth-ref`.
 
 
-For basic authentication, ``auth`` can be a simple tuple, for example:
+        ``with`` block context example:
 
-.. code-block:: python
+        .. code-block:: python
 
-   auth = ("neo4j", "password")
+            from neo4j import GraphDatabase
 
-This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
-Other authentication methods are described under :ref:`auth-ref`.
-
-
-``with`` block context example:
-
-.. code-block:: python
-
-    from neo4j import GraphDatabase
-
-    uri = "neo4j://example.com:7687"
-    with GraphDatabase.driver(uri, auth=("neo4j", "password")) as driver:
-        # use the driver
+            uri = "neo4j://example.com:7687"
+            with GraphDatabase.driver(uri, auth=("neo4j", "password")) as driver:
+                # use the driver
 
 
 
@@ -138,7 +139,7 @@ Alternatively, one of the auth token helper functions can be used.
 Driver
 ******
 
-Every Neo4j-backed application will require a :class:`neo4j.Driver` object.
+Every Neo4j-backed application will require a driver object.
 
 This object holds the details required to establish connections with a Neo4j database, including server URIs, credentials and other configuration.
 :class:`neo4j.Driver` objects hold a connection pool from which :class:`neo4j.Session` objects can borrow connections.
@@ -160,7 +161,8 @@ Driver Configuration
 
 Additional configuration can be provided via the :class:`neo4j.Driver` constructor.
 
-
++ :ref:`session-connection-timeout-ref`
++ :ref:`update-routing-table-timeout-ref`
 + :ref:`connection-acquisition-timeout-ref`
 + :ref:`connection-timeout-ref`
 + :ref:`encrypted-ref`
@@ -175,12 +177,63 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`user-agent-ref`
 
 
+.. _session-connection-timeout-ref:
+
+``session_connection_timeout``
+------------------------------
+The maximum amount of time in seconds the session will wait when trying to
+establish a usable read/write connection to the remote host.
+This encompasses *everything* that needs to happen for this, including,
+if necessary, updating the routing table, fetching a connection from the pool,
+and, if necessary fully establishing a new connection with the reader/writer.
+
+Since this process may involve updating the routing table, acquiring a
+connection from the pool, or establishing a new connection, it should be chosen
+larger than :ref:`update-routing-table-timeout-ref`,
+:ref:`connection-acquisition-timeout-ref`, and :ref:`connection-timeout-ref`.
+
+:Type: ``float``
+:Default: ``120.0``
+
+.. versionadded:: 4.4.5
+
+.. versionchanged:: 5.0
+
+    The default value was changed from ``float("inf")`` to ``120.0``.
+
+
+.. _update-routing-table-timeout-ref:
+
+``update_routing_table_timeout``
+--------------------------------
+The maximum amount of time in seconds the driver will attempt to fetch a new
+routing table. This encompasses *everything* that needs to happen for this,
+including fetching connections from the pool, performing handshakes, and
+requesting and receiving a fresh routing table.
+
+Since this process may involve acquiring a connection from the pool, or
+establishing a new connection, it should be chosen larger than
+:ref:`connection-acquisition-timeout-ref` and :ref:`connection-timeout-ref`.
+
+This setting only has an effect for :ref:`neo4j-driver-ref`, but not for
+:ref:`bolt-driver-ref` as it does no routing at all.
+
+:Type: ``float``
+:Default: ``90.0``
+
+.. versionadded:: 4.4.5
+
+
 .. _connection-acquisition-timeout-ref:
 
 ``connection_acquisition_timeout``
 ----------------------------------
-The maximum amount of time in seconds a session will wait when requesting a connection from the connection pool.
-Since the process of acquiring a connection may involve creating a new connection, ensure that the value of this configuration is higher than the configured :ref:`connection-timeout-ref`.
+The maximum amount of time in seconds the driver will wait to either acquire an
+idle connection from the pool (including potential liveness checks) or create a
+new connection when the pool is not full and all existing connection are in use.
+
+Since this process may involve opening a new connection including handshakes,
+it should be chosen larger than :ref:`connection-timeout-ref`.
 
 :Type: ``float``
 :Default: ``60.0``
@@ -190,7 +243,11 @@ Since the process of acquiring a connection may involve creating a new connectio
 
 ``connection_timeout``
 ----------------------
-The maximum amount of time in seconds to wait for a TCP connection to be established.
+The maximum amount of time in seconds to wait for a TCP connection to be
+established.
+
+This *does not* include any handshake(s), or authentication required before the
+connection can be used to perform database related work.
 
 :Type: ``float``
 :Default: ``30.0``
@@ -218,13 +275,13 @@ Specify whether TCP keep-alive should be enabled.
 :Default: ``True``
 
 **This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
 
 
 .. _max-connection-lifetime-ref:
 
 ``max_connection_lifetime``
 ---------------------------
-
 The maximum duration in seconds that the driver will keep a connection for before being removed from the pool.
 
 :Type: ``float``
@@ -275,8 +332,8 @@ For example:
            raise gaierror("Unexpected socket address %r" % socket_address)
 
    driver = GraphDatabase.driver("neo4j://example.com:9999",
-                auth=("neo4j", "password"),
-                resolver=custom_resolver)
+                                 auth=("neo4j", "password"),
+                                 resolver=custom_resolver)
 
 
 :Default: :const:`None`
@@ -456,6 +513,8 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 
 
 Sessions will often be created and destroyed using a *with block context*.
+This is the recommended approach as it takes care of closing the session
+properly even when an exception is raised.
 
 .. code-block:: python
 
@@ -481,6 +540,8 @@ Session
 
     .. automethod:: close
 
+    .. automethod:: closed
+
     .. automethod:: run
 
     .. automethod:: last_bookmarks
@@ -491,7 +552,11 @@ Session
 
     .. automethod:: read_transaction
 
+    .. automethod:: execute_read
+
     .. automethod:: write_transaction
+
+    .. automethod:: execute_write
 
 
 Query
@@ -513,6 +578,7 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 + :ref:`database-ref`
 + :ref:`default-access-mode-ref`
 + :ref:`fetch-size-ref`
++ :ref:`bookmark-manager-ref`
 
 
 .. _bookmarks-ref:
@@ -541,9 +607,9 @@ Name of the database to query.
 
 
 .. py:attribute:: neo4j.DEFAULT_DATABASE
-   :noindex:
+    :noindex:
 
-   This will use the default database on the Neo4j instance.
+    This will use the default database on the Neo4j instance.
 
 
 .. Note::
@@ -558,9 +624,10 @@ Name of the database to query.
 
 .. code-block:: python
 
-   from neo4j import GraphDatabase
-   driver = GraphDatabase.driver(uri, auth=(user, password))
-   session = driver.session(database="system")
+    from neo4j import GraphDatabase
+
+    driver = GraphDatabase.driver(uri, auth=(user, password))
+    session = driver.session(database="system")
 
 
 :Default: ``neo4j.DEFAULT_DATABASE``
@@ -587,15 +654,16 @@ context of the impersonated user. For this, the user for which the
 .. Note::
 
     The server or all servers of the cluster need to support impersonation when.
-    Otherwise, the driver will raise :py:exc:`.ConfigurationError`
+    Otherwise, the driver will raise :exc:`.ConfigurationError`
     as soon as it encounters a server that does not.
 
 
 .. code-block:: python
 
-   from neo4j import GraphDatabase
-   driver = GraphDatabase.driver(uri, auth=(user, password))
-   session = driver.session(impersonated_user="alice")
+    from neo4j import GraphDatabase
+
+    driver = GraphDatabase.driver(uri, auth=(user, password))
+    session = driver.session(impersonated_user="alice")
 
 
 :Default: :const:`None`
@@ -609,16 +677,21 @@ The default access mode.
 
 A session can be given a default access mode on construction.
 
-This applies only in clustered environments and determines whether transactions carried out within that session should be routed to a ``read`` or ``write`` server by default.
+This applies only in clustered environments and determines whether transactions
+carried out within that session should be routed to a ``read`` or ``write``
+server by default.
 
-Transactions (see :ref:`managed-transactions-ref`) within a session can override the access mode passed to that session on construction.
+Transactions (see :ref:`managed-transactions-ref`) within a session override the
+access mode passed to that session on construction.
 
 .. note::
-    The driver does not parse Cypher queries and cannot determine whether the access mode should be ``neo4j.ACCESS_WRITE`` or ``neo4j.ACCESS_READ``.
-    Since the access mode is not passed to the server, this can allow a ``neo4j.ACCESS_WRITE`` statement to be executed for a ``neo4j.ACCESS_READ`` call on a single instance.
-    Clustered environments are not susceptible to this loophole as cluster roles prevent it.
-    This behaviour should not be relied upon as the loophole may be closed in a future release.
-
+    The driver does not parse Cypher queries and cannot determine whether the
+    access mode should be ``neo4j.ACCESS_WRITE`` or ``neo4j.ACCESS_READ``.
+    This setting is only meant to enable the driver to perform correct routing,
+    *not* for enforcing access control. This means that, depending on the server
+    version and settings, the server or cluster might allow a write-statement to
+    be executed even when ``neo4j.ACCESS_READ`` is chosen. This behaviour should
+    not be relied upon as it can change with the server.
 
 :Type: ``neo4j.WRITE_ACCESS``, ``neo4j.READ_ACCESS``
 :Default: ``neo4j.WRITE_ACCESS``
@@ -634,6 +707,33 @@ The fetch size used for requesting messages from Neo4j.
 :Default: ``1000``
 
 
+.. _bookmark-manager-ref:
+
+``bookmark_manager``
+--------------------
+Specify a bookmark manager for the session to use. If present, the bookmark
+manager is used to keep all work within the session causally consistent with
+all work in other sessions using the same bookmark manager.
+
+See :class:`.BookmarkManager` for more information.
+
+.. warning::
+    Enabling the BookmarkManager can have a negative impact on performance since
+    all queries will wait for the latest changes to be propagated across the
+    cluster.
+
+    For simple use-cases, it often suffices that work within a single session
+    is automatically causally consistent.
+
+:Type: :const:`None` or :class:`.BookmarkManager`
+:Default: :const:`None`
+
+.. versionadded:: 5.0
+
+**This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
+
+
 
 
 ***********
@@ -646,7 +746,7 @@ Neo4j supports three kinds of transaction:
 + :ref:`explicit-transactions-ref`
 + :ref:`managed-transactions-ref`
 
-Each has pros and cons but if in doubt, use a managed transaction with a `transaction function`.
+Each has pros and cons but if in doubt, use a managed transaction with a *transaction function*.
 
 
 .. _auto-commit-transactions-ref:
@@ -654,7 +754,7 @@ Each has pros and cons but if in doubt, use a managed transaction with a `transa
 Auto-commit Transactions
 ========================
 Auto-commit transactions are the simplest form of transaction, available via
-:py:meth:`neo4j.Session.run`. These are easy to use but support only one
+:meth:`neo4j.Session.run`. These are easy to use but support only one
 statement per transaction and are not automatically retried on failure.
 
 Auto-commit transactions are also the only way to run ``PERIODIC COMMIT``
@@ -694,7 +794,7 @@ Example:
 
 Explicit Transactions
 =====================
-Explicit transactions support multiple statements and must be created with an explicit :py:meth:`neo4j.Session.begin_transaction` call.
+Explicit transactions support multiple statements and must be created with an explicit :meth:`neo4j.Session.begin_transaction` call.
 
 This creates a new :class:`neo4j.Transaction` object that can be used to run Cypher.
 
@@ -704,16 +804,16 @@ It also gives applications the ability to directly control ``commit`` and ``roll
 
     .. automethod:: run
 
-    .. automethod:: close
-
-    .. automethod:: closed
-
     .. automethod:: commit
 
     .. automethod:: rollback
 
+    .. automethod:: close
+
+    .. automethod:: closed
+
 Closing an explicit transaction can either happen automatically at the end of a ``with`` block,
-or can be explicitly controlled through the :py:meth:`neo4j.Transaction.commit`, :py:meth:`neo4j.Transaction.rollback` or :py:meth:`neo4j.Transaction.close` methods.
+or can be explicitly controlled through the :meth:`neo4j.Transaction.commit`, :meth:`neo4j.Transaction.rollback` or :meth:`neo4j.Transaction.close` methods.
 
 Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction.
 
@@ -740,8 +840,8 @@ Example:
     def set_person_name(tx, node_id, name):
         query = "MATCH (a:Person) WHERE id(a) = $id SET a.name = $name"
         result = tx.run(query, id=node_id, name=name)
-        info = result.consume()
-        # use the info for logging etc.
+        summary = result.consume()
+        # use the summary for logging etc.
 
 .. _managed-transactions-ref:
 
@@ -749,8 +849,8 @@ Managed Transactions (`transaction functions`)
 ==============================================
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
 
-+ :py:meth:`neo4j.Session.write_transaction`
-+ :py:meth:`neo4j.Session.read_transaction`
++ :meth:`neo4j.Session.execute_write`
++ :meth:`neo4j.Session.execute_read`
 
 These allow a function object representing the transactional unit of work to be passed as a parameter.
 This function is called one or more times, within a configurable time limit, until it succeeds.
@@ -759,7 +859,7 @@ Returning a live result object would prevent the driver from correctly managing 
 
 This function will receive a :class:`neo4j.ManagedTransaction` object as its first parameter.
 
-.. autoclass:: neo4j.ManagedTransaction
+.. autoclass:: neo4j.ManagedTransaction()
 
     .. automethod:: run
 
@@ -769,7 +869,7 @@ Example:
 
     def create_person(driver, name)
         with driver.session() as session:
-            node_id = session.write_transaction(create_person_tx, name)
+            node_id = session.execute_write(create_person_tx, name)
 
     def create_person_tx(tx, name):
         query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
@@ -841,6 +941,7 @@ Graph
     .. automethod:: relationship_type
 
 **This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
 
 
 ******
@@ -850,8 +951,8 @@ Record
 .. autoclass:: neo4j.Record()
 
     A :class:`neo4j.Record` is an immutable ordered collection of key-value
-    pairs. It is generally closer to a :py:class:`namedtuple` than to an
-    :py:class:`OrderedDict` inasmuch as iteration of the collection will
+    pairs. It is generally closer to a :class:`namedtuple` than to an
+    :class:`OrderedDict` inasmuch as iteration of the collection will
     yield values rather than keys.
 
     .. describe:: Record(iterable)
@@ -1161,6 +1262,14 @@ Temporal Data Types
 See topic :ref:`temporal-data-types` for more details.
 
 
+***************
+BookmarkManager
+***************
+
+.. autoclass:: neo4j.api.BookmarkManager
+    :members:
+
+
 .. _errors-ref:
 
 ******
@@ -1171,116 +1280,173 @@ Errors
 Neo4j Errors
 ============
 
-Neo4j Execution Errors
+Server-side errors
 
 
 * :class:`neo4j.exceptions.Neo4jError`
 
   * :class:`neo4j.exceptions.ClientError`
 
+    * :class:`neo4j.exceptions.CypherSyntaxError`
+
+    * :class:`neo4j.exceptions.CypherTypeError`
+
+    * :class:`neo4j.exceptions.ConstraintError`
+
+    * :class:`neo4j.exceptions.AuthError`
+
+      * :class:`neo4j.exceptions.TokenExpired`
+
+    * :class:`neo4j.exceptions.Forbidden`
+
   * :class:`neo4j.exceptions.DatabaseError`
 
   * :class:`neo4j.exceptions.TransientError`
 
+    * :class:`neo4j.exceptions.DatabaseUnavailable`
 
-.. autoclass:: neo4j.exceptions.Neo4jError
-    :members: message, code, is_retriable
+    * :class:`neo4j.exceptions.NotALeader`
+
+    * :class:`neo4j.exceptions.ForbiddenOnReadOnlyDatabase`
 
 
-.. autoclass:: neo4j.exceptions.ClientError
+.. autoexception:: neo4j.exceptions.Neo4jError()
+    :show-inheritance:
+    :members: message, code, is_retriable, is_retryable
+
+.. autoexception:: neo4j.exceptions.ClientError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.CypherSyntaxError
+.. autoexception:: neo4j.exceptions.CypherSyntaxError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.CypherTypeError
+.. autoexception:: neo4j.exceptions.CypherTypeError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ConstraintError
+.. autoexception:: neo4j.exceptions.ConstraintError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.AuthError
+.. autoexception:: neo4j.exceptions.AuthError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.Forbidden
+.. autoexception:: neo4j.exceptions.TokenExpired()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ForbiddenOnReadOnlyDatabase
+.. autoexception:: neo4j.exceptions.Forbidden()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.NotALeader
+.. autoexception:: neo4j.exceptions.DatabaseError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.DatabaseError
+.. autoexception:: neo4j.exceptions.TransientError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.TransientError
+.. autoexception:: neo4j.exceptions.DatabaseUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.DatabaseUnavailable
+.. autoexception:: neo4j.exceptions.NotALeader()
     :show-inheritance:
+
+.. autoexception:: neo4j.exceptions.ForbiddenOnReadOnlyDatabase()
+    :show-inheritance:
+
 
 
 
 Driver Errors
 =============
 
-Connectivity Errors
+Client-side errors
 
 
 * :class:`neo4j.exceptions.DriverError`
 
+  * :class:`neo4j.exceptions.SessionError`
+
   * :class:`neo4j.exceptions.TransactionError`
+
+    * :class:`neo4j.exceptions.TransactionNestingError`
+
+  * :class:`neo4j.exceptions.ResultError`
+
+    * :class:`neo4j.exceptions.ResultConsumedError`
+
+    * :class:`neo4j.exceptions.ResultNotSingleError`
+
+  * :class:`neo4j.exceptions.BrokenRecordError`
 
   * :class:`neo4j.exceptions.SessionExpired`
 
   * :class:`neo4j.exceptions.ServiceUnavailable`
 
+    * :class:`neo4j.exceptions.RoutingServiceUnavailable`
+
+    * :class:`neo4j.exceptions.WriteServiceUnavailable`
+
+    * :class:`neo4j.exceptions.ReadServiceUnavailable`
+
+    * :class:`neo4j.exceptions.IncompleteCommit`
+
   * :class:`neo4j.exceptions.ConfigurationError`
 
-  * :class:`neo4j.exceptions.ResultConsumedError`
+    * :class:`neo4j.exceptions.AuthConfigurationError`
+
+    * :class:`neo4j.exceptions.CertificateConfigurationError`
 
 
-.. autoclass:: neo4j.exceptions.DriverError
-    :members: is_retriable
+.. autoexception:: neo4j.exceptions.DriverError()
+    :show-inheritance:
+    :members: is_retryable
 
-.. autoclass:: neo4j.exceptions.TransactionError
+.. autoexception:: neo4j.exceptions.SessionError()
+    :show-inheritance:
+    :members: session
+
+.. autoexception:: neo4j.exceptions.TransactionError()
+    :show-inheritance:
+    :members: transaction
+
+.. autoexception:: neo4j.exceptions.TransactionNestingError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.TransactionNestingError
+.. autoexception:: neo4j.exceptions.ResultError()
+    :show-inheritance:
+    :members: result
+
+.. autoexception:: neo4j.exceptions.ResultConsumedError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.SessionExpired
+.. autoexception:: neo4j.exceptions.ResultNotSingleError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ServiceUnavailable
+.. autoexception:: neo4j.exceptions.BrokenRecordError()
     :show-inheritance:
 
-    Raised when a database server or service is not available.
-    This may be due to incorrect configuration or could indicate a runtime failure of a database service that the driver is unable to route around.
-
-.. autoclass:: neo4j.exceptions.RoutingServiceUnavailable
+.. autoexception:: neo4j.exceptions.SessionExpired()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.WriteServiceUnavailable
+.. autoexception:: neo4j.exceptions.ServiceUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ReadServiceUnavailable
+.. autoexception:: neo4j.exceptions.RoutingServiceUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ConfigurationError
+.. autoexception:: neo4j.exceptions.WriteServiceUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.AuthConfigurationError
+.. autoexception:: neo4j.exceptions.ReadServiceUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.CertificateConfigurationError
+.. autoexception:: neo4j.exceptions.IncompleteCommit()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ResultConsumedError
+.. autoexception:: neo4j.exceptions.ConfigurationError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ResultNotSingleError
+.. autoexception:: neo4j.exceptions.AuthConfigurationError()
+    :show-inheritance:
+
+.. autoexception:: neo4j.exceptions.CertificateConfigurationError()
     :show-inheritance:
 
 
@@ -1350,12 +1516,56 @@ following code:
     ...
 
 
+*******
+Logging
+*******
+
+The driver offers logging for debugging purposes. It is not recommended to
+enable logging for anything other than debugging. For instance, if the driver is
+not able to connect to the database server or if undesired behavior is observed.
+
+There are different ways of enabling logging as listed below.
+
+Simple Approach
+===============
+
+.. autofunction:: neo4j.debug.watch(*logger_names, level=logging.DEBUG, out=sys.stderr, colour=False)
+
+Context Manager
+===============
+
+.. autoclass:: neo4j.debug.Watcher(*logger_names, default_level=logging.DEBUG, default_out=sys.stderr, colour=False)
+    :members:
+    :special-members: __enter__, __exit__
+
+Full Controll
+=============
+
+.. code-block:: python
+
+    import logging
+    import sys
+
+    # create a handler, e.g. to log to stdout
+    handler = logging.StreamHandler(sys.stdout)
+    # configure the handler to your liking
+    handler.setFormatter(logging.Formatter(
+        "[%(levelname)-8s] %(threadName)s(%(thread)d) %(asctime)s  %(message)s"
+    ))
+    # add the handler to the driver's logger
+    logging.getLogger("neo4j").addHandler(handler)
+    # make sure the logger logs on the desired log level
+    logging.getLogger("neo4j").setLevel(logging.DEBUG)
+    # from now on, DEBUG logging to stderr is enabled in the driver
+
+
 *********
 Bookmarks
 *********
 
 .. autoclass:: neo4j.Bookmarks
     :members:
+    :special-members: __bool__, __add__, __iter__
 
 .. autoclass:: neo4j.Bookmark
     :members:

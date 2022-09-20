@@ -16,81 +16,49 @@
 # limitations under the License.
 
 
-import io
-import struct
-from unittest import TestCase
+from __future__ import annotations
 
-from neo4j.data import DataDehydrator
-from neo4j.packstream import Packer
+import pytest
+
 from neo4j.spatial import WGS84Point
 
 
-class WGS84PointTestCase(TestCase):
+class TestWGS84Point:
 
-    def test_alias_3d(self):
+    def test_alias_3d(self) -> None:
         x, y, z = 3.2, 4.0, -1.2
         p = WGS84Point((x, y, z))
 
-        self.assertTrue(hasattr(p, "longitude"))
-        self.assertEqual(p.longitude, x)
-        self.assertTrue(hasattr(p, "x"))
-        self.assertEqual(p.x, x)
+        assert hasattr(p, "longitude")
+        assert p.longitude == x
+        assert hasattr(p, "x")
+        assert p.x == x
 
-        self.assertTrue(hasattr(p, "latitude"))
-        self.assertEqual(p.latitude, y)
-        self.assertTrue(hasattr(p, "y"))
-        self.assertEqual(p.y, y)
+        assert hasattr(p, "latitude")
+        assert p.latitude == y
+        assert hasattr(p, "y")
+        assert p.y == y
 
-        self.assertTrue(hasattr(p, "height"))
-        self.assertEqual(p.height, z)
-        self.assertTrue(hasattr(p, "z"))
-        self.assertEqual(p.z, z)
+        assert hasattr(p, "height")
+        assert p.height == z
+        assert hasattr(p, "z")
+        assert p.z == z
 
-    def test_alias_2d(self):
+    def test_alias_2d(self) -> None:
         x, y = 3.2, 4.0
         p = WGS84Point((x, y))
 
-        self.assertTrue(hasattr(p, "longitude"))
-        self.assertEqual(p.longitude, x)
-        self.assertTrue(hasattr(p, "x"))
-        self.assertEqual(p.x, x)
+        assert hasattr(p, "longitude")
+        assert p.longitude == x
+        assert hasattr(p, "x")
+        assert p.x == x
 
-        self.assertTrue(hasattr(p, "latitude"))
-        self.assertEqual(p.latitude, y)
-        self.assertTrue(hasattr(p, "y"))
-        self.assertEqual(p.y, y)
+        assert hasattr(p, "latitude")
+        assert p.latitude == y
+        assert hasattr(p, "y")
+        assert p.y == y
 
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             p.height
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             p.z
-
-    def test_dehydration_3d(self):
-        coordinates = (1, -2, 3.1)
-        p = WGS84Point(coordinates)
-
-        dehydrator = DataDehydrator()
-        buffer = io.BytesIO()
-        packer = Packer(buffer)
-        packer.pack(dehydrator.dehydrate((p,))[0])
-        self.assertEqual(
-            buffer.getvalue(),
-            b"\xB4Y" +
-            b"\xC9" + struct.pack(">h", 4979) +
-            b"".join(map(lambda c: b"\xC1" + struct.pack(">d", c), coordinates))
-        )
-
-    def test_dehydration_2d(self):
-        coordinates = (.1, 0)
-        p = WGS84Point(coordinates)
-
-        dehydrator = DataDehydrator()
-        buffer = io.BytesIO()
-        packer = Packer(buffer)
-        packer.pack(dehydrator.dehydrate((p,))[0])
-        self.assertEqual(
-            buffer.getvalue(),
-            b"\xB3X" +
-            b"\xC9" + struct.pack(">h", 4326) +
-            b"".join(map(lambda c: b"\xC1" + struct.pack(">d", c), coordinates))
-        )

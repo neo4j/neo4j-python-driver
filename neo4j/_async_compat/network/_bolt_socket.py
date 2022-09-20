@@ -16,10 +16,13 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import selectors
-import socket
+import struct
+import typing as t
 from socket import (
     AF_INET,
     AF_INET6,
@@ -33,11 +36,18 @@ from ssl import (
     CertificateError,
     HAS_SNI,
     SSLError,
+    SSLSocket,
 )
-import struct
-from time import perf_counter
+
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
+    from ..._async.io import AsyncBolt
+    from ..._sync.io import Bolt
 
 from ... import addressing
+from ..._deadline import Deadline
 from ..._exceptions import (
     BoltError,
     BoltProtocolError,
@@ -48,6 +58,7 @@ from ...exceptions import (
     DriverError,
     ServiceUnavailable,
 )
+from ..shims import wait_for
 from ._util import (
     AsyncNetworkUtil,
     NetworkUtil,
@@ -57,8 +68,17 @@ from ._util import (
 log = logging.getLogger("neo4j")
 
 
+def _sanitize_deadline(deadline):
+    if deadline is None:
+        return None
+    deadline = Deadline.from_timeout_or_deadline(deadline)
+    if deadline.to_timeout() is None:
+        return None
+    return deadline
+
+
 class AsyncBoltSocket:
-    Bolt = None
+    Bolt: te.Final[t.Type[AsyncBolt]] = None  # type: ignore[assignment]
 
     def __init__(self, reader, protocol, writer):
         self._reader = reader  # type: asyncio.StreamReader
@@ -74,7 +94,7 @@ class AsyncBoltSocket:
         timeout = self._timeout
         to_raise = SocketTimeout
         if self._deadline is not None:
-            deadline_timeout = self._deadline - perf_counter()
+            deadline_timeout = self._deadline.to_timeout()
             if deadline_timeout <= 0:
                 raise SocketDeadlineExceeded("timed out")
             if timeout is None or deadline_timeout <= timeout:
@@ -84,17 +104,24 @@ class AsyncBoltSocket:
         if timeout is not None and timeout <= 0:
             # give the io-operation time for one loop cycle to do its thing
             io_fut = asyncio.create_task(io_fut)
-            await asyncio.sleep(0)
+            try:
+                await asyncio.sleep(0)
+            except asyncio.CancelledError:
+                # This is emulating non-blocking. There is no cancelling this!
+                # Still, we don't want to silently swallow the cancellation.
+                # Hence, we flag this task as cancelled again, so that the next
+                # `await` will raise the CancelledError.
+                asyncio.current_task().cancel()
         try:
-            return await asyncio.wait_for(io_fut, timeout)
+            return await wait_for(io_fut, timeout)
         except asyncio.TimeoutError as e:
             raise to_raise("timed out") from e
 
-    def set_deadline(self, s_from_now):
-        if s_from_now is None:
-            self._deadline = None
-        else:
-            self._deadline = perf_counter() + s_from_now
+    def get_deadline(self):
+        return self._deadline
+
+    def set_deadline(self, deadline):
+        self._deadline = _sanitize_deadline(deadline)
 
     @property
     def _socket(self) -> socket:
@@ -140,6 +167,9 @@ class AsyncBoltSocket:
         self._writer.close()
         await self._writer.wait_closed()
 
+    def kill(self):
+        self._writer.close()
+
     @classmethod
     async def _connect_secure(cls, resolved_address, timeout, keep_alive, ssl):
         """
@@ -166,7 +196,7 @@ class AsyncBoltSocket:
                     "Unsupported address {!r}".format(resolved_address))
             s.setblocking(False)  # asyncio + blocking = no-no!
             log.debug("[#0000]  C: <OPEN> %s", resolved_address)
-            await asyncio.wait_for(
+            await wait_for(
                 loop.sock_connect(s, resolved_address),
                 timeout
             )
@@ -215,8 +245,16 @@ class AsyncBoltSocket:
             raise ServiceUnavailable(
                 "Timed out trying to establish connection to {!r}".format(
                     resolved_address))
+        except asyncio.CancelledError:
+            log.debug("[#0000]  C: <CANCELLED> %s", resolved_address)
+            log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
+            if s:
+                await cls.close_socket(s)
+            raise
         except (SSLError, CertificateError) as error:
             local_port = s.getsockname()[1]
+            if s:
+                await cls.close_socket(s)
             raise BoltSecurityError(
                 message="Failed to establish encrypted connection.",
                 address=(resolved_address.host_name, local_port)
@@ -225,7 +263,8 @@ class AsyncBoltSocket:
             log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
                       " ".join(map(repr, error.args)))
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-            s.close()
+            if s:
+                await cls.close_socket(s)
             raise ServiceUnavailable(
                 "Failed to establish connection to {!r} (reason {})".format(
                     resolved_address, error))
@@ -298,14 +337,20 @@ class AsyncBoltSocket:
 
     @classmethod
     async def close_socket(cls, socket_):
-        try:
-            if isinstance(socket_, AsyncBoltSocket):
+        if isinstance(socket_, AsyncBoltSocket):
+            try:
                 await socket_.close()
-            else:
+            except OSError:
+                pass
+        else:
+            try:
                 socket_.shutdown(SHUT_RDWR)
+            except OSError:
+                pass
+            try:
                 socket_.close()
-        except OSError:
-            pass
+            except OSError:
+                pass
 
     @classmethod
     async def connect(cls, address, *, timeout, custom_resolver, ssl_context,
@@ -337,12 +382,22 @@ class AsyncBoltSocket:
                 err_str = error.__class__.__name__
                 if str(error):
                     err_str += ": " + str(error)
-                log.debug("[#%04X]  C: <CONNECTION FAILED> %s", local_port,
-                          err_str)
+                log.debug("[#%04X]  C: <CONNECTION FAILED> %s %s", local_port,
+                          resolved_address, err_str)
                 if s:
                     await cls.close_socket(s)
                 errors.append(error)
                 failed_addresses.append(resolved_address)
+            except asyncio.CancelledError:
+                try:
+                    local_port = s.getsockname()[1]
+                except (OSError, AttributeError, TypeError):
+                    local_port = 0
+                log.debug("[#%04X]  C: <CANCELED> %s", local_port,
+                          resolved_address)
+                if s:
+                    await cls.close_socket(s)
+                raise
             except Exception:
                 if s:
                     await cls.close_socket(s)
@@ -362,7 +417,7 @@ class AsyncBoltSocket:
 
 
 class BoltSocket:
-    Bolt = None
+    Bolt: te.Final[t.Type[Bolt]] = None  # type: ignore[assignment]
 
     def __init__(self, socket_: socket):
         self._socket = socket_
@@ -373,23 +428,22 @@ class BoltSocket:
         return self.__socket
 
     @_socket.setter
-    def _socket(self, socket_: socket):
+    def _socket(self, socket_: t.Union[socket, SSLSocket]):
         self.__socket = socket_
         self.getsockname = socket_.getsockname
         self.getpeername = socket_.getpeername
         if hasattr(socket, "getpeercert"):
-            self.getpeercert = socket_.getpeercert
+            self.getpeercert = socket_.getpeercert  # type: ignore
         elif hasattr(self, "getpeercert"):
             del self.getpeercert
         self.gettimeout = socket_.gettimeout
         self.settimeout = socket_.settimeout
-        self.close = socket_.close
 
     def _wait_for_io(self, func, *args, **kwargs):
         if self._deadline is None:
             return func(*args, **kwargs)
         timeout = self._socket.gettimeout()
-        deadline_timeout = self._deadline - perf_counter()
+        deadline_timeout = self._deadline.to_timeout()
         if deadline_timeout <= 0:
             raise SocketDeadlineExceeded("timed out")
         if timeout is None or deadline_timeout <= timeout:
@@ -402,11 +456,11 @@ class BoltSocket:
                 self._socket.settimeout(timeout)
         return func(*args, **kwargs)
 
-    def set_deadline(self, s_from_now):
-        if s_from_now is None:
-            self._deadline = None
-        else:
-            self._deadline = perf_counter() + s_from_now
+    def get_deadline(self):
+        return self._deadline
+
+    def set_deadline(self, deadline):
+        self._deadline = _sanitize_deadline(deadline)
 
     def recv(self, n):
         return self._wait_for_io(self._socket.recv, n)
@@ -418,7 +472,9 @@ class BoltSocket:
         return self._wait_for_io(self._socket.sendall, data)
 
     def close(self):
-        self._socket.shutdown(SHUT_RDWR)
+        self.close_socket(self._socket)
+
+    def kill(self):
         self._socket.close()
 
     @classmethod
@@ -461,7 +517,7 @@ class BoltSocket:
             log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
                       " ".join(map(repr, error.args)))
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-            s.close()
+            cls.close_socket(s)
             raise ServiceUnavailable(
                 "Failed to establish connection to {!r} (reason {})".format(
                     resolved_address, error))
@@ -476,6 +532,7 @@ class BoltSocket:
                 sni_host = host if HAS_SNI and host else None
                 s = ssl_context.wrap_socket(s, server_hostname=sni_host)
             except (OSError, SSLError, CertificateError) as cause:
+                cls.close_socket(s)
                 raise BoltSecurityError(
                     message="Failed to establish encrypted connection.",
                     address=(host, local_port)
@@ -534,20 +591,20 @@ class BoltSocket:
             # If no data is returned after a successful select
             # response, the server has closed the connection
             log.debug("[#%04X]  S: <CLOSE>", local_port)
-            BoltSocket.close_socket(s)
+            cls.close_socket(s)
             raise ServiceUnavailable(
                 "Connection to {address} closed without handshake response".format(
                     address=resolved_address))
         if data_size != 4:
             # Some garbled data has been received
             log.debug("[#%04X]  S: @*#!", local_port)
-            s.close()
+            cls.close_socket(s)
             raise BoltProtocolError(
                 "Expected four byte Bolt handshake response from %r, received %r instead; check for incorrect port number" % (
                 resolved_address, data), address=resolved_address)
         elif data == b"HTTP":
             log.debug("[#%04X]  S: <CLOSE>", local_port)
-            BoltSocket.close_socket(s)
+            cls.close_socket(s)
             raise ServiceUnavailable(
                 "Cannot to connect to Bolt service on {!r} "
                 "(looks like HTTP)".format(resolved_address))
@@ -558,12 +615,14 @@ class BoltSocket:
 
     @classmethod
     def close_socket(cls, socket_):
+        if isinstance(socket_, BoltSocket):
+            socket_ = socket_._socket
         try:
-            if isinstance(socket_, BoltSocket):
-                socket.close()
-            else:
-                socket_.shutdown(SHUT_RDWR)
-                socket_.close()
+            socket_.shutdown(SHUT_RDWR)
+        except OSError:
+            pass
+        try:
+            socket_.close()
         except OSError:
             pass
 
@@ -599,11 +658,11 @@ class BoltSocket:
                 log.debug("[#%04X]  C: <CONNECTION FAILED> %s", local_port,
                           err_str)
                 if s:
-                    BoltSocket.close_socket(s)
+                    cls.close_socket(s)
                 errors.append(error)
             except Exception:
                 if s:
-                    BoltSocket.close_socket(s)
+                    cls.close_socket(s)
                 raise
         if not errors:
             raise ServiceUnavailable(

@@ -17,6 +17,7 @@
 
 
 import asyncio
+import time
 from asyncio import (
     Condition as AsyncCondition,
     Event as AsyncEvent,
@@ -28,11 +29,11 @@ from threading import (
     Lock,
     Thread,
 )
-import time
 
 import pytest
 
-from neo4j.exceptions import ClientError
+from neo4j._async_compat.shims import wait_for
+from neo4j._deadline import Deadline
 
 from ...async_.io.test_direct import AsyncFakeBoltPool
 from ...sync.io.test_direct import FakeBoltPool
@@ -127,7 +128,7 @@ class AsyncMultiEvent:
                     if time_left <= 0:
                         return False
                 try:
-                    await asyncio.wait_for(self._cond.wait(), time_left)
+                    await wait_for(self._cond.wait(), time_left)
                 except asyncio.TimeoutError:
                     return False
 
@@ -146,18 +147,36 @@ class TestMixedConnectionPoolTestCase:
             assert (expected_inactive
                     == len([cx for cx in connections if not cx.in_use]))
 
-    def test_multithread(self):
-        def acquire_release_conn(pool, address, acquired_counter,
-                                 release_event):
-            conn = pool._acquire(address, 3, None)
-            acquired_counter.increment()
-            release_event.wait()
-            pool.release(conn)
+    @pytest.mark.parametrize("pre_populated", (0, 3, 5))
+    def test_multithread(self, pre_populated):
+        connections_lock = Lock()
+        connections = []
+        pre_populated_connections = []
+
+        def acquire_release_conn(pool_, address_, acquired_counter_,
+                                 release_event_):
+            nonlocal connections, connections_lock
+            conn_ = pool_._acquire(address_, Deadline(3), None)
+            with connections_lock:
+                if connections is not None:
+                    connections.append(conn_)
+            acquired_counter_.increment()
+            release_event_.wait()
+            pool_.release(conn_)
 
         with FakeBoltPool((), max_connection_pool_size=5) as pool:
             address = ("127.0.0.1", 7687)
             acquired_counter = MultiEvent()
             release_event = Event()
+
+            # pre-populate the pool with connections
+            for _ in range(pre_populated):
+                conn = pool._acquire(address, Deadline(3), None)
+                pre_populated_connections.append(conn)
+            for conn in pre_populated_connections:
+                pool.release(conn)
+            assert len(set(pre_populated_connections)) == pre_populated
+            self.assert_pool_size(address, 0, pre_populated, pool)
 
             # start 10 threads competing for connections from a pool of size 5
             threads = []
@@ -174,6 +193,11 @@ class TestMixedConnectionPoolTestCase:
                 raise RuntimeError("Acquire threads not fast enough")
             # The pool size should be 5, all are in-use
             self.assert_pool_size(address, 5, 0, pool)
+            with connections_lock:
+                assert set(pre_populated_connections).issubset(
+                    set(connections)
+                )
+                connections = pre_populated_connections = None
             # Now we allow the threads to release connections they obtained
             # from the pool
             release_event.set()
@@ -184,23 +208,32 @@ class TestMixedConnectionPoolTestCase:
             # The pool size is still 5, but all are free
             self.assert_pool_size(address, 0, 5, pool)
 
+    @pytest.mark.parametrize("pre_populated", (0, 3, 5))
     @pytest.mark.asyncio
-    async def test_multi_coroutine(self):
+    async def test_multi_coroutine(self, pre_populated):
+        connections = []
+        pre_populated_connections = []
+
         async def acquire_release_conn(pool_, address_, acquired_counter_,
                                        release_event_):
-            try:
-                conn = await pool_._acquire(address_, 3, None)
-                await acquired_counter_.increment()
-                await release_event_.wait()
-                await pool_.release(conn)
-            except ClientError:
-                raise
+            nonlocal connections
+            conn_ = await pool_._acquire(address_, Deadline(3), None)
+            if connections is not None:
+                connections.append(conn_)
+            await acquired_counter_.increment()
+            await release_event_.wait()
+            await pool_.release(conn_)
 
         async def waiter(pool_, acquired_counter_, release_event_):
+            nonlocal pre_populated_connections, connections
+
             if not await acquired_counter_.wait(5, timeout=1):
                 raise RuntimeError("Acquire coroutines not fast enough")
             # The pool size should be 5, all are in-use
             self.assert_pool_size(address, 5, 0, pool_)
+            assert set(pre_populated_connections).issubset(set(connections))
+            connections = pre_populated_connections = None
+
             # Now we allow the coroutines to release connections they obtained
             # from the pool
             release_event_.set()
@@ -215,6 +248,15 @@ class TestMixedConnectionPoolTestCase:
             address = ("127.0.0.1", 7687)
             acquired_counter = AsyncMultiEvent()
             release_event = AsyncEvent()
+
+            # pre-populate the pool with connections
+            for _ in range(pre_populated):
+                conn = await pool._acquire(address, Deadline(3), None)
+                pre_populated_connections.append(conn)
+            for conn in pre_populated_connections:
+                await pool.release(conn)
+            assert len(set(pre_populated_connections)) == pre_populated
+            self.assert_pool_size(address, 0, pre_populated, pool)
 
             # start 10 coroutines competing for connections from a pool of size
             # 5

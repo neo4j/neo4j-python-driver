@@ -16,25 +16,29 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import abc
 import asyncio
+import socket
 from collections import deque
 from logging import getLogger
 from time import perf_counter
 
 from ..._async_compat.network import AsyncBoltSocket
-from ..._async_compat.util import AsyncUtil
+from ..._codec.hydration import v1 as hydration_v1
+from ..._codec.packstream import v1 as packstream_v1
+from ..._conf import PoolConfig
 from ..._exceptions import (
     BoltError,
     BoltHandshakeError,
-    SocketDeadlineExceeded,
 )
+from ..._meta import get_user_agent
 from ...addressing import Address
 from ...api import (
     ServerInfo,
     Version,
 )
-from ...conf import PoolConfig
 from ...exceptions import (
     AuthError,
     DriverError,
@@ -42,15 +46,10 @@ from ...exceptions import (
     ServiceUnavailable,
     SessionExpired,
 )
-from ...meta import get_user_agent
-from ...packstream import (
-    Packer,
-    Unpacker,
-)
 from ._common import (
     AsyncInbox,
+    AsyncOutbox,
     CommitResponse,
-    Outbox,
 )
 
 
@@ -68,9 +67,16 @@ class AsyncBolt:
     the handshake was carried out.
     """
 
+    # TODO: let packer/unpacker know of hydration (give them hooks?)
+    # TODO: make sure query parameter dehydration gets clear error message.
+
+    PACKER_CLS = packstream_v1.Packer
+    UNPACKER_CLS = packstream_v1.Unpacker
+    HYDRATION_HANDLER_CLS = hydration_v1.HydrationHandler
+
     MAGIC_PREAMBLE = b"\x60\x60\xB0\x17"
 
-    PROTOCOL_VERSION = None
+    PROTOCOL_VERSION: Version = None  # type: ignore[assignment]
 
     # flag if connection needs RESET to go back to READY state
     is_reset = False
@@ -100,16 +106,23 @@ class AsyncBolt:
                  auth=None, user_agent=None, routing_context=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
+        self.local_port = self.socket.getsockname()[1]
         self.server_info = ServerInfo(Address(sock.getpeername()),
                                       self.PROTOCOL_VERSION)
         # so far `connection.recv_timeout_seconds` is the only available
         # configuration hint that exists. Therefore, all hints can be stored at
         # connection level. This might change in the future.
         self.configuration_hints = {}
-        self.outbox = Outbox()
-        self.inbox = AsyncInbox(self.socket, on_error=self._set_defunct_read)
-        self.packer = Packer(self.outbox)
-        self.unpacker = Unpacker(self.inbox)
+        self.patch = {}
+        self.outbox = AsyncOutbox(
+            self.socket, on_error=self._set_defunct_write,
+            packer_cls=self.PACKER_CLS
+        )
+        self.inbox = AsyncInbox(
+            self.socket, on_error=self._set_defunct_read,
+            unpacker_cls=self.UNPACKER_CLS
+        )
+        self.hydration_handler = self.HYDRATION_HANDLER_CLS()
         self.responses = deque()
         self._max_connection_lifetime = max_connection_lifetime
         self._creation_timestamp = perf_counter()
@@ -246,30 +259,31 @@ class AsyncBolt:
         return b"".join(version.to_bytes() for version in offered_versions).ljust(16, b"\x00")
 
     @classmethod
-    async def ping(cls, address, *, timeout=None, **config):
+    async def ping(cls, address, *, timeout=None, pool_config=None):
         """ Attempt to establish a Bolt connection, returning the
         agreed Bolt protocol version if successful.
         """
-        config = PoolConfig.consume(config)
+        if pool_config is None:
+            pool_config = PoolConfig()
         try:
             s, protocol_version, handshake, data = \
                 await AsyncBoltSocket.connect(
                     address,
                     timeout=timeout,
-                    custom_resolver=config.resolver,
-                    ssl_context=config.get_ssl_context(),
-                    keep_alive=config.keep_alive,
+                    custom_resolver=pool_config.resolver,
+                    ssl_context=pool_config.get_ssl_context(),
+                    keep_alive=pool_config.keep_alive,
                 )
         except (ServiceUnavailable, SessionExpired, BoltHandshakeError):
             return None
         else:
-            AsyncBoltSocket.close_socket(s)
+            await AsyncBoltSocket.close_socket(s)
             return protocol_version
 
     @classmethod
     async def open(
         cls, address, *, auth=None, timeout=None, routing_context=None,
-        **pool_config
+        pool_config=None
     ):
         """Open a new Bolt connection to a given server address.
 
@@ -292,7 +306,8 @@ class AsyncBolt:
             return t if t > 0 else 0
 
         t0 = perf_counter()
-        pool_config = PoolConfig.consume(pool_config)
+        if pool_config is None:
+            pool_config = PoolConfig()
 
         socket_connection_timeout = pool_config.connection_timeout
         if socket_connection_timeout is None:
@@ -337,7 +352,7 @@ class AsyncBolt:
             bolt_cls = AsyncBolt5x0
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getsockname()[1])
-            AsyncBoltSocket.close_socket(s)
+            await AsyncBoltSocket.close_socket(s)
 
             supported_versions = cls.protocol_handlers().keys()
             raise BoltHandshakeError(
@@ -356,15 +371,15 @@ class AsyncBolt:
             connection.socket.set_deadline(time_remaining())
             try:
                 await connection.hello()
-            except SocketDeadlineExceeded as e:
-                # connection._defunct = True
-                raise ServiceUnavailable(
-                    "Timeout during initial handshake occurred"
-                ) from e
             finally:
                 connection.socket.set_deadline(None)
-        except Exception:
-            await connection.close_non_blocking()
+        except (
+            Exception,
+            # Python 3.8+: CancelledError is a subclass of BaseException
+            asyncio.CancelledError,
+        ) as e:
+            log.debug("[#%04X]  C: <OPEN FAILED> %r", connection.local_port, e)
+            connection.kill()
             raise
 
         return connection
@@ -379,20 +394,18 @@ class AsyncBolt:
     def der_encoded_server_certificate(self):
         pass
 
-    @property
     @abc.abstractmethod
-    def local_port(self):
-        pass
-
-    @abc.abstractmethod
-    async def hello(self):
+    async def hello(self, dehydration_hooks=None, hydration_hooks=None):
         """ Appends a HELLO message to the outgoing queue, sends it and consumes
          all remaining messages.
         """
         pass
 
     @abc.abstractmethod
-    async def route(self, database=None, imp_user=None, bookmarks=None):
+    async def route(
+        self, database=None, imp_user=None, bookmarks=None,
+        dehydration_hooks=None, hydration_hooks=None
+    ):
         """ Fetch a routing table from the server for the given
         `database`. For Bolt 4.3 and above, this appends a ROUTE
         message; for earlier versions, a procedure call is made via
@@ -405,13 +418,22 @@ class AsyncBolt:
             Requires Bolt 4.4+.
         :param bookmarks: iterable of bookmark values after which this
                           transaction should begin
-        :return: dictionary of raw routing data
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         """
         pass
 
     @abc.abstractmethod
     def run(self, query, parameters=None, mode=None, bookmarks=None,
-            metadata=None, timeout=None, db=None, imp_user=None, **handlers):
+            metadata=None, timeout=None, db=None, imp_user=None,
+            dehydration_hooks=None, hydration_hooks=None,
+            **handlers):
         """ Appends a RUN message to the output queue.
 
         :param query: Cypher query string
@@ -424,36 +446,60 @@ class AsyncBolt:
             Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
             Requires Bolt 4.4+.
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         :param handlers: handler functions passed into the returned Response object
-        :return: Response object
         """
         pass
 
     @abc.abstractmethod
-    def discard(self, n=-1, qid=-1, **handlers):
+    def discard(self, n=-1, qid=-1, dehydration_hooks=None,
+                hydration_hooks=None, **handlers):
         """ Appends a DISCARD message to the output queue.
 
         :param n: number of records to discard, default = -1 (ALL)
         :param qid: query ID to discard for, default = -1 (last query)
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         :param handlers: handler functions passed into the returned Response object
-        :return: Response object
         """
         pass
 
     @abc.abstractmethod
-    def pull(self, n=-1, qid=-1, **handlers):
+    def pull(self, n=-1, qid=-1, dehydration_hooks=None, hydration_hooks=None,
+             **handlers):
         """ Appends a PULL message to the output queue.
 
         :param n: number of records to pull, default = -1 (ALL)
         :param qid: query ID to pull for, default = -1 (last query)
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         :param handlers: handler functions passed into the returned Response object
-        :return: Response object
         """
         pass
 
     @abc.abstractmethod
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, **handlers):
+              db=None, imp_user=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
         """ Appends a BEGIN message to the output queue.
 
         :param mode: access mode for routing - "READ" or "WRITE" (default)
@@ -464,53 +510,99 @@ class AsyncBolt:
             Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
             Requires Bolt 4.4+
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         :param handlers: handler functions passed into the returned Response object
         :return: Response object
         """
         pass
 
     @abc.abstractmethod
-    def commit(self, **handlers):
-        """ Appends a COMMIT message to the output queue."""
-        pass
+    def commit(self, dehydration_hooks=None, hydration_hooks=None, **handlers):
+        """ Appends a COMMIT message to the output queue.
 
-    @abc.abstractmethod
-    def rollback(self, **handlers):
-        """ Appends a ROLLBACK message to the output queue."""
-        pass
-
-    @abc.abstractmethod
-    async def reset(self):
-        """ Appends a RESET message to the outgoing queue, sends it and consumes
-         all remaining messages.
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         """
         pass
 
     @abc.abstractmethod
-    def goodbye(self):
-        """Append a GOODBYE message to the outgoing queued."""
+    def rollback(self, dehydration_hooks=None, hydration_hooks=None, **handlers):
+        """ Appends a ROLLBACK message to the output queue.
+
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything."""
         pass
 
-    def _append(self, signature, fields=(), response=None):
+    @abc.abstractmethod
+    async def reset(self, dehydration_hooks=None, hydration_hooks=None):
+        """ Appends a RESET message to the outgoing queue, sends it and consumes
+         all remaining messages.
+
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
+        """
+        pass
+
+    @abc.abstractmethod
+    def goodbye(self, dehydration_hooks=None, hydration_hooks=None):
+        """Append a GOODBYE message to the outgoing queue.
+
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
+        """
+        pass
+
+    def new_hydration_scope(self):
+        return self.hydration_handler.new_hydration_scope()
+
+    def _append(self, signature, fields=(), response=None,
+                dehydration_hooks=None):
         """ Appends a message to the outgoing queue.
 
         :param signature: the signature of the message
         :param fields: the fields of the message as a tuple
         :param response: a response object to handle callbacks
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
         """
-        with self.outbox.tmp_buffer():
-            self.packer.pack_struct(signature, fields)
-        self.outbox.wrap_message()
+        self.outbox.append_message(signature, fields, dehydration_hooks)
         self.responses.append(response)
 
     async def _send_all(self):
-        data = self.outbox.view()
-        if data:
-            try:
-                await self.socket.sendall(data)
-            except OSError as error:
-                await self._set_defunct_write(error)
-            self.outbox.clear()
+        if await self.outbox.flush():
             self.idle_since = perf_counter()
 
     async def send_all(self):
@@ -532,8 +624,7 @@ class AsyncBolt:
         await self._send_all()
 
     @abc.abstractmethod
-    async def _process_message(self, details, summary_signature,
-                               summary_metadata):
+    async def _process_message(self, tag, fields):
         """ Receive at most one message from the server, if available.
 
         :return: 2-tuple of number of detail messages and number of summary
@@ -558,11 +649,10 @@ class AsyncBolt:
             return 0, 0
 
         # Receive exactly one message
-        details, summary_signature, summary_metadata = \
-            await AsyncUtil.next(self.inbox)
-        res = await self._process_message(
-            details, summary_signature, summary_metadata
+        tag, fields = await self.inbox.pop(
+            hydration_hooks=self.responses[0].hydration_hooks
         )
+        res = await self._process_message(tag, fields)
         self.idle_since = perf_counter()
         return res
 
@@ -596,15 +686,20 @@ class AsyncBolt:
     async def _set_defunct(self, message, error=None, silent=False):
         from ._pool import AsyncBoltPool
         direct_driver = isinstance(self.pool, AsyncBoltPool)
+        user_cancelled = isinstance(error, asyncio.CancelledError)
 
         if error:
-            log.debug("[#%04X] %s", self.socket.getsockname()[1], error)
-        log.error(message)
+            log.debug("[#%04X]  %r", self.local_port, error)
+        if not user_cancelled:
+            log.error(message)
         # We were attempting to receive data but the connection
         # has unexpectedly terminated. So, we need to close the
         # connection from the client side, and remove the address
         # from the connection pool.
         self._defunct = True
+        if user_cancelled:
+            self.kill()
+            raise error  # cancellation error should not be re-written
         if not self._closing:
             # If we fail while closing the connection, there is no need to
             # remove the connection from the pool, nor to try to close the
@@ -612,6 +707,7 @@ class AsyncBolt:
             await self.close()
             if self.pool:
                 await self.pool.deactivate(address=self.unresolved_address)
+
         # Iterate through the outstanding responses, and if any correspond
         # to COMMIT requests then raise an error to signal that we are
         # unable to confirm that the COMMIT completed successfully.
@@ -654,8 +750,9 @@ class AsyncBolt:
             self.goodbye()
             try:
                 await self._send_all()
-            except (OSError, BoltError, DriverError):
-                pass
+            except (OSError, BoltError, DriverError) as exc:
+                log.debug("[#%04X]  ignoring failed close %r",
+                          self.local_port, exc)
         log.debug("[#%04X]  C: <CLOSE>", self.local_port)
         try:
             await self.socket.close()
@@ -664,18 +761,19 @@ class AsyncBolt:
         finally:
             self._closed = True
 
-    async def close_non_blocking(self):
-        """Set the socket to non-blocking and close it.
-
-        This will try to send the `GOODBYE` message (given the socket is not
-        marked as defunct). However, should the write operation require
-        blocking (e.g., a full network buffer), then the socket will be closed
-        immediately (without `GOODBYE` message).
-        """
-        if self._closed or self._closing:
+    def kill(self):
+        """Close the socket most violently. No flush, no goodbye, no mercy."""
+        if self._closed:
             return
-        self.socket.settimeout(0)
-        await self.close()
+        log.debug("[#%04X]  C: <KILL>", self.local_port)
+        self._closing = True
+        try:
+            self.socket.kill()
+        except OSError as exc:
+            log.debug("[#%04X]  ignoring failed kill %r",
+                      self.local_port, exc)
+        finally:
+            self._closed = True
 
     def closed(self):
         return self._closed
@@ -694,4 +792,4 @@ class AsyncBolt:
         return perf_counter() - self.idle_since > timeout
 
 
-AsyncBoltSocket.Bolt = AsyncBolt
+AsyncBoltSocket.Bolt = AsyncBolt  # type: ignore

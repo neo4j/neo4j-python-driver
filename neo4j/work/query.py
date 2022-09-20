@@ -16,30 +16,45 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
+import typing as t
+
+
+if t.TYPE_CHECKING:
+    _T = t.TypeVar("_T")
+
+
 class Query:
     """ Create a new query.
 
     :param text: The query text.
-    :type text: str
     :param metadata: metadata attached to the query.
-    :type metadata: dict
     :param timeout: seconds.
-    :type timeout: float or None
     """
-    def __init__(self, text, metadata=None, timeout=None):
+    def __init__(
+        self,
+        text: str,
+        metadata: t.Dict[str, t.Any] = None,
+        timeout: float = None
+    ) -> None:
         self.text = text
 
         self.metadata = metadata
         self.timeout = timeout
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.text)
 
 
-def unit_of_work(metadata=None, timeout=None):
+def unit_of_work(
+    metadata: t.Dict[str, t.Any] = None, timeout: float = None
+) -> t.Callable[[_T], _T]:
     """This function is a decorator for transaction functions that allows extra control over how the transaction is carried out.
 
     For example, a timeout may be applied::
+
+        from neo4j import unit_of_work
 
         @unit_of_work(timeout=100)
         def count_people_tx(tx):
@@ -52,7 +67,6 @@ def unit_of_work(metadata=None, timeout=None):
         Specified metadata will be attached to the executing transaction and visible in the output of ``dbms.listQueries`` and ``dbms.listTransactions`` procedures.
         It will also get logged to the ``query.log``.
         This functionality makes it easier to tag transactions and is equivalent to ``dbms.setTXMetaData`` procedure, see https://neo4j.com/docs/operations-manual/current/reference/procedures/ for procedure reference.
-    :type metadata: dict
 
     :param timeout:
         the transaction timeout in seconds.
@@ -62,7 +76,6 @@ def unit_of_work(metadata=None, timeout=None):
         Value should not represent a negative duration.
         A zero duration will make the transaction execute indefinitely.
         None will use the default timeout configured in the database.
-    :type timeout: float or None
     """
 
     def wrapper(f):
