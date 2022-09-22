@@ -19,12 +19,12 @@
 
 
 import os
-import subprocess
-import sys
+
+from _common import run_python
 
 
 if __name__ == "__main__":
-    cmd = ["python", "-W", "error", "-m", "testkitbackend"]
+    cmd = ["-m", "testkitbackend"]
     if "TEST_BACKEND_SERVER" in os.environ:
         cmd.append(os.environ["TEST_BACKEND_SERVER"])
-    subprocess.check_call(cmd, stdout=sys.stdout, stderr=sys.stderr)
+    run_python(cmd)
