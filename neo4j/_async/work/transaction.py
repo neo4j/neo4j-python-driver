@@ -256,7 +256,7 @@ class AsyncTransaction(AsyncTransactionBase):
     managers (:py:const:`async with` block) where the transaction is committed
     or rolled back on based on whether an exception is raised::
 
-        async with session.begin_transaction() as tx:
+        async with await session.begin_transaction() as tx:
             ...
 
     """
