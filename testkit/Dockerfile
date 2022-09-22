@@ -44,9 +44,10 @@ RUN pyenv install 3.6.13
 RUN pyenv rehash
 RUN pyenv global 3.6.13
 
-# Install Latest pip for each environment
+# Install Latest pip and setuptools for each environment
 # https://pip.pypa.io/en/stable/news/
 RUN python -m pip install --upgrade pip
+RUN python -m pip install --upgrade setuptools
 
 # Install Python Testing Tools
 RUN python -m pip install coverage tox
