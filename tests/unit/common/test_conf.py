@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+import ssl
+
 import pytest
 
 from neo4j import (
@@ -266,3 +268,150 @@ def test_init_session_config_with_not_valid_key():
         _ = SessionConfig.consume(test_config_b)
 
     assert session_config.connection_acquisition_timeout == 333
+
+
+@pytest.mark.parametrize("config", (
+    {},
+    {"encrypted": False},
+    {"trusted_certificates": TrustSystemCAs()},
+    {"trusted_certificates": TrustAll()},
+    {"trusted_certificates": TrustCustomCAs("foo", "bar")},
+))
+def test_no_ssl_mock(config, mocker):
+    ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is False
+    assert pool_config.get_ssl_context() is None
+    ssl_context_mock.assert_not_called()
+
+
+@pytest.mark.parametrize("config", (
+    {"encrypted": True},
+    {"encrypted": True, "trusted_certificates": TrustSystemCAs()},
+))
+def test_trust_system_cas_mock(config, mocker):
+    ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is True
+    ssl_context = pool_config.get_ssl_context()
+    _assert_mock_tls_1_2(ssl_context_mock)
+    assert ssl_context.minimum_version == ssl.TLSVersion.TLSv1_2
+    ssl_context_mock.return_value.load_default_certs.assert_called_once_with()
+    ssl_context_mock.return_value.load_verify_locations.assert_not_called()
+    assert ssl_context.check_hostname is True
+    assert ssl_context.verify_mode == ssl.CERT_REQUIRED
+
+
+@pytest.mark.parametrize("config", (
+    {"encrypted": True, "trusted_certificates": TrustCustomCAs("foo", "bar")},
+    {"encrypted": True, "trusted_certificates": TrustCustomCAs()},
+))
+def test_trust_custom_cas_mock(config, mocker):
+    ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
+    certs = config["trusted_certificates"].certs
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is True
+    ssl_context = pool_config.get_ssl_context()
+    _assert_mock_tls_1_2(ssl_context_mock)
+    assert ssl_context.minimum_version == ssl.TLSVersion.TLSv1_2
+    ssl_context_mock.return_value.load_default_certs.assert_not_called()
+    assert (
+        ssl_context_mock.return_value.load_verify_locations.call_args_list
+        == [((cert,), {}) for cert in certs]
+    )
+    assert ssl_context.check_hostname is True
+    assert ssl_context.verify_mode == ssl.CERT_REQUIRED
+
+
+@pytest.mark.parametrize("config", (
+    {"encrypted": True, "trusted_certificates": TrustAll()},
+))
+def test_trust_all_mock(config, mocker):
+    ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is True
+    ssl_context = pool_config.get_ssl_context()
+    _assert_mock_tls_1_2(ssl_context_mock)
+    assert ssl_context.minimum_version == ssl.TLSVersion.TLSv1_2
+    ssl_context_mock.return_value.load_default_certs.assert_not_called()
+    ssl_context_mock.return_value.load_verify_locations.assert_not_called()
+    assert ssl_context.check_hostname is False
+    assert ssl_context.verify_mode is ssl.CERT_NONE
+
+
+def _assert_mock_tls_1_2(mock):
+    mock.assert_called_once_with(ssl.PROTOCOL_TLS_CLIENT)
+    assert mock.return_value.minimum_version == ssl.TLSVersion.TLSv1_2
+
+
+@pytest.mark.parametrize("config", (
+    {},
+    {"encrypted": False},
+    {"trusted_certificates": TrustSystemCAs()},
+    {"trusted_certificates": TrustAll()},
+    {"trusted_certificates": TrustCustomCAs("foo", "bar")},
+))
+def test_no_ssl(config):
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is False
+    assert pool_config.get_ssl_context() is None
+
+
+@pytest.mark.parametrize("config", (
+    {"encrypted": True},
+    {"encrypted": True, "trusted_certificates": TrustSystemCAs()},
+))
+def test_trust_system_cas(config):
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is True
+    ssl_context = pool_config.get_ssl_context()
+    assert isinstance(ssl_context, ssl.SSLContext)
+    _assert_context_tls_1_2(ssl_context)
+    assert ssl_context.check_hostname is True
+    assert ssl_context.verify_mode == ssl.CERT_REQUIRED
+
+
+@pytest.mark.parametrize("config", (
+    {"encrypted": True, "trusted_certificates": TrustCustomCAs()},
+))
+def test_trust_custom_cas(config):
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is True
+    ssl_context = pool_config.get_ssl_context()
+    assert isinstance(ssl_context, ssl.SSLContext)
+    _assert_context_tls_1_2(ssl_context)
+    assert ssl_context.check_hostname is True
+    assert ssl_context.verify_mode == ssl.CERT_REQUIRED
+
+
+@pytest.mark.parametrize("config", (
+    {"encrypted": True, "trusted_certificates": TrustAll()},
+))
+def test_trust_all(config):
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is True
+    ssl_context = pool_config.get_ssl_context()
+    assert isinstance(ssl_context, ssl.SSLContext)
+    _assert_context_tls_1_2(ssl_context)
+    assert ssl_context.check_hostname is False
+    assert ssl_context.verify_mode is ssl.CERT_NONE
+
+
+def _assert_context_tls_1_2(ctx):
+    assert ctx.protocol == ssl.PROTOCOL_TLS_CLIENT
+    assert ctx.minimum_version == ssl.TLSVersion.TLSv1_2
+
+
+@pytest.mark.parametrize("encrypted", (True, False))
+@pytest.mark.parametrize("trusted_certificates", (
+    TrustSystemCAs(), TrustAll(), TrustCustomCAs()
+))
+def test_custom_ssl_context(encrypted, trusted_certificates):
+    custom_ssl_context = object()
+    pool_config = PoolConfig.consume({
+        "encrypted": encrypted,
+        "trusted_certificates": trusted_certificates,
+        "ssl_context": custom_ssl_context,
+    })
+    assert pool_config.encrypted is encrypted
+    assert pool_config.get_ssl_context() is custom_ssl_context
