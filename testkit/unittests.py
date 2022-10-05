@@ -18,13 +18,8 @@
 # limitations under the License.
 
 
-import subprocess
-
-
-def run(args):
-    subprocess.run(
-        args, universal_newlines=True, stderr=subprocess.STDOUT, check=True)
+from _common import run_python
 
 
 if __name__ == "__main__":
-    run(["python", "-W", "error", "-m", "tox", "-f", "unit"])
+    run_python(["-m", "tox", "-f", "unit"])
