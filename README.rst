@@ -119,26 +119,26 @@ Version Compatibility
 +------------------+-------+-------+-------+-------+-------+-------+-------+
 | Server \\ Driver |  1.7  |  4.0  |  4.1  |  4.2  |  4.3  | *4.4* | *5.0* |
 +==================+=======+=======+=======+=======+=======+=======+=======+
-| Neo4j 3.5 (EOL)  |   ✔️  |   ✔️  |   ❔   |   ❔   |   ❔   |   ❔   |   ❔   |
+| Neo4j 3.5 (EOL)  |  Yes  |  Yes  |   ?   |   ?   |   ?   |   ?   |   ?   |
 +------------------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 4.0 (EOL)  |   ✔️  |   ✔️  |   ✔️  |   ✔️  |   ✔️  |   ✔️  |   ❔   |
+| Neo4j 4.0 (EOL)  |  Yes  |  Yes  |  Yes  |  Yes  |  Yes  |  Yes  |   ?   |
 +------------------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 4.1 (EOL)  |   ❔   |   ✔️  |   ✔️  |   ✔️  |   ✔️  |   ✔️  |   ❔   |
+| Neo4j 4.1 (EOL)  |   ?   |  Yes  |  Yes  |  Yes  |  Yes  |  Yes  |   ?   |
 +------------------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 4.2 (EOL)  |   ❔   |   ❔   |   ✔️  |   ✔️  |   ✔️  |   ✔️  |   ❔   |
+| Neo4j 4.2 (EOL)  |   ?   |   ?   |  Yes  |  Yes  |  Yes  |  Yes  |   ?   |
 +------------------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 4.3        |   ❔   |   ❔   |   ❔   |   ✔️  |   ✔️  |   ✔️  |   ❔   |
+| Neo4j 4.3        |   ?   |   ?   |   ?   |  Yes  |  Yes  |  Yes  |   ?   |
 +------------------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 4.4        |   ❔   |   ❔   |   ❔   |   ❔   |   ✔️  |   ✔️  |   ✔️  |
+| Neo4j 4.4        |   ?   |   ?   |   ?   |   ?   |  Yes  |  Yes  |  Yes  |
 +------------------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 5.0        |   ❔   |   ❔   |   ❔   |   ❔   |   ❔   |   ✔️  |   ✔️  |
+| Neo4j 5.0        |   ?   |   ?   |   ?   |   ?   |   ?   |  Yes  |  Yes  |
 +------------------+-------+-------+-------+-------+-------+-------+-------+
 
 * *emphasized*: currently supported driver version (as of 5.0 being the latest)
-* ✔️ supported combination, although only the common set of features
+* Yes: supported combination, although only the common set of features
   between the chosen driver and server versions will be available.
-* ❔: might work, untested, no support.
-* ❌: not working.
+* ?: might work, untested, no support.
+* (blank): not working.
 
 
 Other Information
