@@ -233,13 +233,14 @@ class AsyncGraphDatabase:
             import neo4j
 
             driver = neo4j.AsyncGraphDatabase.driver(...)
-            bookmark_manager = neo4j.AsyncBookmarkManager(...)
+            bookmark_manager = neo4j.AsyncGraphDatabase.bookmark_manager(...)
 
             async with driver.session(
                 bookmark_manager=bookmark_manager
             ) as session1:
                 async with driver.session(
-                    bookmark_manager=bookmark_manager
+                    bookmark_manager=bookmark_manager,
+                    access_mode=neo4j.READ_ACCESS
                 ) as session2:
                     result1 = await session1.run("<WRITE_QUERY>")
                     await result1.consume()
