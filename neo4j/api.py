@@ -391,7 +391,7 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
 
     This class is just an abstract base class that defines the required
     interface. Create a child class to implement a specific bookmark manager
-    or make user of the default implementation provided by the driver through
+    or make use of the default implementation provided by the driver through
     :meth:`.GraphDatabase.bookmark_manager()`.
 
     .. note::
