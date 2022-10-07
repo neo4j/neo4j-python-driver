@@ -232,13 +232,14 @@ class GraphDatabase:
             import neo4j
 
             driver = neo4j.GraphDatabase.driver(...)
-            bookmark_manager = neo4j.BookmarkManager(...)
+            bookmark_manager = neo4j.GraphDatabase.bookmark_manager(...)
 
             with driver.session(
                 bookmark_manager=bookmark_manager
             ) as session1:
                 with driver.session(
-                    bookmark_manager=bookmark_manager
+                    bookmark_manager=bookmark_manager,
+                    access_mode=neo4j.READ_ACCESS
                 ) as session2:
                     result1 = session1.run("<WRITE_QUERY>")
                     result1.consume()
