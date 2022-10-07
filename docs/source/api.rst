@@ -950,11 +950,6 @@ Record
 
 .. autoclass:: neo4j.Record()
 
-    A :class:`neo4j.Record` is an immutable ordered collection of key-value
-    pairs. It is generally closer to a :class:`namedtuple` than to an
-    :class:`OrderedDict` inasmuch as iteration of the collection will
-    yield values rather than keys.
-
     .. describe:: Record(iterable)
 
         Create a new record based on an dictionary-like iterable.
