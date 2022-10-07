@@ -150,7 +150,7 @@ def watch(
 ) -> Watcher:
     """Quick wrapper for using  :class:`.Watcher`.
 
-    Create a Wathcer with the given configuration, enable watching and return
+    Create a Watcher with the given configuration, enable watching and return
     it.
 
     Example::
