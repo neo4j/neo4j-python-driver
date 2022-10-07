@@ -21,11 +21,15 @@ import logging
 import sys
 
 
+formatter = logging.Formatter("%(asctime)s [%(levelname)-8s] %(message)s")
+
 buffer_handler = logging.StreamHandler(io.StringIO())
 buffer_handler.setLevel(logging.DEBUG)
+buffer_handler.setFormatter(formatter)
 
 handler = logging.StreamHandler(sys.stdout)
 handler.setLevel(logging.DEBUG)
+handler.setFormatter(formatter)
 logging.getLogger("neo4j").addHandler(handler)
 logging.getLogger("neo4j").addHandler(buffer_handler)
 logging.getLogger("neo4j").setLevel(logging.DEBUG)
