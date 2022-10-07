@@ -14,4 +14,4 @@ def run(args, env=None):
 
 
 def run_python(args, env=None):
-    run([TEST_BACKEND_VERSION, "-W", "error", *args], env=env)
+    run([TEST_BACKEND_VERSION, "-u", "-W", "error", *args], env=env)
