@@ -653,7 +653,7 @@ context of the impersonated user. For this, the user for which the
 
 .. Note::
 
-    The server or all servers of the cluster need to support impersonation when.
+    The server or all servers of the cluster need to support impersonation.
     Otherwise, the driver will raise :exc:`.ConfigurationError`
     as soon as it encounters a server that does not.
 
