@@ -4,7 +4,7 @@ Neo4j Bolt Driver for Python
 
 This repository contains the official Neo4j driver for Python.
 Each driver release (from 5.0 upwards) is built specifically to work with a
-corresponding Neo4j release series, i.e., that with the same ``major`` version
+corresponding Neo4j release, i.e. that with the same ``major.minor`` version
 number.
 Only the latest ``major.minor`` release of each ``major`` driver series
 receives patches and support.
@@ -129,12 +129,12 @@ Version Compatibility
 +------------------+-------+-------+-------+-------+-------+-------+-------+
 | Neo4j 4.3        |   ?   |   ?   |   ?   |  Yes  |  Yes  |  Yes  |   ?   |
 +------------------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 4.4        |   ?   |   ?   |   ?   |   ?   |  Yes  |  Yes  |  Yes  |
+| Neo4j 4.4 (LTS)  |   ?   |   ?   |   ?   |   ?   |  Yes  |  Yes  |  Yes  |
 +------------------+-------+-------+-------+-------+-------+-------+-------+
 | Neo4j 5.0        |   ?   |   ?   |   ?   |   ?   |   ?   |  Yes  |  Yes  |
 +------------------+-------+-------+-------+-------+-------+-------+-------+
 
-* *emphasized*: currently supported driver version (as of 5.0 being the latest)
+* *emphasized*: currently supported driver versions
 * Yes: supported combination, although only the common set of features
   between the chosen driver and server versions will be available.
 * ?: might work, untested, no support.
