@@ -958,9 +958,9 @@ Record
     .. describe:: record == other
 
         Compare a record for equality with another value.
-        The ``other`` value may be any ``Sequence`` or``Mapping`` or both.
-        If comparing with a``Sequence`` the values are compared in order.
-        If comparing with a``Mapping`` the values are compared based on their keys.
+        The ``other`` value may be any ``Sequence`` or ``Mapping`` or both.
+        If comparing with a ``Sequence`` the values are compared in order.
+        If comparing with a ``Mapping`` the values are compared based on their keys.
         If comparing with a value that exhibits both traits, both comparisons must be true for the values to be considered equal.
 
     .. describe:: record != other
@@ -1032,7 +1032,7 @@ Core Data Types
 
 Cypher supports a set of core data types that all map to built-in types in Python.
 
-These include the common``Boolean`` ``Integer`` ``Float`` and ``String`` types as well as ``List`` and ``Map`` that can hold heterogenous collections of any other type.
+These include the common ``Boolean`` ``Integer`` ``Float`` and ``String`` types as well as ``List`` and ``Map`` that can hold heterogenous collections of any other type.
 
 The core types with their general mappings are listed below:
 
