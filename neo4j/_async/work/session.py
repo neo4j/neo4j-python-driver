@@ -410,7 +410,7 @@ class AsyncSession(AsyncWorkspace):
             At most one transaction may exist in a session at any point in time.
             To maintain multiple concurrent transactions, use multiple concurrent sessions.
 
-            Note: For auto-transaction (AsyncSession.run) this will trigger an consume for the current result.
+            Note: For auto-transaction (AsyncSession.run) this will trigger a consume for the current result.
 
         :param metadata:
             a dictionary with metadata.
