@@ -47,7 +47,7 @@ def test_should_run_readme(uri, auth):
         for record in tx.run(query, name=name):
             print(record["friend.name"])
 
-    with driver.session() as session:
+    with driver.session(database="neo4j") as session:
         # === END: README ===
         session.run("MATCH (a) DETACH DELETE a")
         # === START: README ===

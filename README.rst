@@ -3,15 +3,21 @@ Neo4j Bolt Driver for Python
 ****************************
 
 This repository contains the official Neo4j driver for Python.
-Each driver release (from 4.0 upwards) is built specifically to work with a corresponding Neo4j release, i.e. that with the same ``major.minor`` version number.
-These drivers will also be compatible with the previous Neo4j release, although new server features will not be available.
+Each driver release (from 5.0 upwards) is built specifically to work with a
+corresponding Neo4j release, i.e. that with the same ``major.minor`` version
+number.
+Only the latest ``major.minor`` release of each ``major`` driver series
+receives patches and support.
+These drivers will also be compatible with the previous Neo4j LTS release as
+well as the very next release, although only the common set of features
+between the chosen driver and server versions will be available.
+
+See `Version Compatibility`_ for a compatibility matrix.
 
 + Python 3.10 supported.
 + Python 3.9 supported.
 + Python 3.8 supported.
 + Python 3.7 supported.
-
-Python 2.7 support has been dropped as of the Neo4j 4.0 release.
 
 
 Installation
@@ -45,7 +51,7 @@ Quick Example
         for record in tx.run(query, name=name):
             print(record["friend.name"])
 
-    with driver.session() as session:
+    with driver.session(database="neo4j") as session:
         session.execute_write(add_friend, "Arthur", "Guinevere")
         session.execute_write(add_friend, "Arthur", "Lancelot")
         session.execute_write(add_friend, "Arthur", "Merlin")
@@ -54,16 +60,20 @@ Quick Example
     driver.close()
 
 
-Connection Settings Breaking Change
-===================================
+Connection Settings Breaking Change (4.x)
+=========================================
 
-+ The driver’s default configuration for encrypted is now false (meaning that driver will only attempt plain text connections by default).
++ The driver’s default configuration for encrypted is now false
+  (meaning that driver will only attempt plain text connections by default).
 
-+ Connections to encrypted services (such as Neo4j Aura) should now explicitly be set to encrypted.
++ Connections to encrypted services (such as Neo4j Aura) should now explicitly
+  be set to encrypted.
 
-+ When encryption is explicitly enabled, the default trust mode is to trust the CAs that are trusted by operating system and use hostname verification.
++ When encryption is explicitly enabled, the default trust mode is to trust the
+  CAs that are trusted by operating system and use hostname verification.
 
-+ This means that encrypted connections to servers holding self-signed certificates will now fail on certificate verification by default.
++ This means that encrypted connections to servers holding self-signed
+  certificates will now fail on certificate verification by default.
 
 + Using the new ``neo4j+ssc`` scheme will allow to connect to servers holding self-signed certificates and not use hostname verification.
 
@@ -77,8 +87,8 @@ See, https://neo4j.com/docs/migration-guide/4.0/upgrade-driver/#upgrade-driver-b
 See, https://neo4j.com/docs/driver-manual/current/client-applications/#driver-connection-uris for changes in default security settings between 3.x and 4.x
 
 
-Connecting with Python Driver 4.x to Neo4j 3.5
-----------------------------------------------
+Connecting with Python Driver 4.x to Neo4j 3.5 (EOL)
+----------------------------------------------------
 
 Using the Python Driver 4.x and connecting to Neo4j 3.5 with default connection settings for Neo4j 3.5.
 
@@ -93,8 +103,8 @@ Using the Python Driver 4.x and connecting to Neo4j 3.5 with default connection 
     driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "password"), encrypted=True, trust=False)
 
 
-Connecting with Python Driver 1.7 to Neo4j 4.x
-----------------------------------------------
+Connecting with Python Driver 1.7 (EOL) to Neo4j 4.x
+----------------------------------------------------
 
 Using the Python Driver 1.7 and connecting to Neo4j 4.x with default connection settings for Neo4j 4.x.
 
@@ -102,6 +112,33 @@ Using the Python Driver 1.7 and connecting to Neo4j 4.x with default connection 
 
     driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "password"), encrypted=False)
 
+
+Version Compatibility
+=====================
+
++------------------+-------+-------+-------+-------+-------+-------+-------+
+| Server \\ Driver |  1.7  |  4.0  |  4.1  |  4.2  |  4.3  | *4.4* | *5.0* |
++==================+=======+=======+=======+=======+=======+=======+=======+
+| Neo4j 3.5 (EOL)  |  Yes  |  Yes  |   ?   |   ?   |   ?   |   ?   |   ?   |
++------------------+-------+-------+-------+-------+-------+-------+-------+
+| Neo4j 4.0 (EOL)  |  Yes  |  Yes  |  Yes  |  Yes  |  Yes  |  Yes  |   ?   |
++------------------+-------+-------+-------+-------+-------+-------+-------+
+| Neo4j 4.1 (EOL)  |   ?   |  Yes  |  Yes  |  Yes  |  Yes  |  Yes  |   ?   |
++------------------+-------+-------+-------+-------+-------+-------+-------+
+| Neo4j 4.2 (EOL)  |   ?   |   ?   |  Yes  |  Yes  |  Yes  |  Yes  |   ?   |
++------------------+-------+-------+-------+-------+-------+-------+-------+
+| Neo4j 4.3        |   ?   |   ?   |   ?   |  Yes  |  Yes  |  Yes  |   ?   |
++------------------+-------+-------+-------+-------+-------+-------+-------+
+| Neo4j 4.4 (LTS)  |   ?   |   ?   |   ?   |   ?   |  Yes  |  Yes  |  Yes  |
++------------------+-------+-------+-------+-------+-------+-------+-------+
+| Neo4j 5.0        |   ?   |   ?   |   ?   |   ?   |   ?   |  Yes  |  Yes  |
++------------------+-------+-------+-------+-------+-------+-------+-------+
+
+* *emphasized*: currently supported driver versions
+* Yes: supported combination, although only the common set of features
+  between the chosen driver and server versions will be available.
+* ?: might work, untested, no support.
+* (blank): not working.
 
 
 Other Information
