@@ -1,5 +1,10 @@
 # Neo4j Driver Change Log (breaking/major changes only)
 
+## Version 5.1
+
+ * No breaking or major changes.
+
+
 ## Version 5.0
 
 - Python 3.10 support added
