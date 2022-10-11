@@ -222,7 +222,7 @@ class Session(Workspace):
 
     def last_bookmark(self):
         """Return the bookmark received following the last completed transaction.
-        Note: For auto-transaction (Session.run) this will trigger an consume for the current result.
+        Note: For auto-transaction (Session.run) this will trigger a consume for the current result.
 
         :returns: :class:`neo4j.Bookmark` object
         """

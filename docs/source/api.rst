@@ -593,7 +593,7 @@ context of the impersonated user. For this, the user for which the
 
 .. Note::
 
-    The server or all servers of the cluster need to support impersonation when.
+    The server or all servers of the cluster need to support impersonation.
     Otherwise, the driver will raise :py:exc:`.ConfigurationError`
     as soon as it encounters a server that does not.
 
@@ -847,11 +847,6 @@ Record
 ******
 
 .. autoclass:: neo4j.Record()
-
-    A :class:`neo4j.Record` is an immutable ordered collection of key-value
-    pairs. It is generally closer to a :py:class:`namedtuple` than to an
-    :py:class:`OrderedDict` inasmuch as iteration of the collection will
-    yield values rather than keys.
 
     .. describe:: Record(iterable)
 
