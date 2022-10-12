@@ -477,7 +477,8 @@ def unit_of_work(metadata=None, timeout=None):
         Transactions that execute longer than the configured timeout will be terminated by the database.
         This functionality allows to limit query/transaction execution time.
         Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
-        Values higher than ``dbms.transaction.timeout`` will be ignored and will fallback to default (unless using Neo4j < 4.2).
+        Values higher than ``dbms.transaction.timeout`` will be ignored and
+        will fall back to default (unless using Neo4j < 4.2).
         Value should not represent a duration of zero or negative duration.
     :type timeout: float or :const:`None`
     """
