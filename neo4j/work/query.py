@@ -50,7 +50,10 @@ class Query:
 def unit_of_work(
     metadata: t.Dict[str, t.Any] = None, timeout: float = None
 ) -> t.Callable[[_T], _T]:
-    """This function is a decorator for transaction functions that allows extra control over how the transaction is carried out.
+    """Decorator giving extra control over transaction function configuration.
+
+    This function is a decorator for transaction functions that allows extra
+    control over how the transaction is carried out.
 
     For example, a timeout may be applied::
 
@@ -64,16 +67,24 @@ def unit_of_work(
 
     :param metadata:
         a dictionary with metadata.
-        Specified metadata will be attached to the executing transaction and visible in the output of ``dbms.listQueries`` and ``dbms.listTransactions`` procedures.
+        Specified metadata will be attached to the executing transaction and
+        visible in the output of ``dbms.listQueries`` and
+        ``dbms.listTransactions`` procedures.
         It will also get logged to the ``query.log``.
-        This functionality makes it easier to tag transactions and is equivalent to ``dbms.setTXMetaData`` procedure, see https://neo4j.com/docs/operations-manual/current/reference/procedures/ for procedure reference.
+        This functionality makes it easier to tag transactions and is
+        equivalent to ``dbms.setTXMetaData`` procedure, see
+        https://neo4j.com/docs/operations-manual/current/reference/procedures/
+        for procedure reference.
 
     :param timeout:
         the transaction timeout in seconds.
-        Transactions that execute longer than the configured timeout will be terminated by the database.
+        Transactions that execute longer than the configured timeout will be
+        terminated by the database.
         This functionality allows to limit query/transaction execution time.
-        Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
-        Values higher than ``dbms.transaction.timeout`` will be ignored and will fallback to default (unless using Neo4j < 4.2).
+        Specified timeout overrides the default timeout configured in the
+        database using ``dbms.transaction.timeout`` setting.
+        Values higher than ``dbms.transaction.timeout`` will be ignored and
+        will fall back to default (unless using Neo4j < 4.2).
         Value should not represent a negative duration.
         A zero duration will make the transaction execute indefinitely.
         None will use the default timeout configured in the database.
