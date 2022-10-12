@@ -23,7 +23,10 @@ from abc import ABCMeta
 from collections.abc import Mapping
 from warnings import warn
 
-from neo4j.meta import get_user_agent
+from neo4j.meta import (
+    deprecation_warn,
+    get_user_agent,
+)
 
 from neo4j.api import (
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
@@ -71,7 +74,9 @@ class ConfigType(ABCMeta):
         for k, v in attributes.items():
             if isinstance(v, DeprecatedAlias):
                 deprecated_aliases[k] = v.new
-            elif not k.startswith("_") and not callable(v):
+            elif not (k.startswith("_")
+                      or callable(v)
+                      or isinstance(v, (staticmethod, classmethod))):
                 fields.append(k)
 
         def keys(_):
@@ -243,6 +248,10 @@ class PoolConfig(Config):
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
         # For recommended security options see
+        # https://docs.python.org/3.10/library/ssl.html#protocol-versions
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+
+        # For recommended security options see
         # https://docs.python.org/3.6/library/ssl.html#protocol-versions
         ssl_context.options |= ssl.OP_NO_TLSv1      # Python 3.2
         ssl_context.options |= ssl.OP_NO_TLSv1_1    # Python 3.4
@@ -250,7 +259,8 @@ class PoolConfig(Config):
 
         if self.trust == TRUST_ALL_CERTIFICATES:
             ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE     # https://docs.python.org/3.5/library/ssl.html#ssl.CERT_NONE
+            # https://docs.python.org/3.7/library/ssl.html#ssl.CERT_NONE
+            ssl_context.verify_mode = ssl.CERT_NONE
 
         # Must be load_default_certs, not set_default_verify_paths to work
         # on Windows with system CAs.

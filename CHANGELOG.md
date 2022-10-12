@@ -30,6 +30,8 @@
 - Connections are now unencrypted by default; to reproduce former behaviour, add `encrypted=True` to Driver configuration
 - Removed `transaction.success` flag usage pattern.
 
++ Python 3.10 supported.
++ Python 3.9 supported.
 + Python 3.8 supported.
 + Python 3.7 supported.
 + Python 3.6 supported.
