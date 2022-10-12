@@ -73,6 +73,7 @@ def unit_of_work(
         Transactions that execute longer than the configured timeout will be terminated by the database.
         This functionality allows to limit query/transaction execution time.
         Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
+        Values higher than ``dbms.transaction.timeout`` will be ignored and will fallback to default (unless using Neo4j < 4.2).
         Value should not represent a negative duration.
         A zero duration will make the transaction execute indefinitely.
         None will use the default timeout configured in the database.
