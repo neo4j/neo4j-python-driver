@@ -12,7 +12,7 @@ Neo4j versions supported:
 
 Python versions supported:
 
-* Python 3.10
+* Python 3.10 (added in driver version 4.4.9)
 * Python 3.9
 * Python 3.8
 * Python 3.7

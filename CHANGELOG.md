@@ -1,5 +1,9 @@
 # Neo4j Driver Change Log
 
+## Version 4.4.9
+
+- Python 3.10 support added (driver version 4.4.9)
+
 ## Version 4.4
 
 - Python 3.5 support has been dropped.
@@ -30,7 +34,6 @@
 - Connections are now unencrypted by default; to reproduce former behaviour, add `encrypted=True` to Driver configuration
 - Removed `transaction.success` flag usage pattern.
 
-+ Python 3.10 supported.
 + Python 3.9 supported.
 + Python 3.8 supported.
 + Python 3.7 supported.

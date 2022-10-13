@@ -18,13 +18,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 
 from abc import ABCMeta
 from collections.abc import Mapping
 from warnings import warn
 
 from neo4j.meta import (
-    deprecation_warn,
     get_user_agent,
 )
 
@@ -249,7 +249,11 @@ class PoolConfig(Config):
 
         # For recommended security options see
         # https://docs.python.org/3.10/library/ssl.html#protocol-versions
-        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+        if sys.version_info >= (3, 7):
+            ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+        else:
+            ssl_context.options |= ssl.OP_NO_TLSv1  # Python 3.2
+            ssl_context.options |= ssl.OP_NO_TLSv1_1
 
         # For recommended security options see
         # https://docs.python.org/3.6/library/ssl.html#protocol-versions
