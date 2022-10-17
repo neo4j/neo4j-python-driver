@@ -23,6 +23,7 @@ from contextlib import contextmanager
 import warnings
 
 import ssl
+import sys
 import pytest
 
 from neo4j.exceptions import (
@@ -322,5 +323,6 @@ def test_trust_all(config):
 
 
 def _assert_context_tls_1_2(ctx):
-    assert ctx.protocol == ssl.PROTOCOL_TLS_CLIENT
-    assert ctx.minimum_version == ssl.TLSVersion.TLSv1_2
+    if sys.version_info >= (3, 7):
+        assert ctx.protocol == ssl.PROTOCOL_TLS_CLIENT
+        assert ctx.minimum_version == ssl.TLSVersion.TLSv1_2
