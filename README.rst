@@ -6,6 +6,7 @@ This repository contains the official Neo4j driver for Python.
 Each driver release (from 4.0 upwards) is built specifically to work with a corresponding Neo4j release, i.e. that with the same `major.minor` version number.
 These drivers will also be compatible with the previous Neo4j release, although new server features will not be available.
 
++ Python 3.10 supported.
 + Python 3.9 supported.
 + Python 3.8 supported.
 + Python 3.7 supported.

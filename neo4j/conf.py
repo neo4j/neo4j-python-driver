@@ -19,6 +19,7 @@
 # limitations under the License.
 
 
+import sys
 from abc import ABCMeta
 from collections.abc import Mapping
 import warnings
@@ -83,7 +84,9 @@ class ConfigType(ABCMeta):
         for k, v in attributes.items():
             if isinstance(v, DeprecatedAlias):
                 deprecated_aliases[k] = v.new
-            elif not k.startswith("_") and not callable(v):
+            elif not (k.startswith("_")
+                      or callable(v)
+                      or isinstance(v, (staticmethod, classmethod))):
                 fields.append(k)
             if isinstance(v, DeprecatedOption):
                 deprecated_options[k] = v.value
@@ -286,8 +289,11 @@ class PoolConfig(Config):
 
         # For recommended security options see
         # https://docs.python.org/3.6/library/ssl.html#protocol-versions
-        ssl_context.options |= ssl.OP_NO_TLSv1      # Python 3.2
-        ssl_context.options |= ssl.OP_NO_TLSv1_1    # Python 3.4
+        if sys.version_info >= (3, 7):
+            ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2  # Python 3.10
+        else:
+            ssl_context.options |= ssl.OP_NO_TLSv1  # Python 3.2
+            ssl_context.options |= ssl.OP_NO_TLSv1_1  # Python 3.4
 
 
         if self.trust == TRUST_ALL_CERTIFICATES:
@@ -357,11 +363,9 @@ class SessionConfig(WorkspaceConfig):
 
 class TransactionConfig(Config):
     """ Transaction configuration. This is internal for now.
-
     neo4j.session.begin_transaction
     neo4j.Query
     neo4j.unit_of_work
-
     are both using the same settings.
     """
     #: Metadata

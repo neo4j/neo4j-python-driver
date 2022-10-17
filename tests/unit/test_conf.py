@@ -22,6 +22,7 @@
 from contextlib import contextmanager
 import warnings
 
+import ssl
 import pytest
 
 from neo4j.exceptions import (
@@ -35,6 +36,7 @@ from neo4j.conf import (
 )
 from neo4j.api import (
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
+    TRUST_ALL_CERTIFICATES,
     WRITE_ACCESS,
     READ_ACCESS,
 )
@@ -75,26 +77,11 @@ test_session_config = {
 config_function_names = ["consume_chain", "consume"]
 
 
-@contextmanager
-def _pool_config_deprecations():
-    with pytest.warns(DeprecationWarning,
-                      match="update_routing_table_timeout") as warnings:
-        yield warnings
-
-
-@contextmanager
-def _session_config_deprecations():
-    with pytest.warns(DeprecationWarning,
-                      match="session_connection_timeout") as warnings:
-        yield warnings
-
-
 def test_pool_config_consume():
 
     test_config = dict(test_pool_config)
 
-    with _pool_config_deprecations():
-        consumed_pool_config = PoolConfig.consume(test_config)
+    consumed_pool_config = PoolConfig.consume(test_config)
 
     assert isinstance(consumed_pool_config, PoolConfig)
 
@@ -103,12 +90,10 @@ def test_pool_config_consume():
     for key in test_pool_config.keys():
         assert consumed_pool_config[key] == test_pool_config[key]
 
-    for key in consumed_pool_config.keys():
-        if key not in config_function_names:
-            assert test_pool_config[key] == consumed_pool_config[key]
+    for key, val in consumed_pool_config.items():
+        assert test_pool_config[key] == val
 
-    assert (len(consumed_pool_config) - len(config_function_names)
-            == len(test_pool_config))
+    assert len(consumed_pool_config) == len(test_pool_config)
 
 
 def test_pool_config_consume_default_values():
@@ -133,11 +118,7 @@ def test_pool_config_consume_key_not_valid():
     test_config["not_valid_key"] = "test"
 
     with pytest.raises(ConfigurationError) as error:
-        # might or might not warn DeprecationWarning, but we're only
-        # interested in the error
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=DeprecationWarning)
-            _ = PoolConfig.consume(test_config)
+        consumed_pool_config = PoolConfig.consume(test_config)
 
     error.match("Unexpected config keys: not_valid_key")
 
@@ -146,8 +127,7 @@ def test_pool_config_set_value():
 
     test_config = dict(test_pool_config)
 
-    with _pool_config_deprecations():
-        consumed_pool_config = PoolConfig.consume(test_config)
+    consumed_pool_config = PoolConfig.consume(test_config)
 
     assert consumed_pool_config.get("encrypted") is False
     assert consumed_pool_config["encrypted"] is False
@@ -165,22 +145,15 @@ def test_pool_config_set_value():
 def test_pool_config_consume_and_then_consume_again():
 
     test_config = dict(test_pool_config)
-    with _pool_config_deprecations():
-        consumed_pool_config = PoolConfig.consume(test_config)
+    consumed_pool_config = PoolConfig.consume(test_config)
     assert consumed_pool_config.encrypted is False
     consumed_pool_config.encrypted = "test"
 
     with pytest.raises(AttributeError):
-        _ = PoolConfig.consume(consumed_pool_config)
+        consumed_pool_config = PoolConfig.consume(consumed_pool_config)
 
-    with _pool_config_deprecations():
-        consumed_pool_config = PoolConfig.consume(
-            dict(consumed_pool_config.items())
-        )
-    with _pool_config_deprecations():
-        consumed_pool_config = PoolConfig.consume(
-            dict(consumed_pool_config.items())
-        )
+    consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
+    consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
 
     assert consumed_pool_config.encrypted == "test"
 
@@ -188,14 +161,12 @@ def test_pool_config_consume_and_then_consume_again():
 def test_config_consume_chain():
 
     test_config = {}
+
     test_config.update(test_pool_config)
+
     test_config.update(test_session_config)
 
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=DeprecationWarning)
-        consumed_pool_config, consumed_session_config = Config.consume_chain(
-            test_config, PoolConfig, SessionConfig
-        )
+    consumed_pool_config, consumed_session_config = Config.consume_chain(test_config, PoolConfig, SessionConfig)
 
     assert isinstance(consumed_pool_config, PoolConfig)
     assert isinstance(consumed_session_config, SessionConfig)
@@ -206,14 +177,11 @@ def test_config_consume_chain():
         assert consumed_pool_config[key] == val
 
     for key, val in consumed_pool_config.items():
-        if key not in config_function_names:
-            assert test_pool_config[key] == val
+        assert test_pool_config[key] == val
 
-    assert (len(consumed_pool_config) - len(config_function_names)
-            == len(test_pool_config))
+    assert len(consumed_pool_config) == len(test_pool_config)
 
-    assert (len(consumed_session_config) - len(config_function_names)
-            == len(test_session_config))
+    assert len(consumed_session_config) == len(test_session_config)
 
 
 def test_init_session_config_merge():
@@ -263,19 +231,96 @@ def test_init_session_config_with_not_valid_key():
     assert session_config.connection_acquisition_timeout == 333
 
 
-def test_pool_config_deprecated_update_routing_table_timeout():
-    with _pool_config_deprecations():
-        _ = PoolConfig.consume({"update_routing_table_timeout": 1})
+@pytest.mark.parametrize("config", (
+    {},
+    {"encrypted": False},
+    {"trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES},
+    {"trust": TRUST_ALL_CERTIFICATES},
+))
+def test_no_ssl_mock(config, mocker):
+    ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is False
+    assert pool_config.get_ssl_context() is None
+    ssl_context_mock.assert_not_called()
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        _ = PoolConfig.consume({})
+
+@pytest.mark.parametrize("config", (
+    {"encrypted": True},
+    {"encrypted": True, "trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES},
+))
+def test_trust_system_cas_mock(config, mocker):
+    ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is True
+    ssl_context = pool_config.get_ssl_context()
+    _assert_mock_tls_1_2(ssl_context_mock)
+    assert ssl_context.minimum_version == ssl.TLSVersion.TLSv1_2
+    ssl_context_mock.return_value.load_default_certs.assert_called_once_with()
+    ssl_context_mock.return_value.load_verify_locations.assert_not_called()
+    assert ssl_context.check_hostname
+    assert ssl_context.verify_mode
 
 
-def test_session_config_deprecated_session_connection_timeout():
-    with _session_config_deprecations():
-        _ = SessionConfig.consume({"session_connection_timeout": 1})
+@pytest.mark.parametrize("config", (
+    {"encrypted": True, "trust": TRUST_ALL_CERTIFICATES},
+))
+def test_trust_all_mock(config, mocker):
+    ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is True
+    ssl_context = pool_config.get_ssl_context()
+    _assert_mock_tls_1_2(ssl_context_mock)
+    assert ssl_context.minimum_version == ssl.TLSVersion.TLSv1_2
+    ssl_context_mock.return_value.load_verify_locations.assert_not_called()
+    assert ssl_context.check_hostname is False
+    assert ssl_context.verify_mode is ssl.CERT_NONE
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        _ = SessionConfig.consume({})
+
+def _assert_mock_tls_1_2(mock):
+    mock.assert_called_once_with(ssl.PROTOCOL_TLS_CLIENT)
+    assert mock.return_value.minimum_version == ssl.TLSVersion.TLSv1_2
+
+
+@pytest.mark.parametrize("config", (
+    {},
+    {"encrypted": False},
+    {"trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES},
+    {"trust": TRUST_ALL_CERTIFICATES},
+))
+def test_no_ssl(config):
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is False
+    assert pool_config.get_ssl_context() is None
+
+
+@pytest.mark.parametrize("config", (
+    {"encrypted": True},
+    {"encrypted": True, "trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES},
+))
+def test_trust_system_cas(config):
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is True
+    ssl_context = pool_config.get_ssl_context()
+    assert isinstance(ssl_context, ssl.SSLContext)
+    _assert_context_tls_1_2(ssl_context)
+    assert ssl_context.check_hostname is True
+    assert ssl_context.verify_mode == ssl.CERT_REQUIRED
+
+
+@pytest.mark.parametrize("config", (
+    {"encrypted": True, "trust": TRUST_ALL_CERTIFICATES},
+))
+def test_trust_all(config):
+    pool_config = PoolConfig.consume(config)
+    assert pool_config.encrypted is True
+    ssl_context = pool_config.get_ssl_context()
+    assert isinstance(ssl_context, ssl.SSLContext)
+    _assert_context_tls_1_2(ssl_context)
+    assert ssl_context.check_hostname is False
+    assert ssl_context.verify_mode is ssl.CERT_NONE
+
+
+def _assert_context_tls_1_2(ctx):
+    assert ctx.protocol == ssl.PROTOCOL_TLS_CLIENT
+    assert ctx.minimum_version == ssl.TLSVersion.TLSv1_2
