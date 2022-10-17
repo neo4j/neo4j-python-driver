@@ -19,13 +19,9 @@
 from __future__ import annotations
 
 import typing as t
+import warnings
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
-    import ssl
-
+from .._api import RoutingControl
 from .._async_compat.util import AsyncUtil
 from .._conf import (
     Config,
@@ -39,8 +35,10 @@ from .._meta import (
     deprecation_warn,
     experimental,
     experimental_warn,
+    ExperimentalWarning,
     unclosed_resource_warn,
 )
+from .._work import EagerResult
 from ..addressing import Address
 from ..api import (
     AsyncBookmarkManager,
@@ -69,7 +67,31 @@ from .bookmark_manager import (
     T_BmConsumer as _T_BmConsumer,
     T_BmSupplier as _T_BmSupplier,
 )
-from .work import AsyncSession
+from .work import (
+    AsyncManagedTransaction,
+    AsyncResult,
+    AsyncSession,
+)
+
+
+if t.TYPE_CHECKING:
+    import ssl
+    from enum import Enum
+
+    import typing_extensions as te
+
+    from .._api import T_RoutingControl
+
+
+    class _DefaultEnum(Enum):
+        default = "default"
+
+    _default = _DefaultEnum.default
+
+else:
+    _default = object()
+
+_T = t.TypeVar("_T")
 
 
 class AsyncGraphDatabase:
@@ -389,6 +411,12 @@ class AsyncDriver:
         assert default_workspace_config is not None
         self._pool = pool
         self._default_workspace_config = default_workspace_config
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore",
+                                    message=r".*\bbookmark manager\b.*",
+                                    category=ExperimentalWarning)
+            self._query_bookmark_manager = \
+                AsyncGraphDatabase.bookmark_manager()
 
     async def __aenter__(self) -> AsyncDriver:
         return self
@@ -456,6 +484,249 @@ class AsyncDriver:
         """
         await self._pool.close()
         self._closed = True
+
+    # overloads to work around https://github.com/python/mypy/issues/3737
+    @t.overload
+    async def execute_query(
+        self,
+        query: str,
+        parameters: t.Dict[str, t.Any] = None,
+        routing: T_RoutingControl = RoutingControl.WRITERS,
+        database: str = None,
+        impersonated_user: str = None,
+        bookmark_manager: t.Union[
+            AsyncBookmarkManager, BookmarkManager, None
+        ] = ...,
+        result_transformer: t.Callable[
+            [AsyncResult], t.Awaitable[EagerResult]
+        ] = ...,
+        **kwargs: t.Any
+    ) -> EagerResult:
+        ...
+
+    @t.overload
+    async def execute_query(
+        self,
+        query: str,
+        parameters: t.Dict[str, t.Any] = None,
+        routing: T_RoutingControl = RoutingControl.WRITERS,
+        database: str = None,
+        impersonated_user: str = None,
+        bookmark_manager: t.Union[
+            AsyncBookmarkManager, BookmarkManager, None
+        ] = ...,
+        result_transformer: t.Callable[
+            [AsyncResult], t.Awaitable[_T]
+        ] = ...,
+        **kwargs: t.Any
+    ) -> _T:
+        ...
+
+    async def execute_query(
+        self,
+        query: str,
+        parameters: t.Dict[str, t.Any] = None,
+        routing: T_RoutingControl = RoutingControl.WRITERS,
+        database: str = None,
+        impersonated_user: str = None,
+        bookmark_manager: t.Union[
+            AsyncBookmarkManager, BookmarkManager, None,
+            te.Literal[_DefaultEnum.default]
+        ] = _default,
+        result_transformer: t.Callable[[AsyncResult], t.Awaitable[_T]] = (
+            # cast to work around https://github.com/python/mypy/issues/3737
+            t.cast(t.Callable[[AsyncResult], t.Awaitable[_T]],
+                   AsyncResult.to_eager_result)
+        ),
+        **kwargs: t.Any
+    ) -> _T:
+        """Execute a query inside a retired transaction and return all results.
+
+        This method is a handy wrapper for lower-level driver APIs like
+        sessions, transactions, and transaction functions. It is intended
+        for simple use cases where there is no need for managing all possible
+        options.
+
+        The method is roughly equivalent to::
+
+            async def execute_query(
+                query, parameters, routing, database, impersonated_user,
+                bookmark_manager, result_transformer,
+            ):
+                async def work(tx):
+                    result = await tx.run(query, parameters)
+                    return await some_transformer(result)
+
+                async with driver.session(
+                    database=database,
+                    impersonated_user=impersonated_user,
+                    bookmark_manager=bookmark_manager,
+                ) as session:
+                    if routing == RoutingControl.WRITERS:
+                        return await session.execute_write(work)
+                    elif routing == RoutingControl.READERS:
+                        return await session.execute_read(work)
+
+        Usage example::
+
+            from typing import List
+
+            import neo4j
+
+            async def example(driver: neo4j.AsyncDriver) -> List[str]:
+                \"""Get the name of all 42 year-olds.\"""
+                records, summary, keys = await driver.execute_query(
+                    "MATCH (p:Person {age: $age}) RETURN p.name",
+                    {"age": 42},
+                    routing=neo4j.RoutingControl.READERS,  # or just "r"
+                    database="neo4j",
+                )
+                assert keys == ["p.name"]  # not needed, just for illustration
+                log.debug("some meta data: %s", summary)
+                return [str(record["p.name"]) for record in records]
+                # or: return [str(record[0]) for record in records]
+                # or even: return list(map(lambda r: str(r[0]), records))
+
+        Another example::
+
+            import neo4j
+
+            async def example(driver: neo4j.AsyncDriver) -> int:
+                \"""Call all young people "My dear" and get their count.\"""
+                record = await driver.execute_query(
+                    "MATCH (p:Person) WHERE n.age <= 15 "
+                    "SET p.nickname = 'My dear' "
+                    "RETURN count(*)",
+                    routing=neo4j.RoutingControl.WRITERS,  # or just "w"
+                    database="neo4j",
+                    result_transformer=neo4j.AsyncResult.single,
+                )
+                count = record[0]
+                assert isinstance(count, int)
+                return count
+
+        :param query: cypher query to execute
+        :type query: typing.Optional[str]
+        :param parameters: parameters to use in the query
+        :type parameters: typing.Optional[typing.Dict[str, typing.Any]]
+        :param routing:
+            whether to route the query to a reader (follower/read replica) or
+            a writer (leader) in the cluster. Default is to route to a writer.
+        :type routing: neo4j.RoutingControl
+        :param database:
+            database to execute the query against.
+
+            None (default) uses the database configured on the server side.
+
+            .. Note::
+                It is recommended to always specify the database explicitly
+                when possible. This allows the driver to work more efficiently,
+                as it will not have to resolve the default database first.
+
+            See also the Session config :ref:`database-ref`.
+        :type database: typing.Optional[str]
+        :param impersonated_user:
+            Name of the user to impersonate.
+
+            This means that all query will be executed in the security context
+            of the impersonated user. For this, the user for which the
+            :class:`Driver` has been created needs to have the appropriate
+            permissions.
+
+            See also the Session config
+        :type impersonated_user: typing.Optional[str]
+        :param result_transformer:
+            A function that gets passed the :class:`neo4j.AsyncResult` object
+            resulting from the query and converts it to a different type. The
+            result of the transformer function is returned by this method.
+
+            .. warning::
+
+                The transformer function must **not** return the
+                :class:`neo4j.AsyncResult` itself.
+
+            Example transformer that checks that exactly one record is in the
+            result stream, then returns the record and the result summary::
+
+                from typing import Tuple
+
+                import neo4j
+
+                async def transformer(
+                    result: neo4j.AsyncResult
+                ) -> Tuple[neo4j.Record, neo4j.ResultSummary]:
+                    record = await result.single(strict=True)
+                    summary = await result.consume()
+                    return record, summary
+
+        :type result_transformer:
+            typing.Callable[[neo4j.AsyncResult], typing.Awaitable[T]]
+        :param bookmark_manager:
+            Specify a bookmark manager to use.
+
+            If present, the bookmark manager is used to keep the query causally
+            consistent with all work executed using the same bookmark manager.
+
+            Defaults to the driver's :attr:`.query_bookmark_manager`.
+
+            Pass :const:`None` to disable causal consistency.
+        :type bookmark_manager:
+            typing.Union[neo4j.AsyncBookmarkManager, neo4j.BookmarkManager,
+                         None]
+        :param kwargs: additional keyword parameters.
+            These take precedence over parameters passed as ``parameters``.
+        :type kwargs: typing.Any
+
+        :returns: the result of the ``result_transformer``
+        :rtype: T
+
+        .. versionadded:: 5.2
+        """
+        parameters = dict(parameters or {}, **kwargs)
+
+        if bookmark_manager is _default:
+            bookmark_manager = self._query_bookmark_manager
+        assert bookmark_manager is not _default
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore",
+                                    message=r".*\bbookmark_manager\b.*",
+                                    category=ExperimentalWarning)
+            session = self.session(database=database,
+                                   impersonated_user=impersonated_user,
+                                   bookmark_manager=bookmark_manager)
+        async with session:
+            # TODO: test all examples in the docstring
+
+            if routing == RoutingControl.WRITERS:
+                executor = session.execute_write
+            elif routing == RoutingControl.READERS:
+                executor = session.execute_read
+            else:
+                raise ValueError("Invalid routing control value: %r" % routing)
+            return await executor(_work, query, parameters, result_transformer)
+
+    @property
+    def query_bookmark_manager(self) -> AsyncBookmarkManager:
+        """The driver's default query bookmark manager.
+
+        This is the default :class:`AsyncBookmarkManager` used by
+        :meth:`.execute_query`. This can be used to causally chain
+        :meth:`.execute_query` calls and sessions. Example::
+
+            async def example(driver: neo4j.AsyncDriver) -> None:
+                await driver.execute_query("<QUERY 1>")
+                async with driver.session(
+                    bookmark_manager=driver.query_bookmark_manager
+                ) as session:
+                    # every query inside this session will be causally chained
+                    # (i.e., can read what was written by <QUERY 1>)
+                    await session.run("<QUERY 2>")
+                # subsequent execute_query calls will be causally chained
+                # (i.e., can read what was written by <QUERY 2>)
+                await driver.execute_query("<QUERY 3>")
+        """
+        return self._query_bookmark_manager
 
     if t.TYPE_CHECKING:
 
@@ -599,6 +870,16 @@ class AsyncDriver:
             await session._connect(READ_ACCESS)
             assert session._connection
             return session._connection.supports_multiple_databases
+
+
+async def _work(
+    tx: AsyncManagedTransaction,
+    query: str,
+    parameters: t.Dict[str, t.Any],
+    transformer: t.Callable[[AsyncResult], t.Awaitable[_T]]
+) -> _T:
+    res = await tx.run(query, parameters)
+    return await transformer(res)
 
 
 class AsyncBoltDriver(_Direct, AsyncDriver):

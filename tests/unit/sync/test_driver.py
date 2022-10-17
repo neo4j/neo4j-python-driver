@@ -22,18 +22,22 @@ import ssl
 import typing as t
 
 import pytest
+import typing_extensions as te
 
+import neo4j
 from neo4j import (
     BoltDriver,
     ExperimentalWarning,
     GraphDatabase,
     Neo4jDriver,
+    Result,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     TrustAll,
     TrustCustomCAs,
     TrustSystemCAs,
 )
+from neo4j._sync.driver import _work
 from neo4j.api import (
     BookmarkManager,
     READ_ACCESS,
@@ -415,3 +419,271 @@ def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
             _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
+
+
+class SomeClass:
+    pass
+
+
+@mark_sync_test
+def test_execute_query_work(mocker):
+    tx_mock = mocker.Mock(spec=neo4j.ManagedTransaction)
+    transformer_mock = mocker.Mock()
+    transformer: t.Callable[[Result], t.Union[SomeClass]] = \
+        transformer_mock
+    query = "QUERY"
+    parameters = {"para": "meters", "foo": object}
+
+    res: SomeClass = _work(tx_mock, query, parameters, transformer)
+
+    tx_mock.run.assert_called_once_with(query, parameters)
+    transformer_mock.assert_called_once_with(tx_mock.run.return_value)
+    assert res is transformer_mock.return_value
+
+
+@pytest.mark.parametrize("query", ("foo", "bar", "RETURN 1 AS n"))
+@pytest.mark.parametrize("positional", (True, False))
+@mark_sync_test
+def test_execute_query_query(
+    mocker, query: str, positional: bool
+) -> None:
+    driver = GraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with driver as driver:
+        if positional:
+            res = driver.execute_query(query)
+        else:
+            res = driver.execute_query(query=query)
+
+    session_cls_mock.assert_called_once()
+    session_mock = session_cls_mock.return_value
+    session_mock.__enter__.assert_called_once()
+    session_mock.__exit__.assert_called_once()
+    session_executor_mock = session_mock.execute_write
+    session_executor_mock.assert_called_once_with(
+        _work, query, mocker.ANY, mocker.ANY
+    )
+    assert res is session_executor_mock.return_value
+
+
+@pytest.mark.parametrize("parameters", (
+    ..., None, {}, {"foo": 1}, {"foo": 1, "bar": object()}
+))
+@pytest.mark.parametrize("positional", (True, False))
+@mark_sync_test
+def test_execute_query_parameters(
+    mocker, parameters: t.Optional[t.Dict[str, t.Any]],
+    positional: bool
+) -> None:
+    driver = GraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with driver as driver:
+        if parameters is Ellipsis:
+            parameters = None
+            res = driver.execute_query("")
+        else:
+            if positional:
+                res = driver.execute_query("", parameters)
+            else:
+                res = driver.execute_query("", parameters=parameters)
+
+    session_cls_mock.assert_called_once()
+    session_mock = session_cls_mock.return_value
+    session_mock.__enter__.assert_called_once()
+    session_mock.__exit__.assert_called_once()
+    session_executor_mock = session_mock.execute_write
+    session_executor_mock.assert_called_once_with(
+        _work, mocker.ANY, parameters or {}, mocker.ANY
+    )
+    assert res is session_executor_mock.return_value
+
+
+@pytest.mark.parametrize("parameters", (
+    None, {}, {"foo": 1}, {"foo": 1, "bar": object()}
+))
+@mark_sync_test
+def test_execute_query_keyword_parameters(
+    mocker, parameters: t.Optional[t.Dict[str, t.Any]],
+) -> None:
+    driver = GraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with driver as driver:
+        if parameters is None:
+            res = driver.execute_query("")
+        else:
+            res = driver.execute_query("", **parameters)
+
+    session_cls_mock.assert_called_once()
+    session_mock = session_cls_mock.return_value
+    session_mock.__enter__.assert_called_once()
+    session_mock.__exit__.assert_called_once()
+    session_executor_mock = session_mock.execute_write
+    session_executor_mock.assert_called_once_with(
+        _work, mocker.ANY, parameters or {}, mocker.ANY
+    )
+    assert res is session_executor_mock.return_value
+
+
+@pytest.mark.parametrize(
+    ("routing_mode", "session_executor"),
+    (
+        (None, "execute_write"),
+        ("r", "execute_read"),
+        ("w", "execute_write"),
+        (neo4j.RoutingControl.READERS, "execute_read"),
+        (neo4j.RoutingControl.WRITERS, "execute_write"),
+    )
+)
+@pytest.mark.parametrize("positional", (True, False))
+@mark_sync_test
+def test_execute_query_routing_control(
+    mocker, session_executor: str, positional: bool,
+    routing_mode: t.Union[neo4j.RoutingControl, te.Literal["r", "w"], None]
+) -> None:
+    driver = GraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with driver as driver:
+        if routing_mode is None:
+            res = driver.execute_query("")
+        else:
+            if positional:
+                res = driver.execute_query("", None, routing_mode)
+            else:
+                res = driver.execute_query("", routing=routing_mode)
+
+    session_cls_mock.assert_called_once()
+    session_mock = session_cls_mock.return_value
+    session_mock.__enter__.assert_called_once()
+    session_mock.__exit__.assert_called_once()
+    session_executor_mock = getattr(session_mock, session_executor)
+    session_executor_mock.assert_called_once_with(
+        _work, mocker.ANY, mocker.ANY, mocker.ANY
+    )
+    assert res is session_executor_mock.return_value
+
+
+@pytest.mark.parametrize("database", (
+    ..., None, "foo", "baz", "neo4j", "system"
+))
+@pytest.mark.parametrize("positional", (True, False))
+@mark_sync_test
+def test_execute_query_database(
+    mocker, database: t.Optional[str], positional: bool
+) -> None:
+    driver = GraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with driver as driver:
+        if database is Ellipsis:
+            database = None
+            driver.execute_query("")
+        else:
+            if positional:
+                driver.execute_query("", None, "w", database)
+            else:
+                driver.execute_query("", database=database)
+
+    session_cls_mock.assert_called_once()
+    session_config = session_cls_mock.call_args.args[1]
+    assert session_config.database == database
+
+
+@pytest.mark.parametrize("impersonated_user", (..., None, "foo", "baz"))
+@pytest.mark.parametrize("positional", (True, False))
+@mark_sync_test
+def test_execute_query_impersonated_user(
+    mocker, impersonated_user: t.Optional[str], positional: bool
+) -> None:
+    driver = GraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with driver as driver:
+        if impersonated_user is Ellipsis:
+            impersonated_user = None
+            driver.execute_query("")
+        else:
+            if positional:
+                driver.execute_query(
+                    "", None, "w", None, impersonated_user
+                )
+            else:
+                driver.execute_query(
+                    "", impersonated_user=impersonated_user
+                )
+
+    session_cls_mock.assert_called_once()
+    session_config = session_cls_mock.call_args.args[1]
+    assert session_config.impersonated_user == impersonated_user
+
+
+@pytest.mark.parametrize("bookmark_manager", (..., None, object()))
+@pytest.mark.parametrize("positional", (True, False))
+@mark_sync_test
+def test_execute_query_bookmark_manager(
+    mocker, positional: bool,
+    bookmark_manager: t.Union[BookmarkManager, BookmarkManager, None]
+) -> None:
+    driver = GraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with driver as driver:
+        if bookmark_manager is Ellipsis:
+            bookmark_manager = driver.query_bookmark_manager
+            driver.execute_query("")
+        else:
+            if positional:
+                driver.execute_query(
+                    "", None, "w", None, None, bookmark_manager
+                )
+            else:
+                driver.execute_query(
+                    "", bookmark_manager=bookmark_manager
+                )
+
+    session_cls_mock.assert_called_once()
+    session_config = session_cls_mock.call_args.args[1]
+    assert session_config.bookmark_manager == bookmark_manager
+
+
+@pytest.mark.parametrize("result_transformer", (..., object()))
+@pytest.mark.parametrize("positional", (True, False))
+@mark_sync_test
+def test_execute_query_result_transformer(
+    mocker, positional: bool,
+    result_transformer: t.Callable[[Result], t.Union[SomeClass]]
+) -> None:
+    driver = GraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    res: t.Any
+    with driver as driver:
+        if result_transformer is Ellipsis:
+            result_transformer = Result.to_eager_result
+            res_default: neo4j.EagerResult = driver.execute_query("")
+            res = res_default
+        else:
+            res_custom: SomeClass
+            if positional:
+                res_custom = driver.execute_query(
+                    "", None, "w", None, None, driver.query_bookmark_manager,
+                    result_transformer
+                )
+            else:
+                res_custom = driver.execute_query(
+                    "", result_transformer=result_transformer
+                )
+            res = res_custom
+
+    session_cls_mock.assert_called_once()
+    session_mock = session_cls_mock.return_value
+    session_mock.__enter__.assert_called_once()
+    session_mock.__exit__.assert_called_once()
+    session_executor_mock = session_mock.execute_write
+    session_executor_mock.assert_called_once_with(
+        _work, mocker.ANY, mocker.ANY, result_transformer
+    )
+    assert res is session_executor_mock.return_value

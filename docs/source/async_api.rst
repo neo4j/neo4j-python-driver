@@ -134,7 +134,153 @@ Closing a driver will immediately shut down all connections in the pool.
     query, use :meth:`neo4j.AsyncDriver.verify_connectivity`.
 
 .. autoclass:: neo4j.AsyncDriver()
-   :members: session, encrypted, close, verify_connectivity, get_server_info
+    :members: session, query_bookmark_manager, encrypted, close,
+              verify_connectivity, get_server_info
+
+    .. method:: execute_query(query, parameters=None,routing=neo4j.RoutingControl.WRITERS, database=None, impersonated_user=None, bookmark_manager=self.query_bookmark_manager, result_transformer=AsyncResult.to_eager_result, **kwargs)
+        :async:
+
+        Execute a query inside a retired transaction and return all results.
+
+        This method is a handy wrapper for lower-level driver APIs like
+        sessions, transactions, and transaction functions. It is intended
+        for simple use cases where there is no need for managing all possible
+        options.
+
+        The method is roughly equivalent to::
+
+            async def execute_query(
+                query, parameters, routing, database, impersonated_user,
+                bookmark_manager, result_transformer,
+            ):
+                async def work(tx):
+                    result = await tx.run(query, parameters)
+                    return await some_transformer(result)
+
+                async with driver.session(
+                    database=database,
+                    impersonated_user=impersonated_user,
+                    bookmark_manager=bookmark_manager,
+                ) as session:
+                    if routing == RoutingControl.WRITERS:
+                        return await session.execute_write(work)
+                    elif routing == RoutingControl.READERS:
+                        return await session.execute_read(work)
+
+        Usage example::
+
+            from typing import List
+
+            import neo4j
+
+            async def example(driver: neo4j.AsyncDriver) -> List[str]:
+                """Get the name of all 42 year-olds."""
+                records, summary, keys = await driver.execute_query(
+                    "MATCH (p:Person {age: $age}) RETURN p.name",
+                    {"age": 42},
+                    routing=neo4j.RoutingControl.READERS,  # or just "r"
+                    database="neo4j",
+                )
+                assert keys == ["p.name"]  # not needed, just for illustration
+                log.debug("some meta data: %s", summary)
+                return [str(record["p.name"]) for record in records]
+                # or: return [str(record[0]) for record in records]
+                # or even: return list(map(lambda r: str(r[0]), records))
+
+        Another example::
+
+            import neo4j
+
+            async def example(driver: neo4j.AsyncDriver) -> int:
+                """Call all young people "My dear" and get their count."""
+                record = await driver.execute_query(
+                    "MATCH (p:Person) WHERE n.age <= 15 "
+                    "SET p.nickname = 'My dear' "
+                    "RETURN count(*)",
+                    routing=neo4j.RoutingControl.WRITERS,  # or just "w"
+                    database="neo4j",
+                    result_transformer=neo4j.AsyncResult.single,
+                )
+                count = record[0]
+                assert isinstance(count, int)
+                return count
+
+        :param query: cypher query to execute
+        :type query: typing.Optional[str]
+        :param parameters: parameters to use in the query
+        :type parameters: typing.Optional[typing.Dict[str, typing.Any]]
+        :param routing:
+            whether to route the query to a reader (follower/read replica) or
+            a writer (leader) in the cluster. Default is to route to a writer.
+        :type routing: neo4j.RoutingControl
+        :param database:
+            database to execute the query against.
+
+            None (default) uses the database configured on the server side.
+
+            .. Note::
+                It is recommended to always specify the database explicitly
+                when possible. This allows the driver to work more efficiently,
+                as it will not have to resolve the default database first.
+
+            See also the Session config :ref:`database-ref`.
+        :type database: typing.Optional[str]
+        :param impersonated_user:
+            Name of the user to impersonate.
+
+            This means that all query will be executed in the security context
+            of the impersonated user. For this, the user for which the
+            :class:`Driver` has been created needs to have the appropriate
+            permissions.
+
+            See also the Session config
+        :type impersonated_user: typing.Optional[str]
+        :param result_transformer:
+            A function that gets passed the :class:`neo4j.AsyncResult` object
+            resulting from the query and converts it to a different type. The
+            result of the transformer function is returned by this method.
+
+            .. warning::
+
+                The transformer function must **not** return the
+                :class:`neo4j.AsyncResult` itself.
+
+            Example transformer that checks that exactly one record is in the
+            result stream, then returns the record and the result summary::
+
+                from typing import Tuple
+
+                import neo4j
+
+                async def transformer(
+                    result: neo4j.AsyncResult
+                ) -> Tuple[neo4j.Record, neo4j.ResultSummary]:
+                    record = await result.single(strict=True)
+                    summary = await result.consume()
+                    return record, summary
+
+        :type result_transformer:
+            typing.Callable[[neo4j.AsyncResult], typing.Awaitable[T]]
+        :param bookmark_manager:
+            Specify a bookmark manager to use.
+
+            If present, the bookmark manager is used to keep the query causally
+            consistent with all work executed using the same bookmark manager.
+
+            Defaults to the driver's :attr:`.query_bookmark_manager`.
+
+            Pass :const:`None` to disable causal consistency.
+        :type bookmark_manager:
+            typing.Union[neo4j.AsyncBookmarkManager, neo4j.BookmarkManager,
+                         None]
+        :param kwargs: additional keyword parameters.
+            These take precedence over parameters passed as ``parameters``.
+        :type kwargs: typing.Any
+
+        :returns: the result of the ``result_transformer``
+        :rtype: T
+
+        .. versionadded:: 5.2
 
 
 .. _async-driver-configuration-ref:
@@ -592,6 +738,8 @@ A :class:`neo4j.AsyncResult` is attached to an active connection, through a :cla
     .. automethod:: data
 
     .. automethod:: to_df
+
+    .. automethod:: to_eager_result
 
     .. automethod:: closed
 

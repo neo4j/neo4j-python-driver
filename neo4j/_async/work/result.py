@@ -19,7 +19,10 @@
 from __future__ import annotations
 
 import typing as t
-from collections import deque
+from collections import (
+    deque,
+    namedtuple,
+)
 from warnings import warn
 
 
@@ -33,6 +36,7 @@ from ..._data import (
     RecordTableRowExporter,
 )
 from ..._meta import experimental
+from ..._work import EagerResult
 from ...exceptions import (
     ResultConsumedError,
     ResultNotSingleError,
@@ -581,6 +585,28 @@ class AsyncResult:
         """
         return [record.data(*keys) async for record in self]
 
+    async def to_eager_result(self) -> EagerResult:
+        """Convert this result to an :class:`.EagerResult`.
+
+        This method exhausts the result and triggers a :meth:`.consume`.
+
+        :returns: all remaining records in the result stream, the result's
+            summary, and keys as an :class:`.EagerResult` instance.
+
+        :raises ResultConsumedError: if the transaction from which this result
+            was obtained has been closed or the Result has been explicitly
+            consumed.
+
+        .. versionadded:: 5.2
+        """
+
+        await self._buffer_all()
+        return EagerResult(
+            keys=list(self.keys()),
+            records=await AsyncUtil.list(self),
+            summary=await self.consume()
+        )
+
     async def to_df(
         self,
         expand: bool = False,
@@ -711,9 +737,9 @@ class AsyncResult:
         df[dt_columns] = df[dt_columns].apply(
             lambda col: col.map(
                 lambda x:
-                    pd.Timestamp(x.iso_format())
-                        .replace(tzinfo=getattr(x, "tzinfo", None))
-                    if x else pd.NaT
+                pd.Timestamp(x.iso_format())
+                .replace(tzinfo=getattr(x, "tzinfo", None))
+                if x else pd.NaT
             )
         )
         return df

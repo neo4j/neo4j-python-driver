@@ -22,11 +22,14 @@ import ssl
 import typing as t
 
 import pytest
+import typing_extensions as te
 
+import neo4j
 from neo4j import (
     AsyncBoltDriver,
     AsyncGraphDatabase,
     AsyncNeo4jDriver,
+    AsyncResult,
     ExperimentalWarning,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
@@ -34,6 +37,7 @@ from neo4j import (
     TrustCustomCAs,
     TrustSystemCAs,
 )
+from neo4j._async.driver import _work
 from neo4j.api import (
     AsyncBookmarkManager,
     BookmarkManager,
@@ -416,3 +420,271 @@ async def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
             _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
+
+
+class SomeClass:
+    pass
+
+
+@mark_async_test
+async def test_execute_query_work(mocker):
+    tx_mock = mocker.AsyncMock(spec=neo4j.AsyncManagedTransaction)
+    transformer_mock = mocker.AsyncMock()
+    transformer: t.Callable[[AsyncResult], t.Awaitable[SomeClass]] = \
+        transformer_mock
+    query = "QUERY"
+    parameters = {"para": "meters", "foo": object}
+
+    res: SomeClass = await _work(tx_mock, query, parameters, transformer)
+
+    tx_mock.run.assert_awaited_once_with(query, parameters)
+    transformer_mock.assert_awaited_once_with(tx_mock.run.return_value)
+    assert res is transformer_mock.return_value
+
+
+@pytest.mark.parametrize("query", ("foo", "bar", "RETURN 1 AS n"))
+@pytest.mark.parametrize("positional", (True, False))
+@mark_async_test
+async def test_execute_query_query(
+    mocker, query: str, positional: bool
+) -> None:
+    driver = AsyncGraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._async.driver.AsyncSession",
+                                    autospec=True)
+    async with driver as driver:
+        if positional:
+            res = await driver.execute_query(query)
+        else:
+            res = await driver.execute_query(query=query)
+
+    session_cls_mock.assert_called_once()
+    session_mock = session_cls_mock.return_value
+    session_mock.__aenter__.assert_awaited_once()
+    session_mock.__aexit__.assert_awaited_once()
+    session_executor_mock = session_mock.execute_write
+    session_executor_mock.assert_awaited_once_with(
+        _work, query, mocker.ANY, mocker.ANY
+    )
+    assert res is session_executor_mock.return_value
+
+
+@pytest.mark.parametrize("parameters", (
+    ..., None, {}, {"foo": 1}, {"foo": 1, "bar": object()}
+))
+@pytest.mark.parametrize("positional", (True, False))
+@mark_async_test
+async def test_execute_query_parameters(
+    mocker, parameters: t.Optional[t.Dict[str, t.Any]],
+    positional: bool
+) -> None:
+    driver = AsyncGraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._async.driver.AsyncSession",
+                                    autospec=True)
+    async with driver as driver:
+        if parameters is Ellipsis:
+            parameters = None
+            res = await driver.execute_query("")
+        else:
+            if positional:
+                res = await driver.execute_query("", parameters)
+            else:
+                res = await driver.execute_query("", parameters=parameters)
+
+    session_cls_mock.assert_called_once()
+    session_mock = session_cls_mock.return_value
+    session_mock.__aenter__.assert_awaited_once()
+    session_mock.__aexit__.assert_awaited_once()
+    session_executor_mock = session_mock.execute_write
+    session_executor_mock.assert_awaited_once_with(
+        _work, mocker.ANY, parameters or {}, mocker.ANY
+    )
+    assert res is session_executor_mock.return_value
+
+
+@pytest.mark.parametrize("parameters", (
+    None, {}, {"foo": 1}, {"foo": 1, "bar": object()}
+))
+@mark_async_test
+async def test_execute_query_keyword_parameters(
+    mocker, parameters: t.Optional[t.Dict[str, t.Any]],
+) -> None:
+    driver = AsyncGraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._async.driver.AsyncSession",
+                                    autospec=True)
+    async with driver as driver:
+        if parameters is None:
+            res = await driver.execute_query("")
+        else:
+            res = await driver.execute_query("", **parameters)
+
+    session_cls_mock.assert_called_once()
+    session_mock = session_cls_mock.return_value
+    session_mock.__aenter__.assert_awaited_once()
+    session_mock.__aexit__.assert_awaited_once()
+    session_executor_mock = session_mock.execute_write
+    session_executor_mock.assert_awaited_once_with(
+        _work, mocker.ANY, parameters or {}, mocker.ANY
+    )
+    assert res is session_executor_mock.return_value
+
+
+@pytest.mark.parametrize(
+    ("routing_mode", "session_executor"),
+    (
+        (None, "execute_write"),
+        ("r", "execute_read"),
+        ("w", "execute_write"),
+        (neo4j.RoutingControl.READERS, "execute_read"),
+        (neo4j.RoutingControl.WRITERS, "execute_write"),
+    )
+)
+@pytest.mark.parametrize("positional", (True, False))
+@mark_async_test
+async def test_execute_query_routing_control(
+    mocker, session_executor: str, positional: bool,
+    routing_mode: t.Union[neo4j.RoutingControl, te.Literal["r", "w"], None]
+) -> None:
+    driver = AsyncGraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._async.driver.AsyncSession",
+                                    autospec=True)
+    async with driver as driver:
+        if routing_mode is None:
+            res = await driver.execute_query("")
+        else:
+            if positional:
+                res = await driver.execute_query("", None, routing_mode)
+            else:
+                res = await driver.execute_query("", routing=routing_mode)
+
+    session_cls_mock.assert_called_once()
+    session_mock = session_cls_mock.return_value
+    session_mock.__aenter__.assert_awaited_once()
+    session_mock.__aexit__.assert_awaited_once()
+    session_executor_mock = getattr(session_mock, session_executor)
+    session_executor_mock.assert_awaited_once_with(
+        _work, mocker.ANY, mocker.ANY, mocker.ANY
+    )
+    assert res is session_executor_mock.return_value
+
+
+@pytest.mark.parametrize("database", (
+    ..., None, "foo", "baz", "neo4j", "system"
+))
+@pytest.mark.parametrize("positional", (True, False))
+@mark_async_test
+async def test_execute_query_database(
+    mocker, database: t.Optional[str], positional: bool
+) -> None:
+    driver = AsyncGraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._async.driver.AsyncSession",
+                                    autospec=True)
+    async with driver as driver:
+        if database is Ellipsis:
+            database = None
+            await driver.execute_query("")
+        else:
+            if positional:
+                await driver.execute_query("", None, "w", database)
+            else:
+                await driver.execute_query("", database=database)
+
+    session_cls_mock.assert_called_once()
+    session_config = session_cls_mock.call_args.args[1]
+    assert session_config.database == database
+
+
+@pytest.mark.parametrize("impersonated_user", (..., None, "foo", "baz"))
+@pytest.mark.parametrize("positional", (True, False))
+@mark_async_test
+async def test_execute_query_impersonated_user(
+    mocker, impersonated_user: t.Optional[str], positional: bool
+) -> None:
+    driver = AsyncGraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._async.driver.AsyncSession",
+                                    autospec=True)
+    async with driver as driver:
+        if impersonated_user is Ellipsis:
+            impersonated_user = None
+            await driver.execute_query("")
+        else:
+            if positional:
+                await driver.execute_query(
+                    "", None, "w", None, impersonated_user
+                )
+            else:
+                await driver.execute_query(
+                    "", impersonated_user=impersonated_user
+                )
+
+    session_cls_mock.assert_called_once()
+    session_config = session_cls_mock.call_args.args[1]
+    assert session_config.impersonated_user == impersonated_user
+
+
+@pytest.mark.parametrize("bookmark_manager", (..., None, object()))
+@pytest.mark.parametrize("positional", (True, False))
+@mark_async_test
+async def test_execute_query_bookmark_manager(
+    mocker, positional: bool,
+    bookmark_manager: t.Union[AsyncBookmarkManager, BookmarkManager, None]
+) -> None:
+    driver = AsyncGraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._async.driver.AsyncSession",
+                                    autospec=True)
+    async with driver as driver:
+        if bookmark_manager is Ellipsis:
+            bookmark_manager = driver.query_bookmark_manager
+            await driver.execute_query("")
+        else:
+            if positional:
+                await driver.execute_query(
+                    "", None, "w", None, None, bookmark_manager
+                )
+            else:
+                await driver.execute_query(
+                    "", bookmark_manager=bookmark_manager
+                )
+
+    session_cls_mock.assert_called_once()
+    session_config = session_cls_mock.call_args.args[1]
+    assert session_config.bookmark_manager == bookmark_manager
+
+
+@pytest.mark.parametrize("result_transformer", (..., object()))
+@pytest.mark.parametrize("positional", (True, False))
+@mark_async_test
+async def test_execute_query_result_transformer(
+    mocker, positional: bool,
+    result_transformer: t.Callable[[AsyncResult], t.Awaitable[SomeClass]]
+) -> None:
+    driver = AsyncGraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._async.driver.AsyncSession",
+                                    autospec=True)
+    res: t.Any
+    async with driver as driver:
+        if result_transformer is Ellipsis:
+            result_transformer = AsyncResult.to_eager_result
+            res_default: neo4j.EagerResult = await driver.execute_query("")
+            res = res_default
+        else:
+            res_custom: SomeClass
+            if positional:
+                res_custom = await driver.execute_query(
+                    "", None, "w", None, None, driver.query_bookmark_manager,
+                    result_transformer
+                )
+            else:
+                res_custom = await driver.execute_query(
+                    "", result_transformer=result_transformer
+                )
+            res = res_custom
+
+    session_cls_mock.assert_called_once()
+    session_mock = session_cls_mock.return_value
+    session_mock.__aenter__.assert_awaited_once()
+    session_mock.__aexit__.assert_awaited_once()
+    session_executor_mock = session_mock.execute_write
+    session_executor_mock.assert_awaited_once_with(
+        _work, mocker.ANY, mocker.ANY, result_transformer
+    )
+    assert res is session_executor_mock.return_value
