@@ -213,7 +213,7 @@ class Session(Workspace):
             cx, hydrant, self._config.fetch_size, self._result_closed,
             self._result_error
         )
-        dict(parameters or {}, **kwparameters),
+        parameters = dict(parameters or {}, **kwparameters),
         self._autoResult._run(
             query, parameters, self._config.database,
             self._config.impersonated_user, self._config.default_access_mode,
