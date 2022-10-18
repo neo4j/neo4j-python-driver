@@ -256,7 +256,6 @@ def test_trust_system_cas_mock(config, mocker):
     assert pool_config.encrypted is True
     ssl_context = pool_config.get_ssl_context()
     _assert_mock_tls_1_2(ssl_context_mock)
-    assert ssl_context.minimum_version == ssl.TLSVersion.TLSv1_2
     ssl_context_mock.return_value.load_default_certs.assert_called_once_with()
     ssl_context_mock.return_value.load_verify_locations.assert_not_called()
     assert ssl_context.check_hostname
@@ -272,7 +271,6 @@ def test_trust_all_mock(config, mocker):
     assert pool_config.encrypted is True
     ssl_context = pool_config.get_ssl_context()
     _assert_mock_tls_1_2(ssl_context_mock)
-    assert ssl_context.minimum_version == ssl.TLSVersion.TLSv1_2
     ssl_context_mock.return_value.load_verify_locations.assert_not_called()
     assert ssl_context.check_hostname is False
     assert ssl_context.verify_mode is ssl.CERT_NONE
@@ -280,7 +278,10 @@ def test_trust_all_mock(config, mocker):
 
 def _assert_mock_tls_1_2(mock):
     mock.assert_called_once_with(ssl.PROTOCOL_TLS_CLIENT)
-    assert mock.return_value.minimum_version == ssl.TLSVersion.TLSv1_2
+    if sys.version_info >= (3, 7):
+        assert mock.return_value.minimum_version == ssl.TLSVersion.TLSv1_2
+    else:
+        assert mock.mock_calls[1][1][0] == ssl.OP_NO_TLSv1
 
 
 @pytest.mark.parametrize("config", (

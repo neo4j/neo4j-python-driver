@@ -3,6 +3,6 @@ coverage
 pytest
 pytest-benchmark
 pytest-cov
-pytest-mock
+pytest-mock~=3.6.1
 teamcity-messages
 pandas>=1.0.0
