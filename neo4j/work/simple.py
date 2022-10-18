@@ -185,7 +185,8 @@ class Session(Workspace):
         :type query: str, neo4j.Query
         :param parameters: dictionary of parameters
         :type parameters: dict
-        :param kwparameters: additional keyword parameters
+        :param kwparameters: additional keyword parameters.
+            These take precedence over parameters passed as ``parameters``.
         :returns: a new :class:`neo4j.Result` object
         :rtype: :class:`neo4j.Result`
         """
@@ -212,10 +213,11 @@ class Session(Workspace):
             cx, hydrant, self._config.fetch_size, self._result_closed,
             self._result_error
         )
+        dict(parameters or {}, **kwparameters),
         self._autoResult._run(
             query, parameters, self._config.database,
             self._config.impersonated_user, self._config.default_access_mode,
-            self._bookmarks, **kwparameters
+            self._bookmarks
         )
 
         return self._autoResult
