@@ -78,6 +78,20 @@ test_session_config = {
 config_function_names = ["consume_chain", "consume"]
 
 
+@contextmanager
+def _pool_config_deprecations():
+    with pytest.warns(DeprecationWarning,
+                      match="update_routing_table_timeout") as warnings:
+        yield warnings
+
+
+@contextmanager
+def _session_config_deprecations():
+    with pytest.warns(DeprecationWarning,
+                      match="session_connection_timeout") as warnings:
+        yield warnings
+
+
 def test_pool_config_consume():
 
     test_config = dict(test_pool_config)
