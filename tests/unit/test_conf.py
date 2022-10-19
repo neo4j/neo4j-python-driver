@@ -177,8 +177,10 @@ def test_pool_config_consume_and_then_consume_again():
     with pytest.raises(AttributeError):
         consumed_pool_config = PoolConfig.consume(consumed_pool_config)
 
-    consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
-    consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
+        consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
 
     assert consumed_pool_config.encrypted == "test"
 
