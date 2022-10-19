@@ -528,6 +528,62 @@ def test_execute_query_keyword_parameters(
 
 
 @pytest.mark.parametrize(
+    ("params", "kw_params", "expected_params"),
+    (
+        ({"x": 1}, {}, {"x": 1}),
+        ({}, {"x": 1}, {"x": 1}),
+        (None, {"x": 1}, {"x": 1}),
+        ({"x": 1}, {"y": 2}, {"x": 1, "y": 2}),
+        ({"x": 1}, {"x": 2}, {"x": 2}),
+        ({"x": 1}, {"x": 2}, {"x": 2}),
+        ({"x": 1, "y": 3}, {"x": 2}, {"x": 2, "y": 3}),
+        ({"x": 1}, {"x": 2, "y": 3}, {"x": 2, "y": 3}),
+        # potentially internally used keyword arguments
+        ({}, {"timeout": 2}, {"timeout": 2}),
+        ({"timeout": 2}, {}, {"timeout": 2}),
+        ({}, {"imp_user": "hans"}, {"imp_user": "hans"}),
+        ({"imp_user": "hans"}, {}, {"imp_user": "hans"}),
+        ({}, {"db": "neo4j"}, {"db": "neo4j"}),
+        ({"db": "neo4j"}, {}, {"db": "neo4j"}),
+        # already taken keyword arguments
+        ({}, {"database": "neo4j"}, {}),
+        ({"database": "neo4j"}, {}, {"database": "neo4j"}),
+    )
+)
+@pytest.mark.parametrize("positional", (True, False))
+@mark_sync_test
+def test_execute_query_parameter_precedence(
+    params: t.Optional[t.Dict[str, t.Any]],
+    kw_params: t.Dict[str, t.Any],
+    expected_params: t.Dict[str, t.Any],
+    positional: bool,
+    mocker
+) -> None:
+    driver = GraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with driver as driver:
+        if params is None:
+            res = driver.execute_query("", **kw_params)
+        else:
+            if positional:
+                res = driver.execute_query("", params, **kw_params)
+            else:
+                res = driver.execute_query("", parameters=params,
+                                                 **kw_params)
+
+    session_cls_mock.assert_called_once()
+    session_mock = session_cls_mock.return_value
+    session_mock.__enter__.assert_called_once()
+    session_mock.__exit__.assert_called_once()
+    session_executor_mock = session_mock.execute_write
+    session_executor_mock.assert_called_once_with(
+        _work, mocker.ANY, expected_params, mocker.ANY
+    )
+    assert res is session_executor_mock.return_value
+
+
+@pytest.mark.parametrize(
     ("routing_mode", "session_executor"),
     (
         (None, "execute_write"),
