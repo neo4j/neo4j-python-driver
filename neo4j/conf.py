@@ -157,7 +157,6 @@ class Config(Mapping, metaclass=ConfigType):
         def set_attr(k, v):
             if k in self.keys():
                 if k in self._deprecated_options():
-                    print(self._deprecated_options())
                     deprecation_warn("The '{}' config key is "
                                      "deprecated".format(k))
                 setattr(self, k, v)
