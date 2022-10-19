@@ -25,6 +25,7 @@ from os.path import dirname, join
 from threading import RLock
 
 import pytest
+import warnings
 import urllib
 
 from neo4j import (
@@ -76,7 +77,9 @@ class Neo4jService(object):
                  n_cores=None, n_replicas=None,
                  bolt_port=None, http_port=None, debug_port=None,
                  debug_suspend=None, dir_spec=None, config=None):
-        from boltkit.legacy.controller import _install, create_controller
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ImportWarning)
+            from boltkit.legacy.controller import _install, create_controller
         assert image.endswith("-enterprise")
         release = image[:-11]
         if release == "snapshot":
