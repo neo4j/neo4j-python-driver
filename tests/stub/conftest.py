@@ -20,13 +20,16 @@
 
 
 import subprocess
+import warnings
 import os
 
 from platform import system
 from threading import Thread
 from time import sleep
 
-from boltkit.server.stub import BoltStubService
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", ImportWarning)
+    from boltkit.server.stub import BoltStubService
 from pytest import fixture
 
 import logging
