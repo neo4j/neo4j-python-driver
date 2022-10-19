@@ -34,14 +34,11 @@ from neo4j.time import (
 
 
 def to_cypher_and_params(data):
-    from .backend import Request
-    params = data["params"]
-    # Optional
-    if params is None:
-        return data["cypher"], None
-    # Transform the params to Python native
-    params_dict = {p: to_param(params[p]) for p in params}
-    return data["cypher"], params_dict
+    params = data.get("params")
+    if params is not None:
+        # Transform the params to Python native
+        params = {p: to_param(params[p]) for p in params}
+    return data["cypher"], params
 
 
 def to_tx_kwargs(data):
