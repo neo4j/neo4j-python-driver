@@ -96,7 +96,9 @@ def test_pool_config_consume():
 
     test_config = dict(test_pool_config)
 
-    consumed_pool_config = PoolConfig.consume(test_config)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        consumed_pool_config = PoolConfig.consume(test_config)
 
     assert isinstance(consumed_pool_config, PoolConfig)
 
@@ -133,7 +135,9 @@ def test_pool_config_consume_key_not_valid():
     test_config["not_valid_key"] = "test"
 
     with pytest.raises(ConfigurationError) as error:
-        consumed_pool_config = PoolConfig.consume(test_config)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            consumed_pool_config = PoolConfig.consume(test_config)
 
     error.match("Unexpected config keys: not_valid_key")
 
@@ -142,7 +146,9 @@ def test_pool_config_set_value():
 
     test_config = dict(test_pool_config)
 
-    consumed_pool_config = PoolConfig.consume(test_config)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        consumed_pool_config = PoolConfig.consume(test_config)
 
     assert consumed_pool_config.get("encrypted") is False
     assert consumed_pool_config["encrypted"] is False
@@ -160,7 +166,11 @@ def test_pool_config_set_value():
 def test_pool_config_consume_and_then_consume_again():
 
     test_config = dict(test_pool_config)
-    consumed_pool_config = PoolConfig.consume(test_config)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        consumed_pool_config = PoolConfig.consume(test_config)
+
     assert consumed_pool_config.encrypted is False
     consumed_pool_config.encrypted = "test"
 
@@ -181,7 +191,10 @@ def test_config_consume_chain():
 
     test_config.update(test_session_config)
 
-    consumed_pool_config, consumed_session_config = Config.consume_chain(test_config, PoolConfig, SessionConfig)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        consumed_pool_config, consumed_session_config = \
+            Config.consume_chain(test_config, PoolConfig, SessionConfig)
 
     assert isinstance(consumed_pool_config, PoolConfig)
     assert isinstance(consumed_session_config, SessionConfig)
