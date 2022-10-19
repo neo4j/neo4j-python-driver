@@ -89,6 +89,7 @@ class ConfigType(ABCMeta):
                       or isinstance(v, (staticmethod, classmethod))):
                 fields.append(k)
             if isinstance(v, DeprecatedOption):
+                deprecated_options[k] = v.value
                 attributes[k] = v.value
 
         def keys(_):
