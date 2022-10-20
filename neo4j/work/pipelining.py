@@ -48,7 +48,8 @@ class Pipeline(Workspace):
     def push(self, statement, parameters=None):
         self._connection.run(statement, parameters)
         self._connection.pull(on_records=self._data.extend)
-        output_buffer_size = len(self._connection.outbox.view())
+        with self._connection.outbox.view() as view:
+            output_buffer_size = len(view)
         if output_buffer_size >= self._flush_every:
             self._connection.send_all()
 

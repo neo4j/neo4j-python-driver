@@ -22,11 +22,15 @@ from neo4j.io._common import Outbox
 ))
 def test_outbox_chunking(chunk_size, data, result):
     outbox = Outbox(max_chunk_size=chunk_size)
-    assert bytes(outbox.view()) == b""
+    with outbox.view() as view:
+        assert bytes(view) == b""
     for d in data:
         outbox.write(d)
-    assert bytes(outbox.view()) == result
+    with outbox.view() as view:
+        assert bytes(view) == result
     # make sure this works multiple times
-    assert bytes(outbox.view()) == result
+    with outbox.view() as view:
+        assert bytes(view) == result
     outbox.clear()
-    assert bytes(outbox.view()) == b""
+    with outbox.view() as view:
+        assert bytes(view) == b""

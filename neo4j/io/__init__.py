@@ -509,13 +509,14 @@ class Bolt(abc.ABC):
         self.responses.append(response)
 
     def _send_all(self):
-        data = self.outbox.view()
-        if data:
-            try:
+        try:
+            with self.outbox.view() as data:
+                if not data:
+                    return
                 self.socket.sendall(data)
-            except OSError as error:
-                self._set_defunct_write(error)
-            self.outbox.clear()
+        except OSError as error:
+            self._set_defunct_write(error)
+        self.outbox.clear()
 
     def send_all(self):
         """ Send all queued messages to the server.
