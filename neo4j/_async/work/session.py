@@ -258,7 +258,8 @@ class AsyncSession(AsyncWorkspace):
 
         :param query: cypher query
         :param parameters: dictionary of parameters
-        :param kwargs: additional keyword parameters
+        :param kwargs: additional keyword parameters.
+            These take precedence over parameters passed as ``parameters``.
 
         :raises SessionError: if the session has been closed.
 
@@ -286,10 +287,11 @@ class AsyncSession(AsyncWorkspace):
             self._result_error
         )
         bookmarks = await self._get_all_bookmarks()
+        parameters = dict(parameters or {}, **kwargs)
         await self._auto_result._run(
             query, parameters, self._config.database,
             self._config.impersonated_user, self._config.default_access_mode,
-            bookmarks, **kwargs
+            bookmarks
         )
 
         return self._auto_result

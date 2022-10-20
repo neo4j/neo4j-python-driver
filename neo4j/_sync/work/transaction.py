@@ -119,7 +119,8 @@ class TransactionBase:
 
         :param query: cypher query
         :param parameters: dictionary of parameters
-        :param kwparameters: additional keyword parameters
+        :param kwparameters: additional keyword parameters.
+            These take precedence over parameters passed as ``parameters``.
 
         :raise TransactionError: if the transaction is already closed
 
@@ -147,7 +148,8 @@ class TransactionBase:
         )
         self._results.append(result)
 
-        result._tx_ready_run(query, parameters, **kwparameters)
+        parameters = dict(parameters or {}, **kwparameters)
+        result._tx_ready_run(query, parameters)
 
         return result
 
