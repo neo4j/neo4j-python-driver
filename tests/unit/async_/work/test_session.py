@@ -319,9 +319,7 @@ async def test_session_tx_type(fake_pool):
 ))
 @pytest.mark.parametrize("run_type", ("auto", "unmanaged", "managed"))
 @mark_async_test
-async def test_session_run_with_parameters(
-    fake_pool, parameters, run_type, mocker
-):
+async def test_session_run_with_parameters(fake_pool, parameters, run_type):
     async with AsyncSession(fake_pool, SessionConfig()) as session:
         if run_type == "auto":
             await session.run("RETURN $x", **parameters)
@@ -337,10 +335,57 @@ async def test_session_run_with_parameters(
 
     assert len(fake_pool.acquired_connection_mocks) == 1
     connection_mock = fake_pool.acquired_connection_mocks[0]
-    assert connection_mock.run.called_once()
+    connection_mock.run.assert_called_once()
     call = connection_mock.run.call_args
     assert call.args[0] == "RETURN $x"
     assert call.kwargs["parameters"] == parameters
+
+
+@pytest.mark.parametrize(
+    ("params", "kw_params", "expected_params"),
+    (
+        ({"x": 1}, {}, {"x": 1}),
+        ({}, {"x": 1}, {"x": 1}),
+        ({"x": 1}, {"y": 2}, {"x": 1, "y": 2}),
+        ({"x": 1}, {"x": 2}, {"x": 2}),
+        ({"x": 1}, {"x": 2}, {"x": 2}),
+        ({"x": 1, "y": 3}, {"x": 2}, {"x": 2, "y": 3}),
+        ({"x": 1}, {"x": 2, "y": 3}, {"x": 2, "y": 3}),
+        # potentially internally used keyword arguments
+        ({}, {"timeout": 2}, {"timeout": 2}),
+        ({"timeout": 2}, {}, {"timeout": 2}),
+        ({}, {"imp_user": "hans"}, {"imp_user": "hans"}),
+        ({"imp_user": "hans"}, {}, {"imp_user": "hans"}),
+        ({}, {"db": "neo4j"}, {"db": "neo4j"}),
+        ({"db": "neo4j"}, {}, {"db": "neo4j"}),
+        ({}, {"database": "neo4j"}, {"database": "neo4j"}),
+        ({"database": "neo4j"}, {}, {"database": "neo4j"}),
+    )
+)
+@pytest.mark.parametrize("run_type", ("auto", "unmanaged", "managed"))
+@mark_async_test
+async def test_session_run_parameter_precedence(
+    fake_pool, params, kw_params, expected_params, run_type
+):
+    async with AsyncSession(fake_pool, SessionConfig()) as session:
+        if run_type == "auto":
+            await session.run("RETURN $x", params, **kw_params)
+        elif run_type == "unmanaged":
+            tx = await session.begin_transaction()
+            await tx.run("RETURN $x", params, **kw_params)
+        elif run_type == "managed":
+            async def work(tx):
+                await tx.run("RETURN $x", params, **kw_params)
+            await session.execute_write(work)
+        else:
+            raise ValueError(run_type)
+
+    assert len(fake_pool.acquired_connection_mocks) == 1
+    connection_mock = fake_pool.acquired_connection_mocks[0]
+    connection_mock.run.assert_called_once()
+    call = connection_mock.run.call_args
+    assert call.args[0] == "RETURN $x"
+    assert call.kwargs["parameters"] == expected_params
 
 
 @pytest.mark.parametrize("db", (None, "adb"))
@@ -446,7 +491,7 @@ async def test_with_bookmark_manager(
 
     assert len(fake_pool.acquired_connection_mocks) == 1
     connection_mock = fake_pool.acquired_connection_mocks[0]
-    assert connection_mock.run.called_once()
+    connection_mock.run.assert_called_once()
     connection_run_call_kwargs = connection_mock.run.call_args.kwargs
     assert (set(connection_run_call_kwargs["bookmarks"])
             == {"all", "bookmarks", *(additional_session_bookmarks or [])})
