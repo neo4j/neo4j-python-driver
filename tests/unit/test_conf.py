@@ -96,7 +96,8 @@ def test_pool_config_consume():
 
     test_config = dict(test_pool_config)
 
-    consumed_pool_config = PoolConfig.consume(test_config)
+    with _pool_config_deprecations():
+        consumed_pool_config = PoolConfig.consume(test_config)
 
     assert isinstance(consumed_pool_config, PoolConfig)
 
