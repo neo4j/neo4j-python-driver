@@ -28,14 +28,23 @@ from neo4j import (
     Transaction,
     unit_of_work,
 )
+from neo4j.io import IOPool
 
 from ._fake_connection import FakeConnection
 
 
-@pytest.fixture()
+@pytest.fixture
 def pool(mocker):
-    pool = mocker.MagicMock()
-    pool.acquire = mocker.MagicMock(side_effect=iter(FakeConnection, 0))
+    pool = mocker.Mock(spec=IOPool)
+    assert not hasattr(pool, "acquired_connection_mocks")
+    pool.acquired_connection_mocks = []
+
+    def acquire_side_effect(*_, **__):
+        connection = FakeConnection()
+        pool.acquired_connection_mocks.append(connection)
+        return connection
+
+    pool.acquire.side_effect = acquire_side_effect
     return pool
 
 
@@ -252,3 +261,49 @@ def test_session_run_with_parameters(pool, parameters, error_type, run_type):
                 session.write_transaction(work)
         else:
             raise ValueError(run_type)
+
+
+@pytest.mark.parametrize(
+    ("params", "kw_params", "expected_params"),
+    (
+        ({"x": 1}, {}, {"x": 1}),
+        ({}, {"x": 1}, {"x": 1}),
+        ({"x": 1}, {"y": 2}, {"x": 1, "y": 2}),
+        ({"x": 1}, {"x": 2}, {"x": 2}),
+        ({"x": 1}, {"x": 2}, {"x": 2}),
+        ({"x": 1, "y": 3}, {"x": 2}, {"x": 2, "y": 3}),
+        ({"x": 1}, {"x": 2, "y": 3}, {"x": 2, "y": 3}),
+        # potentially internally used keyword arguments
+        ({}, {"timeout": 2}, {"timeout": 2}),
+        ({"timeout": 2}, {}, {"timeout": 2}),
+        ({}, {"imp_user": "hans"}, {"imp_user": "hans"}),
+        ({"imp_user": "hans"}, {}, {"imp_user": "hans"}),
+        ({}, {"db": "neo4j"}, {"db": "neo4j"}),
+        ({"db": "neo4j"}, {}, {"db": "neo4j"}),
+        ({}, {"database": "neo4j"}, {"database": "neo4j"}),
+        ({"database": "neo4j"}, {}, {"database": "neo4j"}),
+    )
+)
+@pytest.mark.parametrize("run_type", ("auto", "unmanaged", "managed"))
+def test_session_run_parameter_precedence(
+    pool, params, kw_params, expected_params, run_type
+):
+    with Session(pool, SessionConfig()) as session:
+        if run_type == "auto":
+            session.run("RETURN $x", params, **kw_params)
+        elif run_type == "unmanaged":
+            tx = session.begin_transaction()
+            tx.run("RETURN $x", params, **kw_params)
+        elif run_type == "managed":
+            def work(tx):
+                tx.run("RETURN $x", params, **kw_params)
+            session.write_transaction(work)
+        else:
+            raise ValueError(run_type)
+
+    assert len(pool.acquired_connection_mocks) == 1
+    connection_mock = pool.acquired_connection_mocks[0]
+    connection_mock.run.assert_called_once()
+    call_args, call_kwargs = connection_mock.run.call_args
+    assert call_args[0] == "RETURN $x"
+    assert call_kwargs["parameters"] == expected_params
