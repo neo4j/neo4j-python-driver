@@ -81,15 +81,15 @@ config_function_names = ["consume_chain", "consume"]
 @contextmanager
 def _pool_config_deprecations():
     with pytest.warns(DeprecationWarning,
-                      match="update_routing_table_timeout") as warnings:
-        yield warnings
+                      match="update_routing_table_timeout") as warnings_:
+        yield warnings_
 
 
 @contextmanager
 def _session_config_deprecations():
     with pytest.warns(DeprecationWarning,
-                      match="session_connection_timeout") as warnings:
-        yield warnings
+                      match="session_connection_timeout") as warnings_:
+        yield warnings_
 
 
 def test_pool_config_consume():
@@ -135,8 +135,7 @@ def test_pool_config_consume_key_not_valid():
     with pytest.raises(ConfigurationError) as error:
         # might or might not warn DeprecationWarning, but we're only
         # interested in the error
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
+        with _pool_config_deprecations():
             _ = PoolConfig.consume(test_config)
 
     error.match("Unexpected config keys: not_valid_key")
@@ -146,8 +145,7 @@ def test_pool_config_set_value():
 
     test_config = dict(test_pool_config)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
+    with _pool_config_deprecations():
         consumed_pool_config = PoolConfig.consume(test_config)
 
     assert consumed_pool_config.get("encrypted") is False
@@ -167,10 +165,8 @@ def test_pool_config_consume_and_then_consume_again():
 
     test_config = dict(test_pool_config)
 
-    with warnings.catch_warnings():
-        with _pool_config_deprecations():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            consumed_pool_config = PoolConfig.consume(test_config)
+    with _pool_config_deprecations():
+        consumed_pool_config = PoolConfig.consume(test_config)
 
     assert consumed_pool_config.encrypted is False
     consumed_pool_config.encrypted = "test"
@@ -187,8 +183,14 @@ def test_pool_config_consume_and_then_consume_again():
             dict(consumed_pool_config.items())
         )
 
-    consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
-    consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
+    with _pool_config_deprecations():
+        consumed_pool_config = PoolConfig.consume(
+            dict(consumed_pool_config.items())
+        )
+    with _pool_config_deprecations():
+        consumed_pool_config = PoolConfig.consume(
+            dict(consumed_pool_config.items())
+        )
 
     assert consumed_pool_config.encrypted == "test"
 
@@ -228,19 +230,23 @@ def test_init_session_config_merge():
     test_config_a = {"connection_acquisition_timeout": 111}
     test_config_c = {"max_transaction_retry_time": 222}
 
-    workspace_config = WorkspaceConfig(test_config_a, WorkspaceConfig.consume(test_config_c))
+    workspace_config = WorkspaceConfig(test_config_a,
+                                       WorkspaceConfig.consume(test_config_c))
     assert len(test_config_a) == 1
     assert len(test_config_c) == 0
     assert isinstance(workspace_config, WorkspaceConfig)
-    assert workspace_config.connection_acquisition_timeout == WorkspaceConfig.connection_acquisition_timeout
+    assert workspace_config.connection_acquisition_timeout == \
+           WorkspaceConfig.connection_acquisition_timeout
     assert workspace_config.max_transaction_retry_time == 222
 
     workspace_config = WorkspaceConfig(test_config_c, test_config_a)
     assert isinstance(workspace_config, WorkspaceConfig)
     assert workspace_config.connection_acquisition_timeout == 111
-    assert workspace_config.max_transaction_retry_time == WorkspaceConfig.max_transaction_retry_time
+    assert workspace_config.max_transaction_retry_time == \
+           WorkspaceConfig.max_transaction_retry_time
 
-    test_config_b = {"default_access_mode": READ_ACCESS, "connection_acquisition_timeout": 333}
+    test_config_b = {"default_access_mode": READ_ACCESS,
+                     "connection_acquisition_timeout": 333}
 
     session_config = SessionConfig(workspace_config, test_config_b)
     assert session_config.connection_acquisition_timeout == 333
@@ -257,7 +263,11 @@ def test_init_session_config_with_not_valid_key():
     test_config_a = {"connection_acquisition_timeout": 111}
     workspace_config = WorkspaceConfig.consume(test_config_a)
 
-    test_config_b = {"default_access_mode": READ_ACCESS, "connection_acquisition_timeout": 333, "not_valid_key": None}
+    test_config_b = {
+        "default_access_mode": READ_ACCESS,
+        "connection_acquisition_timeout": 333,
+        "not_valid_key": None
+    }
     session_config = SessionConfig(workspace_config, test_config_b)
 
     with pytest.raises(AttributeError):
@@ -289,6 +299,7 @@ def test_no_ssl_mock(config, mocker):
 ))
 def test_trust_system_cas_mock(config, mocker):
     ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
+    ssl_context_mock.return_value.options = 0
     pool_config = PoolConfig.consume(config)
     assert pool_config.encrypted is True
     ssl_context = pool_config.get_ssl_context()
@@ -304,6 +315,7 @@ def test_trust_system_cas_mock(config, mocker):
 ))
 def test_trust_all_mock(config, mocker):
     ssl_context_mock = mocker.patch("ssl.SSLContext", autospec=True)
+    ssl_context_mock.return_value.options = 0
     pool_config = PoolConfig.consume(config)
     assert pool_config.encrypted is True
     ssl_context = pool_config.get_ssl_context()
@@ -318,7 +330,10 @@ def _assert_mock_tls_1_2(mock):
     if sys.version_info >= (3, 7):
         assert mock.return_value.minimum_version == ssl.TLSVersion.TLSv1_2
     else:
-        assert mock.mock_calls[1][1][0] == ssl.OP_NO_TLSv1
+        assert mock.return_value.options & ssl.OP_NO_TLSv1
+        assert mock.return_value.options & ssl.OP_NO_TLSv1_1
+        assert not mock.return_value.options & ssl.OP_NO_TLSv1_2
+        assert not mock.return_value.options & ssl.OP_NO_TLSv1_3
 
 
 @pytest.mark.parametrize("config", (
@@ -364,3 +379,9 @@ def _assert_context_tls_1_2(ctx):
     if sys.version_info >= (3, 7):
         assert ctx.protocol == ssl.PROTOCOL_TLS_CLIENT
         assert ctx.minimum_version == ssl.TLSVersion.TLSv1_2
+    else:
+        assert ctx.protocol == ssl.PROTOCOL_TLS_CLIENT
+        assert ctx.options & ssl.OP_NO_TLSv1
+        assert ctx.options & ssl.OP_NO_TLSv1_1
+        assert not ctx.options & ssl.OP_NO_TLSv1_2
+        assert not ctx.options & ssl.OP_NO_TLSv1_3
