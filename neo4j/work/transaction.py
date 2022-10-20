@@ -105,7 +105,8 @@ class Transaction:
         :type query: str
         :param parameters: dictionary of parameters
         :type parameters: dict
-        :param kwparameters: additional keyword parameters
+        :param kwparameters: additional keyword parameters.
+            These take precedence over parameters passed as ``parameters``.
         :returns: a new :class:`neo4j.Result` object
         :rtype: :class:`neo4j.Result`
         :raise TransactionError: if the transaction is already closed
@@ -138,7 +139,8 @@ class Transaction:
         )
         self._results.append(result)
 
-        result._tx_ready_run(query, parameters, **kwparameters)
+        parameters = dict(parameters or {}, **kwparameters)
+        result._tx_ready_run(query, parameters)
 
         return result
 

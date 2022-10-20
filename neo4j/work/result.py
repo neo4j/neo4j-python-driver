@@ -63,21 +63,19 @@ class Result:
         else:
             return self._raw_qid
 
-    def _tx_ready_run(self, query, parameters, **kwparameters):
+    def _tx_ready_run(self, query, parameters):
         # BEGIN+RUN does not carry any extra on the RUN message.
         # BEGIN {extra}
         # RUN "query" {parameters} {extra}
-        self._run(query, parameters, None, None, None, None, **kwparameters)
+        self._run(query, parameters, None, None, None, None)
 
-    def _run(self, query, parameters, db, imp_user, access_mode, bookmarks,
-             **kwparameters):
+    def _run(self, query, parameters, db, imp_user, access_mode, bookmarks):
         query_text = str(query)  # Query or string object
         query_metadata = getattr(query, "metadata", None)
         query_timeout = getattr(query, "timeout", None)
 
         parameters = DataDehydrator.fix_parameters(
-            dict(parameters or {}, **kwparameters),
-            patch_utc="utc" in self._connection.bolt_patches
+            parameters, patch_utc="utc" in self._connection.bolt_patches
         )
 
         self._metadata = {
