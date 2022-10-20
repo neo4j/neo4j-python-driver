@@ -19,11 +19,10 @@
 # limitations under the License.
 
 
-import sys
 from abc import ABCMeta
 from collections.abc import Mapping
+import sys
 import warnings
-from warnings import warn
 
 from neo4j.meta import (
     deprecation_warn,
@@ -363,9 +362,11 @@ class SessionConfig(WorkspaceConfig):
 
 class TransactionConfig(Config):
     """ Transaction configuration. This is internal for now.
+
     neo4j.session.begin_transaction
     neo4j.Query
     neo4j.unit_of_work
+
     are both using the same settings.
     """
     #: Metadata

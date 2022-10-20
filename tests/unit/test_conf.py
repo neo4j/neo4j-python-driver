@@ -20,10 +20,10 @@
 
 
 from contextlib import contextmanager
-import warnings
-
 import ssl
 import sys
+import warnings
+
 import pytest
 
 from neo4j.exceptions import (
@@ -36,10 +36,10 @@ from neo4j.conf import (
     SessionConfig,
 )
 from neo4j.api import (
-    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     TRUST_ALL_CERTIFICATES,
-    WRITE_ACCESS,
+    TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     READ_ACCESS,
+    WRITE_ACCESS,
 )
 
 # python -m pytest tests/unit/test_conf.py -s -v
@@ -96,9 +96,7 @@ def test_pool_config_consume():
 
     test_config = dict(test_pool_config)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        consumed_pool_config = PoolConfig.consume(test_config)
+    consumed_pool_config = PoolConfig.consume(test_config)
 
     assert isinstance(consumed_pool_config, PoolConfig)
 
@@ -135,9 +133,11 @@ def test_pool_config_consume_key_not_valid():
     test_config["not_valid_key"] = "test"
 
     with pytest.raises(ConfigurationError) as error:
+        # might or might not warn DeprecationWarning, but we're only
+        # interested in the error
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
-            consumed_pool_config = PoolConfig.consume(test_config)
+            _ = PoolConfig.consume(test_config)
 
     error.match("Unexpected config keys: not_valid_key")
 
@@ -168,19 +168,27 @@ def test_pool_config_consume_and_then_consume_again():
     test_config = dict(test_pool_config)
 
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        consumed_pool_config = PoolConfig.consume(test_config)
+        with _pool_config_deprecations():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            consumed_pool_config = PoolConfig.consume(test_config)
 
     assert consumed_pool_config.encrypted is False
     consumed_pool_config.encrypted = "test"
 
     with pytest.raises(AttributeError):
-        consumed_pool_config = PoolConfig.consume(consumed_pool_config)
+        _ = PoolConfig.consume(consumed_pool_config)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
-        consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
+    with _pool_config_deprecations():
+        consumed_pool_config = PoolConfig.consume(
+            dict(consumed_pool_config.items())
+        )
+    with _pool_config_deprecations():
+        consumed_pool_config = PoolConfig.consume(
+            dict(consumed_pool_config.items())
+        )
+
+    consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
+    consumed_pool_config = PoolConfig.consume(dict(consumed_pool_config.items()))
 
     assert consumed_pool_config.encrypted == "test"
 

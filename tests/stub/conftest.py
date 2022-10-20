@@ -20,8 +20,8 @@
 
 
 import subprocess
-import warnings
 import os
+import warnings
 
 from platform import system
 from threading import Thread

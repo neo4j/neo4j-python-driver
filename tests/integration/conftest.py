@@ -25,8 +25,8 @@ from os.path import dirname, join
 from threading import RLock
 
 import pytest
-import warnings
 import urllib
+import warnings
 
 from neo4j import (
     GraphDatabase,
