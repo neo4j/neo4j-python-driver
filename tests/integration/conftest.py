@@ -25,14 +25,11 @@ from os.path import dirname, join
 from threading import RLock
 
 import pytest
-import urllib
 import warnings
 
-from neo4j import (
-    GraphDatabase,
-)
-from neo4j.exceptions import ServiceUnavailable
+from neo4j import GraphDatabase
 from neo4j._exceptions import BoltHandshakeError
+from neo4j.exceptions import ServiceUnavailable
 from neo4j.io import Bolt
 
 # import logging

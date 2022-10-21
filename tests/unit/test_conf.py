@@ -36,9 +36,9 @@ from neo4j.conf import (
     SessionConfig,
 )
 from neo4j.api import (
+    READ_ACCESS,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
-    READ_ACCESS,
     WRITE_ACCESS,
 )
 
@@ -267,6 +267,24 @@ def test_init_session_config_with_not_valid_key():
         _ = SessionConfig.consume(test_config_b)
 
     assert session_config.connection_acquisition_timeout == 333
+
+
+def test_pool_config_deprecated_update_routing_table_timeout():
+    with _pool_config_deprecations():
+        _ = PoolConfig.consume({"update_routing_table_timeout": 1})
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _ = PoolConfig.consume({})
+
+
+def test_session_config_deprecated_session_connection_timeout():
+    with _session_config_deprecations():
+        _ = SessionConfig.consume({"session_connection_timeout": 1})
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _ = SessionConfig.consume({})
 
 
 @pytest.mark.parametrize("config", (
