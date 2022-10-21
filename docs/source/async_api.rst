@@ -176,8 +176,9 @@ Closing a driver will immediately shut down all connections in the pool.
 
             import neo4j
 
+
             async def example(driver: neo4j.AsyncDriver) -> List[str]:
-                """Get the name of all 42 year-olds."""
+                \"""Get the name of all 42 year-olds.\"""
                 records, summary, keys = await driver.execute_query(
                     "MATCH (p:Person {age: $age}) RETURN p.name",
                     {"age": 42},
@@ -185,7 +186,7 @@ Closing a driver will immediately shut down all connections in the pool.
                     database="neo4j",
                 )
                 assert keys == ["p.name"]  # not needed, just for illustration
-                log.debug("some meta data: %s", summary)
+                # log_summary(summary)  # log some metadata
                 return [str(record["p.name"]) for record in records]
                 # or: return [str(record[0]) for record in records]
                 # or even: return list(map(lambda r: str(r[0]), records))
@@ -194,16 +195,19 @@ Closing a driver will immediately shut down all connections in the pool.
 
             import neo4j
 
+
             async def example(driver: neo4j.AsyncDriver) -> int:
-                """Call all young people "My dear" and get their count."""
+                \"""Call all young people "My dear" and get their count.\"""
                 record = await driver.execute_query(
-                    "MATCH (p:Person) WHERE n.age <= 15 "
+                    "MATCH (p:Person) WHERE p.age <= 15 "
                     "SET p.nickname = 'My dear' "
                     "RETURN count(*)",
-                    routing=neo4j.RoutingControl.WRITERS,  # or just "w"
+                    # optional routing parameter, as write is default
+                    # routing=neo4j.RoutingControl.WRITERS,  # or just "w",
                     database="neo4j",
                     result_transformer=neo4j.AsyncResult.single,
                 )
+                assert record is not None  # for typechecking and illustration
                 count = record[0]
                 assert isinstance(count, int)
                 return count
@@ -254,6 +258,7 @@ Closing a driver will immediately shut down all connections in the pool.
                 from typing import Tuple
 
                 import neo4j
+
 
                 async def transformer(
                     result: neo4j.AsyncResult

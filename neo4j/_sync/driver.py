@@ -575,6 +575,7 @@ class Driver:
 
             import neo4j
 
+
             def example(driver: neo4j.Driver) -> List[str]:
                 \"""Get the name of all 42 year-olds.\"""
                 records, summary, keys = driver.execute_query(
@@ -584,7 +585,7 @@ class Driver:
                     database="neo4j",
                 )
                 assert keys == ["p.name"]  # not needed, just for illustration
-                log.debug("some meta data: %s", summary)
+                # log_summary(summary)  # log some metadata
                 return [str(record["p.name"]) for record in records]
                 # or: return [str(record[0]) for record in records]
                 # or even: return list(map(lambda r: str(r[0]), records))
@@ -593,16 +594,19 @@ class Driver:
 
             import neo4j
 
+
             def example(driver: neo4j.Driver) -> int:
                 \"""Call all young people "My dear" and get their count.\"""
                 record = driver.execute_query(
-                    "MATCH (p:Person) WHERE n.age <= 15 "
+                    "MATCH (p:Person) WHERE p.age <= 15 "
                     "SET p.nickname = 'My dear' "
                     "RETURN count(*)",
-                    routing=neo4j.RoutingControl.WRITERS,  # or just "w"
+                    # optional routing parameter, as write is default
+                    # routing=neo4j.RoutingControl.WRITERS,  # or just "w",
                     database="neo4j",
                     result_transformer=neo4j.Result.single,
                 )
+                assert record is not None  # for typechecking and illustration
                 count = record[0]
                 assert isinstance(count, int)
                 return count
@@ -654,6 +658,7 @@ class Driver:
 
                 import neo4j
 
+
                 def transformer(
                     result: neo4j.Result
                 ) -> Tuple[neo4j.Record, neo4j.ResultSummary]:
@@ -698,8 +703,6 @@ class Driver:
                                    impersonated_user=impersonated_user,
                                    bookmark_manager=bookmark_manager)
         with session:
-            # TODO: test all examples in the docstring
-
             if routing == RoutingControl.WRITERS:
                 executor = session.execute_write
             elif routing == RoutingControl.READERS:
