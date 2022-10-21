@@ -184,24 +184,13 @@ def test_pool_config_consume_and_then_consume_again():
             dict(consumed_pool_config.items())
         )
 
-    with _pool_config_deprecations():
-        consumed_pool_config = PoolConfig.consume(
-            dict(consumed_pool_config.items())
-        )
-    with _pool_config_deprecations():
-        consumed_pool_config = PoolConfig.consume(
-            dict(consumed_pool_config.items())
-        )
-
     assert consumed_pool_config.encrypted == "test"
 
 
 def test_config_consume_chain():
 
     test_config = {}
-
     test_config.update(test_pool_config)
-
     test_config.update(test_session_config)
 
     with warnings.catch_warnings():
@@ -267,7 +256,7 @@ def test_init_session_config_with_not_valid_key():
     test_config_b = {
         "default_access_mode": READ_ACCESS,
         "connection_acquisition_timeout": 333,
-        "not_valid_key": None
+        "not_valid_key": None,
     }
     session_config = SessionConfig(workspace_config, test_config_b)
 
