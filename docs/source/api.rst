@@ -156,12 +156,15 @@ Closing a driver will immediately shut down all connections in the pool.
 
     .. method:: execute_query(query, parameters=None,routing=neo4j.RoutingControl.WRITERS, database=None, impersonated_user=None, bookmark_manager=self.query_bookmark_manager, result_transformer=Result.to_eager_result, **kwargs)
 
-        Execute a query inside a retired transaction and return all results.
+        Execute a query in a transaction function and return all results.
 
         This method is a handy wrapper for lower-level driver APIs like
         sessions, transactions, and transaction functions. It is intended
         for simple use cases where there is no need for managing all possible
         options.
+
+        The internal usage of transaction functions provides a retry-mechanism
+        for appropriate errors.
 
         The method is roughly equivalent to::
 
