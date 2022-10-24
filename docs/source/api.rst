@@ -230,15 +230,15 @@ Closing a driver will immediately shut down all connections in the pool.
                 assert isinstance(count, int)
                 return count
 
-        :param query: cypher query to execute
-        :type query: typing.Optional[str]
-        :param parameters: parameters to use in the query
-        :type parameters: typing.Optional[typing.Dict[str, typing.Any]]
-        :param routing:
+        :param query_: cypher query to execute
+        :type query_: typing.Optional[str]
+        :param parameters_: parameters to use in the query
+        :type parameters_: typing.Optional[typing.Dict[str, typing.Any]]
+        :param routing_:
             whether to route the query to a reader (follower/read replica) or
             a writer (leader) in the cluster. Default is to route to a writer.
-        :type routing: neo4j.RoutingControl
-        :param database:
+        :type routing_: neo4j.RoutingControl
+        :param database_:
             database to execute the query against.
 
             None (default) uses the database configured on the server side.
@@ -249,8 +249,8 @@ Closing a driver will immediately shut down all connections in the pool.
                 as it will not have to resolve the default database first.
 
             See also the Session config :ref:`database-ref`.
-        :type database: typing.Optional[str]
-        :param impersonated_user:
+        :type database_: typing.Optional[str]
+        :param impersonated_user_:
             Name of the user to impersonate.
 
             This means that all query will be executed in the security context
@@ -259,8 +259,8 @@ Closing a driver will immediately shut down all connections in the pool.
             permissions.
 
             See also the Session config :ref:`impersonated-user-ref`.
-        :type impersonated_user: typing.Optional[str]
-        :param result_transformer:
+        :type impersonated_user_: typing.Optional[str]
+        :param result_transformer_:
             A function that gets passed the :class:`neo4j.Result` object
             resulting from the query and converts it to a different type. The
             result of the transformer function is returned by this method.
@@ -285,9 +285,9 @@ Closing a driver will immediately shut down all connections in the pool.
                     summary = result.consume()
                     return record, summary
 
-        :type result_transformer:
+        :type result_transformer_:
             typing.Callable[[neo4j.Result], typing.Union[T]]
-        :param bookmark_manager:
+        :param bookmark_manager_:
             Specify a bookmark manager to use.
 
             If present, the bookmark manager is used to keep the query causally
@@ -296,11 +296,14 @@ Closing a driver will immediately shut down all connections in the pool.
             Defaults to the driver's :attr:`.query_bookmark_manager`.
 
             Pass :const:`None` to disable causal consistency.
-        :type bookmark_manager:
+        :type bookmark_manager_:
             typing.Union[neo4j.BookmarkManager, neo4j.BookmarkManager,
                          None]
-        :param kwargs: additional keyword parameters.
-            These take precedence over parameters passed as ``parameters``.
+        :param kwargs: additional keyword parameters. None of these can end
+            with a single underscore. This is to avoid collisions with the
+            keyword configuration parameters of this method. If you need to
+            pass such a parameter, use the ``parameters_`` parameter instead.
+            These take precedence over parameters passed as ``parameters_``.
         :type kwargs: typing.Any
 
         :returns: the result of the ``result_transformer``

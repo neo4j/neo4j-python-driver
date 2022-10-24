@@ -489,15 +489,15 @@ class AsyncDriver:
     @t.overload
     async def execute_query(
         self,
-        query: str,
-        parameters: t.Dict[str, t.Any] = None,
-        routing: T_RoutingControl = RoutingControl.WRITERS,
-        database: str = None,
-        impersonated_user: str = None,
-        bookmark_manager: t.Union[
+        query_: str,
+        parameters_: t.Dict[str, t.Any] = None,
+        routing_: T_RoutingControl = RoutingControl.WRITERS,
+        database_: str = None,
+        impersonated_user_: str = None,
+        bookmark_manager_: t.Union[
             AsyncBookmarkManager, BookmarkManager, None
         ] = ...,
-        result_transformer: t.Callable[
+        result_transformer_: t.Callable[
             [AsyncResult], t.Awaitable[EagerResult]
         ] = ...,
         **kwargs: t.Any
@@ -507,15 +507,15 @@ class AsyncDriver:
     @t.overload
     async def execute_query(
         self,
-        query: str,
-        parameters: t.Dict[str, t.Any] = None,
-        routing: T_RoutingControl = RoutingControl.WRITERS,
-        database: str = None,
-        impersonated_user: str = None,
-        bookmark_manager: t.Union[
+        query_: str,
+        parameters_: t.Dict[str, t.Any] = None,
+        routing_: T_RoutingControl = RoutingControl.WRITERS,
+        database_: str = None,
+        impersonated_user_: str = None,
+        bookmark_manager_: t.Union[
             AsyncBookmarkManager, BookmarkManager, None
         ] = ...,
-        result_transformer: t.Callable[
+        result_transformer_: t.Callable[
             [AsyncResult], t.Awaitable[_T]
         ] = ...,
         **kwargs: t.Any
@@ -524,22 +524,20 @@ class AsyncDriver:
 
     async def execute_query(
         self,
-        query: str,
-        parameters: t.Dict[str, t.Any] = None,
-        routing: T_RoutingControl = RoutingControl.WRITERS,
-        database: str = None,
-        impersonated_user: str = None,
-        bookmark_manager: t.Union[
+        query_: str,
+        parameters_: t.Dict[str, t.Any] = None,
+        routing_: T_RoutingControl = RoutingControl.WRITERS,
+        database_: str = None,
+        impersonated_user_: str = None,
+        bookmark_manager_: t.Union[
             AsyncBookmarkManager, BookmarkManager, None,
             te.Literal[_DefaultEnum.default]
         ] = _default,
-        result_transformer: t.Callable[[AsyncResult], t.Awaitable[_T]] = (
-            # cast to work around https://github.com/python/mypy/issues/3737
-            t.cast(t.Callable[[AsyncResult], t.Awaitable[_T]],
-                   AsyncResult.to_eager_result)
-        ),
+        result_transformer_: t.Callable[
+            [AsyncResult], t.Awaitable[t.Any]
+        ] = AsyncResult.to_eager_result,
         **kwargs: t.Any
-    ) -> _T:
+    ) -> t.Any:
         """Execute a query in a transaction function and return all results.
 
         This method is a handy wrapper for lower-level driver APIs like
@@ -614,15 +612,15 @@ class AsyncDriver:
                 assert isinstance(count, int)
                 return count
 
-        :param query: cypher query to execute
-        :type query: typing.Optional[str]
-        :param parameters: parameters to use in the query
-        :type parameters: typing.Optional[typing.Dict[str, typing.Any]]
-        :param routing:
+        :param query_: cypher query to execute
+        :type query_: typing.Optional[str]
+        :param parameters_: parameters to use in the query
+        :type parameters_: typing.Optional[typing.Dict[str, typing.Any]]
+        :param routing_:
             whether to route the query to a reader (follower/read replica) or
             a writer (leader) in the cluster. Default is to route to a writer.
-        :type routing: neo4j.RoutingControl
-        :param database:
+        :type routing_: neo4j.RoutingControl
+        :param database_:
             database to execute the query against.
 
             None (default) uses the database configured on the server side.
@@ -633,8 +631,8 @@ class AsyncDriver:
                 as it will not have to resolve the default database first.
 
             See also the Session config :ref:`database-ref`.
-        :type database: typing.Optional[str]
-        :param impersonated_user:
+        :type database_: typing.Optional[str]
+        :param impersonated_user_:
             Name of the user to impersonate.
 
             This means that all query will be executed in the security context
@@ -643,8 +641,8 @@ class AsyncDriver:
             permissions.
 
             See also the Session config :ref:`impersonated-user-ref`.
-        :type impersonated_user: typing.Optional[str]
-        :param result_transformer:
+        :type impersonated_user_: typing.Optional[str]
+        :param result_transformer_:
             A function that gets passed the :class:`neo4j.AsyncResult` object
             resulting from the query and converts it to a different type. The
             result of the transformer function is returned by this method.
@@ -669,9 +667,9 @@ class AsyncDriver:
                     summary = await result.consume()
                     return record, summary
 
-        :type result_transformer:
+        :type result_transformer_:
             typing.Callable[[neo4j.AsyncResult], typing.Awaitable[T]]
-        :param bookmark_manager:
+        :param bookmark_manager_:
             Specify a bookmark manager to use.
 
             If present, the bookmark manager is used to keep the query causally
@@ -680,11 +678,14 @@ class AsyncDriver:
             Defaults to the driver's :attr:`.query_bookmark_manager`.
 
             Pass :const:`None` to disable causal consistency.
-        :type bookmark_manager:
+        :type bookmark_manager_:
             typing.Union[neo4j.AsyncBookmarkManager, neo4j.BookmarkManager,
                          None]
-        :param kwargs: additional keyword parameters.
-            These take precedence over parameters passed as ``parameters``.
+        :param kwargs: additional keyword parameters. None of these can end
+            with a single underscore. This is to avoid collisions with the
+            keyword configuration parameters of this method. If you need to
+            pass such a parameter, use the ``parameters_`` parameter instead.
+            These take precedence over parameters passed as ``parameters_``.
         :type kwargs: typing.Any
 
         :returns: the result of the ``result_transformer``
@@ -692,27 +693,40 @@ class AsyncDriver:
 
         .. versionadded:: 5.2
         """
-        parameters = dict(parameters or {}, **kwargs)
+        invalid_kwargs = [k for k in kwargs if
+                          k[-2:-1] != "_" and k[-1:] == "_"]
+        if invalid_kwargs:
+            raise ValueError(
+                "keyword parameters must not end with a single '_'. Found: %r"
+                "\nYou either misspelled an existing configuration parameter "
+                "or tried to send a query parameter that is reserved. In the "
+                "latter case, use the `parameters_` dictionary instead."
+                % invalid_kwargs
+            )
+        parameters = dict(parameters_ or {}, **kwargs)
 
-        if bookmark_manager is _default:
-            bookmark_manager = self._query_bookmark_manager
-        assert bookmark_manager is not _default
+        if bookmark_manager_ is _default:
+            bookmark_manager_ = self._query_bookmark_manager
+        assert bookmark_manager_ is not _default
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore",
                                     message=r".*\bbookmark_manager\b.*",
                                     category=ExperimentalWarning)
-            session = self.session(database=database,
-                                   impersonated_user=impersonated_user,
-                                   bookmark_manager=bookmark_manager)
+            session = self.session(database=database_,
+                                   impersonated_user=impersonated_user_,
+                                   bookmark_manager=bookmark_manager_)
         async with session:
-            if routing == RoutingControl.WRITERS:
+            if routing_ == RoutingControl.WRITERS:
                 executor = session.execute_write
-            elif routing == RoutingControl.READERS:
+            elif routing_ == RoutingControl.READERS:
                 executor = session.execute_read
             else:
-                raise ValueError("Invalid routing control value: %r" % routing)
-            return await executor(_work, query, parameters, result_transformer)
+                raise ValueError("Invalid routing control value: %r"
+                                 % routing_)
+            return await executor(
+                _work, query_, parameters, result_transformer_
+            )
 
     @property
     def query_bookmark_manager(self) -> AsyncBookmarkManager:

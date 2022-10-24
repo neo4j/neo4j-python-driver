@@ -455,7 +455,7 @@ async def test_execute_query_query(
         if positional:
             res = await driver.execute_query(query)
         else:
-            res = await driver.execute_query(query=query)
+            res = await driver.execute_query(query_=query)
 
     session_cls_mock.assert_called_once()
     session_mock = session_cls_mock.return_value
@@ -488,7 +488,7 @@ async def test_execute_query_parameters(
             if positional:
                 res = await driver.execute_query("", parameters)
             else:
-                res = await driver.execute_query("", parameters=parameters)
+                res = await driver.execute_query("", parameters_=parameters)
 
     session_cls_mock.assert_called_once()
     session_mock = session_cls_mock.return_value
@@ -502,7 +502,7 @@ async def test_execute_query_parameters(
 
 
 @pytest.mark.parametrize("parameters", (
-    None, {}, {"foo": 1}, {"foo": 1, "bar": object()}
+    None, {}, {"foo": 1}, {"foo": 1, "_bar": object()}, {"__": 1}, {"baz__": 2}
 ))
 @mark_async_test
 async def test_execute_query_keyword_parameters(
@@ -528,6 +528,21 @@ async def test_execute_query_keyword_parameters(
     assert res is session_executor_mock.return_value
 
 
+@pytest.mark.parametrize("parameters", (
+    {"_": "a"}, {"foo_": None}, {"foo_": 1, "bar_": 2}
+))
+async def test_reserved_query_keyword_parameters(
+    mocker, parameters: t.Dict[str, t.Any],
+) -> None:
+    driver = AsyncGraphDatabase.driver("bolt://localhost")
+    mocker.patch("neo4j._async.driver.AsyncSession", autospec=True)
+    async with driver as driver:
+        with pytest.raises(ValueError) as exc:
+            await driver.execute_query("", **parameters)
+        exc.match("reserved")
+        exc.match(", ".join(f"'{k}'" for k in parameters))
+
+
 @pytest.mark.parametrize(
     ("params", "kw_params", "expected_params"),
     (
@@ -546,9 +561,15 @@ async def test_execute_query_keyword_parameters(
         ({"imp_user": "hans"}, {}, {"imp_user": "hans"}),
         ({}, {"db": "neo4j"}, {"db": "neo4j"}),
         ({"db": "neo4j"}, {}, {"db": "neo4j"}),
-        # already taken keyword arguments
-        ({}, {"database": "neo4j"}, {}),
+        ({"_": "foobar"}, {}, {"_": "foobar"}),
+        ({"__": "foobar"}, {}, {"__": "foobar"}),
+        ({"x_": "foobar"}, {}, {"x_": "foobar"}),
+        ({"x__": "foobar"}, {}, {"x__": "foobar"}),
+        ({}, {"database": "neo4j"}, {"database": "neo4j"}),
         ({"database": "neo4j"}, {}, {"database": "neo4j"}),
+        # already taken keyword arguments
+        ({}, {"database_": "neo4j"}, {}),
+        ({"database_": "neo4j"}, {}, {"database_": "neo4j"}),
     )
 )
 @pytest.mark.parametrize("positional", (True, False))
@@ -570,7 +591,7 @@ async def test_execute_query_parameter_precedence(
             if positional:
                 res = await driver.execute_query("", params, **kw_params)
             else:
-                res = await driver.execute_query("", parameters=params,
+                res = await driver.execute_query("", parameters_=params,
                                                  **kw_params)
 
     session_cls_mock.assert_called_once()
@@ -610,7 +631,7 @@ async def test_execute_query_routing_control(
             if positional:
                 res = await driver.execute_query("", None, routing_mode)
             else:
-                res = await driver.execute_query("", routing=routing_mode)
+                res = await driver.execute_query("", routing_=routing_mode)
 
     session_cls_mock.assert_called_once()
     session_mock = session_cls_mock.return_value
@@ -642,7 +663,7 @@ async def test_execute_query_database(
             if positional:
                 await driver.execute_query("", None, "w", database)
             else:
-                await driver.execute_query("", database=database)
+                await driver.execute_query("", database_=database)
 
     session_cls_mock.assert_called_once()
     session_config = session_cls_mock.call_args.args[1]
@@ -669,7 +690,7 @@ async def test_execute_query_impersonated_user(
                 )
             else:
                 await driver.execute_query(
-                    "", impersonated_user=impersonated_user
+                    "", impersonated_user_=impersonated_user
                 )
 
     session_cls_mock.assert_called_once()
@@ -698,7 +719,7 @@ async def test_execute_query_bookmark_manager(
                 )
             else:
                 await driver.execute_query(
-                    "", bookmark_manager=bookmark_manager
+                    "", bookmark_manager_=bookmark_manager
                 )
 
     session_cls_mock.assert_called_once()
@@ -731,7 +752,7 @@ async def test_execute_query_result_transformer(
                 )
             else:
                 res_custom = await driver.execute_query(
-                    "", result_transformer=result_transformer
+                    "", result_transformer_=result_transformer
                 )
             res = res_custom
 
