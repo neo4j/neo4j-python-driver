@@ -258,7 +258,7 @@ Closing a driver will immediately shut down all connections in the pool.
             :class:`Driver` has been created needs to have the appropriate
             permissions.
 
-            See also the Session config
+            See also the Session config :ref:`impersonated-user-ref`.
         :type impersonated_user: typing.Optional[str]
         :param result_transformer:
             A function that gets passed the :class:`neo4j.Result` object
