@@ -547,7 +547,9 @@ class Driver:
         options.
 
         The internal usage of transaction functions provides a retry-mechanism
-        for appropriate errors.
+        for appropriate errors. Furthermore, this means that queries using
+        ``CALL {} IN TRANSACTIONS`` or the older ``USING PERIODIC COMMIT``
+        will not work (use :meth:`Session.run` for these).
 
         The method is roughly equivalent to::
 
