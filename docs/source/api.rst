@@ -161,8 +161,6 @@ Driver Configuration
 
 Additional configuration can be provided via the :class:`neo4j.Driver` constructor.
 
-+ :ref:`session-connection-timeout-ref`
-+ :ref:`update-routing-table-timeout-ref`
 + :ref:`connection-acquisition-timeout-ref`
 + :ref:`connection-timeout-ref`
 + :ref:`encrypted-ref`
@@ -175,53 +173,6 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`ssl-context-ref`
 + :ref:`trusted-certificates-ref`
 + :ref:`user-agent-ref`
-
-
-.. _session-connection-timeout-ref:
-
-``session_connection_timeout``
-------------------------------
-The maximum amount of time in seconds the session will wait when trying to
-establish a usable read/write connection to the remote host.
-This encompasses *everything* that needs to happen for this, including,
-if necessary, updating the routing table, fetching a connection from the pool,
-and, if necessary fully establishing a new connection with the reader/writer.
-
-Since this process may involve updating the routing table, acquiring a
-connection from the pool, or establishing a new connection, it should be chosen
-larger than :ref:`update-routing-table-timeout-ref`,
-:ref:`connection-acquisition-timeout-ref`, and :ref:`connection-timeout-ref`.
-
-:Type: ``float``
-:Default: ``120.0``
-
-.. versionadded:: 4.4.5
-
-.. versionchanged:: 5.0
-
-    The default value was changed from ``float("inf")`` to ``120.0``.
-
-
-.. _update-routing-table-timeout-ref:
-
-``update_routing_table_timeout``
---------------------------------
-The maximum amount of time in seconds the driver will attempt to fetch a new
-routing table. This encompasses *everything* that needs to happen for this,
-including fetching connections from the pool, performing handshakes, and
-requesting and receiving a fresh routing table.
-
-Since this process may involve acquiring a connection from the pool, or
-establishing a new connection, it should be chosen larger than
-:ref:`connection-acquisition-timeout-ref` and :ref:`connection-timeout-ref`.
-
-This setting only has an effect for :ref:`neo4j-driver-ref`, but not for
-:ref:`bolt-driver-ref` as it does no routing at all.
-
-:Type: ``float``
-:Default: ``90.0``
-
-.. versionadded:: 4.4.5
 
 
 .. _connection-acquisition-timeout-ref:
