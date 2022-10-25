@@ -25,13 +25,11 @@ from os.path import dirname, join
 from threading import RLock
 
 import pytest
-import urllib
+import warnings
 
-from neo4j import (
-    GraphDatabase,
-)
-from neo4j.exceptions import ServiceUnavailable
+from neo4j import GraphDatabase
 from neo4j._exceptions import BoltHandshakeError
+from neo4j.exceptions import ServiceUnavailable
 from neo4j.io import Bolt
 
 # import logging
@@ -76,7 +74,9 @@ class Neo4jService(object):
                  n_cores=None, n_replicas=None,
                  bolt_port=None, http_port=None, debug_port=None,
                  debug_suspend=None, dir_spec=None, config=None):
-        from boltkit.legacy.controller import _install, create_controller
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ImportWarning)
+            from boltkit.legacy.controller import _install, create_controller
         assert image.endswith("-enterprise")
         release = image[:-11]
         if release == "snapshot":
@@ -189,7 +189,9 @@ def service(request):
         if existing_service:
             NEO4J_SERVICE = existing_service
         else:
-            NEO4J_SERVICE = Neo4jService(auth=NEO4J_AUTH, image=request.param, n_cores=NEO4J_CORES, n_replicas=NEO4J_REPLICAS)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+                NEO4J_SERVICE = Neo4jService(auth=NEO4J_AUTH, image=request.param, n_cores=NEO4J_CORES, n_replicas=NEO4J_REPLICAS)
             NEO4J_SERVICE.start(timeout=300)
         yield NEO4J_SERVICE
         if NEO4J_SERVICE is not None:
