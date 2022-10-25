@@ -686,11 +686,11 @@ access mode passed to that session on construction.
 
 .. note::
     The driver does not parse Cypher queries and cannot determine whether the
-    access mode should be ``neo4j.ACCESS_WRITE`` or ``neo4j.ACCESS_READ``.
+    access mode should be ``neo4j.WRITE_ACCESS`` or ``neo4j.READ_ACCESS``.
     This setting is only meant to enable the driver to perform correct routing,
     *not* for enforcing access control. This means that, depending on the server
     version and settings, the server or cluster might allow a write-statement to
-    be executed even when ``neo4j.ACCESS_READ`` is chosen. This behaviour should
+    be executed even when ``neo4j.READ_ACCESS`` is chosen. This behaviour should
     not be relied upon as it can change with the server.
 
 :Type: ``neo4j.WRITE_ACCESS``, ``neo4j.READ_ACCESS``
