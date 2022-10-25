@@ -1,7 +1,7 @@
 # Neo4j Driver Testing
 
 To run driver tests, [Tox](https://tox.readthedocs.io) is required as well as at least one version of Python.
-The versions of Python supported by this driver are CPython 3.6, 3.7, 3.8, and 3.9.
+The versions of Python supported by this driver are CPython 3.6, 3.7, 3.8, 3.9, and 3.10.
 
 
 ## Unit Tests & Stub Tests

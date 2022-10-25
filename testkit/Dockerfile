@@ -40,7 +40,7 @@ ENV PYENV_ROOT /.pyenv
 ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
 
 # Setup python version
-ENV PYTHON_VERSIONS 3.6 3.7 3.8 3.9
+ENV PYTHON_VERSIONS 3.6 3.7 3.8 3.9 3.10
 
 RUN for version in $PYTHON_VERSIONS; do \
         pyenv install $version:latest; \

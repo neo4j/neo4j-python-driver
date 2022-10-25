@@ -22,7 +22,9 @@
 from unittest import mock
 import warnings
 
-import pandas as pd
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", ImportWarning)
+    import pandas as pd
 import pytest
 
 from neo4j import (
