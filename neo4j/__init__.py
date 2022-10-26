@@ -57,6 +57,12 @@ from ._sync.work import (
     Session,
     Transaction,
 )
+from ._work import (
+    Query,
+    ResultSummary,
+    SummaryCounters,
+    unit_of_work,
+)
 from .addressing import (
     Address,
     IPv4Address,
@@ -81,12 +87,6 @@ from .api import (
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     Version,
     WRITE_ACCESS,
-)
-from .work import (
-    Query,
-    ResultSummary,
-    SummaryCounters,
-    unit_of_work,
 )
 
 

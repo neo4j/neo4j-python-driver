@@ -1,5 +1,10 @@
 # Neo4j Driver Change Log (breaking/major changes only)
 
+## Version 5.x
+
+* Deprecated importing from `neo4j.work` and its submodules. Everything should be imported directly from `neo4j` instead.
+
+
 ## Version 5.2
 
 - No breaking or major changes.

@@ -37,6 +37,7 @@ from ..._async_compat import async_sleep
 from ..._async_compat.util import AsyncUtil
 from ..._conf import SessionConfig
 from ..._meta import deprecated
+from ..._work import Query
 from ...api import (
     Bookmarks,
     READ_ACCESS,
@@ -50,7 +51,6 @@ from ...exceptions import (
     SessionExpired,
     TransactionError,
 )
-from ...work import Query
 from .result import AsyncResult
 from .transaction import (
     AsyncManagedTransaction,

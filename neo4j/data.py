@@ -38,7 +38,7 @@ __all__ = [
 ]
 
 deprecation_warn(
-    "The module 'neo4j.data' was made internal and will "
+    "The module `neo4j.data` was made internal and will "
     "no longer be available for import in future versions. "
     "`neo4j.data.Record` should be imported directly from `neo4j`.",
     stack_level=2

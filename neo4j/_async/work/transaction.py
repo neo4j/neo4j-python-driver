@@ -23,8 +23,8 @@ import typing as t
 from functools import wraps
 
 from ..._async_compat.util import AsyncUtil
+from ..._work import Query
 from ...exceptions import TransactionError
-from ...work import Query
 from ..io import ConnectionErrorHandler
 from .result import AsyncResult
 

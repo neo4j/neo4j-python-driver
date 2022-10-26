@@ -33,6 +33,7 @@ from ..._data import (
     RecordTableRowExporter,
 )
 from ..._meta import experimental
+from ..._work import ResultSummary
 from ...exceptions import (
     ResultConsumedError,
     ResultNotSingleError,
@@ -41,7 +42,6 @@ from ...time import (
     Date,
     DateTime,
 )
-from ...work import ResultSummary
 from ..io import ConnectionErrorHandler
 
 
