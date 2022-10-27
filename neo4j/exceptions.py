@@ -519,7 +519,7 @@ class AuthConfigurationError(ConfigurationError):
 
 # DriverError > ConfigurationError > CertificateConfigurationError
 class CertificateConfigurationError(ConfigurationError):
-    """ Raised when there is an error with the authentication configuration.
+    """ Raised when there is an error with the certificate configuration.
     """
 
 
