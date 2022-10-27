@@ -516,7 +516,7 @@ class Bolt(abc.ABC):
                 return
             try:
                 self.socket.sendall(data)
-            except OSError as error:
+            except (OSError, socket.timeout, SocketDeadlineExceeded) as error:
                 self._set_defunct_write(error)
             self.outbox.clear()
 
