@@ -477,9 +477,9 @@ class UnpackableBuffer:
         end = self.used + n_bytes
         if end > len(self.data):
             self.data += bytearray(end - len(self.data))
-        view = memoryview(self.data)
-        while self.used < end:
-            n = sock.recv_into(view[self.used:end], end - self.used)
-            if n == 0:
-                raise OSError("No data")
-            self.used += n
+        with memoryview(self.data) as view:
+            while self.used < end:
+                n = sock.recv_into(view[self.used:end], end - self.used)
+                if n == 0:
+                    raise OSError("No data")
+                self.used += n

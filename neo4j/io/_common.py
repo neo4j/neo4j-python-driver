@@ -114,22 +114,21 @@ class Outbox:
         )
         num_chunks = num_full_chunks + bool(chunk_rest)
 
-        data_view = memoryview(self._raw_data)
-        header_start = len(self._chunked_data)
-        data_start = header_start + 2
-        raw_data_start = 0
-        for i in range(num_chunks):
-            chunk_size = min(data_len - raw_data_start,
-                             self._max_chunk_size)
-            self._chunked_data[header_start:data_start] = struct_pack(
-                ">H", chunk_size
-            )
-            self._chunked_data[data_start:(data_start + chunk_size)] = \
-                data_view[raw_data_start:(raw_data_start + chunk_size)]
-            header_start += chunk_size + 2
+        with memoryview(self._raw_data) as data_view:
+            header_start = len(self._chunked_data)
             data_start = header_start + 2
-            raw_data_start += chunk_size
-        del data_view
+            raw_data_start = 0
+            for i in range(num_chunks):
+                chunk_size = min(data_len - raw_data_start,
+                                 self._max_chunk_size)
+                self._chunked_data[header_start:data_start] = struct_pack(
+                    ">H", chunk_size
+                )
+                self._chunked_data[data_start:(data_start + chunk_size)] = \
+                    data_view[raw_data_start:(raw_data_start + chunk_size)]
+                header_start += chunk_size + 2
+                data_start = header_start + 2
+                raw_data_start += chunk_size
         self._raw_data.clear()
 
     def wrap_message(self):
