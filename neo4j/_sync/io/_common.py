@@ -139,7 +139,9 @@ class Outbox:
         if data:
             try:
                 self.socket.sendall(data)
-            except (OSError, asyncio.CancelledError) as error:
+            except (
+                OSError, SocketDeadlineExceeded, asyncio.CancelledError
+            ) as error:
                 Util.callback(self.on_error, error)
                 return False
             self._clear()
