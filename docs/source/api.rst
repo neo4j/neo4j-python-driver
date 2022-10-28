@@ -154,7 +154,7 @@ Closing a driver will immediately shut down all connections in the pool.
     :members: session, query_bookmark_manager, encrypted, close,
               verify_connectivity, get_server_info
 
-    .. method:: execute_query(query, parameters=None,routing=neo4j.RoutingControl.WRITERS, database=None, impersonated_user=None, bookmark_manager=self.query_bookmark_manager, result_transformer=Result.to_eager_result, **kwargs)
+    .. method:: execute_query(query, parameters_=None,routing_=neo4j.RoutingControl.WRITERS, database_=None, impersonated_user_=None, bookmark_manager_=self.query_bookmark_manager, result_transformer_=Result.to_eager_result, **kwargs)
 
         Execute a query in a transaction function and return all results.
 
@@ -171,21 +171,21 @@ Closing a driver will immediately shut down all connections in the pool.
         The method is roughly equivalent to::
 
             def execute_query(
-                query, parameters, routing, database, impersonated_user,
-                bookmark_manager, result_transformer,
+                query_, parameters_, routing_, database_, impersonated_user_,
+                bookmark_manager_, result_transformer_, **kwargs
             ):
                 def work(tx):
-                    result = tx.run(query, parameters)
-                    return some_transformer(result)
+                    result = tx.run(query_, parameters_, **kwargs)
+                    return result_transformer_(result)
 
                 with driver.session(
-                    database=database,
-                    impersonated_user=impersonated_user,
-                    bookmark_manager=bookmark_manager,
+                    database=database_,
+                    impersonated_user=impersonated_user_,
+                    bookmark_manager=bookmark_manager_,
                 ) as session:
-                    if routing == RoutingControl.WRITERS:
+                    if routing_ == RoutingControl.WRITERS:
                         return session.execute_write(work)
-                    elif routing == RoutingControl.READERS:
+                    elif routing_ == RoutingControl.READERS:
                         return session.execute_read(work)
 
         Usage example::
@@ -200,8 +200,8 @@ Closing a driver will immediately shut down all connections in the pool.
                 records, summary, keys = driver.execute_query(
                     "MATCH (p:Person {age: $age}) RETURN p.name",
                     {"age": 42},
-                    routing=neo4j.RoutingControl.READERS,  # or just "r"
-                    database="neo4j",
+                    routing_=neo4j.RoutingControl.READERS,  # or just "r"
+                    database_="neo4j",
                 )
                 assert keys == ["p.name"]  # not needed, just for illustration
                 # log_summary(summary)  # log some metadata
@@ -217,13 +217,14 @@ Closing a driver will immediately shut down all connections in the pool.
             def example(driver: neo4j.Driver) -> int:
                 \"""Call all young people "My dear" and get their count.\"""
                 record = driver.execute_query(
-                    "MATCH (p:Person) WHERE p.age <= 15 "
+                    "MATCH (p:Person) WHERE p.age <= $age "
                     "SET p.nickname = 'My dear' "
                     "RETURN count(*)",
                     # optional routing parameter, as write is default
-                    # routing=neo4j.RoutingControl.WRITERS,  # or just "w",
-                    database="neo4j",
-                    result_transformer=neo4j.Result.single,
+                    # routing_=neo4j.RoutingControl.WRITERS,  # or just "w",
+                    database_="neo4j",
+                    result_transformer_=neo4j.Result.single,
+                    age=15,
                 )
                 assert record is not None  # for typechecking and illustration
                 count = record[0]
