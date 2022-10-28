@@ -43,6 +43,7 @@ from contextlib import contextmanager
 import logging
 from logging import getLogger
 from random import choice
+import socket
 from threading import (
     Condition,
     RLock,
@@ -52,6 +53,7 @@ from time import perf_counter
 from neo4j._exceptions import (
     BoltError,
     BoltHandshakeError,
+    SocketDeadlineExceeded,
 )
 from neo4j._deadline import (
     connection_deadline,
@@ -509,11 +511,12 @@ class Bolt(abc.ABC):
         self.responses.append(response)
 
     def _send_all(self):
-        data = self.outbox.view()
-        if data:
+        with self.outbox.view() as data:
+            if not data:
+                return
             try:
                 self.socket.sendall(data)
-            except OSError as error:
+            except (OSError, socket.timeout, SocketDeadlineExceeded) as error:
                 self._set_defunct_write(error)
             self.outbox.clear()
 
