@@ -18,7 +18,6 @@
 
 import typing as t
 
-
 if t.TYPE_CHECKING:
     import typing_extensions as te
 
