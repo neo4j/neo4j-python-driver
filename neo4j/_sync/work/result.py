@@ -110,10 +110,11 @@ class Result:
         # BEGIN+RUN does not carry any extra on the RUN message.
         # BEGIN {extra}
         # RUN "query" {parameters} {extra}
-        self._run(query, parameters, None, None, None, None)
+        self._run(query, parameters, None, None, None, None, None)
 
     def _run(
-        self, query, parameters, db, imp_user, access_mode, bookmarks
+        self, query, parameters, db, imp_user, access_mode, bookmarks,
+        notification_filters
     ):
         query_text = str(query)  # Query or string object
         query_metadata = getattr(query, "metadata", None)
@@ -150,6 +151,7 @@ class Result:
             timeout=query_timeout,
             db=db,
             imp_user=imp_user,
+            notification_filters=notification_filters,
             dehydration_hooks=self._hydration_scope.dehydration_hooks,
             on_success=on_attached,
             on_failure=on_failed_attach,

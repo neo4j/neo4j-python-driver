@@ -20,6 +20,7 @@ import pytest
 
 from neo4j._conf import PoolConfig
 from neo4j._sync.io._bolt4 import Bolt4x1
+from neo4j.exceptions import ConfigurationError
 
 from ...._async_compat import mark_sync_test
 
@@ -217,7 +218,7 @@ def test_hint_recv_timeout_seconds_gets_ignored(
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt4x1.PACKER_CLS,
                                unpacker_cls=Bolt4x1.UNPACKER_CLS)
-    sockets.client.settimeout = mocker.Mock()
+    sockets.client.settimeout = mocker.MagicMock()
     sockets.server.send_message(b"\x70", {
         "server": "Neo4j/4.1.0",
         "hints": {"connection.recv_timeout_seconds": recv_timeout},
@@ -226,3 +227,29 @@ def test_hint_recv_timeout_seconds_gets_ignored(
                          PoolConfig.max_connection_lifetime)
     connection.hello()
     sockets.client.settimeout.assert_not_called()
+
+
+@pytest.mark.parametrize(("method", "args"), (
+    ("run", ("RETURN 1",)),
+    ("begin", ()),
+))
+def test_does_not_support_notification_filters(fake_socket, method, args):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address, Bolt4x1.UNPACKER_CLS)
+    connection = Bolt4x1(address, socket,
+                              PoolConfig.max_connection_lifetime)
+    method = getattr(connection, method)
+    with pytest.raises(ConfigurationError, match="Notification filters"):
+        method(*args, notification_filters={"*.*"})
+
+
+@mark_sync_test
+def test_hello_does_not_support_notification_filters(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address, Bolt4x1.UNPACKER_CLS)
+    connection = Bolt4x1(
+        address, socket, PoolConfig.max_connection_lifetime,
+        notification_filters={"*.*"}
+    )
+    with pytest.raises(ConfigurationError, match="Notification filters"):
+        connection.hello()

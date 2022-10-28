@@ -529,3 +529,19 @@ async def test_last_bookmarks_do_not_leak_bookmark_managers_bookmarks(
 
         assert last_bookmarks.raw_values == {"session", "bookmarks"}
     assert last_bookmarks.raw_values == {"session", "bookmarks"}
+
+
+@pytest.mark.parametrize("routing", (True, False))
+@mark_async_test
+async def test_run_notification_filters(fake_pool, routing):
+    fake_pool.mock_add_spec(AsyncNeo4jPool if routing else AsyncBoltPool)
+    filters = object()
+    config = SessionConfig()
+    config._notification_filters = filters
+    async with AsyncSession(fake_pool, config) as session:
+        await session.run("RETURN 1")
+        assert len(fake_pool.acquired_connection_mocks) == 1
+        connection_mock = fake_pool.acquired_connection_mocks[0]
+        connection_mock.run.assert_called_once()
+        call_kwargs = connection_mock.run.call_args.kwargs
+        assert call_kwargs["notification_filters"] is filters

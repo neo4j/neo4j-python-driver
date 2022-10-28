@@ -222,6 +222,7 @@ def apply_unasync(files):
         "assert_awaited_once": "assert_called_once",
         "assert_awaited_once_with": "assert_called_once_with",
         "await_count": "call_count",
+        "AsyncMock": "MagicMock",
     }
     additional_testkit_backend_replacements = {}
     rules = [

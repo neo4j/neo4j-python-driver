@@ -173,6 +173,7 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`ssl-context-ref`
 + :ref:`trusted-certificates-ref`
 + :ref:`user-agent-ref`
++ :ref:`driver-notification-filters-ref`
 
 
 .. _connection-acquisition-timeout-ref:
@@ -370,6 +371,25 @@ Specify the client agent name.
 :Default: *The Python Driver will generate a user agent name.*
 
 
+.. _driver-notification-filters-ref:
+
+``notification_filters``
+------------------------
+Set filters for which notifications the server should send to the client.
+
+This can be a single or an iterable of :class:`.NotificationFilter` object(s) or
+equivalent string(s) (see :class:`.NotificationFilter`).
+Alternatively, :const:`None` can be used to indicate
+:attr:`NotificationFilter.DEFAULT`.
+
+:Type: :const:`None`, :class:`.NotificationFilter`, :class:`str`, or iterable of either
+:Default: :const:`None`
+
+.. versionadded:: 5.2
+
+.. seealso:: :class:`.NotificationFilter`, :ref:`session-configuration-ref`
+
+
 
 Driver Object Lifetime
 ======================
@@ -530,6 +550,7 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 + :ref:`default-access-mode-ref`
 + :ref:`fetch-size-ref`
 + :ref:`bookmark-manager-ref`
++ :ref:`session-notification-filters-ref`
 
 
 .. _bookmarks-ref:
@@ -684,6 +705,24 @@ See :class:`.BookmarkManager` for more information.
 **This is experimental.** (See :ref:`filter-warnings-ref`)
 It might be changed or removed any time even without prior notice.
 
+
+.. _session-notification-filters-ref:
+
+``notification_filters``
+------------------------
+Set filters for which notifications the server should send to the client.
+
+This can be a single or an iterable of :class:`.NotificationFilter` object(s) or
+equivalent string(s) (see :class:`.NotificationFilter`).
+Alternatively, :const:`None` can be used fall back to the filters configured on
+the driver (see :ref:`driver-notification-filters-ref`).
+
+:Type: :const:`None`, :class:`.NotificationFilter`, :class:`str`, or iterable of either
+:Default: :const:`None`
+
+.. versionadded:: 5.2
+
+.. seealso:: :class:`.NotificationFilter`, :ref:`driver-configuration-ref`
 
 
 
@@ -976,6 +1015,27 @@ ServerInfo
    :members:
 
 
+SummaryNotification
+===================
+
+.. autoclass:: neo4j.SummaryNotification()
+    :members:
+
+
+NotificationSeverity
+--------------------
+
+.. autoclass:: neo4j.NotificationSeverity()
+    :members:
+
+
+NotificationCategory
+--------------------
+
+.. autoclass:: neo4j.NotificationCategory()
+    :members:
+
+
 
 ***************
 Core Data Types
@@ -1213,6 +1273,15 @@ BookmarkManager
 ***************
 
 .. autoclass:: neo4j.api.BookmarkManager
+    :members:
+
+
+*************************
+Constants, Enums, Helpers
+*************************
+
+.. autoclass:: neo4j.NotificationFilter
+    :show-inheritance:
     :members:
 
 

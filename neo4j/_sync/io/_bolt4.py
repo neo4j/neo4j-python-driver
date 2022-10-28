@@ -96,6 +96,11 @@ class Bolt4x0(Bolt):
         }
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
+        if self.notification_filters is not None:
+            raise ConfigurationError(
+                "Notification filters are not supported by the Bolt Protocol "
+                "{!r}".format(self.PROTOCOL_VERSION)
+            )
         headers = self.get_base_headers()
         headers.update(self.auth_dict)
         logged_headers = dict(headers)
@@ -157,13 +162,19 @@ class Bolt4x0(Bolt):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            dehydration_hooks=None, hydration_hooks=None, **handlers):
+            notification_filters=None, dehydration_hooks=None,
+            hydration_hooks=None, **handlers):
         if imp_user is not None:
             raise ConfigurationError(
                 "Impersonation is not supported in Bolt Protocol {!r}. "
                 "Trying to impersonate {!r}.".format(
                     self.PROTOCOL_VERSION, imp_user
                 )
+            )
+        if notification_filters is not None:
+            raise ConfigurationError(
+                "Notification filters are not supported by the Bolt Protocol "
+                "{!r}".format(self.PROTOCOL_VERSION)
             )
         if not parameters:
             parameters = {}
@@ -216,14 +227,19 @@ class Bolt4x0(Bolt):
                      dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, dehydration_hooks=None,
-              hydration_hooks=None, **handlers):
+              db=None, imp_user=None, notification_filters=None,
+              dehydration_hooks=None, hydration_hooks=None, **handlers):
         if imp_user is not None:
             raise ConfigurationError(
                 "Impersonation is not supported in Bolt Protocol {!r}. "
                 "Trying to impersonate {!r}.".format(
                     self.PROTOCOL_VERSION, imp_user
                 )
+            )
+        if notification_filters is not None:
+            raise ConfigurationError(
+                "Notification filters are not supported by the Bolt Protocol "
+                "{!r}".format(self.PROTOCOL_VERSION)
             )
         extra = {}
         if mode in (READ_ACCESS, "r"):
@@ -416,6 +432,12 @@ class Bolt4x3(Bolt4x2):
         return [metadata.get("rt")]
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
+        if self.notification_filters is not None:
+            raise ConfigurationError(
+                "Notification filters are not supported by the Bolt Protocol "
+                "{!r}".format(self.PROTOCOL_VERSION)
+            )
+
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
@@ -484,7 +506,13 @@ class Bolt4x4(Bolt4x3):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            dehydration_hooks=None, hydration_hooks=None, **handlers):
+            notification_filters=None, dehydration_hooks=None,
+            hydration_hooks=None, **handlers):
+        if notification_filters is not None:
+            raise ConfigurationError(
+                "Notification filters are not supported by the Bolt Protocol "
+                "{!r}".format(self.PROTOCOL_VERSION)
+            )
         if not parameters:
             parameters = {}
         extra = {}
@@ -520,8 +548,13 @@ class Bolt4x4(Bolt4x3):
                      dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, dehydration_hooks=None,
-              hydration_hooks=None, **handlers):
+              db=None, imp_user=None, notification_filters=None,
+              dehydration_hooks=None, hydration_hooks=None, **handlers):
+        if notification_filters is not None:
+            raise ConfigurationError(
+                "Notification filters are not supported by the Bolt Protocol "
+                "{!r}".format(self.PROTOCOL_VERSION)
+            )
         extra = {}
         if mode in (READ_ACCESS, "r"):
             # It will default to mode "w" if nothing is specified

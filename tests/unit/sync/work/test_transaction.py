@@ -38,8 +38,8 @@ from ...._async_compat import mark_sync_test
 def test_transaction_context_when_committing(
     mocker, fake_connection, explicit_commit, close
 ):
-    on_closed = mocker.Mock()
-    on_error = mocker.Mock()
+    on_closed = mocker.MagicMock()
+    on_error = mocker.MagicMock()
     on_cancel = mocker.Mock()
     tx = Transaction(fake_connection, 2, on_closed, on_error,
                           on_cancel)
@@ -70,8 +70,8 @@ def test_transaction_context_when_committing(
 def test_transaction_context_with_explicit_rollback(
     mocker, fake_connection, rollback, close
 ):
-    on_closed = mocker.Mock()
-    on_error = mocker.Mock()
+    on_closed = mocker.MagicMock()
+    on_error = mocker.MagicMock()
     on_cancel = mocker.Mock()
     tx = Transaction(fake_connection, 2, on_closed, on_error,
                           on_cancel)

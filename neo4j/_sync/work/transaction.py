@@ -68,12 +68,14 @@ class TransactionBase:
         self._close()
 
     def _begin(
-        self, database, imp_user, bookmarks, access_mode, metadata, timeout
+        self, database, imp_user, bookmarks, access_mode, metadata, timeout,
+        notification_filters
     ):
         self._database = database
         self._connection.begin(
             bookmarks=bookmarks, metadata=metadata, timeout=timeout,
-            mode=access_mode, db=database, imp_user=imp_user
+            mode=access_mode, db=database, imp_user=imp_user,
+            notification_filters=notification_filters
         )
         self._error_handling_connection.send_all()
         self._error_handling_connection.fetch_all()

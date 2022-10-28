@@ -55,7 +55,7 @@ def fake_connection_generator(session_mocker):
             def close_side_effect():
                 self.closed.return_value = True
 
-            self.attach_mock(mock.Mock(side_effect=close_side_effect),
+            self.attach_mock(mock.MagicMock(side_effect=close_side_effect),
                              "close")
 
             self.socket.attach_mock(

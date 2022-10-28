@@ -285,7 +285,7 @@ async def fetch_and_compare_all_records(
 async def test_result_iteration(method, records):
     connection = AsyncConnectionStub(records=Records(["x"], records))
     result = AsyncResult(connection, 2, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     await fetch_and_compare_all_records(result, "x", records, method)
 
 
@@ -294,7 +294,7 @@ async def test_result_iteration_mixed_methods():
     records = [[i] for i in range(10)]
     connection = AsyncConnectionStub(records=Records(["x"], records))
     result = AsyncResult(connection, 4, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     iter1 = AsyncUtil.iter(result)
     iter2 = AsyncUtil.iter(result)
     assert (await AsyncUtil.next(iter1)).get("x") == records[0][0]
@@ -330,9 +330,9 @@ async def test_parallel_result_iteration(method, invert_fetch):
         records=(Records(["x"], records1), Records(["x"], records2))
     )
     result1 = AsyncResult(connection, 2, noop, noop)
-    await result1._run("CYPHER1", {}, None, None, "r", None)
+    await result1._run("CYPHER1", {}, None, None, "r", None, None)
     result2 = AsyncResult(connection, 2, noop, noop)
-    await result2._run("CYPHER2", {}, None, None, "r", None)
+    await result2._run("CYPHER2", {}, None, None, "r", None, None)
     if invert_fetch:
         await fetch_and_compare_all_records(
             result2, "x", records2, method
@@ -360,9 +360,9 @@ async def test_interwoven_result_iteration(method, invert_fetch):
         records=(Records(["x"], records1), Records(["y"], records2))
     )
     result1 = AsyncResult(connection, 2, noop, noop)
-    await result1._run("CYPHER1", {}, None, None, "r", None)
+    await result1._run("CYPHER1", {}, None, None, "r", None, None)
     result2 = AsyncResult(connection, 2, noop, noop)
-    await result2._run("CYPHER2", {}, None, None, "r", None)
+    await result2._run("CYPHER2", {}, None, None, "r", None, None)
     start = 0
     for n in (1, 2, 3, 1, None):
         end = n if n is None else start + n
@@ -389,7 +389,7 @@ async def test_interwoven_result_iteration(method, invert_fetch):
 async def test_result_peek(records, fetch_size):
     connection = AsyncConnectionStub(records=Records(["x"], records))
     result = AsyncResult(connection, fetch_size, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     for i in range(len(records) + 1):
         record = await result.peek()
         if i == len(records):
@@ -412,7 +412,7 @@ async def test_result_single_non_strict(records, fetch_size, default):
 
     connection = AsyncConnectionStub(records=Records(["x"], records))
     result = AsyncResult(connection, fetch_size, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     if len(records) == 0:
         assert await result.single(**kwargs) is None
     else:
@@ -431,7 +431,7 @@ async def test_result_single_non_strict(records, fetch_size, default):
 async def test_result_single_strict(records, fetch_size):
     connection = AsyncConnectionStub(records=Records(["x"], records))
     result = AsyncResult(connection, fetch_size, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     try:
         record = await result.single(strict=True)
     except ResultNotSingleError as exc:
@@ -458,7 +458,7 @@ async def test_result_single_strict(records, fetch_size):
 async def test_result_single_exhausts_records(records, fetch_size, strict):
     connection = AsyncConnectionStub(records=Records(["x"], records))
     result = AsyncResult(connection, fetch_size, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -480,7 +480,7 @@ async def test_result_single_exhausts_records(records, fetch_size, strict):
 async def test_result_fetch(records, fetch_size, strict):
     connection = AsyncConnectionStub(records=Records(["x"], records))
     result = AsyncResult(connection, fetch_size, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     assert await result.fetch(0) == []
     assert await result.fetch(-1) == []
     assert [[r.get("x")] for r in await result.fetch(2)] == records[:2]
@@ -492,7 +492,7 @@ async def test_result_fetch(records, fetch_size, strict):
 async def test_keys_are_available_before_and_after_stream():
     connection = AsyncConnectionStub(records=Records(["x"], [[1], [2]]))
     result = AsyncResult(connection, 1, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     assert list(result.keys()) == ["x"]
     await AsyncUtil.list(result)
     assert list(result.keys()) == ["x"]
@@ -508,7 +508,7 @@ async def test_consume(records, consume_one, summary_meta, consume_times):
         records=Records(["x"], records), summary_meta=summary_meta
     )
     result = AsyncResult(connection, 1, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     if consume_one:
         try:
             await AsyncUtil.next(AsyncUtil.iter(result))
@@ -543,7 +543,7 @@ async def test_time_in_summary(t_first, t_last):
     )
 
     result = AsyncResult(connection, 1, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     summary = await result.consume()
 
     if t_first is not None:
@@ -565,7 +565,7 @@ async def test_counts_in_summary():
     connection = AsyncConnectionStub(records=Records(["n"], [[1], [2]]))
 
     result = AsyncResult(connection, 1, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     summary = await result.consume()
 
     assert isinstance(summary.counters, SummaryCounters)
@@ -579,7 +579,7 @@ async def test_query_type(query_type):
     )
 
     result = AsyncResult(connection, 1, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     summary = await result.consume()
 
     assert isinstance(summary.query_type, str)
@@ -594,7 +594,7 @@ async def test_data(num_records):
     )
 
     result = AsyncResult(connection, 1, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     await result._buffer_all()
     records = result._record_buffer.copy()
     assert len(records) == num_records
@@ -626,7 +626,7 @@ async def test_data(num_records):
 async def test_result_graph(records):
     connection = AsyncConnectionStub(records=records)
     result = AsyncResult(connection, 1, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     graph = await result.graph()
     assert isinstance(graph, Graph)
     if records.fields == ("n",):
@@ -724,7 +724,7 @@ async def test_result_graph(records):
 async def test_to_df(keys, values, types, instances, test_default_expand):
     connection = AsyncConnectionStub(records=Records(keys, values))
     result = AsyncResult(connection, 1, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     if test_default_expand:
         df = await result.to_df()
     else:
@@ -881,7 +881,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
                             expected_types):
     connection = AsyncConnectionStub(records=Records(keys, values))
     result = AsyncResult(connection, 1, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     df = await result.to_df(expand=True)
 
     assert isinstance(df, pd.DataFrame)
@@ -1080,7 +1080,7 @@ async def test_to_df_expand(keys, values, expected_columns, expected_rows,
 async def test_to_df_parse_dates(keys, values, expected_df, expand):
     connection = AsyncConnectionStub(records=Records(keys, values))
     result = AsyncResult(connection, 1, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     df = await result.to_df(expand=expand, parse_dates=True)
 
     pd.testing.assert_frame_equal(df, expected_df)
@@ -1095,7 +1095,7 @@ async def test_broken_hydration(nested):
     records_in = Records(["foo", "bar"], [["foobar", value_in]])
     connection = AsyncConnectionStub(records=records_in)
     result = AsyncResult(connection, 1, noop, noop)
-    await result._run("CYPHER", {}, None, None, "r", None)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
     records_out = await AsyncUtil.list(result)
     assert len(records_out) == 1
     record_out = records_out[0]

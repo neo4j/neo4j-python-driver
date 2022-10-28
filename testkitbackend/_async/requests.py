@@ -146,6 +146,11 @@ async def NewDriver(backend, data):
             cert_paths = ("/usr/local/share/custom-ca-certificates/" + cert
                           for cert in data["trustedCertificates"])
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
+    if data.get("notificationFilters") is not None:
+        kwargs["notification_filters"] = [
+            neo4j.NotificationFilter[f.replace(".", "_")]
+            for f in data["notificationFilters"]
+        ]
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
     driver = neo4j.AsyncGraphDatabase.driver(
@@ -387,6 +392,11 @@ async def NewSession(backend, data):
     ):
         if data_name in data:
             config[conf_name] = data[data_name]
+    if data.get("notificationFilters") is not None:
+        config["notification_filters"] = [
+            neo4j.NotificationFilter[f.replace(".", "_")]
+            for f in data["notificationFilters"]
+        ]
     if "bookmark_manager" in config:
         with warning_check(
             neo4j.ExperimentalWarning,
@@ -584,8 +594,7 @@ async def ResultList(backend, data):
 async def ResultConsume(backend, data):
     result = backend.results[data["resultId"]]
     summary = await result.consume()
-    from neo4j import ResultSummary
-    assert isinstance(summary, ResultSummary)
+    assert isinstance(summary, neo4j.ResultSummary)
     await backend.send_response("Summary", {
         "serverInfo": {
             "address": ":".join(map(str, summary.server.address)),
@@ -610,7 +619,18 @@ async def ResultConsume(backend, data):
             "systemUpdates": summary.counters.system_updates,
         },
         "database": summary.database,
-        "notifications": summary.notifications,
+        "notifications": [
+            {
+                "title": n.title,
+                "code": n.code,
+                "description": n.description,
+                "severityLevel": n.severity_level.name.replace("_", "."),
+                "category": n.category.name.replace("_", "."),
+                "severity": n.raw_severity_level,
+                "rawCategory": n.raw_category,
+            }
+            for n in summary.summary_notifications
+        ],
         "plan": summary.plan,
         "profile": summary.profile,
         "query": {

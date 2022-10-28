@@ -22,17 +22,24 @@ import ssl
 import typing as t
 
 import pytest
+import typing_extensions as te
 
 from neo4j import (
     BoltDriver,
     ExperimentalWarning,
     GraphDatabase,
     Neo4jDriver,
+    NotificationFilter,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     TrustAll,
     TrustCustomCAs,
     TrustSystemCAs,
+)
+from neo4j._conf import PoolConfig
+from neo4j._sync.io import (
+    BoltPool,
+    Neo4jPool,
 )
 from neo4j.api import (
     BookmarkManager,
@@ -204,6 +211,7 @@ def test_driver_opens_write_session_by_default(uri, fake_pool, mocker):
         mocker.ANY,
         mocker.ANY,
         WRITE_ACCESS,
+        mocker.ANY,
         mocker.ANY,
         mocker.ANY
     )
@@ -415,3 +423,74 @@ def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
             _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
+
+
+_T_NotificationFilter = t.Union[
+    NotificationFilter,
+    te.Literal[
+        "NONE",
+        "DEFAULT",
+        "*.*",
+        "WARNING.*",
+        "WARNING.DEPRECATION",
+        "WARNING.HINT",
+        "WARNING.QUERY",
+        "WARNING.UNSUPPORTED",
+        "INFORMATION.*",
+        "INFORMATION.RUNTIME",
+        "INFORMATION.QUERY",
+        "INFORMATION.PERFORMANCE",
+        "*.QUERY",
+    ]
+]
+
+
+@pytest.mark.parametrize("filters", (
+    None,
+    ...,
+    "NONE",
+    "DEFAULT",
+    "*.*",
+    ["NONE"],
+    ["*.*", "WARNING.*"],
+    NotificationFilter.NONE,
+    NotificationFilter.DEFAULT,
+    NotificationFilter.ALL_ALL,
+    [NotificationFilter.NONE],
+    [NotificationFilter.ALL_ALL, NotificationFilter.WARNING_ALL],
+))
+@pytest.mark.parametrize("uri", [
+    "bolt://localhost:7687",
+    "neo4j://localhost:7687",
+])
+@mark_sync_test
+def test_with_notification_filters(
+    uri: str,
+    mocker,
+    fake_pool,
+    filters: t.Union[None, _T_NotificationFilter,
+                     t.Iterable[_T_NotificationFilter]]
+) -> None:
+    pool_cls = Neo4jPool if uri.startswith("neo4j://") else BoltPool
+    open_mock = mocker.patch.object(
+        pool_cls, "open",
+        return_value=mocker.MagicMock(spec=pool_cls)
+    )
+    if pool_cls is BoltPool:
+        open_mock.return_value.address = mocker.Mock()
+    mocker.patch.object(BoltPool, "open", new=open_mock)
+
+    if filters is ...:
+        driver = GraphDatabase.driver(uri, auth=None)
+    else:
+        driver = GraphDatabase.driver(uri, auth=None,
+                                           notification_filters=filters)
+    with driver:
+        if filters is ...:
+            expected_conf = PoolConfig()
+        else:
+            expected_conf = PoolConfig(notification_filters=filters)
+        open_mock.assert_called_once()
+        open_pool_conf = open_mock.call_args.kwargs["pool_config"]
+        assert (open_pool_conf.notification_filters
+                == expected_conf.notification_filters)

@@ -18,6 +18,11 @@
 
 from logging import getLogger as _getLogger
 
+from ._api import (
+    NotificationCategory,
+    NotificationFilter,
+    NotificationSeverity,
+)
 from ._async.driver import (
     AsyncBoltDriver,
     AsyncDriver,
@@ -61,6 +66,7 @@ from ._work import (
     Query,
     ResultSummary,
     SummaryCounters,
+    SummaryNotification,
     unit_of_work,
 )
 from .addressing import (
@@ -121,6 +127,9 @@ __all__ = [
     "log",
     "ManagedTransaction",
     "Neo4jDriver",
+    "NotificationCategory",
+    "NotificationFilter",
+    "NotificationSeverity",
     "PoolConfig",
     "Query",
     "READ_ACCESS",
@@ -131,6 +140,7 @@ __all__ = [
     "Session",
     "SessionConfig",
     "SummaryCounters",
+    "SummaryNotification",
     "Transaction",
     "TRUST_ALL_CERTIFICATES",
     "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",

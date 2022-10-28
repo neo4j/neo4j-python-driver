@@ -19,11 +19,16 @@
 from __future__ import annotations
 
 import typing as t
+from dataclasses import dataclass
 
 
 if t.TYPE_CHECKING:
     import typing_extensions as te
 
+from .._api import (
+    NotificationCategory,
+    NotificationSeverity,
+)
 from .._exceptions import BoltProtocolError
 from ..addressing import Address
 from ..api import ServerInfo
@@ -78,7 +83,12 @@ class ResultSummary:
     #: They can be warnings about problematic queries or other valuable information that can be
     #: presented in a client.
     #: Unlike failures or errors, notifications do not affect the execution of a statement.
+    #:
+    #: .. seealso:: :attr:`.summary_notifications`
     notifications: t.Optional[t.List[dict]]
+
+    #: The same as ``notifications`` but in a parsed, structured form.
+    _summary_notifications: t.List[SummaryNotification]
 
     def __init__(self, address: Address, **metadata: t.Any) -> None:
         self.metadata = metadata
@@ -104,6 +114,21 @@ class ResultSummary:
         else:
             self.result_available_after = metadata.get("t_first")
             self.result_consumed_after = metadata.get("t_last")
+
+    @property
+    def summary_notifications(self) -> t.List[SummaryNotification]:
+        """The same as ``notifications`` but in a parsed, structured form.
+
+        .. versionadded:: 5.2
+
+        .. seealso:: :attr:`.notifications`
+        """
+        if getattr(self, "_summary_notifications", None) is None:
+            self._summary_notifications = [
+                SummaryNotification._from_metadata(n)
+                for n in self.notifications or ()
+            ]
+        return self._summary_notifications
 
 
 class SummaryCounters:
@@ -195,3 +220,59 @@ class SummaryCounters:
         if self._contains_system_updates is not None:
             return self._contains_system_updates
         return self.system_updates > 0
+
+
+_SEVERITY_LOOKUP = {
+   "WARNING": NotificationSeverity.WARNING,
+   "INFORMATION": NotificationSeverity.INFORMATION,
+}
+
+_CATEGORY_LOOKUP = {
+    "HINT": NotificationCategory.HINT,
+    "QUERY": NotificationCategory.QUERY,
+    "UNSUPPORTED": NotificationCategory.UNSUPPORTED,
+    "PERFORMANCE": NotificationCategory.PERFORMANCE,
+    "DEPRECATION": NotificationCategory.DEPRECATION,
+    "RUNTIME": NotificationCategory.RUNTIME,
+}
+
+
+@dataclass
+class SummaryNotification:
+    """Structured form of a notification received from the server.
+
+    .. versionadded:: 5.2
+
+    .. seealso:: :attr:`.ResultSummary.summary_notifications`
+    """
+
+    title: str = ""
+    code: str = ""
+    description: str = ""
+    severity_level: NotificationSeverity = NotificationSeverity.UNKNOWN
+    category: NotificationCategory = NotificationCategory.UNKNOWN
+    raw_severity_level: str = ""
+    raw_category: str = ""
+
+    @classmethod
+    def _from_metadata(cls, metadata):
+        if not isinstance(metadata, dict):
+            return SummaryNotification()
+        kwargs = {}
+        for key in ("title", "code", "description"):
+            value = metadata.get(key)
+            if isinstance(value, str):
+                kwargs[key] = value
+        severity = metadata.get("severity")
+        if isinstance(severity, str):
+            kwargs["raw_severity_level"] = severity
+            kwargs["severity_level"] = _SEVERITY_LOOKUP.get(
+                severity, NotificationSeverity.UNKNOWN
+            )
+        category = metadata.get("category")
+        if isinstance(category, str):
+            kwargs["raw_category"] = category
+            kwargs["category"] = _CATEGORY_LOOKUP.get(
+                category, NotificationCategory.UNKNOWN
+            )
+        return SummaryNotification(**kwargs)

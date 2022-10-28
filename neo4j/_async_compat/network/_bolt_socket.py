@@ -439,6 +439,12 @@ class BoltSocket:
         self.gettimeout = socket_.gettimeout
         self.settimeout = socket_.settimeout
 
+    getsockname: t.Callable = None  # type: ignore
+    getpeername: t.Callable = None  # type: ignore
+    getpeercert: t.Callable = None  # type: ignore
+    gettimeout: t.Callable = None  # type: ignore
+    settimeout: t.Callable = None  # type: ignore
+
     def _wait_for_io(self, func, *args, **kwargs):
         if self._deadline is None:
             return func(*args, **kwargs)

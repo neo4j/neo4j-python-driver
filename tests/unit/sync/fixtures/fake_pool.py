@@ -28,7 +28,7 @@ __all__ = [
 
 @pytest.fixture
 def fake_pool(fake_connection_generator, mocker):
-    pool = mocker.Mock(spec=IOPool)
+    pool = mocker.MagicMock(spec=IOPool)
     assert not hasattr(pool, "acquired_connection_mocks")
     pool.buffered_connection_mocks = []
     pool.acquired_connection_mocks = []

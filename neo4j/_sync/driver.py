@@ -22,9 +22,10 @@ import typing as t
 
 
 if t.TYPE_CHECKING:
+    import ssl
     import typing_extensions as te
 
-    import ssl
+    from .._api import T_NotificationFilter
 
 from .._async_compat.util import Util
 from .._conf import (
@@ -99,6 +100,9 @@ class GraphDatabase:
             ssl_context: ssl.SSLContext = ...,
             user_agent: str = ...,
             keep_alive: bool = ...,
+            notification_filters: t.Union[
+                None, T_NotificationFilter, t.Iterable[T_NotificationFilter]
+            ] = ...,
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
@@ -419,6 +423,7 @@ class Driver:
 
         def session(
             self,
+            *,
             connection_acquisition_timeout: float = ...,
             max_transaction_retry_time: float = ...,
             database: t.Optional[str] = ...,
@@ -428,6 +433,9 @@ class Driver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[BookmarkManager,
                                       BookmarkManager, None] = ...,
+            notification_filters: t.Union[
+                None, T_NotificationFilter, t.Iterable[T_NotificationFilter]
+            ] = ...,
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
@@ -460,6 +468,7 @@ class Driver:
 
         def verify_connectivity(
             self,
+            *,
             # all arguments are experimental
             # they may be change or removed any time without prior notice
             session_connection_timeout: float = ...,
@@ -472,6 +481,7 @@ class Driver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[BookmarkManager,
                                       BookmarkManager, None] = ...,
+            notification_filters: t.Optional[T_NotificationFilter] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
@@ -524,6 +534,7 @@ class Driver:
 
         def get_server_info(
             self,
+            *,
             # all arguments are experimental
             # they may be change or removed any time without prior notice
             session_connection_timeout: float = ...,
@@ -536,6 +547,7 @@ class Driver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[BookmarkManager,
                                       BookmarkManager, None] = ...,
+            notification_filters: t.Optional[T_NotificationFilter] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,

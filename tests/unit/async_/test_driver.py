@@ -22,18 +22,25 @@ import ssl
 import typing as t
 
 import pytest
+import typing_extensions as te
 
 from neo4j import (
     AsyncBoltDriver,
     AsyncGraphDatabase,
     AsyncNeo4jDriver,
     ExperimentalWarning,
+    NotificationFilter,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     TrustAll,
     TrustCustomCAs,
     TrustSystemCAs,
 )
+from neo4j._async.io import (
+    AsyncBoltPool,
+    AsyncNeo4jPool,
+)
+from neo4j._conf import PoolConfig
 from neo4j.api import (
     AsyncBookmarkManager,
     BookmarkManager,
@@ -205,6 +212,7 @@ async def test_driver_opens_write_session_by_default(uri, fake_pool, mocker):
         mocker.ANY,
         mocker.ANY,
         WRITE_ACCESS,
+        mocker.ANY,
         mocker.ANY,
         mocker.ANY
     )
@@ -416,3 +424,74 @@ async def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
             _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
+
+
+_T_NotificationFilter = t.Union[
+    NotificationFilter,
+    te.Literal[
+        "NONE",
+        "DEFAULT",
+        "*.*",
+        "WARNING.*",
+        "WARNING.DEPRECATION",
+        "WARNING.HINT",
+        "WARNING.QUERY",
+        "WARNING.UNSUPPORTED",
+        "INFORMATION.*",
+        "INFORMATION.RUNTIME",
+        "INFORMATION.QUERY",
+        "INFORMATION.PERFORMANCE",
+        "*.QUERY",
+    ]
+]
+
+
+@pytest.mark.parametrize("filters", (
+    None,
+    ...,
+    "NONE",
+    "DEFAULT",
+    "*.*",
+    ["NONE"],
+    ["*.*", "WARNING.*"],
+    NotificationFilter.NONE,
+    NotificationFilter.DEFAULT,
+    NotificationFilter.ALL_ALL,
+    [NotificationFilter.NONE],
+    [NotificationFilter.ALL_ALL, NotificationFilter.WARNING_ALL],
+))
+@pytest.mark.parametrize("uri", [
+    "bolt://localhost:7687",
+    "neo4j://localhost:7687",
+])
+@mark_async_test
+async def test_with_notification_filters(
+    uri: str,
+    mocker,
+    fake_pool,
+    filters: t.Union[None, _T_NotificationFilter,
+                     t.Iterable[_T_NotificationFilter]]
+) -> None:
+    pool_cls = AsyncNeo4jPool if uri.startswith("neo4j://") else AsyncBoltPool
+    open_mock = mocker.patch.object(
+        pool_cls, "open",
+        return_value=mocker.AsyncMock(spec=pool_cls)
+    )
+    if pool_cls is AsyncBoltPool:
+        open_mock.return_value.address = mocker.Mock()
+    mocker.patch.object(AsyncBoltPool, "open", new=open_mock)
+
+    if filters is ...:
+        driver = AsyncGraphDatabase.driver(uri, auth=None)
+    else:
+        driver = AsyncGraphDatabase.driver(uri, auth=None,
+                                           notification_filters=filters)
+    async with driver:
+        if filters is ...:
+            expected_conf = PoolConfig()
+        else:
+            expected_conf = PoolConfig(notification_filters=filters)
+        open_mock.assert_called_once()
+        open_pool_conf = open_mock.call_args.kwargs["pool_config"]
+        assert (open_pool_conf.notification_filters
+                == expected_conf.notification_filters)

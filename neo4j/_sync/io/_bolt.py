@@ -103,7 +103,8 @@ class Bolt:
     most_recent_qid = None
 
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *,
-                 auth=None, user_agent=None, routing_context=None):
+                 auth=None, user_agent=None, routing_context=None,
+                 notification_filters=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
         self.local_port = self.socket.getsockname()[1]
@@ -156,6 +157,8 @@ class Bolt:
             if credentials is None:
                 raise AuthError("Password cannot be None")
 
+        self.notification_filters = notification_filters
+
     def __del__(self):
         if not asyncio.iscoroutinefunction(self.close):
             self.close()
@@ -177,6 +180,7 @@ class Bolt:
         """
         pass
 
+    # [bolt-version-bump] search tag for changing bolt version support
     @classmethod
     def protocol_handlers(cls, protocol_version=None):
         """ Return a dictionary of available Bolt protocol handlers,
@@ -200,7 +204,10 @@ class Bolt:
             Bolt4x3,
             Bolt4x4,
         )
-        from ._bolt5 import Bolt5x0
+        from ._bolt5 import (
+            Bolt5x0,
+            Bolt5x1,
+        )
 
         handlers = {
             Bolt3.PROTOCOL_VERSION: Bolt3,
@@ -210,6 +217,7 @@ class Bolt:
             Bolt4x3.PROTOCOL_VERSION: Bolt4x3,
             Bolt4x4.PROTOCOL_VERSION: Bolt4x4,
             Bolt5x0.PROTOCOL_VERSION: Bolt5x0,
+            Bolt5x1.PROTOCOL_VERSION: Bolt5x1,
         }
 
         if protocol_version is None:
@@ -280,6 +288,7 @@ class Bolt:
             BoltSocket.close_socket(s)
             return protocol_version
 
+    # [bolt-version-bump] search tag for changing bolt version support
     @classmethod
     def open(
         cls, address, *, auth=None, timeout=None, routing_context=None,
@@ -315,7 +324,7 @@ class Bolt:
         elif timeout is not None:
             socket_connection_timeout = min(pool_config.connection_timeout,
                                             time_remaining())
-        s, pool_config.protocol_version, handshake, data = \
+        s, protocol_version, handshake, data = \
             BoltSocket.connect(
                 address,
                 timeout=socket_connection_timeout,
@@ -324,47 +333,53 @@ class Bolt:
                 keep_alive=pool_config.keep_alive,
             )
 
+        pool_config.protocol_version = protocol_version
+
         # Carry out Bolt subclass imports locally to avoid circular dependency
         # issues.
-        if pool_config.protocol_version == (3, 0):
-            from ._bolt3 import Bolt3
-            bolt_cls = Bolt3
+        if protocol_version == (5, 1):
+            from ._bolt5 import Bolt5x1
+            bolt_cls = Bolt5x1
+        elif protocol_version == (5, 0):
+            from ._bolt5 import Bolt5x0
+            bolt_cls = Bolt5x0
+        elif protocol_version == (4, 4):
+            from ._bolt4 import Bolt4x4
+            bolt_cls = Bolt4x4
+        elif protocol_version == (4, 3):
+            from ._bolt4 import Bolt4x3
+            bolt_cls = Bolt4x3
+        elif protocol_version == (4, 2):
+            from ._bolt4 import Bolt4x2
+            bolt_cls = Bolt4x2
+        elif protocol_version == (4, 1):
+            from ._bolt4 import Bolt4x1
+            bolt_cls = Bolt4x1
         # Implementation for 4.0 exists, but there was no space left in the
         # handshake to offer this version to the server. Hence, the server
         # should never request us to speak bolt 4.0.
-        # elif pool_config.protocol_version == (4, 0):
+        # elif protocol_version == (4, 0):
         #     from ._bolt4 import AsyncBolt4x0
         #     bolt_cls = AsyncBolt4x0
-        elif pool_config.protocol_version == (4, 1):
-            from ._bolt4 import Bolt4x1
-            bolt_cls = Bolt4x1
-        elif pool_config.protocol_version == (4, 2):
-            from ._bolt4 import Bolt4x2
-            bolt_cls = Bolt4x2
-        elif pool_config.protocol_version == (4, 3):
-            from ._bolt4 import Bolt4x3
-            bolt_cls = Bolt4x3
-        elif pool_config.protocol_version == (4, 4):
-            from ._bolt4 import Bolt4x4
-            bolt_cls = Bolt4x4
-        elif pool_config.protocol_version == (5, 0):
-            from ._bolt5 import Bolt5x0
-            bolt_cls = Bolt5x0
+        elif protocol_version == (3, 0):
+            from ._bolt3 import Bolt3
+            bolt_cls = Bolt3
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getsockname()[1])
             BoltSocket.close_socket(s)
 
             supported_versions = cls.protocol_handlers().keys()
             raise BoltHandshakeError(
-                "The Neo4J server does not support communication with this "
+                "The neo4j server does not support communication with this "
                 "driver. This driver has support for Bolt protocols "
-                "{}".format(tuple(map(str, supported_versions))),
+                "{}.".format(tuple(map(str, supported_versions))),
                 address=address, request_data=handshake, response_data=data
             )
 
         connection = bolt_cls(
             address, s, pool_config.max_connection_lifetime, auth=auth,
-            user_agent=pool_config.user_agent, routing_context=routing_context
+            user_agent=pool_config.user_agent, routing_context=routing_context,
+            notification_filters=pool_config.notification_filters,
         )
 
         try:
@@ -398,6 +413,15 @@ class Bolt:
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
         """ Appends a HELLO message to the outgoing queue, sends it and consumes
          all remaining messages.
+
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
         """
         pass
 
@@ -432,8 +456,8 @@ class Bolt:
     @abc.abstractmethod
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            dehydration_hooks=None, hydration_hooks=None,
-            **handlers):
+            notification_filters=None, dehydration_hooks=None,
+            hydration_hooks=None, **handlers):
         """ Appends a RUN message to the output queue.
 
         :param query: Cypher query string
@@ -446,6 +470,8 @@ class Bolt:
             Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
             Requires Bolt 4.4+.
+        :param notification_filters: set of `api.NotificationFilter` instances.
+            Requires Bolt 5.1+.
         :param dehydration_hooks:
             Hooks to dehydrate types (dict from type (class) to dehydration
             function). Dehydration functions receive the value and returns an
@@ -498,8 +524,8 @@ class Bolt:
 
     @abc.abstractmethod
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, dehydration_hooks=None,
-              hydration_hooks=None, **handlers):
+              db=None, imp_user=None, notification_filters=None,
+              dehydration_hooks=None, hydration_hooks=None, **handlers):
         """ Appends a BEGIN message to the output queue.
 
         :param mode: access mode for routing - "READ" or "WRITE" (default)
@@ -510,6 +536,8 @@ class Bolt:
             Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
             Requires Bolt 4.4+
+        :param notification_filters: set of `api.NotificationFilter` instances.
+            Requires Bolt 5.1+.
         :param dehydration_hooks:
             Hooks to dehydrate types (dict from type (class) to dehydration
             function). Dehydration functions receive the value and returns an

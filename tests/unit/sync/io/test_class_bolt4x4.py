@@ -22,6 +22,7 @@ import pytest
 
 from neo4j._conf import PoolConfig
 from neo4j._sync.io._bolt4 import Bolt4x4
+from neo4j.exceptions import ConfigurationError
 
 from ...._async_compat import mark_sync_test
 
@@ -269,3 +270,29 @@ def test_hint_recv_timeout_seconds(
                    and "recv_timeout_seconds" in msg
                    and "invalid" in msg
                    for msg in caplog.messages)
+
+
+@pytest.mark.parametrize(("method", "args"), (
+    ("run", ("RETURN 1",)),
+    ("begin", ()),
+))
+def test_does_not_support_notification_filters(fake_socket, method, args):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
+    connection = Bolt4x4(address, socket,
+                              PoolConfig.max_connection_lifetime)
+    method = getattr(connection, method)
+    with pytest.raises(ConfigurationError, match="Notification filters"):
+        method(*args, notification_filters={"*.*"})
+
+
+@mark_sync_test
+def test_hello_does_not_support_notification_filters(fake_socket):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
+    connection = Bolt4x4(
+        address, socket, PoolConfig.max_connection_lifetime,
+        notification_filters={"*.*"}
+    )
+    with pytest.raises(ConfigurationError, match="Notification filters"):
+        connection.hello()

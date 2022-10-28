@@ -77,7 +77,7 @@ def test_return_get_bookmarks_from_bookmarks_supplier(
         "db3": ["db3:bm1", "db3:bm2"],
         "db4": ["db4:bm4"]
     }
-    mock_cls = mocker.Mock if supplier_async else mocker.Mock
+    mock_cls = mocker.MagicMock if supplier_async else mocker.Mock
     supplier = mock_cls(
         return_value=Bookmarks.from_raw_values(extra_bookmarks)
     )
@@ -130,7 +130,7 @@ def test_return_enriched_bookmarks_list_with_supplied_bookmarks(
         "db4": ["db4:bm4"],
     }
     extra_bookmarks = ["foo:bm1", "bar:bm2", "db3:bm1", "foo:bm1"]
-    mock_cls = mocker.Mock if supplier_async else mocker.Mock
+    mock_cls = mocker.MagicMock if supplier_async else mocker.Mock
     supplier = mock_cls(
         return_value=Bookmarks.from_raw_values(extra_bookmarks)
     )
@@ -205,7 +205,7 @@ def test_notify_on_new_bookmarks(
         "db1": ["db1:bm1", "db1:bm1", "db1:bm2"],
         "db2": ["db2:bm1"],
     }
-    mock_cls = mocker.Mock if consumer_async else mocker.Mock
+    mock_cls = mocker.MagicMock if consumer_async else mocker.Mock
     consumer = mock_cls()
     bmm = bookmark_manager(
         initial_bookmarks=(initial_bookmarks
@@ -243,7 +243,7 @@ def test_does_not_notify_on_empty_new_bookmark_set(
     initial_bookmarks: t.Dict[str, t.List[str]] = {
         "db1": ["db1:bm1", "db1:bm2"]
     }
-    mock_cls = mocker.Mock if consumer_async else mocker.Mock
+    mock_cls = mocker.MagicMock if consumer_async else mocker.Mock
     consumer = mock_cls()
     bmm = bookmark_manager(
         initial_bookmarks=(initial_bookmarks

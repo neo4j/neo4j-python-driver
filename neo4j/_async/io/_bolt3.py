@@ -138,6 +138,11 @@ class AsyncBolt3(AsyncBolt):
         }
 
     async def hello(self, dehydration_hooks=None, hydration_hooks=None):
+        if self.notification_filters is not None:
+            raise ConfigurationError(
+                "Notification filters are not supported by the Bolt Protocol "
+                "{!r}".format(self.PROTOCOL_VERSION)
+            )
         headers = self.get_base_headers()
         headers.update(self.auth_dict)
         logged_headers = dict(headers)
@@ -195,7 +200,8 @@ class AsyncBolt3(AsyncBolt):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            dehydration_hooks=None, hydration_hooks=None, **handlers):
+            notification_filters=None, dehydration_hooks=None,
+            hydration_hooks=None, **handlers):
         if db is not None:
             raise ConfigurationError(
                 "Database name parameter for selecting database is not "
@@ -209,6 +215,11 @@ class AsyncBolt3(AsyncBolt):
                 "Trying to impersonate {!r}.".format(
                     self.PROTOCOL_VERSION, imp_user
                 )
+            )
+        if notification_filters is not None:
+            raise ConfigurationError(
+                "Notification filters are not supported by the Bolt Protocol "
+                "{!r}".format(self.PROTOCOL_VERSION)
             )
         if not parameters:
             parameters = {}
@@ -255,8 +266,8 @@ class AsyncBolt3(AsyncBolt):
                      dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, dehydration_hooks=None,
-              hydration_hooks=None, **handlers):
+              db=None, imp_user=None, notification_filters=None,
+              dehydration_hooks=None, hydration_hooks=None, **handlers):
         if db is not None:
             raise ConfigurationError(
                 "Database name parameter for selecting database is not "
@@ -270,6 +281,11 @@ class AsyncBolt3(AsyncBolt):
                 "Trying to impersonate {!r}.".format(
                     self.PROTOCOL_VERSION, imp_user
                 )
+            )
+        if notification_filters is not None:
+            raise ConfigurationError(
+                "Notification filters are not supported by the Bolt Protocol "
+                "{!r}".format(self.PROTOCOL_VERSION)
             )
         extra = {}
         if mode in (READ_ACCESS, "r"):
