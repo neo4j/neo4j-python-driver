@@ -657,7 +657,7 @@ class Result:
             :const:`dict` keys and variable names that contain ``.``  or ``\``
             will be escaped with a backslash (``\.`` and ``\\`` respectively).
         :param parse_dates:
-            If :const:`True`, columns that excluvively contain
+            If :const:`True`, columns that exclusively contain
             :class:`time.DateTime` objects, :class:`time.Date` objects, or
             :const:`None`, will be converted to :class:`pandas.Timestamp`.
 
