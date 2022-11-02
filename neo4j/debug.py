@@ -65,9 +65,9 @@ class TaskIdFilter(Filter):
 
     def filter(self, record):
         try:
-            record.taskId = id(asyncio.current_task())
+            record.task = id(asyncio.current_task())
         except RuntimeError:
-            record.taskId = None
+            record.task = None
         return True
 
 
@@ -133,7 +133,7 @@ class Watcher:
 
         format_ = "%(asctime)s  %(message)s"
         if task_info:
-            format_ = "[Task %(taskId)-15s] " + format_
+            format_ = "[Task %(task)-15s] " + format_
         if thread_info:
             format_ = "[Thread %(thread)d] " + format_
         if not colour:
