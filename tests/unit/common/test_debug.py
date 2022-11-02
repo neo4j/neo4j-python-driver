@@ -48,7 +48,7 @@ def logger_mocker(mocker) -> _TSetupMockProtocol:
         loggers = [logging.getLogger(name) for name in logger_names]
         for logger in loggers:
             logger.addHandler = mocker.Mock()
-            logger.addFilter = mocker.Mock()
+            logger.addFilter = mocker.Mock(side_effect=logger.addFilter)
             logger.removeHandler = mocker.Mock()
             logger.setLevel = mocker.Mock()
         return loggers
@@ -231,6 +231,7 @@ def test_watcher_task_injection(
     if task:
         (filter_,), _ = logger.addFilter.call_args
         assert isinstance(filter_, logging.Filter)
+        filter_.filter(record_mock)
         assert record_mock.task is None
     else:
         logger.addFilter.assert_not_called()
