@@ -21,7 +21,6 @@ import ssl
 import pytest
 
 from neo4j import (
-    ExperimentalWarning,
     TrustAll,
     TrustCustomCAs,
     TrustSystemCAs,
@@ -186,14 +185,6 @@ def test_pool_config_deprecated_and_new_trust_config(value_trust,
                             "trusted_certificates": trusted_certificates})
 
 
-@pytest.mark.parametrize("config_cls", (WorkspaceConfig, SessionConfig))
-def test_bookmark_manager_is_experimental(config_cls):
-    bmm = object()
-    with pytest.warns(ExperimentalWarning, match="bookmark_manager"):
-        config = config_cls.consume({"bookmark_manager": bmm})
-    assert config.bookmark_manager is bmm
-
-
 def test_config_consume_chain():
 
     test_config = {}
@@ -202,10 +193,9 @@ def test_config_consume_chain():
 
     test_config.update(test_session_config)
 
-    with pytest.warns(ExperimentalWarning, match="bookmark_manager"):
-        consumed_pool_config, consumed_session_config = Config.consume_chain(
-            test_config, PoolConfig, SessionConfig
-        )
+    consumed_pool_config, consumed_session_config = Config.consume_chain(
+        test_config, PoolConfig, SessionConfig
+    )
 
     assert isinstance(consumed_pool_config, PoolConfig)
     assert isinstance(consumed_session_config, SessionConfig)

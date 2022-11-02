@@ -38,8 +38,7 @@ consumer_async_options = supplier_async_options
 
 @copy_signature(neo4j.GraphDatabase.bookmark_manager)
 def bookmark_manager(*args, **kwargs):
-    with pytest.warns(neo4j.ExperimentalWarning, match="bookmark manager"):
-        return neo4j.GraphDatabase.bookmark_manager(*args, **kwargs)
+    return neo4j.GraphDatabase.bookmark_manager(*args, **kwargs)
 
 
 @pytest.mark.parametrize("db", ("foobar", "system"))

@@ -283,16 +283,14 @@ def test_get_server_info_parameters_are_experimental(
 
 @mark_sync_test
 def test_with_builtin_bookmark_manager(mocker) -> None:
-    with pytest.warns(ExperimentalWarning, match="bookmark manager"):
-        bmm = GraphDatabase.bookmark_manager()
+    bmm = GraphDatabase.bookmark_manager()
     # could be one line, but want to make sure the type checker assigns
     # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
     session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
                                     autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
-        with pytest.warns(ExperimentalWarning, match="bookmark_manager"):
-            _ = driver.session(bookmark_manager=bmm)
+        _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
 
@@ -322,8 +320,7 @@ def test_with_custom_inherited_async_bookmark_manager(mocker) -> None:
                                     autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
-        with pytest.warns(ExperimentalWarning, match="bookmark_manager"):
-            _ = driver.session(bookmark_manager=bmm)
+        _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
 
@@ -353,8 +350,7 @@ def test_with_custom_inherited_sync_bookmark_manager(mocker) -> None:
                                     autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
-        with pytest.warns(ExperimentalWarning, match="bookmark_manager"):
-            _ = driver.session(bookmark_manager=bmm)
+        _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
 
@@ -384,8 +380,7 @@ def test_with_custom_ducktype_async_bookmark_manager(mocker) -> None:
                                     autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
-        with pytest.warns(ExperimentalWarning, match="bookmark_manager"):
-            _ = driver.session(bookmark_manager=bmm)
+        _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
 
@@ -415,8 +410,7 @@ def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
                                     autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
-        with pytest.warns(ExperimentalWarning, match="bookmark_manager"):
-            _ = driver.session(bookmark_manager=bmm)
+        _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
 

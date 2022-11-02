@@ -35,7 +35,6 @@ from .._meta import (
     deprecation_warn,
     experimental,
     experimental_warn,
-    ExperimentalWarning,
     unclosed_resource_warn,
 )
 from .._work import EagerResult
@@ -233,10 +232,6 @@ class GraphDatabase:
                                     routing_context=routing_context, **config)
 
     @classmethod
-    @experimental(
-        "The bookmark manager feature is experimental. "
-        "It might be changed or removed any time even without prior notice."
-    )
     def bookmark_manager(
         cls,
         initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
@@ -298,9 +293,6 @@ class GraphDatabase:
             and the new set of bookmarks.
 
         :returns: A default implementation of :class:`BookmarkManager`.
-
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
-        It might be changed or removed any time even without prior notice.
 
         .. versionadded:: 5.0
         """
@@ -410,12 +402,7 @@ class Driver:
         assert default_workspace_config is not None
         self._pool = pool
         self._default_workspace_config = default_workspace_config
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore",
-                                    message=r".*\bbookmark manager\b.*",
-                                    category=ExperimentalWarning)
-            self._query_bookmark_manager = \
-                GraphDatabase.bookmark_manager()
+        self._query_bookmark_manager = GraphDatabase.bookmark_manager()
 
     def __enter__(self) -> Driver:
         return self
@@ -708,13 +695,9 @@ class Driver:
             bookmark_manager_ = self._query_bookmark_manager
         assert bookmark_manager_ is not _default
 
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore",
-                                    message=r".*\bbookmark_manager\b.*",
-                                    category=ExperimentalWarning)
-            session = self.session(database=database_,
-                                   impersonated_user=impersonated_user_,
-                                   bookmark_manager=bookmark_manager_)
+        session = self.session(database=database_,
+                               impersonated_user=impersonated_user_,
+                               bookmark_manager=bookmark_manager_)
         with session:
             if routing_ == RoutingControl.WRITERS:
                 executor = session.execute_write
