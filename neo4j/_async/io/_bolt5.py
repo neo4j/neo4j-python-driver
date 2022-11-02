@@ -66,7 +66,7 @@ class AsyncBolt5x0(AsyncBolt):
         )
 
     def _on_server_state_change(self, old_state, new_state):
-        log.debug("[#%04X]  State: %s > %s", self.local_port,
+        log.debug("[#%04X]  _: <CONNECTION> state: %s > %s", self.local_port,
                   old_state.name, new_state.name)
 
     @property
@@ -104,7 +104,8 @@ class AsyncBolt5x0(AsyncBolt):
                 if isinstance(recv_timeout, int) and recv_timeout > 0:
                     self.socket.settimeout(recv_timeout)
                 else:
-                    log.info("[#%04X]  Server supplied an invalid value for "
+                    log.info("[#%04X]  _: <CONNECTION> Server supplied an "
+                             "invalid value for "
                              "connection.recv_timeout_seconds (%r). Make sure "
                              "the server and network is set up correctly.",
                              self.local_port, recv_timeout)

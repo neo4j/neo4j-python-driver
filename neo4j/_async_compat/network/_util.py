@@ -72,21 +72,27 @@ class AsyncNetworkUtil:
             yield address
             return
 
-        log.debug("[#0000]  C: <RESOLVE> %s", address)
+        log.debug("[#0000]  _: <RESOLVE> in: %s", address)
         if resolver:
             if asyncio.iscoroutinefunction(resolver):
                 resolved_addresses = await resolver(address)
             else:
                 resolved_addresses = resolver(address)
             for address in map(addressing.Address, resolved_addresses):
+                log.debug("[#0000]  _: <RESOLVE> custom resolver out: %s",
+                          address)
                 for resolved_address in await AsyncNetworkUtil._dns_resolver(
                     address, family=family
                 ):
+                    log.debug("[#0000]  _: <RESOLVE> dns resolver out: %s",
+                              resolved_address)
                     yield resolved_address
         else:
             for resolved_address in await AsyncNetworkUtil._dns_resolver(
                 address, family=family
             ):
+                log.debug("[#0000]  _: <RESOLVE> dns resolver out: %s",
+                          resolved_address)
                 yield resolved_address
 
 
@@ -136,15 +142,21 @@ class NetworkUtil:
             yield address
             return
 
-        addressing.log.debug("[#0000]  C: <RESOLVE> %s", address)
+        addressing.log.debug("[#0000]  _: <RESOLVE> in: %s", address)
         if resolver:
             for address in map(addressing.Address, resolver(address)):
+                log.debug("[#0000]  _: <RESOLVE> custom resolver out: %s",
+                          address)
                 for resolved_address in NetworkUtil._dns_resolver(
                     address, family=family
                 ):
+                    log.debug("[#0000]  _: <RESOLVE> dns resolver out: %s",
+                              resolved_address)
                     yield resolved_address
         else:
             for resolved_address in NetworkUtil._dns_resolver(
                 address, family=family
             ):
+                log.debug("[#0000]  _: <RESOLVE> dns resolver out: %s",
+                          resolved_address)
                 yield resolved_address

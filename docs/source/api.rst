@@ -1462,6 +1462,8 @@ following code:
     ...
 
 
+.. _logging-ref:
+
 *******
 Logging
 *******
@@ -1471,6 +1473,11 @@ enable logging for anything other than debugging. For instance, if the driver is
 not able to connect to the database server or if undesired behavior is observed.
 
 There are different ways of enabling logging as listed below.
+
+.. note::
+
+    For an improved logging experience with the async driver, please see
+    :ref:`async-logging-ref`.
 
 Simple Approach
 ===============
@@ -1484,8 +1491,8 @@ Context Manager
     :members:
     :special-members: __enter__, __exit__
 
-Full Controll
-=============
+Full Control
+============
 
 .. code-block:: python
 
@@ -1502,7 +1509,7 @@ Full Controll
     logging.getLogger("neo4j").addHandler(handler)
     # make sure the logger logs on the desired log level
     logging.getLogger("neo4j").setLevel(logging.DEBUG)
-    # from now on, DEBUG logging to stderr is enabled in the driver
+    # from now on, DEBUG logging to stdout is enabled in the driver
 
 
 *********

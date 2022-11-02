@@ -648,3 +648,52 @@ successfully executed on the server side or not, when a cancellation happens:
 ``await transaction.commit()`` and other methods can throw
 :exc:`asyncio.CancelledError` but still have managed to complete from the
 server's perspective.
+
+
+.. _async-logging-ref:
+
+*************
+Async Logging
+*************
+
+For the most parts, logging works the same way as in the synchronous driver.
+See :ref:`logging-ref` for more information.
+
+However, when following the manual approach to logging, it is recommended to
+include information about the current async task in the log record.
+Like so:
+
+.. code-block:: python
+
+    import asyncio
+    import logging
+    import sys
+
+    class TaskIdFilter(logging.Filter):
+        """Injecting async task id into log records."""
+
+        def filter(self, record):
+            try:
+                record.taskId = id(asyncio.current_task())
+            except RuntimeError:
+                record.taskId = None
+            return True
+
+
+    # attache the filter injecting the task id to the driver's logger
+    logging.getLogger("neo4j").addFilter(TaskIdFilter())
+
+    # create a handler, e.g. to log to stdout
+    handler = logging.StreamHandler(sys.stdout)
+    # configure the handler to your liking
+    handler.setFormatter(logging.Formatter(
+        "[%(levelname)-8s] [Task %(taskId)-15s] %(asctime)s  %(message)s"
+        # or when using threading AND asyncio
+        # "[%(levelname)-8s] [Thread %(thread)d] [Task %(taskId)-15s] "
+        # "%(asctime)s  %(message)s"
+    ))
+    # add the handler to the driver's logger
+    logging.getLogger("neo4j").addHandler(handler)
+    # make sure the logger logs on the desired log level
+    logging.getLogger("neo4j").setLevel(logging.DEBUG)
+    # from now on, DEBUG logging to stdout is enabled in the driver
