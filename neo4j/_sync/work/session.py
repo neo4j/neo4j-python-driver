@@ -416,9 +416,14 @@ class Session(Workspace):
 
         :param metadata:
             a dictionary with metadata.
-            Specified metadata will be attached to the executing transaction and visible in the output of ``dbms.listQueries`` and ``dbms.listTransactions`` procedures.
+            Specified metadata will be attached to the executing transaction
+            and visible in the output of ``SHOW TRANSACTIONS YIELD *``
             It will also get logged to the ``query.log``.
-            This functionality makes it easier to tag transactions and is equivalent to ``dbms.setTXMetaData`` procedure, see https://neo4j.com/docs/operations-manual/current/reference/procedures/ for procedure reference.
+            This functionality makes it easier to tag transactions and is
+            equivalent to the ``dbms.setTXMetaData`` procedure, see
+            https://neo4j.com/docs/cypher-manual/current/clauses/transaction-clauses/#query-listing-transactions
+            and https://neo4j.com/docs/operations-manual/current/reference/procedures/
+            for reference.
 
         :param timeout:
             the transaction timeout in seconds.
