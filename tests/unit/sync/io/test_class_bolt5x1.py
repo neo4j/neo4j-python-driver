@@ -22,7 +22,7 @@ import pytest
 
 from neo4j._conf import PoolConfig
 from neo4j._sync.io._bolt5 import Bolt5x1
-from neo4j.exceptions import ConfigurationError
+from neo4j.api import Auth
 
 from ...._async_compat import mark_sync_test
 
@@ -352,3 +352,65 @@ def test_hello_does_support_notification_filters(
     tag, fields = sockets.server.pop_message()
     extra = fields[0]
     _assert_notifications_in_extra(extra, expected)
+
+
+class HackedAuth:
+    def __init__(self, dict_):
+        self.__dict__ = dict_
+
+
+@mark_sync_test
+@pytest.mark.parametrize("auth", (
+    ("awesome test user", "safe p4ssw0rd"),
+    Auth("super nice scheme", "awesome test user", "safe p4ssw0rd"),
+    Auth("super nice scheme", "awesome test user", "safe p4ssw0rd",
+         realm="super duper realm"),
+    Auth("super nice scheme", "awesome test user", "safe p4ssw0rd",
+         realm="super duper realm"),
+    Auth("super nice scheme", "awesome test user", "safe p4ssw0rd",
+         foo="bar"),
+    HackedAuth({
+        "scheme": "super nice scheme", "principal": "awesome test user",
+        "credentials": "safe p4ssw0rd", "realm": "super duper realm",
+        "parameters": {"credentials": "should be visible!"},
+    })
+
+))
+def test_hello_does_not_log_credentials(fake_socket_pair, caplog, auth):
+    def items():
+        if isinstance(auth, tuple):
+            yield "scheme", "basic"
+            yield "principal", auth[0]
+            yield "credentials", auth[1]
+        elif isinstance(auth, Auth):
+            for key in ("scheme", "principal", "credentials", "realm",
+                        "parameters"):
+                value = getattr(auth, key, None)
+                if value:
+                    yield key, value
+        elif isinstance(auth, HackedAuth):
+            yield from auth.__dict__.items()
+        else:
+            raise TypeError(auth)
+
+    address = ("127.0.0.1", 7687)
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt5x1.PACKER_CLS,
+                               unpacker_cls=Bolt5x1.UNPACKER_CLS)
+    sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    max_connection_lifetime = 0
+    connection = Bolt5x1(address, sockets.client,
+                              max_connection_lifetime, auth=auth)
+
+    with caplog.at_level(logging.DEBUG):
+        connection.hello()
+
+    hellos = [m for m in caplog.messages if "C: HELLO" in m]
+    assert len(hellos) == 1
+    hello = hellos[0]
+
+    for key, value in items():
+        if key == "credentials":
+            assert value not in hello
+        else:
+            assert str({key: value})[1:-1] in hello
