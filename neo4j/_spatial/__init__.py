@@ -47,7 +47,6 @@ class Point(t.Tuple[float, ...]):
     #: The SRID (_spatial reference identifier) of the _spatial data.
     #: A number that identifies the coordinate system the _spatial type is to be
     #: interpreted in.
-
     srid: t.Optional[int]
 
     @property
