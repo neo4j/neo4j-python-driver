@@ -115,7 +115,7 @@ class Watcher:
 
     def __init__(
         self,
-        *logger_names: str,
+        *logger_names: t.Optional[str],
         default_level: int = DEBUG,
         default_out: t.TextIO = stderr,
         colour: bool = False,
@@ -128,7 +128,6 @@ class Watcher:
         self.default_level = default_level
         self.default_out = default_out
         self._handlers: t.Dict[str, StreamHandler] = {}
-        self._filters: t.Dict[str, TaskIdFilter] = {}
         self._task_info = task_info
 
         format_ = "%(asctime)s  %(message)s"
@@ -167,11 +166,8 @@ class Watcher:
         handler = StreamHandler(out)
         handler.setFormatter(self.formatter)
         if self._task_info:
-            filter_ = TaskIdFilter()
+            handler.addFilter(TaskIdFilter())
         for logger in self. _loggers:
-            if self._task_info:
-                self._filters[logger.name] = filter_
-                logger.addFilter(filter_)
             self._handlers[logger.name] = handler
             logger.addHandler(handler)
             logger.setLevel(level)
@@ -183,15 +179,10 @@ class Watcher:
                 logger.removeHandler(self._handlers.pop(logger.name))
             except KeyError:
                 pass
-            if self._task_info:
-                try:
-                    logger.removeFilter(self._filters.pop(logger.name))
-                except KeyError:
-                    pass
 
 
 def watch(
-    *logger_names: str,
+    *logger_names: t.Optional[str],
     level: int = DEBUG,
     out: t.TextIO = stderr,
     colour: bool = False,

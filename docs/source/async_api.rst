@@ -680,9 +680,6 @@ Like so:
             return True
 
 
-    # attache the filter injecting the task id to the driver's logger
-    logging.getLogger("neo4j").addFilter(TaskIdFilter())
-
     # create a handler, e.g. to log to stdout
     handler = logging.StreamHandler(sys.stdout)
     # configure the handler to your liking
@@ -692,6 +689,8 @@ Like so:
         # "[%(levelname)-8s] [Thread %(thread)d] [Task %(taskId)-15s] "
         # "%(asctime)s  %(message)s"
     ))
+    # attache the filter injecting the task id to the handler
+    handler.addFilter(TaskIdFilter())
     # add the handler to the driver's logger
     logging.getLogger("neo4j").addHandler(handler)
     # make sure the logger logs on the desired log level
