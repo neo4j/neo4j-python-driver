@@ -524,6 +524,8 @@ class AsyncNeo4jPool(AsyncIOPool):
             routing, or if routing support is broken or outdated
         """
         deadline = Deadline.from_timeout_or_deadline(acquisition_timeout)
+        log.debug("[#0000]  _: <POOL> _acquire router connection, "
+                  "database=%r, address=%r", database, address)
         cx = await self._acquire(address, deadline, None)
         try:
             routing_table = await cx.route(
