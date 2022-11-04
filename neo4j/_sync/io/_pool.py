@@ -742,19 +742,14 @@ class Neo4jPool(IOPool):
 
         from neo4j.api import check_access_mode
         access_mode = check_access_mode(access_mode)
-        updated_routing_table = False
+
+        self.ensure_routing_table_is_fresh(
+            access_mode=access_mode, database=database,
+            imp_user=None, bookmarks=bookmarks,
+            acquisition_timeout=timeout
+        )
 
         while True:
-            if not updated_routing_table:
-                with self.refresh_lock:
-                    log.debug("[#0000]  C: <ROUTING TABLE ENSURE FRESH> %r",
-                              self.routing_tables)
-                    updated_routing_table = \
-                        self.ensure_routing_table_is_fresh(
-                            access_mode=access_mode, database=database,
-                            imp_user=None, bookmarks=bookmarks,
-                            acquisition_timeout=timeout
-                        )
             try:
                 # Get an address for a connection that have the fewest in-use
                 # connections.
