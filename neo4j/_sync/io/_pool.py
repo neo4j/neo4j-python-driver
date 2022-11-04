@@ -408,7 +408,8 @@ class BoltPool(IOPool):
     ):
         # The access_mode and database is not needed for a direct connection,
         # it's just there for consistency.
-        log.debug("[#0000]  _: <POOL> acquire direct connection")
+        log.debug("[#0000]  _: <POOL> acquire direct connection, "
+                  "access_mode=%r, database=%r", access_mode, database)
         deadline = Deadline.from_timeout_or_deadline(timeout)
         return self._acquire(
             self.address, deadline, liveness_check_timeout
@@ -781,7 +782,8 @@ class Neo4jPool(IOPool):
             raise ClientError("'timeout' must be a float larger than 0; {}"
                               .format(timeout))
 
-        log.debug("[#0000]  _: <POOL> acquire routing connection")
+        log.debug("[#0000]  _: <POOL> acquire routing connection, "
+                  "access_mode=%r, database=%r", access_mode, database)
 
         from neo4j.api import check_access_mode
         access_mode = check_access_mode(access_mode)
