@@ -24,6 +24,7 @@ as a number of utility functions.
 
 from __future__ import annotations
 
+import re
 import typing as t
 from datetime import (
     date,
@@ -101,6 +102,8 @@ DURATION_ISO_PATTERN = re_compile(
 NANO_SECONDS = 1000000000
 AVERAGE_SECONDS_IN_MONTH = 2629746
 AVERAGE_SECONDS_IN_DAY = 86400
+
+FORMAT_F_REPLACE = re.compile(r"(?<!%)%f")
 
 
 def _is_leap_year(year):
@@ -1307,7 +1310,10 @@ class Date(date_base_class, metaclass=DateType):
 
     def __format__(self, format_spec):
         """"""
-        raise NotImplementedError()
+        if not format_spec:
+            return self.iso_format()
+        format_spec = FORMAT_F_REPLACE.sub("000000000", format_spec)
+        return self.to_native().__format__(format_spec)
 
     # INSTANCE METHOD ALIASES #
 
@@ -1905,7 +1911,11 @@ class Time(time_base_class, metaclass=TimeType):
 
     def __format__(self, format_spec):
         """"""
-        raise NotImplementedError()
+        if not format_spec:
+            return self.iso_format()
+        format_spec = FORMAT_F_REPLACE.sub(f"{self.__nanosecond:09}",
+                                           format_spec)
+        return self.to_native().__format__(format_spec)
 
     # INSTANCE METHOD ALIASES #
 
@@ -2663,7 +2673,11 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
     def __format__(self, format_spec):
         """"""
-        raise NotImplementedError()
+        if not format_spec:
+            return self.iso_format()
+        format_spec = FORMAT_F_REPLACE.sub(f"{self.__time.nanosecond:09}",
+                                           format_spec)
+        return self.to_native().__format__(format_spec)
 
     # INSTANCE METHOD ALIASES #
 

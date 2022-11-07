@@ -517,3 +517,16 @@ class TestTime:
         assert not t1 > t2
         assert t2 >= t1
         assert not t1 >= t2
+
+
+def test_str() -> None:
+    t = Time(12, 34, 56, 789123001)
+    assert str(t) == "12:34:56.789123001"
+
+
+def test_format() -> None:
+    t = Time(12, 34, 56, 789123001)
+    assert f"{t}" == "12:34:56.789123001"
+    assert f"{t:%Y-%m-%d}" == f"{time():%Y-%m-%d}"
+    assert (f"{t:%Y-%m-%d %H:%M:%S.%f}"
+            == f"{time():%Y-%m-%d} 12:34:56.789123001")
