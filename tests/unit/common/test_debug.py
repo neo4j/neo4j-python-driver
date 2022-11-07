@@ -48,7 +48,6 @@ def logger_mocker(mocker) -> _TSetupMockProtocol:
         loggers = [logging.getLogger(name) for name in logger_names]
         for logger in loggers:
             logger.addHandler = mocker.Mock()
-            logger.addFilter = mocker.Mock(side_effect=logger.addFilter)
             logger.removeHandler = mocker.Mock()
             logger.setLevel = mocker.Mock()
         return loggers
@@ -179,6 +178,7 @@ def test_watcher_colour(logger_mocker, colour, thread, task) -> None:
                                   thread_info=thread, task_info=task)
     watcher.watch()
 
+    logger.addHandler.assert_called_once()
     (handler,), _ = logger.addHandler.call_args
     assert isinstance(handler, logging.Handler)
     assert isinstance(handler.formatter, logging.Formatter)
@@ -198,6 +198,7 @@ def test_watcher_format(logger_mocker, colour, thread, task) -> None:
                                   thread_info=thread, task_info=task)
     watcher.watch()
 
+    logger.addHandler.assert_called_once()
     (handler,), _ = logger.addHandler.call_args
     assert isinstance(handler, logging.Handler)
     assert isinstance(handler.formatter, logging.Formatter)
@@ -213,14 +214,12 @@ def test_watcher_format(logger_mocker, colour, thread, task) -> None:
     assert format_ == expected_format
 
 
-@pytest.mark.parametrize("colour", (True, False))
-@pytest.mark.parametrize("thread", (True, False))
-@pytest.mark.parametrize("task", (True, False))
-def test_watcher_task_injection(
-    mocker, logger_mocker, colour, thread, task
+def _assert_task_injection(
+    async_: bool, mocker, logger_mocker, colour: bool, thread: bool, task: bool
 ) -> None:
+    handler_cls_mock = mocker.patch("neo4j.debug.StreamHandler", autospec=True)
+    handler_mock = handler_cls_mock.return_value
     logger_name = "neo4j"
-    logger = logger_mocker(logger_name)[0]
     watcher = neo4j_debug.Watcher(logger_name, colour=colour,
                                   thread_info=thread, task_info=task)
     record_mock = mocker.Mock(spec=logging.LogRecord)
@@ -229,12 +228,25 @@ def test_watcher_task_injection(
     watcher.watch()
 
     if task:
-        (filter_,), _ = logger.addFilter.call_args
+        handler_mock.addFilter.assert_called_once()
+        (filter_,), _ = handler_mock.addFilter.call_args
         assert isinstance(filter_, logging.Filter)
         filter_.filter(record_mock)
-        assert record_mock.task is None
+        if async_:
+            assert record_mock.task == id(asyncio.current_task())
+        else:
+            assert record_mock.task is None
     else:
-        logger.addFilter.assert_not_called()
+        handler_mock.addFilter.assert_not_called()
+
+
+@pytest.mark.parametrize("colour", (True, False))
+@pytest.mark.parametrize("thread", (True, False))
+@pytest.mark.parametrize("task", (True, False))
+def test_watcher_task_injection(
+    mocker, logger_mocker, colour, thread, task
+) -> None:
+    _assert_task_injection(False, mocker, logger_mocker, colour, thread, task)
 
 
 @pytest.mark.parametrize("colour", (True, False))
@@ -244,19 +256,4 @@ def test_watcher_task_injection(
 async def test_async_watcher_task_injection(
     mocker, logger_mocker, colour, thread, task
 ) -> None:
-    logger_name = "neo4j"
-    logger = logger_mocker(logger_name)[0]
-    watcher = neo4j_debug.Watcher(logger_name, colour=colour,
-                                  thread_info=thread, task_info=task)
-    record_mock = mocker.Mock(spec=logging.LogRecord)
-    assert not hasattr(record_mock, "task")
-
-    watcher.watch()
-
-    if task:
-        (filter_,), _ = logger.addFilter.call_args
-        assert isinstance(filter_, logging.Filter)
-        filter_.filter(record_mock)
-        assert record_mock.task == id(asyncio.current_task())
-    else:
-        logger.addFilter.assert_not_called()
+    _assert_task_injection(True, mocker, logger_mocker, colour, thread, task)
