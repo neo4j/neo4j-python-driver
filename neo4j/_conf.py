@@ -18,9 +18,11 @@
 
 from __future__ import annotations
 
+import typing as t
 import warnings
 from abc import ABCMeta
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 from ._api import NotificationFilter
 from ._meta import (
@@ -351,50 +353,7 @@ def _trust_to_trusted_certificates(pool_config, trust):
         pool_config.trusted_certificates = TrustAll()
 
 
-class _WithNotificationFilters(Config):
-    #: Notification filters to be sent to the server
-    _notification_filters = None
-    # A list of filters as found in api.py
-
-    @property
-    def notification_filters(self):
-        return self._notification_filters
-
-    @notification_filters.setter
-    def notification_filters(self, value):
-        if isinstance(value, str):
-            value = {value}
-        try:
-            filters = set(NotificationFilter(v) for v in value)
-        except (TypeError, ValueError) as e:
-            raise type(e)("Invalid `notification_filters`.") from e
-        if not filters:
-            raise ValueError(
-                "Empty `notification_filters` not allowed. If you want to "
-                "disable all notifications, use `NotificationFilter.NONE` "
-                "instead."
-            )
-        if NotificationFilter.NONE in filters and len(filters) > 1:
-            raise ValueError(
-                "Invalid `notification_filters` combination. "
-                "`NotificationFilter.NONE` cannot be combined with other "
-                "filters."
-            )
-        if NotificationFilter.DEFAULT in filters and len(filters) > 1:
-            raise ValueError(
-                "Invalid `notification_filters` combination. "
-                "`NotificationFilter.DEFAULT` cannot be combined with other "
-                "filters."
-            )
-        if filters == {NotificationFilter.DEFAULT}:
-            self._notification_filters = None
-        elif filters == {NotificationFilter.NONE}:
-            self._notification_filters = set()
-        else:
-            self._notification_filters = filters
-
-
-class PoolConfig(_WithNotificationFilters):
+class PoolConfig(Config):
     """ Connection pool configuration.
     """
 
@@ -447,6 +406,9 @@ class PoolConfig(_WithNotificationFilters):
     keep_alive = True
     # Specify whether TCP keep-alive should be enabled.
 
+    #: Notification filters to be sent to the server
+    notification_filters = None
+
     def get_ssl_context(self):
         if self.ssl_context is not None:
             return self.ssl_context
@@ -495,7 +457,7 @@ class PoolConfig(_WithNotificationFilters):
         return ssl_context
 
 
-class WorkspaceConfig(_WithNotificationFilters):
+class WorkspaceConfig(Config):
     """ WorkSpace configuration.
     """
 
@@ -533,6 +495,9 @@ class WorkspaceConfig(_WithNotificationFilters):
     #: Bookmark Manager
     bookmark_manager = ExperimentalOption(None)
     # Specify the bookmark manager to be used for sessions by default.
+
+    #: Notification filters to be sent to the server
+    notification_filters = None
 
 
 class SessionConfig(WorkspaceConfig):

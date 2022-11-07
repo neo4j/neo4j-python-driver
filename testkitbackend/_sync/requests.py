@@ -147,10 +147,8 @@ def NewDriver(backend, data):
                           for cert in data["trustedCertificates"])
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     if data.get("notificationFilters") is not None:
-        kwargs["notification_filters"] = [
-            neo4j.NotificationFilter[f.replace(".", "_")]
-            for f in data["notificationFilters"]
-        ]
+        kwargs["notification_filters"] = \
+            fromtestkit.to_notification_filters(data["notificationFilters"])
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
     driver = neo4j.GraphDatabase.driver(
@@ -393,10 +391,8 @@ def NewSession(backend, data):
         if data_name in data:
             config[conf_name] = data[data_name]
     if data.get("notificationFilters") is not None:
-        config["notification_filters"] = [
-            neo4j.NotificationFilter[f.replace(".", "_")]
-            for f in data["notificationFilters"]
-        ]
+        config["notification_filters"] = \
+            fromtestkit.to_notification_filters(data["notificationFilters"])
     if "bookmark_manager" in config:
         with warning_check(
             neo4j.ExperimentalWarning,

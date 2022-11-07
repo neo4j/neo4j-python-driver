@@ -20,7 +20,10 @@ from datetime import timedelta
 
 import pytz
 
-from neo4j import Query
+from neo4j import (
+    NotificationFilter,
+    Query,
+)
 from neo4j.spatial import (
     CartesianPoint,
     WGS84Point,
@@ -146,3 +149,13 @@ def to_param(m):
             seconds=data["seconds"], nanoseconds=data["nanoseconds"]
         )
     raise ValueError("Unknown param type " + name)
+
+
+def to_notification_filters(notification_filters):
+    if notification_filters == ["NONE"]:
+        return []
+    elif notification_filters == ["SERVER_DEFAULT"]:
+        return None
+    else:
+        return [NotificationFilter[f.replace(".", "_")]
+                for f in notification_filters]

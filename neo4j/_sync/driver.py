@@ -419,6 +419,12 @@ class Driver:
         """Indicate whether the driver was configured to use encryption."""
         return bool(self._pool.pool_config.encrypted)
 
+    def _prepare_session_config(self, **config):
+        if "notification_filters" not in config:
+            config["notification_filters"] = \
+                self._pool.pool_config.notification_filters
+        return config
+
     if t.TYPE_CHECKING:
 
         def session(
@@ -655,6 +661,7 @@ class BoltDriver(_Direct, Driver):
             :return:
             :rtype: :class: `neo4j.Session`
             """
+            config = self._prepare_session_config(**config)
             session_config = SessionConfig(self._default_workspace_config,
                                            config)
             return Session(self._pool, session_config)
@@ -686,6 +693,7 @@ class Neo4jDriver(_Routing, Driver):
     if not t.TYPE_CHECKING:
 
         def session(self, **config) -> Session:
+            config = self._prepare_session_config(**config)
             session_config = SessionConfig(self._default_workspace_config,
                                            config)
             return Session(self._pool, session_config)

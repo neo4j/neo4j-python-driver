@@ -229,11 +229,11 @@ _SEVERITY_LOOKUP = {
 
 _CATEGORY_LOOKUP = {
     "HINT": NotificationCategory.HINT,
-    "QUERY": NotificationCategory.QUERY,
+    "UNRECOGNIZED": NotificationCategory.UNRECOGNIZED,
     "UNSUPPORTED": NotificationCategory.UNSUPPORTED,
     "PERFORMANCE": NotificationCategory.PERFORMANCE,
     "DEPRECATION": NotificationCategory.DEPRECATION,
-    "RUNTIME": NotificationCategory.RUNTIME,
+    "GENERIC": NotificationCategory.GENERIC,
 }
 
 

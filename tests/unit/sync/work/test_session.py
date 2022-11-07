@@ -536,8 +536,7 @@ def test_last_bookmarks_do_not_leak_bookmark_managers_bookmarks(
 def test_run_notification_filters(fake_pool, routing):
     fake_pool.mock_add_spec(Neo4jPool if routing else BoltPool)
     filters = object()
-    config = SessionConfig()
-    config._notification_filters = filters
+    config = SessionConfig(notification_filters=filters)
     with Session(fake_pool, config) as session:
         session.run("RETURN 1")
         assert len(fake_pool.acquired_connection_mocks) == 1

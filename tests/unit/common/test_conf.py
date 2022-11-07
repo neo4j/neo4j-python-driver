@@ -117,7 +117,7 @@ def test_pool_config_consume_key_not_valid():
     test_config["not_valid_key"] = "test"
 
     with pytest.raises(ConfigurationError) as error:
-        consumed_pool_config = PoolConfig.consume(test_config)
+        PoolConfig.consume(test_config)
 
     error.match("Unexpected config keys: not_valid_key")
 
@@ -139,117 +139,6 @@ def test_pool_config_set_value():
     assert consumed_pool_config.encrypted == "test"
 
     consumed_pool_config.not_valid_key = "test"  # Use consume functions
-
-
-@pytest.mark.parametrize(("value", "expected"), (
-    (None, None),
-    (..., None),
-    (
-        (NotificationFilter.DEFAULT,),
-        None
-    ), (
-        ("DEFAULT",),
-        None
-    ), (
-        (NotificationFilter.NONE,),
-        set()
-    ), (
-        ("NONE",),
-        set()
-    ), (
-        (NotificationFilter.ALL_ALL,),
-        {NotificationFilter.ALL_ALL}
-    ), (
-        ("*.*",),
-        {NotificationFilter.ALL_ALL}
-    ), (
-        ("*.*", NotificationFilter.WARNING_HINT),
-        {NotificationFilter.ALL_ALL, NotificationFilter.WARNING_HINT},
-    ), (
-        (NotificationFilter.WARNING_HINT, NotificationFilter.WARNING_HINT),
-        {NotificationFilter.WARNING_HINT},
-    ), (
-        ("*.*", NotificationFilter.WARNING_HINT),
-        {NotificationFilter.ALL_ALL, NotificationFilter.WARNING_HINT},
-    ), (
-        # not officially supported, but let's be nice to the user
-        NotificationFilter.ALL_ALL,
-        {NotificationFilter.ALL_ALL}
-    ), (
-        # not officially supported, but let's be nice to the user
-        "*.*",
-        {NotificationFilter.ALL_ALL}
-    ),
-))
-@pytest.mark.parametrize(
-    "input_type", (list, tuple, set, dict, iter)
-)
-@pytest.mark.parametrize("consume_type", ("consume", "kwargs"))
-def test_pool_config_notification_filters(value, expected, input_type,
-                                          consume_type):
-    if value is not None and value is not ... and not isinstance(value, str):
-        if input_type is dict:
-            # not explicitly supported,
-            # but an iterable is an iterable ¯\_(ツ)_/¯
-            value = {v: None for v in value}
-        else:
-            value = input_type(value)
-
-    test_config = {}
-    if value is not ...:
-        test_config["notification_filters"] = value
-
-    if consume_type == "consume":
-        pool_config = PoolConfig.consume(test_config)
-        assert len(test_config) == 0
-    else:
-        pool_config = PoolConfig(**test_config)
-
-    assert pool_config.notification_filters == expected
-
-
-@pytest.mark.parametrize(("value", "expected"), (
-    ((), ValueError),
-    ("", ValueError),
-    ([], ValueError),
-    ({}, ValueError),
-    (iter(()), ValueError),
-    (set(), ValueError),
-    (object, TypeError),
-    (Exception, TypeError),
-    (("foobar",), ValueError),
-    ("foobar", ValueError),
-    (("*.*", "None"), ValueError),
-    (
-        (NotificationFilter.NONE, NotificationFilter.ALL_ALL),
-        ValueError
-    ),
-    (
-        (NotificationFilter.NONE, NotificationFilter.DEFAULT),
-        ValueError
-    ),
-    (
-        (NotificationFilter.NONE, NotificationFilter.WARNING_HINT),
-        ValueError
-    ),
-    (
-        (NotificationFilter.DEFAULT, NotificationFilter.ALL_ALL),
-        ValueError
-    ),
-    (
-        (NotificationFilter.DEFAULT, NotificationFilter.WARNING_HINT),
-        ValueError
-    ),
-))
-@pytest.mark.parametrize("consume_type", ("consume", "kwargs"))
-def test_pool_config_invalid_notification_filters(value, expected,
-                                                  consume_type):
-    pool_config = {"notification_filters": value}
-    with pytest.raises(expected, match="notification_filters"):
-        if consume_type == "consume":
-            PoolConfig.consume(pool_config)
-        else:
-            PoolConfig(**pool_config)
 
 
 def test_pool_config_consume_and_then_consume_again():

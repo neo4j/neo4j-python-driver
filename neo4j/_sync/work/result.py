@@ -110,7 +110,7 @@ class Result:
         # BEGIN+RUN does not carry any extra on the RUN message.
         # BEGIN {extra}
         # RUN "query" {parameters} {extra}
-        self._run(query, parameters, None, None, None, None, None)
+        self._run(query, parameters, None, None, None, None, ...)
 
     def _run(
         self, query, parameters, db, imp_user, access_mode, bookmarks,

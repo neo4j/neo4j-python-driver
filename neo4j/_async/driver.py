@@ -420,6 +420,12 @@ class AsyncDriver:
         """Indicate whether the driver was configured to use encryption."""
         return bool(self._pool.pool_config.encrypted)
 
+    def _prepare_session_config(self, **config):
+        if "notification_filters" not in config:
+            config["notification_filters"] = \
+                self._pool.pool_config.notification_filters
+        return config
+
     if t.TYPE_CHECKING:
 
         def session(
@@ -656,6 +662,7 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
             :return:
             :rtype: :class: `neo4j.AsyncSession`
             """
+            config = self._prepare_session_config(**config)
             session_config = SessionConfig(self._default_workspace_config,
                                            config)
             return AsyncSession(self._pool, session_config)
@@ -687,6 +694,7 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
     if not t.TYPE_CHECKING:
 
         def session(self, **config) -> AsyncSession:
+            config = self._prepare_session_config(**config)
             session_config = SessionConfig(self._default_workspace_config,
                                            config)
             return AsyncSession(self._pool, session_config)

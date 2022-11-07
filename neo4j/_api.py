@@ -39,76 +39,113 @@ class NotificationFilter(str, Enum):
     Inherits from :class:`str` and :class:`Enum`. Hence, every driver API
     accepting a :class:`.NotificationFilter` value will also accept a string::
 
-        True
-        >>> NONE == "NONE"
-        True
-        >>> DEFAULT == "DEFAULT"
-        True
         >>> ALL_ALL == "*.*"
-        True
-        >>> ALL_QUERY == "*.QUERY"
         True
         >>> WARNING_ALL == "WARNING.*"
         True
-        >>> WARNING_DEPRECATION == "WARNING.DEPRECATION"
+        >>> ALL_DEPRECATION == "*.DEPRECATION"
         True
-        >>> WARNING_HINT == "WARNING.HINT"
-        True
-        >>> WARNING_QUERY == "WARNING.QUERY"
-        True
-        >>> WARNING_UNSUPPORTED == "WARNING.UNSUPPORTED"
-        True
-        >>> INFORMATION_ALL == "INFORMATION.*"
-        True
-        >>> INFORMATION_RUNTIME == "INFORMATION.RUNTIME"
-        True
-        >>> INFORMATION_QUERY == "INFORMATION.QUERY"
-        True
-        >>> INFORMATION_PERFORMANCE == "INFORMATION.PERFORMANCE"
+        >>> INFORMATION_HINT == "INFORMATION.HINT"
         True
 
-    :attr:`NONE` instructs the server to not send any notifications.
-    :attr:`DEFAULT` leaves it up to the server which notifications to send.
+    When connected to a server version 5.? or older, configuring anything other
+    than :meth:`.server_default` will result in an :exc:`.ConfigurationError`.
 
-    The other choices are a combination of a severity and a category.
+    When connected to an older server version, and choosing a filter that is
+    not supported by that server version, the server will ignore that filter
+    and return a notification of type `WARNING.UNSUPPORTED` which cannot be
+    suppressed by any filters.
 
-    .. versionadded:: 5.2
+    .. versionadded:: 5.?
 
     .. seealso::
         :ref:`driver-configuration-ref`, :ref:`session-configuration-ref`
     """
-    NONE = "NONE"
-    DEFAULT = "DEFAULT"
+
     ALL_ALL = "*.*"
-    ALL_QUERY = "*.QUERY"
     WARNING_ALL = "WARNING.*"
     WARNING_DEPRECATION = "WARNING.DEPRECATION"
     WARNING_HINT = "WARNING.HINT"
-    WARNING_QUERY = "WARNING.QUERY"
+    WARNING_UNRECOGNIZED = "WARNING.UNRECOGNIZED"
     WARNING_UNSUPPORTED = "WARNING.UNSUPPORTED"
+    WARNING_GENERIC = "WARNING.GENERIC"
+    WARNING_PERFORMANCE = "WARNING.PERFORMANCE"
     INFORMATION_ALL = "INFORMATION.*"
-    INFORMATION_RUNTIME = "INFORMATION.RUNTIME"
-    INFORMATION_QUERY = "INFORMATION.QUERY"
+    INFORMATION_DEPRECATION = "INFORMATION.DEPRECATION"
+    INFORMATION_HINT = "INFORMATION.HINT"
+    INFORMATION_UNRECOGNIZED = "INFORMATION.UNRECOGNIZED"
+    INFORMATION_UNSUPPORTED = "INFORMATION.UNSUPPORTED"
+    INFORMATION_GENERIC = "INFORMATION.GENERIC"
     INFORMATION_PERFORMANCE = "INFORMATION.PERFORMANCE"
+    ALL_DEPRECATION = "*.DEPRECATION"
+    ALL_HINT = "*.HINT"
+    ALL_UNRECOGNIZED = "*.UNRECOGNIZED"
+    ALL_UNSUPPORTED = "*.UNSUPPORTED"
+    ALL_GENERIC = "*.GENERIC"
+    ALL_PERFORMANCE = "*.PERFORMANCE"
+
+    @staticmethod
+    def none() -> t.List[NotificationFilter]:
+        """Value to disable all notifications.
+
+            >>> NotificationFilter.none() == []
+            True
+
+        Example::
+
+            driver = neo4j.GraphDatabase.driver(
+                uri, auth=auth,
+                notification_filters=neo4j.NotificationFilter.none()
+            )
+        """
+
+        return []
+
+    @staticmethod
+    def server_default() -> None:
+        """Value to let the server choose which notifications to send.
+
+            >>> NotificationFilter.server_default() is None
+            True
+
+        Example::
+
+            driver = neo4j.GraphDatabase.driver(
+                uri, auth=auth,
+                notification_filters=neo4j.NotificationFilter.server_default()
+            )
+        """
+        return None
+
+    def __str__(self):
+        return self.value
 
 
 if t.TYPE_CHECKING:
     T_NotificationFilter = t.Union[
         NotificationFilter,
         te.Literal[
-            "NONE",
-            "DEFAULT",
             "*.*",
-            "*.QUERY",
             "WARNING.*",
             "WARNING.DEPRECATION",
             "WARNING.HINT",
-            "WARNING.QUERY",
+            "WARNING.UNRECOGNIZED",
             "WARNING.UNSUPPORTED",
+            "WARNING.GENERIC",
+            "WARNING.PERFORMANCE",
             "INFORMATION.*",
-            "INFORMATION.RUNTIME",
-            "INFORMATION.QUERY",
+            "INFORMATION.DEPRECATION",
+            "INFORMATION.HINT",
+            "INFORMATION.UNRECOGNIZED",
+            "INFORMATION.UNSUPPORTED",
+            "INFORMATION.GENERIC",
             "INFORMATION.PERFORMANCE",
+            "*.DEPRECATION",
+            "*.HINT",
+            "*.UNRECOGNIZED",
+            "*.UNSUPPORTED",
+            "*.GENERIC",
+            "*.PERFORMANCE",
         ],
     ]
 
@@ -116,30 +153,32 @@ if t.TYPE_CHECKING:
 class NotificationSeverity(Enum):
     """Server-side notification severity.
 
-    .. versionadded:: 5.2
+    .. versionadded:: 5.?
 
     .. seealso:: :class:`SummaryNotification.severity_level`
     """
 
     WARNING = "WARNING"
     INFORMATION = "INFORMATION"
-    #: Used when server provides a Severity which the driver is unaware of.
+    #: Used when the server provides a Severity which the driver is unaware of.
+    #: This can happen when connecting to a server newer than the driver.
     UNKNOWN = "UNKNOWN"
 
 
 class NotificationCategory(Enum):
     """Server-side notification category.
 
-    .. versionadded:: 5.2
+    .. versionadded:: 5.?
 
     .. seealso:: :class:`SummaryNotification.category`
     """
 
     HINT = "HINT"
-    QUERY = "QUERY"
+    UNRECOGNIZED = "UNRECOGNIZED"
     UNSUPPORTED = "UNSUPPORTED"
     PERFORMANCE = "PERFORMANCE"
     DEPRECATION = "DEPRECATION"
-    RUNTIME = "RUNTIME"
-    #: Used when server provides a Category which the driver is unaware of.
+    GENERIC = "GENERIC"
+    #: Used when the server provides a Category which the driver is unaware of.
+    #: This can happen when connecting to a server newer than the driver.
     UNKNOWN = "UNKNOWN"

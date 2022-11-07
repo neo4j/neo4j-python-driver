@@ -110,7 +110,7 @@ class AsyncResult:
         # BEGIN+RUN does not carry any extra on the RUN message.
         # BEGIN {extra}
         # RUN "query" {parameters} {extra}
-        await self._run(query, parameters, None, None, None, None, None)
+        await self._run(query, parameters, None, None, None, None, ...)
 
     async def _run(
         self, query, parameters, db, imp_user, access_mode, bookmarks,

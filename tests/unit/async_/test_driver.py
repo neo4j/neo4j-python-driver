@@ -429,35 +429,40 @@ async def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
 _T_NotificationFilter = t.Union[
     NotificationFilter,
     te.Literal[
-        "NONE",
-        "DEFAULT",
         "*.*",
         "WARNING.*",
         "WARNING.DEPRECATION",
         "WARNING.HINT",
-        "WARNING.QUERY",
+        "WARNING.UNRECOGNIZED",
         "WARNING.UNSUPPORTED",
+        "WARNING.GENERIC",
+        "WARNING.PERFORMANCE",
         "INFORMATION.*",
-        "INFORMATION.RUNTIME",
-        "INFORMATION.QUERY",
+        "INFORMATION.DEPRECATION",
+        "INFORMATION.HINT",
+        "INFORMATION.UNRECOGNIZED",
+        "INFORMATION.UNSUPPORTED",
+        "INFORMATION.GENERIC",
         "INFORMATION.PERFORMANCE",
-        "*.QUERY",
+        "*.DEPRECATION",
+        "*.HINT",
+        "*.UNRECOGNIZED",
+        "*.UNSUPPORTED",
+        "*.GENERIC",
+        "*.PERFORMANCE",
     ]
 ]
 
 
 @pytest.mark.parametrize("filters", (
-    None,
     ...,
-    "NONE",
-    "DEFAULT",
+    None,
+    NotificationFilter.none(),
+    [],
+    NotificationFilter.server_default(),
     "*.*",
-    ["NONE"],
-    ["*.*", "WARNING.*"],
-    NotificationFilter.NONE,
-    NotificationFilter.DEFAULT,
     NotificationFilter.ALL_ALL,
-    [NotificationFilter.NONE],
+    ["*.*", "WARNING.*"],
     [NotificationFilter.ALL_ALL, NotificationFilter.WARNING_ALL],
 ))
 @pytest.mark.parametrize("uri", [
@@ -465,7 +470,7 @@ _T_NotificationFilter = t.Union[
     "neo4j://localhost:7687",
 ])
 @mark_async_test
-async def test_with_notification_filters(
+async def test_driver_factory_with_notification_filters(
     uri: str,
     mocker,
     fake_pool,
@@ -495,3 +500,49 @@ async def test_with_notification_filters(
         open_pool_conf = open_mock.call_args.kwargs["pool_config"]
         assert (open_pool_conf.notification_filters
                 == expected_conf.notification_filters)
+
+
+@pytest.mark.parametrize("filters", (
+    ...,
+    None,
+    NotificationFilter.none(),
+    [],
+    NotificationFilter.server_default(),
+    "*.*",
+    NotificationFilter.ALL_ALL,
+    ["*.*", "WARNING.*"],
+    [NotificationFilter.ALL_ALL, NotificationFilter.WARNING_ALL],
+))
+@pytest.mark.parametrize("uri", [
+    "bolt://localhost:7687",
+    "neo4j://localhost:7687",
+])
+@mark_async_test
+async def test_session_factory_with_notification_filter(
+    uri: str, mocker, filters: t.Union[None, _T_NotificationFilter,
+                                       t.Iterable[_T_NotificationFilter]]
+) -> None:
+    pool_cls = AsyncNeo4jPool if uri.startswith("neo4j://") else AsyncBoltPool
+    pool_mock: t.Any = mocker.AsyncMock(spec=pool_cls)
+    mocker.patch.object(pool_cls, "open", return_value=pool_mock)
+    if pool_cls is AsyncBoltPool:
+        pool_mock.address = mocker.Mock()
+    driver_filters = object()
+    pool_mock.pool_config = PoolConfig(notification_filters=driver_filters)
+    session_cls_mock = mocker.patch("neo4j._async.driver.AsyncSession",
+                                    autospec=True)
+
+    async with AsyncGraphDatabase.driver(uri, auth=None) as driver:
+        if filters is ...:
+            session = driver.session()
+        else:
+            session = driver.session(notification_filters=filters)
+
+        async with session:
+            session_cls_mock.assert_called_once()
+            (_, session_config), _ = session_cls_mock.call_args
+
+            if filters is ...:
+                assert session_config.notification_filters is driver_filters
+            else:
+                assert session_config.notification_filters == filters

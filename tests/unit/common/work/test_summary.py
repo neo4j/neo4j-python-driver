@@ -18,6 +18,7 @@
 
 import typing as t
 
+
 if t.TYPE_CHECKING:
     import typing_extensions as te
 
@@ -164,8 +165,9 @@ def test_summary_notifications(summary_args_kwargs, exists) -> None:
     ),
     *(
         [{"category": c}]
-        for c in ("HINT", "QUERY", "UNSUPPORTED", "PERFORMANCE", "DEPRECATION",
-                  "RUNTIME", "UNKNOWN", "BANANA", "hint")
+        for c in ("HINT", "QUERY", "UNRECOGNIZED", "UNSUPPORTED",
+                  "PERFORMANCE", "DEPRECATION", "GENERIC", "UNKNOWN", "BANANA",
+                  "hint")
     ),
     [
         {"code": "foobar"},

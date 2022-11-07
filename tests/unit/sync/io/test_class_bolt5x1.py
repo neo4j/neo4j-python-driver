@@ -273,14 +273,15 @@ def test_hint_recv_timeout_seconds(
 
 
 def _assert_notifications_in_extra(extra, expected):
-    if expected is None:
+    if expected is ...:
         assert "notifications" not in extra
+        return
+    sent_filters = extra["notifications"]
+    if expected is None:
+        assert sent_filters is None
     else:
-        sent_filters = extra["notifications"]
         assert isinstance(sent_filters, list)
-        sent_filters_set = set(sent_filters)
-        assert len(sent_filters_set) == len(sent_filters)
-        assert sent_filters_set == expected
+        assert sorted(sent_filters) == sorted(expected)
 
 
 @pytest.mark.parametrize(("method", "args", "extra_idx"), (
@@ -290,22 +291,27 @@ def _assert_notifications_in_extra(extra, expected):
 @pytest.mark.parametrize(
     ("cls_filters", "method_filters", "expected"),
     (
-        (None, None, None),
-        (None, {"*.*"}, {"*.*"}),
-        ({"*.*"}, None, None),
-        ({"*.*"}, {"*.*"}, None),  # optimization
-        ({"*.*"}, {"NONE"}, {"NONE"}),
-        ({"NONE"}, {"*.*"}, {"*.*"}),
-        ({"NONE"}, {"*.*"}, {"*.*"}),
-        ({"DEFAULT", "*.*"}, {"NONE"}, {"NONE"}),
-        ({"NONE"}, {"DEFAULT", "*.*"}, {"DEFAULT", "*.*"}),
-        ({"DEFAULT", "*.*"}, {"DEFAULT", "*.*"}, None),  # optimization
-        ({"DEFAULT", "*.*"}, {"*.*"}, {"*.*"}),
-        ({"*.*"}, {"DEFAULT", "*.*"}, {"DEFAULT", "*.*"}),
+        (None, None, ...),
+        (None, ["*.*"], ["*.*"]),
+        (["*.*"], None, None),
+        (None, [], []),
+        ([], None, None),
+        # optimization
+        (["*.*"], ["*.*"], ...),
+        ([], [], ...),
+        (["*.*"], ["NONE"], ["NONE"]),
+        (["NONE"], ["*.*"], ["*.*"]),
+        (["NONE"], ["*.*"], ["*.*"]),
+        (["SERVER_DEFAULT", "*.*"], ["NONE"], ["NONE"]),
+        (["NONE"], ["SERVER_DEFAULT", "*.*"], ["SERVER_DEFAULT", "*.*"]),
+        # optimization
+        (["SERVER_DEFAULT", "*.*"], ["SERVER_DEFAULT", "*.*"], ...),
+        (["SERVER_DEFAULT", "*.*"], ["*.*"], ["*.*"]),
+        (["*.*"], ["SERVER_DEFAULT", "*.*"], ["SERVER_DEFAULT", "*.*"]),
     )
 )
 @mark_sync_test
-def test_does_support_notification_filters(
+def test_supports_notification_filters(
     fake_socket, method, args, extra_idx, cls_filters, method_filters,
     expected
 ):
@@ -328,13 +334,15 @@ def test_does_support_notification_filters(
 @pytest.mark.parametrize(
     ("filters", "expected"),
     (
-        (None, None),
-        ({"*.*"}, {"*.*"}),
-        ({"DEFAULT", "*.*"}, {"DEFAULT", "*.*"}),
+        (None, ...),
+        ([], []),
+        (["NONE"], ["NONE"]),
+        (["*.*"], ["*.*"]),
+        (["SERVER_DEFAULT", "*.*"], ["SERVER_DEFAULT", "*.*"]),
     )
 )
 @mark_sync_test
-def test_hello_does_support_notification_filters(
+def test_hello_supports_notification_filters(
     fake_socket_pair, filters, expected
 ):
     address = ("127.0.0.1", 7687)

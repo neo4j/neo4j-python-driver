@@ -380,12 +380,12 @@ Set filters for which notifications the server should send to the client.
 This can be a single or an iterable of :class:`.NotificationFilter` object(s) or
 equivalent string(s) (see :class:`.NotificationFilter`).
 Alternatively, :const:`None` can be used to indicate
-:attr:`NotificationFilter.DEFAULT`.
+:attr:`NotificationFilter.server_default()`.
 
-:Type: :const:`None`, :class:`.NotificationFilter`, :class:`str`, or iterable of either
+:Type: :const:`None`, :class:`.NotificationFilter`, :class:`str`, or iterable of those excluding :const:`None`.
 :Default: :const:`None`
 
-.. versionadded:: 5.2
+.. versionadded:: 5.?
 
 .. seealso:: :class:`.NotificationFilter`, :ref:`session-configuration-ref`
 
@@ -714,13 +714,13 @@ Set filters for which notifications the server should send to the client.
 
 This can be a single or an iterable of :class:`.NotificationFilter` object(s) or
 equivalent string(s) (see :class:`.NotificationFilter`).
-Alternatively, :const:`None` can be used fall back to the filters configured on
-the driver (see :ref:`driver-notification-filters-ref`).
+Alternatively, :const:`None` can be used to indicate
+:attr:`NotificationFilter.server_default()`.
 
-:Type: :const:`None`, :class:`.NotificationFilter`, :class:`str`, or iterable of either
-:Default: :const:`None`
+:Type: :const:`None`, :class:`.NotificationFilter`, :class:`str`, or iterable of those excluding :const:`None`.
+:Default: what ever was set on the :class:`.Driver` instance. See :ref:`driver-notification-filters-ref`
 
-.. versionadded:: 5.2
+.. versionadded:: 5.?
 
 .. seealso:: :class:`.NotificationFilter`, :ref:`driver-configuration-ref`
 

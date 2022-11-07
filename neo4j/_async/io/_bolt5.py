@@ -374,15 +374,16 @@ class AsyncBolt5x1(AsyncBolt5x0):
                              "the server and network is set up correctly.",
                              self.local_port, recv_timeout)
 
-        headers = self.get_base_headers()
-        headers.update(self.auth_dict)
+        extra = self.get_base_headers()
         if self.notification_filters is not None:
-            headers["notifications"] = list(self.notification_filters)
-        logged_headers = dict(headers)
+            extra["notifications"] = list(set(
+                map(str, self.notification_filters)
+            ))
+        logged_headers = dict(extra)
         if "credentials" in logged_headers:
             logged_headers["credentials"] = "*******"
         log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
-        self._append(b"\x01", (headers,),
+        self._append(b"\x01", (self.auth_dict, extra),
                      response=InitResponse(self, "hello", hydration_hooks,
                                            on_success=on_success),
                      dehydration_hooks=dehydration_hooks)
@@ -392,7 +393,7 @@ class AsyncBolt5x1(AsyncBolt5x0):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            notification_filters=None, dehydration_hooks=None,
+            notification_filters=..., dehydration_hooks=None,
             hydration_hooks=None, **handlers):
         if not parameters:
             parameters = {}
@@ -404,11 +405,15 @@ class AsyncBolt5x1(AsyncBolt5x0):
             extra["db"] = db
         if imp_user:
             extra["imp_user"] = imp_user
-        if (
-            notification_filters is not None
-            and notification_filters != self.notification_filters
-        ):
-            extra["notifications"] = list(notification_filters)
+        if notification_filters is ...:
+            notification_filters = self.notification_filters
+        if notification_filters != self.notification_filters:
+            if notification_filters is None:
+                extra["notifications"] = None
+            else:
+                extra["notifications"] = list(set(
+                    map(str, notification_filters)
+                ))
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
@@ -434,7 +439,7 @@ class AsyncBolt5x1(AsyncBolt5x0):
                      dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, notification_filters=None,
+              db=None, imp_user=None, notification_filters=...,
               dehydration_hooks=None, hydration_hooks=None, **handlers):
         extra = {}
         if mode in (READ_ACCESS, "r"):
@@ -461,11 +466,15 @@ class AsyncBolt5x1(AsyncBolt5x0):
                 raise TypeError("Timeout must be a number (in seconds)")
             if extra["tx_timeout"] < 0:
                 raise ValueError("Timeout must be a number <= 0")
-        if (
-            notification_filters is not None
-            and notification_filters != self.notification_filters
-        ):
-            extra["notifications"] = list(notification_filters)
+        if notification_filters is ...:
+            notification_filters = self.notification_filters
+        if notification_filters != self.notification_filters:
+            if notification_filters is None:
+                extra["notifications"] = None
+            else:
+                extra["notifications"] = list(set(
+                    map(str, notification_filters)
+                ))
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,),
                      Response(self, "begin", hydration_hooks, **handlers),
