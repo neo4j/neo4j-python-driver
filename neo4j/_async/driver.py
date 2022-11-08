@@ -669,7 +669,7 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
         return cls(pool, default_workspace_config)
 
     def __init__(self, pool, default_workspace_config):
-        _Routing.__init__(self, pool.get_default_database_initial_router_addresses())
+        _Routing.__init__(self, [pool.address])
         AsyncDriver.__init__(self, pool, default_workspace_config)
 
     if not t.TYPE_CHECKING:
