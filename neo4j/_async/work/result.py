@@ -26,6 +26,8 @@ from warnings import warn
 if t.TYPE_CHECKING:
     import typing_extensions as te
 
+
+
 from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import BrokenHydrationObject
 from ..._data import (
@@ -517,7 +519,7 @@ class AsyncResult:
         return self._hydration_scope.get_graph()
 
     async def value(
-        self, key: _T_ResultKey = 0, default: object = None
+        self, key: _T_ResultKey = 0, default: t.Optional[object] = None
     ) -> t.List[t.Any]:
         """Helper function that return the remainder of the result as a list of values.
 

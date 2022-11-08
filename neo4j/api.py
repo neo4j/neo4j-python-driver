@@ -32,6 +32,8 @@ if t.TYPE_CHECKING:
     import typing_extensions as te
     from .addressing import Address
 
+
+
 from ._meta import deprecated
 from .exceptions import ConfigurationError
 
@@ -90,7 +92,7 @@ class Auth:
         scheme: t.Optional[str],
         principal: t.Optional[str],
         credentials: t.Optional[str],
-        realm: str = None,
+        realm: t.Optional[str] = None,
         **parameters: t.Any
     ) -> None:
         self.scheme = scheme
@@ -110,7 +112,9 @@ class Auth:
 AuthToken = Auth
 
 
-def basic_auth(user: str, password: str, realm: str = None) -> Auth:
+def basic_auth(
+    user: str, password: str, realm: t.Optional[str] = None
+) -> Auth:
     """Generate a basic auth token for a given user and password.
 
     This will set the scheme to "basic" for the auth token.
