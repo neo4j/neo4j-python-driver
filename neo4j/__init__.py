@@ -67,6 +67,7 @@ from ._work import (
     ResultSummary,
     SummaryCounters,
     SummaryNotification,
+    SummaryNotificationPosition,
     unit_of_work,
 )
 from .addressing import (
@@ -141,6 +142,7 @@ __all__ = [
     "SessionConfig",
     "SummaryCounters",
     "SummaryNotification",
+    "SummaryNotificationPosition",
     "Transaction",
     "TRUST_ALL_CERTIFICATES",
     "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",

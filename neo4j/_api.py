@@ -150,12 +150,47 @@ if t.TYPE_CHECKING:
     ]
 
 
-class NotificationSeverity(Enum):
+class NotificationSeverity(str, Enum):
     """Server-side notification severity.
+
+    Inherits from :class:`str` and :class:`Enum`. Hence, can also be compared
+    to its string value::
+
+        >>> WARNING == "WARNING"
+        True
+        >>> INFORMATION == "INFORMATION"
+        True
+        >>> UNKNOWN == "UNKNOWN"
+        True
+
+    Example::
+
+        import logging
+
+        from neo4j import NotificationSeverity
+
+        log = logging.getLogger(__name__)
+
+        ...
+
+        summary = session.run("RETURN 1").consume()
+
+        for notification in summary.summary_notifications:
+            sevirity = notification.severity_level
+            if severity == NotificationSeverity.WARNING:
+                # or severity_level == "WARNING"
+                log.warning("%r", notification)
+            elif severity == NotificationSeverity.INFORMATION:
+                # or severity_level == "INFORMATION"
+                log.info("%r", notification)
+            else:
+                # assert severity == NotificationSeverity.UNKNOWN
+                # or severity_level == "UNKNOWN"
+                log.debug("%r", notification)
 
     .. versionadded:: 5.?
 
-    .. seealso:: :class:`SummaryNotification.severity_level`
+    .. seealso:: :attr:`SummaryNotification.severity_level`
     """
 
     WARNING = "WARNING"
@@ -165,12 +200,22 @@ class NotificationSeverity(Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class NotificationCategory(Enum):
+class NotificationCategory(str, Enum):
     """Server-side notification category.
+
+    Inherits from :class:`str` and :class:`Enum`. Hence, can also be compared
+    to its string value::
+
+        >>> DEPRECATION == "DEPRECATION"
+        True
+        >>> GENERIC == "GENERIC"
+        True
+        >>> UNKNOWN == "UNKNOWN"
+        True
 
     .. versionadded:: 5.?
 
-    .. seealso:: :class:`SummaryNotification.category`
+    .. seealso:: :attr:`SummaryNotification.category`
     """
 
     HINT = "HINT"

@@ -59,7 +59,7 @@ class ResultSummary:
     parameters: t.Optional[t.Dict[str, t.Any]]
 
     #: A string that describes the type of query
-    # ``'r'`` = read-only, ``'rw'`` = read/write, ``'w'`` = write-onlye,
+    # ``'r'`` = read-only, ``'rw'`` = read/write, ``'w'`` = write-only,
     # ``'s'`` = schema.
     query_type: t.Union[te.Literal["r", "rw", "w", "s"], None]
 
@@ -253,12 +253,15 @@ class SummaryNotification:
     category: NotificationCategory = NotificationCategory.UNKNOWN
     raw_severity_level: str = ""
     raw_category: str = ""
+    position: t.Optional[SummaryNotificationPosition] = None
 
     @classmethod
     def _from_metadata(cls, metadata):
         if not isinstance(metadata, dict):
             return SummaryNotification()
-        kwargs = {}
+        kwargs = {
+            "position": SummaryNotificationPosition._from_metadata(metadata)
+        }
         for key in ("title", "code", "description"):
             value = metadata.get(key)
             if isinstance(value, str):
@@ -276,3 +279,35 @@ class SummaryNotification:
                 category, NotificationCategory.UNKNOWN
             )
         return SummaryNotification(**kwargs)
+
+
+@dataclass
+class SummaryNotificationPosition:
+    """Structured form of a notification position received from the server.
+
+    .. versionadded:: 5.2
+
+    .. seealso:: :class:`.SummaryNotification`
+    """
+
+    #: The line number of the notification. Line numbers start at 1.
+    # Defaults to -1 if the server's data could not be interpreted.
+    line: int = -1
+    #: The column number of the notification. Column numbers start at 1.
+    # Defaults to -1 if the server's data could not be interpreted.
+    column: int = -1
+    #: The character offset of the notification. Offsets start at 0.
+    # Defaults to -1 if the server's data could not be interpreted.
+    offset: int = -1
+
+    @classmethod
+    def _from_metadata(cls, metadata):
+        metadata = metadata.get("position")
+        if not isinstance(metadata, dict):
+            return None
+        kwargs = {}
+        for key in ("line", "column", "offset"):
+            value = metadata.get(key)
+            if isinstance(value, int):
+                kwargs[key] = value
+        return SummaryNotificationPosition(**kwargs)

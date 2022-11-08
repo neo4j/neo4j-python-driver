@@ -24,6 +24,7 @@ from .summary import (
     ResultSummary,
     SummaryCounters,
     SummaryNotification,
+    SummaryNotificationPosition,
 )
 
 
@@ -32,5 +33,6 @@ __all__ = [
     "ResultSummary",
     "SummaryCounters",
     "SummaryNotification",
+    "SummaryNotificationPosition",
     "unit_of_work",
 ]
