@@ -35,8 +35,8 @@ class Query:
     def __init__(
         self,
         text: str,
-        metadata: t.Dict[str, t.Any] = None,
-        timeout: float = None
+        metadata: t.Optional[t.Dict[str, t.Any]] = None,
+        timeout: t.Optional[float] = None
     ) -> None:
         self.text = text
 
@@ -48,7 +48,8 @@ class Query:
 
 
 def unit_of_work(
-    metadata: t.Dict[str, t.Any] = None, timeout: float = None
+    metadata: t.Optional[t.Dict[str, t.Any]] = None,
+    timeout: t.Optional[float] = None
 ) -> t.Callable[[_T], _T]:
     """Decorator giving extra control over transaction function configuration.
 

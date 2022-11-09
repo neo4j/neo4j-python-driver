@@ -217,10 +217,10 @@ class GraphDatabase:
     )
     def bookmark_manager(
         cls,
-        initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
-                                                  t.Iterable[str]]] = None,
-        bookmarks_supplier: _T_BmSupplier = None,
-        bookmarks_consumer: _T_BmConsumer = None
+        initial_bookmarks: t.Optional[t.Mapping[str, t.Union[Bookmarks,
+                                                t.Iterable[str]]]] = None,
+        bookmarks_supplier: t.Optional[_T_BmSupplier] = None,
+        bookmarks_consumer: t.Optional[_T_BmConsumer] = None
     ) -> BookmarkManager:
         """Create a :class:`.BookmarkManager` with default implementation.
 

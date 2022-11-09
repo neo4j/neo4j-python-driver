@@ -49,17 +49,15 @@ class Point(t.Tuple[float, ...]):
     #: be interpreted in.
     srid: t.Optional[int]
 
-    @property
-    def x(self) -> float:
-        ...
+    if t.TYPE_CHECKING:
+        @property
+        def x(self) -> float: ...
 
-    @property
-    def y(self) -> float:
-        ...
+        @property
+        def y(self) -> float: ...
 
-    @property
-    def z(self) -> float:
-        ...
+        @property
+        def z(self) -> float: ...
 
     def __new__(cls, iterable: t.Iterable[float]) -> Point:
         return tuple.__new__(cls, map(float, iterable))

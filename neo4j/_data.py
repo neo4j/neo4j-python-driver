@@ -140,7 +140,7 @@ class Record(tuple, Mapping):
         values = tuple(self)[key]
         return self.__class__(zip(keys, values))
 
-    def get(self, key: str, default: object = None) -> t.Any:
+    def get(self, key: str, default: t.Optional[object] = None) -> t.Any:
         """ Obtain a value from the record by key, returning a default
         value if the key does not exist.
 
@@ -177,7 +177,9 @@ class Record(tuple, Mapping):
         else:
             raise TypeError(key)
 
-    def value(self, key: _T_K = 0, default: object = None) -> t.Any:
+    def value(
+        self, key: _T_K = 0, default: t.Optional[object] = None
+    ) -> t.Any:
         """ Obtain a single value from the record by index or key. If no
         index or key is specified, the first value is returned. If the
         specified item does not exist, the default value is returned.

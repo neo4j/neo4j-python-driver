@@ -26,6 +26,8 @@ if t.TYPE_CHECKING:
 
     import ssl
 
+
+
 from .._async_compat.util import AsyncUtil
 from .._conf import (
     Config,
@@ -218,10 +220,10 @@ class AsyncGraphDatabase:
     )
     def bookmark_manager(
         cls,
-        initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
-                                                  t.Iterable[str]]] = None,
-        bookmarks_supplier: _T_BmSupplier = None,
-        bookmarks_consumer: _T_BmConsumer = None
+        initial_bookmarks: t.Optional[t.Mapping[str, t.Union[Bookmarks,
+                                                t.Iterable[str]]]] = None,
+        bookmarks_supplier: t.Optional[_T_BmSupplier] = None,
+        bookmarks_consumer: t.Optional[_T_BmConsumer] = None
     ) -> AsyncBookmarkManager:
         """Create a :class:`.AsyncBookmarkManager` with default implementation.
 

@@ -149,7 +149,9 @@ class Watcher:
         """Disable logging for all loggers."""
         self.stop()
 
-    def watch(self, level: int = None, out: t.TextIO = None):
+    def watch(
+        self, level: t.Optional[int] = None, out: t.Optional[t.TextIO] = None
+    ) -> None:
         """Enable logging for all loggers.
 
         :param level: Minimum log level to show.

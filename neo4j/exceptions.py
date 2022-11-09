@@ -100,6 +100,8 @@ else:
     _T_Session = t.Union["AsyncSession", "Session"]
 
 
+
+
 from ._meta import deprecated
 
 
@@ -148,7 +150,10 @@ class Neo4jError(Exception):
 
     @classmethod
     def hydrate(
-        cls, message: str = None, code: str = None, **metadata: t.Any
+        cls,
+        message: t.Optional[str] = None,
+        code: t.Optional[str] = None,
+        **metadata: t.Any
     ) -> Neo4jError:
         message = message or "An unknown error occurred"
         code = code or "Neo.DatabaseError.General.UnknownError"
