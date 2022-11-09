@@ -17,7 +17,7 @@
 
 
 """
-This module defines _spatial data types.
+This module defines spatial data types.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ srid_table_lock = Lock()
 
 
 class Point(t.Tuple[float, ...]):
-    """Base-class for _spatial data.
+    """Base-class for spatial data.
 
     A point within a geometric space. This type is generally used via its
     subclasses and should not be instantiated directly unless there is no
@@ -44,23 +44,20 @@ class Point(t.Tuple[float, ...]):
     :type iterable: Iterable[float]
     """
 
-    #: The SRID (_spatial reference identifier) of the _spatial data.
-    #: A number that identifies the coordinate system the _spatial type is to be
-    #: interpreted in.
-
+    #: The SRID (spatial reference identifier) of the spatial data.
+    #: A number that identifies the coordinate system the spatial type is to
+    #: be interpreted in.
     srid: t.Optional[int]
 
-    @property
-    def x(self) -> float:
-        ...
+    if t.TYPE_CHECKING:
+        @property
+        def x(self) -> float: ...
 
-    @property
-    def y(self) -> float:
-        ...
+        @property
+        def y(self) -> float: ...
 
-    @property
-    def z(self) -> float:
-        ...
+        @property
+        def z(self) -> float: ...
 
     def __new__(cls, iterable: t.Iterable[float]) -> Point:
         return tuple.__new__(cls, map(float, iterable))

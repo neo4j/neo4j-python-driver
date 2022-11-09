@@ -221,10 +221,10 @@ class GraphDatabase:
     )
     def bookmark_manager(
         cls,
-        initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
-                                                  t.Iterable[str]]] = None,
-        bookmarks_supplier: _T_BmSupplier = None,
-        bookmarks_consumer: _T_BmConsumer = None
+        initial_bookmarks: t.Optional[t.Mapping[str, t.Union[Bookmarks,
+                                                t.Iterable[str]]]] = None,
+        bookmarks_supplier: t.Optional[_T_BmSupplier] = None,
+        bookmarks_consumer: t.Optional[_T_BmConsumer] = None
     ) -> BookmarkManager:
         """Create a :class:`.BookmarkManager` with default implementation.
 
@@ -687,7 +687,7 @@ class Neo4jDriver(_Routing, Driver):
         return cls(pool, default_workspace_config)
 
     def __init__(self, pool, default_workspace_config):
-        _Routing.__init__(self, pool.get_default_database_initial_router_addresses())
+        _Routing.__init__(self, [pool.address])
         Driver.__init__(self, pool, default_workspace_config)
 
     if not t.TYPE_CHECKING:

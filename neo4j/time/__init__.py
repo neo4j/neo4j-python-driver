@@ -24,6 +24,7 @@ as a number of utility functions.
 
 from __future__ import annotations
 
+import re
 import typing as t
 from datetime import (
     date,
@@ -101,6 +102,8 @@ DURATION_ISO_PATTERN = re_compile(
 NANO_SECONDS = 1000000000
 AVERAGE_SECONDS_IN_MONTH = 2629746
 AVERAGE_SECONDS_IN_DAY = 86400
+
+FORMAT_F_REPLACE = re.compile(r"(?<!%)%f")
 
 
 def _is_leap_year(year):
@@ -779,7 +782,7 @@ class Date(date_base_class, metaclass=DateType):
     # CLASS METHODS #
 
     @classmethod
-    def today(cls, tz: _tzinfo = None) -> Date:
+    def today(cls, tz: t.Optional[_tzinfo] = None) -> Date:
         """Get the current date.
 
         :param tz: timezone or None to get the local :class:`.Date`.
@@ -803,7 +806,9 @@ class Date(date_base_class, metaclass=DateType):
         return cls.from_clock_time(Clock().utc_time(), UnixEpoch)
 
     @classmethod
-    def from_timestamp(cls, timestamp: float, tz: _tzinfo = None) -> Date:
+    def from_timestamp(
+        cls, timestamp: float, tz: t.Optional[_tzinfo] = None
+    ) -> Date:
         """:class:`.Date` from a time stamp (seconds since unix epoch).
 
         :param timestamp: the unix timestamp (seconds since unix epoch).
@@ -1000,7 +1005,9 @@ class Date(date_base_class, metaclass=DateType):
             ...
 
         @classmethod
-        def fromtimestamp(cls, timestamp: float, tz: _tzinfo = None) -> Date:
+        def fromtimestamp(
+            cls, timestamp: float, tz: t.Optional[_tzinfo] = None
+        ) -> Date:
             ...
 
         @classmethod
@@ -1307,7 +1314,10 @@ class Date(date_base_class, metaclass=DateType):
 
     def __format__(self, format_spec):
         """"""
-        raise NotImplementedError()
+        if not format_spec:
+            return self.iso_format()
+        format_spec = FORMAT_F_REPLACE.sub("000000000", format_spec)
+        return self.to_native().__format__(format_spec)
 
     # INSTANCE METHOD ALIASES #
 
@@ -1393,7 +1403,7 @@ class Time(time_base_class, metaclass=TimeType):
         minute: int = 0,
         second: int = 0,
         nanosecond: int = 0,
-        tzinfo: _tzinfo = None
+        tzinfo: t.Optional[_tzinfo] = None
     ) -> Time:
         hour, minute, second, nanosecond = cls.__normalize_nanosecond(
             hour, minute, second, nanosecond
@@ -1418,7 +1428,7 @@ class Time(time_base_class, metaclass=TimeType):
     # CLASS METHODS #
 
     @classmethod
-    def now(cls, tz: _tzinfo = None) -> Time:
+    def now(cls, tz: t.Optional[_tzinfo] = None) -> Time:
         """Get the current time.
 
         :param tz: optional timezone
@@ -1492,7 +1502,7 @@ class Time(time_base_class, metaclass=TimeType):
         raise ValueError("Time string is not in ISO format")
 
     @classmethod
-    def from_ticks(cls, ticks: int, tz: _tzinfo = None) -> Time:
+    def from_ticks(cls, ticks: int, tz: t.Optional[_tzinfo] = None) -> Time:
         """Create a time from ticks (nanoseconds since midnight).
 
         :param ticks: nanoseconds since midnight
@@ -1905,7 +1915,11 @@ class Time(time_base_class, metaclass=TimeType):
 
     def __format__(self, format_spec):
         """"""
-        raise NotImplementedError()
+        if not format_spec:
+            return self.iso_format()
+        format_spec = FORMAT_F_REPLACE.sub(f"{self.__nanosecond:09}",
+                                           format_spec)
+        return self.to_native().__format__(format_spec)
 
     # INSTANCE METHOD ALIASES #
 
@@ -2000,7 +2014,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         minute: int = 0,
         second: int = 0,
         nanosecond: int = 0,
-        tzinfo: _tzinfo = None
+        tzinfo: t.Optional[_tzinfo] = None
     ) -> DateTime:
         return cls.combine(Date(year, month, day),
                            Time(hour, minute, second, nanosecond, tzinfo))
@@ -2008,7 +2022,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
     # CLASS METHODS #
 
     @classmethod
-    def now(cls, tz: _tzinfo = None) -> DateTime:
+    def now(cls, tz: t.Optional[_tzinfo] = None) -> DateTime:
         """Get the current date and time.
 
         :param tz: timezone. Set to None to create a local :class:`.DateTime`.
@@ -2061,7 +2075,9 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             raise ValueError("DateTime string is not in ISO format")
 
     @classmethod
-    def from_timestamp(cls, timestamp: float, tz: _tzinfo = None) -> DateTime:
+    def from_timestamp(
+        cls, timestamp: float, tz: t.Optional[_tzinfo] = None
+    ) -> DateTime:
         """:class:`.DateTime` from a time stamp (seconds since unix epoch).
 
         :param timestamp: the unix timestamp (seconds since unix epoch).
@@ -2169,7 +2185,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
         @classmethod
         def fromtimestamp(
-            cls, timestamp: float, tz: _tzinfo = None
+            cls, timestamp: float, tz: t.Optional[_tzinfo] = None
         ) -> DateTime:
             ...
 
@@ -2180,7 +2196,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
         # alias of now
         @classmethod
-        def today(cls, tz: _tzinfo = None) -> DateTime:
+        def today(cls, tz: t.Optional[_tzinfo] = None) -> DateTime:
             ...
 
         @classmethod
@@ -2663,7 +2679,11 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
     def __format__(self, format_spec):
         """"""
-        raise NotImplementedError()
+        if not format_spec:
+            return self.iso_format()
+        format_spec = FORMAT_F_REPLACE.sub(f"{self.__time.nanosecond:09}",
+                                           format_spec)
+        return self.to_native().__format__(format_spec)
 
     # INSTANCE METHOD ALIASES #
 

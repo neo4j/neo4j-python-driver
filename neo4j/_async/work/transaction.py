@@ -98,7 +98,7 @@ class AsyncTransactionBase:
     async def run(
         self,
         query: str,
-        parameters: t.Dict[str, t.Any] = None,
+        parameters: t.Optional[t.Dict[str, t.Any]] = None,
         **kwparameters: t.Any
     ) -> AsyncResult:
         """ Run a Cypher query within the context of this transaction.

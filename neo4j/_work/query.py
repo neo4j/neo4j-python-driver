@@ -35,8 +35,8 @@ class Query:
     def __init__(
         self,
         text: str,
-        metadata: t.Dict[str, t.Any] = None,
-        timeout: float = None
+        metadata: t.Optional[t.Dict[str, t.Any]] = None,
+        timeout: t.Optional[float] = None
     ) -> None:
         self.text = text
 
@@ -48,7 +48,8 @@ class Query:
 
 
 def unit_of_work(
-    metadata: t.Dict[str, t.Any] = None, timeout: float = None
+    metadata: t.Optional[t.Dict[str, t.Any]] = None,
+    timeout: t.Optional[float] = None
 ) -> t.Callable[[_T], _T]:
     """Decorator giving extra control over transaction function configuration.
 
@@ -67,14 +68,14 @@ def unit_of_work(
 
     :param metadata:
         a dictionary with metadata.
-        Specified metadata will be attached to the executing transaction and
-        visible in the output of ``dbms.listQueries`` and
-        ``dbms.listTransactions`` procedures.
+        Specified metadata will be attached to the executing transaction
+        and visible in the output of ``SHOW TRANSACTIONS YIELD *``
         It will also get logged to the ``query.log``.
         This functionality makes it easier to tag transactions and is
-        equivalent to ``dbms.setTXMetaData`` procedure, see
-        https://neo4j.com/docs/operations-manual/current/reference/procedures/
-        for procedure reference.
+        equivalent to the ``dbms.setTXMetaData`` procedure, see
+        https://neo4j.com/docs/cypher-manual/current/clauses/transaction-clauses/#query-listing-transactions
+        and https://neo4j.com/docs/operations-manual/current/reference/procedures/
+        for reference.
 
     :param timeout:
         the transaction timeout in seconds.

@@ -870,3 +870,14 @@ def test_comparison(dt1, dt2) -> None:
     assert not dt1 > dt2
     assert dt2 >= dt1
     assert not dt1 >= dt2
+
+
+def test_str() -> None:
+    dt = DateTime(2018, 4, 26, 23, 0, 17, 914390409)
+    assert str(dt) == "2018-04-26T23:00:17.914390409"
+
+
+def test_format() -> None:
+    dt = DateTime(2018, 4, 26, 23, 0, 17, 914390409)
+    assert f"{dt}" == "2018-04-26T23:00:17.914390409"
+    assert f"{dt:%Y-%m-%d %H:%M:%S.%f}" == "2018-04-26 23:00:17.914390409"

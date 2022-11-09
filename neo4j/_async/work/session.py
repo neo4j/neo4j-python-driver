@@ -33,6 +33,8 @@ if t.TYPE_CHECKING:
     _R = t.TypeVar("_R")
     _P = te.ParamSpec("_P")
 
+
+
 from ..._async_compat import async_sleep
 from ..._async_compat.util import AsyncUtil
 from ..._conf import SessionConfig
@@ -236,7 +238,7 @@ class AsyncSession(AsyncWorkspace):
     async def run(
         self,
         query: t.Union[str, Query],
-        parameters: t.Dict[str, t.Any] = None,
+        parameters: t.Optional[t.Dict[str, t.Any]] = None,
         **kwargs: t.Any
     ) -> AsyncResult:
         """Run a Cypher query within an auto-commit transaction.
@@ -321,7 +323,7 @@ class AsyncSession(AsyncWorkspace):
         if self._auto_result:
             await self._auto_result.consume()
 
-        if self._transaction and self._transaction._closed:
+        if self._transaction and self._transaction._closed():
             await self._update_bookmark(self._transaction._database,
                                         self._transaction._bookmark)
             self._transaction = None
@@ -406,8 +408,8 @@ class AsyncSession(AsyncWorkspace):
 
     async def begin_transaction(
         self,
-        metadata: t.Dict[str, t.Any] = None,
-        timeout: float = None
+        metadata: t.Optional[t.Dict[str, t.Any]] = None,
+        timeout: t.Optional[float] = None
     ) -> AsyncTransaction:
         """ Begin a new unmanaged transaction. Creates a new :class:`.AsyncTransaction` within this session.
             At most one transaction may exist in a session at any point in time.
@@ -417,9 +419,14 @@ class AsyncSession(AsyncWorkspace):
 
         :param metadata:
             a dictionary with metadata.
-            Specified metadata will be attached to the executing transaction and visible in the output of ``dbms.listQueries`` and ``dbms.listTransactions`` procedures.
+            Specified metadata will be attached to the executing transaction
+            and visible in the output of ``SHOW TRANSACTIONS YIELD *``
             It will also get logged to the ``query.log``.
-            This functionality makes it easier to tag transactions and is equivalent to ``dbms.setTXMetaData`` procedure, see https://neo4j.com/docs/operations-manual/current/reference/procedures/ for procedure reference.
+            This functionality makes it easier to tag transactions and is
+            equivalent to the ``dbms.setTXMetaData`` procedure, see
+            https://neo4j.com/docs/cypher-manual/current/clauses/transaction-clauses/#query-listing-transactions
+            and https://neo4j.com/docs/operations-manual/current/reference/procedures/
+            for reference.
 
         :param timeout:
             the transaction timeout in seconds.
