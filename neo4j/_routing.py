@@ -129,16 +129,17 @@ class RoutingTable:
         """ Indicator for whether routing information is still usable.
         """
         assert isinstance(readonly, bool)
-        log.debug("[#0000]  C: <ROUTING> Checking table freshness (readonly=%r)", readonly)
         expired = self.last_updated_time + self.ttl <= perf_counter()
         if readonly:
             has_server_for_mode = bool(self.readers)
         else:
             has_server_for_mode = bool(self.writers)
-        log.debug("[#0000]  C: <ROUTING> Table expired=%r", expired)
-        log.debug("[#0000]  C: <ROUTING> Table routers=%r", self.routers)
-        log.debug("[#0000]  C: <ROUTING> Table has_server_for_mode=%r", has_server_for_mode)
-        return not expired and self.routers and has_server_for_mode
+        res = not expired and self.routers and has_server_for_mode
+        log.debug("[#0000]  _: <ROUTING> checking table freshness "
+                  "(readonly=%r): table expired=%r, "
+                  "has_server_for_mode=%r, table routers=%r => %r",
+                  readonly, expired, has_server_for_mode, self.routers, res)
+        return res
 
     def should_be_purged_from_memory(self):
         """ Check if the routing table is stale and not used for a long time and should be removed from memory.
@@ -148,8 +149,11 @@ class RoutingTable:
         """
         from neo4j._conf import RoutingConfig
         perf_time = perf_counter()
-        log.debug("[#0000]  C: <ROUTING AGED> last_updated_time=%r perf_time=%r", self.last_updated_time, perf_time)
-        return self.last_updated_time + self.ttl + RoutingConfig.routing_table_purge_delay <= perf_time
+        res = self.last_updated_time + self.ttl + RoutingConfig.routing_table_purge_delay <= perf_time
+        log.debug("[#0000]  _: <ROUTING> purge check: "
+                  "last_updated_time=%r, ttl=%r, perf_time=%r => %r",
+                  self.last_updated_time, self.ttl, perf_time, res)
+        return res
 
     def update(self, new_routing_table):
         """ Update the current routing table with new routing information
@@ -161,7 +165,7 @@ class RoutingTable:
         self.initialized_without_writers = not self.writers
         self.last_updated_time = perf_counter()
         self.ttl = new_routing_table.ttl
-        log.debug("[#0000]  S: <ROUTING> table=%r", self)
+        log.debug("[#0000]  _: <ROUTING> updated table=%r", self)
 
     def servers(self):
         return set(self.routers) | set(self.writers) | set(self.readers)

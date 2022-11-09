@@ -238,7 +238,7 @@ class AsyncBoltSocket:
             return cls(reader, protocol, writer)
 
         except asyncio.TimeoutError:
-            log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
+            log.debug("[#0000]  S: <TIMEOUT> %s", resolved_address)
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             if s:
                 await cls.close_socket(s)
@@ -246,7 +246,7 @@ class AsyncBoltSocket:
                 "Timed out trying to establish connection to {!r}".format(
                     resolved_address))
         except asyncio.CancelledError:
-            log.debug("[#0000]  C: <CANCELLED> %s", resolved_address)
+            log.debug("[#0000]  S: <CANCELLED> %s", resolved_address)
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             if s:
                 await cls.close_socket(s)
@@ -260,7 +260,7 @@ class AsyncBoltSocket:
                 address=(resolved_address.host_name, local_port)
             ) from error
         except OSError as error:
-            log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
+            log.debug("[#0000]  S: <ERROR> %s %s", type(error).__name__,
                       " ".join(map(repr, error.args)))
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             if s:
@@ -507,14 +507,14 @@ class BoltSocket:
             s.setsockopt(SOL_SOCKET, SO_KEEPALIVE, keep_alive)
             return s
         except SocketTimeout:
-            log.debug("[#0000]  C: <TIMEOUT> %s", resolved_address)
+            log.debug("[#0000]  S: <TIMEOUT> %s", resolved_address)
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             cls.close_socket(s)
             raise ServiceUnavailable(
                 "Timed out trying to establish connection to {!r}".format(
                     resolved_address))
         except OSError as error:
-            log.debug("[#0000]  C: <ERROR> %s %s", type(error).__name__,
+            log.debug("[#0000]  S: <ERROR> %s %s", type(error).__name__,
                       " ".join(map(repr, error.args)))
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             cls.close_socket(s)
@@ -655,7 +655,7 @@ class BoltSocket:
                 err_str = error.__class__.__name__
                 if str(error):
                     err_str += ": " + str(error)
-                log.debug("[#%04X]  C: <CONNECTION FAILED> %s", local_port,
+                log.debug("[#%04X]  S: <CONNECTION FAILED> %s", local_port,
                           err_str)
                 if s:
                     cls.close_socket(s)

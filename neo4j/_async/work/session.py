@@ -138,11 +138,12 @@ class AsyncSession(AsyncWorkspace):
         connection = self._connection
         self._connection = None
         if connection:
-            log.debug("[#%04X]  %s cancellation clean-up",
+            log.debug("[#%04X]  _: <SESSION> %s cancellation clean-up",
                       connection.local_port, message)
             self._pool.kill_and_release(connection)
         else:
-            log.debug("[#0000]  %s cancellation clean-up", message)
+            log.debug("[#0000]  _: <SESSION> %s cancellation clean-up",
+                      message)
 
     async def _result_closed(self):
         if self._auto_result:
@@ -519,7 +520,7 @@ class AsyncSession(AsyncWorkspace):
             try:
                 await async_sleep(delay)
             except asyncio.CancelledError:
-                log.debug("[#0000]  Retry cancelled")
+                log.debug("[#0000]  _: <SESSION> retry cancelled")
                 raise
 
         if errors:

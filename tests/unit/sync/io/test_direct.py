@@ -53,6 +53,7 @@ class QuickConnection:
         self.socket = socket
         self.address = socket.getpeername()
         self.local_port = self.address[1]
+        self.connection_id = "bolt-1234"
 
     @property
     def is_reset(self):

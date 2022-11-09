@@ -19,10 +19,10 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 
 from ..._async_compat.util import Util
 from ..._conf import WorkspaceConfig
-from ..._deadline import Deadline
 from ..._meta import (
     deprecation_warn,
     unclosed_resource_warn,
@@ -34,6 +34,9 @@ from ...exceptions import (
     SessionExpired,
 )
 from ..io import Neo4jPool
+
+
+log = logging.getLogger("neo4j")
 
 
 class Workspace:
@@ -176,6 +179,7 @@ class Workspace:
                 # to try to fetch the home database. If provided by the server,
                 # we shall use this database explicitly for all subsequent
                 # actions within this session.
+                log.debug("[#0000]  _: <WORKSPACE> resolve home database")
                 self._pool.update_routing_table(
                     database=self._config.database,
                     imp_user=self._config.impersonated_user,

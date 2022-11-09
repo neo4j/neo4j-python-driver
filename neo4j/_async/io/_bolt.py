@@ -161,6 +161,10 @@ class AsyncBolt:
             self.close()
 
     @property
+    def connection_id(self):
+        return self.server_info._metadata.get("connection_id", "<unknown id>")
+
+    @property
     @abc.abstractmethod
     def supports_multiple_results(self):
         """ Boolean flag to indicate if the connection version supports multiple
@@ -689,7 +693,8 @@ class AsyncBolt:
         user_cancelled = isinstance(error, asyncio.CancelledError)
 
         if error:
-            log.debug("[#%04X]  %r", self.local_port, error)
+            log.debug("[#%04X] _: <CONNECTION> error: %r", self.local_port,
+                      error)
         if not user_cancelled:
             log.error(message)
         # We were attempting to receive data but the connection
@@ -751,7 +756,7 @@ class AsyncBolt:
             try:
                 await self._send_all()
             except (OSError, BoltError, DriverError) as exc:
-                log.debug("[#%04X]  ignoring failed close %r",
+                log.debug("[#%04X]  _: <CONNECTION> ignoring failed close %r",
                           self.local_port, exc)
         log.debug("[#%04X]  C: <CLOSE>", self.local_port)
         try:
@@ -770,7 +775,7 @@ class AsyncBolt:
         try:
             self.socket.kill()
         except OSError as exc:
-            log.debug("[#%04X]  ignoring failed kill %r",
+            log.debug("[#%04X]  _: <CONNECTION> ignoring failed kill %r",
                       self.local_port, exc)
         finally:
             self._closed = True
