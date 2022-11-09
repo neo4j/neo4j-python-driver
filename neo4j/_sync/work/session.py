@@ -33,6 +33,8 @@ if t.TYPE_CHECKING:
     _R = t.TypeVar("_R")
     _P = te.ParamSpec("_P")
 
+
+
 from ..._async_compat import sleep
 from ..._async_compat.util import Util
 from ..._conf import SessionConfig
@@ -236,7 +238,7 @@ class Session(Workspace):
     def run(
         self,
         query: t.Union[str, Query],
-        parameters: t.Dict[str, t.Any] = None,
+        parameters: t.Optional[t.Dict[str, t.Any]] = None,
         **kwargs: t.Any
     ) -> Result:
         """Run a Cypher query within an auto-commit transaction.
@@ -321,7 +323,7 @@ class Session(Workspace):
         if self._auto_result:
             self._auto_result.consume()
 
-        if self._transaction and self._transaction._closed:
+        if self._transaction and self._transaction._closed():
             self._update_bookmark(self._transaction._database,
                                         self._transaction._bookmark)
             self._transaction = None
@@ -405,8 +407,8 @@ class Session(Workspace):
 
     def begin_transaction(
         self,
-        metadata: t.Dict[str, t.Any] = None,
-        timeout: float = None
+        metadata: t.Optional[t.Dict[str, t.Any]] = None,
+        timeout: t.Optional[float] = None
     ) -> Transaction:
         """ Begin a new unmanaged transaction. Creates a new :class:`.Transaction` within this session.
             At most one transaction may exist in a session at any point in time.

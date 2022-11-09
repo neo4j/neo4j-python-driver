@@ -45,10 +45,10 @@ def _bookmarks_to_set(
 class AsyncNeo4jBookmarkManager(AsyncBookmarkManager):
     def __init__(
         self,
-        initial_bookmarks: t.Mapping[str, t.Union[Bookmarks,
-                                                  t.Iterable[str]]] = None,
-        bookmarks_supplier: T_BmSupplier = None,
-        bookmarks_consumer: T_BmConsumer = None
+        initial_bookmarks: t.Optional[t.Mapping[str, t.Union[Bookmarks,
+                                                t.Iterable[str]]]] = None,
+        bookmarks_supplier: t.Optional[T_BmSupplier] = None,
+        bookmarks_consumer: t.Optional[T_BmConsumer] = None
     ) -> None:
         super().__init__()
         self._bookmarks_supplier = bookmarks_supplier

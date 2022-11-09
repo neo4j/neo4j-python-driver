@@ -166,7 +166,7 @@ class Entity(t.Mapping[str, t.Any]):
         """
         return self._element_id
 
-    def get(self, name: str, default: object = None) -> t.Any:
+    def get(self, name: str, default: t.Optional[object] = None) -> t.Any:
         """ Get a property value by name, optionally with a default.
         """
         return self._properties.get(name, default)
@@ -225,8 +225,8 @@ class Node(Entity):
         graph: Graph,
         element_id: str,
         id_: int,
-        n_labels: t.Iterable[str] = None,
-        properties: t.Dict[str, t.Any] = None
+        n_labels: t.Optional[t.Iterable[str]] = None,
+        properties: t.Optional[t.Dict[str, t.Any]] = None
     ) -> None:
         Entity.__init__(self, graph, element_id, id_, properties)
         self._labels = frozenset(n_labels or ())

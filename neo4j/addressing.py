@@ -44,10 +44,7 @@ if t.TYPE_CHECKING:
         def getpeername(self) -> tuple: ...
 
 
-assert type(tuple) is type
-
-
-class _AddressMeta(type):
+class _AddressMeta(type(tuple)):  # type: ignore[misc]
 
     def __init__(cls, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -95,8 +92,8 @@ class Address(tuple, metaclass=_AddressMeta):
     def parse(
         cls: t.Type[_T_Address],
         s: str,
-        default_host: str = None,
-        default_port: int = None
+        default_host: t.Optional[str] = None,
+        default_port: t.Optional[int] = None
     ) -> _T_Address:
         if not isinstance(s, str):
             raise TypeError("Address.parse requires a string argument")
@@ -125,8 +122,8 @@ class Address(tuple, metaclass=_AddressMeta):
     def parse_list(
         cls: t.Type[_T_Address],
         *s: str,
-        default_host: str = None,
-        default_port: int = None
+        default_host: t.Optional[str] = None,
+        default_port: t.Optional[int] = None
     ) -> t.List[_T_Address]:
         """ Parse a string containing one or more socket addresses, each
         separated by whitespace.
