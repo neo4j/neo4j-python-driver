@@ -54,7 +54,7 @@ entry_points = {
 }
 packages = find_packages(exclude=["tests"])
 package_data = {
-    "neo4j": ["py.typed"],
+    package: ["py.typed"] for package in packages
 }
 
 readme_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
