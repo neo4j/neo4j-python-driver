@@ -245,7 +245,7 @@ class TransactionBase:
     def _closed(self):
         """Indicate whether the transaction has been closed or cancelled.
 
-        :return:
+        :returns:
             :const:`True` if closed or cancelled, :const:`False` otherwise.
         :rtype: bool
         """

@@ -289,7 +289,7 @@ class AsyncBolt4x0(AsyncBolt):
     async def _process_message(self, tag, fields):
         """ Process at most one message from the server, if available.
 
-        :return: 2-tuple of number of detail messages and number of summary
+        :returns: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
         details = []

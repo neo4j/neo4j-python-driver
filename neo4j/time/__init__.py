@@ -172,7 +172,7 @@ def _normalize_day(year, month, day):
     :param year:
     :param month:
     :param day:
-    :return:
+    :returns:
     """
     if year < MIN_YEAR or year > MAX_YEAR:
         raise ValueError("Year out of range (%d..%d)" % (MIN_YEAR, MAX_YEAR))
@@ -1820,7 +1820,7 @@ class Time(time_base_class, metaclass=TimeType):
     def utc_offset(self) -> t.Optional[timedelta]:
         """Return the UTC offset of this time.
 
-        :return: None if this is a local time (:attr:`.tzinfo` is None), else
+        :returns: None if this is a local time (:attr:`.tzinfo` is None), else
             returns `self.tzinfo.utcoffset(self)`.
 
         :raises ValueError: if `self.tzinfo.utcoffset(self)` is not None and a
@@ -1834,7 +1834,7 @@ class Time(time_base_class, metaclass=TimeType):
     def dst(self) -> t.Optional[timedelta]:
         """Get the daylight saving time adjustment (DST).
 
-        :return: None if this is a local time (:attr:`.tzinfo` is None), else
+        :returns: None if this is a local time (:attr:`.tzinfo` is None), else
             returns `self.tzinfo.dst(self)`.
 
         :raises ValueError: if `self.tzinfo.dst(self)` is not None and a
@@ -2544,7 +2544,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
         :param tz: the new timezone
 
-        :return: the same object if ``tz`` is :const:``None``.
+        :returns: the same object if ``tz`` is :const:``None``.
             Else, a new :class:`.DateTime` that's the same point in time but in
             a different timezone.
         """

@@ -25,7 +25,7 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):  # type: ignore[no-redef]
     :param seconds:
     :param nanoseconds:
     :param tz:
-    :return: datetime
+    :returns: datetime
     """
     import pytz
 
@@ -52,7 +52,7 @@ def dehydrate_datetime(value):  # type: ignore[no-redef]
 
     :param value:
     :type value: datetime
-    :return:
+    :returns:
     """
 
     import pytz
