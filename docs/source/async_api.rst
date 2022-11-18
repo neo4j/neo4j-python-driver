@@ -282,6 +282,9 @@ To construct a :class:`neo4j.AsyncSession` use the :meth:`neo4j.AsyncDriver.sess
             try:
                 result = await session.run("MATCH (a:Person) RETURN a.name AS name")
                 names = [record["name"] async for record in result]
+            except asyncio.CancelledError:
+                session.cancel()
+                raise
             finally:
                 await session.close()
 
