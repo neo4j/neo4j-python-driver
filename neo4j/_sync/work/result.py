@@ -582,7 +582,7 @@ class Result:
         useful for interactive sessions and rapid prototyping.
 
         For instance, node and relationship labels are not included. You will
-        have to implement a custom serialzer should you need more control over
+        have to implement a custom serializer should you need more control over
         the output format.
 
         :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
