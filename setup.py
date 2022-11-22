@@ -43,7 +43,7 @@ entry_points = {
     "console_scripts": [
     ],
 }
-packages = find_packages(exclude=["tests"])
+packages = find_packages(exclude=["test*"])
 
 readme_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "README.rst"))
 with open(readme_path, mode="r", encoding="utf-8") as fr:
