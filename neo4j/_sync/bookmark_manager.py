@@ -19,7 +19,6 @@
 from __future__ import annotations
 
 import typing as t
-from collections import defaultdict
 
 from .._async_compat.concurrency import CooperativeLock
 from .._async_compat.util import Util
@@ -29,9 +28,8 @@ from ..api import (
 )
 
 
-T_BmSupplier = t.Callable[[t.Optional[str]],
-                          t.Union[Bookmarks, t.Union[Bookmarks]]]
-T_BmConsumer = t.Callable[[str, Bookmarks], t.Union[None, t.Union[None]]]
+T_BmSupplier = t.Callable[[], t.Union[Bookmarks, t.Union[Bookmarks]]]
+T_BmConsumer = t.Callable[[Bookmarks], t.Union[None, t.Union[None]]]
 
 
 def _bookmarks_to_set(
@@ -45,62 +43,41 @@ def _bookmarks_to_set(
 class Neo4jBookmarkManager(BookmarkManager):
     def __init__(
         self,
-        initial_bookmarks: t.Optional[t.Mapping[str, t.Union[Bookmarks,
-                                                t.Iterable[str]]]] = None,
+        initial_bookmarks: t.Union[None, Bookmarks, t.Iterable[str]] = None,
         bookmarks_supplier: t.Optional[T_BmSupplier] = None,
         bookmarks_consumer: t.Optional[T_BmConsumer] = None
     ) -> None:
         super().__init__()
         self._bookmarks_supplier = bookmarks_supplier
         self._bookmarks_consumer = bookmarks_consumer
-        if initial_bookmarks is None:
-            initial_bookmarks = {}
-        self._bookmarks = defaultdict(
-            set, ((k, _bookmarks_to_set(v))
-                  for k, v in initial_bookmarks.items())
-        )
+        if not initial_bookmarks:
+            self._bookmarks = set()
+        else:
+            self._bookmarks = set(getattr(
+                initial_bookmarks, "raw_values",
+                t.cast(t.Iterable[str], initial_bookmarks)
+            ))
         self._lock = CooperativeLock()
 
     def update_bookmarks(
-        self, database: str, previous_bookmarks: t.Collection[str],
+        self, previous_bookmarks: t.Collection[str],
         new_bookmarks: t.Collection[str]
     ) -> None:
         if not new_bookmarks:
             return
         with self._lock:
-            curr_bms = self._bookmarks[database]
-            curr_bms.difference_update(previous_bookmarks)
-            curr_bms.update(new_bookmarks)
+            self._bookmarks.difference_update(previous_bookmarks)
+            self._bookmarks.update(new_bookmarks)
             if self._bookmarks_consumer:
-                curr_bms_snapshot = Bookmarks.from_raw_values(curr_bms)
+                curr_bms_snapshot = Bookmarks.from_raw_values(self._bookmarks)
         if self._bookmarks_consumer:
-            Util.callback(
-                self._bookmarks_consumer, database, curr_bms_snapshot
-            )
+            Util.callback(self._bookmarks_consumer,
+                                     curr_bms_snapshot)
 
-    def get_bookmarks(self, database: str) -> t.Set[str]:
+    def get_bookmarks(self) -> t.Set[str]:
         with self._lock:
-            bms = set(self._bookmarks[database])
+            bms = set(self._bookmarks)
         if self._bookmarks_supplier:
-            extra_bms = Util.callback(
-                self._bookmarks_supplier, database
-            )
+            extra_bms = Util.callback(self._bookmarks_supplier)
             bms.update(extra_bms.raw_values)
         return bms
-
-    def get_all_bookmarks(self) -> t.Set[str]:
-        bms: t.Set[str] = set()
-        with self._lock:
-            for database in self._bookmarks.keys():
-                bms.update(self._bookmarks[database])
-        if self._bookmarks_supplier:
-            extra_bms = Util.callback(
-                self._bookmarks_supplier, None
-            )
-            bms.update(extra_bms.raw_values)
-        return bms
-
-    def forget(self, databases: t.Iterable[str]) -> None:
-        with self._lock:
-            for database in databases:
-                self._bookmarks.pop(database, None)

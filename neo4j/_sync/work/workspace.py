@@ -102,39 +102,17 @@ class Workspace:
                             "iterable of raw bookmarks (deprecated).")
         self._initial_bookmarks = self._bookmarks = prepared_bookmarks
 
-    def _get_bookmarks(self, database):
-        if self._bookmark_manager is None:
-            return self._bookmarks
-
-        # For 4.3- support: the server will not send the resolved home
-        # database back. To avoid confusion between `None` as in "all
-        # database" and `None` as in "home database" we re-write the
-        # home database to `""`, which otherwise is an invalid database
-        # name. It will not work properly either way, as the home database
-        # can change (server config change or client side user change).
-        if database is None:
-            database = ""
-        self._last_from_bookmark_manager = tuple({
-            *Util.callback(
-                self._bookmark_manager.get_bookmarks, database
-            ),
-            *self._initial_bookmarks
-        })
-        return self._last_from_bookmark_manager
-
-    def _get_all_bookmarks(self):
+    def _get_bookmarks(self,):
         if self._bookmark_manager is None:
             return self._bookmarks
 
         self._last_from_bookmark_manager = tuple({
-            *Util.callback(
-                self._bookmark_manager.get_all_bookmarks,
-            ),
+            *Util.callback(self._bookmark_manager.get_bookmarks),
             *self._initial_bookmarks
         })
         return self._last_from_bookmark_manager
 
-    def _update_bookmarks(self, database, new_bookmarks):
+    def _update_bookmarks(self, new_bookmarks):
         if not new_bookmarks:
             return
         self._initial_bookmarks = ()
@@ -142,23 +120,15 @@ class Workspace:
         if self._bookmark_manager is None:
             return
         previous_bookmarks = self._last_from_bookmark_manager
-        # For 4.3- support: the server will not send the resolved home
-        # database back. To avoid confusion between `None` as in "all
-        # database" and `None` as in "home database" we re-write the home
-        # database to `""`, which otherwise is an invalid database name.
-        if database is None:
-            database = ""
         Util.callback(
             self._bookmark_manager.update_bookmarks,
-            database, previous_bookmarks, new_bookmarks
+            previous_bookmarks, new_bookmarks
         )
 
-    def _update_bookmark(self, database, bookmark):
+    def _update_bookmark(self, bookmark):
         if not bookmark:
             return
-        if not database:
-            database = self._config.database
-        self._update_bookmarks(database, (bookmark,))
+        self._update_bookmarks((bookmark,))
 
     def _connect(self, access_mode, **acquire_kwargs):
         acquisition_timeout = self._config.connection_acquisition_timeout
@@ -183,7 +153,7 @@ class Workspace:
                 self._pool.update_routing_table(
                     database=self._config.database,
                     imp_user=self._config.impersonated_user,
-                    bookmarks=self._get_bookmarks("system"),
+                    bookmarks=self._get_bookmarks(),
                     acquisition_timeout=acquisition_timeout,
                     database_callback=self._set_cached_database
                 )
@@ -191,7 +161,7 @@ class Workspace:
             "access_mode": access_mode,
             "timeout": acquisition_timeout,
             "database": self._config.database,
-            "bookmarks": self._get_bookmarks("system"),
+            "bookmarks": self._get_bookmarks(),
             "liveness_check_timeout": None,
         }
         acquire_kwargs_.update(acquire_kwargs)

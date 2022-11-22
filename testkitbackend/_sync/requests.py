@@ -284,12 +284,11 @@ def BookmarkManagerClose(backend, data):
 
 
 def bookmarks_supplier(backend, bookmark_manager_id):
-    def supplier(database):
+    def supplier():
         key = backend.next_key()
         backend.send_response("BookmarksSupplierRequest", {
             "id": key,
             "bookmarkManagerId": bookmark_manager_id,
-            "database": database
         })
         if not backend.process_request():
             # connection was closed before end of next message
@@ -310,12 +309,11 @@ def BookmarksSupplierCompleted(backend, data):
 
 
 def bookmarks_consumer(backend, bookmark_manager_id):
-    def consumer(database, bookmarks):
+    def consumer(bookmarks):
         key = backend.next_key()
         backend.send_response("BookmarksConsumerRequest", {
             "id": key,
             "bookmarkManagerId": bookmark_manager_id,
-            "database": database,
             "bookmarks": list(bookmarks.raw_values)
         })
         if not backend.process_request():
