@@ -52,7 +52,11 @@ entry_points = {
     "console_scripts": [
     ],
 }
+
 packages = find_packages(exclude=["test*"])
+package_data = {
+    package: ["py.typed"] for package in packages
+}
 
 readme_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                            "README.rst"))
@@ -73,6 +77,7 @@ setup_args = {
     "extras_require": extras_require,
     "classifiers": classifiers,
     "packages": packages,
+    "package_data": package_data,
     "entry_points": entry_points,
     "python_requires": ">=3.7",
 }

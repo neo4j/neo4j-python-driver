@@ -67,7 +67,7 @@ def dehydrate_point(value):
 
     :param value:
     :type value: Point
-    :return:
+    :returns:
     """
     return _hydration.dehydrate_point(value)
 

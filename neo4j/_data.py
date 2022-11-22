@@ -90,7 +90,7 @@ class Record(tuple, Mapping):
         for a record permit comparison with any other Sequence or Mapping.
 
         :param other:
-        :return:
+        :returns:
         """
         compare_as_sequence = isinstance(other, Sequence)
         compare_as_mapping = isinstance(other, Mapping)
@@ -147,7 +147,7 @@ class Record(tuple, Mapping):
         :param key: a key
         :param default: default value
 
-        :return: a value
+        :returns: a value
         """
         try:
             index = self.__keys.index(str(key))
@@ -163,7 +163,7 @@ class Record(tuple, Mapping):
 
         :param key: a key
 
-        :return: index
+        :returns: index
         """
         if isinstance(key, int):
             if 0 <= key < len(self.__keys):
@@ -187,7 +187,7 @@ class Record(tuple, Mapping):
         :param key: an index or key
         :param default: default value
 
-        :return: a single value
+        :returns: a single value
         """
         try:
             index = self.index(key)
@@ -199,7 +199,7 @@ class Record(tuple, Mapping):
     def keys(self) -> t.List[str]:  # type: ignore[override]
         """ Return the keys of the record.
 
-        :return: list of key names
+        :returns: list of key names
         """
         return list(self.__keys)
 
@@ -210,7 +210,7 @@ class Record(tuple, Mapping):
         :param keys: indexes or keys of the items to include; if none
                      are provided, all values will be included
 
-        :return: list of values
+        :returns: list of values
         """
         if keys:
             d: t.List[t.Any] = []
@@ -227,7 +227,7 @@ class Record(tuple, Mapping):
     def items(self, *keys):
         """ Return the fields of the record as a list of key and value tuples
 
-        :return: a list of value tuples
+        :returns: a list of value tuples
         """
         if keys:
             d = []
@@ -252,9 +252,9 @@ class Record(tuple, Mapping):
         :param keys: indexes or keys of the items to include; if none
                       are provided, all values will be included
 
-        :raises: :exc:`IndexError` if an out-of-bounds index is specified
+        :returns: dictionary of values, keyed by field name
 
-        :return: dictionary of values, keyed by field name
+        :raises: :exc:`IndexError` if an out-of-bounds index is specified
         """
         return RecordExporter().transform(dict(self.items(*keys)))
 
@@ -269,7 +269,7 @@ class DataTransformer(metaclass=ABCMeta):
         """ Transform a value, or collection of values.
 
         :param x: input value
-        :return: output value
+        :returns: output value
         """
 
 

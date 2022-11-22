@@ -33,6 +33,7 @@ The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the
 
             from neo4j import AsyncGraphDatabase
 
+
             async def main():
                 uri = "neo4j://example.com:7687"
                 driver = AsyncGraphDatabase.driver(uri, auth=("neo4j", "password"))
@@ -59,12 +60,12 @@ The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the
 
             from neo4j import AsyncGraphDatabase
 
+
             async def main():
                 uri = "neo4j://example.com:7687"
                 auth = ("neo4j", "password")
                 async with AsyncGraphDatabase.driver(uri, auth=auth) as driver:
-                    # use the driver
-                    ...
+                    ...  # use the driver
 
              asyncio.run(main())
 
@@ -164,6 +165,7 @@ For example:
 
     from neo4j import AsyncGraphDatabase
 
+
     async def custom_resolver(socket_address):
         if socket_address == ("example.com", 9999):
             yield "::1", 7687
@@ -172,16 +174,18 @@ For example:
             from socket import gaierror
             raise gaierror("Unexpected socket address %r" % socket_address)
 
+
     # alternatively
     def custom_resolver(socket_address):
         ...
+
 
     driver = AsyncGraphDatabase.driver("neo4j://example.com:9999",
                                        auth=("neo4j", "password"),
                                        resolver=custom_resolver)
 
 
-:Default: ``None``
+:Default: :const:`None`
 
 
 
@@ -196,6 +200,7 @@ For example:
 
     from neo4j import AsyncGraphDatabase
 
+
     class Application:
 
         def __init__(self, uri, user, password)
@@ -206,7 +211,7 @@ For example:
 
 Connection details held by the :class:`neo4j.AsyncDriver` are immutable.
 Therefore if, for example, a password is changed, a replacement :class:`neo4j.AsyncDriver` object must be created.
-More than one :class:`.AsyncDriver` may be required if connections to multiple databases, or connections as multiple users, are required,
+More than one :class:`.AsyncDriver` may be required if connections to multiple remotes, or connections as multiple users, are required,
 unless when using impersonation (:ref:`impersonated-user-ref`).
 
 :class:`neo4j.AsyncDriver` objects are safe to be used in concurrent coroutines.
@@ -270,13 +275,18 @@ To construct a :class:`neo4j.AsyncSession` use the :meth:`neo4j.AsyncDriver.sess
 
     from neo4j import AsyncGraphDatabase
 
+
     async def main():
-        driver = AsyncGraphDatabase(uri, auth=(user, password))
-        session = driver.session()
-        result = await session.run("MATCH (a:Person) RETURN a.name AS name")
-        names = [record["name"] async for record in result]
-        await session.close()
-        await driver.close()
+        async with AsyncGraphDatabase(uri, auth=(user, password)) as driver:
+            session = driver.session()
+            try:
+                result = await session.run("MATCH (a:Person) RETURN a.name AS name")
+                names = [record["name"] async for record in result]
+            except asyncio.CancelledError:
+                session.cancel()
+                raise
+            finally:
+                await session.close()
 
     asyncio.run(main())
 
@@ -289,7 +299,7 @@ properly even when an exception is raised.
 
     async with driver.session() as session:
         result = await session.run("MATCH (a:Person) RETURN a.name AS name")
-        # do something with the result...
+        ...  # do something with the result
 
 
 Sessions will often be created with some configuration settings, see :ref:`async-session-configuration-ref`.
@@ -299,7 +309,7 @@ Sessions will often be created with some configuration settings, see :ref:`async
     async with driver.session(database="example_database",
                               fetch_size=100) as session:
         result = await session.run("MATCH (a:Person) RETURN a.name AS name")
-        # do something with the result...
+        ...  # do something with the result
 
 
 ************
@@ -315,7 +325,9 @@ AsyncSession
         This introduces concurrency and can lead to undefined behavior as
         :class:`AsyncSession` is not concurrency-safe.
 
-        Consider this **wrong** example::
+        Consider this **wrong** example
+
+        .. code-block:: python
 
             async def dont_do_this(driver):
                 async with driver.session() as session:
@@ -330,7 +342,9 @@ AsyncSession
 
         In this particular example, the problem could be solved by shielding
         the whole coroutine ``dont_do_this`` instead of only the
-        ``session.run``. Like so::
+        ``session.run``. Like so
+
+        .. code-block:: python
 
             async def thats_better(driver):
                 async def inner()
@@ -426,30 +440,32 @@ Auto-commit transactions are also the only way to run ``PERIODIC COMMIT``
 newer) statements, since those Cypher clauses manage their own transactions
 internally.
 
-Example:
+Write example:
 
 .. code-block:: python
 
     import neo4j
 
+
     async def create_person(driver, name):
-        async with driver.session(
-            default_access_mode=neo4j.WRITE_ACCESS
-        ) as session:
+        # default_access_mode defaults to WRITE_ACCESS
+        async with driver.session(database="neo4j") as session:
             query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
             result = await session.run(query, name=name)
             record = await result.single()
             return record["node_id"]
 
-Example:
+Read example:
 
 .. code-block:: python
 
     import neo4j
 
+
     async def get_numbers(driver):
         numbers = []
         async with driver.session(
+            database="neo4j",
             default_access_mode=neo4j.READ_ACCESS
         ) as session:
             result = await session.run("UNWIND [1, 2, 3] AS x RETURN x")
@@ -460,8 +476,8 @@ Example:
 
 .. _async-explicit-transactions-ref:
 
-Explicit Async Transactions
-===========================
+Explicit Transactions (Unmanaged Transactions)
+==============================================
 Explicit transactions support multiple statements and must be created with an explicit :meth:`neo4j.AsyncSession.begin_transaction` call.
 
 This creates a new :class:`neo4j.AsyncTransaction` object that can be used to run Cypher.
@@ -485,41 +501,74 @@ It also gives applications the ability to directly control ``commit`` and ``roll
 Closing an explicit transaction can either happen automatically at the end of a ``async with`` block,
 or can be explicitly controlled through the :meth:`neo4j.AsyncTransaction.commit`, :meth:`neo4j.AsyncTransaction.rollback`, :meth:`neo4j.AsyncTransaction.close` or :meth:`neo4j.AsyncTransaction.cancel` methods.
 
-Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction.
+Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction or that need to run multiple queries within a single transaction but without the retries provided by managed transactions.
 
 Example:
 
 .. code-block:: python
 
+    import asyncio
+
     import neo4j
 
-    async def create_person(driver, name):
+
+    async def transfer_to_other_bank(driver, customer_id, other_bank_id, amount):
         async with driver.session(
+            database="neo4j",
+            # optional, defaults to WRITE_ACCESS
             default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
             tx = await session.begin_transaction()
-            node_id = await create_person_node(tx)
-            await set_person_name(tx, node_id, name)
-            await tx.commit()
+            # or just use a `with` context instead of try/excpet/finally
+            try:
+                if not await customer_balance_check(tx, customer_id, amount):
+                    # give up
+                    return
+                await other_bank_transfer_api(customer_id, other_bank_id, amount)
+                # Now the money has been transferred
+                # => we can't retry or rollback anymore
+                try:
+                    await decrease_customer_balance(tx, customer_id, amount)
+                    await tx.commit()
+                except Exception as e:
+                    request_inspection(customer_id, other_bank_id, amount, e)
+                    raise
+            except asyncio.CancelledError:
+                tx.cancel()
+                raise
+            finally:
+                await tx.close()  # rolls back if not yet committed
 
-    async def create_person_node(tx):
-        query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
-        name = "default_name"
-        result = await tx.run(query, name=name)
-        record = await result.single()
-        return record["node_id"]
 
-    async def set_person_name(tx, node_id, name):
-        query = "MATCH (a:Person) WHERE id(a) = $id SET a.name = $name"
-        result = await tx.run(query, id=node_id, name=name)
-        summary = await result.consume()
-        # use the summary for logging etc.
+    async def customer_balance_check(tx, customer_id, amount):
+        query = ("MATCH (c:Customer {id: $id}) "
+                 "RETURN c.balance >= $amount AS sufficient")
+        result = await tx.run(query, id=customer_id, amount=amount)
+        record = await result.single(strict=True)
+        return record["sufficient"]
+
+
+    async def other_bank_transfer_api(customer_id, other_bank_id, amount):
+        ...  # make some API call to other bank
+
+
+    async def decrease_customer_balance(tx, customer_id, amount):
+        query = ("MATCH (c:Customer {id: $id}) "
+                 "SET c.balance = c.balance - $amount")
+        await tx.run(query, id=customer_id, amount=amount)
+
+
+    def request_inspection(customer_id, other_bank_id, amount, e):
+        # manual cleanup required; log this or similar
+        print("WARNING: transaction rolled back due to exception:", repr(e))
+        print("customer_id:", customer_id, "other_bank_id:", other_bank_id,
+              "amount:", amount)
 
 .. _async-managed-transactions-ref:
 
 
-Managed Async Transactions (`transaction functions`)
-====================================================
+Managed Transactions (`transaction functions`)
+==============================================
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
 
 + :meth:`neo4j.AsyncSession.execute_write`
@@ -530,7 +579,7 @@ This function is called one or more times, within a configurable time limit, unt
 Results should be fully consumed within the function and only aggregate or status values should be returned.
 Returning a live result object would prevent the driver from correctly managing connections and would break retry guarantees.
 
-This function will receive a :class:`neo4j.AsyncManagedTransaction` object as its first parameter.
+This function will receive a :class:`neo4j.AsyncManagedTransaction` object as its first parameter. For more details see :meth:`neo4j.AsyncSession.execute_write` and :meth:`neo4j.AsyncSession.execute_read`.
 
 .. autoclass:: neo4j.AsyncManagedTransaction()
 
@@ -544,8 +593,10 @@ Example:
         async with driver.session() as session:
             node_id = await session.execute_write(create_person_tx, name)
 
+
     async def create_person_tx(tx, name):
-        query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
+        query = ("CREATE (a:Person {name: $name, id: randomUUID()}) "
+                 "RETURN a.id AS node_id")
         result = await tx.run(query, name=name)
         record = await result.single()
         return record["node_id"]
