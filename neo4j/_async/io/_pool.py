@@ -698,7 +698,7 @@ class AsyncNeo4jPool(AsyncIOPool):
 
         :return: `True` if an update was required, `False` otherwise.
         """
-        from neo4j.api import READ_ACCESS
+        from ...api import READ_ACCESS
         async with self.refresh_lock:
             for database_ in list(self.routing_tables.keys()):
                 # Remove unused databases in the routing table
@@ -766,7 +766,7 @@ class AsyncNeo4jPool(AsyncIOPool):
                               .format(timeout))
 
 
-        from neo4j.api import check_access_mode
+        from ...api import check_access_mode
         access_mode = check_access_mode(access_mode)
         #     await self.ensure_routing_table_is_fresh(
         #         access_mode=access_mode, database=database, imp_user=None,

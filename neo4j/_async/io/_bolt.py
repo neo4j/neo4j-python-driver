@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import abc
 import asyncio
-import socket
 from collections import deque
 from logging import getLogger
 from time import perf_counter
@@ -139,7 +138,7 @@ class AsyncBolt:
         if not auth:
             self.auth_dict = {}
         elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
-            from neo4j import Auth
+            from ...api import Auth
             self.auth_dict = vars(Auth("basic", *auth))
         else:
             try:

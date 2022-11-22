@@ -27,10 +27,7 @@ from ._data import (
 from ._meta import deprecation_warn
 
 
-map_type = type(map(str, range(0)))
-
 __all__ = [
-    "map_type",
     "Record",
     "DataTransformer",
     "RecordExporter",

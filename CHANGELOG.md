@@ -1,5 +1,11 @@
 # Neo4j Driver Change Log (breaking/major changes only)
 
+
+## Version 5.3
+
+- Removed undocumented, unused `neo4j.data.map_type`
+
+
 ## Version 5.2
 
 - No breaking or major changes.

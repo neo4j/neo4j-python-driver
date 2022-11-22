@@ -238,7 +238,7 @@ class AsyncSession(AsyncWorkspace):
 
     async def run(
         self,
-        query: t.Union[str, Query],
+        query: t.Union[te.LiteralString, Query],
         parameters: t.Optional[t.Dict[str, t.Any]] = None,
         **kwargs: t.Any
     ) -> AsyncResult:

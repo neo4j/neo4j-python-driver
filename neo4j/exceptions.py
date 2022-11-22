@@ -72,6 +72,8 @@ from __future__ import annotations
 
 import typing as t
 
+from ._meta import deprecated
+
 
 if t.TYPE_CHECKING:
     import typing_extensions as te
@@ -89,20 +91,15 @@ if t.TYPE_CHECKING:
         Transaction,
     )
 
-    _T_Transaction = t.Union[AsyncManagedTransaction, AsyncTransaction,
-                             ManagedTransaction, Transaction]
-    _T_Result = t.Union[AsyncResult, Result]
-    _T_Session = t.Union[AsyncSession, Session]
+    _TTransaction = t.Union[AsyncManagedTransaction, AsyncTransaction,
+                            ManagedTransaction, Transaction]
+    _TResult = t.Union[AsyncResult, Result]
+    _TSession = t.Union[AsyncSession, Session]
 else:
-    _T_Transaction = t.Union["AsyncManagedTransaction", "AsyncTransaction",
-                             "ManagedTransaction", "Transaction"]
-    _T_Result = t.Union["AsyncResult", "Result"]
-    _T_Session = t.Union["AsyncSession", "Session"]
-
-
-
-
-from ._meta import deprecated
+    _TTransaction = t.Union["AsyncManagedTransaction", "AsyncTransaction",
+                            "ManagedTransaction", "Transaction"]
+    _TResult = t.Union["AsyncResult", "Result"]
+    _TSession = t.Union["AsyncSession", "Session"]
 
 
 CLASSIFICATION_CLIENT: te.Final[str] = "ClientError"
@@ -401,7 +398,7 @@ class SessionError(DriverError):
     """ Raised when an error occurs while using a session.
     """
 
-    session: _T_Session
+    session: _TSession
 
     def __init__(self, session_, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -413,7 +410,7 @@ class TransactionError(DriverError):
     """ Raised when an error occurs while using a transaction.
     """
 
-    transaction: _T_Transaction
+    transaction: _TTransaction
 
     def __init__(self, transaction_, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -430,7 +427,7 @@ class TransactionNestingError(TransactionError):
 class ResultError(DriverError):
     """Raised when an error occurs while using a result object."""
 
-    result: _T_Result
+    result: _TResult
 
     def __init__(self, result_, *args, **kwargs):
         super().__init__(*args, **kwargs)
