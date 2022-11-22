@@ -22,6 +22,8 @@ import typing as t
 
 
 if t.TYPE_CHECKING:
+    import typing_extensions as te
+
     _T = t.TypeVar("_T")
 
 
@@ -34,7 +36,7 @@ class Query:
     """
     def __init__(
         self,
-        text: str,
+        text: te.LiteralString,
         metadata: t.Optional[t.Dict[str, t.Any]] = None,
         timeout: t.Optional[float] = None
     ) -> None:
@@ -43,7 +45,7 @@ class Query:
         self.metadata = metadata
         self.timeout = timeout
 
-    def __str__(self) -> str:
+    def __str__(self) -> te.LiteralString:
         return str(self.text)
 
 

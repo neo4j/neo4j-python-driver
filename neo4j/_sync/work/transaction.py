@@ -29,6 +29,10 @@ from ..io import ConnectionErrorHandler
 from .result import Result
 
 
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
+
 __all__ = (
     "ManagedTransaction",
     "Transaction",
@@ -95,7 +99,7 @@ class TransactionBase:
 
     def run(
         self,
-        query: str,
+        query: te.LiteralString,
         parameters: t.Optional[t.Dict[str, t.Any]] = None,
         **kwparameters: t.Any
     ) -> Result:
