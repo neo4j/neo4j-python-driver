@@ -44,8 +44,12 @@ _T = t.TypeVar("_T")
 
 
 class Graph:
-    """ Local, self-contained graph object that acts as a container for
+    """A graph of nodes and relationships.
+
+    Local, self-contained graph object that acts as a container for
     :class:`.Node` and :class:`.Relationship` instances.
+    This is typically obtained via :meth:`.Result.graph` or
+    :meth:`.AsyncResult.graph`.
     """
 
     def __init__(self) -> None:
@@ -145,9 +149,10 @@ class Entity(t.Mapping[str, t.Any]):
         Depending on the version of the server this entity was retrieved from,
         this may be empty (None).
 
-        .. Warning::
+        .. warning::
             This value can change for the same entity across multiple
-            queries. Don't rely on it for cross-query computations.
+            transactions. Don't rely on it for cross-transactional
+            computations.
 
         .. deprecated:: 5.0
             Use :attr:`.element_id` instead.
@@ -158,9 +163,10 @@ class Entity(t.Mapping[str, t.Any]):
     def element_id(self) -> str:
         """The identity of this entity in its container :class:`.Graph`.
 
-        .. Warning::
+        .. warning::
             This value can change for the same entity across multiple
-            queries. Don't rely on it for cross-query computations.
+            transactions. Don't rely on it for cross-transactional
+            computations.
 
         .. versionadded:: 5.0
         """

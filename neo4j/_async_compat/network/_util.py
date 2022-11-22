@@ -38,7 +38,7 @@ class AsyncNetworkUtil:
 
         :param address:
         :param family:
-        :return:
+        :returns:
         """
         try:
             info = await AsyncNetworkUtil.get_address_info(
@@ -108,7 +108,7 @@ class NetworkUtil:
 
         :param address:
         :param family:
-        :return:
+        :returns:
         """
         try:
             info = NetworkUtil.get_address_info(

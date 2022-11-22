@@ -379,7 +379,7 @@ class BoltPool(IOPool):
         :param auth:
         :param pool_config:
         :param workspace_config:
-        :return: BoltPool
+        :returns: BoltPool
         """
 
         def opener(addr, timeout):
@@ -427,7 +427,7 @@ class Neo4jPool(IOPool):
         :param pool_config:
         :param workspace_config:
         :param routing_context:
-        :return: Neo4jPool
+        :returns: Neo4jPool
         """
 
         address = addresses[0]
@@ -464,7 +464,7 @@ class Neo4jPool(IOPool):
     def __repr__(self):
         """ The representation shows the initial routing addresses.
 
-        :return: The representation
+        :returns: The representation
         :rtype: str
         """
         return "<{} address={!r}>".format(self.__class__.__name__,
@@ -493,7 +493,7 @@ class Neo4jPool(IOPool):
                           info should be fetched
         :param acquisition_timeout: connection acquisition timeout
 
-        :return: list of routing records, or None if no connection
+        :returns: list of routing records, or None if no connection
             could be established or if no readers or writers are present
         :raise ServiceUnavailable: if the server does not support
             routing, or if routing support is broken or outdated
@@ -526,7 +526,7 @@ class Neo4jPool(IOPool):
         :type imp_user: str or None
         :param bookmarks: bookmarks used when fetching routing table
 
-        :return: a new RoutingTable instance or None if the given router is
+        :returns: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
         """
         new_routing_info = None
@@ -583,7 +583,7 @@ class Neo4jPool(IOPool):
     ):
         """ Try to update routing tables with the given routers.
 
-        :return: True if the routing table is successfully updated,
+        :returns: True if the routing table is successfully updated,
         otherwise False
         """
         if routers:
@@ -696,7 +696,7 @@ class Neo4jPool(IOPool):
 
         This method is thread-safe.
 
-        :return: `True` if an update was required, `False` otherwise.
+        :returns: `True` if an update was required, `False` otherwise.
         """
         from neo4j.api import READ_ACCESS
         with self.refresh_lock:

@@ -144,7 +144,7 @@ class RoutingTable:
     def should_be_purged_from_memory(self):
         """ Check if the routing table is stale and not used for a long time and should be removed from memory.
 
-        :return: Returns true if it is old and not used for a while.
+        :returns: Returns true if it is old and not used for a while.
         :rtype: bool
         """
         from neo4j._conf import RoutingConfig

@@ -191,7 +191,7 @@ class AsyncBolt:
 
         :param protocol_version: tuple identifying a specific protocol
             version (e.g. (3, 5)) or None
-        :return: dictionary of version tuple to handler class for all
+        :returns: dictionary of version tuple to handler class for all
             relevant and supported protocol versions
         :raise TypeError: if protocol version is not passed in a tuple
         """
@@ -256,7 +256,7 @@ class AsyncBolt:
     def get_handshake(cls):
         """ Return the supported Bolt versions as bytes.
         The length is 16 bytes as specified in the Bolt version negotiation.
-        :return: bytes
+        :returns: bytes
         """
         supported_versions = sorted(cls.protocol_handlers().keys(), reverse=True)
         offered_versions = cls.version_list(supported_versions)
@@ -297,7 +297,7 @@ class AsyncBolt:
         :param routing_context: dict containing routing context
         :param pool_config:
 
-        :return: connected AsyncBolt instance
+        :returns: connected AsyncBolt instance
 
         :raise BoltHandshakeError:
             raised if the Bolt Protocol can not negotiate a protocol version.
@@ -523,7 +523,7 @@ class AsyncBolt:
             dehydration function). Dehydration functions receive the value of
             type understood by packstream and are free to return anything.
         :param handlers: handler functions passed into the returned Response object
-        :return: Response object
+        :returns: Response object
         """
         pass
 
@@ -631,7 +631,7 @@ class AsyncBolt:
     async def _process_message(self, tag, fields):
         """ Receive at most one message from the server, if available.
 
-        :return: 2-tuple of number of detail messages and number of summary
+        :returns: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
         pass
@@ -663,7 +663,7 @@ class AsyncBolt:
     async def fetch_all(self):
         """ Fetch all outstanding messages.
 
-        :return: 2-tuple of number of detail messages and number of summary
+        :returns: 2-tuple of number of detail messages and number of summary
                  messages fetched
         """
         detail_count = summary_count = 0

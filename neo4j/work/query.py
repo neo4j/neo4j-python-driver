@@ -26,7 +26,11 @@ if t.TYPE_CHECKING:
 
 
 class Query:
-    """ Create a new query.
+    """A query with attached extra data.
+
+    This wrapper class for queries is used to attach extra data to queries
+    passed to :meth:`.Session.run` and :meth:`.AsyncSession.run`, fulfilling
+    a similar role as :func:`.unit_of_work` for transactions functions.
 
     :param text: The query text.
     :param metadata: metadata attached to the query.
@@ -59,6 +63,7 @@ def unit_of_work(
     For example, a timeout may be applied::
 
         from neo4j import unit_of_work
+
 
         @unit_of_work(timeout=100)
         def count_people_tx(tx):
