@@ -119,7 +119,7 @@ def basic_auth(
     :param password: current password, this will set the credentials
     :param realm: specifies the authentication provider
 
-    :return: auth token for use with :meth:`GraphDatabase.driver` or
+    :returns: auth token for use with :meth:`GraphDatabase.driver` or
         :meth:`AsyncGraphDatabase.driver`
     """
     return Auth("basic", user, password, realm)
@@ -133,7 +133,7 @@ def kerberos_auth(base64_encoded_ticket: str) -> Auth:
     :param base64_encoded_ticket: a base64 encoded service ticket, this will set
                                   the credentials
 
-    :return: auth token for use with :meth:`GraphDatabase.driver` or
+    :returns: auth token for use with :meth:`GraphDatabase.driver` or
         :meth:`AsyncGraphDatabase.driver`
     """
     return Auth("kerberos", "", base64_encoded_ticket)
@@ -147,7 +147,7 @@ def bearer_auth(base64_encoded_token: str) -> Auth:
     :param base64_encoded_token: a base64 encoded authentication token generated
                                  by a Single-Sign-On provider.
 
-    :return: auth token for use with :meth:`GraphDatabase.driver` or
+    :returns: auth token for use with :meth:`GraphDatabase.driver` or
         :meth:`AsyncGraphDatabase.driver`
     """
     return Auth("bearer", None, base64_encoded_token)
@@ -169,7 +169,7 @@ def custom_auth(
     :param parameters: extra key word parameters passed along to the
                        authentication provider
 
-    :return: auth token for use with :meth:`GraphDatabase.driver` or
+    :returns: auth token for use with :meth:`GraphDatabase.driver` or
         :meth:`AsyncGraphDatabase.driver`
     """
     return Auth(scheme, principal, credentials, realm, **parameters)
@@ -179,11 +179,11 @@ def custom_auth(
 class Bookmark:
     """A Bookmark object contains an immutable list of bookmark string values.
 
+    :param values: ASCII string values
+
     .. deprecated:: 5.0
         `Bookmark` will be removed in version 6.0.
         Use :class:`Bookmarks` instead.
-
-    :param values: ASCII string values
     """
 
     @deprecated("Use the `Bookmarks`` class instead.")
@@ -203,7 +203,7 @@ class Bookmark:
 
     def __repr__(self) -> str:
         """
-        :return: repr string with sorted values
+        :returns: repr string with sorted values
         """
         return "<Bookmark values={{{}}}>".format(", ".join(["'{}'".format(ix) for ix in sorted(self._values)]))
 
@@ -213,7 +213,7 @@ class Bookmark:
     @property
     def values(self) -> frozenset:
         """
-        :return: immutable list of bookmark string values
+        :returns: immutable list of bookmark string values
         """
         return self._values
 
@@ -235,7 +235,7 @@ class Bookmarks:
 
     def __repr__(self) -> str:
         """
-        :return: repr string with sorted values
+        :returns: repr string with sorted values
         """
         return "<Bookmarks values={{{}}}>".format(
             ", ".join(map(repr, sorted(self._raw_values)))
@@ -262,7 +262,7 @@ class Bookmarks:
         You should not need to access them unless you want to serialize
         bookmarks.
 
-        :return: immutable list of bookmark string values
+        :returns: immutable list of bookmark string values
         :rtype: frozenset[str]
         """
         return self._raw_values

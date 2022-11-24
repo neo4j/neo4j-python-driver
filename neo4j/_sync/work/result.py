@@ -69,9 +69,10 @@ _RESULT_CONSUMED_ERROR = (
 
 
 class Result:
-    """A handler for the result of Cypher query execution. Instances
-    of this class are typically constructed and returned by
-    :meth:`.AyncSession.run` and :meth:`.Transaction.run`.
+    """Handler for the result of Cypher query execution.
+
+    Instances of this class are typically constructed and returned by
+    :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
 
     def __init__(self, connection, fetch_size, on_closed, on_error):
@@ -348,7 +349,7 @@ class Result:
 
             def create_node_tx(tx, name):
                 result = tx.run(
-                    "CREATE (n:ExampleNode { name: $name }) RETURN n", name=name
+                    "CREATE (n:ExampleNode {name: $name}) RETURN n", name=name
                 )
                 record = result.single()
                 value = record.value()
@@ -413,8 +414,12 @@ class Result:
 
         Calling this method always exhausts the result.
 
-        A warning is generated if more than one record is available but
-        the first of these is still returned.
+        If ``strict`` is :const:`True`, this method will raise an exception if
+        there is not exactly one record left.
+
+        If ``strict`` is :const:`False`, fewer than one record will make this
+        method return :const:`None`, more than one record will make this method
+        emit a warning and return the first record.
 
         :param strict:
             If :const:`True`, raise a :class:`neo4j.ResultNotSingleError`
@@ -422,15 +427,16 @@ class Result:
             warning if there are more than 1 record.
             :const:`False` by default.
 
-        :warns: if more than one record is available
+        :returns: the next :class:`neo4j.Record` or :const:`None` if none remain
+
+        :warns: if more than one record is available and
+            ``strict`` is :const:`False`
 
         :raises ResultNotSingleError:
             If ``strict=True`` and not exactly one record is available.
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
             consumed.
-
-        :returns: the next :class:`neo4j.Record` or :const:`None` if none remain
 
         .. versionchanged:: 5.0
             Added ``strict`` parameter.
@@ -466,6 +472,9 @@ class Result:
     def fetch(self, n: int) -> t.List[Record]:
         """Obtain up to n records from this result.
 
+        Fetch ``min(n, records_left)`` records from this result and return them
+        as a list.
+
         :param n: the maximum number of records to fetch.
 
         :returns: list of :class:`neo4j.Record`
@@ -484,6 +493,7 @@ class Result:
 
     def peek(self) -> t.Optional[Record]:
         """Obtain the next record from this result without consuming it.
+
         This leaves the record in the buffer for further processing.
 
         :returns: the next :class:`neo4j.Record` or :const:`None` if none
@@ -502,15 +512,20 @@ class Result:
         return None
 
     def graph(self) -> Graph:
-        """Return a :class:`neo4j.graph.Graph` instance containing all the graph objects
-        in the result. After calling this method, the result becomes
+        """Turn the result into a :class:`neo4j.Graph`.
+
+        Return a :class:`neo4j.graph.Graph` instance containing all the graph
+        objects in the result. This graph will also contain already consumed
+        records.
+
+        After calling this method, the result becomes
         detached, buffering all remaining records.
+
+        :returns: a result graph
 
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
             consumed.
-
-        :returns: a result graph
 
         .. versionchanged:: 5.0
             Can raise :exc:`ResultConsumedError`.
@@ -521,53 +536,58 @@ class Result:
     def value(
         self, key: _TResultKey = 0, default: t.Optional[object] = None
     ) -> t.List[t.Any]:
-        """Helper function that return the remainder of the result as a list of values.
-
-        See :class:`neo4j.Record.value`
+        """Return the remainder of the result as a list of values.
 
         :param key: field to return for each remaining record. Obtain a single value from the record by index or key.
         :param default: default value, used if the index of key is unavailable
+
+        :returns: list of individual values
 
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
             consumed.
 
-        :returns: list of individual values
-
         .. versionchanged:: 5.0
             Can raise :exc:`ResultConsumedError`.
+
+        .. seealso:: :meth:`.Record.value`
         """
         return [record.value(key, default) for record in self]
 
     def values(
         self, *keys: _TResultKey
     ) -> t.List[t.List[t.Any]]:
-        """Helper function that return the remainder of the result as a list of values lists.
-
-        See :class:`neo4j.Record.values`
+        """Return the remainder of the result as a list of values lists.
 
         :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
+
+        :returns: list of values lists
 
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
             consumed.
 
-        :returns: list of values lists
-
         .. versionchanged:: 5.0
             Can raise :exc:`ResultConsumedError`.
+
+        .. seealso:: :meth:`.Record.values`
         """
         return [record.values(*keys) for record in self]
 
-    def data(self, *keys: _TResultKey) -> t.List[t.Any]:
-        """Helper function that return the remainder of the result as a list of dictionaries.
+    def data(self, *keys: _TResultKey) -> t.List[t.Dict[str, t.Any]]:
+        """Return the remainder of the result as a list of dictionaries.
 
-        See :class:`neo4j.Record.data`
+        This function provides a convenient but opinionated way to obtain the
+        remainder of the result as mostly JSON serializable data. It is mainly
+        useful for interactive sessions and rapid prototyping.
+
+        For instance, node and relationship labels are not included. You will
+        have to implement a custom serializer should you need more control over
+        the output format.
 
         :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
 
         :returns: list of dictionaries
-        :rtype: list
 
         :raises ResultConsumedError: if the transaction from which this result
             was obtained has been closed or the Result has been explicitly
@@ -575,6 +595,8 @@ class Result:
 
         .. versionchanged:: 5.0
             Can raise :exc:`ResultConsumedError`.
+
+        .. seealso:: :meth:`.Record.data`
         """
         return [record.data(*keys) for record in self]
 

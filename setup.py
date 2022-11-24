@@ -47,12 +47,14 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
 ]
 entry_points = {
     "console_scripts": [
     ],
 }
-packages = find_packages(exclude=["tests"])
+
+packages = find_packages(exclude=["test*"])
 package_data = {
     package: ["py.typed"] for package in packages
 }

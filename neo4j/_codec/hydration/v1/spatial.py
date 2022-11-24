@@ -46,7 +46,7 @@ def dehydrate_point(value):
 
     :param value:
     :type value: Point
-    :return:
+    :returns:
     """
     dim = len(value)
     if dim == 2:

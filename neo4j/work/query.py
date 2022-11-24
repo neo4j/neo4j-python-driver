@@ -22,11 +22,17 @@ import typing as t
 
 
 if t.TYPE_CHECKING:
+    import typing_extensions as te
+
     _T = t.TypeVar("_T")
 
 
 class Query:
-    """ Create a new query.
+    """A query with attached extra data.
+
+    This wrapper class for queries is used to attach extra data to queries
+    passed to :meth:`.Session.run` and :meth:`.AsyncSession.run`, fulfilling
+    a similar role as :func:`.unit_of_work` for transactions functions.
 
     :param text: The query text.
     :param metadata: metadata attached to the query.
@@ -34,7 +40,7 @@ class Query:
     """
     def __init__(
         self,
-        text: str,
+        text: te.LiteralString,
         metadata: t.Optional[t.Dict[str, t.Any]] = None,
         timeout: t.Optional[float] = None
     ) -> None:
@@ -43,7 +49,7 @@ class Query:
         self.metadata = metadata
         self.timeout = timeout
 
-    def __str__(self) -> str:
+    def __str__(self) -> te.LiteralString:
         return str(self.text)
 
 
@@ -59,6 +65,7 @@ def unit_of_work(
     For example, a timeout may be applied::
 
         from neo4j import unit_of_work
+
 
         @unit_of_work(timeout=100)
         def count_people_tx(tx):

@@ -29,6 +29,10 @@ from ..io import ConnectionErrorHandler
 from .result import AsyncResult
 
 
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
+
 __all__ = (
     "AsyncManagedTransaction",
     "AsyncTransaction",
@@ -95,7 +99,7 @@ class AsyncTransactionBase:
 
     async def run(
         self,
-        query: str,
+        query: te.LiteralString,
         parameters: t.Optional[t.Dict[str, t.Any]] = None,
         **kwparameters: t.Any
     ) -> AsyncResult:
@@ -245,7 +249,7 @@ class AsyncTransactionBase:
     def _closed(self):
         """Indicate whether the transaction has been closed or cancelled.
 
-        :return:
+        :returns:
             :const:`True` if closed or cancelled, :const:`False` otherwise.
         :rtype: bool
         """

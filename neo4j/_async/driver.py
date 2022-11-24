@@ -234,6 +234,8 @@ class AsyncGraphDatabase:
 
             import neo4j
 
+
+            # omitting closing the driver for brevity
             driver = neo4j.AsyncGraphDatabase.driver(...)
             bookmark_manager = neo4j.AsyncGraphDatabase.bookmark_manager(...)
 
@@ -591,7 +593,8 @@ class AsyncDriver:
     async def supports_multi_db(self) -> bool:
         """ Check if the server or cluster supports multi-databases.
 
-        :return: Returns true if the server or cluster the driver connects to supports multi-databases, otherwise false.
+        :returns: Returns true if the server or cluster the driver connects to
+            supports multi-databases, otherwise false.
 
         .. note::
             Feature support query, based on Bolt Protocol Version and Neo4j
@@ -622,7 +625,7 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
         :param auth:
         :param config: The values that can be specified are found in :class: `neo4j.PoolConfig` and :class: `neo4j.WorkspaceConfig`
 
-        :return:
+        :returns:
         :rtype: :class: `neo4j.BoltDriver`
         """
         from .io import AsyncBoltPool
@@ -643,7 +646,7 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
             :param config: The values that can be specified are found in
                 :class: `neo4j.SessionConfig`
 
-            :return:
+            :returns:
             :rtype: :class: `neo4j.AsyncSession`
             """
             session_config = SessionConfig(self._default_workspace_config,

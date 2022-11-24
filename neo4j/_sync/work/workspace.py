@@ -220,7 +220,7 @@ class Workspace:
     def closed(self) -> bool:
         """Indicate whether the session has been closed.
 
-        :return: :const:`True` if closed, :const:`False` otherwise.
+        :returns: :const:`True` if closed, :const:`False` otherwise.
         """
         return self._closed
 

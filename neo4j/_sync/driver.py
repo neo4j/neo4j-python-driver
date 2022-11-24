@@ -231,6 +231,8 @@ class GraphDatabase:
 
             import neo4j
 
+
+            # omitting closing the driver for brevity
             driver = neo4j.GraphDatabase.driver(...)
             bookmark_manager = neo4j.GraphDatabase.bookmark_manager(...)
 
@@ -588,7 +590,8 @@ class Driver:
     def supports_multi_db(self) -> bool:
         """ Check if the server or cluster supports multi-databases.
 
-        :return: Returns true if the server or cluster the driver connects to supports multi-databases, otherwise false.
+        :returns: Returns true if the server or cluster the driver connects to
+            supports multi-databases, otherwise false.
 
         .. note::
             Feature support query, based on Bolt Protocol Version and Neo4j
@@ -619,7 +622,7 @@ class BoltDriver(_Direct, Driver):
         :param auth:
         :param config: The values that can be specified are found in :class: `neo4j.PoolConfig` and :class: `neo4j.WorkspaceConfig`
 
-        :return:
+        :returns:
         :rtype: :class: `neo4j.BoltDriver`
         """
         from .io import BoltPool
@@ -640,7 +643,7 @@ class BoltDriver(_Direct, Driver):
             :param config: The values that can be specified are found in
                 :class: `neo4j.SessionConfig`
 
-            :return:
+            :returns:
             :rtype: :class: `neo4j.Session`
             """
             session_config = SessionConfig(self._default_workspace_config,

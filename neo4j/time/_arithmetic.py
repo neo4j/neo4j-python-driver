@@ -45,7 +45,7 @@ def nano_add(x, y):
 
     :param x:
     :param y:
-    :return:
+    :returns:
     """
     return (int(1000000000 * x) + int(1000000000 * y)) / 1000000000
 
@@ -64,7 +64,7 @@ def nano_div(x, y):
 
     :param x:
     :param y:
-    :return:
+    :returns:
     """
     return float(1000000000 * x) / int(1000000000 * y)
 
@@ -79,7 +79,7 @@ def nano_divmod(x, y):
 
     :param x:
     :param y:
-    :return:
+    :returns:
     """
     number = type(x)
     nx = int(1000000000 * x)
@@ -124,7 +124,7 @@ def round_half_to_even(n):
         5
 
     :param n:
-    :return:
+    :returns:
     """
     ten_n = 10 * n
     if ten_n == int(ten_n) and ten_n % 10 == 5:

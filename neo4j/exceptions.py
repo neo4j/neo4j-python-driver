@@ -209,7 +209,7 @@ class Neo4jError(Exception):
 
         See :meth:`.is_retryable`.
 
-        :return: :const:`True` if the error is retryable,
+        :returns: :const:`True` if the error is retryable,
             :const:`False` otherwise.
 
         .. deprecated:: 5.0
@@ -225,7 +225,7 @@ class Neo4jError(Exception):
         retry. This method makes mostly sense when implementing a custom
         retry policy in conjunction with :ref:`explicit-transactions-ref`.
 
-        :return: :const:`True` if the error is retryable,
+        :returns: :const:`True` if the error is retryable,
             :const:`False` otherwise.
         """
         return False
@@ -387,7 +387,7 @@ class DriverError(Exception):
         retry. This method makes mostly sense when implementing a custom
         retry policy in conjunction with :ref:`explicit-transactions-ref`.
 
-        :return: :const:`True` if the error is retryable,
+        :returns: :const:`True` if the error is retryable,
             :const:`False` otherwise.
         """
         return False
