@@ -41,6 +41,8 @@ from ._conf import (
 )
 from ._data import Record
 from ._meta import (
+    deprecated_package as _deprecated_package,
+    deprecation_warn as _deprecation_warn,
     ExperimentalWarning,
     get_user_agent,
     version as __version__,
@@ -165,3 +167,12 @@ def __getattr__(name):
 
 def __dir__():
     return __all__
+
+
+if _deprecated_package:
+    _deprecation_warn(
+        "The neo4j driver was installed under the package name `noe4j-driver` "
+        "which is deprecated and will stop receiving updates starting with "
+        "version 6.0.0. Please install `neo4j` instead (which is an alias, "
+        "i.e., a drop-in replacement). See https://pypi.org/project/neo4j/ ."
+    )
