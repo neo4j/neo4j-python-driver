@@ -42,7 +42,7 @@ ENV PYENV_ROOT /.pyenv
 ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
 
 # Setup python version
-ENV PYTHON_VERSIONS 3.7 3.8 3.9 3.10
+ENV PYTHON_VERSIONS 3.7 3.8 3.9 3.10 3.11
 
 RUN for version in $PYTHON_VERSIONS; do \
         pyenv install $version:latest; \
@@ -53,7 +53,7 @@ RUN pyenv global $(pyenv versions --bare --skip-aliases)
 # Install Latest pip and setuptools for each environment
 # + tox and tools for starting the tests
 # https://pip.pypa.io/en/stable/news/
-RUN for version in 3.7 3.8 3.9 3.10; do \
+RUN for version in $PYTHON_VERSIONS; do \
         python$version -m pip install -U pip && \
         python$version -m pip install -U setuptools && \
         python$version -m pip install -U coverage tox tox-factor; \

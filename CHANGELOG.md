@@ -1,5 +1,13 @@
 # Neo4j Driver Change Log (breaking/major changes only)
 
+## Version 5.3
+- Python 3.11 support added
+- Query strings are now typed `LiteralString` instead of `str` to help mitigate
+  accidental Cypher injections. There are rare use-cases where a computed
+  string is necessary. Please use `# type: ignore`, or `typing.cast` to
+  suppress the type checking in those cases.
+
+
 ## Version 5.2
 
 - No breaking or major changes.
