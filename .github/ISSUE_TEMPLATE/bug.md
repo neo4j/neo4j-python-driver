@@ -21,8 +21,8 @@ labels: "bug"
 
     or check the documentation:
 
-    - API documentation https://neo4j.com/docs/api/python-driver/current/
-    - Driver manual https://neo4j.com/docs/python-manual/current/
+    - API documentation: https://neo4j.com/docs/api/python-driver/current/
+    - Driver manual: https://neo4j.com/docs/python-manual/current/
 -->
 
 <!--
@@ -34,7 +34,15 @@ labels: "bug"
 <!-- description of the found bug -->
 
 <!--
-    a minimal reproducer if possible
+    Information to include:
+
+    Often, driver debug logs go a long way.
+    See https://neo4j.com/docs/api/python-driver/current/api.html#logging on
+    how to enable them.
+
+    Also, **full** stacktraces are very helpful if Exceptions are involved.
+
+    A minimal reproducer if possible
     https://stackoverflow.com/help/minimal-reproducible-example
 -->
 
@@ -44,13 +52,3 @@ Python Version: <!-- output of `python -VV` -->
 Driver Version: <!-- can be found with `python -m pip show neo4j` -->
 Server Version and Edition: <!-- e.g., Neo4j 4.4.3 enterprise cluster -->
 Operating System: <!-- e.g., Windows 10, Ubuntu 18.04, macOS 10.15 -->
-
-
-# Additional Information
-<!--
-    Often, driver debug logs go a long way.
-    See https://neo4j.com/docs/api/python-driver/current/api.html#logging on
-    how to enable them.
-
-    Also, **full** stacktraces are very helpful if Exceptions are involved.
--->

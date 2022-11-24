@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest an idea for the driver
+about: Suggest an idea for the Neo4j Python Driver
 labels: "feature request"
 ---
 
