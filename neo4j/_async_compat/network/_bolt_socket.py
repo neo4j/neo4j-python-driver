@@ -244,7 +244,7 @@ class AsyncBoltSocket:
                 await cls.close_socket(s)
             raise ServiceUnavailable(
                 "Timed out trying to establish connection to {!r}".format(
-                    resolved_address))
+                    resolved_address)) from None
         except asyncio.CancelledError:
             log.debug("[#0000]  S: <CANCELLED> %s", resolved_address)
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
@@ -259,15 +259,18 @@ class AsyncBoltSocket:
                 message="Failed to establish encrypted connection.",
                 address=(resolved_address.host_name, local_port)
             ) from error
-        except OSError as error:
+        except Exception as error:
             log.debug("[#0000]  S: <ERROR> %s %s", type(error).__name__,
                       " ".join(map(repr, error.args)))
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             if s:
                 await cls.close_socket(s)
-            raise ServiceUnavailable(
-                "Failed to establish connection to {!r} (reason {})".format(
-                    resolved_address, error))
+            if isinstance(error, OSError):
+                raise ServiceUnavailable(
+                    "Failed to establish connection to {!r} (reason {})"
+                    .format(resolved_address, error)
+                ) from error
+            raise
 
     async def _handshake(self, resolved_address):
         """
@@ -302,10 +305,10 @@ class AsyncBoltSocket:
             self.settimeout(original_timeout + 1)
         try:
             data = await self.recv(4)
-        except OSError:
+        except OSError as exc:
             raise ServiceUnavailable(
                 "Failed to read any data from server {!r} "
-                "after connected".format(resolved_address))
+                "after connected".format(resolved_address)) from exc
         finally:
             self.settimeout(original_timeout)
         data_size = len(data)
@@ -513,14 +516,17 @@ class BoltSocket:
             raise ServiceUnavailable(
                 "Timed out trying to establish connection to {!r}".format(
                     resolved_address))
-        except OSError as error:
+        except Exception as error:
             log.debug("[#0000]  S: <ERROR> %s %s", type(error).__name__,
                       " ".join(map(repr, error.args)))
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             cls.close_socket(s)
-            raise ServiceUnavailable(
-                "Failed to establish connection to {!r} (reason {})".format(
-                    resolved_address, error))
+            if isinstance(error, OSError):
+                raise ServiceUnavailable(
+                    "Failed to establish connection to {!r} (reason {})"
+                    .format(resolved_address, error)
+                ) from error
+            raise
 
     @classmethod
     def _secure(cls, s, host, ssl_context):
@@ -582,10 +588,10 @@ class BoltSocket:
             selector.select(1)
         try:
             data = s.recv(4)
-        except OSError:
+        except OSError as exc:
             raise ServiceUnavailable(
                 "Failed to read any data from server {!r} "
-                "after connected".format(resolved_address))
+                "after connected".format(resolved_address)) from exc
         data_size = len(data)
         if data_size == 0:
             # If no data is returned after a successful select

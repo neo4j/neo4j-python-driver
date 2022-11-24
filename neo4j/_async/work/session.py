@@ -24,17 +24,6 @@ from logging import getLogger
 from random import random
 from time import perf_counter
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
-    from ..io import AsyncBolt
-
-    _R = t.TypeVar("_R")
-    _P = te.ParamSpec("_P")
-
-
-
 from ..._async_compat import async_sleep
 from ..._async_compat.util import AsyncUtil
 from ..._conf import SessionConfig
@@ -59,6 +48,15 @@ from .transaction import (
     AsyncTransaction,
 )
 from .workspace import AsyncWorkspace
+
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
+    from ..io import AsyncBolt
+
+    _R = t.TypeVar("_R")
+    _P = te.ParamSpec("_P")
 
 
 log = getLogger("neo4j")
@@ -235,7 +233,7 @@ class AsyncSession(AsyncWorkspace):
 
     async def run(
         self,
-        query: t.Union[str, Query],
+        query: t.Union[te.LiteralString, Query],
         parameters: t.Optional[t.Dict[str, t.Any]] = None,
         **kwargs: t.Any
     ) -> AsyncResult:
