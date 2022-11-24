@@ -48,7 +48,7 @@ def hydrate_date(days):
     """ Hydrator for `Date` values.
 
     :param days:
-    :return: Date
+    :returns: Date
     """
     return Date.from_ordinal(get_date_unix_epoch_ordinal() + days)
 
@@ -58,7 +58,7 @@ def dehydrate_date(value):
 
     :param value:
     :type value: Date
-    :return:
+    :returns:
     """
     return Structure(b"D", value.toordinal() - get_date_unix_epoch().toordinal())
 
@@ -68,7 +68,7 @@ def hydrate_time(nanoseconds, tz=None):
 
     :param nanoseconds:
     :param tz:
-    :return: Time
+    :returns: Time
     """
     from pytz import FixedOffset
     seconds, nanoseconds = map(int, divmod(nanoseconds, 1000000000))
@@ -87,7 +87,7 @@ def dehydrate_time(value):
 
     :param value:
     :type value: Time
-    :return:
+    :returns:
     """
     if isinstance(value, Time):
         nanoseconds = value.ticks
@@ -109,7 +109,7 @@ def hydrate_datetime(seconds, nanoseconds, tz=None):
     :param seconds:
     :param nanoseconds:
     :param tz:
-    :return: datetime
+    :returns: datetime
     """
     from pytz import (
         FixedOffset,
@@ -137,7 +137,7 @@ def dehydrate_datetime(value):
 
     :param value:
     :type value: datetime or DateTime
-    :return:
+    :returns:
     """
 
     def seconds_and_nanoseconds(dt):
@@ -178,7 +178,7 @@ def hydrate_duration(months, days, seconds, nanoseconds):
     :param days:
     :param seconds:
     :param nanoseconds:
-    :return: `duration` namedtuple
+    :returns: `duration` namedtuple
     """
     return Duration(months=months, days=days, seconds=seconds, nanoseconds=nanoseconds)
 
@@ -188,7 +188,7 @@ def dehydrate_duration(value):
 
     :param value:
     :type value: Duration
-    :return:
+    :returns:
     """
     return Structure(b"E", value.months, value.days, value.seconds, value.nanoseconds)
 
@@ -198,7 +198,7 @@ def dehydrate_timedelta(value):
 
     :param value:
     :type value: timedelta
-    :return:
+    :returns:
     """
     months = 0
     days = value.days

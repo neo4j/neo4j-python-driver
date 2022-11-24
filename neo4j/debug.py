@@ -87,9 +87,9 @@ class Watcher:
         enable logging for all threads.
 
     .. note::
-        The exact logging format is not part of the API contract and might
-        change at any time without notice. It is meant for debugging purposes
-        and human consumption only.
+        The exact logging format and messages are not part of the API contract
+        and might change at any time without notice. They are meant for
+        debugging purposes and human consumption only.
 
     :param logger_names: Names of loggers to watch.
     :param default_level: Default minimum log level to show.
@@ -204,9 +204,9 @@ def watch(
         # from now on, DEBUG logging to stderr is enabled in the driver
 
     .. note::
-        The exact logging format is not part of the API contract and might
-        change at any time without notice. It is meant for debugging purposes
-        and human consumption only.
+        The exact logging format and messages are not part of the API contract
+        and might change at any time without notice. They are meant for
+        debugging purposes and human consumption only.
 
     :param logger_names: Names of loggers to watch.
     :param level: see ``default_level`` of :class:`.Watcher`.
@@ -216,7 +216,7 @@ def watch(
     :param thread_info: see ``thread_info`` of :class:`.Watcher`.
     :param task_info: see ``task_info`` of :class:`.Watcher`.
 
-    :return: Watcher instance
+    :returns: Watcher instance
     :rtype: :class:`.Watcher`
 
     .. versionchanged::

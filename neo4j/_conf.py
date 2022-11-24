@@ -81,6 +81,10 @@ class TrustAll(TrustStore):
     certificate authority. This option is primarily intended for use with
     the default auto-generated server certificate.
 
+    .. warning::
+        This still leaves you vulnerable to man-in-the-middle attacks. It will
+        just prevent eavesdropping "from the side-line" (i.e., without
+        intercepting the connection).
 
     For example::
 
