@@ -179,7 +179,7 @@ class AsyncBoltSocket:
         :param keep_alive: True or False
         :param ssl: SSLContext or None
 
-        :return: AsyncBoltSocket object
+        :returns: AsyncBoltSocket object
         """
 
         loop = asyncio.get_event_loop()
@@ -278,7 +278,7 @@ class AsyncBoltSocket:
         :param s: Socket
         :param resolved_address:
 
-        :return: (socket, version, client_handshake, server_response_data)
+        :returns: (socket, version, client_handshake, server_response_data)
         """
         local_port = self.getsockname()[1]
 
@@ -487,7 +487,7 @@ class BoltSocket:
         :param resolved_address:
         :param timeout: seconds
         :param keep_alive: True or False
-        :return: socket object
+        :returns: socket object
         """
 
         s = None  # The socket
@@ -560,7 +560,7 @@ class BoltSocket:
         :param s: Socket
         :param resolved_address:
 
-        :return: (socket, version, client_handshake, server_response_data)
+        :returns: (socket, version, client_handshake, server_response_data)
         """
         local_port = s.getsockname()[1]
 

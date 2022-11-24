@@ -24,6 +24,7 @@ The :class:`neo4j.Driver` construction is done via a ``classmethod`` on the :cla
 
             from neo4j import GraphDatabase
 
+
             uri = "neo4j://example.com:7687"
             driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
 
@@ -36,7 +37,7 @@ The :class:`neo4j.Driver` construction is done via a ``classmethod`` on the :cla
 
            auth = ("neo4j", "password")
 
-        This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
+        This will implicitly create a :class:`neo4j.Auth` with ``scheme="basic"``.
         Other authentication methods are described under :ref:`auth-ref`.
 
 
@@ -46,10 +47,10 @@ The :class:`neo4j.Driver` construction is done via a ``classmethod`` on the :cla
 
             from neo4j import GraphDatabase
 
+
             uri = "neo4j://example.com:7687"
             with GraphDatabase.driver(uri, auth=("neo4j", "password")) as driver:
-                # use the driver
-
+                ...  # use the driver
 
 
 .. _uri-ref:
@@ -74,7 +75,7 @@ Available valid URIs:
 
 .. code-block:: python
 
-    uri = "neo4j://example.com:7687"
+    uri = "neo4j://example.com:7687?policy=europe"
 
 Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that implements a specific behaviour.
 
@@ -117,6 +118,7 @@ Example:
 .. code-block:: python
 
     import neo4j
+
 
     auth = neo4j.Auth("basic", "neo4j", "password")
 
@@ -274,6 +276,7 @@ For example:
 
    from neo4j import GraphDatabase
 
+
    def custom_resolver(socket_address):
        if socket_address == ("example.com", 9999):
            yield "::1", 7687
@@ -281,6 +284,7 @@ For example:
        else:
            from socket import gaierror
            raise gaierror("Unexpected socket address %r" % socket_address)
+
 
    driver = GraphDatabase.driver("neo4j://example.com:9999",
                                  auth=("neo4j", "password"),
@@ -382,6 +386,7 @@ For example:
 
     from neo4j import GraphDatabase
 
+
     class Application:
 
         def __init__(self, uri, user, password)
@@ -392,7 +397,7 @@ For example:
 
 Connection details held by the :class:`neo4j.Driver` are immutable.
 Therefore if, for example, a password is changed, a replacement :class:`neo4j.Driver` object must be created.
-More than one :class:`.Driver` may be required if connections to multiple databases, or connections as multiple users, are required,
+More than one :class:`.Driver` may be required if connections to multiple remotes, or connections as multiple users, are required,
 unless when using impersonation (:ref:`impersonated-user-ref`).
 
 :class:`neo4j.Driver` objects are thread-safe but cannot be shared across processes.
@@ -455,12 +460,14 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 
     from neo4j import GraphDatabase
 
-    driver = GraphDatabase(uri, auth=(user, password))
-    session = driver.session()
-    result = session.run("MATCH (a:Person) RETURN a.name AS name")
-    names = [record["name"] for record in result]
-    session.close()
-    driver.close()
+
+    with GraphDatabase(uri, auth=(user, password)) as driver:
+        session = driver.session()
+        try:
+            result = session.run("MATCH (a:Person) RETURN a.name AS name")
+            names = [record["name"] for record in result]
+        finally:
+            session.close()
 
 
 Sessions will often be created and destroyed using a *with block context*.
@@ -471,7 +478,7 @@ properly even when an exception is raised.
 
     with driver.session() as session:
         result = session.run("MATCH (a:Person) RETURN a.name AS name")
-        # do something with the result...
+        ...  # do something with the result
 
 
 Sessions will often be created with some configuration settings, see :ref:`session-configuration-ref`.
@@ -480,7 +487,7 @@ Sessions will often be created with some configuration settings, see :ref:`sessi
 
     with driver.session(database="example_database", fetch_size=100) as session:
         result = session.run("MATCH (a:Person) RETURN a.name AS name")
-        # do something with the result...
+        ...  # do something with the result
 
 
 *******
@@ -540,12 +547,12 @@ Optional :class:`neo4j.Bookmarks`. Use this to causally chain sessions.
 See :meth:`Session.last_bookmarks` or :meth:`AsyncSession.last_bookmarks` for
 more information.
 
+:Default: ``None``
+
 .. deprecated:: 5.0
     Alternatively, an iterable of strings can be passed. This usage is
     deprecated and will be removed in a future release. Please use a
     :class:`neo4j.Bookmarks` object instead.
-
-:Default: ``None``
 
 
 .. _database-ref:
@@ -553,15 +560,6 @@ more information.
 ``database``
 ------------
 Name of the database to query.
-
-:Type: ``str``, ``neo4j.DEFAULT_DATABASE``
-
-
-.. py:attribute:: neo4j.DEFAULT_DATABASE
-    :noindex:
-
-    This will use the default database on the Neo4j instance.
-
 
 .. Note::
 
@@ -577,9 +575,17 @@ Name of the database to query.
 
     from neo4j import GraphDatabase
 
+
+    # closing of driver and session is omitted for brevity
     driver = GraphDatabase.driver(uri, auth=(user, password))
     session = driver.session(database="system")
 
+.. py:attribute:: neo4j.DEFAULT_DATABASE = None
+    :noindex:
+
+    This will use the default database on the Neo4j instance.
+
+:Type: ``str``, ``neo4j.DEFAULT_DATABASE``
 
 :Default: ``neo4j.DEFAULT_DATABASE``
 
@@ -593,29 +599,27 @@ This means that all actions in the session will be executed in the security
 context of the impersonated user. For this, the user for which the
 :class:`Driver` has been created needs to have the appropriate permissions.
 
-:Type: ``str``, None
-
-
-.. py:data:: None
-   :noindex:
-
-   Will not perform impersonation.
-
-
 .. Note::
 
     The server or all servers of the cluster need to support impersonation.
     Otherwise, the driver will raise :exc:`.ConfigurationError`
     as soon as it encounters a server that does not.
 
-
 .. code-block:: python
 
     from neo4j import GraphDatabase
 
+
+    # closing of driver and session is omitted for brevity
     driver = GraphDatabase.driver(uri, auth=(user, password))
     session = driver.session(impersonated_user="alice")
 
+.. py:data:: None
+   :noindex:
+
+   Will not perform impersonation.
+
+:Type: ``str``, None
 
 :Default: :const:`None`
 
@@ -644,7 +648,13 @@ access mode passed to that session on construction.
     be executed even when ``neo4j.READ_ACCESS`` is chosen. This behaviour should
     not be relied upon as it can change with the server.
 
+.. py:attribute:: neo4j.WRITE_ACCESS = "WRITE"
+    :noindex:
+.. py:attribute:: neo4j.READ_ACCESS = "READ"
+    :noindex:
+
 :Type: ``neo4j.WRITE_ACCESS``, ``neo4j.READ_ACCESS``
+
 :Default: ``neo4j.WRITE_ACCESS``
 
 
@@ -652,7 +662,7 @@ access mode passed to that session on construction.
 
 ``fetch_size``
 --------------
-The fetch size used for requesting messages from Neo4j.
+The fetch size used for requesting records from Neo4j.
 
 :Type: ``int``
 :Default: ``1000``
@@ -713,28 +723,33 @@ Auto-commit transactions are also the only way to run ``PERIODIC COMMIT``
 newer) statements, since those Cypher clauses manage their own transactions
 internally.
 
-Example:
+Write example:
 
 .. code-block:: python
 
     import neo4j
 
+
     def create_person(driver, name):
-        with driver.session(default_access_mode=neo4j.WRITE_ACCESS) as session:
-            query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
+        # default_access_mode defaults to WRITE_ACCESS
+        with driver.session(database="neo4j") as session:
+            query = ("CREATE (n:NodeExample {name: $name, id: randomUUID()}) "
+                     "RETURN n.id AS node_id")
             result = session.run(query, name=name)
             record = result.single()
             return record["node_id"]
 
-Example:
+Read example:
 
 .. code-block:: python
 
     import neo4j
 
+
     def get_numbers(driver):
         numbers = []
-        with driver.session(default_access_mode=neo4j.READ_ACCESS) as session:
+        with driver.session(database="neo4j",
+                            default_access_mode=neo4j.READ_ACCESS) as session:
             result = session.run("UNWIND [1, 2, 3] AS x RETURN x")
             for record in result:
                 numbers.append(record["x"])
@@ -743,8 +758,8 @@ Example:
 
 .. _explicit-transactions-ref:
 
-Explicit Transactions
-=====================
+Explicit Transactions (Unmanaged Transactions)
+==============================================
 Explicit transactions support multiple statements and must be created with an explicit :meth:`neo4j.Session.begin_transaction` call.
 
 This creates a new :class:`neo4j.Transaction` object that can be used to run Cypher.
@@ -766,7 +781,7 @@ It also gives applications the ability to directly control ``commit`` and ``roll
 Closing an explicit transaction can either happen automatically at the end of a ``with`` block,
 or can be explicitly controlled through the :meth:`neo4j.Transaction.commit`, :meth:`neo4j.Transaction.rollback` or :meth:`neo4j.Transaction.close` methods.
 
-Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction.
+Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction or that need to run multiple queries within a single transaction but without the retries provided by managed transactions.
 
 Example:
 
@@ -774,25 +789,56 @@ Example:
 
     import neo4j
 
-    def create_person(driver, name):
-        with driver.session(default_access_mode=neo4j.WRITE_ACCESS) as session:
+
+    def transfer_to_other_bank(driver, customer_id, other_bank_id, amount):
+        with driver.session(
+            database="neo4j",
+            # optional, defaults to WRITE_ACCESS
+            default_access_mode=neo4j.WRITE_ACCESS
+        ) as session:
             tx = session.begin_transaction()
-            node_id = create_person_node(tx)
-            set_person_name(tx, node_id, name)
-            tx.commit()
+            # or just use a `with` context instead of try/finally
+            try:
+                if not customer_balance_check(tx, customer_id, amount):
+                    # give up
+                    return
+                other_bank_transfer_api(customer_id, other_bank_id, amount)
+                # Now the money has been transferred
+                # => we can't retry or rollback anymore
+                try:
+                    decrease_customer_balance(tx, customer_id, amount)
+                    tx.commit()
+                except Exception as e:
+                    request_inspection(customer_id, other_bank_id, amount, e)
+                    raise
+            finally:
+                tx.close()  # rolls back if not yet committed
 
-    def create_person_node(tx):
-        query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
-        name = "default_name"
-        result = tx.run(query, name=name)
-        record = result.single()
-        return record["node_id"]
 
-    def set_person_name(tx, node_id, name):
-        query = "MATCH (a:Person) WHERE id(a) = $id SET a.name = $name"
-        result = tx.run(query, id=node_id, name=name)
-        summary = result.consume()
-        # use the summary for logging etc.
+    def customer_balance_check(tx, customer_id, amount):
+        query = ("MATCH (c:Customer {id: $id}) "
+                 "RETURN c.balance >= $amount AS sufficient")
+        result = tx.run(query, id=customer_id, amount=amount)
+        record = result.single(strict=True)
+        return record["sufficient"]
+
+
+    def other_bank_transfer_api(customer_id, other_bank_id, amount):
+        ...  # make some API call to other bank
+
+
+    def decrease_customer_balance(tx, customer_id, amount):
+        query = ("MATCH (c:Customer {id: $id}) "
+                 "SET c.balance = c.balance - $amount")
+        result = tx.run(query, id=customer_id, amount=amount)
+        result.consume()
+
+
+    def request_inspection(customer_id, other_bank_id, amount, e):
+        # manual cleanup required; log this or similar
+        print("WARNING: transaction rolled back due to exception:", repr(e))
+        print("customer_id:", customer_id, "other_bank_id:", other_bank_id,
+              "amount:", amount)
 
 .. _managed-transactions-ref:
 
@@ -808,7 +854,7 @@ This function is called one or more times, within a configurable time limit, unt
 Results should be fully consumed within the function and only aggregate or status values should be returned.
 Returning a live result object would prevent the driver from correctly managing connections and would break retry guarantees.
 
-This function will receive a :class:`neo4j.ManagedTransaction` object as its first parameter.
+The passed function will receive a :class:`neo4j.ManagedTransaction` object as its first parameter. For more details see :meth:`neo4j.Session.execute_write` and :meth:`neo4j.Session.execute_read`.
 
 .. autoclass:: neo4j.ManagedTransaction()
 
@@ -822,8 +868,10 @@ Example:
         with driver.session() as session:
             node_id = session.execute_write(create_person_tx, name)
 
+
     def create_person_tx(tx, name):
-        query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
+        query = ("CREATE (a:Person {name: $name, id: randomUUID()}) "
+                 "RETURN a.id AS node_id")
         result = tx.run(query, name=name)
         record = result.single()
         return record["node_id"]
@@ -831,7 +879,6 @@ Example:
 To exert more control over how a transaction function is carried out, the :func:`neo4j.unit_of_work` decorator can be used.
 
 .. autofunction:: neo4j.unit_of_work
-
 
 
 ******
@@ -881,9 +928,6 @@ Graph
 =====
 
 .. autoclass:: neo4j.graph.Graph()
-
-    A local, self-contained graph object that acts as a container for :class:`.Node` and :class:`neo4j.Relationship` instances.
-    This is typically obtained via the :meth:`neo4j.Result.graph` method.
 
     .. autoattribute:: nodes
 
@@ -1074,13 +1118,13 @@ Node
 
         Checks whether a property key exists for a given node.
 
-    .. autoattribute:: graph
+    .. autoproperty:: graph
 
-    .. autoattribute:: id
+    .. autoproperty:: id
 
-    .. autoattribute:: element_id
+    .. autoproperty:: element_id
 
-    .. autoattribute:: labels
+    .. autoproperty:: labels
 
     .. automethod:: get
 
@@ -1130,19 +1174,19 @@ Relationship
         Returns the type (class) of a relationship.
         Relationship objects belong to a custom subtype based on the type name in the underlying database.
 
-    .. autoattribute:: graph
+    .. autoproperty:: graph
 
-    .. autoattribute:: id
+    .. autoproperty:: id
 
-    .. autoattribute:: element_id
+    .. autoproperty:: element_id
 
-    .. autoattribute:: nodes
+    .. autoproperty:: nodes
 
-    .. autoattribute:: start_node
+    .. autoproperty:: start_node
 
-    .. autoattribute:: end_node
+    .. autoproperty:: end_node
 
-    .. autoattribute:: type
+    .. autoproperty:: type
 
     .. automethod:: get
 
@@ -1179,15 +1223,15 @@ Path
 
         Iterates through all the relationships in a path.
 
-    .. autoattribute:: graph
+    .. autoproperty:: graph
 
-    .. autoattribute:: nodes
+    .. autoproperty:: nodes
 
-    .. autoattribute:: start_node
+    .. autoproperty:: start_node
 
-    .. autoattribute:: end_node
+    .. autoproperty:: end_node
 
-    .. autoattribute:: relationships
+    .. autoproperty:: relationships
 
 
 ******************
@@ -1420,6 +1464,14 @@ Warnings
 
 The Python Driver uses the built-in :class:`python:DeprecationWarning` class to warn about deprecations.
 
+The Python Driver uses the built-in :class:`python:ResourceWarning` class to warn about not properly closed resources, e.g., Drivers and Sessions.
+
+.. note::
+    Deprecation and resource warnings are not shown by default. One way of enable them is to run the Python interpreter in `development mode`_.
+
+.. _development mode: https://docs.python.org/3/library/devmode.html#devmode
+
+
 The Python Driver uses the :class:`neo4j.ExperimentalWarning` class to warn about experimental features.
 
 .. autoclass:: neo4j.ExperimentalWarning
@@ -1474,10 +1526,8 @@ not able to connect to the database server or if undesired behavior is observed.
 
 There are different ways of enabling logging as listed below.
 
-.. note::
-
-    For an improved logging experience with the async driver, please see
-    :ref:`async-logging-ref`.
+.. seealso::
+    :ref:`async-logging-ref` for an improved logging experience with the async driver.
 
 Simple Approach
 ===============
