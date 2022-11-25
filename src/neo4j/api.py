@@ -27,19 +27,15 @@ from urllib.parse import (
     urlparse,
 )
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-    from .addressing import Address
-
-
-
 from ._meta import deprecated
 from .exceptions import ConfigurationError
 
 
 if t.TYPE_CHECKING:
+    import typing_extensions as te
     from typing_extensions import Protocol as _Protocol
+
+    from .addressing import Address
 else:
     _Protocol = object
 

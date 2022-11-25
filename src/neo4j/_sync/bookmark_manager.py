@@ -29,9 +29,9 @@ from ..api import (
 )
 
 
-T_BmSupplier = t.Callable[[t.Optional[str]],
-                          t.Union[Bookmarks, t.Union[Bookmarks]]]
-T_BmConsumer = t.Callable[[str, Bookmarks], t.Union[None, t.Union[None]]]
+TBmSupplier = t.Callable[[t.Optional[str]],
+                         t.Union[Bookmarks, t.Union[Bookmarks]]]
+TBmConsumer = t.Callable[[str, Bookmarks], t.Union[None, t.Union[None]]]
 
 
 def _bookmarks_to_set(
@@ -47,8 +47,8 @@ class Neo4jBookmarkManager(BookmarkManager):
         self,
         initial_bookmarks: t.Optional[t.Mapping[str, t.Union[Bookmarks,
                                                 t.Iterable[str]]]] = None,
-        bookmarks_supplier: t.Optional[T_BmSupplier] = None,
-        bookmarks_consumer: t.Optional[T_BmConsumer] = None
+        bookmarks_supplier: t.Optional[TBmSupplier] = None,
+        bookmarks_consumer: t.Optional[TBmConsumer] = None
     ) -> None:
         super().__init__()
         self._bookmarks_supplier = bookmarks_supplier

@@ -39,13 +39,6 @@ from ssl import (
     SSLSocket,
 )
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
-    from ..._async.io import AsyncBolt
-    from ..._sync.io import Bolt
-
 from ... import addressing
 from ..._deadline import Deadline
 from ..._exceptions import (
@@ -63,6 +56,13 @@ from ._util import (
     AsyncNetworkUtil,
     NetworkUtil,
 )
+
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
+    from ..._async.io import AsyncBolt
+    from ..._sync.io import Bolt
 
 
 log = logging.getLogger("neo4j")

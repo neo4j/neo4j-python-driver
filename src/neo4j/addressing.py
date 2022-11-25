@@ -82,19 +82,19 @@ class Address(tuple, metaclass=_AddressMeta):
 
     @classmethod
     def from_socket(
-        cls: t.Type[_T_Address],
+        cls: t.Type[_TAddress],
         socket: _WithPeerName
-    ) -> _T_Address:
+    ) -> _TAddress:
         address = socket.getpeername()
         return cls(address)
 
     @classmethod
     def parse(
-        cls: t.Type[_T_Address],
+        cls: t.Type[_TAddress],
         s: str,
         default_host: t.Optional[str] = None,
         default_port: t.Optional[int] = None
-    ) -> _T_Address:
+    ) -> _TAddress:
         if not isinstance(s, str):
             raise TypeError("Address.parse requires a string argument")
         if s.startswith("["):
@@ -120,11 +120,11 @@ class Address(tuple, metaclass=_AddressMeta):
 
     @classmethod
     def parse_list(
-        cls: t.Type[_T_Address],
+        cls: t.Type[_TAddress],
         *s: str,
         default_host: t.Optional[str] = None,
         default_port: t.Optional[int] = None
-    ) -> t.List[_T_Address]:
+    ) -> t.List[_TAddress]:
         """ Parse a string containing one or more socket addresses, each
         separated by whitespace.
         """
@@ -182,7 +182,7 @@ class Address(tuple, metaclass=_AddressMeta):
                 raise type(e)("Unknown port value %r" % self[1])
 
 
-_T_Address = t.TypeVar("_T_Address", bound=Address)
+_TAddress = t.TypeVar("_TAddress", bound=Address)
 
 
 class IPv4Address(Address):
