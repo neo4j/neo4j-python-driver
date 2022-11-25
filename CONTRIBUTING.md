@@ -54,7 +54,7 @@ Remember that many community members have become regular contributors and some a
 ## Specifically for this project:
 
 All code in `_sync` or `sync` folders is auto-generated. Don't change it, but
-install the pre-commit hooks as described below insted. They will take care of
+install the pre-commit hooks as described below instead. They will take care of
 updating the code if necessary.
 
 Setting up the development environment:

@@ -32,8 +32,8 @@ import unasync
 
 
 ROOT_DIR = Path(__file__).parents[1].absolute()
-ASYNC_DIR = ROOT_DIR / "neo4j" / "_async"
-SYNC_DIR = ROOT_DIR / "neo4j" / "_sync"
+ASYNC_DIR = ROOT_DIR / "src" / "neo4j" / "_async"
+SYNC_DIR = ROOT_DIR / "src" / "neo4j" / "_sync"
 ASYNC_UNIT_TEST_DIR = ROOT_DIR / "tests" / "unit" / "async_"
 SYNC_UNIT_TEST_DIR = ROOT_DIR / "tests" / "unit" / "sync"
 ASYNC_INTEGRATION_TEST_DIR = ROOT_DIR / "tests" / "integration" / "async_"

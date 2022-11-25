@@ -45,7 +45,7 @@ from . import requests
 
 
 TESTKIT_BACKEND_PATH = Path(__file__).absolute().resolve().parents[1]
-DRIVER_PATH = TESTKIT_BACKEND_PATH.parent / "neo4j"
+DRIVER_PATH = TESTKIT_BACKEND_PATH.parent / "src" / "neo4j"
 
 
 class AsyncBackend:

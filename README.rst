@@ -32,6 +32,15 @@ To install the latest stable version, use:
     pip install neo4j
 
 
+.. TODO: 7.0 - remove this note
+
+.. note::
+
+    ``neo4j-driver`` is the old name for this package. It is now deprecated and
+    and will receive no further updates starting with 6.0.0. Make sure to
+    install ``neo4j`` as shown above.
+
+
 Quick Example
 =============
 
