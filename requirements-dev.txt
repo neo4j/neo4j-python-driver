@@ -1,13 +1,29 @@
+# the driver itself
+-e .
+
 # auto-generate sync driver from async code
 unasync>=0.5.0
+# pre-commit hooks and tools
 pre-commit>=2.15.0
 isort>=5.10.0
 mypy>=0.971
 typing-extensions>=4.3.0
 types-pytz>=2022.1.2
 
-# needed for running tests
--r tests/requirements.txt
+# for packaging
+setuptools~=65.6
+# TODO: 6.0 - can be removed once `setup.py` is simplified
+tomlkit~=0.11.6
 
-# production dependencies
--r requirements.txt
+# needed for running tests
+coverage[toml]>=5.5
+mock>=4.0.3
+pandas>=1.0.0
+pytest>=6.2.5
+pytest-asyncio>=0.16.0
+pytest-benchmark>=3.4.1
+pytest-cov>=3.0.0
+pytest-mock>=3.6.1
+teamcity-messages>=1.29
+tox>=3.27.1
+tox-factor>=0.1.2

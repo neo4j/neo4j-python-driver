@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [https://neo4j.com]
 #
@@ -17,16 +15,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-"""
-Executed in driver container.
-Responsible for building driver and test backend.
-"""
+# TODO: 6.0 - remove this file
 
 
-from _common import run_python
+from ._data import (
+    DataTransformer,
+    Record,
+    RecordExporter,
+    RecordTableRowExporter,
+)
+from ._meta import deprecation_warn
 
 
-if __name__ == "__main__":
-    run_python(["-m", "pip", "install", "-U", "pip"])
-    run_python(["-m", "pip", "install", "-Ur", "requirements-dev.txt"])
+__all__ = [
+    "Record",
+    "DataTransformer",
+    "RecordExporter",
+    "RecordTableRowExporter",
+]
+
+deprecation_warn(
+    "The module 'neo4j.data' was made internal and will "
+    "no longer be available for import in future versions. "
+    "`neo4j.data.Record` should be imported directly from `neo4j`.",
+    stack_level=2
+)

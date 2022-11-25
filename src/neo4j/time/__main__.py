@@ -18,15 +18,17 @@
 # limitations under the License.
 
 
-"""
-Executed in driver container.
-Responsible for building driver and test backend.
-"""
-
-
-from _common import run_python
+def main():
+    from . import (
+        Clock,
+        DateTime,
+        UnixEpoch,
+    )
+    clock = Clock()
+    time = clock.utc_time()
+    print("Using %s" % type(clock).__name__)
+    print("%s -> %s" % (time, DateTime.from_clock_time(time, UnixEpoch)))
 
 
 if __name__ == "__main__":
-    run_python(["-m", "pip", "install", "-U", "pip"])
-    run_python(["-m", "pip", "install", "-Ur", "requirements-dev.txt"])
+    main()

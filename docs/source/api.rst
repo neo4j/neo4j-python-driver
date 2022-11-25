@@ -566,9 +566,44 @@ Name of the database to query.
     The default database can be set on the Neo4j instance settings.
 
 .. Note::
-    It is recommended to always specify the database explicitly when possible.
-    This allows the driver to work more efficiently, as it will not have to
-    resolve the home database first.
+
+    This option has no explicit value by default, but it is recommended to set
+    one if the target database is known in advance. This has the benefit of
+    ensuring a consistent target database name throughout the session in a
+    straightforward way and potentially simplifies driver logic as well as
+    reduces network communication resulting in better performance.
+
+    Usage of Cypher clauses like `USE` is not a replacement for this option.
+    The driver does not parse any Cypher.
+
+When no explicit name is set, the driver behavior depends on the connection
+URI scheme supplied to the driver on instantiation and Bolt protocol
+version.
+
+Specifically, the following applies:
+
+- **bolt schemes** - queries are dispatched to the server for execution
+  without explicit database name supplied, meaning that the target database
+  name for query execution is determined by the server. It is important to
+  note that the target database may change (even within the same session),
+  for instance if the user's home database is changed on the server.
+
+- **neo4j schemes** - providing that Bolt protocol version 4.4, which was
+  introduced with Neo4j server 4.4, or above is available, the driver
+  fetches the user's home database name from the server on first query
+  execution within the session and uses the fetched database name
+  explicitly for all queries executed within the session. This ensures that
+  the database name remains consistent within the given session. For
+  instance, if the user's home database name is 'movies' and the server
+  supplies it to the driver upon database name fetching for the session,
+  all queries within that session are executed with the explicit database
+  name 'movies' supplied. Any change to the user’s home database is
+  reflected only in sessions created after such change takes effect. This
+  behavior requires additional network communication. In clustered
+  environments, it is strongly recommended to avoid a single point of
+  failure. For instance, by ensuring that the connection URI resolves to
+  multiple endpoints. For older Bolt protocol versions the behavior is the
+  same as described for the **bolt schemes** above.
 
 
 .. code-block:: python

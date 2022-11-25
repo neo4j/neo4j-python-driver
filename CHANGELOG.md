@@ -4,6 +4,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
 
 ## Version 5.3
 - Python 3.11 support added
+- Removed undocumented, unused `neo4j.data.map_type`
 - Query strings are now typed `LiteralString` instead of `str` to help mitigate
   accidental Cypher injections. There are rare use-cases where a computed
   string is necessary. Please use `# type: ignore`, or `typing.cast` to
