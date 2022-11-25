@@ -297,15 +297,12 @@ def test_with_builtin_bookmark_manager(mocker) -> None:
 def test_with_custom_inherited_async_bookmark_manager(mocker) -> None:
     class BMM(BookmarkManager):
         def update_bookmarks(
-            self, database: str, previous_bookmarks: t.Iterable[str],
+            self, previous_bookmarks: t.Iterable[str],
             new_bookmarks: t.Iterable[str]
         ) -> None:
             ...
 
-        def get_bookmarks(self, database: str) -> t.Collection[str]:
-            return []
-
-        def get_all_bookmarks(self) -> t.Collection[str]:
+        def get_bookmarks(self) -> t.Collection[str]:
             return []
 
         def forget(self, databases: t.Iterable[str]) -> None:
@@ -328,15 +325,12 @@ def test_with_custom_inherited_async_bookmark_manager(mocker) -> None:
 def test_with_custom_inherited_sync_bookmark_manager(mocker) -> None:
     class BMM(BookmarkManager):
         def update_bookmarks(
-            self, database: str, previous_bookmarks: t.Iterable[str],
+            self, previous_bookmarks: t.Iterable[str],
             new_bookmarks: t.Iterable[str]
         ) -> None:
             ...
 
-        def get_bookmarks(self, database: str) -> t.Collection[str]:
-            return []
-
-        def get_all_bookmarks(self) -> t.Collection[str]:
+        def get_bookmarks(self) -> t.Collection[str]:
             return []
 
         def forget(self, databases: t.Iterable[str]) -> None:
@@ -359,15 +353,12 @@ def test_with_custom_inherited_sync_bookmark_manager(mocker) -> None:
 def test_with_custom_ducktype_async_bookmark_manager(mocker) -> None:
     class BMM:
         def update_bookmarks(
-            self, database: str, previous_bookmarks: t.Iterable[str],
+            self, previous_bookmarks: t.Iterable[str],
             new_bookmarks: t.Iterable[str]
         ) -> None:
             ...
 
-        def get_bookmarks(self, database: str) -> t.Collection[str]:
-            return []
-
-        def get_all_bookmarks(self) -> t.Collection[str]:
+        def get_bookmarks(self) -> t.Collection[str]:
             return []
 
         def forget(self, databases: t.Iterable[str]) -> None:
@@ -390,15 +381,12 @@ def test_with_custom_ducktype_async_bookmark_manager(mocker) -> None:
 def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
     class BMM:
         def update_bookmarks(
-            self, database: str, previous_bookmarks: t.Iterable[str],
+            self, previous_bookmarks: t.Iterable[str],
             new_bookmarks: t.Iterable[str]
         ) -> None:
             ...
 
-        def get_bookmarks(self, database: str) -> t.Collection[str]:
-            return []
-
-        def get_all_bookmarks(self) -> t.Collection[str]:
+        def get_bookmarks(self) -> t.Collection[str]:
             return []
 
         def forget(self, databases: t.Iterable[str]) -> None:

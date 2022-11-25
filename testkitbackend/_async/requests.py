@@ -284,12 +284,11 @@ async def BookmarkManagerClose(backend, data):
 
 
 def bookmarks_supplier(backend, bookmark_manager_id):
-    async def supplier(database):
+    async def supplier():
         key = backend.next_key()
         await backend.send_response("BookmarksSupplierRequest", {
             "id": key,
             "bookmarkManagerId": bookmark_manager_id,
-            "database": database
         })
         if not await backend.process_request():
             # connection was closed before end of next message
@@ -310,12 +309,11 @@ async def BookmarksSupplierCompleted(backend, data):
 
 
 def bookmarks_consumer(backend, bookmark_manager_id):
-    async def consumer(database, bookmarks):
+    async def consumer(bookmarks):
         key = backend.next_key()
         await backend.send_response("BookmarksConsumerRequest", {
             "id": key,
             "bookmarkManagerId": bookmark_manager_id,
-            "database": database,
             "bookmarks": list(bookmarks.raw_values)
         })
         if not await backend.process_request():

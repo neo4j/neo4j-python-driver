@@ -217,8 +217,7 @@ class GraphDatabase:
     )
     def bookmark_manager(
         cls,
-        initial_bookmarks: t.Optional[t.Mapping[str, t.Union[Bookmarks,
-                                                t.Iterable[str]]]] = None,
+        initial_bookmarks: t.Union[None, Bookmarks, t.Iterable[str]] = None,
         bookmarks_supplier: t.Optional[_TBmSupplier] = None,
         bookmarks_consumer: t.Optional[_TBmConsumer] = None
     ) -> BookmarkManager:
@@ -258,24 +257,21 @@ class GraphDatabase:
 
         :param initial_bookmarks:
             The initial set of bookmarks. The returned bookmark manager will
-            use this to initialize its internal bookmarks per database.
-            If present, this parameter must be a mapping of database names
-            to :class:`.Bookmarks` or an iterable of raw bookmark values (str).
+            use this to initialize its internal bookmarks.
         :param bookmarks_supplier:
             Function which will be called every time the default bookmark
             manager's method :meth:`.BookmarkManager.get_bookmarks`
-            or :meth:`.BookmarkManager.get_all_bookmarks` gets called.
-            The function will be passed the name of the database (``str``) if
-            ``.get_bookmarks`` is called or ``None`` if ``.get_all_bookmarks``
-            is called. The function must return a :class:`.Bookmarks` object.
-            The result of ``bookmarks_supplier`` will then be concatenated with
-            the internal set of bookmarks and used to configure the session in
-            creation.
+            gets called.
+            The function takes no arguments and must return a
+            :class:`.Bookmarks` object. The result of ``bookmarks_supplier``
+            will then be concatenated with the internal set of bookmarks and
+            used to configure the session in creation. It will, however, not
+            update the internal set of bookmarks.
         :param bookmarks_consumer:
             Function which will be called whenever the set of bookmarks
             handled by the bookmark manager gets updated with the new
-            internal bookmark set. It will receive the name of the database
-            and the new set of bookmarks.
+            internal bookmark set. It will receive the new set of bookmarks
+            as a :class:`.Bookmarks` object and return :const:`None`.
 
         :returns: A default implementation of :class:`BookmarkManager`.
 
@@ -283,6 +279,18 @@ class GraphDatabase:
         It might be changed or removed any time even without prior notice.
 
         .. versionadded:: 5.0
+
+        .. versionchanged:: 5.3
+            The bookmark manager no longer tracks bookmarks per database.
+            This effectively changes the signature of almost all bookmark
+            manager related methods:
+
+            * ``initial_bookmarks`` is no longer a mapping from database name
+              to bookmarks but plain bookmarks.
+            * ``bookmarks_supplier`` no longer receives the database name as
+              an argument.
+            * ``bookmarks_consumer`` no longer receives the database name as
+              an argument.
         """
         return Neo4jBookmarkManager(
             initial_bookmarks=initial_bookmarks,

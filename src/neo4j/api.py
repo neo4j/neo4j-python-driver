@@ -397,21 +397,29 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     .. note::
         All methods must be concurrency safe.
 
-    Generally, all methods need to be able to cope with getting passed a
-    ``database`` parameter that is (until then) unknown to the manager.
+    **This is experimental.**
+    It might be changed or removed any time even without prior notice.
 
     .. versionadded:: 5.0
+
+    .. versionchanged:: 5.3
+        The bookmark manager no longer tracks bookmarks per database.
+        This effectively changes the signature of almost all bookmark
+        manager related methods:
+
+        * :meth:`.update_bookmarks` has no longer a ``database`` argument.
+        * :meth:`.get_bookmarks` has no longer a ``database`` argument.
+        * The ``get_all_bookmarks`` method was removed.
+        * The ``forget`` method was removed.
     """
 
     @abc.abstractmethod
     def update_bookmarks(
-        self, database: str, previous_bookmarks: t.Collection[str],
+        self, previous_bookmarks: t.Collection[str],
         new_bookmarks: t.Collection[str]
     ) -> None:
         """Handle bookmark updates.
 
-        :param database:
-            The database which the bookmarks belong to
         :param previous_bookmarks:
             The bookmarks used at the start of a transaction
         :param new_bookmarks:
@@ -420,32 +428,10 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
         ...
 
     @abc.abstractmethod
-    def get_bookmarks(self, database: str) -> t.Collection[str]:
-        """Return the bookmarks for a given database.
-
-        :param database: The database which the bookmarks belong to
+    def get_bookmarks(self) -> t.Collection[str]:
+        """Return the bookmarks stored in the bookmark manager.
 
         :returns: The bookmarks for the given database
-        """
-        ...
-
-    @abc.abstractmethod
-    def get_all_bookmarks(self) -> t.Collection[str]:
-        """Return all bookmarks for all known databases.
-
-        :returns: The collected bookmarks.
-        """
-        ...
-
-    @abc.abstractmethod
-    def forget(self, databases: t.Iterable[str]) -> None:
-        """Forget the bookmarks for the given databases.
-
-        This method is not called by the driver.
-        Forgetting unused databases is the user's responsibility.
-
-        :param databases:
-            The databases which the bookmarks will be removed for.
         """
         ...
 
@@ -456,12 +442,18 @@ class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     The driver comes with a default implementation of the async bookmark
     manager accessible through :attr:`.AsyncGraphDatabase.bookmark_manager()`.
 
+    **This is experimental.**
+    It might be changed or removed any time even without prior notice.
+
     .. versionadded:: 5.0
+
+    .. versionchanged:: 5.3
+        See :class:`.BookmarkManager` for changes.
     """
 
     @abc.abstractmethod
     async def update_bookmarks(
-        self, database: str, previous_bookmarks: t.Collection[str],
+        self, previous_bookmarks: t.Collection[str],
         new_bookmarks: t.Collection[str]
     ) -> None:
         ...
@@ -469,22 +461,10 @@ class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     update_bookmarks.__doc__ = BookmarkManager.update_bookmarks.__doc__
 
     @abc.abstractmethod
-    async def get_bookmarks(self, database: str) -> t.Collection[str]:
+    async def get_bookmarks(self) -> t.Collection[str]:
         ...
 
     get_bookmarks.__doc__ = BookmarkManager.get_bookmarks.__doc__
-
-    @abc.abstractmethod
-    async def get_all_bookmarks(self) -> t.Collection[str]:
-        ...
-
-    get_all_bookmarks.__doc__ = BookmarkManager.get_all_bookmarks.__doc__
-
-    @abc.abstractmethod
-    async def forget(self, databases: t.Iterable[str]) -> None:
-        ...
-
-    forget.__doc__ = BookmarkManager.forget.__doc__
 
 
 def parse_neo4j_uri(uri):

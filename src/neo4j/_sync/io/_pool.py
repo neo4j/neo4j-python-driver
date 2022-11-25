@@ -704,11 +704,11 @@ class Neo4jPool(IOPool):
                 # Remove unused databases in the routing table
                 # Remove the routing table after a timeout = TTL + 30s
                 log.debug("[#0000]  _: <POOL> routing aged?, database=%s",
-                          database)
+                          database_)
                 routing_table = self.routing_tables[database_]
                 if routing_table.should_be_purged_from_memory():
                     log.debug("[#0000]  _: <POOL> dropping routing table for "
-                              "database=%s", database)
+                              "database=%s", database_)
                     del self.routing_tables[database_]
 
             routing_table = self.get_or_create_routing_table(database)

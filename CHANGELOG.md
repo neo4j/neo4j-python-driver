@@ -1,5 +1,7 @@
 # Neo4j Driver Change Log (breaking/major changes only)
 
+See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
+
 ## Version 5.3
 - Python 3.11 support added
 - Removed undocumented, unused `neo4j.data.map_type`
@@ -7,6 +9,24 @@
   accidental Cypher injections. There are rare use-cases where a computed
   string is necessary. Please use `# type: ignore`, or `typing.cast` to
   suppress the type checking in those cases.
+- The experimental bookmark manager feature was changed to no longer track
+  bookmarks per database.  
+  This effectively changes the signature of almost all bookmark
+  manager related methods:
+  - `neo4j.BookmarkManger` and `neo4j.AsyncBookmarkManger` abstract base
+    classes:
+    - ``update_bookmarks`` has no longer a ``database`` argument.
+    - ``get_bookmarks`` has no longer a ``database`` argument.
+    - The ``get_all_bookmarks`` method was removed.
+    - The ``forget`` method was removed.
+  - `neo4j.GraphDatabase.bookmark_manager` and
+    `neo4j.AsyncGraphDatabase.bookmark_manager` factory methods:
+    - ``initial_bookmarks`` is no longer a mapping from database name
+      to bookmarks but plain bookmarks.
+    - ``bookmarks_supplier`` no longer receives the database name as
+      an argument.
+    - ``bookmarks_consumer`` no longer receives the database name as
+      an argument.  
 
 
 ## Version 5.2
