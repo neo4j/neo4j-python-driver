@@ -54,7 +54,7 @@ if t.TYPE_CHECKING:
 
 
 _T = t.TypeVar("_T")
-_T_ResultKey = t.Union[int, str]
+_TResultKey = t.Union[int, str]
 
 
 _RESULT_OUT_OF_SCOPE_ERROR = (
@@ -534,7 +534,7 @@ class AsyncResult:
         return self._hydration_scope.get_graph()
 
     async def value(
-        self, key: _T_ResultKey = 0, default: t.Optional[object] = None
+        self, key: _TResultKey = 0, default: t.Optional[object] = None
     ) -> t.List[t.Any]:
         """Return the remainder of the result as a list of values.
 
@@ -555,7 +555,7 @@ class AsyncResult:
         return [record.value(key, default) async for record in self]
 
     async def values(
-        self, *keys: _T_ResultKey
+        self, *keys: _TResultKey
     ) -> t.List[t.List[t.Any]]:
         """Return the remainder of the result as a list of values lists.
 
@@ -574,7 +574,7 @@ class AsyncResult:
         """
         return [record.values(*keys) async for record in self]
 
-    async def data(self, *keys: _T_ResultKey) -> t.List[t.Dict[str, t.Any]]:
+    async def data(self, *keys: _TResultKey) -> t.List[t.Dict[str, t.Any]]:
         """Return the remainder of the result as a list of dictionaries.
 
         This function provides a convenient but opinionated way to obtain the

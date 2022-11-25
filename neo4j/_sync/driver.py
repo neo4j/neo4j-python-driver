@@ -65,8 +65,8 @@ from ..api import (
 )
 from .bookmark_manager import (
     Neo4jBookmarkManager,
-    T_BmConsumer as _T_BmConsumer,
-    T_BmSupplier as _T_BmSupplier,
+    TBmConsumer as _TBmConsumer,
+    TBmSupplier as _TBmSupplier,
 )
 from .work import Session
 
@@ -134,7 +134,7 @@ class GraphDatabase:
                     TRUST_ALL_CERTIFICATES,
                     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
                 ):
-                    from neo4j.exceptions import ConfigurationError
+                    from ..exceptions import ConfigurationError
                     raise ConfigurationError(
                         "The config setting `trust` values are {!r}"
                         .format(
@@ -161,7 +161,7 @@ class GraphDatabase:
                      or "trust" in config.keys()
                      or "trusted_certificates" in config.keys()
                      or "ssl_context" in config.keys())):
-                from neo4j.exceptions import ConfigurationError
+                from ..exceptions import ConfigurationError
 
                 # TODO: 6.0 remove "trust" from error message
                 raise ConfigurationError(
@@ -219,8 +219,8 @@ class GraphDatabase:
         cls,
         initial_bookmarks: t.Optional[t.Mapping[str, t.Union[Bookmarks,
                                                 t.Iterable[str]]]] = None,
-        bookmarks_supplier: t.Optional[_T_BmSupplier] = None,
-        bookmarks_consumer: t.Optional[_T_BmConsumer] = None
+        bookmarks_supplier: t.Optional[_TBmSupplier] = None,
+        bookmarks_consumer: t.Optional[_TBmConsumer] = None
     ) -> BookmarkManager:
         """Create a :class:`.BookmarkManager` with default implementation.
 
@@ -303,7 +303,7 @@ class GraphDatabase:
         try:
             return BoltDriver.open(target, auth=auth, **config)
         except (BoltHandshakeError, BoltSecurityError) as error:
-            from neo4j.exceptions import ServiceUnavailable
+            from ..exceptions import ServiceUnavailable
             raise ServiceUnavailable(str(error)) from error
 
     @classmethod
@@ -311,7 +311,7 @@ class GraphDatabase:
         """ Create a driver for routing-capable Neo4j service access
         that uses socket I/O and thread-based concurrency.
         """
-        from neo4j._exceptions import (
+        from .._exceptions import (
             BoltHandshakeError,
             BoltSecurityError,
         )
@@ -319,7 +319,7 @@ class GraphDatabase:
         try:
             return Neo4jDriver.open(*targets, auth=auth, routing_context=routing_context, **config)
         except (BoltHandshakeError, BoltSecurityError) as error:
-            from neo4j.exceptions import ServiceUnavailable
+            from ..exceptions import ServiceUnavailable
             raise ServiceUnavailable(str(error)) from error
 
 

@@ -19,7 +19,7 @@
 
 
 def main():
-    from neo4j.time import (
+    from . import (
         Clock,
         DateTime,
         UnixEpoch,

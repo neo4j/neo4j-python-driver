@@ -64,7 +64,7 @@ class OrderedSet(MutableSet):
         try:
             del self._elements[element]
         except KeyError:
-            raise ValueError(element)
+            raise ValueError(element) from None
 
     def update(self, elements=()):
         self._elements.update(dict.fromkeys(elements))
@@ -97,8 +97,8 @@ class RoutingTable:
                     readers.extend(addresses)
                 elif role == "WRITE":
                     writers.extend(addresses)
-        except (KeyError, TypeError):
-            raise ValueError("Cannot parse routing info")
+        except (KeyError, TypeError) as exc:
+            raise ValueError("Cannot parse routing info") from exc
         else:
             return cls(database=database, routers=routers, readers=readers, writers=writers, ttl=ttl)
 
@@ -147,7 +147,7 @@ class RoutingTable:
         :returns: Returns true if it is old and not used for a while.
         :rtype: bool
         """
-        from neo4j._conf import RoutingConfig
+        from ._conf import RoutingConfig
         perf_time = perf_counter()
         res = self.last_updated_time + self.ttl + RoutingConfig.routing_table_purge_delay <= perf_time
         log.debug("[#0000]  _: <ROUTING> purge check: "

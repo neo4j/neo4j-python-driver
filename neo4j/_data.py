@@ -43,7 +43,7 @@ from .graph import (
 
 
 _T = t.TypeVar("_T")
-_T_K = t.Union[int, str]
+_K = t.Union[int, str]
 
 
 class Record(tuple, Mapping):
@@ -119,7 +119,7 @@ class Record(tuple, Mapping):
             yield v
 
     def __getitem__(  # type: ignore[override]
-        self, key: t.Union[_T_K, slice]
+        self, key: t.Union[_K, slice]
     ) -> t.Any:
         if isinstance(key, slice):
             keys = self.__keys[key]
@@ -158,7 +158,7 @@ class Record(tuple, Mapping):
         else:
             return default
 
-    def index(self, key: _T_K) -> int:  # type: ignore[override]
+    def index(self, key: _K) -> int:  # type: ignore[override]
         """ Return the index of the given item.
 
         :param key: a key
@@ -172,13 +172,13 @@ class Record(tuple, Mapping):
         elif isinstance(key, str):
             try:
                 return self.__keys.index(key)
-            except ValueError:
-                raise KeyError(key)
+            except ValueError as exc:
+                raise KeyError(key) from exc
         else:
             raise TypeError(key)
 
     def value(
-        self, key: _T_K = 0, default: t.Optional[object] = None
+        self, key: _K = 0, default: t.Optional[object] = None
     ) -> t.Any:
         """ Obtain a single value from the record by index or key. If no
         index or key is specified, the first value is returned. If the
@@ -203,7 +203,7 @@ class Record(tuple, Mapping):
         """
         return list(self.__keys)
 
-    def values(self, *keys: _T_K) -> t.List[t.Any]:  # type: ignore[override]
+    def values(self, *keys: _K) -> t.List[t.Any]:  # type: ignore[override]
         """ Return the values of the record, optionally filtering to
         include only certain values by index or key.
 
@@ -242,7 +242,7 @@ class Record(tuple, Mapping):
         return list((self.__keys[i], self._super_getitem_single(i))
                     for i in range(len(self)))
 
-    def data(self, *keys: _T_K) -> t.Dict[str, t.Any]:
+    def data(self, *keys: _K) -> t.Dict[str, t.Any]:
         """ Return the keys and values of this record as a dictionary,
         optionally including only certain values by index or key. Keys
         provided in the items that are not in the record will be
@@ -293,14 +293,14 @@ class RecordExporter(DataTransformer):
         elif isinstance(x, str):
             return x
         elif isinstance(x, Sequence):
-            t = type(x)
-            return t(map(self.transform, x))
+            typ = type(x)
+            return typ(map(self.transform, x))
         elif isinstance(x, Set):
-            t = type(x)
-            return t(map(self.transform, x))
+            typ = type(x)
+            return typ(map(self.transform, x))
         elif isinstance(x, Mapping):
-            t = type(x)
-            return t((k, self.transform(v)) for k, v in x.items())
+            typ = type(x)
+            return typ((k, self.transform(v)) for k, v in x.items())
         else:
             return x
 
@@ -310,12 +310,12 @@ class RecordTableRowExporter(DataTransformer):
 
     def transform(self, x):
         assert isinstance(x, Mapping)
-        t = type(x)
-        return t(item
-                 for k, v in x.items()
-                 for item in self._transform(
-                     v, prefix=k.replace("\\", "\\\\").replace(".", "\\.")
-                 ).items())
+        typ = type(x)
+        return typ(item
+                   for k, v in x.items()
+                   for item in self._transform(
+                       v, prefix=k.replace("\\", "\\\\").replace(".", "\\.")
+                   ).items())
 
     def _transform(self, x, prefix):
         if isinstance(x, Node):
@@ -345,8 +345,8 @@ class RecordTableRowExporter(DataTransformer):
                 ).items()
             )
         elif isinstance(x, Mapping):
-            t = type(x)
-            return t(
+            typ = type(x)
+            return typ(
                 item
                 for k, v in x.items()
                 for item in self._transform(
