@@ -240,7 +240,10 @@ class Neo4jError(Exception):
             return False
         if self.code in ("Neo.ClientError.Database.DatabaseNotFound",
                          "Neo.ClientError.Transaction.InvalidBookmark",
-                         "Neo.ClientError.Transaction.InvalidBookmarkMixture"):
+                         "Neo.ClientError.Transaction.InvalidBookmarkMixture",
+                         "Neo.ClientError.Statement.TypeError",
+                         "Neo.ClientError.Statement.ArgumentError",
+                         "Neo.ClientError.Request.Invalid"):
             return True
         if (self.code.startswith("Neo.ClientError.Security.")
                 and self.code != "Neo.ClientError.Security."
