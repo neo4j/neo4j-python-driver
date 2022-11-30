@@ -199,7 +199,7 @@ class Neo4jError(Exception):
         else:
             return cls
 
-    # TODO 6.0: Remove this alias
+    # TODO: 6.0 - Remove this alias
     @deprecated(
         "Neo4jError.is_retriable is deprecated and will be removed in a "
         "future version. Please use Neo4jError.is_retryable instead."
@@ -230,10 +230,17 @@ class Neo4jError(Exception):
         """
         return False
 
-    def invalidates_all_connections(self):
+    def _invalidates_all_connections(self) -> bool:
         return self.code == "Neo.ClientError.Security.AuthorizationExpired"
 
-    def is_fatal_during_discovery(self) -> bool:
+    # TODO: 6.0 - Remove this alias
+    invalidates_all_connections = deprecated(
+        "Neo4jError.invalidates_all_connections is deprecated and will be "
+        "removed in a future version. It is an internal method and not meant "
+        "for external use."
+    )(_invalidates_all_connections)
+
+    def _is_fatal_during_discovery(self) -> bool:
         # checks if the code is an error that is caused by the client. In this
         # case the driver should fail fast during discovery.
         if not isinstance(self.code, str):
@@ -250,6 +257,13 @@ class Neo4jError(Exception):
                                  "AuthorizationExpired"):
             return True
         return False
+
+    # TODO: 6.0 - Remove this alias
+    is_fatal_during_discovery = deprecated(
+        "Neo4jError.is_fatal_during_discovery is deprecated and will be "
+        "removed in a future version. It is an internal method and not meant "
+        "for external use."
+    )(_is_fatal_during_discovery)
 
     def __str__(self):
         if self.code or self.message:
