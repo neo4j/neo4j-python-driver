@@ -27,3 +27,6 @@ pytest-mock>=3.6.1
 teamcity-messages>=1.29
 tox>=3.27.1
 tox-factor>=0.1.2
+
+# needed for building docs
+sphinx
