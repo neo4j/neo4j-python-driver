@@ -271,7 +271,7 @@ class GraphDatabase:
             Function which will be called whenever the set of bookmarks
             handled by the bookmark manager gets updated with the new
             internal bookmark set. It will receive the new set of bookmarks
-            as a :class:`.Bookmarks` object and return :const:`None`.
+            as a :class:`.Bookmarks` object and return :data:`None`.
 
         :returns: A default implementation of :class:`BookmarkManager`.
 

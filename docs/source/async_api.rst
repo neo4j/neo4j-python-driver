@@ -152,8 +152,8 @@ driver accepts an async custom resolver function:
 
 ``resolver``
 ------------
-A custom resolver function to resolve host and port values ahead of DNS resolution.
-This function is called with a 2-tuple of (host, port) and should return an iterable of 2-tuples (host, port).
+A custom resolver function to resolve any addresses the driver receives ahead of DNS resolution.
+This function is called with an :class:`.Address` and should return an iterable of :class:`.Address` objects or values that can be used to construct :class:`.Address` objects.
 
 If no custom resolver function is supplied, the internal resolver moves straight to regular DNS resolution.
 
@@ -163,16 +163,28 @@ For example:
 
 .. code-block:: python
 
-    from neo4j import AsyncGraphDatabase
+   import neo4j
 
 
-    async def custom_resolver(socket_address):
-        if socket_address == ("example.com", 9999):
-            yield "::1", 7687
-            yield "127.0.0.1", 7687
-        else:
-            from socket import gaierror
-            raise gaierror("Unexpected socket address %r" % socket_address)
+    def custom_resolver(socket_address):
+        # assert isinstance(socket_address, neo4j.Address)
+        if socket_address != ("example.com", 9999):
+            raise OSError(f"Unexpected socket address {socket_address!r}")
+
+        # You can return any neo4j.Address object
+        yield neo4j.Address(("localhost", 7687))  # IPv4
+        yield neo4j.Address(("::1", 7687, 0, 0))  # IPv6
+        yield neo4j.Address.parse("localhost:7687")
+        yield neo4j.Address.parse("[::1]:7687")
+
+        # or any tuple that can be passed to neo4j.Address(...).
+        # Initially, this will be interpreted as IPv4, but DNS resolution
+        # will turn it into IPv6 if appropriate.
+        yield "::1", 7687
+        # This will be interpreted as IPv6 directly, but DNS resolution will
+        # happen still.
+        yield "::1", 7687, 0, 0
+        yield "127.0.0.1", 7687
 
 
     # alternatively
@@ -180,12 +192,12 @@ For example:
         ...
 
 
-    driver = AsyncGraphDatabase.driver("neo4j://example.com:9999",
+   driver = neo4j.GraphDatabase.driver("neo4j://example.com:9999",
                                        auth=("neo4j", "password"),
                                        resolver=custom_resolver)
 
 
-:Default: :const:`None`
+:Default: :data:`None`
 
 
 
@@ -406,8 +418,8 @@ See :class:`BookmarkManager` for more information.
     group a series of queries together that will be causally chained
     automatically.
 
-:Type: :const:`None`, :class:`BookmarkManager`, or :class:`AsyncBookmarkManager`
-:Default: :const:`None`
+:Type: :data:`None`, :class:`BookmarkManager`, or :class:`AsyncBookmarkManager`
+:Default: :data:`None`
 
 **This is experimental.** (See :ref:`filter-warnings-ref`)
 It might be changed or removed any time even without prior notice.

@@ -418,7 +418,7 @@ class Result:
         there is not exactly one record left.
 
         If ``strict`` is :const:`False`, fewer than one record will make this
-        method return :const:`None`, more than one record will make this method
+        method return :data:`None`, more than one record will make this method
         emit a warning and return the first record.
 
         :param strict:
@@ -427,7 +427,7 @@ class Result:
             warning if there are more than 1 record.
             :const:`False` by default.
 
-        :returns: the next :class:`neo4j.Record` or :const:`None` if none remain
+        :returns: the next :class:`neo4j.Record` or :data:`None` if none remain
 
         :warns: if more than one record is available and
             ``strict`` is :const:`False`
@@ -496,7 +496,7 @@ class Result:
 
         This leaves the record in the buffer for further processing.
 
-        :returns: the next :class:`neo4j.Record` or :const:`None` if none
+        :returns: the next :class:`neo4j.Record` or :data:`None` if none
             remain.
 
         :raises ResultConsumedError: if the transaction from which this result
@@ -683,7 +683,7 @@ class Result:
         :param parse_dates:
             If :const:`True`, columns that exclusively contain
             :class:`time.DateTime` objects, :class:`time.Date` objects, or
-            :const:`None`, will be converted to :class:`pandas.Timestamp`.
+            :data:`None`, will be converted to :class:`pandas.Timestamp`.
 
         :raises ImportError: if `pandas` library is not available.
         :raises ResultConsumedError: if the transaction from which this result
