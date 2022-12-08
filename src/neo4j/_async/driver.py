@@ -131,7 +131,7 @@ class AsyncGraphDatabase:
 
             driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
-            # TODO: 6.0 remove "trust" config option
+            # TODO: 6.0 - remove "trust" config option
             if "trust" in config.keys():
                 if config["trust"] not in (
                     TRUST_ALL_CERTIFICATES,
@@ -166,7 +166,7 @@ class AsyncGraphDatabase:
                      or "ssl_context" in config.keys())):
                 from ..exceptions import ConfigurationError
 
-                # TODO: 6.0 remove "trust" from error message
+                # TODO: 6.0 - remove "trust" from error message
                 raise ConfigurationError(
                     'The config settings "encrypted", "trust", '
                     '"trusted_certificates", and "ssl_context" can only be '

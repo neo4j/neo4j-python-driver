@@ -2,6 +2,12 @@
 
 See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
 
+## Version 5.4
+- Undocumented helper methods `Neo4jError.is_fatal_during_discovery` and
+  `Neo4jError.invalidates_all_connections` have been deprecated and will be
+  removed without replacement in version 6.0.
+
+
 ## Version 5.3
 - Python 3.11 support added
 - Removed undocumented, unused `neo4j.data.map_type`

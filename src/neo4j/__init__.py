@@ -150,7 +150,7 @@ _log = _getLogger("neo4j")
 
 
 def __getattr__(name):
-    # TODO 6.0 - remove this
+    # TODO: 6.0 - remove this
     if name in (
         "log", "Config", "PoolConfig", "SessionConfig", "WorkspaceConfig"
     ):

@@ -175,7 +175,7 @@ def custom_auth(
     return Auth(scheme, principal, credentials, realm, **parameters)
 
 
-# TODO 6.0 - remove this class
+# TODO: 6.0 - remove this class
 class Bookmark:
     """A Bookmark object contains an immutable list of bookmark string values.
 

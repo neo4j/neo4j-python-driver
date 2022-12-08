@@ -333,7 +333,7 @@ class Bolt4x0(Bolt):
                     self.pool.on_write_failure(address=self.unresolved_address)
                 raise
             except Neo4jError as e:
-                if self.pool and e.invalidates_all_connections():
+                if self.pool and e._invalidates_all_connections():
                     self.pool.mark_all_stale()
                 raise
         else:
