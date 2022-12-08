@@ -150,9 +150,9 @@ class Address(tuple, metaclass=_AddressMeta):
 
         :param s: The string to parse.
         :param default_host: The default host to use if none is specified.
-            :data:`None` idicates to use ``"localhost"`` as default.
+            :data:`None` indicates to use ``"localhost"`` as default.
         :param default_port: The default port to use if none is specified.
-            :data:`None` idicates to use ``0`` as default.
+            :data:`None` indicates to use ``0`` as default.
 
         :return: The parsed address.
         """
