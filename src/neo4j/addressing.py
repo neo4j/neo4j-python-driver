@@ -136,7 +136,7 @@ class Address(tuple, metaclass=_AddressMeta):
 
         The string must be in the format ``host:port`` (IPv4) or
         ``[host]:port`` (IPv6).
-        If not port is specified, or is emtpy, ``default_port`` will be used.
+        If no port is specified, or is empty, ``default_port`` will be used.
         If no host is specified, or is empty, ``default_host`` will be used.
 
             >>> Address.parse("localhost:7687")
@@ -150,9 +150,9 @@ class Address(tuple, metaclass=_AddressMeta):
 
         :param s: The string to parse.
         :param default_host: The default host to use if none is specified.
-            :data:`None` will be substituted with ``"localhost"``.
+            :data:`None` idicates to use ``"localhost"`` as default.
         :param default_port: The default port to use if none is specified.
-            :data:`None` will be substituted with ``0``.
+            :data:`None` idicates to use ``0`` as default.
 
         :return: The parsed address.
         """
@@ -200,9 +200,9 @@ class Address(tuple, metaclass=_AddressMeta):
 
         :param s: The string(s) to parse.
         :param default_host: The default host to use if none is specified.
-            :data:`None` will be substituted with ``"localhost"``.
+            :data:`None` indicates to use ``"localhost"`` as default.
         :param default_port: The default port to use if none is specified.
-            :data:`None` will be substituted with ``0``.
+            :data:`None` indicates to use ``0`` as default.
 
         :return: The list of parsed addresses.
         """

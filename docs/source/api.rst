@@ -293,7 +293,7 @@ For example:
         # will turn it into IPv6 if appropriate.
         yield "::1", 7687
         # This will be interpreted as IPv6 directly, but DNS resolution will
-        # happen still.
+        # still happen.
         yield "::1", 7687, 0, 0
         yield "127.0.0.1", 7687
 

@@ -166,7 +166,7 @@ For example:
    import neo4j
 
 
-    def custom_resolver(socket_address):
+    async def custom_resolver(socket_address):
         # assert isinstance(socket_address, neo4j.Address)
         if socket_address != ("example.com", 9999):
             raise OSError(f"Unexpected socket address {socket_address!r}")
@@ -182,7 +182,7 @@ For example:
         # will turn it into IPv6 if appropriate.
         yield "::1", 7687
         # This will be interpreted as IPv6 directly, but DNS resolution will
-        # happen still.
+        # still happen.
         yield "::1", 7687, 0, 0
         yield "127.0.0.1", 7687
 
