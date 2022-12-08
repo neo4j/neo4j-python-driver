@@ -42,7 +42,7 @@ from .._spatial import (
 )
 
 
-# TODO: 6.0 remove
+# TODO: 6.0 - remove
 @deprecated(
     "hydrate_point is considered an internal function and will be removed in "
     "a future version"
@@ -56,7 +56,7 @@ def hydrate_point(srid, *coordinates):
     return _hydration.hydrate_point(srid, *coordinates)
 
 
-# TODO: 6.0 remove
+# TODO: 6.0 - remove
 @deprecated(
     "hydrate_point is considered an internal function and will be removed in "
     "a future version"
@@ -72,7 +72,7 @@ def dehydrate_point(value):
     return _hydration.dehydrate_point(value)
 
 
-# TODO: 6.0 remove
+# TODO: 6.0 - remove
 @deprecated(
     "point_type is considered an internal function and will be removed in "
     "a future version"

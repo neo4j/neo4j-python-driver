@@ -538,7 +538,7 @@ class AsyncNeo4jPool(AsyncIOPool):
             # checks if the code is an error that is caused by the client. In
             # this case there is no sense in trying to fetch a RT from another
             # router. Hence, the driver should fail fast during discovery.
-            if e.is_fatal_during_discovery():
+            if e._is_fatal_during_discovery():
                 raise
         except (ServiceUnavailable, SessionExpired):
             pass

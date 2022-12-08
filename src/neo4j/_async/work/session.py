@@ -591,7 +591,7 @@ class AsyncSession(AsyncWorkspace):
             READ_ACCESS, transaction_function, *args, **kwargs
         )
 
-    # TODO 6.0: Remove this method
+    # TODO: 6.0 - Remove this method
     @deprecated("read_transaction has been renamed to execute_read")
     async def read_transaction(
         self,
@@ -673,7 +673,7 @@ class AsyncSession(AsyncWorkspace):
             WRITE_ACCESS, transaction_function, *args, **kwargs
         )
 
-    # TODO 6.0: Remove this method
+    # TODO: 6.0 - Remove this method
     @deprecated("write_transaction has been renamed to execute_write")
     async def write_transaction(
         self,

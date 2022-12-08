@@ -611,7 +611,7 @@ class AsyncResult:
 
         ::
 
-            res = await tx.run("UNWIND range(1, 10) AS n RETURN n, n+1 as m")
+            res = await tx.run("UNWIND range(1, 10) AS n RETURN n, n+1 AS m")
             df = await res.to_df()
 
         for instance will return a DataFrame with two columns: ``n`` and ``m``
