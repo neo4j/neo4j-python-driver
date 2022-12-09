@@ -25,8 +25,7 @@ pytest-benchmark>=3.4.1
 pytest-cov>=3.0.0
 pytest-mock>=3.6.1
 teamcity-messages>=1.29
-tox>=3.27.1
-tox-factor>=0.1.2
+tox>=4.0.0
 
 # needed for building docs
 sphinx

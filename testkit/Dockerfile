@@ -56,5 +56,5 @@ RUN pyenv global $(pyenv versions --bare --skip-aliases)
 RUN for version in $PYTHON_VERSIONS; do \
         python$version -m pip install -U pip && \
         python$version -m pip install -U setuptools && \
-        python$version -m pip install -U coverage tox tox-factor; \
+        python$version -m pip install -U coverage tox; \
     done
