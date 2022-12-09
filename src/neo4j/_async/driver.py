@@ -27,8 +27,6 @@ if t.TYPE_CHECKING:
 
     import ssl
 
-
-
 from .._async_compat.util import AsyncUtil
 from .._conf import (
     Config,
@@ -46,6 +44,7 @@ from .._meta import (
 )
 from ..addressing import Address
 from ..api import (
+    _TAuthTokenProvider,
     AsyncBookmarkManager,
     Auth,
     BookmarkManager,
@@ -86,7 +85,9 @@ class AsyncGraphDatabase:
             cls,
             uri: str,
             *,
-            auth: t.Union[t.Tuple[t.Any, t.Any], Auth, None] = ...,
+            auth: t.Union[
+                t.Tuple[t.Any, t.Any], Auth, _TAuthTokenProvider, None
+            ] = ...,
             max_connection_lifetime: float = ...,
             max_connection_pool_size: int = ...,
             connection_timeout: float = ...,
@@ -124,7 +125,9 @@ class AsyncGraphDatabase:
         @classmethod
         def driver(
             cls, uri: str, *,
-            auth: t.Union[t.Tuple[t.Any, t.Any], Auth, None] = None,
+            auth: t.Union[
+                t.Tuple[t.Any, t.Any], Auth, _TAuthTokenProvider, None
+            ] = None,
             **config
         ) -> AsyncDriver:
             """Create a driver.
@@ -139,6 +142,10 @@ class AsyncGraphDatabase:
             """
 
             driver_type, security_type, parsed = parse_neo4j_uri(uri)
+
+            if not callable(config.get("auth")):
+                auth = config.get("auth")
+                config["auth"] = lambda: auth
 
             # TODO: 6.0 - remove "trust" config option
             if "trust" in config.keys():
@@ -216,10 +223,10 @@ class AsyncGraphDatabase:
                     #     'Routing parameters are not supported with scheme '
                     #     '"bolt". Given URI "{}".'.format(uri)
                     # )
-                return cls.bolt_driver(parsed.netloc, auth=auth, **config)
+                return cls.bolt_driver(parsed.netloc, **config)
             # else driver_type == DRIVER_NEO4J
             routing_context = parse_routing_context(parsed.query)
-            return cls.neo4j_driver(parsed.netloc, auth=auth,
+            return cls.neo4j_driver(parsed.netloc,
                                     routing_context=routing_context, **config)
 
     @classmethod
@@ -311,7 +318,7 @@ class AsyncGraphDatabase:
         )
 
     @classmethod
-    def bolt_driver(cls, target, *, auth=None, **config):
+    def bolt_driver(cls, target, **config):
         """ Create a driver for direct Bolt server access that uses
         socket I/O and thread-based concurrency.
         """
@@ -321,13 +328,13 @@ class AsyncGraphDatabase:
         )
 
         try:
-            return AsyncBoltDriver.open(target, auth=auth, **config)
+            return AsyncBoltDriver.open(target, **config)
         except (BoltHandshakeError, BoltSecurityError) as error:
             from ..exceptions import ServiceUnavailable
             raise ServiceUnavailable(str(error)) from error
 
     @classmethod
-    def neo4j_driver(cls, *targets, auth=None, routing_context=None, **config):
+    def neo4j_driver(cls, *targets, routing_context=None, **config):
         """ Create a driver for routing-capable Neo4j service access
         that uses socket I/O and thread-based concurrency.
         """
@@ -337,7 +344,7 @@ class AsyncGraphDatabase:
         )
 
         try:
-            return AsyncNeo4jDriver.open(*targets, auth=auth, routing_context=routing_context, **config)
+            return AsyncNeo4jDriver.open(*targets, routing_context=routing_context, **config)
         except (BoltHandshakeError, BoltSecurityError) as error:
             from ..exceptions import ServiceUnavailable
             raise ServiceUnavailable(str(error)) from error
@@ -450,6 +457,7 @@ class AsyncDriver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
+            auth: t.Union[Auth, t.Tuple[t.Any, t.Any]] = ...,
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
@@ -498,6 +506,7 @@ class AsyncDriver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
+            auth: t.Union[Auth, t.Tuple[t.Any, t.Any]] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
@@ -562,6 +571,7 @@ class AsyncDriver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
+            auth: t.Union[Auth, t.Tuple[t.Any, t.Any]] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
@@ -640,7 +650,7 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
     """
 
     @classmethod
-    def open(cls, target, *, auth=None, **config):
+    def open(cls, target, **config):
         """
         :param target:
         :param auth:
@@ -652,7 +662,7 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
         from .io import AsyncBoltPool
         address = cls.parse_target(target)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
-        pool = AsyncBoltPool.open(address, auth=auth, pool_config=pool_config, workspace_config=default_workspace_config)
+        pool = AsyncBoltPool.open(address, pool_config=pool_config, workspace_config=default_workspace_config)
         return cls(pool, default_workspace_config)
 
     def __init__(self, pool, default_workspace_config):
@@ -687,11 +697,11 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
     """
 
     @classmethod
-    def open(cls, *targets, auth=None, routing_context=None, **config):
+    def open(cls, *targets, routing_context=None, **config):
         from .io import AsyncNeo4jPool
         addresses = cls.parse_targets(*targets)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
-        pool = AsyncNeo4jPool.open(*addresses, auth=auth, routing_context=routing_context, pool_config=pool_config, workspace_config=default_workspace_config)
+        pool = AsyncNeo4jPool.open(*addresses, routing_context=routing_context, pool_config=pool_config, workspace_config=default_workspace_config)
         return cls(pool, default_workspace_config)
 
     def __init__(self, pool, default_workspace_config):

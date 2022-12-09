@@ -16,6 +16,9 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
+import typing as t
 from enum import Enum
 from logging import getLogger
 from ssl import SSLSocket
@@ -54,7 +57,7 @@ class ServerStates(Enum):
 
 
 class ServerStateManager:
-    _STATE_TRANSITIONS = {
+    _STATE_TRANSITIONS: t.Dict[Enum, t.Dict[str, Enum]] = {
         ServerStates.CONNECTED: {
             "hello": ServerStates.READY,
         },
@@ -104,6 +107,8 @@ class Bolt3(Bolt):
 
     supports_multiple_databases = False
 
+    supports_re_auth = False
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._server_state_manager = ServerStateManager(
@@ -151,6 +156,14 @@ class Bolt3(Bolt):
         self.send_all()
         self.fetch_all()
         check_supported_server_product(self.server_info.agent)
+
+    def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        """Append a LOGON message to the outgoing queue."""
+        self.assert_re_auth_support()
+
+    def logoff(self, dehydration_hooks=None, hydration_hooks=None):
+        """Append a LOGOFF message to the outgoing queue."""
+        self.assert_re_auth_support()
 
     def route(
         self, database=None, imp_user=None, bookmarks=None,

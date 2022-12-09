@@ -40,6 +40,7 @@ from ...api import (
 )
 from ...exceptions import (
     AuthError,
+    ConfigurationError,
     DriverError,
     IncompleteCommit,
     ServiceUnavailable,
@@ -134,17 +135,7 @@ class Bolt:
         else:
             self.user_agent = get_user_agent()
 
-        # Determine auth details
-        if not auth:
-            self.auth_dict = {}
-        elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
-            from ...api import Auth
-            self.auth_dict = vars(Auth("basic", *auth))
-        else:
-            try:
-                self.auth_dict = vars(auth)
-            except (KeyError, TypeError):
-                raise AuthError("Cannot determine auth details from %r" % auth)
+        self.auth_dict = self._to_auth_dict(auth)
 
         # Check for missing password
         try:
@@ -158,6 +149,20 @@ class Bolt:
     def __del__(self):
         if not asyncio.iscoroutinefunction(self.close):
             self.close()
+
+    @classmethod
+    def _to_auth_dict(cls, auth):
+        # Determine auth details
+        if not auth:
+            return {}
+        elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
+            from ...api import Auth
+            return vars(Auth("basic", *auth))
+        else:
+            try:
+                return vars(auth)
+            except (KeyError, TypeError):
+                raise AuthError("Cannot determine auth details from %r" % auth)
 
     @property
     def connection_id(self):
@@ -179,6 +184,20 @@ class Bolt:
         databases.
         """
         pass
+
+    @property
+    @abc.abstractmethod
+    def supports_re_auth(self):
+        """TODO"""
+        pass
+
+    def assert_re_auth_support(self):
+        if not self.supports_re_auth:
+            raise ConfigurationError(
+                "Session level authentication is not supported for Bolt "
+                f"Protocol {self.PROTOCOL_VERSION!r}. Server Agent "
+                f"{self.server_info.agent!r}"
+            )
 
     @classmethod
     def protocol_handlers(cls, protocol_version=None):
@@ -203,7 +222,10 @@ class Bolt:
             Bolt4x3,
             Bolt4x4,
         )
-        from ._bolt5 import Bolt5x0
+        from ._bolt5 import (
+            Bolt5x0,
+            Bolt5x1,
+        )
 
         handlers = {
             Bolt3.PROTOCOL_VERSION: Bolt3,
@@ -213,6 +235,7 @@ class Bolt:
             Bolt4x3.PROTOCOL_VERSION: Bolt4x3,
             Bolt4x4.PROTOCOL_VERSION: Bolt4x4,
             Bolt5x0.PROTOCOL_VERSION: Bolt5x0,
+            Bolt5x1.PROTOCOL_VERSION: Bolt5x1,
         }
 
         if protocol_version is None:
@@ -353,6 +376,9 @@ class Bolt:
         elif pool_config.protocol_version == (5, 0):
             from ._bolt5 import Bolt5x0
             bolt_cls = Bolt5x0
+        elif pool_config.protocol_version == (5, 1):
+            from ._bolt5 import Bolt5x1
+            bolt_cls = Bolt5x1
         else:
             log.debug("[#%04X]  S: <CLOSE>", s.getsockname()[1])
             BoltSocket.close_socket(s)
@@ -403,6 +429,38 @@ class Bolt:
          all remaining messages.
         """
         pass
+
+    @abc.abstractmethod
+    def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        """Append a LOGON message to the outgoing queue."""
+        pass
+
+    @abc.abstractmethod
+    def logoff(self, dehydration_hooks=None, hydration_hooks=None):
+        """Append a LOGOFF message to the outgoing queue."""
+        pass
+
+    def re_auth(
+        self, auth, dehydration_hooks=None, hydration_hooks=None
+    ):
+        """Append LOGON, LOGOFF to the outgoing queue, flush, then receive.
+
+        If auth is the same as the current auth, this method does nothing.
+
+        :returns: whether the auth was changed
+        """
+        new_auth_dict = self._to_auth_dict(auth)
+        if new_auth_dict == self.auth_dict:
+            return False
+        self.logoff(dehydration_hooks=dehydration_hooks,
+                     hydration_hooks=hydration_hooks)
+        self.auth_dict = new_auth_dict
+        self.logon(dehydration_hooks=dehydration_hooks,
+                    hydration_hooks=hydration_hooks)
+        self.send_all()
+        self.fetch_all()
+        return True
+
 
     @abc.abstractmethod
     def route(

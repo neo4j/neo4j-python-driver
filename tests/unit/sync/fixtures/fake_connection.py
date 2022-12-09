@@ -50,6 +50,7 @@ def fake_connection_generator(session_mocker):
             self.attach_mock(mock.Mock(return_value=False), "stale")
             self.attach_mock(mock.Mock(return_value=False), "closed")
             self.attach_mock(mock.Mock(return_value=False), "socket")
+            self.attach_mock(mock.Mock(return_value=False), "re_auth")
             self.attach_mock(mock.Mock(), "unresolved_address")
 
             def close_side_effect():

@@ -16,9 +16,12 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import abc
 import asyncio
 import logging
+import typing as t
 from collections import (
     defaultdict,
     deque,
@@ -28,10 +31,13 @@ from random import choice
 
 from ..._async_compat.concurrency import (
     AsyncCondition,
+    AsyncCooperativeLock,
     AsyncCooperativeRLock,
+    AsyncLock,
     AsyncRLock,
 )
 from ..._async_compat.network import AsyncNetworkUtil
+from ..._async_compat.util import AsyncUtil
 from ..._conf import (
     PoolConfig,
     WorkspaceConfig,
@@ -44,6 +50,7 @@ from ..._exceptions import BoltError
 from ..._routing import RoutingTable
 from ...api import (
     READ_ACCESS,
+    RenewableAuth,
     WRITE_ACCESS,
 )
 from ...exceptions import (
@@ -79,12 +86,54 @@ class AsyncIOPool(abc.ABC):
         self.connections_reservations = defaultdict(lambda: 0)
         self.lock = AsyncCooperativeRLock()
         self.cond = AsyncCondition(self.lock)
+        self.refreshing_auth = False
+        self.refreshing_auth_lock = AsyncCooperativeLock()
+        self.initializing_auth_lock = AsyncLock()
+        self.last_auth: t.Optional[RenewableAuth] = None
 
     async def __aenter__(self):
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
         await self.close()
+
+    async def get_auth(self):
+        if await self._initialize_auth():
+            return self.last_auth.auth
+
+        with self.refreshing_auth_lock:
+            if self.refreshing_auth:
+                # someone else is already getting a new auth
+                return self.last_auth
+        if self.last_auth is None or self.last_auth.expired:
+            with self.refreshing_auth_lock:
+                self.refreshing_auth = True
+            try:
+                new_auth = await self._get_new_auth()
+                with self.refreshing_auth_lock:
+                    self.last_auth = new_auth
+                    self.refreshing_auth = False
+            except:
+                with self.refreshing_auth_lock:
+                    self.refreshing_auth = False
+                raise
+        return self.last_auth.auth
+
+    async def _initialize_auth(self):
+        if self.last_auth is not None:
+            return False
+        async with self.initializing_auth_lock:
+            if self.last_auth is not None:
+                # someone else initialized the auth
+                return True
+            self.last_auth = await self._get_new_auth()
+            return True
+
+    async def _get_new_auth(self):
+        new_auth = await AsyncUtil.callback(self.pool_config.auth)
+        if not isinstance(self.last_auth, RenewableAuth):
+            return RenewableAuth(new_auth)
+        return new_auth
 
     async def _acquire_from_pool(self, address):
         with self.lock:
@@ -130,17 +179,27 @@ class AsyncIOPool(abc.ABC):
             else:
                 return connection
 
-    def _acquire_new_later(self, address, deadline):
+    def _acquire_new_later(self, address, auth, deadline):
         async def connection_creator():
             released_reservation = False
             try:
                 try:
                     connection = await self.opener(
-                        address, deadline.to_timeout()
+                        address, auth or await self.get_auth(),
+                        deadline.to_timeout()
                     )
                 except ServiceUnavailable:
                     await self.deactivate(address)
                     raise
+                if auth:
+                    # It's unfortunate that we have to create a connection
+                    # first to determine if the session-level auth is supported
+                    # by the protocol or not.
+                    try:
+                        connection.assert_re_auth_support()
+                    except ConfigurationError:
+                        await connection.close()
+                        raise
                 connection.pool = self
                 connection.in_use = True
                 with self.lock:
@@ -166,7 +225,7 @@ class AsyncIOPool(abc.ABC):
                 return connection_creator
         return None
 
-    async def _acquire(self, address, deadline, liveness_check_timeout):
+    async def _acquire(self, address, auth, deadline, liveness_check_timeout):
         """ Acquire a connection to a given address from the pool.
         The address supplied should always be an IP address, not
         a host name.
@@ -177,6 +236,19 @@ class AsyncIOPool(abc.ABC):
             if (connection_.closed()
                     or connection_.defunct()
                     or connection_.stale()):
+                return False
+            try:
+                if await connection_.re_auth(auth or await self.get_auth()):
+                    # no need for an extra liveness check if the connection was
+                    # successfully re-authenticated
+                    return True
+            except ConfigurationError:
+                # protocol does not support re-authentication
+                if auth:
+                    # session-level not supported
+                    raise
+                 # expiring tokens supported by flushing the pool
+                 # => give up this connection
                 return False
             if liveness_check_timeout is not None:
                 if connection_.is_idle_for(liveness_check_timeout):
@@ -201,7 +273,9 @@ class AsyncIOPool(abc.ABC):
                 return connection
             # all connections in pool are in-use
             with self.lock:
-                connection_creator = self._acquire_new_later(address, deadline)
+                connection_creator = self._acquire_new_later(
+                    address, auth, deadline
+                )
                 if connection_creator:
                     break
 
@@ -222,7 +296,8 @@ class AsyncIOPool(abc.ABC):
 
     @abc.abstractmethod
     async def acquire(
-        self, access_mode, timeout, database, bookmarks, liveness_check_timeout
+        self, access_mode, timeout, database, bookmarks, auth,
+        liveness_check_timeout
     ):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
@@ -231,6 +306,7 @@ class AsyncIOPool(abc.ABC):
             (excluding potential preparation like fetching routing tables).
         :param database:
         :param bookmarks:
+        :param auth:
         :param liveness_check_timeout:
         """
         ...
@@ -372,17 +448,16 @@ class AsyncIOPool(abc.ABC):
 class AsyncBoltPool(AsyncIOPool):
 
     @classmethod
-    def open(cls, address, *, auth, pool_config, workspace_config):
+    def open(cls, address, *, pool_config, workspace_config):
         """Create a new BoltPool
 
         :param address:
-        :param auth:
         :param pool_config:
         :param workspace_config:
         :returns: BoltPool
         """
 
-        async def opener(addr, timeout):
+        async def opener(addr, auth, timeout):
             return await AsyncBolt.open(
                 addr, auth=auth, timeout=timeout, routing_context=None,
                 pool_config=pool_config
@@ -401,7 +476,8 @@ class AsyncBoltPool(AsyncIOPool):
                                           self.address)
 
     async def acquire(
-        self, access_mode, timeout, database, bookmarks, liveness_check_timeout
+        self, access_mode, timeout, database, bookmarks, auth,
+        liveness_check_timeout
     ):
         # The access_mode and database is not needed for a direct connection,
         # it's just there for consistency.
@@ -409,7 +485,7 @@ class AsyncBoltPool(AsyncIOPool):
                   "access_mode=%r, database=%r", access_mode, database)
         deadline = Deadline.from_timeout_or_deadline(timeout)
         return await self._acquire(
-            self.address, deadline, liveness_check_timeout
+            self.address, auth, deadline, liveness_check_timeout
         )
 
 
@@ -418,12 +494,11 @@ class AsyncNeo4jPool(AsyncIOPool):
     """
 
     @classmethod
-    def open(cls, *addresses, auth, pool_config, workspace_config,
+    def open(cls, *addresses, pool_config, workspace_config,
              routing_context=None):
         """Create a new Neo4jPool
 
         :param addresses: one or more address as positional argument
-        :param auth:
         :param pool_config:
         :param workspace_config:
         :param routing_context:
@@ -437,7 +512,7 @@ class AsyncNeo4jPool(AsyncIOPool):
             raise ConfigurationError("The key 'address' is reserved for routing context.")
         routing_context["address"] = str(address)
 
-        async def opener(addr, timeout):
+        async def opener(addr, auth, timeout):
             return await AsyncBolt.open(
                 addr, auth=auth, timeout=timeout,
                 routing_context=routing_context, pool_config=pool_config
@@ -480,7 +555,7 @@ class AsyncNeo4jPool(AsyncIOPool):
             return self.routing_tables[database]
 
     async def fetch_routing_info(
-        self, address, database, imp_user, bookmarks, acquisition_timeout
+        self, address, database, imp_user, bookmarks, auth, acquisition_timeout
     ):
         """ Fetch raw routing info from a given router address.
 
@@ -491,6 +566,7 @@ class AsyncNeo4jPool(AsyncIOPool):
         :type imp_user: str or None
         :param bookmarks: iterable of bookmark values after which the routing
                           info should be fetched
+        :param auth: auth
         :param acquisition_timeout: connection acquisition timeout
 
         :returns: list of routing records, or None if no connection
@@ -501,7 +577,7 @@ class AsyncNeo4jPool(AsyncIOPool):
         deadline = Deadline.from_timeout_or_deadline(acquisition_timeout)
         log.debug("[#0000]  _: <POOL> _acquire router connection, "
                   "database=%r, address=%r", database, address)
-        cx = await self._acquire(address, deadline, None)
+        cx = await self._acquire(address, auth, deadline, None)
         try:
             routing_table = await cx.route(
                 database=database or self.workspace_config.database,
@@ -513,7 +589,8 @@ class AsyncNeo4jPool(AsyncIOPool):
         return routing_table
 
     async def fetch_routing_table(
-        self, *, address, acquisition_timeout, database, imp_user, bookmarks
+        self, *, address, acquisition_timeout, database, imp_user,
+        bookmarks, auth
     ):
         """ Fetch a routing table from a given router address.
 
@@ -525,6 +602,7 @@ class AsyncNeo4jPool(AsyncIOPool):
                          table
         :type imp_user: str or None
         :param bookmarks: bookmarks used when fetching routing table
+        :param auth: auth
 
         :returns: a new RoutingTable instance or None if the given router is
                  currently unable to provide routing information
@@ -532,7 +610,8 @@ class AsyncNeo4jPool(AsyncIOPool):
         new_routing_info = None
         try:
             new_routing_info = await self.fetch_routing_info(
-                address, database, imp_user, bookmarks, acquisition_timeout
+                address, database, imp_user, bookmarks, auth,
+                acquisition_timeout
             )
         except Neo4jError as e:
             # checks if the code is an error that is caused by the client. In
@@ -578,8 +657,8 @@ class AsyncNeo4jPool(AsyncIOPool):
         return new_routing_table
 
     async def _update_routing_table_from(
-        self, *routers, database, imp_user, bookmarks, acquisition_timeout,
-        database_callback
+        self, *routers, database, imp_user, bookmarks, auth,
+        acquisition_timeout, database_callback
     ):
         """ Try to update routing tables with the given routers.
 
@@ -595,7 +674,8 @@ class AsyncNeo4jPool(AsyncIOPool):
             ):
                 new_routing_table = await self.fetch_routing_table(
                     address=address, acquisition_timeout=acquisition_timeout,
-                    database=database, imp_user=imp_user, bookmarks=bookmarks
+                    database=database, imp_user=imp_user, bookmarks=bookmarks,
+                    auth=auth
                 )
                 if new_routing_table is not None:
                     new_database = new_routing_table.database
@@ -615,8 +695,8 @@ class AsyncNeo4jPool(AsyncIOPool):
         return False
 
     async def update_routing_table(
-        self, *, database, imp_user, bookmarks, acquisition_timeout=None,
-        database_callback=None
+        self, *, database, imp_user, bookmarks, auth=None,
+        acquisition_timeout=None, database_callback=None
     ):
         """ Update the routing table from the first router able to provide
         valid routing information.
@@ -626,6 +706,7 @@ class AsyncNeo4jPool(AsyncIOPool):
                          table
         :type imp_user: str or None
         :param bookmarks: bookmarks used when fetching routing table
+        :param auth: auth
         :param acquisition_timeout: connection acquisition timeout
         :param database_callback: A callback function that will be called with
             the database name as only argument when a new routing table has been
@@ -647,15 +728,15 @@ class AsyncNeo4jPool(AsyncIOPool):
                 # TODO: Test this state
                 if await self._update_routing_table_from(
                     self.address, database=database,
-                    imp_user=imp_user, bookmarks=bookmarks,
+                    imp_user=imp_user, bookmarks=bookmarks, auth=auth,
                     acquisition_timeout=acquisition_timeout,
                     database_callback=database_callback
                 ):
                     # Why is only the first initial routing address used?
                     return
             if await self._update_routing_table_from(
-                *(existing_routers - {self.address}),
-                database=database, imp_user=imp_user, bookmarks=bookmarks,
+                *(existing_routers - {self.address}), database=database,
+                imp_user=imp_user, bookmarks=bookmarks, auth=auth,
                 acquisition_timeout=acquisition_timeout,
                 database_callback=database_callback
             ):
@@ -664,7 +745,7 @@ class AsyncNeo4jPool(AsyncIOPool):
             if not prefer_initial_routing_address:
                 if await self._update_routing_table_from(
                     self.address, database=database,
-                    imp_user=imp_user, bookmarks=bookmarks,
+                    imp_user=imp_user, bookmarks=bookmarks, auth=auth,
                     acquisition_timeout=acquisition_timeout,
                     database_callback=database_callback
                 ):
@@ -683,7 +764,7 @@ class AsyncNeo4jPool(AsyncIOPool):
                 await super(AsyncNeo4jPool, self).deactivate(address)
 
     async def ensure_routing_table_is_fresh(
-        self, *, access_mode, database, imp_user, bookmarks,
+        self, *, access_mode, database, imp_user, bookmarks, auth=None,
         acquisition_timeout=None, database_callback=None
     ):
         """ Update the routing table if stale.
@@ -720,7 +801,7 @@ class AsyncNeo4jPool(AsyncIOPool):
 
             await self.update_routing_table(
                 database=database, imp_user=imp_user, bookmarks=bookmarks,
-                acquisition_timeout=acquisition_timeout,
+                auth=auth, acquisition_timeout=acquisition_timeout,
                 database_callback=database_callback
             )
             await self.update_connection_pool(database=database)
@@ -757,7 +838,8 @@ class AsyncNeo4jPool(AsyncIOPool):
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
     async def acquire(
-        self, access_mode, timeout, database, bookmarks, liveness_check_timeout
+        self, access_mode, timeout, database, bookmarks, auth,
+        liveness_check_timeout
     ):
         if access_mode not in (WRITE_ACCESS, READ_ACCESS):
             raise ClientError("Non valid 'access_mode'; {}".format(access_mode))
@@ -796,7 +878,7 @@ class AsyncNeo4jPool(AsyncIOPool):
                 deadline = Deadline.from_timeout_or_deadline(timeout)
                 # should always be a resolved address
                 connection = await self._acquire(
-                    address, deadline, liveness_check_timeout
+                    address, auth, deadline, liveness_check_timeout
                 )
             except (ServiceUnavailable, SessionExpired):
                 await self.deactivate(address=address)

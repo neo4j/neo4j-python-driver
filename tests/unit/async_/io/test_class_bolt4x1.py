@@ -16,10 +16,15 @@
 # limitations under the License.
 
 
+import logging
+from itertools import permutations
+
 import pytest
 
+import neo4j
 from neo4j._async.io._bolt4 import AsyncBolt4x1
 from neo4j._conf import PoolConfig
+from neo4j.exceptions import ConfigurationError
 
 from ...._async_compat import mark_async_test
 
@@ -226,3 +231,89 @@ async def test_hint_recv_timeout_seconds_gets_ignored(
                          PoolConfig.max_connection_lifetime)
     await connection.hello()
     sockets.client.settimeout.assert_not_called()
+
+
+CREDENTIALS = "+++super-secret-sauce+++"
+
+
+@pytest.mark.parametrize("auth", (
+    ("user", CREDENTIALS),
+    neo4j.basic_auth("user", CREDENTIALS),
+    neo4j.kerberos_auth(CREDENTIALS),
+    neo4j.bearer_auth(CREDENTIALS),
+    neo4j.custom_auth("user", CREDENTIALS, "realm", "scheme"),
+    neo4j.Auth("scheme", "principal", CREDENTIALS, "realm", foo="bar"),
+))
+@mark_async_test
+async def test_credentials_are_not_logged(
+    auth, fake_socket_pair, mocker, caplog
+):
+    address = ("127.0.0.1", 7687)
+    sockets = fake_socket_pair(address,
+                               packer_cls=AsyncBolt4x1.PACKER_CLS,
+                               unpacker_cls=AsyncBolt4x1.UNPACKER_CLS)
+    sockets.client.settimeout = mocker.Mock()
+    await sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.4"})
+    connection = AsyncBolt4x1(
+        address, sockets.client, PoolConfig.max_connection_lifetime, auth=auth
+    )
+    with caplog.at_level(logging.DEBUG):
+        await connection.hello()
+
+    if isinstance(auth, tuple):
+        auth = neo4j.basic_auth(*auth)
+    for field in ("scheme", "principal", "realm", "parameters"):
+        value = getattr(auth, field, None)
+        if value:
+            assert repr(value) in caplog.text
+    assert CREDENTIALS not in caplog.text
+
+
+@pytest.mark.parametrize("message", ("logon", "logoff"))
+def test_auth_message_raises_configuration_error(message, fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = AsyncBolt4x1(address, fake_socket(address),
+                              PoolConfig.max_connection_lifetime)
+    with pytest.raises(ConfigurationError,
+                       match="Session level authentication is not supported"):
+        getattr(connection, message)()
+
+
+@pytest.mark.parametrize("auth", (
+    None,
+    neo4j.Auth("scheme", "principal", "credentials", "realm"),
+    ("user", "password"),
+))
+@mark_async_test
+async def test_re_auth_noop(auth, fake_socket, mocker):
+    address = ("127.0.0.1", 7687)
+    connection = AsyncBolt4x1(address, fake_socket(address),
+                              PoolConfig.max_connection_lifetime, auth=auth)
+    logon_spy = mocker.spy(connection, "logon")
+    logoff_spy = mocker.spy(connection, "logoff")
+    res = await connection.re_auth(auth)
+
+    assert res is False
+    logon_spy.assert_not_called()
+    logoff_spy.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("auth1", "auth2"),
+    permutations(
+        (
+            None,
+            neo4j.Auth("scheme", "principal", "credentials", "realm"),
+            ("user", "password"),
+        ),
+        2
+    )
+)
+@mark_async_test
+async def test_re_auth(auth1, auth2, fake_socket):
+    address = ("127.0.0.1", 7687)
+    connection = AsyncBolt4x1(address, fake_socket(address),
+                              PoolConfig.max_connection_lifetime, auth=auth1)
+    with pytest.raises(ConfigurationError,
+                       match="Session level authentication is not supported"):
+        await connection.re_auth(auth2)

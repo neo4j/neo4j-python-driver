@@ -130,7 +130,7 @@ class Workspace:
             return
         self._update_bookmarks((bookmark,))
 
-    def _connect(self, access_mode, **acquire_kwargs):
+    def _connect(self, access_mode, auth=None, **acquire_kwargs):
         acquisition_timeout = self._config.connection_acquisition_timeout
         if self._connection:
             # TODO: Investigate this
@@ -154,6 +154,7 @@ class Workspace:
                     database=self._config.database,
                     imp_user=self._config.impersonated_user,
                     bookmarks=self._get_bookmarks(),
+                    auth=auth,
                     acquisition_timeout=acquisition_timeout,
                     database_callback=self._set_cached_database
                 )
@@ -162,6 +163,7 @@ class Workspace:
             "timeout": acquisition_timeout,
             "database": self._config.database,
             "bookmarks": self._get_bookmarks(),
+            "auth": auth,
             "liveness_check_timeout": None,
         }
         acquire_kwargs_.update(acquire_kwargs)

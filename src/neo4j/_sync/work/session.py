@@ -98,6 +98,7 @@ class Session(Workspace):
     def __init__(self, pool, session_config):
         assert isinstance(session_config, SessionConfig)
         super().__init__(pool, session_config)
+        self._config = session_config
         self._initialize_bookmarks(session_config.bookmarks)
         self._bookmark_manager = session_config.bookmark_manager
 
@@ -117,7 +118,8 @@ class Session(Workspace):
         if access_mode is None:
             access_mode = self._config.default_access_mode
         try:
-            super()._connect(access_mode, **access_kwargs)
+            super()._connect(access_mode, auth=self._config.auth,
+                                   **access_kwargs)
         except asyncio.CancelledError:
             self._handle_cancellation(message="_connect")
             raise

@@ -405,6 +405,9 @@ class PoolConfig(Config):
     keep_alive = True
     # Specify whether TCP keep-alive should be enabled.
 
+    #: Authentication provider
+    auth = None
+
     def get_ssl_context(self):
         if self.ssl_context is not None:
             return self.ssl_context
@@ -502,6 +505,9 @@ class SessionConfig(WorkspaceConfig):
 
     #: Default AccessMode
     default_access_mode = WRITE_ACCESS
+
+    #: Auth token to temporarily switch the user
+    auth = None
 
 
 class TransactionConfig(Config):

@@ -256,15 +256,20 @@ class Response:
 
 
 class InitResponse(Response):
-
     def on_failure(self, metadata):
         code = metadata.get("code")
         if code == "Neo.ClientError.Security.Unauthorized":
+            # this branch is only needed as long as we support Bolt 5.0
             raise Neo4jError.hydrate(**metadata)
         else:
             raise ServiceUnavailable(
                 metadata.get("message", "Connection initialisation failed")
             )
+
+
+class LogonResponse(Response):
+    def on_failure(self, metadata):
+        raise Neo4jError.hydrate(**metadata)
 
 
 class CommitResponse(Response):

@@ -22,7 +22,7 @@ from itertools import permutations
 import pytest
 
 import neo4j
-from neo4j._async.io._bolt4 import AsyncBolt4x3
+from neo4j._async.io._bolt5 import AsyncBolt5x0
 from neo4j._conf import PoolConfig
 from neo4j.exceptions import ConfigurationError
 
@@ -33,7 +33,7 @@ from ...._async_compat import mark_async_test
 def test_conn_is_stale(fake_socket, set_stale):
     address = ("127.0.0.1", 7687)
     max_connection_lifetime = 0
-    connection = AsyncBolt4x3(address, fake_socket(address), max_connection_lifetime)
+    connection = AsyncBolt5x0(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
         connection.set_stale()
     assert connection.stale() is True
@@ -43,7 +43,7 @@ def test_conn_is_stale(fake_socket, set_stale):
 def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
     address = ("127.0.0.1", 7687)
     max_connection_lifetime = -1
-    connection = AsyncBolt4x3(address, fake_socket(address), max_connection_lifetime)
+    connection = AsyncBolt5x0(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
         connection.set_stale()
     assert connection.stale() is set_stale
@@ -53,45 +53,59 @@ def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
 def test_conn_is_not_stale(fake_socket, set_stale):
     address = ("127.0.0.1", 7687)
     max_connection_lifetime = 999999999
-    connection = AsyncBolt4x3(address, fake_socket(address), max_connection_lifetime)
+    connection = AsyncBolt5x0(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
         connection.set_stale()
     assert connection.stale() is set_stale
 
 
+@pytest.mark.parametrize(("args", "kwargs", "expected_fields"), (
+    (("", {}), {"db": "something"}, ({"db": "something"},)),
+    (("", {}), {"imp_user": "imposter"}, ({"imp_user": "imposter"},)),
+    (
+        ("", {}),
+        {"db": "something", "imp_user": "imposter"},
+        ({"db": "something", "imp_user": "imposter"},)
+    ),
+))
 @mark_async_test
-async def test_db_extra_in_begin(fake_socket):
+async def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address, AsyncBolt4x3.UNPACKER_CLS)
-    connection = AsyncBolt4x3(address, socket, PoolConfig.max_connection_lifetime)
-    connection.begin(db="something")
+    socket = fake_socket(address, AsyncBolt5x0.UNPACKER_CLS)
+    connection = AsyncBolt5x0(address, socket, PoolConfig.max_connection_lifetime)
+    connection.begin(*args, **kwargs)
     await connection.send_all()
-    tag, fields = await socket.pop_message()
+    tag, is_fields = await socket.pop_message()
     assert tag == b"\x11"
-    assert len(fields) == 1
-    assert fields[0] == {"db": "something"}
+    assert tuple(is_fields) == expected_fields
 
 
+@pytest.mark.parametrize(("args", "kwargs", "expected_fields"), (
+    (("", {}), {"db": "something"}, ("", {}, {"db": "something"})),
+    (("", {}), {"imp_user": "imposter"}, ("", {}, {"imp_user": "imposter"})),
+    (
+        ("", {}),
+        {"db": "something", "imp_user": "imposter"},
+        ("", {}, {"db": "something", "imp_user": "imposter"})
+    ),
+))
 @mark_async_test
-async def test_db_extra_in_run(fake_socket):
+async def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address, AsyncBolt4x3.UNPACKER_CLS)
-    connection = AsyncBolt4x3(address, socket, PoolConfig.max_connection_lifetime)
-    connection.run("", {}, db="something")
+    socket = fake_socket(address, AsyncBolt5x0.UNPACKER_CLS)
+    connection = AsyncBolt5x0(address, socket, PoolConfig.max_connection_lifetime)
+    connection.run(*args, **kwargs)
     await connection.send_all()
-    tag, fields = await socket.pop_message()
+    tag, is_fields = await socket.pop_message()
     assert tag == b"\x10"
-    assert len(fields) == 3
-    assert fields[0] == ""
-    assert fields[1] == {}
-    assert fields[2] == {"db": "something"}
+    assert tuple(is_fields) == expected_fields
 
 
 @mark_async_test
 async def test_n_extra_in_discard(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address, AsyncBolt4x3.UNPACKER_CLS)
-    connection = AsyncBolt4x3(address, socket, PoolConfig.max_connection_lifetime)
+    socket = fake_socket(address, AsyncBolt5x0.UNPACKER_CLS)
+    connection = AsyncBolt5x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666)
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -110,8 +124,8 @@ async def test_n_extra_in_discard(fake_socket):
 @mark_async_test
 async def test_qid_extra_in_discard(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address, AsyncBolt4x3.UNPACKER_CLS)
-    connection = AsyncBolt4x3(address, socket, PoolConfig.max_connection_lifetime)
+    socket = fake_socket(address, AsyncBolt5x0.UNPACKER_CLS)
+    connection = AsyncBolt5x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(qid=test_input)
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -129,10 +143,9 @@ async def test_qid_extra_in_discard(fake_socket, test_input, expected):
 )
 @mark_async_test
 async def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
-    # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_n_and_qid_extras_in_discard
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address, AsyncBolt4x3.UNPACKER_CLS)
-    connection = AsyncBolt4x3(address, socket, PoolConfig.max_connection_lifetime)
+    socket = fake_socket(address, AsyncBolt5x0.UNPACKER_CLS)
+    connection = AsyncBolt5x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666, qid=test_input)
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -151,8 +164,8 @@ async def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
 @mark_async_test
 async def test_n_extra_in_pull(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address, AsyncBolt4x3.UNPACKER_CLS)
-    connection = AsyncBolt4x3(address, socket, PoolConfig.max_connection_lifetime)
+    socket = fake_socket(address, AsyncBolt5x0.UNPACKER_CLS)
+    connection = AsyncBolt5x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=test_input)
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -170,10 +183,9 @@ async def test_n_extra_in_pull(fake_socket, test_input, expected):
 )
 @mark_async_test
 async def test_qid_extra_in_pull(fake_socket, test_input, expected):
-    # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_qid_extra_in_pull
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address, AsyncBolt4x3.UNPACKER_CLS)
-    connection = AsyncBolt4x3(address, socket, PoolConfig.max_connection_lifetime)
+    socket = fake_socket(address, AsyncBolt5x0.UNPACKER_CLS)
+    connection = AsyncBolt5x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(qid=test_input)
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -185,8 +197,8 @@ async def test_qid_extra_in_pull(fake_socket, test_input, expected):
 @mark_async_test
 async def test_n_and_qid_extras_in_pull(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address, AsyncBolt4x3.UNPACKER_CLS)
-    connection = AsyncBolt4x3(address, socket, PoolConfig.max_connection_lifetime)
+    socket = fake_socket(address, AsyncBolt5x0.UNPACKER_CLS)
+    connection = AsyncBolt5x0(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=666, qid=777)
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -199,10 +211,10 @@ async def test_n_and_qid_extras_in_pull(fake_socket):
 async def test_hello_passes_routing_metadata(fake_socket_pair):
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address,
-                               packer_cls=AsyncBolt4x3.PACKER_CLS,
-                               unpacker_cls=AsyncBolt4x3.UNPACKER_CLS)
-    await sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.0"})
-    connection = AsyncBolt4x3(
+                               packer_cls=AsyncBolt5x0.PACKER_CLS,
+                               unpacker_cls=AsyncBolt5x0.UNPACKER_CLS)
+    await sockets.server.send_message(b"\x70", {"server": "Neo4j/4.4.0"})
+    connection = AsyncBolt5x0(
         address, sockets.client, PoolConfig.max_connection_lifetime,
         routing_context={"foo": "bar"}
     )
@@ -231,13 +243,13 @@ async def test_hint_recv_timeout_seconds(
 ):
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address,
-                               packer_cls=AsyncBolt4x3.PACKER_CLS,
-                               unpacker_cls=AsyncBolt4x3.UNPACKER_CLS)
+                               packer_cls=AsyncBolt5x0.PACKER_CLS,
+                               unpacker_cls=AsyncBolt5x0.UNPACKER_CLS)
     sockets.client.settimeout = mocker.Mock()
     await sockets.server.send_message(
-        b"\x70", {"server": "Neo4j/4.3.0", "hints": hints}
+        b"\x70", {"server": "Neo4j/4.3.4", "hints": hints}
     )
-    connection = AsyncBolt4x3(
+    connection = AsyncBolt5x0(
         address, sockets.client, PoolConfig.max_connection_lifetime
     )
     with caplog.at_level(logging.INFO):
@@ -277,11 +289,11 @@ async def test_credentials_are_not_logged(
 ):
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address,
-                               packer_cls=AsyncBolt4x3.PACKER_CLS,
-                               unpacker_cls=AsyncBolt4x3.UNPACKER_CLS)
+                               packer_cls=AsyncBolt5x0.PACKER_CLS,
+                               unpacker_cls=AsyncBolt5x0.UNPACKER_CLS)
     sockets.client.settimeout = mocker.Mock()
     await sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.4"})
-    connection = AsyncBolt4x3(
+    connection = AsyncBolt5x0(
         address, sockets.client, PoolConfig.max_connection_lifetime, auth=auth
     )
     with caplog.at_level(logging.DEBUG):
@@ -296,11 +308,10 @@ async def test_credentials_are_not_logged(
     assert CREDENTIALS not in caplog.text
 
 
-
 @pytest.mark.parametrize("message", ("logon", "logoff"))
 def test_auth_message_raises_configuration_error(message, fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = AsyncBolt4x3(address, fake_socket(address),
+    connection = AsyncBolt5x0(address, fake_socket(address),
                               PoolConfig.max_connection_lifetime)
     with pytest.raises(ConfigurationError,
                        match="Session level authentication is not supported"):
@@ -315,7 +326,7 @@ def test_auth_message_raises_configuration_error(message, fake_socket):
 @mark_async_test
 async def test_re_auth_noop(auth, fake_socket, mocker):
     address = ("127.0.0.1", 7687)
-    connection = AsyncBolt4x3(address, fake_socket(address),
+    connection = AsyncBolt5x0(address, fake_socket(address),
                               PoolConfig.max_connection_lifetime, auth=auth)
     logon_spy = mocker.spy(connection, "logon")
     logoff_spy = mocker.spy(connection, "logoff")
@@ -340,7 +351,7 @@ async def test_re_auth_noop(auth, fake_socket, mocker):
 @mark_async_test
 async def test_re_auth(auth1, auth2, fake_socket):
     address = ("127.0.0.1", 7687)
-    connection = AsyncBolt4x3(address, fake_socket(address),
+    connection = AsyncBolt5x0(address, fake_socket(address),
                               PoolConfig.max_connection_lifetime, auth=auth1)
     with pytest.raises(ConfigurationError,
                        match="Session level authentication is not supported"):

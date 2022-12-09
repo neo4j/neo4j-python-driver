@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import abc
+import time
 import typing as t
 from urllib.parse import (
     parse_qs,
@@ -103,6 +104,11 @@ class Auth:
         if parameters:
             self.parameters = parameters
 
+    def __eq__(self, other):
+        if not isinstance(other, Auth):
+            return NotImplemented
+        return vars(self) == vars(other)
+
 
 # For backwards compatibility
 AuthToken = Auth
@@ -173,6 +179,54 @@ def custom_auth(
         :meth:`AsyncGraphDatabase.driver`
     """
     return Auth(scheme, principal, credentials, realm, **parameters)
+
+
+class RenewableAuth:
+    """Container for details which potentially expire.
+
+    This is meant to be used with auth token provider which is a callable
+    that returns...
+
+    .. warning::
+
+        This function **must not** interact with the driver in any way as this
+        can cause a deadlock or undefined behaviour.
+
+    :param auth: The auth token. :param expires_in: The expected expiry time
+        of the auth token in seconds from now. It is recommended to set this
+        a little before the actual expiry time to give the driver time to
+        renew the auth token before connections start to fail. If set to
+        :data:`None`, the token is assumed to never expire.
+    """
+
+    def __init__(
+        self,
+        auth: t.Union[Auth, t.Tuple[t.Any, t.Any], None],
+        expires_in: t.Optional[float] = None,
+    ) -> None:
+        self.auth = auth
+        self.created_at: t.Optional[float]
+        self.expires_in: t.Optional[float]
+        self.expires_at: t.Optional[float]
+        if expires_in is not None:
+            self.expires_in = expires_in
+            self.created_at = time.monotonic()
+            self.expires_at = self.created_at + expires_in
+        else:
+            self.expires_in = None
+            self.created_at = None
+            self.expires_at = None
+
+    @property
+    def expired(self):
+        return (self.expires_at is not None
+                and self.expires_at < time.monotonic())
+
+
+_TAuthTokenProvider = t.Callable[[], t.Union[
+    RenewableAuth, Auth, t.Tuple[t.Any, t.Any],
+    t.Awaitable[t.Union[RenewableAuth, Auth, t.Tuple[t.Any, t.Any]]]
+]]
 
 
 # TODO: 6.0 - remove this class

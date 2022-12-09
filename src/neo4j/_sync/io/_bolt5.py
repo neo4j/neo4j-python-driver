@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+import typing as t
+from enum import Enum
 from logging import getLogger
 from ssl import SSLSocket
 
@@ -41,6 +43,7 @@ from ._common import (
     check_supported_server_product,
     CommitResponse,
     InitResponse,
+    LogonResponse,
     Response,
 )
 
@@ -49,7 +52,7 @@ log = getLogger("neo4j")
 
 
 class Bolt5x0(Bolt):
-    """Protocol handler for Bolt 5.0. """
+    """Protocol handler for Bolt 5.0."""
 
     PROTOCOL_VERSION = Version(5, 0)
 
@@ -59,10 +62,15 @@ class Bolt5x0(Bolt):
 
     supports_multiple_databases = True
 
+    supports_re_auth = False
+
+    server_states: t.Any = ServerStates
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._server_state_manager = ServerStateManager(
-            ServerStates.CONNECTED, on_change=self._on_server_state_change
+            self.server_states.CONNECTED,
+            on_change=self._on_server_state_change
         )
 
     def _on_server_state_change(self, old_state, new_state):
@@ -77,7 +85,7 @@ class Bolt5x0(Bolt):
         if (self.responses and self.responses[-1]
                 and self.responses[-1].message == "reset"):
             return True
-        return self._server_state_manager.state == ServerStates.READY
+        return self._server_state_manager.state == self.server_states.READY
 
     @property
     def encrypted(self):
@@ -123,6 +131,14 @@ class Bolt5x0(Bolt):
         self.send_all()
         self.fetch_all()
         check_supported_server_product(self.server_info.agent)
+
+    def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        """Append a LOGON message to the outgoing queue."""
+        self.assert_re_auth_support()
+
+    def logoff(self, dehydration_hooks=None, hydration_hooks=None):
+        """Append a LOGOFF message to the outgoing queue."""
+        self.assert_re_auth_support()
 
     def route(self, database=None, imp_user=None, bookmarks=None,
                     dehydration_hooks=None, hydration_hooks=None):
@@ -312,7 +328,7 @@ class Bolt5x0(Bolt):
         elif summary_signature == b"\x7F":
             log.debug("[#%04X]  S: FAILURE %r", self.local_port,
                       summary_metadata)
-            self._server_state_manager.state = ServerStates.FAILED
+            self._server_state_manager.state = self.server_states.FAILED
             try:
                 response.on_failure(summary_metadata or {})
             except (ServiceUnavailable, DatabaseUnavailable):
@@ -335,3 +351,102 @@ class Bolt5x0(Bolt):
             )
 
         return len(details), 1
+
+
+class ServerStates5x1(Enum):
+    CONNECTED = "CONNECTED"
+    READY = "READY"
+    STREAMING = "STREAMING"
+    TX_READY_OR_TX_STREAMING = "TX_READY||TX_STREAMING"
+    FAILED = "FAILED"
+    AUTHENTICATION = "AUTHENTICATION"
+
+
+class ServerStateManager5x1(ServerStateManager):
+    _STATE_TRANSITIONS = {  # type: ignore
+        ServerStates5x1.CONNECTED: {
+            "hello": ServerStates5x1.AUTHENTICATION,
+        },
+        ServerStates5x1.AUTHENTICATION: {
+            "logon": ServerStates5x1.READY,
+        },
+        ServerStates5x1.READY: {
+            "run": ServerStates5x1.STREAMING,
+            "begin": ServerStates5x1.TX_READY_OR_TX_STREAMING,
+            "logoff": ServerStates5x1.AUTHENTICATION,
+        },
+        ServerStates5x1.STREAMING: {
+            "pull": ServerStates5x1.READY,
+            "discard": ServerStates5x1.READY,
+            "reset": ServerStates5x1.READY,
+        },
+        ServerStates5x1.TX_READY_OR_TX_STREAMING: {
+            "commit": ServerStates5x1.READY,
+            "rollback": ServerStates5x1.READY,
+            "reset": ServerStates5x1.READY,
+        },
+        ServerStates5x1.FAILED: {
+            "reset": ServerStates5x1.READY,
+        }
+    }
+
+
+class Bolt5x1(Bolt5x0):
+    """Protocol handler for Bolt 5.1."""
+
+    PROTOCOL_VERSION = Version(5, 1)
+
+    supports_re_auth = True
+
+    server_states = ServerStates5x1
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._server_state_manager = ServerStateManager5x1(
+            ServerStates5x1.CONNECTED, on_change=self._on_server_state_change
+        )
+
+    def hello(self, dehydration_hooks=None, hydration_hooks=None):
+        def on_success(metadata):
+            self.configuration_hints.update(metadata.pop("hints", {}))
+            self.server_info.update(metadata)
+            if "connection.recv_timeout_seconds" in self.configuration_hints:
+                recv_timeout = self.configuration_hints[
+                    "connection.recv_timeout_seconds"
+                ]
+                if isinstance(recv_timeout, int) and recv_timeout > 0:
+                    self.socket.settimeout(recv_timeout)
+                else:
+                    log.info("[#%04X]  _: <CONNECTION> Server supplied an "
+                             "invalid value for "
+                             "connection.recv_timeout_seconds (%r). Make sure "
+                             "the server and network is set up correctly.",
+                             self.local_port, recv_timeout)
+
+        headers = self.get_base_headers()
+        logged_headers = dict(headers)
+        log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
+        self._append(b"\x01", (headers,),
+                     response=InitResponse(self, "hello", hydration_hooks,
+                                           on_success=on_success),
+                     dehydration_hooks=dehydration_hooks)
+        self.logon(dehydration_hooks=dehydration_hooks,
+                   hydration_hooks=hydration_hooks)
+        self.send_all()
+        self.fetch_all()
+        check_supported_server_product(self.server_info.agent)
+
+    def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        logged_auth_dict = dict(self.auth_dict)
+        if "credentials" in logged_auth_dict:
+            logged_auth_dict["credentials"] = "*******"
+        log.debug("[#%04X]  C: LOGON %r", self.local_port, logged_auth_dict)
+        self._append(b"\x6A", (self.auth_dict,),
+                     response=LogonResponse(self, "logon", hydration_hooks),
+                     dehydration_hooks=dehydration_hooks)
+
+    def logoff(self, dehydration_hooks=None, hydration_hooks=None):
+        log.debug("[#%04X]  C: LOGOFF", self.local_port)
+        self._append(b"\x6B",
+                     response=LogonResponse(self, "logoff", hydration_hooks),
+                     dehydration_hooks=dehydration_hooks)

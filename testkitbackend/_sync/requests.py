@@ -93,9 +93,9 @@ def GetFeatures(backend, data):
     backend.send_response("FeatureList", {"features": FEATURES})
 
 
-def NewDriver(backend, data):
-    auth_token = data["authorizationToken"]["data"]
-    data["authorizationToken"].mark_item_as_read_if_equals(
+def _convert_auth_token(data, key):
+    auth_token = data[key]["data"]
+    data[key].mark_item_as_read_if_equals(
         "name", "AuthorizationToken"
     )
     scheme = auth_token["scheme"]
@@ -115,6 +115,11 @@ def NewDriver(backend, data):
             **auth_token.get("parameters", {})
         )
         auth_token.mark_item_as_read("parameters", recursive=True)
+    return auth
+
+
+def NewDriver(backend, data):
+    auth = _convert_auth_token(data, "authorizationToken")
     kwargs = {}
     if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
         kwargs["resolver"] = resolution_func(
@@ -385,6 +390,8 @@ def NewSession(backend, data):
     ):
         if data_name in data:
             config[conf_name] = data[data_name]
+    if data.get("authorizationToken"):
+        config["auth"] = _convert_auth_token(data, "authorizationToken")
     if "bookmark_manager" in config:
         with warning_check(
             neo4j.ExperimentalWarning,

@@ -31,12 +31,13 @@ from ...._async_compat import TestDecorators
 
 def test_class_method_protocol_handlers():
     protocol_handlers = Bolt.protocol_handlers()
-    assert len(protocol_handlers) == 6
-    assert protocol_handlers.keys() == {
+    expected_versions = {
         (3, 0),
         (4, 1), (4, 2), (4, 3), (4, 4),
-        (5, 0),
+        (5, 0), (5, 1),
     }
+    assert len(protocol_handlers) == len(expected_versions)
+    assert protocol_handlers.keys() == expected_versions
 
 
 @pytest.mark.parametrize(
@@ -52,7 +53,8 @@ def test_class_method_protocol_handlers():
         ((4, 3), 1),
         ((4, 4), 1),
         ((5, 0), 1),
-        ((5, 1), 0),
+        ((5, 1), 1),
+        ((5, 2), 0),
         ((6, 0), 0),
     ]
 )
@@ -71,7 +73,7 @@ def test_class_method_protocol_handlers_with_invalid_protocol_version():
 
 def test_class_method_get_handshake():
     handshake = Bolt.get_handshake()
-    assert (b"\x00\x00\x00\x05\x00\x02\x04\x04\x00\x00\x01\x04\x00\x00\x00\x03"
+    assert (b"\x00\x01\x01\x05\x00\x02\x04\x04\x00\x00\x01\x04\x00\x00\x00\x03"
             == handshake)
 
 
