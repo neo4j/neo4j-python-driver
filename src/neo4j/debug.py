@@ -155,9 +155,9 @@ class Watcher:
         """Enable logging for all loggers.
 
         :param level: Minimum log level to show.
-            If :const:`None`, the ``default_level`` is used.
+            If :data:`None`, the ``default_level`` is used.
         :param out: Output stream for all loggers.
-            If :const:`None`, the ``default_out`` is used.
+            If :data:`None`, the ``default_out`` is used.
         :type out: stream or file-like object
         """
         if level is None:

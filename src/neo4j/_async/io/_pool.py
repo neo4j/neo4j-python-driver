@@ -679,7 +679,7 @@ class AsyncNeo4jPool(AsyncIOPool):
         routing_table = await self.get_or_create_routing_table(database)
         servers = routing_table.servers()
         for address in list(self.connections):
-            if address.unresolved not in servers:
+            if address._unresolved not in servers:
                 await super(AsyncNeo4jPool, self).deactivate(address)
 
     async def ensure_routing_table_is_fresh(
