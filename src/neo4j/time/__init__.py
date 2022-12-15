@@ -1988,7 +1988,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
     Regular construction of a :class:`.DateTime` object requires at
     least the `year`, `month` and `day` arguments to be supplied. The
     optional `hour`, `minute` and `second` arguments default to zero and
-    `tzinfo` defaults to :const:`None`.
+    `tzinfo` defaults to :data:`None`.
 
     `year`, `month`, and `day` are passed to the constructor of :class:`.Date`.
     `hour`, `minute`, `second`, `nanosecond`, and `tzinfo` are passed to the
@@ -1997,7 +1997,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         >>> dt = DateTime(2018, 4, 30, 12, 34, 56, 789123456); dt
         neo4j.time.DateTime(2018, 4, 30, 12, 34, 56, 789123456)
         >>> dt.second
-        56.789123456
+        56
     """
 
     __date: Date

@@ -47,7 +47,7 @@ class AsyncNetworkUtil:
             )
         except OSError:
             raise ValueError("Cannot resolve address {}".format(address))
-        return list(_resolved_addresses_from_info(info, address.host_name))
+        return list(_resolved_addresses_from_info(info, address._host_name))
 
     @staticmethod
     async def resolve_address(address, family=0, resolver=None):
@@ -117,7 +117,7 @@ class NetworkUtil:
             )
         except OSError:
             raise ValueError("Cannot resolve address {}".format(address))
-        return _resolved_addresses_from_info(info, address.host_name)
+        return _resolved_addresses_from_info(info, address._host_name)
 
     @staticmethod
     def resolve_address(address, family=0, resolver=None):

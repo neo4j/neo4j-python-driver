@@ -207,7 +207,7 @@ class AsyncBoltSocket:
             ssl_kwargs = {}
 
             if ssl is not None:
-                hostname = resolved_address.host_name or None
+                hostname = resolved_address._host_name or None
                 ssl_kwargs.update(
                     ssl=ssl, server_hostname=hostname if HAS_SNI else None
                 )
@@ -232,7 +232,7 @@ class AsyncBoltSocket:
                     raise BoltProtocolError(
                         "When using an encrypted socket, the server should "
                         "always provide a certificate",
-                        address=(resolved_address.host_name, local_port)
+                        address=(resolved_address._host_name, local_port)
                     )
 
             return cls(reader, protocol, writer)
@@ -257,7 +257,7 @@ class AsyncBoltSocket:
                 await cls.close_socket(s)
             raise BoltSecurityError(
                 message="Failed to establish encrypted connection.",
-                address=(resolved_address.host_name, local_port)
+                address=(resolved_address._host_name, local_port)
             ) from error
         except Exception as error:
             log.debug("[#0000]  S: <ERROR> %s %s", type(error).__name__,
@@ -650,7 +650,7 @@ class BoltSocket:
             s = None
             try:
                 s = BoltSocket._connect(resolved_address, timeout, keep_alive)
-                s = BoltSocket._secure(s, resolved_address.host_name,
+                s = BoltSocket._secure(s, resolved_address._host_name,
                                        ssl_context)
                 return BoltSocket._handshake(s, resolved_address)
             except (BoltError, DriverError, OSError) as error:
