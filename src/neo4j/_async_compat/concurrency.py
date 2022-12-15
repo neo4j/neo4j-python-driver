@@ -295,8 +295,6 @@ class AsyncCooperativeRLock:
         self.release()
 
 
-# copied and modified from asyncio.locks (3.7)
-# to add support for `.wait(timeout)`
 class AsyncCondition:
     """Asynchronous equivalent to threading.Condition.
 
@@ -306,6 +304,14 @@ class AsyncCondition:
 
     A new Lock object is created and used as the underlying lock.
     """
+
+    # copied and modified from Python 3.7's asyncio.locks module
+    # to add support for `.wait(timeout)`
+
+    # Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
+    # 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022
+    # Python Software Foundation;
+    # All Rights Reserved
 
     def __init__(self, lock=None, *, loop=None):
         if loop is not None:
