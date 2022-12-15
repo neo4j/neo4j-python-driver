@@ -40,8 +40,11 @@ from ...._async_compat import mark_async_test
 @contextmanager
 def assert_warns_tx_func_deprecation(tx_func_name):
     if tx_func_name.endswith("_transaction"):
-        with pytest.warns(DeprecationWarning,
-                          match=f"{tx_func_name}.*execute_"):
+        mode = tx_func_name.split("_")[0]
+        with pytest.warns(
+            DeprecationWarning,
+            match=f"^{mode}_transaction has been renamed to execute_{mode}$"
+        ):
             yield
     else:
         yield
@@ -289,6 +292,12 @@ async def test_decorated_tx_function_argument_type(
         with assert_warns_tx_func_deprecation(tx_type):
             await getattr(session, tx_type)(work)
         assert called
+    assert len(fake_pool.acquired_connection_mocks) == 1
+    cx = fake_pool.acquired_connection_mocks[0]
+    cx.begin.assert_called_once()
+    for key in ("timeout", "metadata"):
+        value = decorator_kwargs.get(key)
+        assert cx.begin.call_args[1][key] == value
 
 
 @mark_async_test
