@@ -17,11 +17,26 @@
 
 
 import asyncio
+import sys
+
+import pytest
 
 import neo4j
 
+from ... import env
 
-def test_can_create_async_driver_outside_of_loop(uri, auth, event_loop):
+
+# TODO: Python 3.9: when support gets dropped, remove this mark
+@pytest.mark.xfail(
+    # direct driver is not making use of `asyncio.Lock`.
+    sys.version_info < (3, 10) and env.NEO4J_SCHEME == "neo4j",
+    reason="asyncio's synchronization primitives can create a new event loop "
+           "if instantiated while there is no running event loop. This "
+           "changed with Python 3.10.",
+    raises=RuntimeError,
+    strict=True,
+)
+def test_can_create_async_driver_outside_of_loop(uri, auth):
     pool_size = 2
     # used to make sure the pool was full at least at some point
     counter = 0
@@ -63,13 +78,17 @@ def test_can_create_async_driver_outside_of_loop(uri, auth, event_loop):
                             cancelled = e
                     else:
                         session.cancel()
+                await driver.close()
                 if cancelled:
                     raise cancelled
 
 
-    coro = run(
-        neo4j.AsyncGraphDatabase.driver(
-            uri, auth=auth, max_connection_pool_size=pool_size
-        )
+    driver = neo4j.AsyncGraphDatabase.driver(
+        uri, auth=auth, max_connection_pool_size=pool_size
     )
-    event_loop.run_until_complete(coro)
+    coro = run(driver)
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(coro)
+    finally:
+        loop.close()
