@@ -314,7 +314,6 @@ class AsyncCondition:
     # All Rights Reserved
 
     def __init__(self, lock=None):
-        super().__init__(lock)
         if lock is None:
             lock = AsyncLock()
 
