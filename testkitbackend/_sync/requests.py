@@ -15,11 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import datetime
 import json
 import re
 import warnings
 from os import path
+
+from freezegun import freeze_time
 
 import neo4j
 import neo4j.api
@@ -704,3 +706,30 @@ def GetRoutingTable(backend, data):
         addresses = routing_table.__getattribute__(role)
         response_data[role] = list(map(str, addresses))
     backend.send_response("RoutingTable", response_data)
+
+def FakeTimeInstall(backend, _data):
+    assert backend.fake_time is None
+    assert backend.fake_time_ticker is None
+
+    backend.fake_time = freeze_time()
+    backend.fake_time_ticker = backend.fake_time.start()
+    backend.send_response("FakeTimeAck", {})
+
+def FakeTimeTick(backend, data):
+    assert backend.fake_time is not None
+    assert backend.fake_time_ticker is not None
+
+    increment_ms = data["incrementMs"]
+    delta = datetime.timedelta(milliseconds=increment_ms)
+    backend.fake_time_ticker.tick(delta=delta)
+    backend.send_response("FakeTimeAck", {})
+
+
+def FakeTimeUninstall(backend, _data):
+    assert backend.fake_time is not None
+    assert backend.fake_time_ticker is not None
+
+    backend.fake_time.stop()
+    backend.fake_time_ticker = None
+    backend.fake_time = None
+    backend.send_response("FakeTimeAck", {})

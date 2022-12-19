@@ -17,6 +17,7 @@ tomlkit~=0.11.6
 
 # needed for running tests
 coverage[toml]>=5.5
+freezegun >= 1.2.2
 mock>=4.0.3
 numpy>=1.7.0
 pandas>=1.0.0

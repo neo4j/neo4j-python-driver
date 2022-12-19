@@ -66,6 +66,8 @@ class AsyncBackend:
         self.transactions = {}
         self.errors = {}
         self.key = 0
+        self.fake_time = None
+        self.fake_time_ticker = None
         # Collect all request handlers
         self._requestHandlers = dict(
             [m for m in getmembers(requests, isfunction)])
