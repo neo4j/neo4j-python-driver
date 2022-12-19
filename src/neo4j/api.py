@@ -224,8 +224,8 @@ class RenewableAuth:
 
 
 _TAuthTokenProvider = t.Callable[[], t.Union[
-    RenewableAuth, Auth, t.Tuple[t.Any, t.Any],
-    t.Awaitable[t.Union[RenewableAuth, Auth, t.Tuple[t.Any, t.Any]]]
+    RenewableAuth, Auth, t.Tuple[t.Any, t.Any], None,
+    t.Awaitable[t.Union[RenewableAuth, Auth, t.Tuple[t.Any, t.Any], None]]
 ]]
 
 

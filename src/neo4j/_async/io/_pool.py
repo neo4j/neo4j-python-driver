@@ -104,7 +104,7 @@ class AsyncIOPool(abc.ABC):
         with self.refreshing_auth_lock:
             if self.refreshing_auth:
                 # someone else is already getting a new auth
-                return self.last_auth
+                return self.last_auth.auth
         if self.last_auth is None or self.last_auth.expired:
             with self.refreshing_auth_lock:
                 self.refreshing_auth = True
@@ -131,7 +131,7 @@ class AsyncIOPool(abc.ABC):
 
     async def _get_new_auth(self):
         new_auth = await AsyncUtil.callback(self.pool_config.auth)
-        if not isinstance(self.last_auth, RenewableAuth):
+        if not isinstance(new_auth, RenewableAuth):
             return RenewableAuth(new_auth)
         return new_auth
 

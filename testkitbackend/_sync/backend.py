@@ -55,6 +55,8 @@ class Backend:
         self.drivers = {}
         self.custom_resolutions = {}
         self.dns_resolutions = {}
+        self.auth_token_providers = {}
+        self.renewable_auth_token_supplies = {}
         self.bookmark_managers = {}
         self.bookmarks_consumptions = {}
         self.bookmarks_supplies = {}

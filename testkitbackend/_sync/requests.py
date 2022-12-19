@@ -94,10 +94,10 @@ def GetFeatures(backend, data):
 
 
 def _convert_auth_token(data, key):
+    if data[key] is None:
+        return None
     auth_token = data[key]["data"]
-    data[key].mark_item_as_read_if_equals(
-        "name", "AuthorizationToken"
-    )
+    data[key].mark_item_as_read_if_equals("name", "AuthorizationToken")
     scheme = auth_token["scheme"]
     if scheme == "basic":
         auth = neo4j.basic_auth(
@@ -120,6 +120,8 @@ def _convert_auth_token(data, key):
 
 def NewDriver(backend, data):
     auth = _convert_auth_token(data, "authorizationToken")
+    if auth is None and data.get("authTokenProviderId") is not None:
+        auth = backend.auth_token_providers[data["authTokenProviderId"]]
     kwargs = {}
     if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
         kwargs["resolver"] = resolution_func(
@@ -159,6 +161,54 @@ def NewDriver(backend, data):
     key = backend.next_key()
     backend.drivers[key] = driver
     backend.send_response("Driver", {"id": key})
+
+
+def NewAuthTokenProvider(backend, data):
+    auth_token_provider_id = backend.next_key()
+
+    def auth_token_provider():
+        key = backend.next_key()
+        backend.send_response("AuthTokenProviderRequest", {
+            "id": key,
+            "authTokenProviderId": auth_token_provider_id,
+        })
+        if not backend.process_request():
+            # connection was closed before end of next message
+            return None
+        if key not in backend.renewable_auth_token_supplies:
+            raise RuntimeError(
+                "Backend did not receive expected "
+                f"AuthTokenProviderCompleted message for id {key}"
+            )
+        return backend.renewable_auth_token_supplies.pop(key)
+
+
+    backend.auth_token_providers[auth_token_provider_id] = auth_token_provider
+    backend.send_response("AuthTokenProvider",
+                                {"id": auth_token_provider_id})
+
+
+def AuthTokenProviderClose(backend, data):
+    auth_token_provider_id = data["id"]
+    del backend.auth_token_providers[auth_token_provider_id]
+    backend.send_response("AuthTokenProvider",
+                                {"id": auth_token_provider_id})
+
+
+def AuthTokenProviderCompleted(backend, data):
+    backend.renewable_auth_token_supplies[data["requestId"]] = \
+        parse_renewable_auth(data["auth"])
+
+
+def parse_renewable_auth(data):
+    data.mark_item_as_read_if_equals("name", "RenewableAuthToken")
+    data = data["data"]
+    auth_token = _convert_auth_token(data, "auth")
+    if data["expiresInMs"] is not None:
+        expires_in = data["expiresInMs"] / 1000
+    else:
+        expires_in = None
+    return neo4j.RenewableAuth(auth_token, expires_in)
 
 
 def VerifyConnectivity(backend, data):
