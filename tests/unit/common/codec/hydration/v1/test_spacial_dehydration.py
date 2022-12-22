@@ -34,40 +34,49 @@ class TestSpatialDehydration(HydrationHandlerTestBase):
     def hydration_handler(self):
         return HydrationHandler()
 
-    def test_cartesian_2d(self, hydration_scope):
+    @pytest.fixture
+    def transformer(self, hydration_scope):
+        def transformer(value):
+            transformer_ = \
+                hydration_scope.dehydration_hooks.get_transformer(value)
+            assert callable(transformer_)
+            return transformer_(value)
+        return transformer
+
+    def test_cartesian_2d(self, transformer):
         point = CartesianPoint((1, 3.1))
-        struct = hydration_scope.dehydration_hooks[type(point)](point)
+        struct = transformer(point)
         assert struct == Structure(b"X", 7203, 1.0, 3.1)
         assert all(isinstance(f, float) for f in struct.fields[1:])
 
-    def test_cartesian_3d(self, hydration_scope):
+    def test_cartesian_3d(self, transformer):
         point = CartesianPoint((1, -2, 3.1))
-        struct = hydration_scope.dehydration_hooks[type(point)](point)
+        struct = transformer(point)
         assert struct == Structure(b"Y", 9157, 1.0, -2.0, 3.1)
         assert all(isinstance(f, float) for f in struct.fields[1:])
 
-    def test_wgs84_2d(self, hydration_scope):
+    def test_wgs84_2d(self, transformer):
         point = WGS84Point((1, 3.1))
-        struct = hydration_scope.dehydration_hooks[type(point)](point)
+        struct = transformer(point)
         assert struct == Structure(b"X", 4326, 1.0, 3.1)
         assert all(isinstance(f, float) for f in struct.fields[1:])
 
-    def test_wgs84_3d(self, hydration_scope):
+    def test_wgs84_3d(self, transformer):
         point = WGS84Point((1, -2, 3.1))
-        struct = hydration_scope.dehydration_hooks[type(point)](point)
+        struct = transformer(point)
         assert struct == Structure(b"Y", 4979, 1.0, -2.0, 3.1)
         assert all(isinstance(f, float) for f in struct.fields[1:])
 
-    def test_custom_point_2d(self, hydration_scope):
+    def test_custom_point_2d(self, transformer):
         point = Point((1, 3.1))
         point.srid = 12345
-        struct = hydration_scope.dehydration_hooks[type(point)](point)
+        struct = transformer(point)
         assert struct == Structure(b"X", 12345, 1.0, 3.1)
         assert all(isinstance(f, float) for f in struct.fields[1:])
 
-    def test_custom_point_3d(self, hydration_scope):
+    def test_custom_point_3d(self, transformer):
         point = Point((1, -2, 3.1))
         point.srid = 12345
-        struct = hydration_scope.dehydration_hooks[type(point)](point)
+        struct = transformer(point)
         assert struct == Structure(b"Y", 12345, 1.0, -2.0, 3.1)
         assert all(isinstance(f, float) for f in struct.fields[1:])

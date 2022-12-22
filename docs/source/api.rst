@@ -1091,7 +1091,7 @@ The core types with their general mappings are listed below:
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
 | String                 | :class:`str`                                                                                                              |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| Bytes :sup:`[1]`       | :class:`bytearray`                                                                                                        |
+| Bytes :sup:`[1]`       | :class:`bytes`                                                                                                            |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
 | List                   | :class:`list`                                                                                                             |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
@@ -1108,6 +1108,57 @@ The diagram below illustrates the actual mappings between the various layers, fr
 
 .. image:: ./_images/core_type_mappings.svg
     :target: ./_images/core_type_mappings.svg
+
+
+Extended Data Types
+===================
+
+The driver supports serializing more types (as parameters in).
+However, they will have to be mapped to the existing Bolt types (see above) when they are sent to the server.
+This means, the driver will never return these types in results.
+
+When in doubt, you can test the type conversion like so::
+
+    import neo4j
+
+
+    with neo4j.GraphDatabase.driver(URI, auth=AUTH) as driver:
+        with driver.session() as session:
+            type_in = ("foo", "bar")
+            result = session.run("RETURN $x", x=type_in)
+            type_out = result.single()[0]
+            print(type(type_out))
+            print(type_out)
+
+Which in this case would yield::
+
+    <class 'list'>
+    ['foo', 'bar']
+
+
++-----------------------------------+---------------------------------+---------------------------------------+
+| Parameter Type                    | Bolt Type                       | Result Type                           |
++===================================+=================================+=======================================+
+| :class:`tuple`                    | List                            | :class:`list`                         |
++-----------------------------------+---------------------------------+---------------------------------------+
+| :class:`bytearray`                | Bytes                           | :class:`bytes`                        |
++-----------------------------------+---------------------------------+---------------------------------------+
+| numpy\ :sup:`[2]` ``ndarray``     | (nested) List                   | (nested) :class:`list`                |
++-----------------------------------+---------------------------------+---------------------------------------+
+| pandas\ :sup:`[3]` ``DataFrame``  | Map[str, List[_]] :sup:`[4]`    | :class:`dict`                         |
++-----------------------------------+---------------------------------+---------------------------------------+
+| pandas ``Series``                 | List                            | :class:`list`                         |
++-----------------------------------+---------------------------------+---------------------------------------+
+| pandas ``Array``                  | List                            | :class:`list`                         |
++-----------------------------------+---------------------------------+---------------------------------------+
+
+.. Note::
+
+   2. ``void`` and ``complexfloating`` typed numpy ``ndarray``\s are not supported.
+   3. ``Period``, ``Interval``, and ``pyarrow`` pandas types are not supported.
+   4. A pandas ``DataFrame`` will be serialized Map from with the column names mapping to the column values (as lists).
+       Just like with ``dict`` objects, the column names need to be :class:`str` objects.
+
 
 
 ****************

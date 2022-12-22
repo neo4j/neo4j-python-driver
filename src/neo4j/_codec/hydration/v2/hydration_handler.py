@@ -37,8 +37,7 @@ class HydrationHandler(HydrationHandlerABC):  # type: ignore[no-redef]
             b"d": temporal.hydrate_datetime,     # no time zone
             b"E": temporal.hydrate_duration,
         }
-        self.dehydration_functions = {
-            **self.dehydration_functions,
+        self.dehydration_hooks.update(exact_types={
             Point: spatial.dehydrate_point,
             CartesianPoint: spatial.dehydrate_point,
             WGS84Point: spatial.dehydrate_point,
@@ -50,7 +49,18 @@ class HydrationHandler(HydrationHandlerABC):  # type: ignore[no-redef]
             datetime: temporal.dehydrate_datetime,
             Duration: temporal.dehydrate_duration,
             timedelta: temporal.dehydrate_timedelta,
-        }
+        })
+        if NUMPY_AVAILABLE:
+            self.dehydration_hooks.update(exact_types={
+                np.datetime64: temporal.dehydrate_np_datetime,
+                np.timedelta64: temporal.dehydrate_np_timedelta,
+            })
+        if PANDAS_AVAILABLE:
+            self.dehydration_hooks.update(exact_types={
+                pd.Timestamp: temporal.dehydrate_pandas_datetime,
+                pd.Timedelta: temporal.dehydrate_pandas_timedelta,
+                type(pd.NaT): lambda _: None,
+            })
 
     def new_hydration_scope(self):
         self._created_scope = True

@@ -45,10 +45,17 @@ dynamic = ["version", "readme"]
 Homepage = "https://github.com/neo4j/neo4j-python-driver"
 
 [project.optional-dependencies]
-pandas = ["pandas>=1.0.0"]
+numpy = ["numpy >= 1.7.0, < 2.0.0"]
+pandas = [
+    "pandas >= 1.1.0, < 2.0.0",
+    "numpy >= 1.7.0, < 2.0.0",
+]
 
 [build-system]
-requires = ["setuptools~=65.6", "tomlkit~=0.11.6"]
+requires = [
+    "setuptools~=65.6",
+    "tomlkit~=0.11.6",
+]
 build-backend = "setuptools.build_meta"
 
 # still in beta

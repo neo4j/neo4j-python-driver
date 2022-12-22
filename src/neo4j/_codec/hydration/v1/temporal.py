@@ -22,10 +22,28 @@ from datetime import (
     timedelta,
 )
 
+
+try:
+    import numpy as np
+
+    NUMPY_AVAILABLE = True
+except ImportError:
+    NUMPY_AVAILABLE = False
+
+try:
+    import pandas as pd
+
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+
 from ....time import (
     Date,
     DateTime,
     Duration,
+    MAX_YEAR,
+    MIN_YEAR,
+    NANO_SECONDS,
     Time,
 )
 from ...packstream import Structure
@@ -171,6 +189,50 @@ def dehydrate_datetime(value):
                          int(tz.utcoffset(value).total_seconds()))
 
 
+if NUMPY_AVAILABLE:
+    def dehydrate_np_datetime(value):
+        """ Dehydrator for `numpy.datetime64` values.
+
+        :param value:
+        :type value: numpy.datetime64
+        :returns:
+        """
+        if np.isnat(value):
+            return None
+        year = value.astype("datetime64[Y]").astype(int) + 1970
+        if not 0 < year <= 9999:
+            # while we could encode years outside the range, they would fail
+            # when retrieved from the database.
+            raise ValueError(f"Year out of range ({MIN_YEAR:d}..{MAX_YEAR:d}) "
+                             f"found {year}")
+        seconds = value.astype(np.dtype("datetime64[s]")).astype(int)
+        nanoseconds = (value.astype(np.dtype("datetime64[ns]")).astype(int)
+                       % NANO_SECONDS)
+        return Structure(b"d", seconds, nanoseconds)
+
+
+if PANDAS_AVAILABLE:
+    def dehydrate_pandas_datetime(value):
+        """ Dehydrator for `pandas.Timestamp` values.
+
+        :param value:
+        :type value: pandas.Timestamp
+        :returns:
+        """
+        return dehydrate_datetime(
+            DateTime(
+                value.year,
+                value.month,
+                value.day,
+                value.hour,
+                value.minute,
+                value.second,
+                value.microsecond * 1000 + value.nanosecond,
+                value.tzinfo,
+            )
+        )
+
+
 def hydrate_duration(months, days, seconds, nanoseconds):
     """ Hydrator for `Duration` values.
 
@@ -205,3 +267,50 @@ def dehydrate_timedelta(value):
     seconds = value.seconds
     nanoseconds = 1000 * value.microseconds
     return Structure(b"E", months, days, seconds, nanoseconds)
+
+
+if NUMPY_AVAILABLE:
+    _NUMPY_DURATION_UNITS = {
+        "Y": "years",
+        "M": "months",
+        "W": "weeks",
+        "D": "days",
+        "h": "hours",
+        "m": "minutes",
+        "s": "seconds",
+        "ms": "milliseconds",
+        "us": "microseconds",
+        "ns": "nanoseconds",
+    }
+
+    def dehydrate_np_timedelta(value):
+        """ Dehydrator for `numpy.timedelta64` values.
+
+        :param value:
+        :type value: numpy.timedelta64
+        :returns:
+        """
+        if np.isnat(value):
+            return None
+        unit, step_size = np.datetime_data(value)
+        numer = int(value.astype(int))
+        # raise RuntimeError((type(numer), type(step_size)))
+        kwarg = _NUMPY_DURATION_UNITS.get(unit)
+        if kwarg is not None:
+            return dehydrate_duration(Duration(**{kwarg: numer * step_size}))
+        return dehydrate_duration(Duration(
+            nanoseconds=value.astype("timedelta64[ns]").astype(int)
+        ))
+
+
+if PANDAS_AVAILABLE:
+    def dehydrate_pandas_timedelta(value):
+        """ Dehydrator for `pandas.Timedelta` values.
+
+        :param value:
+        :type value: pandas.Timedelta
+        :returns:
+        """
+        return dehydrate_duration(Duration(
+            nanoseconds=value.value
+        ))

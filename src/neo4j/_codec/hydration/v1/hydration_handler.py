@@ -23,6 +23,21 @@ from datetime import (
     timedelta,
 )
 
+
+try:
+    import numpy as np
+
+    NUMPY_AVAILABLE = True
+except ImportError:
+    NUMPY_AVAILABLE = False
+
+try:
+    import pandas as pd
+
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+
 from ....graph import (
     Graph,
     Node,
@@ -159,8 +174,7 @@ class HydrationHandler(HydrationHandlerABC):
             b"d": temporal.hydrate_datetime,     # no time zone
             b"E": temporal.hydrate_duration,
         }
-        self.dehydration_functions = {
-            **self.dehydration_functions,
+        self.dehydration_hooks.update(exact_types={
             Point: spatial.dehydrate_point,
             CartesianPoint: spatial.dehydrate_point,
             WGS84Point: spatial.dehydrate_point,
@@ -172,7 +186,19 @@ class HydrationHandler(HydrationHandlerABC):
             datetime: temporal.dehydrate_datetime,
             Duration: temporal.dehydrate_duration,
             timedelta: temporal.dehydrate_timedelta,
-        }
+        })
+        if NUMPY_AVAILABLE:
+            self.dehydration_hooks.update(exact_types={
+                np.datetime64: temporal.dehydrate_np_datetime,
+                np.timedelta64: temporal.dehydrate_np_timedelta,
+            })
+        if PANDAS_AVAILABLE:
+            self.dehydration_hooks.update(exact_types={
+                pd.Timestamp: temporal.dehydrate_pandas_datetime,
+                pd.Timedelta: temporal.dehydrate_pandas_timedelta,
+                type(pd.NaT): lambda _: None,
+            })
+
 
     def patch_utc(self):
         from ..v2 import temporal as temporal_v2
@@ -186,10 +212,18 @@ class HydrationHandler(HydrationHandlerABC):
             b"i": temporal_v2.hydrate_datetime,
         })
 
-        self.dehydration_functions.update({
+        self.dehydration_hooks.update(exact_types={
             DateTime: temporal_v2.dehydrate_datetime,
             datetime: temporal_v2.dehydrate_datetime,
         })
+        if NUMPY_AVAILABLE:
+            self.dehydration_hooks.update(exact_types={
+                np.datetime64: temporal_v2.dehydrate_np_datetime,
+            })
+        if PANDAS_AVAILABLE:
+            self.dehydration_hooks.update(exact_types={
+                pd.Timestamp: temporal_v2.dehydrate_pandas_datetime,
+            })
 
     def new_hydration_scope(self):
         self._created_scope = True
