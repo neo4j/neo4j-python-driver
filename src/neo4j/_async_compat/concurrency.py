@@ -305,26 +305,17 @@ class AsyncCondition:
     A new Lock object is created and used as the underlying lock.
     """
 
-    # copied and modified from Python 3.7's asyncio.locks module
-    # to add support for `.wait(timeout)`
+    # copied and modified from Python 3.11's asyncio package
+    # to add support for `.wait(timeout)` and cooperative locks
 
     # Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
     # 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022
     # Python Software Foundation;
     # All Rights Reserved
 
-    def __init__(self, lock=None, *, loop=None):
-        if loop is not None:
-            self._loop = loop
-        else:
-            self._loop = asyncio.get_event_loop()
-
+    def __init__(self, lock=None):
         if lock is None:
-            lock = asyncio.Lock(loop=self._loop)
-        elif (hasattr(lock, "_loop")
-              and lock._loop is not None
-              and lock._loop is not self._loop):
-            raise ValueError("loop argument must agree with lock")
+            lock = AsyncLock()
 
         self._lock = lock
         # Export the lock's locked(), acquire() and release() methods.
@@ -333,6 +324,23 @@ class AsyncCondition:
         self.release = lock.release
 
         self._waiters = collections.deque()
+
+    _loop = None
+    _loop_lock = threading.Lock()
+
+    def _get_loop(self):
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if self._loop is None:
+            with self._loop_lock:
+                if self._loop is None:
+                    self._loop = loop
+        if loop is not self._loop:
+            raise RuntimeError(f'{self!r} is bound to a different event loop')
+        return loop
 
     async def __aenter__(self):
         if isinstance(self._lock, (AsyncCooperativeLock,
@@ -374,7 +382,7 @@ class AsyncCondition:
         else:
             self._lock.release()
         try:
-            fut = self._loop.create_future()
+            fut = self._get_loop().create_future()
             self._waiters.append(fut)
             try:
                 await wait_for(fut, timeout)
@@ -408,6 +416,19 @@ class AsyncCondition:
     async def wait(self, timeout=None):
         me = asyncio.current_task()
         return await self._wait(timeout=timeout, me=me)
+
+    async def wait_for(self, predicate):
+        """Wait until a predicate becomes true.
+
+        The predicate should be a callable which result will be
+        interpreted as a boolean value.  The final predicate value is
+        the return value.
+        """
+        result = predicate()
+        while not result:
+            await self.wait()
+            result = predicate()
+        return result
 
     def notify(self, n=1):
         """By default, wake up one coroutine waiting on this condition, if any.
