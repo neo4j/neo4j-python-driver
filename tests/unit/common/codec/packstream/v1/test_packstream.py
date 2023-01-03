@@ -521,7 +521,7 @@ class TestPackStream:
         # maps must have string keys
         packer, packable_buffer = packer_with_buffer
         with pytest.raises(exc_type, match="strings"):
-            packer.pack(map_)
+            packer._pack(map_)
 
     def test_illegal_signature(self, assert_packable):
         with pytest.raises(ValueError):

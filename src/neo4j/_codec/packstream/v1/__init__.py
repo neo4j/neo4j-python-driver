@@ -24,6 +24,7 @@ from struct import (
     unpack as struct_unpack,
 )
 
+from ...hydration import DehydrationHooks
 from .._common import Structure
 
 
@@ -32,7 +33,9 @@ TRUE_VALUES: t.Tuple = (True,)
 FALSE_VALUES: t.Tuple = (False,)
 INT_TYPES: t.Tuple[t.Type, ...] = (int,)
 FLOAT_TYPES: t.Tuple[t.Type, ...] = (float,)
-SEQUENCE_TYPES: t.Tuple[t.Type, ...] = (list, tuple)
+# we can't put tuple here because spatial types subclass tuple,
+# and we don't want to treat them as sequences
+SEQUENCE_TYPES: t.Tuple[t.Type, ...] = (list,)
 MAPPING_TYPES: t.Tuple[t.Type, ...] = (dict,)
 BYTES_TYPES: t.Tuple[t.Type, ...] = (bytes, bytearray)
 
@@ -81,7 +84,24 @@ class Packer:
     def _pack_raw(self, data):
         self._write(data)
 
-    def pack(self, value, dehydration_hooks=None):
+    def pack(self, data, dehydration_hooks=None):
+        self._pack(data,
+                   dehydration_hooks=self._inject_hooks(dehydration_hooks))
+
+    @classmethod
+    def _inject_hooks(cls, dehydration_hooks=None):
+        if dehydration_hooks is None:
+            return DehydrationHooks(
+                exact_types={tuple: list},
+                subtypes={}
+            )
+        return dehydration_hooks.extend(
+            exact_types={tuple: list},
+            subtypes={}
+        )
+
+
+    def _pack(self, value, dehydration_hooks=None):
         write = self._write
 
         # None
@@ -133,7 +153,7 @@ class Packer:
         elif isinstance(value, SEQUENCE_TYPES):
             self._pack_list_header(len(value))
             for item in value:
-                self.pack(item, dehydration_hooks)
+                self._pack(item, dehydration_hooks)
 
         # Map
         elif isinstance(value, MAPPING_TYPES):
@@ -143,8 +163,8 @@ class Packer:
                     raise TypeError(
                         "Map keys must be strings, not {}".format(type(key))
                     )
-                self.pack(key, dehydration_hooks)
-                self.pack(item, dehydration_hooks)
+                self._pack(key, dehydration_hooks)
+                self._pack(item, dehydration_hooks)
 
         # Structure
         elif isinstance(value, Structure):
@@ -155,7 +175,7 @@ class Packer:
             if dehydration_hooks:
                 transformer = dehydration_hooks.get_transformer(value)
                 if transformer is not None:
-                    self.pack(transformer(value), dehydration_hooks)
+                    self._pack(transformer(value), dehydration_hooks)
                     return
 
             raise ValueError("Values of type %s are not supported" % type(value))
@@ -223,6 +243,12 @@ class Packer:
             raise OverflowError("Map header size out of range")
 
     def pack_struct(self, signature, fields, dehydration_hooks=None):
+        self._pack_struct(
+            signature, fields,
+            dehydration_hooks=self._inject_hooks(dehydration_hooks)
+        )
+
+    def _pack_struct(self, signature, fields, dehydration_hooks=None):
         if len(signature) != 1 or not isinstance(signature, bytes):
             raise ValueError("Structure signature must be a single byte value")
         write = self._write
@@ -233,7 +259,7 @@ class Packer:
             raise OverflowError("Structure size out of range")
         write(signature)
         for field in fields:
-            self.pack(field, dehydration_hooks)
+            self._pack(field, dehydration_hooks)
 
     @staticmethod
     def new_packable_buffer():
