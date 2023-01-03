@@ -111,17 +111,13 @@ def assert_packable(packer_with_buffer, unpacker_with_buffer):
     return _assert
 
 
-@pytest.fixture
-def np_nep50_as_error():
-    nep50_promotion_state = np._get_promotion_state()
-    np._set_promotion_state("weak")
-    yield
-    np._set_promotion_state(nep50_promotion_state)
-
-
-@pytest.fixture
-def np_float_overflow_as_error():
-    old_err = np.seterr(over="raise")
+@pytest.fixture(params=(True, False))
+def np_float_overflow_as_error(request):
+    should_raise = request.param
+    if should_raise:
+        old_err = np.seterr(over="raise")
+    else:
+        old_err = np.seterr(over="ignore")
     yield
     np.seterr(**old_err)
 
@@ -132,14 +128,22 @@ def np_float_overflow_as_error():
     np.int8, np.int16, np.int32, np.int64, np.longlong,
     np.uint8, np.uint16, np.uint32, np.uint64, np.ulonglong
 ))
-def int_type(request, np_nep50_as_error):
-    yield request.param
+def int_type(request):
+    if issubclass(request.param, np.number):
+        def _int_type(value):
+            # this avoids deprecation warning from NEP50 and forces
+            # c-style wrapping of the value
+            return np.array(value).astype(request.param).item()
+
+        return _int_type
+    else:
+        return request.param
 
 
 @pytest.fixture(params=(float,
                         np.float16, np.float32, np.float64, np.longdouble))
 def float_type(request, np_float_overflow_as_error):
-    yield request.param
+    return request.param
 
 
 @pytest.fixture(params=(bool, np.bool_))
@@ -187,9 +191,8 @@ class TestPackStream:
 
     def test_negative_tiny_int(self, int_type, assert_packable):
         for z in range(-16, 0):
-            try:
-                z_typed = int_type(z)
-            except OverflowError:
+            z_typed = int_type(z)
+            if z != int(z_typed):
                 continue  # not representable
             assert_packable(z_typed, bytes(bytearray([z + 0x100])))
 
@@ -204,34 +207,30 @@ class TestPackStream:
 
     def test_positive_tiny_int(self, int_type, assert_packable):
         for z in range(0, 128):
-            try:
-                z_typed = int_type(z)
-            except OverflowError:
+            z_typed = int_type(z)
+            if z != int(z_typed):
                 continue  # not representable
             assert_packable(z_typed, bytes(bytearray([z])))
 
     def test_negative_int8(self, int_type, assert_packable):
         for z in range(-128, -16):
-            try:
-                z_typed = int_type(z)
-            except OverflowError:
+            z_typed = int_type(z)
+            if z != int(z_typed):
                 continue  # not representable
             assert_packable(z_typed, bytes(bytearray([0xC8, z + 0x100])))
 
     def test_positive_int16(self, int_type, assert_packable):
         for z in range(128, 32768):
-            try:
-                z_typed = int_type(z)
-            except OverflowError:
+            z_typed = int_type(z)
+            if z != int(z_typed):
                 continue  # not representable
             expected = b"\xC9" + struct.pack(">h", z)
             assert_packable(z_typed, expected)
 
     def test_negative_int16(self, int_type, assert_packable):
         for z in range(-32768, -128):
-            try:
-                z_typed = int_type(z)
-            except OverflowError:
+            z_typed = int_type(z)
+            if z != int(z_typed):
                 continue  # not representable
             expected = b"\xC9" + struct.pack(">h", z)
             assert_packable(z_typed, expected)
@@ -239,9 +238,8 @@ class TestPackStream:
     def test_positive_int32(self, int_type, assert_packable):
         for e in range(15, 31):
             z = 2 ** e
-            try:
-                z_typed = int_type(z)
-            except OverflowError:
+            z_typed = int_type(z)
+            if z != int(z_typed):
                 continue  # not representable
             expected = b"\xCA" + struct.pack(">i", z)
             assert_packable(z_typed, expected)
@@ -249,9 +247,8 @@ class TestPackStream:
     def test_negative_int32(self, int_type, assert_packable):
         for e in range(15, 31):
             z = -(2 ** e + 1)
-            try:
-                z_typed = int_type(z)
-            except OverflowError:
+            z_typed = int_type(z)
+            if z != int(z_typed):
                 continue  # not representable
             expected = b"\xCA" + struct.pack(">i", z)
             assert_packable(z_typed, expected)
@@ -259,9 +256,8 @@ class TestPackStream:
     def test_positive_int64(self, int_type, assert_packable):
         for e in range(31, 63):
             z = 2 ** e
-            try:
-                z_typed = int_type(z)
-            except OverflowError:
+            z_typed = int_type(z)
+            if z != int(z_typed):
                 continue  # not representable
             expected = b"\xCB" + struct.pack(">q", z)
             assert_packable(z_typed, expected)
@@ -280,9 +276,8 @@ class TestPackStream:
     def test_negative_int64(self, int_type, assert_packable):
         for e in range(31, 63):
             z = -(2 ** e + 1)
-            try:
-                 z_typed = int_type(z)
-            except OverflowError:
+            z_typed = int_type(z)
+            if z != int(z_typed):
                 continue  # not representable
             expected = b"\xCB" + struct.pack(">q", z)
             assert_packable(z_typed, expected)
@@ -300,18 +295,16 @@ class TestPackStream:
     def test_integer_positive_overflow(self, int_type, pack, assert_packable):
         with pytest.raises(OverflowError):
             z = 2 ** 63 + 1
-            try:
-                z_typed = int_type(z)
-            except OverflowError:
+            z_typed = int_type(z)
+            if z != int(z_typed):
                 pytest.skip("not representable")
             pack(z_typed)
 
     def test_integer_negative_overflow(self, int_type, pack, assert_packable):
         with pytest.raises(OverflowError):
             z = -(2 ** 63) - 1
-            try:
-                z_typed = int_type(z)
-            except OverflowError:
+            z_typed = int_type(z)
+            if z != int(z_typed):
                 pytest.skip("not representable")
             pack(z_typed)
 

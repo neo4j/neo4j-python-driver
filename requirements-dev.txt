@@ -18,7 +18,7 @@ tomlkit~=0.11.6
 # needed for running tests
 coverage[toml]>=5.5
 mock>=4.0.3
-numpy>=1.24.0  # using numpy._set_promotion_state https://numpy.org/neps/nep-0050-scalar-promotion.html
+numpy>=1.7.0
 pandas>=1.0.0
 pyarrow>=1.0.0
 pytest>=6.2.5
