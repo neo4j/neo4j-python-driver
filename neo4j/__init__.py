@@ -126,9 +126,15 @@ class GraphDatabase:
     def driver(cls, uri, *, auth=None, **config):
         """Create a driver.
 
-        :param uri: the connection URI for the driver, see :ref:`uri-ref` for available URIs.
-        :param auth: the authentication details, see :ref:`auth-ref` for available authentication details.
-        :param config: driver configuration key-word arguments, see :ref:`driver-configuration-ref` for available key-word arguments.
+        :param uri: the connection URI for the driver,
+            see :ref:`uri-ref` for available URIs.
+        :type uri: str
+        :param auth: the authentication details,
+            see :ref:`auth-ref` for available authentication details.
+        :type auth: None or typing.Tuple[typing.Any, typing.Any] or Auth
+        :param config: driver configuration key-word arguments,
+            see :ref:`driver-configuration-ref` for available
+            key-word arguments.
 
         :return: :ref:`neo4j-driver-ref` or :ref:`bolt-driver-ref`
         """
