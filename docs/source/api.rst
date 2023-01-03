@@ -16,7 +16,7 @@ The :class:`neo4j.Driver` construction is done via a ``classmethod`` on the :cla
 .. autoclass:: neo4j.GraphDatabase
    :members: bookmark_manager
 
-    .. method:: driver
+    .. automethod:: driver
 
         Driver creation example:
 
