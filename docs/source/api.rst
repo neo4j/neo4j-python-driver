@@ -212,7 +212,7 @@ connection can be used to perform database related work.
 -------------
 Specify whether to use an encrypted connection between the driver and server.
 
-This setting is only available for URI schemes ``bolt`` and ``neo4j``.
+This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
 
 This setting does not have any effect if a custom ``ssl_context`` is configured.
 
@@ -314,7 +314,7 @@ For example:
 ---------
 Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
 
-This setting is only available for URI schemes ``bolt`` and ``neo4j``.
+This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
 
 This setting does not have any effect if ``encrypted`` is set to ``False``.
 
@@ -346,7 +346,7 @@ This setting does not have any effect if ``encrypted`` is set to ``False``.
 ---------------
 Specify a custom SSL context to use for wrapping connections.
 
-This setting is only available for URI schemes ``bolt`` and ``neo4j``.
+This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
 
 If given, ``encrypted`` and ``trusted_certificates`` have no effect.
 
@@ -367,7 +367,7 @@ If given, ``encrypted`` and ``trusted_certificates`` have no effect.
 ------------------------
 Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
 
-This setting is only available for URI schemes ``bolt`` and ``neo4j``.
+This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
 
 This setting does not have any effect if ``encrypted`` is set to ``False`` or a
 custom ``ssl_context`` is configured.
