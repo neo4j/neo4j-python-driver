@@ -43,7 +43,7 @@ ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
 ENV PYTHON_VERSIONS 3.6 3.7 3.8 3.9 3.10 3.11
 
 RUN for version in $PYTHON_VERSIONS; do \
-        pyenv install $version:latest; \
+        pyenv install $version; \
     done
 RUN pyenv rehash
 RUN pyenv global $(pyenv versions --bare --skip-aliases)
