@@ -121,14 +121,15 @@ class Packer:
 
         # Integer
         elif isinstance(value, INT_TYPES):
+            value = int(value)
             if -0x10 <= value < 0x80:
-                write(PACKED_UINT_8[int(value % 0x100)])
+                write(PACKED_UINT_8[value % 0x100])
             elif -0x80 <= value < -0x10:
                 write(b"\xC8")
-                write(PACKED_UINT_8[int(value % 0x100)])
+                write(PACKED_UINT_8[value % 0x100])
             elif -0x8000 <= value < 0x8000:
                 write(b"\xC9")
-                write(PACKED_UINT_16[int(value % 0x10000)])
+                write(PACKED_UINT_16[value % 0x10000])
             elif -0x80000000 <= value < 0x80000000:
                 write(b"\xCA")
                 write(struct_pack(">i", value))
