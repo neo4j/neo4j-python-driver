@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import typing as t
 
 
@@ -466,7 +467,11 @@ class AsyncDriver:
     async def close(self) -> None:
         """ Shut down, closing any open connections in the pool.
         """
-        await self._pool.close()
+        try:
+            await self._pool.close()
+        except asyncio.CancelledError:
+            self._closed = True
+            raise
         self._closed = True
 
     if t.TYPE_CHECKING:
