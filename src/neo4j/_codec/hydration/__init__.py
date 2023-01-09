@@ -17,6 +17,7 @@
 
 from ._common import (
     BrokenHydrationObject,
+    DehydrationHooks,
     HydrationScope,
 )
 from ._interface import HydrationHandlerABC
@@ -24,6 +25,7 @@ from ._interface import HydrationHandlerABC
 
 __all__ = [
     "BrokenHydrationObject",
+    "DehydrationHooks",
     "HydrationHandlerABC",
     "HydrationScope",
 ]

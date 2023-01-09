@@ -18,11 +18,14 @@
 
 import abc
 
+from .._common import DehydrationHooks
+
 
 class HydrationHandlerABC(abc.ABC):
     def __init__(self):
         self.struct_hydration_functions = {}
-        self.dehydration_functions = {}
+        self.dehydration_hooks = DehydrationHooks(exact_types={},
+                                                  subtypes={})
 
     @abc.abstractmethod
     def new_hydration_scope(self):

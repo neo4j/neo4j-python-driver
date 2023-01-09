@@ -16,10 +16,49 @@
 # limitations under the License.
 
 
+import typing as t
 from copy import copy
+from dataclasses import dataclass
 
 from ...graph import Graph
 from ..packstream import Structure
+
+
+@dataclass
+class DehydrationHooks:
+    exact_types: t.Dict[t.Type, t.Callable[[t.Any], t.Any]]
+    subtypes: t.Dict[t.Type, t.Callable[[t.Any], t.Any]]
+
+    def update(self, exact_types=None, subtypes=None):
+        exact_types = exact_types or {}
+        subtypes = subtypes or {}
+        self.exact_types.update(exact_types)
+        self.subtypes.update(subtypes)
+
+    def extend(self, exact_types=None, subtypes=None):
+        exact_types = exact_types or {}
+        subtypes = subtypes or {}
+        return DehydrationHooks(
+            exact_types={**self.exact_types, **exact_types},
+            subtypes={**self.subtypes, **subtypes},
+        )
+
+    def get_transformer(self, item):
+        type_ = type(item)
+        transformer = self.exact_types.get(type_)
+        if transformer is not None:
+            return transformer
+        transformer = next(
+            (
+                f
+                for super_type, f in self.subtypes.items()
+                if isinstance(item, super_type)
+            ),
+            None,
+        )
+        if transformer is not None:
+            return transformer
+        return None
 
 
 class BrokenHydrationObject:
@@ -68,7 +107,7 @@ class HydrationScope:
             list: self._hydrate_list,
             dict: self._hydrate_dict,
         }
-        self.dehydration_hooks = hydration_handler.dehydration_functions
+        self.dehydration_hooks = hydration_handler.dehydration_hooks
 
     def _hydrate_structure(self, value):
         f = self._struct_hydration_functions.get(value.tag)
