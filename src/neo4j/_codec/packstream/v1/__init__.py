@@ -45,16 +45,14 @@ BYTES_TYPES: t.Tuple[t.Type, ...] = (bytes, bytearray)
 
 
 if np is not None:
-    TRUE_VALUES += (np.bool_(True),)
-    FALSE_VALUES += (np.bool_(False),)
+    TRUE_VALUES = (*TRUE_VALUES, np.bool_(True))
+    FALSE_VALUES = (*FALSE_VALUES, np.bool_(False))
     INT_TYPES = (*INT_TYPES, np.integer)
     FLOAT_TYPES = (*FLOAT_TYPES, np.floating)
     SEQUENCE_TYPES = (*SEQUENCE_TYPES, np.ndarray)
 
 if pd is not None:
-    import pandas.core.arrays
-
-    NONE_VALUES += (pd.NA,)
+    NONE_VALUES = (*NONE_VALUES, pd.NA)
     SEQUENCE_TYPES = (*SEQUENCE_TYPES, pd.Series, pd.Categorical,
                       pd.core.arrays.ExtensionArray)
     MAPPING_TYPES = (*MAPPING_TYPES, pd.DataFrame)
