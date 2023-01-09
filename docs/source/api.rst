@@ -262,6 +262,8 @@ connection can be used to perform database related work.
 -------------
 Specify whether to use an encrypted connection between the driver and server.
 
+This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
+
 :Type: ``bool``
 :Default: ``False``
 
@@ -345,6 +347,8 @@ For example:
 ``trust``
 ---------
 Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
+
+This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
 
 This setting does not have any effect if ``encrypted`` is set to ``False``.
 
