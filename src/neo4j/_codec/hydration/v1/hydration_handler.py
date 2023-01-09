@@ -23,21 +23,10 @@ from datetime import (
     timedelta,
 )
 
-
-try:
-    import numpy as np
-
-    NUMPY_AVAILABLE = True
-except ImportError:
-    NUMPY_AVAILABLE = False
-
-try:
-    import pandas as pd
-
-    PANDAS_AVAILABLE = True
-except ImportError:
-    PANDAS_AVAILABLE = False
-
+from ...._optional_deps import (
+    np,
+    pd,
+)
 from ....graph import (
     Graph,
     Node,
@@ -187,12 +176,12 @@ class HydrationHandler(HydrationHandlerABC):
             Duration: temporal.dehydrate_duration,
             timedelta: temporal.dehydrate_timedelta,
         })
-        if NUMPY_AVAILABLE:
+        if np is not None:
             self.dehydration_hooks.update(exact_types={
                 np.datetime64: temporal.dehydrate_np_datetime,
                 np.timedelta64: temporal.dehydrate_np_timedelta,
             })
-        if PANDAS_AVAILABLE:
+        if pd is not None:
             self.dehydration_hooks.update(exact_types={
                 pd.Timestamp: temporal.dehydrate_pandas_datetime,
                 pd.Timedelta: temporal.dehydrate_pandas_timedelta,
@@ -216,11 +205,11 @@ class HydrationHandler(HydrationHandlerABC):
             DateTime: temporal_v2.dehydrate_datetime,
             datetime: temporal_v2.dehydrate_datetime,
         })
-        if NUMPY_AVAILABLE:
+        if np is not None:
             self.dehydration_hooks.update(exact_types={
                 np.datetime64: temporal_v2.dehydrate_np_datetime,
             })
-        if PANDAS_AVAILABLE:
+        if pd is not None:
             self.dehydration_hooks.update(exact_types={
                 pd.Timestamp: temporal_v2.dehydrate_pandas_datetime,
             })

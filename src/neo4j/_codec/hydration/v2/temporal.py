@@ -16,7 +16,6 @@
 # limitations under the License.
 
 
-from ....time import UnixEpoch
 from ..v1.temporal import *
 
 
@@ -93,7 +92,7 @@ def dehydrate_datetime(value):  # type: ignore[no-redef]
         return Structure(b"I", seconds, nanoseconds, offset_seconds)
 
 
-if PANDAS_AVAILABLE:
+if pd is not None:
     def dehydrate_pandas_datetime(value):
         """ Dehydrator for `pandas.Timestamp` values.
 

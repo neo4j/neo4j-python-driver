@@ -50,12 +50,12 @@ class HydrationHandler(HydrationHandlerABC):  # type: ignore[no-redef]
             Duration: temporal.dehydrate_duration,
             timedelta: temporal.dehydrate_timedelta,
         })
-        if NUMPY_AVAILABLE:
+        if np is not None:
             self.dehydration_hooks.update(exact_types={
                 np.datetime64: temporal.dehydrate_np_datetime,
                 np.timedelta64: temporal.dehydrate_np_timedelta,
             })
-        if PANDAS_AVAILABLE:
+        if pd is not None:
             self.dehydration_hooks.update(exact_types={
                 pd.Timestamp: temporal.dehydrate_pandas_datetime,
                 pd.Timedelta: temporal.dehydrate_pandas_timedelta,

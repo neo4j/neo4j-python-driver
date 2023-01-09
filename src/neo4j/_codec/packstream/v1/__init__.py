@@ -24,6 +24,10 @@ from struct import (
     unpack as struct_unpack,
 )
 
+from ...._optional_deps import (
+    np,
+    pd,
+)
 from ...hydration import DehydrationHooks
 from .._common import Structure
 
@@ -40,29 +44,20 @@ MAPPING_TYPES: t.Tuple[t.Type, ...] = (dict,)
 BYTES_TYPES: t.Tuple[t.Type, ...] = (bytes, bytearray)
 
 
-try:
-    import numpy as np
-
+if np is not None:
     TRUE_VALUES += (np.bool_(True),)
     FALSE_VALUES += (np.bool_(False),)
     INT_TYPES = (*INT_TYPES, np.integer)
     FLOAT_TYPES = (*FLOAT_TYPES, np.floating)
     SEQUENCE_TYPES = (*SEQUENCE_TYPES, np.ndarray)
-    NUMPY_AVAILABLE = True
-except ImportError:
-    NUMPY_AVAILABLE = False
 
-try:
-    import pandas as pd
+if pd is not None:
     import pandas.core.arrays
 
     NONE_VALUES += (pd.NA,)
     SEQUENCE_TYPES = (*SEQUENCE_TYPES, pd.Series, pd.Categorical,
                       pd.core.arrays.ExtensionArray)
     MAPPING_TYPES = (*MAPPING_TYPES, pd.DataFrame)
-    PANDAS_AVAILABLE = True
-except ImportError:
-    PANDAS_AVAILABLE = False
 
 
 PACKED_UINT_8 = [struct_pack(">B", value) for value in range(0x100)]

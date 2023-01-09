@@ -22,21 +22,10 @@ from datetime import (
     timedelta,
 )
 
-
-try:
-    import numpy as np
-
-    NUMPY_AVAILABLE = True
-except ImportError:
-    NUMPY_AVAILABLE = False
-
-try:
-    import pandas as pd
-
-    PANDAS_AVAILABLE = True
-except ImportError:
-    PANDAS_AVAILABLE = False
-
+from ...._optional_deps import (
+    np,
+    pd,
+)
 from ....time import (
     Date,
     DateTime,
@@ -189,7 +178,7 @@ def dehydrate_datetime(value):
                          int(tz.utcoffset(value).total_seconds()))
 
 
-if NUMPY_AVAILABLE:
+if np is not None:
     def dehydrate_np_datetime(value):
         """ Dehydrator for `numpy.datetime64` values.
 
@@ -211,7 +200,7 @@ if NUMPY_AVAILABLE:
         return Structure(b"d", seconds, nanoseconds)
 
 
-if PANDAS_AVAILABLE:
+if pd is not None:
     def dehydrate_pandas_datetime(value):
         """ Dehydrator for `pandas.Timestamp` values.
 
@@ -269,7 +258,7 @@ def dehydrate_timedelta(value):
     return Structure(b"E", months, days, seconds, nanoseconds)
 
 
-if NUMPY_AVAILABLE:
+if np is not None:
     _NUMPY_DURATION_UNITS = {
         "Y": "years",
         "M": "months",
@@ -303,7 +292,7 @@ if NUMPY_AVAILABLE:
         ))
 
 
-if PANDAS_AVAILABLE:
+if pd is not None:
     def dehydrate_pandas_timedelta(value):
         """ Dehydrator for `pandas.Timedelta` values.
 
