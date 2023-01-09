@@ -119,12 +119,20 @@ class GraphDatabase:
     else:
 
         @classmethod
-        def driver(cls, uri, *, auth=None, **config) -> Driver:
+        def driver(
+            cls, uri: str, *,
+            auth: t.Union[t.Tuple[t.Any, t.Any], Auth, None] = None,
+            **config
+        ) -> Driver:
             """Create a driver.
 
-            :param uri: the connection URI for the driver, see :ref:`uri-ref` for available URIs.
-            :param auth: the authentication details, see :ref:`auth-ref` for available authentication details.
-            :param config: driver configuration key-word arguments, see :ref:`driver-configuration-ref` for available key-word arguments.
+            :param uri: the connection URI for the driver,
+                see :ref:`uri-ref` for available URIs.
+            :param auth: the authentication details,
+                see :ref:`auth-ref` for available authentication details.
+            :param config: driver configuration key-word arguments,
+                see :ref:`driver-configuration-ref` for available
+                key-word arguments.
             """
 
             driver_type, security_type, parsed = parse_neo4j_uri(uri)
