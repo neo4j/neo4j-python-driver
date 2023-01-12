@@ -273,7 +273,6 @@ class LogonResponse(Response):
 
 
 class CommitResponse(Response):
-
     pass
 
 

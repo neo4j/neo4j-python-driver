@@ -143,9 +143,7 @@ class AsyncGraphDatabase:
 
             driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
-            if not callable(config.get("auth")):
-                auth = config.get("auth")
-                config["auth"] = lambda: auth
+            config["auth"] = auth if callable(auth) else lambda: auth
 
             # TODO: 6.0 - remove "trust" config option
             if "trust" in config.keys():

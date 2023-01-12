@@ -124,6 +124,8 @@ def NewDriver(backend, data):
     auth = _convert_auth_token(data, "authorizationToken")
     if auth is None and data.get("authTokenProviderId") is not None:
         auth = backend.auth_token_providers[data["authTokenProviderId"]]
+    else:
+        data.mark_item_as_read_if_equals("authTokenProviderId", None)
     kwargs = {}
     if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
         kwargs["resolver"] = resolution_func(

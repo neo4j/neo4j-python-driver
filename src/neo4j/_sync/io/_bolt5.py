@@ -34,7 +34,10 @@ from ...exceptions import (
     NotALeader,
     ServiceUnavailable,
 )
-from ._bolt import Bolt
+from ._bolt import (
+    Bolt,
+    ServerStateManagerBase,
+)
 from ._bolt3 import (
     ServerStateManager,
     ServerStates,
@@ -76,6 +79,9 @@ class Bolt5x0(Bolt):
     def _on_server_state_change(self, old_state, new_state):
         log.debug("[#%04X]  _: <CONNECTION> state: %s > %s", self.local_port,
                   old_state.name, new_state.name)
+
+    def _get_server_state_manager(self) -> ServerStateManagerBase:
+        return self._server_state_manager
 
     @property
     def is_reset(self):
@@ -340,8 +346,7 @@ class Bolt5x0(Bolt):
                     self.pool.on_write_failure(address=self.unresolved_address)
                 raise
             except Neo4jError as e:
-                if self.pool and e._invalidates_all_connections():
-                    self.pool.mark_all_stale()
+                self.pool.on_neo4j_error(e, self.server_info.address)
                 raise
         else:
             raise BoltProtocolError(
@@ -389,6 +394,10 @@ class ServerStateManager5x1(ServerStateManager):
             "reset": ServerStates5x1.READY,
         }
     }
+
+
+    def failed(self):
+        return self.state == ServerStates5x1.FAILED
 
 
 class Bolt5x1(Bolt5x0):

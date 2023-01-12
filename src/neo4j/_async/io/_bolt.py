@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import typing as t
 from collections import deque
 from logging import getLogger
 from time import perf_counter
@@ -55,6 +56,20 @@ from ._common import (
 
 # Set up logger
 log = getLogger("neo4j")
+
+
+class ServerStateManagerBase(abc.ABC):
+    @abc.abstractmethod
+    def __init__(self, init_state, on_change=None):
+        ...
+
+    @abc.abstractmethod
+    def transition(self, message, metadata):
+        ...
+
+    @abc.abstractmethod
+    def failed(self):
+        ...
 
 
 class AsyncBolt:
@@ -149,6 +164,10 @@ class AsyncBolt:
     def __del__(self):
         if not asyncio.iscoroutinefunction(self.close):
             self.close()
+
+    @abc.abstractmethod
+    def _get_server_state_manager(self) -> ServerStateManagerBase:
+        ...
 
     @classmethod
     def _to_auth_dict(cls, auth):
@@ -767,7 +786,7 @@ class AsyncBolt:
             # remove the connection from the pool, nor to try to close the
             # connection again.
             await self.close()
-            if self.pool:
+            if self.pool and not self._get_server_state_manager().failed():
                 await self.pool.deactivate(address=self.unresolved_address)
 
         # Iterate through the outstanding responses, and if any correspond

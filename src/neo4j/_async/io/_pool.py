@@ -87,8 +87,7 @@ class AsyncIOPool(abc.ABC):
         self.lock = AsyncCooperativeRLock()
         self.cond = AsyncCondition(self.lock)
         self.refreshing_auth = False
-        self.refreshing_auth_lock = AsyncCooperativeLock()
-        self.initializing_auth_lock = AsyncLock()
+        self.auth_condition = AsyncCondition()
         self.last_auth: t.Optional[RenewableAuth] = None
 
     async def __aenter__(self):
@@ -98,38 +97,49 @@ class AsyncIOPool(abc.ABC):
         await self.close()
 
     async def get_auth(self):
-        if await self._initialize_auth():
+        async with self.auth_condition:
+            auth_missing = self.last_auth is None
+            needs_refresh = auth_missing or self.last_auth.expired
+            if not needs_refresh:
+                return self.last_auth.auth
+
+            if self.refreshing_auth:
+                # someone else is already getting new auth info
+                if not auth_missing:
+                    # there is old auth info we can use in the meantime
+                    return self.last_auth.auth
+                else:
+                    while self.last_auth is None:
+                        await self.auth_condition.wait()
+                    return self.last_auth.auth
+            else:
+                # we need to get new auth info
+                self.refreshing_auth = True
+
+        auth = await self._get_new_auth()
+        async with self.auth_condition:
+            self.last_auth = auth
+            self.refreshing_auth = False
+            self.auth_condition.notify_all()
             return self.last_auth.auth
 
-        with self.refreshing_auth_lock:
+    async def force_new_auth(self):
+        async with self.auth_condition:
+            log.debug("[#0000]  _: <POOL> force new auth info")
             if self.refreshing_auth:
-                # someone else is already getting a new auth
-                return self.last_auth.auth
-        if self.last_auth is None or self.last_auth.expired:
-            with self.refreshing_auth_lock:
-                self.refreshing_auth = True
-            try:
-                new_auth = await self._get_new_auth()
-                with self.refreshing_auth_lock:
-                    self.last_auth = new_auth
-                    self.refreshing_auth = False
-            except:
-                with self.refreshing_auth_lock:
-                    self.refreshing_auth = False
-                raise
-        return self.last_auth.auth
+                return
+            self.last_auth = None
+            self.refreshing_auth = True
 
-    async def _initialize_auth(self):
-        if self.last_auth is not None:
-            return False
-        async with self.initializing_auth_lock:
-            if self.last_auth is not None:
-                # someone else initialized the auth
-                return True
-            self.last_auth = await self._get_new_auth()
-            return True
+        auth = await self._get_new_auth()
+        async with self.auth_condition:
+            self.last_auth = auth
+            self.refreshing_auth = False
+            self.auth_condition.notify_all()
 
     async def _get_new_auth(self):
+        log.debug("[#0000]  _: <POOL> requesting new auth info from %r",
+                  self.pool_config.auth)
         new_auth = await AsyncUtil.callback(self.pool_config.auth)
         if not isinstance(new_auth, RenewableAuth):
             return RenewableAuth(new_auth)
@@ -428,6 +438,19 @@ class AsyncIOPool(abc.ABC):
         raise WriteServiceUnavailable(
             "No write service available for pool {}".format(self)
         )
+
+    async def on_neo4j_error(self, error, address):
+        assert isinstance(error, Neo4jError)
+        if error._unauthenticates_all_connections():
+            log.debug(
+                "[#0000]  _: <POOL> mark all connections to %r as "
+                "unauthenticated", address
+            )
+            with self.lock:
+                for connection in self.connections.get(address, ()):
+                    connection.auth_dict = {}
+        if error._requires_new_credentials():
+            await self.force_new_auth()
 
     async def close(self):
         """ Close all connections and empty the pool.

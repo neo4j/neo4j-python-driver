@@ -60,6 +60,7 @@
 
     "ConfHint:connection.recv_timeout_seconds": true,
 
+    "Backend:MockTime": true,
     "Backend:RTFetch": true,
     "Backend:RTForceUpdate": true
   }
