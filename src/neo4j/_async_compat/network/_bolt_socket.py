@@ -76,6 +76,7 @@ def _sanitize_deadline(deadline):
         return None
     return deadline
 
+
 class AsyncBoltSocket:
     Bolt: te.Final[t.Type[AsyncBolt]] = None  # type: ignore[assignment]
 
