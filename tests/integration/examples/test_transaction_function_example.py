@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,7 +33,7 @@ def create_person(tx, name):
 
 def add_person(driver, name):
     with driver.session() as session:
-        return session.write_transaction(create_person, name)
+        return session.execute_write(create_person, name)
 # end::transaction-function[]
 
 
@@ -46,10 +46,17 @@ class TransactionFunctionExample:
         return add_person(self.driver, name)
 
 
-def test_example(neo4j_driver):
-    eg = TransactionFunctionExample(neo4j_driver)
+def work(tx, query, **parameters):
+    res = tx.run(query, **parameters)
+    return [rec.values() for rec in res], res.consume()
+
+
+def test_example(driver):
+    eg = TransactionFunctionExample(driver)
     with eg.driver.session() as session:
-        session.run("MATCH (_) DETACH DELETE _")
+        session.execute_write(work, "MATCH (_) DETACH DELETE _")
         eg.add_person("Alice")
-        n = session.run("MATCH (a:Person) RETURN count(a)").single().value()
-        assert n == 1
+        records, _ = session.execute_read(
+            work, "MATCH (a:Person) RETURN count(a)"
+        )
+        assert records == [[1]]

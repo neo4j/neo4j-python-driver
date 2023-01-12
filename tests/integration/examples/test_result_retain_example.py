@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -44,10 +44,10 @@ def result_retain_example(driver):
     def add_employees(company_name):
         employees = 0
         with driver.session() as session:
-            persons = session.read_transaction(match_person_nodes)
+            persons = session.execute_read(match_person_nodes)
 
             for person in persons:
-                employees += session.write_transaction(add_employee_to_company, person, company_name)
+                employees += session.execute_write(add_employee_to_company, person, company_name)
 
         return employees
     # end::result-retain[]

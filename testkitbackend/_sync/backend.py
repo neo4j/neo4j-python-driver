@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,6 +17,7 @@
 
 
 import asyncio
+import traceback
 from inspect import (
     getmembers,
     isfunction,
@@ -25,7 +26,7 @@ from json import (
     dumps,
     loads,
 )
-import traceback
+from pathlib import Path
 
 from neo4j._exceptions import BoltError
 from neo4j.exceptions import (
@@ -34,12 +35,17 @@ from neo4j.exceptions import (
     UnsupportedServerProduct,
 )
 
-from . import requests
 from .._driver_logger import (
     buffer_handler,
     log,
 )
 from ..backend import Request
+from ..exceptions import MarkdAsDriverException
+from . import requests
+
+
+TESTKIT_BACKEND_PATH = Path(__file__).absolute().resolve().parents[1]
+DRIVER_PATH = TESTKIT_BACKEND_PATH.parent / "src" / "neo4j"
 
 
 class Backend:
@@ -49,6 +55,9 @@ class Backend:
         self.drivers = {}
         self.custom_resolutions = {}
         self.dns_resolutions = {}
+        self.bookmark_managers = {}
+        self.bookmarks_consumptions = {}
+        self.bookmarks_supplies = {}
         self.sessions = {}
         self.results = {}
         self.errors = {}
@@ -58,6 +67,25 @@ class Backend:
         # Collect all request handlers
         self._requestHandlers = dict(
             [m for m in getmembers(requests, isfunction)])
+
+    def close(self):
+        for dict_of_closables in (
+            self.transactions,
+            {key: tracker.session for key, tracker in self.sessions.items()},
+            self.drivers,
+        ):
+            for key, closable in dict_of_closables.items():
+                if not hasattr(closable, "close"):  # e.g., ManagedTransaction
+                    continue
+                try:
+                    closable.close()
+                except (Neo4jError, DriverError, OSError):
+                    log.error(
+                        "Error during TestKit backend garbage collection. "
+                        "While collecting: (key: %s) %s\n%s",
+                        key, closable, traceback.format_exc()
+                    )
+            dict_of_closables.clear()
 
     def next_key(self):
         self.key = self.key + 1
@@ -81,6 +109,52 @@ class Backend:
                     request = request + line
         return False
 
+    @staticmethod
+    def _exc_stems_from_driver(exc):
+        stack = traceback.extract_tb(exc.__traceback__)
+        for frame in stack[-1:1:-1]:
+            p = Path(frame.filename)
+            if TESTKIT_BACKEND_PATH in p.parents:
+                return False
+            if DRIVER_PATH in p.parents:
+                return True
+
+    @staticmethod
+    def _exc_msg(exc, max_depth=10):
+        if isinstance(exc, Neo4jError) and exc.message is not None:
+            return str(exc.message)
+
+        depth = 0
+        res = str(exc)
+        while getattr(exc, "__cause__", None) is not None:
+            depth += 1
+            if depth >= max_depth:
+                break
+            res += f"\nCaused by: {exc.__cause__!r}"
+            exc = exc.__cause__
+        return res
+
+    def write_driver_exc(self, exc):
+        log.debug(traceback.format_exc())
+
+        key = self.next_key()
+        self.errors[key] = exc
+
+        payload = {"id": key, "msg": ""}
+
+        if isinstance(exc, MarkdAsDriverException):
+            wrapped_exc = exc.wrapped_exc
+            payload["errorType"] = str(type(wrapped_exc))
+            if wrapped_exc.args:
+                payload["msg"] = self._exc_msg(wrapped_exc.args[0])
+        else:
+            payload["errorType"] = str(type(exc))
+            payload["msg"] = self._exc_msg(exc)
+            if isinstance(exc, Neo4jError):
+                payload["code"] = exc.code
+
+        self.send_response("DriverError", payload)
+
     def _process(self, request):
         """ Process a received request by retrieving handler that
         corresponds to the request name.
@@ -103,25 +177,17 @@ class Backend:
                     " request: " + ", ".join(unsused_keys)
                 )
         except (Neo4jError, DriverError, UnsupportedServerProduct,
-                BoltError) as e:
-            log.debug(traceback.format_exc())
-            if isinstance(e, Neo4jError):
-                msg = "" if e.message is None else str(e.message)
-            else:
-                msg = str(e.args[0]) if e.args else ""
-
-            key = self.next_key()
-            self.errors[key] = e
-            payload = {"id": key, "errorType": str(type(e)), "msg": msg}
-            if isinstance(e, Neo4jError):
-                payload["code"] = e.code
-            self.send_response("DriverError", payload)
+                BoltError, MarkdAsDriverException) as e:
+            self.write_driver_exc(e)
         except requests.FrontendError as e:
             self.send_response("FrontendError", {"msg": str(e)})
-        except Exception:
-            tb = traceback.format_exc()
-            log.error(tb)
-            self.send_response("BackendError", {"msg": tb})
+        except Exception as e:
+            if self._exc_stems_from_driver(e):
+                self.write_driver_exc(e)
+            else:
+                tb = traceback.format_exc()
+                log.error(tb)
+                self.send_response("BackendError", {"msg": tb})
 
     def send_response(self, name, data):
         """ Sends a response to backend.

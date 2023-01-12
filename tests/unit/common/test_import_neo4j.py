@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,13 +7,16 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
+import pytest
 
 
 def test_import_dunder_version():
@@ -105,7 +108,8 @@ def test_import_async_session():
 
 
 def test_import_sessionconfig():
-    from neo4j import SessionConfig
+    with pytest.warns(DeprecationWarning):
+        from neo4j import SessionConfig
 
 
 def test_import_query():
@@ -129,15 +133,17 @@ def test_import_unit_of_work():
 
 
 def test_import_config():
-    from neo4j import Config
+    with pytest.warns(DeprecationWarning):
+        from neo4j import Config
 
 
 def test_import_poolconfig():
-    from neo4j import PoolConfig
+    with pytest.warns(DeprecationWarning):
+        from neo4j import PoolConfig
 
 
 def test_import_graph():
-    import neo4j.graph as graph
+    from neo4j import graph
 
 
 def test_import_graph_node():
@@ -153,12 +159,12 @@ def test_import_graph_graph():
 
 
 def test_import_spatial():
-    import neo4j.spatial as spatial
+    from neo4j import spatial
 
 
 def test_import_time():
-    import neo4j.time as time
+    from neo4j import time
 
 
 def test_import_exceptions():
-    import neo4j.exceptions as exceptions
+    from neo4j import exceptions

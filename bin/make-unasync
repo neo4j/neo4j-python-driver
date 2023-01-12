@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -9,7 +9,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,10 +21,10 @@
 import collections
 import errno
 import os
-from pathlib import Path
 import re
 import sys
 import tokenize as std_tokenize
+from pathlib import Path
 
 import isort
 import isort.files
@@ -32,10 +32,12 @@ import unasync
 
 
 ROOT_DIR = Path(__file__).parents[1].absolute()
-ASYNC_DIR = ROOT_DIR / "neo4j" / "_async"
-SYNC_DIR = ROOT_DIR / "neo4j" / "_sync"
-ASYNC_TEST_DIR = ROOT_DIR / "tests" / "unit" / "async_"
-SYNC_TEST_DIR = ROOT_DIR / "tests" / "unit" / "sync"
+ASYNC_DIR = ROOT_DIR / "src" / "neo4j" / "_async"
+SYNC_DIR = ROOT_DIR / "src" / "neo4j" / "_sync"
+ASYNC_UNIT_TEST_DIR = ROOT_DIR / "tests" / "unit" / "async_"
+SYNC_UNIT_TEST_DIR = ROOT_DIR / "tests" / "unit" / "sync"
+ASYNC_INTEGRATION_TEST_DIR = ROOT_DIR / "tests" / "integration" / "async_"
+SYNC_INTEGRATION_TEST_DIR = ROOT_DIR / "tests" / "integration" / "sync"
 ASYNC_TESTKIT_BACKEND_DIR = ROOT_DIR / "testkitbackend" / "_async"
 SYNC_TESTKIT_BACKEND_DIR = ROOT_DIR / "testkitbackend" / "_sync"
 UNASYNC_SUFFIX = ".unasync"
@@ -45,7 +47,7 @@ PY_FILE_EXTENSIONS = {".py", ".pyi"}
 
 # copy from unasync for customization -----------------------------------------
 # https://github.com/python-trio/unasync
-# License: MIT and Apache2
+# License: MIT or Apache2
 
 
 Token = collections.namedtuple(
@@ -102,11 +104,15 @@ class CustomRule(unasync.Rule):
     def __init__(self, *args, **kwargs):
         super(CustomRule, self).__init__(*args, **kwargs)
         self.out_files = []
+        # it's not pretty, but it works
+        # typing.Awaitable[...] -> typing.Union[...]
+        self.token_replacements["Awaitable"] = "Union"
 
     def _unasync_tokens(self, tokens):
-        # copy from unasync to hook into string handling
+        # copy from unasync to fix handling of multiline strings
         # https://github.com/python-trio/unasync
-        # License: MIT and Apache2
+        # License: MIT or Apache2
+
         # TODO __await__, ...?
         used_space = None
         for space, toknum, tokval in tokens:
@@ -149,12 +155,12 @@ class CustomRule(unasync.Rule):
                     start += 1
                     end += 1
                 else:
-                    out += self._unasync_prefix(name[start:(end - 1)])
+                    out += self._unasync_name(name[start:(end - 1)])
                     start = end - 1
 
         sub_name = name[start:]
         if sub_name.isidentifier():
-            out += self._unasync_prefix(name[start:])
+            out += self._unasync_name(name[start:])
         else:
             out += sub_name
 
@@ -170,6 +176,9 @@ class CustomRule(unasync.Rule):
         # Convert class names from 'AsyncXyz' to 'Xyz'
         if len(name) > 5 and name.startswith("Async") and name[5].isupper():
             return name[5:]
+        # Convert class names from '_AsyncXyz' to '_Xyz'
+        elif len(name) > 6 and name.startswith("_Async") and name[6].isupper():
+            return "_" + name[6:]
         # Convert variable/method/function names from 'async_xyz' to 'xyz'
         elif len(name) > 6 and name.startswith("async_"):
             return name[6:]
@@ -178,7 +187,7 @@ class CustomRule(unasync.Rule):
     def _unasync_name(self, name):
         # copy from unasync to customize renaming rules
         # https://github.com/python-trio/unasync
-        # License: MIT and Apache2
+        # License: MIT or Apache2
         if name in self.token_replacements:
             return self.token_replacements[name]
         return self._unasync_prefix(name)
@@ -186,7 +195,7 @@ class CustomRule(unasync.Rule):
     def _unasync_file(self, filepath):
         # copy from unasync to append file suffix to out path
         # https://github.com/python-trio/unasync
-        # License: MIT and Apache2
+        # License: MIT or Apache2
         with open(filepath, "rb") as f:
             write_kwargs = {}
             if sys.version_info[0] >= 3:
@@ -211,6 +220,9 @@ def apply_unasync(files):
     additional_test_replacements = {
         "_async": "_sync",
         "mark_async_test": "mark_sync_test",
+        "assert_awaited_once": "assert_called_once",
+        "assert_awaited_once_with": "assert_called_once_with",
+        "await_count": "call_count",
     }
     additional_testkit_backend_replacements = {}
     rules = [
@@ -220,8 +232,13 @@ def apply_unasync(files):
             additional_replacements=additional_main_replacements,
         ),
         CustomRule(
-            fromdir=str(ASYNC_TEST_DIR),
-            todir=str(SYNC_TEST_DIR),
+            fromdir=str(ASYNC_UNIT_TEST_DIR),
+            todir=str(SYNC_UNIT_TEST_DIR),
+            additional_replacements=additional_test_replacements,
+        ),
+        CustomRule(
+            fromdir=str(ASYNC_INTEGRATION_TEST_DIR),
+            todir=str(SYNC_INTEGRATION_TEST_DIR),
             additional_replacements=additional_test_replacements,
         ),
         CustomRule(
@@ -233,7 +250,8 @@ def apply_unasync(files):
 
     if not files:
         paths = list(ASYNC_DIR.rglob("*"))
-        paths += list(ASYNC_TEST_DIR.rglob("*"))
+        paths += list(ASYNC_UNIT_TEST_DIR.rglob("*"))
+        paths += list(ASYNC_INTEGRATION_TEST_DIR.rglob("*"))
         paths += list(ASYNC_TESTKIT_BACKEND_DIR.rglob("*"))
     else:
         paths = [ROOT_DIR / Path(f) for f in files]

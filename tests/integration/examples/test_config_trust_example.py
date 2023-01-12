@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,15 +18,13 @@
 
 import pytest
 
-from tests.integration.examples import DriverSetupExample
+from . import DriverSetupExample
 
 
 # isort: off
 # tag::config-trust-import[]
-from neo4j import (
-    GraphDatabase,
-    TRUST_ALL_CERTIFICATES
-)
+import neo4j
+from neo4j import GraphDatabase
 # end::config-trust-import[]
 # isort: on
 
@@ -35,7 +33,17 @@ class ConfigTrustExample(DriverSetupExample):
 
     # tag::config-trust[]
     def __init__(self, uri, auth):
-        self.driver = GraphDatabase.driver(uri, auth=auth, encrypted=True, trust=TRUST_ALL_CERTIFICATES)
+        # trusted_certificates:
+        # neo4j.TrustSystemCAs()
+        #     (default) trust certificates from system store)
+        # neo4j.TrustAll()
+        #     trust all certificates
+        # neo4j.TrustCustomCAs("<path>", ...)
+        #     specify a list of paths to certificates to trust
+        self.driver = GraphDatabase.driver(
+            uri, auth=auth, encrypted=True,
+            trusted_certificates=neo4j.TrustAll()
+        )
     # end::config-trust[]
 
 

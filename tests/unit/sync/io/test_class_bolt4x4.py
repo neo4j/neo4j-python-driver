@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,17 +17,13 @@
 
 
 import logging
-from unittest.mock import MagicMock
 
 import pytest
 
+from neo4j._conf import PoolConfig
 from neo4j._sync.io._bolt4 import Bolt4x4
-from neo4j.conf import PoolConfig
 
-from ..._async_compat import (
-    MagicMock,
-    mark_sync_test,
-)
+from ...._async_compat import mark_sync_test
 
 
 @pytest.mark.parametrize("set_stale", (True, False))
@@ -72,7 +68,7 @@ def test_conn_is_not_stale(fake_socket, set_stale):
 @mark_sync_test
 def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.begin(*args, **kwargs)
     connection.send_all()
@@ -93,7 +89,7 @@ def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
 @mark_sync_test
 def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.run(*args, **kwargs)
     connection.send_all()
@@ -105,7 +101,7 @@ def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
 @mark_sync_test
 def test_n_extra_in_discard(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666)
     connection.send_all()
@@ -125,7 +121,7 @@ def test_n_extra_in_discard(fake_socket):
 @mark_sync_test
 def test_qid_extra_in_discard(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(qid=test_input)
     connection.send_all()
@@ -146,7 +142,7 @@ def test_qid_extra_in_discard(fake_socket, test_input, expected):
 def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
     # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_n_and_qid_extras_in_discard
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666, qid=test_input)
     connection.send_all()
@@ -166,7 +162,7 @@ def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
 @mark_sync_test
 def test_n_extra_in_pull(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=test_input)
     connection.send_all()
@@ -187,7 +183,7 @@ def test_n_extra_in_pull(fake_socket, test_input, expected):
 def test_qid_extra_in_pull(fake_socket, test_input, expected):
     # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_qid_extra_in_pull
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(qid=test_input)
     connection.send_all()
@@ -200,7 +196,7 @@ def test_qid_extra_in_pull(fake_socket, test_input, expected):
 @mark_sync_test
 def test_n_and_qid_extras_in_pull(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=666, qid=777)
     connection.send_all()
@@ -213,15 +209,17 @@ def test_n_and_qid_extras_in_pull(fake_socket):
 @mark_sync_test
 def test_hello_passes_routing_metadata(fake_socket_pair):
     address = ("127.0.0.1", 7687)
-    sockets = fake_socket_pair(address)
-    sockets.server.send_message(0x70, {"server": "Neo4j/4.4.0"})
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt4x4.PACKER_CLS,
+                               unpacker_cls=Bolt4x4.UNPACKER_CLS)
+    sockets.server.send_message(b"\x70", {"server": "Neo4j/4.4.0"})
     connection = Bolt4x4(
         address, sockets.client, PoolConfig.max_connection_lifetime,
         routing_context={"foo": "bar"}
     )
     connection.hello()
     tag, fields = sockets.server.pop_message()
-    assert tag == 0x01
+    assert tag == b"\x01"
     assert len(fields) == 1
     assert fields[0]["routing"] == {"foo": "bar"}
 
@@ -240,13 +238,15 @@ def test_hello_passes_routing_metadata(fake_socket_pair):
 ))
 @mark_sync_test
 def test_hint_recv_timeout_seconds(
-    fake_socket_pair, hints, valid, caplog
+    fake_socket_pair, hints, valid, caplog, mocker
 ):
     address = ("127.0.0.1", 7687)
-    sockets = fake_socket_pair(address)
-    sockets.client.settimeout = MagicMock()
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt4x4.PACKER_CLS,
+                               unpacker_cls=Bolt4x4.UNPACKER_CLS)
+    sockets.client.settimeout = mocker.Mock()
     sockets.server.send_message(
-        0x70, {"server": "Neo4j/4.3.4", "hints": hints}
+        b"\x70", {"server": "Neo4j/4.3.4", "hints": hints}
     )
     connection = Bolt4x4(
         address, sockets.client, PoolConfig.max_connection_lifetime

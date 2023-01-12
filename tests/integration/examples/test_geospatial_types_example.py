@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,8 +45,8 @@ def test_cartesian_point(driver):
     in_point3d = point3d
 
     with driver.session() as session:
-        record_with_2d_point = session.read_transaction(_echo, point2d)
-        record_with_3d_point = session.read_transaction(_echo, point3d)
+        record_with_2d_point = session.execute_read(_echo, point2d)
+        record_with_3d_point = session.execute_read(_echo, point3d)
 
     # tag::geospatial-types-cartesian[]
 
@@ -106,8 +106,8 @@ def test_wgs84_point(driver):
     in_point3d = point3d
 
     with driver.session() as session:
-        record_with_2d_point = session.read_transaction(_echo, point2d)
-        record_with_3d_point = session.read_transaction(_echo, point3d)
+        record_with_2d_point = session.execute_read(_echo, point2d)
+        record_with_3d_point = session.execute_read(_echo, point3d)
 
     # tag::geospatial-types-wgs84[]
 

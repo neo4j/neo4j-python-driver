@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,6 @@ from socket import (
     AF_INET,
     AF_INET6,
 )
-import unittest.mock as mock
 
 import pytest
 
@@ -31,18 +30,11 @@ from neo4j import (
 from neo4j._async_compat.network import NetworkUtil
 from neo4j._async_compat.util import Util
 
-from .._async_compat import mark_sync_test
-
-
-mock_socket_ipv4 = mock.Mock()
-mock_socket_ipv4.getpeername = lambda: ("127.0.0.1", 7687)  # (address, port)
-
-mock_socket_ipv6 = mock.Mock()
-mock_socket_ipv6.getpeername = lambda: ("[::1]", 7687, 0, 0)  # (address, port, flow info, scope id)
+from ..._async_compat import mark_sync_test
 
 
 @mark_sync_test
-def test_address_resolve():
+def test_address_resolve() -> None:
     address = Address(("127.0.0.1", 7687))
     resolved = NetworkUtil.resolve_address(address)
     resolved = Util.list(resolved)
@@ -53,7 +45,7 @@ def test_address_resolve():
 
 
 @mark_sync_test
-def test_address_resolve_with_custom_resolver_none():
+def test_address_resolve_with_custom_resolver_none() -> None:
     address = Address(("127.0.0.1", 7687))
     resolved = NetworkUtil.resolve_address(address, resolver=None)
     resolved = Util.list(resolved)
@@ -72,7 +64,9 @@ def test_address_resolve_with_custom_resolver_none():
 
 )
 @mark_sync_test
-def test_address_resolve_with_unresolvable_address(test_input, expected):
+def test_address_resolve_with_unresolvable_address(
+    test_input, expected
+) -> None:
     with pytest.raises(expected):
         Util.list(
             NetworkUtil.resolve_address(test_input, resolver=None)
@@ -81,7 +75,7 @@ def test_address_resolve_with_unresolvable_address(test_input, expected):
 
 @mark_sync_test
 @pytest.mark.parametrize("resolver_type", ("sync", "async"))
-def test_address_resolve_with_custom_resolver(resolver_type):
+def test_address_resolve_with_custom_resolver(resolver_type) -> None:
     def custom_resolver_sync(_):
         return [("127.0.0.1", 7687), ("localhost", 1234)]
 
@@ -106,20 +100,22 @@ def test_address_resolve_with_custom_resolver(resolver_type):
 
 
 @mark_sync_test
-def test_address_unresolve():
+def test_address_unresolve() -> None:
+    def custom_resolver(_):
+        return custom_resolved
+
     custom_resolved = [("127.0.0.1", 7687), ("localhost", 4321)]
-    custom_resolver = lambda _: custom_resolved
 
     address = Address(("foobar", 1234))
-    unresolved = address.unresolved
+    unresolved = address._unresolved
     assert address.__class__ == unresolved.__class__
     assert address == unresolved
     resolved = NetworkUtil.resolve_address(
         address, family=AF_INET, resolver=custom_resolver
     )
-    resolved = Util.list(resolved)
-    custom_resolved = sorted(Address(a) for a in custom_resolved)
-    unresolved = sorted(a.unresolved for a in resolved)
-    assert custom_resolved == unresolved
-    assert (list(map(lambda a: a.__class__, custom_resolved))
-            == list(map(lambda a: a.__class__, unresolved)))
+    resolved_list = Util.list(resolved)
+    custom_resolved_addresses = sorted(Address(a) for a in custom_resolved)
+    unresolved_list = sorted(a._unresolved for a in resolved_list)
+    assert custom_resolved_addresses == unresolved_list
+    assert (list(map(lambda a: a.__class__, custom_resolved_addresses))
+            == list(map(lambda a: a.__class__, unresolved_list)))

@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,14 +18,11 @@
 
 import pytest
 
+from neo4j._conf import PoolConfig
 from neo4j._sync.io._bolt3 import Bolt3
-from neo4j.conf import PoolConfig
 from neo4j.exceptions import ConfigurationError
 
-from ..._async_compat import (
-    MagicMock,
-    mark_sync_test,
-)
+from ...._async_compat import mark_sync_test
 
 
 @pytest.mark.parametrize("set_stale", (True, False))
@@ -75,7 +72,7 @@ def test_db_extra_not_supported_in_run(fake_socket):
 @mark_sync_test
 def test_simple_discard(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt3.UNPACKER_CLS)
     connection = Bolt3(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard()
     connection.send_all()
@@ -87,7 +84,7 @@ def test_simple_discard(fake_socket):
 @mark_sync_test
 def test_simple_pull(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt3.UNPACKER_CLS)
     connection = Bolt3(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull()
     connection.send_all()
@@ -99,12 +96,14 @@ def test_simple_pull(fake_socket):
 @pytest.mark.parametrize("recv_timeout", (1, -1))
 @mark_sync_test
 def test_hint_recv_timeout_seconds_gets_ignored(
-    fake_socket_pair, recv_timeout
+    fake_socket_pair, recv_timeout, mocker
 ):
     address = ("127.0.0.1", 7687)
-    sockets = fake_socket_pair(address)
-    sockets.client.settimeout = MagicMock()
-    sockets.server.send_message(0x70, {
+    sockets = fake_socket_pair(
+        address, Bolt3.PACKER_CLS, Bolt3.UNPACKER_CLS
+    )
+    sockets.client.settimeout = mocker.Mock()
+    sockets.server.send_message(b"\x70", {
         "server": "Neo4j/3.5.0",
         "hints": {"connection.recv_timeout_seconds": recv_timeout},
     })

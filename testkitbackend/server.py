@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,8 +33,11 @@ class Server(TCPServer):
         class Handler(StreamRequestHandler):
             def handle(self):
                 backend = Backend(self.rfile, self.wfile)
-                while backend.process_request():
-                    pass
+                try:
+                    while backend.process_request():
+                        pass
+                finally:
+                    backend.close()
                 print("Disconnected")
         super(Server, self).__init__(address, Handler)
 
@@ -47,8 +50,12 @@ class AsyncServer:
     @staticmethod
     async def _handler(reader, writer):
         backend = AsyncBackend(reader, writer)
-        while await backend.process_request():
-            pass
+        try:
+            while await backend.process_request():
+                pass
+        finally:
+            writer.close()
+            await backend.close()
         print("Disconnected")
 
     async def start(self):

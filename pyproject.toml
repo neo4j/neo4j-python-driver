@@ -1,0 +1,118 @@
+# Copyright (c) "Neo4j"
+# Neo4j Sweden AB [https://neo4j.com]
+#
+# This file is part of Neo4j.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[project]
+name = "neo4j"
+description = "Neo4j Bolt driver for Python"
+license = {text = "Apache License, Version 2.0"}
+#TODO: 6.0 - static readme
+#readme = "README.rst"
+authors = [
+    {name = "Neo4j, Inc.", email = "drivers@neo4j.com"},
+]
+dependencies = ["pytz"]
+requires-python = ">=3.7"
+keywords = ["neo4j", "graph", "database"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Database",
+    "Topic :: Software Development",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dynamic = ["version", "readme"]
+
+[project.urls]
+Homepage = "https://github.com/neo4j/neo4j-python-driver"
+
+[project.optional-dependencies]
+numpy = ["numpy >= 1.7.0, < 2.0.0"]
+pandas = [
+    "pandas >= 1.1.0, < 2.0.0",
+    "numpy >= 1.7.0, < 2.0.0",
+]
+
+[build-system]
+requires = [
+    "setuptools~=65.6",
+    "tomlkit~=0.11.6",
+]
+build-backend = "setuptools.build_meta"
+
+# still in beta
+#[tool.setuptools.dynamic]
+#version = {attr = "neo4j._meta.version"}
+
+
+[tool.coverage]
+show_missing = true
+
+[tool.coverage.run]
+branch = true
+omit = [
+    ".*/*",
+    "tests/*",
+    "src/neo4j/meta.py",
+    "*virtualenv*",
+    "*venv*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "except ImportError",
+]
+
+
+[tool.isort]
+combine_as_imports = true
+ensure_newline_before_comments = true
+force_grid_wrap = 2
+# breaks order of relative imports
+# https://github.com/PyCQA/isort/issues/1944
+#force_sort_within_sections = true
+include_trailing_comma = true
+# currently broken
+# https://github.com/PyCQA/isort/issues/1855
+#lines_before_imports = 2
+lines_after_imports = 2
+lines_between_sections = 1
+multi_line_output = 3
+order_by_type = false
+remove_redundant_aliases = true
+use_parentheses = true
+
+
+[tool.pytest.ini_options]
+mock_use_standalone_module = true
+asyncio_mode = "auto"
+
+
+[tool.mypy]
+
+[[tool.mypy.overrides]]
+module = "pandas.*"
+ignore_missing_imports = true

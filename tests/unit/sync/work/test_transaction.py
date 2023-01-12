@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,7 +26,7 @@ from neo4j import (
     Transaction,
 )
 
-from ._fake_connection import fake_connection
+from ...._async_compat import mark_sync_test
 
 
 @pytest.mark.parametrize(("explicit_commit", "close"), (
@@ -34,13 +34,17 @@ from ._fake_connection import fake_connection
     (True, False),
     (True, True),
 ))
-def test_transaction_context_when_committing(mocker, fake_connection,
-                                             explicit_commit, close):
-    on_closed = MagicMock()
-    on_error = MagicMock()
-    tx = Transaction(fake_connection, 2, on_closed, on_error)
-    mock_commit = mocker.patch.object(tx, "commit", wraps=tx.commit)
-    mock_rollback = mocker.patch.object(tx, "rollback", wraps=tx.rollback)
+@mark_sync_test
+def test_transaction_context_when_committing(
+    mocker, fake_connection, explicit_commit, close
+):
+    on_closed = mocker.Mock()
+    on_error = mocker.Mock()
+    on_cancel = mocker.Mock()
+    tx = Transaction(fake_connection, 2, on_closed, on_error,
+                          on_cancel)
+    mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
+    mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
     with tx as tx_:
         assert mock_commit.call_count == 0
         assert mock_rollback.call_count == 0
@@ -48,7 +52,7 @@ def test_transaction_context_when_committing(mocker, fake_connection,
         if explicit_commit:
             tx_.commit()
             mock_commit.assert_called_once_with()
-            assert tx.closed()
+            assert tx_.closed()
         if close:
             tx_.close()
             assert tx_.closed()
@@ -62,13 +66,17 @@ def test_transaction_context_when_committing(mocker, fake_connection,
     (False, True),
     (True, True),
 ))
-def test_transaction_context_with_explicit_rollback(mocker, fake_connection,
-                                                    rollback, close):
-    on_closed = MagicMock()
-    on_error = MagicMock()
-    tx = Transaction(fake_connection, 2, on_closed, on_error)
-    mock_commit = mocker.patch.object(tx, "commit", wraps=tx.commit)
-    mock_rollback = mocker.patch.object(tx, "rollback", wraps=tx.rollback)
+@mark_sync_test
+def test_transaction_context_with_explicit_rollback(
+    mocker, fake_connection, rollback, close
+):
+    on_closed = mocker.Mock()
+    on_error = mocker.Mock()
+    on_cancel = mocker.Mock()
+    tx = Transaction(fake_connection, 2, on_closed, on_error,
+                          on_cancel)
+    mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
+    mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
     with tx as tx_:
         assert mock_commit.call_count == 0
         assert mock_rollback.call_count == 0
@@ -86,15 +94,20 @@ def test_transaction_context_with_explicit_rollback(mocker, fake_connection,
     assert tx_.closed()
 
 
-def test_transaction_context_calls_rollback_on_error(mocker, fake_connection):
+@mark_sync_test
+def test_transaction_context_calls_rollback_on_error(
+    mocker, fake_connection
+):
     class OopsError(RuntimeError):
         pass
 
     on_closed = MagicMock()
     on_error = MagicMock()
-    tx = Transaction(fake_connection, 2, on_closed, on_error)
-    mock_commit = mocker.patch.object(tx, "commit", wraps=tx.commit)
-    mock_rollback = mocker.patch.object(tx, "rollback", wraps=tx.rollback)
+    on_cancel = MagicMock()
+    tx = Transaction(fake_connection, 2, on_closed, on_error,
+                          on_cancel)
+    mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
+    mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
     with pytest.raises(OopsError):
         with tx as tx_:
             assert mock_commit.call_count == 0
@@ -106,33 +119,54 @@ def test_transaction_context_calls_rollback_on_error(mocker, fake_connection):
     assert tx_.closed()
 
 
-@pytest.mark.parametrize(("parameters", "error_type"), (
-    # maps must have string keys
-    ({"x": {1: 'eins', 2: 'zwei', 3: 'drei'}}, TypeError),
-    ({"x": {(1, 2): '1+2i', (2, 0): '2'}}, TypeError),
-    ({"x": uuid4()}, TypeError),
-))
-def test_transaction_run_with_invalid_parameters(fake_connection, parameters,
-                                                 error_type):
-    on_closed = MagicMock()
-    on_error = MagicMock()
-    tx = Transaction(fake_connection, 2, on_closed, on_error)
-    with pytest.raises(error_type):
-        tx.run("RETURN $x", **parameters)
-
-
+@mark_sync_test
 def test_transaction_run_takes_no_query_object(fake_connection):
     on_closed = MagicMock()
     on_error = MagicMock()
-    tx = Transaction(fake_connection, 2, on_closed, on_error)
+    on_cancel = MagicMock()
+    tx = Transaction(fake_connection, 2, on_closed, on_error,
+                          on_cancel)
     with pytest.raises(ValueError):
         tx.run(Query("RETURN 1"))
 
 
-def test_transaction_rollbacks_on_open_connections(fake_connection):
-    tx = Transaction(fake_connection, 2,
-                     lambda *args, **kwargs: None,
-                     lambda *args, **kwargs: None)
+@mark_sync_test
+@pytest.mark.parametrize("params", (
+    {"x": 1},
+    {"x": "1"},
+    {"x": "1", "y": 2},
+    {"parameters": {"nested": "parameters"}},
+))
+@pytest.mark.parametrize("as_kwargs", (True, False))
+def test_transaction_run_parameters(
+    fake_connection, params, as_kwargs
+):
+    on_closed = MagicMock()
+    on_error = MagicMock()
+    on_cancel = MagicMock()
+    tx = Transaction(fake_connection, 2, on_closed, on_error,
+                          on_cancel)
+    if not as_kwargs:
+        params = {"parameters": params}
+    tx.run("RETURN $x", **params)
+    calls = [call for call in fake_connection.method_calls
+             if call[0] in ("run", "send_all", "fetch_message")]
+    assert [call[0] for call in calls] == ["run", "send_all", "fetch_message"]
+    run = calls[0]
+    assert run[1][0] == "RETURN $x"
+    if "parameters" in params:
+        params = params["parameters"]
+    assert run[2]["parameters"] == params
+
+
+@mark_sync_test
+def test_transaction_rollbacks_on_open_connections(
+    fake_connection
+):
+    tx = Transaction(
+        fake_connection, 2, lambda *args, **kwargs: None,
+        lambda *args, **kwargs: None, lambda *args, **kwargs: None
+    )
     with tx as tx_:
         fake_connection.is_reset_mock.return_value = False
         fake_connection.is_reset_mock.reset_mock()
@@ -142,44 +176,56 @@ def test_transaction_rollbacks_on_open_connections(fake_connection):
         fake_connection.rollback.assert_called_once()
 
 
-def test_transaction_no_rollback_on_reset_connections(fake_connection):
-    tx = Transaction(fake_connection, 2,
-                     lambda *args, **kwargs: None,
-                     lambda *args, **kwargs: None)
+@mark_sync_test
+def test_transaction_no_rollback_on_reset_connections(
+    fake_connection
+):
+    tx = Transaction(
+        fake_connection, 2, lambda *args, **kwargs: None,
+        lambda *args, **kwargs: None, lambda *args, **kwargs: None
+    )
     with tx as tx_:
         fake_connection.is_reset_mock.return_value = True
         fake_connection.is_reset_mock.reset_mock()
         tx_.rollback()
         fake_connection.is_reset_mock.assert_called_once()
-        fake_connection.reset.asset_not_called()
-        fake_connection.rollback.asset_not_called()
+        fake_connection.reset.assert_not_called()
+        fake_connection.rollback.assert_not_called()
 
 
-def test_transaction_no_rollback_on_closed_connections(fake_connection):
-    tx = Transaction(fake_connection, 2,
-                     lambda *args, **kwargs: None,
-                     lambda *args, **kwargs: None)
+@mark_sync_test
+def test_transaction_no_rollback_on_closed_connections(
+    fake_connection
+):
+    tx = Transaction(
+        fake_connection, 2, lambda *args, **kwargs: None,
+        lambda *args, **kwargs: None, lambda *args, **kwargs: None
+    )
     with tx as tx_:
         fake_connection.closed.return_value = True
         fake_connection.closed.reset_mock()
         fake_connection.is_reset_mock.reset_mock()
         tx_.rollback()
         fake_connection.closed.assert_called_once()
-        fake_connection.is_reset_mock.asset_not_called()
-        fake_connection.reset.asset_not_called()
-        fake_connection.rollback.asset_not_called()
+        fake_connection.is_reset_mock.assert_not_called()
+        fake_connection.reset.assert_not_called()
+        fake_connection.rollback.assert_not_called()
 
 
-def test_transaction_no_rollback_on_defunct_connections(fake_connection):
-    tx = Transaction(fake_connection, 2,
-                     lambda *args, **kwargs: None,
-                     lambda *args, **kwargs: None)
+@mark_sync_test
+def test_transaction_no_rollback_on_defunct_connections(
+    fake_connection
+):
+    tx = Transaction(
+        fake_connection, 2, lambda *args, **kwargs: None,
+        lambda *args, **kwargs: None, lambda *args, **kwargs: None
+    )
     with tx as tx_:
         fake_connection.defunct.return_value = True
         fake_connection.defunct.reset_mock()
         fake_connection.is_reset_mock.reset_mock()
         tx_.rollback()
         fake_connection.defunct.assert_called_once()
-        fake_connection.is_reset_mock.asset_not_called()
-        fake_connection.reset.asset_not_called()
-        fake_connection.rollback.asset_not_called()
+        fake_connection.is_reset_mock.assert_not_called()
+        fake_connection.reset.assert_not_called()
+        fake_connection.rollback.assert_not_called()

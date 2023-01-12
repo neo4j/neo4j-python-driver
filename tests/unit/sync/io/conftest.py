@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,20 +24,22 @@ from struct import (
 
 import pytest
 
-from neo4j._sync.io._common import MessageInbox
-from neo4j.packstream import (
-    Packer,
-    UnpackableBuffer,
-    Unpacker,
+from neo4j._sync.io._common import (
+    Inbox,
+    Outbox,
 )
 
 
 class FakeSocket:
 
-    def __init__(self, address):
+    def __init__(self, address, unpacker_cls=None):
         self.address = address
         self.captured = b""
-        self.messages = MessageInbox(self, on_error=print)
+        self.messages = None
+        if unpacker_cls is not None:
+            self.messages = Inbox(
+                self, on_error=print, unpacker_cls=unpacker_cls
+            )
 
     def getsockname(self):
         return "127.0.0.1", 0xFFFF
@@ -59,16 +61,27 @@ class FakeSocket:
         return
 
     def pop_message(self):
-        return self.messages.pop()
+        assert self.messages
+        return self.messages.pop(None)
 
 
 class FakeSocket2:
 
-    def __init__(self, address=None, on_send=None):
+    def __init__(self, address=None, on_send=None,
+                 packer_cls=None, unpacker_cls=None):
         self.address = address
         self.recv_buffer = bytearray()
-        self._messages = MessageInbox(self, on_error=print)
+        # self.messages = AsyncMessageInbox(self, on_error=print)
         self.on_send = on_send
+        self._outbox = self._messages = None
+        if packer_cls:
+            self._outbox = Outbox(
+                self, on_error=print, packer_cls=packer_cls
+            )
+        if unpacker_cls:
+            self._messages = Inbox(
+                self, on_error=print, unpacker_cls=unpacker_cls
+            )
 
     def getsockname(self):
         return "127.0.0.1", 0xFFFF
@@ -93,50 +106,25 @@ class FakeSocket2:
     def inject(self, data):
         self.recv_buffer += data
 
-    def _pop_chunk(self):
-        chunk_size, = struct_unpack(">H", self.recv_buffer[:2])
-        print("CHUNK SIZE %r" % chunk_size)
-        end = 2 + chunk_size
-        chunk_data, self.recv_buffer = self.recv_buffer[2:end], self.recv_buffer[end:]
-        return chunk_data
-
     def pop_message(self):
-        data = bytearray()
-        while True:
-            chunk = self._pop_chunk()
-            print("CHUNK %r" % chunk)
-            if chunk:
-                data.extend(chunk)
-            elif data:
-                break       # end of message
-            else:
-                continue    # NOOP
-        header = data[0]
-        n_fields = header % 0x10
-        tag = data[1]
-        buffer = UnpackableBuffer(data[2:])
-        unpacker = Unpacker(buffer)
-        fields = [unpacker.unpack() for _ in range(n_fields)]
-        return tag, fields
+        assert self._messages
+        return self._messages.pop(None)
 
     def send_message(self, tag, *fields):
-        data = self.encode_message(tag, *fields)
-        self.sendall(struct_pack(">H", len(data)) + data + b"\x00\x00")
-
-    @classmethod
-    def encode_message(cls, tag, *fields):
-        b = BytesIO()
-        packer = Packer(b)
-        for field in fields:
-            packer.pack(field)
-        return bytearray([0xB0 + len(fields), tag]) + b.getvalue()
+        assert self._outbox
+        self._outbox.append_message(tag, fields, None)
+        self._outbox.flush()
 
 
 class FakeSocketPair:
 
-    def __init__(self, address):
-        self.client = FakeSocket2(address)
-        self.server = FakeSocket2()
+    def __init__(self, address, packer_cls=None, unpacker_cls=None):
+        self.client = FakeSocket2(
+            address, packer_cls=packer_cls, unpacker_cls=unpacker_cls
+        )
+        self.server = FakeSocket2(
+            packer_cls=packer_cls, unpacker_cls=unpacker_cls
+        )
         self.client.on_send = self.server.inject
         self.server.on_send = self.client.inject
 

@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,7 +36,7 @@ class Neo4jErrorExample:
     def get_employee_number(self, name):
         with self.driver.session() as session:
             try:
-                session.read_transaction(self.select_employee, name)
+                session.execute_read(self.select_employee, name)
             except ClientError as error:
                 print(error.message)
                 return -1
@@ -48,9 +48,9 @@ class Neo4jErrorExample:
     # end::cypher-error[]
 
 
-def test_example(bolt_driver):
+def test_example(driver):
     s = StringIO()
     with redirect_stdout(s):
-        example = Neo4jErrorExample(bolt_driver)
+        example = Neo4jErrorExample(driver)
         example.get_employee_number('Alice')
         assert s.getvalue().startswith("Invalid input")

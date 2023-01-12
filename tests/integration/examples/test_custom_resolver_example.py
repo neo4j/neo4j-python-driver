@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -50,11 +50,13 @@ def create_driver(uri, user, password):
 
 
 def add_person(name):
-    driver = create_driver("neo4j://x.example.com", user="neo4j", password="password")
-    session = driver.session(default_access_mode=WRITE_ACCESS)
-    session.run("CREATE (a:Person {name: $name})", {"name", name})
-    session.close()
-    driver.close()
+    driver = create_driver("neo4j://x.example.com",
+                           user="neo4j", password="password")
+    try:
+        with driver.session(default_access_mode=WRITE_ACCESS) as session:
+            session.run("CREATE (a:Person {name: $name})", {"name", name})
+    finally:
+        driver.close()
 # end::custom-resolver[]
 
 

@@ -2,7 +2,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v4.1.0
     hooks:
       - id: check-case-conflict
       - id: check-docstring-first
@@ -20,13 +20,25 @@ repos:
       - id: trailing-whitespace
         args: [ --markdown-linebreak-ext=md ]
   - repo: https://github.com/pycqa/isort
-    rev: 5.10.0
+    rev: 5.10.1
     hooks:
       - id: isort
-  -   repo: local
-      hooks:
+  - repo: https://github.com/sphinx-contrib/sphinx-lint
+    rev: e83a1a42a73284d301c05baaffc176042ffbcf82
+    hooks:
+      - id: sphinx-lint
+  - repo: local
+    hooks:
       - id: unasync
         name: unasync
         entry: bin/make-unasync
         language: system
-        files: "^(neo4j/_async|tests/unit/async_|testkitbackend/_async)/.*"
+        files: "^(src/neo4j/_async|tests/(unit|integration)/async_|testkitbackend/_async)/.*"
+      - id: mypy
+        name: mypy static type check
+        entry: mypy
+        args: [ --show-error-codes, src, tests, testkitbackend ]
+        'types_or': [ python, pyi ]
+        language: system
+        pass_filenames: false
+        require_serial: true

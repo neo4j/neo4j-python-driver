@@ -23,7 +23,7 @@ $ NEO4J_SERVER_PACKAGE=~/dist/neo4j-enterprise-3.1.1-unix.tar.gz tox
 
 A web address can be provided as an alternative to a file path:
 ```bash
-$ NEO4J_SERVER_PACKAGE=http://dist.neo4j.org/neo4j-enterprise-3.1.1-unix.tar.gz tox
+$ NEO4J_SERVER_PACKAGE=https://dist.neo4j.org/neo4j-enterprise-3.1.1-unix.tar.gz tox
 ```
 
 If using an existing server, authentication details can be provided in a similar way:

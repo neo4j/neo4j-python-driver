@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -9,7 +9,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,60 +17,75 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: 6.0 - the whole deprecation and double naming shebang can be removed
+
 
 import os
+import pathlib
+import sys
+import warnings
+from contextlib import contextmanager
 
-from setuptools import (
-    find_packages,
-    setup,
-)
+import tomlkit
+from setuptools import setup
 
-from neo4j.meta import (
+
+sys.path.insert(0, str(pathlib.Path(__file__).parent / "src"))
+
+from neo4j._meta import (
+    deprecated_package as deprecated,
     package,
     version,
 )
 
 
-install_requires = [
-    "pytz",
-]
-classifiers = [
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent",
-    "Topic :: Database",
-    "Topic :: Software Development",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-]
-entry_points = {
-    "console_scripts": [
-    ],
-}
-packages = find_packages(exclude=["tests"])
+if deprecated:
+    warnings.warn(
+        f"`{package}` is deprecated, please install `neo4j` instead.",
+        DeprecationWarning
+    )
 
 readme_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                            "README.rst"))
 with open(readme_path, mode="r", encoding="utf-8") as fr:
     readme = fr.read()
 
-setup_args = {
-    "name": package,
-    "version": version,
-    "description": "Neo4j Bolt driver for Python",
-    "license": "Apache License, Version 2.0",
-    "long_description": readme,
-    "author": "Neo4j, Inc.",
-    "author_email": "drivers@neo4j.com",
-    "keywords": "neo4j graph database",
-    "url": "https://github.com/neo4j/neo4j-python-driver",
-    "install_requires": install_requires,
-    "classifiers": classifiers,
-    "packages": packages,
-    "entry_points": entry_points,
-    "python_requires": ">=3.7",
-}
+if deprecated:
+    readme = """\
+.. warning::
 
-setup(**setup_args)
+    This package is deprecated and will stop receiving updates starting with
+    version 6.0.0. Please install ``neo4j`` instead (which is an alias, i.e.,
+    a drop-in replacement). See https://pypi.org/project/neo4j/ .
+
+""" + readme
+
+
+@contextmanager
+def changed_package_name(new_name):
+    with open("pyproject.toml", "a+") as fd:
+        fd.seek(0)
+        pyproject = tomlkit.parse(fd.read())
+        old_name = pyproject["project"]["name"]
+        pyproject["project"]["name"] = new_name
+        fd.seek(0)
+        fd.truncate()
+        tomlkit.dump(pyproject, fd)
+
+    yield
+
+    with open("pyproject.toml", "a+") as fd:
+        fd.seek(0)
+        pyproject = tomlkit.parse(fd.read())
+        pyproject["project"]["name"] = old_name
+        fd.seek(0)
+        fd.truncate()
+        tomlkit.dump(pyproject, fd)
+
+
+with changed_package_name(package):
+    setup(
+        # until `[tool.setuptools.dynamic]` in pyproject.toml is out of beta
+        version=version,
+        long_description=readme,
+    )

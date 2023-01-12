@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -9,7 +9,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,7 @@
 
 import asyncio
 import sys
+import warnings
 
 from .server import (
     AsyncServer,
@@ -46,6 +47,7 @@ def async_main():
 
 
 if __name__ == "__main__":
+    warnings.simplefilter("error")
     if len(sys.argv) == 2 and sys.argv[1].lower().strip() == "async":
         async_main()
     else:

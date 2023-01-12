@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -57,7 +57,7 @@ class App:
     def create_friendship(self, person1_name, person2_name, knows_from):
         with self.driver.session() as session:
             # Write transactions allow the driver to handle retries and transient errors
-            result = session.write_transaction(
+            result = session.execute_write(
                 self._create_and_return_friendship, person1_name, person2_name, knows_from)
             for row in result:
                 print("Created friendship between: {p1}, {p2} from {knows_from}"
@@ -93,7 +93,7 @@ class App:
 
     def find_person(self, person_name):
         with self.driver.session() as session:
-            result = session.read_transaction(self._find_and_return_person, person_name)
+            result = session.execute_read(self._find_and_return_person, person_name)
             for row in result:
                 print("Found person: {row}".format(row=row))
 

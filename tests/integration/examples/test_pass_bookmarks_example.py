@@ -1,5 +1,5 @@
 # Copyright (c) "Neo4j"
-# Neo4j Sweden AB [http://neo4j.com]
+# Neo4j Sweden AB [https://neo4j.com]
 #
 # This file is part of Neo4j.
 #
@@ -7,7 +7,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,10 @@ from neo4j.exceptions import ServiceUnavailable
 
 # isort: off
 # tag::pass-bookmarks-import[]
-from neo4j import GraphDatabase
+from neo4j import (
+    Bookmarks,
+    GraphDatabase,
+)
 # end::pass-bookmarks-import[]
 # isort: on
 
@@ -70,31 +73,31 @@ class BookmarksExample:
             print("{} knows {}".format(record["a.name"], record["b.name"]))
 
     def main(self):
-        saved_bookmarks = []  # To collect the session bookmarks
+        saved_bookmarks = Bookmarks()  # To collect the session bookmarks
 
         # Create the first person and employment relationship.
         with self.driver.session() as session_a:
-            session_a.write_transaction(self.create_person, "Alice")
-            session_a.write_transaction(self.employ, "Alice", "Wayne Enterprises")
-            saved_bookmarks.append(session_a.last_bookmark())
+            session_a.execute_write(self.create_person, "Alice")
+            session_a.execute_write(self.employ, "Alice", "Wayne Enterprises")
+            saved_bookmarks += session_a.last_bookmarks()
 
         # Create the second person and employment relationship.
         with self.driver.session() as session_b:
-            session_b.write_transaction(self.create_person, "Bob")
-            session_b.write_transaction(self.employ, "Bob", "LexCorp")
-            saved_bookmarks.append(session_b.last_bookmark())
+            session_b.execute_write(self.create_person, "Bob")
+            session_b.execute_write(self.employ, "Bob", "LexCorp")
+            saved_bookmarks += session_a.last_bookmarks()
 
         # Create a friendship between the two people created above.
         with self.driver.session(bookmarks=saved_bookmarks) as session_c:
-            session_c.write_transaction(self.create_friendship, "Alice", "Bob")
-            session_c.read_transaction(self.print_friendships)
+            session_c.execute_write(self.create_friendship, "Alice", "Bob")
+            session_c.execute_read(self.print_friendships)
 
 # end::pass-bookmarks[]
 
 
 def test(uri, auth):
+    eg = BookmarksExample(uri, auth)
     try:
-        eg = BookmarksExample(uri, auth)
         with eg.driver.session() as session:
             session.run("MATCH (_) DETACH DELETE _")
         eg.main()
@@ -103,3 +106,5 @@ def test(uri, auth):
     except ServiceUnavailable as error:
         if isinstance(error.__cause__, BoltHandshakeError):
             pytest.skip(error.args[0])
+    finally:
+        eg.close()
