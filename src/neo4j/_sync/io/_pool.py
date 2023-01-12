@@ -31,9 +31,7 @@ from random import choice
 
 from ..._async_compat.concurrency import (
     Condition,
-    CooperativeLock,
     CooperativeRLock,
-    Lock,
     RLock,
 )
 from ..._async_compat.network import NetworkUtil
@@ -448,7 +446,7 @@ class IOPool(abc.ABC):
             )
             with self.lock:
                 for connection in self.connections.get(address, ()):
-                    connection.auth_dict = {}
+                    connection.mark_unauthenticated()
         if error._requires_new_credentials():
             self.force_new_auth()
 

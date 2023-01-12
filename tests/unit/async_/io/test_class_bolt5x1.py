@@ -285,7 +285,7 @@ async def test_logon(fake_socket_pair):
 
 
 @mark_async_test
-async def test_re_auth(fake_socket_pair):
+async def test_re_auth(fake_socket_pair, mocker):
     auth = neo4j.Auth("basic", "alice123", "supersecret123")
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address,
@@ -297,6 +297,7 @@ async def test_re_auth(fake_socket_pair):
     )
     connection = AsyncBolt5x1(address, sockets.client,
                               PoolConfig.max_connection_lifetime)
+    connection.pool = mocker.AsyncMock()
     with pytest.raises(neo4j.exceptions.Neo4jError):
         await connection.re_auth(auth)
     tag, fields = await sockets.server.pop_message()

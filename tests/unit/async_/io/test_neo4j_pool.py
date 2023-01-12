@@ -602,3 +602,62 @@ async def test_fast_failing_discovery(routing_failure_opener, error):
     # reader
     # failed router
     assert len(opener.connections) == 3
+
+
+
+@pytest.mark.parametrize(
+    ("error", "marks_unauthenticated", "fetches_new"),
+    (
+        (Neo4jError.hydrate("message", args[0]), *args[1:])
+        for args in (
+            ("Neo.ClientError.Database.DatabaseNotFound", False, False),
+            ("Neo.ClientError.Statement.TypeError", False, False),
+            ("Neo.ClientError.Statement.ArgumentError", False, False),
+            ("Neo.ClientError.Request.Invalid", False, False),
+            ("Neo.ClientError.Security.AuthenticationRateLimit", False, False),
+            ("Neo.ClientError.Security.CredentialsExpired", False, False),
+            ("Neo.ClientError.Security.Forbidden", False, False),
+            ("Neo.ClientError.Security.Unauthorized", False, False),
+            ("Neo.ClientError.Security.MadeUpError", False, False),
+            ("Neo.ClientError.Security.TokenExpired", False, True),
+            ("Neo.ClientError.Security.AuthorizationExpired", True, False),
+        )
+    )
+)
+@mark_async_test
+async def test_connection_error_callback(
+    opener, error, marks_unauthenticated, fetches_new, mocker
+):
+    pool = AsyncNeo4jPool(
+        opener, PoolConfig(), WorkspaceConfig(), ROUTER1_ADDRESS
+    )
+    force_new_auth_mock = mocker.patch.object(
+        pool, "force_new_auth", autospec=True
+    )
+    cxs_read = [
+        await pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
+        for _ in range(5)
+    ]
+    cxs_write = [
+        await pool.acquire(WRITE_ACCESS, 30, "test_db", None, None, None)
+        for _ in range(5)
+    ]
+
+    force_new_auth_mock.assert_not_called()
+    for cx in cxs_read + cxs_write:
+        cx.mark_unauthenticated.assert_not_called()
+
+    await pool.on_neo4j_error(error, cxs_read[0].addr)
+
+    if fetches_new:
+        force_new_auth_mock.assert_awaited_once()
+    else:
+        force_new_auth_mock.assert_not_called()
+
+    for cx in cxs_read:
+        if marks_unauthenticated:
+            cx.mark_unauthenticated.assert_called_once()
+        else:
+            cx.mark_unauthenticated.assert_not_called()
+    for cx in cxs_write:
+        cx.mark_unauthenticated.assert_not_called()

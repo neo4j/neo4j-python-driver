@@ -207,7 +207,7 @@ class AsyncBolt:
     @property
     @abc.abstractmethod
     def supports_re_auth(self):
-        """TODO"""
+        """Whether the connection version supports re-authentication."""
         pass
 
     def assert_re_auth_support(self):
@@ -458,6 +458,10 @@ class AsyncBolt:
     def logoff(self, dehydration_hooks=None, hydration_hooks=None):
         """Append a LOGOFF message to the outgoing queue."""
         pass
+
+    def mark_unauthenticated(self):
+        """Mark the connection as unauthenticated."""
+        self.auth_dict = {}
 
     async def re_auth(
         self, auth, dehydration_hooks=None, hydration_hooks=None

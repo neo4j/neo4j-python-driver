@@ -285,7 +285,7 @@ def test_logon(fake_socket_pair):
 
 
 @mark_sync_test
-def test_re_auth(fake_socket_pair):
+def test_re_auth(fake_socket_pair, mocker):
     auth = neo4j.Auth("basic", "alice123", "supersecret123")
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address,
@@ -297,6 +297,7 @@ def test_re_auth(fake_socket_pair):
     )
     connection = Bolt5x1(address, sockets.client,
                               PoolConfig.max_connection_lifetime)
+    connection.pool = mocker.Mock()
     with pytest.raises(neo4j.exceptions.Neo4jError):
         connection.re_auth(auth)
     tag, fields = sockets.server.pop_message()
