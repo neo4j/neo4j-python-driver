@@ -107,21 +107,22 @@ class Outbox:
         )
         num_chunks = num_full_chunks + bool(chunk_rest)
 
-        header_start = len(self._chunked_data)
-        data_start = header_start + 2
-        raw_data_start = 0
-        for i in range(num_chunks):
-            chunk_size = min(data_len - raw_data_start,
-                             self._max_chunk_size)
-            self._chunked_data[header_start:data_start] = struct_pack(
-                ">H", chunk_size
-            )
-            self._chunked_data[data_start:(data_start + chunk_size)] = \
-                self._raw_data[raw_data_start:(raw_data_start + chunk_size)]
-            header_start += chunk_size + 2
+        with memoryview(self._buffer.data) as data_view:
+            header_start = len(self._chunked_data)
             data_start = header_start + 2
-            raw_data_start += chunk_size
-        self._raw_data.clear()
+            raw_data_start = 0
+            for i in range(num_chunks):
+                chunk_size = min(data_len - raw_data_start,
+                                 self._max_chunk_size)
+                self._chunked_data[header_start:data_start] = struct_pack(
+                    ">H", chunk_size
+                )
+                self._chunked_data[data_start:(data_start + chunk_size)] = \
+                    data_view[raw_data_start:(raw_data_start + chunk_size)]
+                header_start += chunk_size + 2
+                data_start = header_start + 2
+                raw_data_start += chunk_size
+        self._buffer.clear()
 
     def _wrap_message(self):
         assert not self._buffer.is_tmp_buffering()
