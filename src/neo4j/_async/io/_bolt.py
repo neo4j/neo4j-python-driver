@@ -101,9 +101,6 @@ class AsyncBolt:
     # results for it.
     most_recent_qid = None
 
-    # Start of "in use" time for connection
-    in_use_time_start = 0.0
-
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *,
                  auth=None, user_agent=None, routing_context=None):
         self.unresolved_address = unresolved_address
