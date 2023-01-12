@@ -491,10 +491,11 @@ class UnpackableBuffer:
         self.p = 0
 
     def read(self, n=1):
+        view = memoryview(self.data)
         q = self.p + n
-        data = self.data[self.p:q]
+        subview = view[self.p:q]
         self.p = q
-        return data
+        return subview
 
     def read_u8(self):
         if self.used - self.p >= 1:
