@@ -2,26 +2,41 @@
 set -e
 
 ROOT=$(dirname "$0")/..
+SRC="${ROOT}/src"
 DIST="${ROOT}/dist"
 
 function get_package
 {
-    python -c "from neo4j.meta import package; print(package)"
+    cd "${SRC}"
+    python -c "from neo4j._meta import package; print(package)"
+    cd - > /dev/null
 }
 
 function set_package
 {
-    sed -i 's/^package = .*/package = "'$1'"/g' neo4j/meta.py
+    sed -i 's/^package = .*/package = "'$1'"/g' "${SRC}/neo4j/_meta.py"
 }
 
 function get_version
 {
-    python -c "from neo4j.meta import version; print(version)"
+    cd "${SRC}"
+    python -c "from neo4j._meta import version; print(version)"
+    cd - > /dev/null
 }
 
 function set_version
 {
-    sed -i 's/^version = .*/version = "'$1'"/g' neo4j/meta.py
+    sed -i 's/^version = .*/version = "'$1'"/g' "${SRC}/neo4j/_meta.py"
+}
+
+function get_deprecated {
+    cd "${SRC}"
+    python -c "from neo4j._meta import deprecated_package; print(deprecated_package)"
+    cd - > /dev/null
+}
+
+function set_deprecated {
+    sed -i 's/^deprecated_package = .*/deprecated_package = '$1'/g' "${SRC}/neo4j/_meta.py"
 }
 
 function check_file
@@ -40,27 +55,32 @@ function check_file
 function set_metadata_and_setup
 {
     PACKAGE="$1"; shift
+    DEPRECATED="$1"; shift
     VERSION="$1"; shift
 
-    cd ${ROOT}
+    cd "${ROOT}"
 
     # Capture original package metadata
     ORIGINAL_PACKAGE=$(get_package)
     ORIGINAL_VERSION=$(get_version)
-    echo "Source code originally configured for package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}"
+    ORIGINAL_DEPRECATED=$(get_deprecated)
+    echo "Source code originally configured for package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}/deprecated=${ORIGINAL_DEPRECATED}"
     echo "----------------------------------------"
-    grep "package\s\+=" neo4j/meta.py
-    grep "version\s\+=" neo4j/meta.py
+    grep "package\s\+=" "${SRC}/neo4j/_meta.py"
+    grep "version\s\+=" "${SRC}/neo4j/_meta.py"
+    grep "deprecated_package\s\+=" "${SRC}/neo4j/_meta.py"
     echo "----------------------------------------"
 
     function cleanup() {
       # Reset to original package metadata
       set_package "${ORIGINAL_PACKAGE}"
       set_version "${ORIGINAL_VERSION}"
-      echo "Source code reconfigured back to original package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}"
+      set_deprecated "${ORIGINAL_DEPRECATED}"
+      echo "Source code reconfigured back to original package ${ORIGINAL_PACKAGE}/${ORIGINAL_VERSION}/deprecated=${ORIGINAL_DEPRECATED}"
       echo "----------------------------------------"
-      grep "package\s\+=" neo4j/meta.py
-      grep "version\s\+=" neo4j/meta.py
+      grep "package\s\+=" "${SRC}/neo4j/_meta.py"
+      grep "version\s\+=" "${SRC}/neo4j/_meta.py"
+      grep "deprecated_package\s\+=" "${SRC}/neo4j/_meta.py"
       echo "----------------------------------------"
     }
     trap cleanup EXIT
@@ -68,26 +88,28 @@ function set_metadata_and_setup
     # Temporarily override package metadata
     set_package "${PACKAGE}"
     set_version "${VERSION}"
-    echo "Source code reconfigured for package ${PACKAGE}/${VERSION}"
+    set_deprecated "${DEPRECATED}"
+    echo "Source code reconfigured for package ${PACKAGE}/${VERSION}/deprecated=${DEPRECATED}"
     echo "----------------------------------------"
-    grep "package\s\+=" neo4j/meta.py
-    grep "version\s\+=" neo4j/meta.py
+    grep "package\s\+=" "${SRC}/neo4j/_meta.py"
+    grep "version\s\+=" "${SRC}/neo4j/_meta.py"
+    grep "deprecated_package\s\+=" "${SRC}/neo4j/_meta.py"
     echo "----------------------------------------"
 
     # Create source distribution
     find . -name *.pyc -delete
-    rm -rf ${ROOT}/*.egg-info 2> /dev/null
+    rm -rf "${SRC}/*.egg-info" 2> /dev/null
     python setup.py $*
     check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"
 
-  trap - EXIT
-  cleanup
+    trap - EXIT
+    cleanup
 }
 
 function setup
 {
     ARGS="$*"
     rm -rf ${DIST} 2> /dev/null
-    set_metadata_and_setup "neo4j-driver" ${ARGS}   # Legacy package; can be removed in 2.0
-    set_metadata_and_setup "neo4j" ${ARGS}
+    set_metadata_and_setup "neo4j-driver" "True" ${ARGS}   # Legacy package; can be removed in 2.0
+    set_metadata_and_setup "neo4j" "False" ${ARGS}
 }

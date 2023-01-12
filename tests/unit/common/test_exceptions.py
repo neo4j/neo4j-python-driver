@@ -211,22 +211,105 @@ def test_neo4jerror_hydrate_with_message_and_code_client():
     assert error.code == "Neo.{}.General.TestError".format(CLASSIFICATION_CLIENT)
 
 
-def test_transient_error_is_retriable_case_1():
-    error = Neo4jError.hydrate(message="Test error message", code="Neo.TransientError.Transaction.Terminated")
+@pytest.mark.parametrize(
+    ("code", "expected_cls", "expected_code"),
+    (
+        (
+            "Neo.TransientError.Transaction.Terminated",
+            ClientError,
+            "Neo.ClientError.Transaction.Terminated"
+        ),
+        (
+            "Neo.ClientError.Transaction.Terminated",
+            ClientError,
+            "Neo.ClientError.Transaction.Terminated"
+        ),
+        (
+            "Neo.TransientError.Transaction.LockClientStopped",
+            ClientError,
+            "Neo.ClientError.Transaction.LockClientStopped"
+        ),
+        (
+            "Neo.ClientError.Transaction.LockClientStopped",
+            ClientError,
+            "Neo.ClientError.Transaction.LockClientStopped"
+        ),
+        (
+            "Neo.ClientError.Security.AuthorizationExpired",
+            TransientError,
+            "Neo.ClientError.Security.AuthorizationExpired"
+        ),
+        (
+            "Neo.TransientError.General.TestError",
+            TransientError,
+            "Neo.TransientError.General.TestError"
+        )
+    )
+)
+def test_error_rewrite(code, expected_cls, expected_code):
+    message = "Test error message"
+    error = Neo4jError.hydrate(message=message, code=code)
 
-    assert isinstance(error, TransientError)
-    assert error.is_retriable() is False
+    expected_retryable = expected_cls is TransientError
+    assert error.__class__ is expected_cls
+    assert error.code == expected_code
+    assert error.message == message
+    assert error.is_retryable() is expected_retryable
+    with pytest.warns(DeprecationWarning, match=".*is_retryable.*"):
+        assert error.is_retriable() is expected_retryable
 
 
-def test_transient_error_is_retriable_case_2():
-    error = Neo4jError.hydrate(message="Test error message", code="Neo.TransientError.Transaction.LockClientStopped")
+@pytest.mark.parametrize(
+    ("code", "message", "expected_cls", "expected_str"),
+    (
+        (
+            "Neo.ClientError.General.UnknownError",
+            "Test error message",
+            ClientError,
+            "{code: Neo.ClientError.General.UnknownError} "
+            "{message: Test error message}"
+        ),
+        (
+            None,
+            "Test error message",
+            DatabaseError,
+            "{code: Neo.DatabaseError.General.UnknownError} "
+            "{message: Test error message}"
+        ),
+        (
+            "",
+            "Test error message",
+            DatabaseError,
+            "{code: Neo.DatabaseError.General.UnknownError} "
+            "{message: Test error message}"
+        ),
+        (
+            "Neo.ClientError.General.UnknownError",
+            None,
+            ClientError,
+            "{code: Neo.ClientError.General.UnknownError} "
+            "{message: An unknown error occurred}"
+        ),
+        (
+            "Neo.ClientError.General.UnknownError",
+            "",
+            ClientError,
+            "{code: Neo.ClientError.General.UnknownError} "
+            "{message: An unknown error occurred}"
+        ),
+    )
+)
+def test_neo4j_error_from_server_as_str(code, message, expected_cls,
+                                        expected_str):
+    error = Neo4jError.hydrate(code=code, message=message)
 
-    assert isinstance(error, TransientError)
-    assert error.is_retriable() is False
+    assert type(error) == expected_cls
+    assert str(error) == expected_str
 
 
-def test_transient_error_is_retriable_case_3():
-    error = Neo4jError.hydrate(message="Test error message", code="Neo.TransientError.General.TestError")
+@pytest.mark.parametrize("cls", (Neo4jError, ClientError))
+def test_neo4j_error_from_code_as_str(cls):
+    error = cls("Generated somewhere in the driver")
 
-    assert isinstance(error, TransientError)
-    assert error.is_retriable() is True
+    assert type(error)== cls
+    assert str(error) == "Generated somewhere in the driver"

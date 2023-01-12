@@ -21,7 +21,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join("..", "..")))
 
 
-from neo4j.meta import version as project_version
+from neo4j import __version__ as project_version
 
 
 # -- General configuration ------------------------------------------------
@@ -114,6 +114,9 @@ pygments_style = 'friendly'
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+# Don't include type hints in function signatures
+autodoc_typehints = "description"
 
 
 # -- Options for HTML output ----------------------------------------------

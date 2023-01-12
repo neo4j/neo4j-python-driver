@@ -16,57 +16,48 @@
 # limitations under the License.
 
 
-import io
-import struct
-from unittest import TestCase
+from __future__ import annotations
 
-from neo4j.data import DataDehydrator
-from neo4j.packstream import Packer
-from neo4j.spatial import (
+import typing as t
+
+import pytest
+
+from neo4j._spatial import (
     Point,
     point_type,
 )
 
 
-class PointTestCase(TestCase):
+class TestPoint:
 
-    def test_wrong_type_arguments(self):
-        for argument in (("a", "b"), ({"x": 1.0, "y": 2.0})):
-            with self.subTest():
-                with self.assertRaises(ValueError):
-                    Point(argument)
+    @pytest.mark.parametrize("argument", (
+        ("a", "b"), {"x": 1.0, "y": 2.0}
+    ))
+    def test_wrong_type_arguments(self, argument) -> None:
+        with pytest.raises(ValueError):
+            Point(argument)
 
-    def test_number_arguments(self):
-        for argument in ((1, 2), (1.2, 2.1)):
-            with self.subTest():
-                p = Point(argument)
-                assert tuple(p) == argument
+    @pytest.mark.parametrize("argument", (
+        (1, 2), (1.2, 2.1)
+    ))
+    def test_number_arguments(self, argument: t.Iterable[float]) -> None:
+        print(argument)
+        p = Point(argument)
+        assert tuple(p) == argument
 
-    def test_dehydration(self):
-        MyPoint = point_type("MyPoint", ["x", "y"], {2: 1234})
+    def test_immutable_coordinates(self) -> None:
+        MyPoint = point_type("MyPoint", ("x", "y", "z"), {2: 1234, 3: 5678})
         coordinates = (.1, 0)
         p = MyPoint(coordinates)
-
-        dehydrator = DataDehydrator()
-        buffer = io.BytesIO()
-        packer = Packer(buffer)
-        packer.pack(dehydrator.dehydrate((p,))[0])
-        self.assertEqual(
-            buffer.getvalue(),
-            b"\xB3X" +
-            b"\xC9" + struct.pack(">h", 1234) +
-            b"".join(map(lambda c: b"\xC1" + struct.pack(">d", c), coordinates))
-        )
-
-    def test_immutable_coordinates(self):
-        MyPoint = point_type("MyPoint", ["x", "y"], {2: 1234})
-        coordinates = (.1, 0)
-        p = MyPoint(coordinates)
-        with self.assertRaises(AttributeError):
-            p.x = 2.0
-        with self.assertRaises(AttributeError):
-            p.y = 2.0
-        with self.assertRaises(TypeError):
-            p[0] = 2.0
-        with self.assertRaises(TypeError):
-            p[1] = 2.0
+        with pytest.raises(AttributeError):
+            p.x = 2.0  # type: ignore[misc]
+        with pytest.raises(AttributeError):
+            p.y = 2.0  # type: ignore[misc]
+        with pytest.raises(AttributeError):
+            p.z = 2.0  # type: ignore[misc]
+        with pytest.raises(TypeError):
+            p[0] = 2.0  # type: ignore[index]
+        with pytest.raises(TypeError):
+            p[1] = 2.0  # type: ignore[index]
+        with pytest.raises(TypeError):
+            p[2] = 2.0  # type: ignore[index]

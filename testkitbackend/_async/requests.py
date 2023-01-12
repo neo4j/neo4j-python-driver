@@ -17,11 +17,12 @@
 
 
 import json
-from os import path
 import re
 import warnings
+from os import path
 
 import neo4j
+import neo4j.api
 from neo4j._async_compat.util import AsyncUtil
 
 from .. import (
@@ -29,6 +30,7 @@ from .. import (
     test_subtest_skips,
     totestkit,
 )
+from .._warning_check import warning_check
 from ..exceptions import MarkdAsDriverException
 
 
@@ -119,13 +121,16 @@ async def NewDriver(backend, data):
             backend, data["resolverRegistered"],
             data["domainNameResolverRegistered"]
         )
-    if data.get("connectionTimeoutMs"):
-        kwargs["connection_timeout"] = data["connectionTimeoutMs"] / 1000
-    if data.get("maxTxRetryTimeMs"):
-        kwargs["max_transaction_retry_time"] = data["maxTxRetryTimeMs"] / 1000
-    if data.get("connectionAcquisitionTimeoutMs"):
-        kwargs["connection_acquisition_timeout"] = \
-            data["connectionAcquisitionTimeoutMs"] / 1000
+    for timeout_testkit, timeout_driver in (
+        ("connectionTimeoutMs", "connection_timeout"),
+        ("maxTxRetryTimeMs", "max_transaction_retry_time"),
+        ("connectionAcquisitionTimeoutMs", "connection_acquisition_timeout"),
+    ):
+        if data.get(timeout_testkit) is not None:
+            kwargs[timeout_driver] = data[timeout_testkit] / 1000
+    for k in ("sessionConnectionTimeoutMs", "updateRoutingTableTimeoutMs"):
+        if k in data:
+            data.mark_item_as_read_if_equals(k, None)
     if data.get("maxConnectionPoolSize"):
         kwargs["max_connection_pool_size"] = data["maxConnectionPoolSize"]
     if data.get("fetchSize"):
@@ -143,7 +148,6 @@ async def NewDriver(backend, data):
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
-    data.mark_item_as_read("domainNameResolverRegistered")
     driver = neo4j.AsyncGraphDatabase.driver(
         data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs
     )
@@ -173,8 +177,14 @@ async def GetServerInfo(backend, data):
 async def CheckMultiDBSupport(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
+    with warning_check(
+        neo4j.ExperimentalWarning,
+        "Feature support query, based on Bolt protocol version and Neo4j "
+        "server version will change in the future."
+    ):
+        available = await driver.supports_multi_db()
     await backend.send_response("MultiDBSupport", {
-        "id": backend.next_key(), "available": await driver.supports_multi_db()
+        "id": backend.next_key(), "available": available
     })
 
 
@@ -240,6 +250,89 @@ async def DomainNameResolutionCompleted(backend, data):
     backend.dns_resolutions[data["requestId"]] = data["addresses"]
 
 
+async def NewBookmarkManager(backend, data):
+    bookmark_manager_id = backend.next_key()
+
+    bmm_kwargs = {}
+    data.mark_item_as_read("initialBookmarks", recursive=True)
+    bmm_kwargs["initial_bookmarks"] = data.get("initialBookmarks")
+    if data.get("bookmarksSupplierRegistered"):
+        bmm_kwargs["bookmarks_supplier"] = bookmarks_supplier(
+            backend, bookmark_manager_id
+        )
+    if data.get("bookmarksConsumerRegistered"):
+        bmm_kwargs["bookmarks_consumer"] = bookmarks_consumer(
+            backend, bookmark_manager_id
+        )
+
+    with warning_check(
+        neo4j.ExperimentalWarning,
+        "The bookmark manager feature is experimental. It might be changed or "
+        "removed any time even without prior notice."
+    ):
+        bookmark_manager = neo4j.AsyncGraphDatabase.bookmark_manager(
+            **bmm_kwargs
+        )
+    backend.bookmark_managers[bookmark_manager_id] = bookmark_manager
+    await backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
+
+
+async def BookmarkManagerClose(backend, data):
+    bookmark_manager_id = data["id"]
+    del backend.bookmark_managers[bookmark_manager_id]
+    await backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
+
+
+def bookmarks_supplier(backend, bookmark_manager_id):
+    async def supplier():
+        key = backend.next_key()
+        await backend.send_response("BookmarksSupplierRequest", {
+            "id": key,
+            "bookmarkManagerId": bookmark_manager_id,
+        })
+        if not await backend.process_request():
+            # connection was closed before end of next message
+            return []
+        if key not in backend.bookmarks_supplies:
+            raise RuntimeError(
+                "Backend did not receive expected "
+                "BookmarksSupplierCompleted message for id %s" % key
+            )
+        return backend.bookmarks_supplies.pop(key)
+
+    return supplier
+
+
+async def BookmarksSupplierCompleted(backend, data):
+    backend.bookmarks_supplies[data["requestId"]] = \
+        neo4j.Bookmarks.from_raw_values(data["bookmarks"])
+
+
+def bookmarks_consumer(backend, bookmark_manager_id):
+    async def consumer(bookmarks):
+        key = backend.next_key()
+        await backend.send_response("BookmarksConsumerRequest", {
+            "id": key,
+            "bookmarkManagerId": bookmark_manager_id,
+            "bookmarks": list(bookmarks.raw_values)
+        })
+        if not await backend.process_request():
+            # connection was closed before end of next message
+            return []
+        if key not in backend.bookmarks_consumptions:
+            raise RuntimeError(
+                "Backend did not receive expected "
+                "BookmarksConsumerCompleted message for id %s" % key
+            )
+        del backend.bookmarks_consumptions[key]
+
+    return consumer
+
+
+async def BookmarksConsumerCompleted(backend, data):
+    backend.bookmarks_consumptions[data["requestId"]] = True
+
+
 async def DriverClose(backend, data):
     key = data["driverId"]
     driver = backend.drivers[key]
@@ -274,18 +367,33 @@ async def NewSession(backend, data):
         access_mode = neo4j.WRITE_ACCESS
     else:
         raise ValueError("Unknown access mode:" + access_mode)
-    bookmarks = None
-    if "bookmarks" in data and data["bookmarks"]:
-        bookmarks = neo4j.Bookmarks.from_raw_values(data["bookmarks"])
     config = {
-            "default_access_mode": access_mode,
-            "bookmarks": bookmarks,
-            "database": data["database"],
-            "fetch_size": data.get("fetchSize", None),
-            "impersonated_user": data.get("impersonatedUser", None),
-
+        "default_access_mode": access_mode,
+        "database": data["database"],
     }
-    session = driver.session(**config)
+    if data.get("bookmarks") is not None:
+        config["bookmarks"] = neo4j.Bookmarks.from_raw_values(
+            data["bookmarks"]
+        )
+    if data.get("bookmarkManagerId") is not None:
+        config["bookmark_manager"] = backend.bookmark_managers[
+            data["bookmarkManagerId"]
+        ]
+    for (conf_name, data_name) in (
+        ("fetch_size", "fetchSize"),
+        ("impersonated_user", "impersonatedUser"),
+    ):
+        if data_name in data:
+            config[conf_name] = data[data_name]
+    if "bookmark_manager" in config:
+        with warning_check(
+            neo4j.ExperimentalWarning,
+            "The 'bookmark_manager' config key is experimental. It might be "
+            "changed or removed any time even without prior notice."
+        ):
+            session = driver.session(**config)
+    else:
+        session = driver.session(**config)
     key = backend.next_key()
     backend.sessions[key] = SessionTracker(session)
     await backend.send_response("Session", {"id": key})
@@ -351,9 +459,9 @@ async def transactionFunc(backend, data, is_read):
                     raise FrontendError("Client said no")
 
     if is_read:
-        await session.read_transaction(func)
+        await session.execute_read(func)
     else:
-        await session.write_transaction(func)
+        await session.execute_write(func)
     await backend.send_response("RetryableDone", {})
 
 
@@ -445,6 +553,7 @@ async def ResultSingle(backend, data):
 async def ResultSingleOptional(backend, data):
     result = backend.results[data["resultId"]]
     with warnings.catch_warnings(record=True) as warning_list:
+        warnings.simplefilter("always")
         record = await result.single(strict=False)
     if record:
         record = totestkit.record(record)

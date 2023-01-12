@@ -25,7 +25,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev \
         libsqlite3-dev wget curl llvm libncurses5-dev xz-utils tk-dev \
-        libxml2-dev libxmlsec1-dev libffi-dev \
+        libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
         ca-certificates && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -41,17 +41,20 @@ RUN git clone https://github.com/pyenv/pyenv.git .pyenv
 ENV PYENV_ROOT /.pyenv
 ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
 
-# Set minimum supported Python version
-RUN pyenv install 3.7:latest
-RUN pyenv install 3.8:latest
-RUN pyenv install 3.9:latest
-RUN pyenv install 3.10:latest
+# Setup python version
+ENV PYTHON_VERSIONS 3.7 3.8 3.9 3.10 3.11
+
+RUN for version in $PYTHON_VERSIONS; do \
+        pyenv install $version; \
+    done
 RUN pyenv rehash
 RUN pyenv global $(pyenv versions --bare --skip-aliases)
 
-# Install Latest pip for each environment
+# Install Latest pip and setuptools for each environment
+# + tox and tools for starting the tests
 # https://pip.pypa.io/en/stable/news/
-RUN python -m pip install --upgrade pip
-
-# Install Python Testing Tools
-RUN python -m pip install coverage tox tox-factor
+RUN for version in $PYTHON_VERSIONS; do \
+        python$version -m pip install -U pip && \
+        python$version -m pip install -U setuptools && \
+        python$version -m pip install -U coverage tox; \
+    done

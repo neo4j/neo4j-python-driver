@@ -40,7 +40,9 @@ async def test_transaction_context_when_committing(
 ):
     on_closed = mocker.AsyncMock()
     on_error = mocker.AsyncMock()
-    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error)
+    on_cancel = mocker.Mock()
+    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error,
+                          on_cancel)
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
     async with tx as tx_:
@@ -70,7 +72,9 @@ async def test_transaction_context_with_explicit_rollback(
 ):
     on_closed = mocker.AsyncMock()
     on_error = mocker.AsyncMock()
-    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error)
+    on_cancel = mocker.Mock()
+    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error,
+                          on_cancel)
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
     async with tx as tx_:
@@ -99,7 +103,9 @@ async def test_transaction_context_calls_rollback_on_error(
 
     on_closed = MagicMock()
     on_error = MagicMock()
-    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error)
+    on_cancel = MagicMock()
+    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error,
+                          on_cancel)
     mock_commit = mocker.patch.object(tx, "_commit", wraps=tx._commit)
     mock_rollback = mocker.patch.object(tx, "_rollback", wraps=tx._rollback)
     with pytest.raises(OopsError):
@@ -113,30 +119,44 @@ async def test_transaction_context_calls_rollback_on_error(
     assert tx_.closed()
 
 
-@pytest.mark.parametrize(("parameters", "error_type"), (
-    # maps must have string keys
-    ({"x": {1: 'eins', 2: 'zwei', 3: 'drei'}}, TypeError),
-    ({"x": {(1, 2): '1+2i', (2, 0): '2'}}, TypeError),
-    ({"x": uuid4()}, TypeError),
-))
-@mark_async_test
-async def test_transaction_run_with_invalid_parameters(
-    async_fake_connection, parameters, error_type
-):
-    on_closed = MagicMock()
-    on_error = MagicMock()
-    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error)
-    with pytest.raises(error_type):
-        await tx.run("RETURN $x", **parameters)
-
-
 @mark_async_test
 async def test_transaction_run_takes_no_query_object(async_fake_connection):
     on_closed = MagicMock()
     on_error = MagicMock()
-    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error)
+    on_cancel = MagicMock()
+    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error,
+                          on_cancel)
     with pytest.raises(ValueError):
         await tx.run(Query("RETURN 1"))
+
+
+@mark_async_test
+@pytest.mark.parametrize("params", (
+    {"x": 1},
+    {"x": "1"},
+    {"x": "1", "y": 2},
+    {"parameters": {"nested": "parameters"}},
+))
+@pytest.mark.parametrize("as_kwargs", (True, False))
+async def test_transaction_run_parameters(
+    async_fake_connection, params, as_kwargs
+):
+    on_closed = MagicMock()
+    on_error = MagicMock()
+    on_cancel = MagicMock()
+    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error,
+                          on_cancel)
+    if not as_kwargs:
+        params = {"parameters": params}
+    await tx.run("RETURN $x", **params)
+    calls = [call for call in async_fake_connection.method_calls
+             if call[0] in ("run", "send_all", "fetch_message")]
+    assert [call[0] for call in calls] == ["run", "send_all", "fetch_message"]
+    run = calls[0]
+    assert run[1][0] == "RETURN $x"
+    if "parameters" in params:
+        params = params["parameters"]
+    assert run[2]["parameters"] == params
 
 
 @mark_async_test
@@ -145,7 +165,7 @@ async def test_transaction_rollbacks_on_open_connections(
 ):
     tx = AsyncTransaction(
         async_fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None
+        lambda *args, **kwargs: None, lambda *args, **kwargs: None
     )
     async with tx as tx_:
         async_fake_connection.is_reset_mock.return_value = False
@@ -162,7 +182,7 @@ async def test_transaction_no_rollback_on_reset_connections(
 ):
     tx = AsyncTransaction(
         async_fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None
+        lambda *args, **kwargs: None, lambda *args, **kwargs: None
     )
     async with tx as tx_:
         async_fake_connection.is_reset_mock.return_value = True
@@ -179,7 +199,7 @@ async def test_transaction_no_rollback_on_closed_connections(
 ):
     tx = AsyncTransaction(
         async_fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None
+        lambda *args, **kwargs: None, lambda *args, **kwargs: None
     )
     async with tx as tx_:
         async_fake_connection.closed.return_value = True
@@ -198,7 +218,7 @@ async def test_transaction_no_rollback_on_defunct_connections(
 ):
     tx = AsyncTransaction(
         async_fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None
+        lambda *args, **kwargs: None, lambda *args, **kwargs: None
     )
     async with tx as tx_:
         async_fake_connection.defunct.return_value = True

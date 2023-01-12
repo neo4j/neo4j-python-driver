@@ -14,41 +14,43 @@ Driver Construction
 The :class:`neo4j.Driver` construction is done via a ``classmethod`` on the :class:`neo4j.GraphDatabase` class.
 
 .. autoclass:: neo4j.GraphDatabase
-   :members: driver
+   :members: bookmark_manager
+
+    .. automethod:: driver
+
+        Driver creation example:
+
+        .. code-block:: python
+
+            from neo4j import GraphDatabase
 
 
-Driver creation example:
+            uri = "neo4j://example.com:7687"
+            driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
 
-.. code-block:: python
-
-    from neo4j import GraphDatabase
-
-    uri = "neo4j://example.com:7687"
-    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
-
-    driver.close()  # close the driver object
+            driver.close()  # close the driver object
 
 
-For basic authentication, ``auth`` can be a simple tuple, for example:
+        For basic authentication, ``auth`` can be a simple tuple, for example:
 
-.. code-block:: python
+        .. code-block:: python
 
-   auth = ("neo4j", "password")
+           auth = ("neo4j", "password")
 
-This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
-Other authentication methods are described under :ref:`auth-ref`.
+        This will implicitly create a :class:`neo4j.Auth` with ``scheme="basic"``.
+        Other authentication methods are described under :ref:`auth-ref`.
 
 
-``with`` block context example:
+        ``with`` block context example:
 
-.. code-block:: python
+        .. code-block:: python
 
-    from neo4j import GraphDatabase
+            from neo4j import GraphDatabase
 
-    uri = "neo4j://example.com:7687"
-    with GraphDatabase.driver(uri, auth=("neo4j", "password")) as driver:
-        # use the driver
 
+            uri = "neo4j://example.com:7687"
+            with GraphDatabase.driver(uri, auth=("neo4j", "password")) as driver:
+                ...  # use the driver
 
 
 .. _uri-ref:
@@ -73,7 +75,7 @@ Available valid URIs:
 
 .. code-block:: python
 
-    uri = "neo4j://example.com:7687"
+    uri = "neo4j://example.com:7687?policy=europe"
 
 Each supported scheme maps to a particular :class:`neo4j.Driver` subclass that implements a specific behaviour.
 
@@ -117,6 +119,7 @@ Example:
 
     import neo4j
 
+
     auth = neo4j.Auth("basic", "neo4j", "password")
 
 
@@ -138,7 +141,7 @@ Alternatively, one of the auth token helper functions can be used.
 Driver
 ******
 
-Every Neo4j-backed application will require a :class:`neo4j.Driver` object.
+Every Neo4j-backed application will require a driver object.
 
 This object holds the details required to establish connections with a Neo4j database, including server URIs, credentials and other configuration.
 :class:`neo4j.Driver` objects hold a connection pool from which :class:`neo4j.Session` objects can borrow connections.
@@ -160,7 +163,6 @@ Driver Configuration
 
 Additional configuration can be provided via the :class:`neo4j.Driver` constructor.
 
-
 + :ref:`connection-acquisition-timeout-ref`
 + :ref:`connection-timeout-ref`
 + :ref:`encrypted-ref`
@@ -179,8 +181,12 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 
 ``connection_acquisition_timeout``
 ----------------------------------
-The maximum amount of time in seconds a session will wait when requesting a connection from the connection pool.
-Since the process of acquiring a connection may involve creating a new connection, ensure that the value of this configuration is higher than the configured :ref:`connection-timeout-ref`.
+The maximum amount of time in seconds the driver will wait to either acquire an
+idle connection from the pool (including potential liveness checks) or create a
+new connection when the pool is not full and all existing connection are in use.
+
+Since this process may involve opening a new connection including handshakes,
+it should be chosen larger than :ref:`connection-timeout-ref`.
 
 :Type: ``float``
 :Default: ``60.0``
@@ -190,7 +196,11 @@ Since the process of acquiring a connection may involve creating a new connectio
 
 ``connection_timeout``
 ----------------------
-The maximum amount of time in seconds to wait for a TCP connection to be established.
+The maximum amount of time in seconds to wait for a TCP connection to be
+established.
+
+This *does not* include any handshake(s), or authentication required before the
+connection can be used to perform database related work.
 
 :Type: ``float``
 :Default: ``30.0``
@@ -201,6 +211,8 @@ The maximum amount of time in seconds to wait for a TCP connection to be establi
 ``encrypted``
 -------------
 Specify whether to use an encrypted connection between the driver and server.
+
+This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
 
 This setting does not have any effect if a custom ``ssl_context`` is configured.
 
@@ -218,13 +230,13 @@ Specify whether TCP keep-alive should be enabled.
 :Default: ``True``
 
 **This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
 
 
 .. _max-connection-lifetime-ref:
 
 ``max_connection_lifetime``
 ---------------------------
-
 The maximum duration in seconds that the driver will keep a connection for before being removed from the pool.
 
 :Type: ``float``
@@ -255,8 +267,8 @@ The maximum total number of connections allowed, per host (i.e. cluster nodes), 
 
 ``resolver``
 ------------
-A custom resolver function to resolve host and port values ahead of DNS resolution.
-This function is called with a 2-tuple of (host, port) and should return an iterable of 2-tuples (host, port).
+A custom resolver function to resolve any addresses the driver receives ahead of DNS resolution.
+This function is called with an :class:`.Address` and should return an iterable of :class:`.Address` objects or values that can be used to construct :class:`.Address` objects.
 
 If no custom resolver function is supplied, the internal resolver moves straight to regular DNS resolution.
 
@@ -264,22 +276,36 @@ For example:
 
 .. code-block:: python
 
-   from neo4j import GraphDatabase
-
-   def custom_resolver(socket_address):
-       if socket_address == ("example.com", 9999):
-           yield "::1", 7687
-           yield "127.0.0.1", 7687
-       else:
-           from socket import gaierror
-           raise gaierror("Unexpected socket address %r" % socket_address)
-
-   driver = GraphDatabase.driver("neo4j://example.com:9999",
-                                 auth=("neo4j", "password"),
-                                 resolver=custom_resolver)
+   import neo4j
 
 
-:Default: :const:`None`
+    def custom_resolver(socket_address):
+        # assert isinstance(socket_address, neo4j.Address)
+        if socket_address != ("example.com", 9999):
+            raise OSError(f"Unexpected socket address {socket_address!r}")
+
+        # You can return any neo4j.Address object
+        yield neo4j.Address(("localhost", 7687))  # IPv4
+        yield neo4j.Address(("::1", 7687, 0, 0))  # IPv6
+        yield neo4j.Address.parse("localhost:7687")
+        yield neo4j.Address.parse("[::1]:7687")
+
+        # or any tuple that can be passed to neo4j.Address(...).
+        # Initially, this will be interpreted as IPv4, but DNS resolution
+        # will turn it into IPv6 if appropriate.
+        yield "::1", 7687
+        # This will be interpreted as IPv6 directly, but DNS resolution will
+        # still happen.
+        yield "::1", 7687, 0, 0
+        yield "127.0.0.1", 7687
+
+
+   driver = neo4j.GraphDatabase.driver("neo4j://example.com:9999",
+                                       auth=("neo4j", "password"),
+                                       resolver=custom_resolver)
+
+
+:Default: :data:`None`
 
 
 .. _trust-ref:
@@ -287,6 +313,8 @@ For example:
 ``trust``
 ---------
 Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
+
+This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
 
 This setting does not have any effect if ``encrypted`` is set to ``False``.
 
@@ -318,6 +346,8 @@ This setting does not have any effect if ``encrypted`` is set to ``False``.
 ---------------
 Specify a custom SSL context to use for wrapping connections.
 
+This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
+
 If given, ``encrypted`` and ``trusted_certificates`` have no effect.
 
 .. warning::
@@ -325,8 +355,8 @@ If given, ``encrypted`` and ``trusted_certificates`` have no effect.
 
     Its usage is strongly discouraged and comes without any guarantees.
 
-:Type: :class:`ssl.SSLContext` or :const:`None`
-:Default: :const:`None`
+:Type: :class:`ssl.SSLContext` or :data:`None`
+:Default: :data:`None`
 
 .. versionadded:: 5.0
 
@@ -336,6 +366,8 @@ If given, ``encrypted`` and ``trusted_certificates`` have no effect.
 ``trusted_certificates``
 ------------------------
 Specify how to determine the authenticity of encryption certificates provided by the Neo4j instance on connection.
+
+This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
 
 This setting does not have any effect if ``encrypted`` is set to ``False`` or a
 custom ``ssl_context`` is configured.
@@ -374,6 +406,7 @@ For example:
 
     from neo4j import GraphDatabase
 
+
     class Application:
 
         def __init__(self, uri, user, password)
@@ -384,7 +417,7 @@ For example:
 
 Connection details held by the :class:`neo4j.Driver` are immutable.
 Therefore if, for example, a password is changed, a replacement :class:`neo4j.Driver` object must be created.
-More than one :class:`.Driver` may be required if connections to multiple databases, or connections as multiple users, are required,
+More than one :class:`.Driver` may be required if connections to multiple remotes, or connections as multiple users, are required,
 unless when using impersonation (:ref:`impersonated-user-ref`).
 
 :class:`neo4j.Driver` objects are thread-safe but cannot be shared across processes.
@@ -447,21 +480,25 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 
     from neo4j import GraphDatabase
 
-    driver = GraphDatabase(uri, auth=(user, password))
-    session = driver.session()
-    result = session.run("MATCH (a:Person) RETURN a.name AS name")
-    names = [record["name"] for record in result]
-    session.close()
-    driver.close()
+
+    with GraphDatabase(uri, auth=(user, password)) as driver:
+        session = driver.session()
+        try:
+            result = session.run("MATCH (a:Person) RETURN a.name AS name")
+            names = [record["name"] for record in result]
+        finally:
+            session.close()
 
 
 Sessions will often be created and destroyed using a *with block context*.
+This is the recommended approach as it takes care of closing the session
+properly even when an exception is raised.
 
 .. code-block:: python
 
     with driver.session() as session:
         result = session.run("MATCH (a:Person) RETURN a.name AS name")
-        # do something with the result...
+        ...  # do something with the result
 
 
 Sessions will often be created with some configuration settings, see :ref:`session-configuration-ref`.
@@ -470,7 +507,7 @@ Sessions will often be created with some configuration settings, see :ref:`sessi
 
     with driver.session(database="example_database", fetch_size=100) as session:
         result = session.run("MATCH (a:Person) RETURN a.name AS name")
-        # do something with the result...
+        ...  # do something with the result
 
 
 *******
@@ -480,6 +517,8 @@ Session
 .. autoclass:: neo4j.Session()
 
     .. automethod:: close
+
+    .. automethod:: closed
 
     .. automethod:: run
 
@@ -491,7 +530,11 @@ Session
 
     .. automethod:: read_transaction
 
+    .. automethod:: execute_read
+
     .. automethod:: write_transaction
+
+    .. automethod:: execute_write
 
 
 Query
@@ -513,6 +556,7 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 + :ref:`database-ref`
 + :ref:`default-access-mode-ref`
 + :ref:`fetch-size-ref`
++ :ref:`bookmark-manager-ref`
 
 
 .. _bookmarks-ref:
@@ -523,12 +567,12 @@ Optional :class:`neo4j.Bookmarks`. Use this to causally chain sessions.
 See :meth:`Session.last_bookmarks` or :meth:`AsyncSession.last_bookmarks` for
 more information.
 
+:Default: ``None``
+
 .. deprecated:: 5.0
     Alternatively, an iterable of strings can be passed. This usage is
     deprecated and will be removed in a future release. Please use a
     :class:`neo4j.Bookmarks` object instead.
-
-:Default: ``None``
 
 
 .. _database-ref:
@@ -537,32 +581,66 @@ more information.
 ------------
 Name of the database to query.
 
-:Type: ``str``, ``neo4j.DEFAULT_DATABASE``
-
-
-.. py:attribute:: neo4j.DEFAULT_DATABASE
-    :noindex:
-
-    This will use the default database on the Neo4j instance.
-
-
 .. Note::
 
     The default database can be set on the Neo4j instance settings.
 
 .. Note::
-    It is recommended to always specify the database explicitly when possible.
-    This allows the driver to work more efficiently, as it will not have to
-    resolve the home database first.
+
+    This option has no explicit value by default, but it is recommended to set
+    one if the target database is known in advance. This has the benefit of
+    ensuring a consistent target database name throughout the session in a
+    straightforward way and potentially simplifies driver logic as well as
+    reduces network communication resulting in better performance.
+
+    Usage of Cypher clauses like `USE` is not a replacement for this option.
+    The driver does not parse any Cypher.
+
+When no explicit name is set, the driver behavior depends on the connection
+URI scheme supplied to the driver on instantiation and Bolt protocol
+version.
+
+Specifically, the following applies:
+
+- **bolt schemes** - queries are dispatched to the server for execution
+  without explicit database name supplied, meaning that the target database
+  name for query execution is determined by the server. It is important to
+  note that the target database may change (even within the same session),
+  for instance if the user's home database is changed on the server.
+
+- **neo4j schemes** - providing that Bolt protocol version 4.4, which was
+  introduced with Neo4j server 4.4, or above is available, the driver
+  fetches the user's home database name from the server on first query
+  execution within the session and uses the fetched database name
+  explicitly for all queries executed within the session. This ensures that
+  the database name remains consistent within the given session. For
+  instance, if the user's home database name is 'movies' and the server
+  supplies it to the driver upon database name fetching for the session,
+  all queries within that session are executed with the explicit database
+  name 'movies' supplied. Any change to the user’s home database is
+  reflected only in sessions created after such change takes effect. This
+  behavior requires additional network communication. In clustered
+  environments, it is strongly recommended to avoid a single point of
+  failure. For instance, by ensuring that the connection URI resolves to
+  multiple endpoints. For older Bolt protocol versions the behavior is the
+  same as described for the **bolt schemes** above.
 
 
 .. code-block:: python
 
     from neo4j import GraphDatabase
 
+
+    # closing of driver and session is omitted for brevity
     driver = GraphDatabase.driver(uri, auth=(user, password))
     session = driver.session(database="system")
 
+.. py:attribute:: neo4j.DEFAULT_DATABASE = None
+    :noindex:
+
+    This will use the default database on the Neo4j instance.
+
+:Type: ``str``, ``neo4j.DEFAULT_DATABASE``
 
 :Default: ``neo4j.DEFAULT_DATABASE``
 
@@ -576,31 +654,29 @@ This means that all actions in the session will be executed in the security
 context of the impersonated user. For this, the user for which the
 :class:`Driver` has been created needs to have the appropriate permissions.
 
-:Type: ``str``, None
+.. Note::
 
+    The server or all servers of the cluster need to support impersonation.
+    Otherwise, the driver will raise :exc:`.ConfigurationError`
+    as soon as it encounters a server that does not.
+
+.. code-block:: python
+
+    from neo4j import GraphDatabase
+
+
+    # closing of driver and session is omitted for brevity
+    driver = GraphDatabase.driver(uri, auth=(user, password))
+    session = driver.session(impersonated_user="alice")
 
 .. py:data:: None
    :noindex:
 
    Will not perform impersonation.
 
+:Type: ``str``, None
 
-.. Note::
-
-    The server or all servers of the cluster need to support impersonation when.
-    Otherwise, the driver will raise :py:exc:`.ConfigurationError`
-    as soon as it encounters a server that does not.
-
-
-.. code-block:: python
-
-    from neo4j import GraphDatabase
-
-    driver = GraphDatabase.driver(uri, auth=(user, password))
-    session = driver.session(impersonated_user="alice")
-
-
-:Default: :const:`None`
+:Default: :data:`None`
 
 
 .. _default-access-mode-ref:
@@ -611,18 +687,29 @@ The default access mode.
 
 A session can be given a default access mode on construction.
 
-This applies only in clustered environments and determines whether transactions carried out within that session should be routed to a ``read`` or ``write`` server by default.
+This applies only in clustered environments and determines whether transactions
+carried out within that session should be routed to a ``read`` or ``write``
+server by default.
 
-Transactions (see :ref:`managed-transactions-ref`) within a session can override the access mode passed to that session on construction.
+Transactions (see :ref:`managed-transactions-ref`) within a session override the
+access mode passed to that session on construction.
 
 .. note::
-    The driver does not parse Cypher queries and cannot determine whether the access mode should be ``neo4j.ACCESS_WRITE`` or ``neo4j.ACCESS_READ``.
-    Since the access mode is not passed to the server, this can allow a ``neo4j.ACCESS_WRITE`` statement to be executed for a ``neo4j.ACCESS_READ`` call on a single instance.
-    Clustered environments are not susceptible to this loophole as cluster roles prevent it.
-    This behaviour should not be relied upon as the loophole may be closed in a future release.
+    The driver does not parse Cypher queries and cannot determine whether the
+    access mode should be ``neo4j.WRITE_ACCESS`` or ``neo4j.READ_ACCESS``.
+    This setting is only meant to enable the driver to perform correct routing,
+    *not* for enforcing access control. This means that, depending on the server
+    version and settings, the server or cluster might allow a write-statement to
+    be executed even when ``neo4j.READ_ACCESS`` is chosen. This behaviour should
+    not be relied upon as it can change with the server.
 
+.. py:attribute:: neo4j.WRITE_ACCESS = "WRITE"
+    :noindex:
+.. py:attribute:: neo4j.READ_ACCESS = "READ"
+    :noindex:
 
 :Type: ``neo4j.WRITE_ACCESS``, ``neo4j.READ_ACCESS``
+
 :Default: ``neo4j.WRITE_ACCESS``
 
 
@@ -630,10 +717,37 @@ Transactions (see :ref:`managed-transactions-ref`) within a session can override
 
 ``fetch_size``
 --------------
-The fetch size used for requesting messages from Neo4j.
+The fetch size used for requesting records from Neo4j.
 
 :Type: ``int``
 :Default: ``1000``
+
+
+.. _bookmark-manager-ref:
+
+``bookmark_manager``
+--------------------
+Specify a bookmark manager for the session to use. If present, the bookmark
+manager is used to keep all work within the session causally consistent with
+all work in other sessions using the same bookmark manager.
+
+See :class:`.BookmarkManager` for more information.
+
+.. warning::
+    Enabling the BookmarkManager can have a negative impact on performance since
+    all queries will wait for the latest changes to be propagated across the
+    cluster.
+
+    For simple use-cases, it often suffices that work within a single session
+    is automatically causally consistent.
+
+:Type: :data:`None` or :class:`.BookmarkManager`
+:Default: :data:`None`
+
+.. versionadded:: 5.0
+
+**This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
 
 
 
@@ -648,7 +762,7 @@ Neo4j supports three kinds of transaction:
 + :ref:`explicit-transactions-ref`
 + :ref:`managed-transactions-ref`
 
-Each has pros and cons but if in doubt, use a managed transaction with a `transaction function`.
+Each has pros and cons but if in doubt, use a managed transaction with a *transaction function*.
 
 
 .. _auto-commit-transactions-ref:
@@ -656,7 +770,7 @@ Each has pros and cons but if in doubt, use a managed transaction with a `transa
 Auto-commit Transactions
 ========================
 Auto-commit transactions are the simplest form of transaction, available via
-:py:meth:`neo4j.Session.run`. These are easy to use but support only one
+:meth:`neo4j.Session.run`. These are easy to use but support only one
 statement per transaction and are not automatically retried on failure.
 
 Auto-commit transactions are also the only way to run ``PERIODIC COMMIT``
@@ -664,28 +778,33 @@ Auto-commit transactions are also the only way to run ``PERIODIC COMMIT``
 newer) statements, since those Cypher clauses manage their own transactions
 internally.
 
-Example:
+Write example:
 
 .. code-block:: python
 
     import neo4j
 
+
     def create_person(driver, name):
-        with driver.session(default_access_mode=neo4j.WRITE_ACCESS) as session:
-            query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
+        # default_access_mode defaults to WRITE_ACCESS
+        with driver.session(database="neo4j") as session:
+            query = ("CREATE (n:NodeExample {name: $name, id: randomUUID()}) "
+                     "RETURN n.id AS node_id")
             result = session.run(query, name=name)
             record = result.single()
             return record["node_id"]
 
-Example:
+Read example:
 
 .. code-block:: python
 
     import neo4j
 
+
     def get_numbers(driver):
         numbers = []
-        with driver.session(default_access_mode=neo4j.READ_ACCESS) as session:
+        with driver.session(database="neo4j",
+                            default_access_mode=neo4j.READ_ACCESS) as session:
             result = session.run("UNWIND [1, 2, 3] AS x RETURN x")
             for record in result:
                 numbers.append(record["x"])
@@ -694,9 +813,9 @@ Example:
 
 .. _explicit-transactions-ref:
 
-Explicit Transactions
-=====================
-Explicit transactions support multiple statements and must be created with an explicit :py:meth:`neo4j.Session.begin_transaction` call.
+Explicit Transactions (Unmanaged Transactions)
+==============================================
+Explicit transactions support multiple statements and must be created with an explicit :meth:`neo4j.Session.begin_transaction` call.
 
 This creates a new :class:`neo4j.Transaction` object that can be used to run Cypher.
 
@@ -706,18 +825,18 @@ It also gives applications the ability to directly control ``commit`` and ``roll
 
     .. automethod:: run
 
-    .. automethod:: close
-
-    .. automethod:: closed
-
     .. automethod:: commit
 
     .. automethod:: rollback
 
-Closing an explicit transaction can either happen automatically at the end of a ``with`` block,
-or can be explicitly controlled through the :py:meth:`neo4j.Transaction.commit`, :py:meth:`neo4j.Transaction.rollback` or :py:meth:`neo4j.Transaction.close` methods.
+    .. automethod:: close
 
-Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction.
+    .. automethod:: closed
+
+Closing an explicit transaction can either happen automatically at the end of a ``with`` block,
+or can be explicitly controlled through the :meth:`neo4j.Transaction.commit`, :meth:`neo4j.Transaction.rollback` or :meth:`neo4j.Transaction.close` methods.
+
+Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction or that need to run multiple queries within a single transaction but without the retries provided by managed transactions.
 
 Example:
 
@@ -725,25 +844,56 @@ Example:
 
     import neo4j
 
-    def create_person(driver, name):
-        with driver.session(default_access_mode=neo4j.WRITE_ACCESS) as session:
+
+    def transfer_to_other_bank(driver, customer_id, other_bank_id, amount):
+        with driver.session(
+            database="neo4j",
+            # optional, defaults to WRITE_ACCESS
+            default_access_mode=neo4j.WRITE_ACCESS
+        ) as session:
             tx = session.begin_transaction()
-            node_id = create_person_node(tx)
-            set_person_name(tx, node_id, name)
-            tx.commit()
+            # or just use a `with` context instead of try/finally
+            try:
+                if not customer_balance_check(tx, customer_id, amount):
+                    # give up
+                    return
+                other_bank_transfer_api(customer_id, other_bank_id, amount)
+                # Now the money has been transferred
+                # => we can't retry or rollback anymore
+                try:
+                    decrease_customer_balance(tx, customer_id, amount)
+                    tx.commit()
+                except Exception as e:
+                    request_inspection(customer_id, other_bank_id, amount, e)
+                    raise
+            finally:
+                tx.close()  # rolls back if not yet committed
 
-    def create_person_node(tx):
-        query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
-        name = "default_name"
-        result = tx.run(query, name=name)
-        record = result.single()
-        return record["node_id"]
 
-    def set_person_name(tx, node_id, name):
-        query = "MATCH (a:Person) WHERE id(a) = $id SET a.name = $name"
-        result = tx.run(query, id=node_id, name=name)
-        summary = result.consume()
-        # use the summary for logging etc.
+    def customer_balance_check(tx, customer_id, amount):
+        query = ("MATCH (c:Customer {id: $id}) "
+                 "RETURN c.balance >= $amount AS sufficient")
+        result = tx.run(query, id=customer_id, amount=amount)
+        record = result.single(strict=True)
+        return record["sufficient"]
+
+
+    def other_bank_transfer_api(customer_id, other_bank_id, amount):
+        ...  # make some API call to other bank
+
+
+    def decrease_customer_balance(tx, customer_id, amount):
+        query = ("MATCH (c:Customer {id: $id}) "
+                 "SET c.balance = c.balance - $amount")
+        result = tx.run(query, id=customer_id, amount=amount)
+        result.consume()
+
+
+    def request_inspection(customer_id, other_bank_id, amount, e):
+        # manual cleanup required; log this or similar
+        print("WARNING: transaction rolled back due to exception:", repr(e))
+        print("customer_id:", customer_id, "other_bank_id:", other_bank_id,
+              "amount:", amount)
 
 .. _managed-transactions-ref:
 
@@ -751,17 +901,17 @@ Managed Transactions (`transaction functions`)
 ==============================================
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
 
-+ :py:meth:`neo4j.Session.write_transaction`
-+ :py:meth:`neo4j.Session.read_transaction`
++ :meth:`neo4j.Session.execute_write`
++ :meth:`neo4j.Session.execute_read`
 
 These allow a function object representing the transactional unit of work to be passed as a parameter.
 This function is called one or more times, within a configurable time limit, until it succeeds.
 Results should be fully consumed within the function and only aggregate or status values should be returned.
 Returning a live result object would prevent the driver from correctly managing connections and would break retry guarantees.
 
-This function will receive a :class:`neo4j.ManagedTransaction` object as its first parameter.
+The passed function will receive a :class:`neo4j.ManagedTransaction` object as its first parameter. For more details see :meth:`neo4j.Session.execute_write` and :meth:`neo4j.Session.execute_read`.
 
-.. autoclass:: neo4j.ManagedTransaction
+.. autoclass:: neo4j.ManagedTransaction()
 
     .. automethod:: run
 
@@ -771,10 +921,12 @@ Example:
 
     def create_person(driver, name)
         with driver.session() as session:
-            node_id = session.write_transaction(create_person_tx, name)
+            node_id = session.execute_write(create_person_tx, name)
+
 
     def create_person_tx(tx, name):
-        query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
+        query = ("CREATE (a:Person {name: $name, id: randomUUID()}) "
+                 "RETURN a.id AS node_id")
         result = tx.run(query, name=name)
         record = result.single()
         return record["node_id"]
@@ -782,7 +934,6 @@ Example:
 To exert more control over how a transaction function is carried out, the :func:`neo4j.unit_of_work` decorator can be used.
 
 .. autofunction:: neo4j.unit_of_work
-
 
 
 ******
@@ -833,9 +984,6 @@ Graph
 
 .. autoclass:: neo4j.graph.Graph()
 
-    A local, self-contained graph object that acts as a container for :class:`.Node` and :class:`neo4j.Relationship` instances.
-    This is typically obtained via the :meth:`neo4j.Result.graph` method.
-
     .. autoattribute:: nodes
 
     .. autoattribute:: relationships
@@ -843,6 +991,7 @@ Graph
     .. automethod:: relationship_type
 
 **This is experimental.** (See :ref:`filter-warnings-ref`)
+It might be changed or removed any time even without prior notice.
 
 
 ******
@@ -850,11 +999,6 @@ Record
 ******
 
 .. autoclass:: neo4j.Record()
-
-    A :class:`neo4j.Record` is an immutable ordered collection of key-value
-    pairs. It is generally closer to a :py:class:`namedtuple` than to an
-    :py:class:`OrderedDict` inasmuch as iteration of the collection will
-    yield values rather than keys.
 
     .. describe:: Record(iterable)
 
@@ -864,9 +1008,9 @@ Record
     .. describe:: record == other
 
         Compare a record for equality with another value.
-        The ``other`` value may be any ``Sequence`` or``Mapping`` or both.
-        If comparing with a``Sequence`` the values are compared in order.
-        If comparing with a``Mapping`` the values are compared based on their keys.
+        The ``other`` value may be any ``Sequence`` or ``Mapping`` or both.
+        If comparing with a ``Sequence`` the values are compared in order.
+        If comparing with a ``Mapping`` the values are compared based on their keys.
         If comparing with a value that exhibits both traits, both comparisons must be true for the values to be considered equal.
 
     .. describe:: record != other
@@ -938,14 +1082,14 @@ Core Data Types
 
 Cypher supports a set of core data types that all map to built-in types in Python.
 
-These include the common``Boolean`` ``Integer`` ``Float`` and ``String`` types as well as ``List`` and ``Map`` that can hold heterogenous collections of any other type.
+These include the common ``Boolean`` ``Integer`` ``Float`` and ``String`` types as well as ``List`` and ``Map`` that can hold heterogenous collections of any other type.
 
 The core types with their general mappings are listed below:
 
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
 | Cypher Type            | Python Type                                                                                                               |
 +========================+===========================================================================================================================+
-| Null                   | :const:`None`                                                                                                             |
+| Null                   | :data:`None`                                                                                                              |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
 | Boolean                | :class:`bool`                                                                                                             |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
@@ -955,7 +1099,7 @@ The core types with their general mappings are listed below:
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
 | String                 | :class:`str`                                                                                                              |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
-| Bytes :sup:`[1]`       | :class:`bytearray`                                                                                                        |
+| Bytes :sup:`[1]`       | :class:`bytes`                                                                                                            |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
 | List                   | :class:`list`                                                                                                             |
 +------------------------+---------------------------------------------------------------------------------------------------------------------------+
@@ -972,6 +1116,57 @@ The diagram below illustrates the actual mappings between the various layers, fr
 
 .. image:: ./_images/core_type_mappings.svg
     :target: ./_images/core_type_mappings.svg
+
+
+Extended Data Types
+===================
+
+The driver supports serializing more types (as parameters in).
+However, they will have to be mapped to the existing Bolt types (see above) when they are sent to the server.
+This means, the driver will never return these types in results.
+
+When in doubt, you can test the type conversion like so::
+
+    import neo4j
+
+
+    with neo4j.GraphDatabase.driver(URI, auth=AUTH) as driver:
+        with driver.session() as session:
+            type_in = ("foo", "bar")
+            result = session.run("RETURN $x", x=type_in)
+            type_out = result.single()[0]
+            print(type(type_out))
+            print(type_out)
+
+Which in this case would yield::
+
+    <class 'list'>
+    ['foo', 'bar']
+
+
++-----------------------------------+---------------------------------+---------------------------------------+
+| Parameter Type                    | Bolt Type                       | Result Type                           |
++===================================+=================================+=======================================+
+| :class:`tuple`                    | List                            | :class:`list`                         |
++-----------------------------------+---------------------------------+---------------------------------------+
+| :class:`bytearray`                | Bytes                           | :class:`bytes`                        |
++-----------------------------------+---------------------------------+---------------------------------------+
+| numpy\ :sup:`[2]` ``ndarray``     | (nested) List                   | (nested) :class:`list`                |
++-----------------------------------+---------------------------------+---------------------------------------+
+| pandas\ :sup:`[3]` ``DataFrame``  | Map[str, List[_]] :sup:`[4]`    | :class:`dict`                         |
++-----------------------------------+---------------------------------+---------------------------------------+
+| pandas ``Series``                 | List                            | :class:`list`                         |
++-----------------------------------+---------------------------------+---------------------------------------+
+| pandas ``Array``                  | List                            | :class:`list`                         |
++-----------------------------------+---------------------------------+---------------------------------------+
+
+.. Note::
+
+   2. ``void`` and ``complexfloating`` typed numpy ``ndarray``\s are not supported.
+   3. ``Period``, ``Interval``, and ``pyarrow`` pandas types are not supported.
+   4. A pandas ``DataFrame`` will be serialized as Map with the column names mapping to the column values (as Lists).
+       Just like with ``dict`` objects, the column names need to be :class:`str` objects.
+
 
 
 ****************
@@ -1029,13 +1224,13 @@ Node
 
         Checks whether a property key exists for a given node.
 
-    .. autoattribute:: graph
+    .. autoproperty:: graph
 
-    .. autoattribute:: id
+    .. autoproperty:: id
 
-    .. autoattribute:: element_id
+    .. autoproperty:: element_id
 
-    .. autoattribute:: labels
+    .. autoproperty:: labels
 
     .. automethod:: get
 
@@ -1085,19 +1280,19 @@ Relationship
         Returns the type (class) of a relationship.
         Relationship objects belong to a custom subtype based on the type name in the underlying database.
 
-    .. autoattribute:: graph
+    .. autoproperty:: graph
 
-    .. autoattribute:: id
+    .. autoproperty:: id
 
-    .. autoattribute:: element_id
+    .. autoproperty:: element_id
 
-    .. autoattribute:: nodes
+    .. autoproperty:: nodes
 
-    .. autoattribute:: start_node
+    .. autoproperty:: start_node
 
-    .. autoattribute:: end_node
+    .. autoproperty:: end_node
 
-    .. autoattribute:: type
+    .. autoproperty:: type
 
     .. automethod:: get
 
@@ -1134,15 +1329,15 @@ Path
 
         Iterates through all the relationships in a path.
 
-    .. autoattribute:: graph
+    .. autoproperty:: graph
 
-    .. autoattribute:: nodes
+    .. autoproperty:: nodes
 
-    .. autoattribute:: start_node
+    .. autoproperty:: start_node
 
-    .. autoattribute:: end_node
+    .. autoproperty:: end_node
 
-    .. autoattribute:: relationships
+    .. autoproperty:: relationships
 
 
 ******************
@@ -1163,6 +1358,31 @@ Temporal Data Types
 See topic :ref:`temporal-data-types` for more details.
 
 
+***************
+BookmarkManager
+***************
+
+.. autoclass:: neo4j.api.BookmarkManager
+    :members:
+
+
+*************************
+Constants, Enums, Helpers
+*************************
+
+.. autoclass:: neo4j.Address
+    :show-inheritance:
+    :members:
+
+
+.. autoclass:: neo4j.IPv4Address()
+    :show-inheritance:
+
+
+.. autoclass:: neo4j.IPv6Address()
+    :show-inheritance:
+
+
 .. _errors-ref:
 
 ******
@@ -1173,116 +1393,173 @@ Errors
 Neo4j Errors
 ============
 
-Neo4j Execution Errors
+Server-side errors
 
 
 * :class:`neo4j.exceptions.Neo4jError`
 
   * :class:`neo4j.exceptions.ClientError`
 
+    * :class:`neo4j.exceptions.CypherSyntaxError`
+
+    * :class:`neo4j.exceptions.CypherTypeError`
+
+    * :class:`neo4j.exceptions.ConstraintError`
+
+    * :class:`neo4j.exceptions.AuthError`
+
+      * :class:`neo4j.exceptions.TokenExpired`
+
+    * :class:`neo4j.exceptions.Forbidden`
+
   * :class:`neo4j.exceptions.DatabaseError`
 
   * :class:`neo4j.exceptions.TransientError`
 
+    * :class:`neo4j.exceptions.DatabaseUnavailable`
 
-.. autoclass:: neo4j.exceptions.Neo4jError
-    :members: message, code, is_retriable
+    * :class:`neo4j.exceptions.NotALeader`
+
+    * :class:`neo4j.exceptions.ForbiddenOnReadOnlyDatabase`
 
 
-.. autoclass:: neo4j.exceptions.ClientError
+.. autoexception:: neo4j.exceptions.Neo4jError()
+    :show-inheritance:
+    :members: message, code, is_retriable, is_retryable
+
+.. autoexception:: neo4j.exceptions.ClientError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.CypherSyntaxError
+.. autoexception:: neo4j.exceptions.CypherSyntaxError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.CypherTypeError
+.. autoexception:: neo4j.exceptions.CypherTypeError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ConstraintError
+.. autoexception:: neo4j.exceptions.ConstraintError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.AuthError
+.. autoexception:: neo4j.exceptions.AuthError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.Forbidden
+.. autoexception:: neo4j.exceptions.TokenExpired()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ForbiddenOnReadOnlyDatabase
+.. autoexception:: neo4j.exceptions.Forbidden()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.NotALeader
+.. autoexception:: neo4j.exceptions.DatabaseError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.DatabaseError
+.. autoexception:: neo4j.exceptions.TransientError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.TransientError
+.. autoexception:: neo4j.exceptions.DatabaseUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.DatabaseUnavailable
+.. autoexception:: neo4j.exceptions.NotALeader()
     :show-inheritance:
+
+.. autoexception:: neo4j.exceptions.ForbiddenOnReadOnlyDatabase()
+    :show-inheritance:
+
 
 
 
 Driver Errors
 =============
 
-Connectivity Errors
+Client-side errors
 
 
 * :class:`neo4j.exceptions.DriverError`
 
+  * :class:`neo4j.exceptions.SessionError`
+
   * :class:`neo4j.exceptions.TransactionError`
+
+    * :class:`neo4j.exceptions.TransactionNestingError`
+
+  * :class:`neo4j.exceptions.ResultError`
+
+    * :class:`neo4j.exceptions.ResultConsumedError`
+
+    * :class:`neo4j.exceptions.ResultNotSingleError`
+
+  * :class:`neo4j.exceptions.BrokenRecordError`
 
   * :class:`neo4j.exceptions.SessionExpired`
 
   * :class:`neo4j.exceptions.ServiceUnavailable`
 
+    * :class:`neo4j.exceptions.RoutingServiceUnavailable`
+
+    * :class:`neo4j.exceptions.WriteServiceUnavailable`
+
+    * :class:`neo4j.exceptions.ReadServiceUnavailable`
+
+    * :class:`neo4j.exceptions.IncompleteCommit`
+
   * :class:`neo4j.exceptions.ConfigurationError`
 
-  * :class:`neo4j.exceptions.ResultConsumedError`
+    * :class:`neo4j.exceptions.AuthConfigurationError`
+
+    * :class:`neo4j.exceptions.CertificateConfigurationError`
 
 
-.. autoclass:: neo4j.exceptions.DriverError
-    :members: is_retriable
+.. autoexception:: neo4j.exceptions.DriverError()
+    :show-inheritance:
+    :members: is_retryable
 
-.. autoclass:: neo4j.exceptions.TransactionError
+.. autoexception:: neo4j.exceptions.SessionError()
+    :show-inheritance:
+    :members: session
+
+.. autoexception:: neo4j.exceptions.TransactionError()
+    :show-inheritance:
+    :members: transaction
+
+.. autoexception:: neo4j.exceptions.TransactionNestingError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.TransactionNestingError
+.. autoexception:: neo4j.exceptions.ResultError()
+    :show-inheritance:
+    :members: result
+
+.. autoexception:: neo4j.exceptions.ResultConsumedError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.SessionExpired
+.. autoexception:: neo4j.exceptions.ResultNotSingleError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ServiceUnavailable
+.. autoexception:: neo4j.exceptions.BrokenRecordError()
     :show-inheritance:
 
-    Raised when a database server or service is not available.
-    This may be due to incorrect configuration or could indicate a runtime failure of a database service that the driver is unable to route around.
-
-.. autoclass:: neo4j.exceptions.RoutingServiceUnavailable
+.. autoexception:: neo4j.exceptions.SessionExpired()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.WriteServiceUnavailable
+.. autoexception:: neo4j.exceptions.ServiceUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ReadServiceUnavailable
+.. autoexception:: neo4j.exceptions.RoutingServiceUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ConfigurationError
+.. autoexception:: neo4j.exceptions.WriteServiceUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.AuthConfigurationError
+.. autoexception:: neo4j.exceptions.ReadServiceUnavailable()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.CertificateConfigurationError
+.. autoexception:: neo4j.exceptions.IncompleteCommit()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ResultConsumedError
+.. autoexception:: neo4j.exceptions.ConfigurationError()
     :show-inheritance:
 
-.. autoclass:: neo4j.exceptions.ResultNotSingleError
+.. autoexception:: neo4j.exceptions.AuthConfigurationError()
+    :show-inheritance:
+
+.. autoexception:: neo4j.exceptions.CertificateConfigurationError()
     :show-inheritance:
 
 
@@ -1309,6 +1586,14 @@ Warnings
 ********
 
 The Python Driver uses the built-in :class:`python:DeprecationWarning` class to warn about deprecations.
+
+The Python Driver uses the built-in :class:`python:ResourceWarning` class to warn about not properly closed resources, e.g., Drivers and Sessions.
+
+.. note::
+    Deprecation and resource warnings are not shown by default. One way of enable them is to run the Python interpreter in `development mode`_.
+
+.. _development mode: https://docs.python.org/3/library/devmode.html#devmode
+
 
 The Python Driver uses the :class:`neo4j.ExperimentalWarning` class to warn about experimental features.
 
@@ -1352,6 +1637,8 @@ following code:
     ...
 
 
+.. _logging-ref:
+
 *******
 Logging
 *******
@@ -1361,6 +1648,9 @@ enable logging for anything other than debugging. For instance, if the driver is
 not able to connect to the database server or if undesired behavior is observed.
 
 There are different ways of enabling logging as listed below.
+
+.. seealso::
+    :ref:`async-logging-ref` for an improved logging experience with the async driver.
 
 Simple Approach
 ===============
@@ -1374,8 +1664,8 @@ Context Manager
     :members:
     :special-members: __enter__, __exit__
 
-Full Controll
-=============
+Full Control
+============
 
 .. code-block:: python
 
@@ -1386,13 +1676,13 @@ Full Controll
     handler = logging.StreamHandler(sys.stdout)
     # configure the handler to your liking
     handler.setFormatter(logging.Formatter(
-        "%(threadName)s(%(thread)d) %(asctime)s  %(message)s"
+        "[%(levelname)-8s] %(threadName)s(%(thread)d) %(asctime)s  %(message)s"
     ))
     # add the handler to the driver's logger
     logging.getLogger("neo4j").addHandler(handler)
     # make sure the logger logs on the desired log level
     logging.getLogger("neo4j").setLevel(logging.DEBUG)
-    # from now on, DEBUG logging to stderr is enabled in the driver
+    # from now on, DEBUG logging to stdout is enabled in the driver
 
 
 *********
@@ -1401,6 +1691,7 @@ Bookmarks
 
 .. autoclass:: neo4j.Bookmarks
     :members:
+    :special-members: __bool__, __add__, __iter__
 
 .. autoclass:: neo4j.Bookmark
     :members:

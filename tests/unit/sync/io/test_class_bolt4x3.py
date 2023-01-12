@@ -20,8 +20,8 @@ import logging
 
 import pytest
 
+from neo4j._conf import PoolConfig
 from neo4j._sync.io._bolt4 import Bolt4x3
-from neo4j.conf import PoolConfig
 
 from ...._async_compat import mark_sync_test
 
@@ -59,7 +59,7 @@ def test_conn_is_not_stale(fake_socket, set_stale):
 @mark_sync_test
 def test_db_extra_in_begin(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x3.UNPACKER_CLS)
     connection = Bolt4x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.begin(db="something")
     connection.send_all()
@@ -72,7 +72,7 @@ def test_db_extra_in_begin(fake_socket):
 @mark_sync_test
 def test_db_extra_in_run(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x3.UNPACKER_CLS)
     connection = Bolt4x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.run("", {}, db="something")
     connection.send_all()
@@ -87,7 +87,7 @@ def test_db_extra_in_run(fake_socket):
 @mark_sync_test
 def test_n_extra_in_discard(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x3.UNPACKER_CLS)
     connection = Bolt4x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666)
     connection.send_all()
@@ -107,7 +107,7 @@ def test_n_extra_in_discard(fake_socket):
 @mark_sync_test
 def test_qid_extra_in_discard(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x3.UNPACKER_CLS)
     connection = Bolt4x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(qid=test_input)
     connection.send_all()
@@ -128,7 +128,7 @@ def test_qid_extra_in_discard(fake_socket, test_input, expected):
 def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
     # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_n_and_qid_extras_in_discard
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x3.UNPACKER_CLS)
     connection = Bolt4x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666, qid=test_input)
     connection.send_all()
@@ -148,7 +148,7 @@ def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
 @mark_sync_test
 def test_n_extra_in_pull(fake_socket, test_input, expected):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x3.UNPACKER_CLS)
     connection = Bolt4x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=test_input)
     connection.send_all()
@@ -169,7 +169,7 @@ def test_n_extra_in_pull(fake_socket, test_input, expected):
 def test_qid_extra_in_pull(fake_socket, test_input, expected):
     # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_qid_extra_in_pull
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x3.UNPACKER_CLS)
     connection = Bolt4x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(qid=test_input)
     connection.send_all()
@@ -182,7 +182,7 @@ def test_qid_extra_in_pull(fake_socket, test_input, expected):
 @mark_sync_test
 def test_n_and_qid_extras_in_pull(fake_socket):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address)
+    socket = fake_socket(address, Bolt4x3.UNPACKER_CLS)
     connection = Bolt4x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=666, qid=777)
     connection.send_all()
@@ -195,15 +195,17 @@ def test_n_and_qid_extras_in_pull(fake_socket):
 @mark_sync_test
 def test_hello_passes_routing_metadata(fake_socket_pair):
     address = ("127.0.0.1", 7687)
-    sockets = fake_socket_pair(address)
-    sockets.server.send_message(0x70, {"server": "Neo4j/4.3.0"})
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt4x3.PACKER_CLS,
+                               unpacker_cls=Bolt4x3.UNPACKER_CLS)
+    sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.0"})
     connection = Bolt4x3(
         address, sockets.client, PoolConfig.max_connection_lifetime,
         routing_context={"foo": "bar"}
     )
     connection.hello()
     tag, fields = sockets.server.pop_message()
-    assert tag == 0x01
+    assert tag == b"\x01"
     assert len(fields) == 1
     assert fields[0]["routing"] == {"foo": "bar"}
 
@@ -225,10 +227,12 @@ def test_hint_recv_timeout_seconds(
     fake_socket_pair, hints, valid, caplog, mocker
 ):
     address = ("127.0.0.1", 7687)
-    sockets = fake_socket_pair(address)
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt4x3.PACKER_CLS,
+                               unpacker_cls=Bolt4x3.UNPACKER_CLS)
     sockets.client.settimeout = mocker.Mock()
     sockets.server.send_message(
-        0x70, {"server": "Neo4j/4.3.0", "hints": hints}
+        b"\x70", {"server": "Neo4j/4.3.0", "hints": hints}
     )
     connection = Bolt4x3(
         address, sockets.client, PoolConfig.max_connection_lifetime

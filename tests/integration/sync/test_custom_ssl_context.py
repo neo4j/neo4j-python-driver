@@ -15,11 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from ssl import SSLContext
 
 import pytest
 
-from neo4j import GraphDatabase
+import neo4j
 
 from ..._async_compat import mark_sync_test
 
@@ -39,10 +40,9 @@ def test_custom_ssl_context_wraps_connection(uri, auth, mocker):
     fake_ssl_context.wrap_socket.side_effect = wrap_fail
     fake_ssl_context.wrap_bio.side_effect = wrap_fail
 
-    driver = GraphDatabase.driver(
+    with neo4j.GraphDatabase.driver(
         uri, auth=auth, ssl_context=fake_ssl_context
-    )
-    with driver:
+    ) as driver:
         with driver.session() as session:
             with pytest.raises(NoNeedToGoFurtherException):
                 session.run("RETURN 1")

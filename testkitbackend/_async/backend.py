@@ -17,6 +17,7 @@
 
 
 import asyncio
+import traceback
 from inspect import (
     getmembers,
     isfunction,
@@ -26,7 +27,6 @@ from json import (
     loads,
 )
 from pathlib import Path
-import traceback
 
 from neo4j._exceptions import BoltError
 from neo4j.exceptions import (
@@ -35,17 +35,17 @@ from neo4j.exceptions import (
     UnsupportedServerProduct,
 )
 
-from . import requests
 from .._driver_logger import (
     buffer_handler,
     log,
 )
 from ..backend import Request
 from ..exceptions import MarkdAsDriverException
+from . import requests
 
 
 TESTKIT_BACKEND_PATH = Path(__file__).absolute().resolve().parents[1]
-DRIVER_PATH = TESTKIT_BACKEND_PATH.parent / "neo4j"
+DRIVER_PATH = TESTKIT_BACKEND_PATH.parent / "src" / "neo4j"
 
 
 class AsyncBackend:
@@ -55,6 +55,9 @@ class AsyncBackend:
         self.drivers = {}
         self.custom_resolutions = {}
         self.dns_resolutions = {}
+        self.bookmark_managers = {}
+        self.bookmarks_consumptions = {}
+        self.bookmarks_supplies = {}
         self.sessions = {}
         self.results = {}
         self.errors = {}
@@ -64,6 +67,25 @@ class AsyncBackend:
         # Collect all request handlers
         self._requestHandlers = dict(
             [m for m in getmembers(requests, isfunction)])
+
+    async def close(self):
+        for dict_of_closables in (
+            self.transactions,
+            {key: tracker.session for key, tracker in self.sessions.items()},
+            self.drivers,
+        ):
+            for key, closable in dict_of_closables.items():
+                if not hasattr(closable, "close"):  # e.g., ManagedTransaction
+                    continue
+                try:
+                    await closable.close()
+                except (Neo4jError, DriverError, OSError):
+                    log.error(
+                        "Error during TestKit backend garbage collection. "
+                        "While collecting: (key: %s) %s\n%s",
+                        key, closable, traceback.format_exc()
+                    )
+            dict_of_closables.clear()
 
     def next_key(self):
         self.key = self.key + 1
@@ -97,6 +119,21 @@ class AsyncBackend:
             if DRIVER_PATH in p.parents:
                 return True
 
+    @staticmethod
+    def _exc_msg(exc, max_depth=10):
+        if isinstance(exc, Neo4jError) and exc.message is not None:
+            return str(exc.message)
+
+        depth = 0
+        res = str(exc)
+        while getattr(exc, "__cause__", None) is not None:
+            depth += 1
+            if depth >= max_depth:
+                break
+            res += f"\nCaused by: {exc.__cause__!r}"
+            exc = exc.__cause__
+        return res
+
     async def write_driver_exc(self, exc):
         log.debug(traceback.format_exc())
 
@@ -109,14 +146,10 @@ class AsyncBackend:
             wrapped_exc = exc.wrapped_exc
             payload["errorType"] = str(type(wrapped_exc))
             if wrapped_exc.args:
-                payload["msg"] = str(wrapped_exc.args[0])
+                payload["msg"] = self._exc_msg(wrapped_exc.args[0])
         else:
             payload["errorType"] = str(type(exc))
-            if isinstance(exc, Neo4jError) and exc.message is not None:
-                payload["msg"] = str(exc.message)
-            elif exc.args:
-                payload["msg"] = str(exc.args[0])
-
+            payload["msg"] = self._exc_msg(exc)
             if isinstance(exc, Neo4jError):
                 payload["code"] = exc.code
 

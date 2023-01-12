@@ -33,10 +33,9 @@ def cypher_eval(driver):
         raise ForcedRollback(value)
 
     def f(cypher, **parameters):
-        with bolt_driver.session() as session:
+        with driver.session() as session:
             try:
-                session.write_transaction(run_and_rollback, cypher,
-                                          **parameters)
+                session.execute_write(run_and_rollback, cypher, **parameters)
                 raise RuntimeError("Expected rollback")
             except ForcedRollback as e:
                 return e.return_value

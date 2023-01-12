@@ -1,5 +1,50 @@
 # Neo4j Driver Change Log (breaking/major changes only)
 
+See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
+
+## Version 5.4
+- Undocumented helper methods `Neo4jError.is_fatal_during_discovery` and
+  `Neo4jError.invalidates_all_connections` have been deprecated and will be
+  removed without replacement in version 6.0.
+
+
+## Version 5.3
+- Python 3.11 support added
+- Removed undocumented, unused `neo4j.data.map_type`
+- Query strings are now typed `LiteralString` instead of `str` to help mitigate
+  accidental Cypher injections. There are rare use-cases where a computed
+  string is necessary. Please use `# type: ignore`, or `typing.cast` to
+  suppress the type checking in those cases.
+- The experimental bookmark manager feature was changed to no longer track
+  bookmarks per database.  
+  This effectively changes the signature of almost all bookmark
+  manager related methods:
+  - `neo4j.BookmarkManger` and `neo4j.AsyncBookmarkManger` abstract base
+    classes:
+    - ``update_bookmarks`` has no longer a ``database`` argument.
+    - ``get_bookmarks`` has no longer a ``database`` argument.
+    - The ``get_all_bookmarks`` method was removed.
+    - The ``forget`` method was removed.
+  - `neo4j.GraphDatabase.bookmark_manager` and
+    `neo4j.AsyncGraphDatabase.bookmark_manager` factory methods:
+    - ``initial_bookmarks`` is no longer a mapping from database name
+      to bookmarks but plain bookmarks.
+    - ``bookmarks_supplier`` no longer receives the database name as
+      an argument.
+    - ``bookmarks_consumer`` no longer receives the database name as
+      an argument.  
+
+
+## Version 5.2
+
+- No breaking or major changes.
+
+
+## Version 5.1
+
+- No breaking or major changes.
+
+
 ## Version 5.0
 
 - Python 3.10 support added
@@ -9,7 +54,7 @@
   Remark: It's recommended to import everything needed directly from `noe4j` if
   available, not its submodules or subpackages.
 - Experimental pipelines feature has been removed.
-- Experimental async driver has been added.
+- Async driver (i.e., support for asyncio) has been added.
 - `ResultSummary.server.version_info` has been removed.  
   Use `ResultSummary.server.agent`, `ResultSummary.server.protocol_version`,
   or call the `dbms.components` procedure instead.
@@ -76,11 +121,9 @@
     It now raises a `ResultConsumedError`.
   - New method `Result.closed()` can be used to check for this condition if
     necessary.
-- `driver.verify_connectivity()`
-  - All keyword arguments have been deprecated (they were experimental).
-    They are now ignored and will be removed in a future release.
-  - The undocumented return value has been removed. If you need information
-    about the remote server, use `driver.get_server_info()` instead.
+- The undocumented return value of `driver.verify_connectivity()` has been
+  removed. If you need information about the remote server, use
+  `driver.get_server_info()` instead.
 - Transaction functions (a.k.a. managed transactions):  
   The first argument of transaction functions is now a `ManagedTransaction`
   object. It behaves exactly like a regular `Transaction` object, except it
@@ -89,8 +132,9 @@
   they have been removed.
 - Deprecated Nodes' and Relationships' `id` property (`int`) in favor of
   `element_id` (`str`).  
-  This also affects `Graph` objects as `graph.nodes[...]` and
- `graph.relationships[...]` now prefers strings over integers.
+  This also affects `Graph` objects as indexing `graph.nodes[...]` and
+  `graph.relationships[...]` with integers has been deprecated in favor of
+  indexing them with strings.
 - `ServerInfo.connection_id` has been deprecated and will be removed in a
   future release. There is no replacement as this is considered internal
   information.
@@ -98,6 +142,39 @@
   - ANSI colour codes for log output are now opt-in
   - Prepend log format with log-level (if colours are disabled)
   - Prepend log format with thread name and id
+- Deprecated `neo4j.exceptions.Neo4jError.is_retriable()`.  
+  Use `neo4j.exceptions.Neo4jError.is_retryable()` instead.
+- Importing submodules from `neo4j.time` (`neo4j.time.xyz`) has been deprecated.
+  Everything needed should be imported from `neo4j.time` directly.
+- `neo4j.spatial.hydrate_point` and `neo4j.spatial.dehydrate_point` have been
+  deprecated without replacement. They are internal functions.
+- Importing `neo4j.packstream` has been deprecated. It's internal and should not
+  be used by client code.
+- Importing `neo4j.routing` has been deprecated. It's internal and should not
+  be used by client code.
+- Importing `neo4j.config` has been deprecated. It's internal and should not
+  be used by client code.
+- `neoj4.Config`, `neoj4.PoolConfig`, `neoj4.SessionConfig`, and
+  `neoj4.WorkspaceConfig` have been deprecated without replacement. They are
+  internal classes.
+- Importing `neo4j.meta` has been deprecated. It's internal and should not
+  be used by client code. `ExperimantalWarning` should be imported directly from
+  `neo4j`. `neo4j.meta.version` is exposed through `neo4j.__vesrion__`
+- Importing `neo4j.data` has been deprecated. It's internal and should not
+  be used by client code. `Record` should be imported directly from `neo4j`
+  instead. `neo4j.data.DataHydrator` and `neo4j.data.DataDeydrator` have been
+  removed without replacement.
+- Removed undocumented config options that had no effect:
+  `protocol_version` and `init_size`.
+- Introduced `neo4j.exceptions.SessionError` that is raised when trying to
+  execute work on a closed or otherwise terminated session.
+- Removed deprecated config options `update_routing_table_timeout` and
+  `session_connection_timeout`.  
+  Server-side keep-alives communicated through configuration hints together with
+  the config option `connection_acquisition_timeout` are sufficient to avoid the
+  driver getting stuck.
+- Deprecate `Session.read_transaction` and `Session.write_transaction` in favor
+  of `Session.execute_read` and `Session.execute_write` respectively.
 
 
 ## Version 4.4
