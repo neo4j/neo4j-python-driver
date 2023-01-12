@@ -210,7 +210,6 @@ class Bolt4x0(Bolt):
         extra = {"n": n}
         if qid != -1:
             extra["qid"] = qid
-        
         log.debug("[#%04X]  C: PULL %r", self.local_port, extra)
         self._append(b"\x3F", (extra,),
                      Response(self, "pull", hydration_hooks, **handlers),
@@ -304,6 +303,8 @@ class Bolt4x0(Bolt):
             summary_signature = tag
 
         if details:
+            log.debug("[#%04X] S: RECORD * %d", self.local_port,
+                      len(details))  # Do not log any data
             self.responses[0].on_records(details)
 
         if summary_signature is None:

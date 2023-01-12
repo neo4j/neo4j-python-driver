@@ -128,10 +128,6 @@ class Outbox:
         self._chunk_data()
         self._chunked_data += b"\x00\x00"
 
-    def chunked_data(self):
-        self._chunk_data()
-        return self._chunked_data
-
     def append_message(self, tag, fields, dehydration_hooks):
         with self._buffer.tmp_buffer():
             self._packer.pack_struct(tag, fields, dehydration_hooks)
@@ -291,7 +287,6 @@ def receive_into_buffer(sock, buffer, n_bytes):
     end = buffer.used + n_bytes
     if end > len(buffer.data):
         buffer.data += bytearray(end - len(buffer.data))
-
     with memoryview(buffer.data) as view:
         while buffer.used < end:
             n = sock.recv_into(view[buffer.used:end], end - buffer.used)

@@ -128,10 +128,6 @@ class AsyncOutbox:
         self._chunk_data()
         self._chunked_data += b"\x00\x00"
 
-    def chunked_data(self):
-        self._chunk_data()
-        return self._chunked_data
-
     def append_message(self, tag, fields, dehydration_hooks):
         with self._buffer.tmp_buffer():
             self._packer.pack_struct(tag, fields, dehydration_hooks)

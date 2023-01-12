@@ -505,7 +505,6 @@ class BoltSocket:
                 s.settimeout(socket_timeout)
 
             t = s.gettimeout()
-
             if timeout:
                 s.settimeout(timeout)
             log.debug("[#0000]  C: <OPEN> %s", resolved_address)
@@ -597,7 +596,6 @@ class BoltSocket:
             raise ServiceUnavailable(
                 "Failed to read any data from server {!r} "
                 "after connected".format(resolved_address)) from exc
-
         data_size = len(data)
         if data_size == 0:
             # If no data is returned after a successful select

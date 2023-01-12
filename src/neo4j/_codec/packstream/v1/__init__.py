@@ -344,13 +344,13 @@ class Unpacker:
         # Bytes
         elif marker == 0xCC:
             size, = struct_unpack(">B", self.read(1))
-            return bytes(self.read(size))
+            return self.read(size).tobytes()
         elif marker == 0xCD:
             size, = struct_unpack(">H", self.read(2))
-            return bytes(self.read(size))
+            return self.read(size).tobytes()
         elif marker == 0xCE:
             size, = struct_unpack(">I", self.read(4))
-            return bytes(self.read(size))
+            return self.read(size).tobytes()
 
         else:
             marker_high = marker & 0xF0
@@ -463,8 +463,8 @@ class Unpacker:
     def _unpack_structure_header(self, marker):
         marker_high = marker & 0xF0
         if marker_high == 0xB0:  # TINY_STRUCT
-            signature = self.read(1)
-            return marker & 0x0F, bytes(signature)
+            signature = self.read(1).tobytes()
+            return marker & 0x0F, signature
         else:
             raise ValueError("Expected structure, found marker %02X" % marker)
 
