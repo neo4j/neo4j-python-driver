@@ -463,10 +463,10 @@ class AsyncBolt:
         """Mark the connection as unauthenticated."""
         self.auth_dict = {}
 
-    async def re_auth(
+    def re_auth(
         self, auth, dehydration_hooks=None, hydration_hooks=None
     ):
-        """Append LOGON, LOGOFF to the outgoing queue, flush, then receive.
+        """Append LOGON, LOGOFF to the outgoing queue.
 
         If auth is the same as the current auth, this method does nothing.
 
@@ -480,8 +480,6 @@ class AsyncBolt:
         self.auth_dict = new_auth_dict
         self.logon(dehydration_hooks=dehydration_hooks,
                     hydration_hooks=hydration_hooks)
-        await self.send_all()
-        await self.fetch_all()
         return True
 
 

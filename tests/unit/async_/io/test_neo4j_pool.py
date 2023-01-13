@@ -426,33 +426,6 @@ async def test_acquire_returns_other_connection_on_failed_liveness_check(
 
 
 @mark_async_test
-async def test_acquire_accepts_re_auth_as_liveness_check(opener):
-    pool = AsyncNeo4jPool(
-        opener, PoolConfig(), WorkspaceConfig(), ROUTER1_ADDRESS
-    )
-    # populate the pool with a connection
-    cx1 = await pool._acquire(READER_ADDRESS, None, Deadline(30), 1)
-    # make sure we assume the right state
-    assert cx1.addr == READER_ADDRESS
-    cx1.is_idle_for.assert_not_called()
-    cx1.reset.assert_not_called()
-
-    # simulate connections successfully re-authenticating
-    cx1.re_auth.return_value = True
-
-    # release the connection
-    await pool.release(cx1)
-    cx1.reset.assert_not_called()
-
-    # then acquire it again and assert the liveness check was performed
-    cx2 = await pool._acquire(READER_ADDRESS, None, Deadline(30), 1)
-    assert cx2 is cx1
-    cx1.is_idle_for.assert_not_called()
-    cx1.reset.assert_not_called()
-    assert cx1 in pool.connections[cx1.addr]
-
-
-@mark_async_test
 async def test_multiple_broken_connections_on_close(opener, mocker):
     def mock_connection_breaks_on_close(cx):
         async def close_side_effect():

@@ -298,8 +298,10 @@ async def test_re_auth(fake_socket_pair, mocker):
     connection = AsyncBolt5x1(address, sockets.client,
                               PoolConfig.max_connection_lifetime)
     connection.pool = mocker.AsyncMock()
+    connection.re_auth(auth)
+    await connection.send_all()
     with pytest.raises(neo4j.exceptions.Neo4jError):
-        await connection.re_auth(auth)
+        await connection.fetch_all()
     tag, fields = await sockets.server.pop_message()
     assert tag == b"\x6B"  # LOGOFF
     assert len(fields) == 0

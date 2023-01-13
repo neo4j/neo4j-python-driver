@@ -292,7 +292,7 @@ async def test_re_auth_noop(auth, fake_socket, mocker):
                               PoolConfig.max_connection_lifetime, auth=auth)
     logon_spy = mocker.spy(connection, "logon")
     logoff_spy = mocker.spy(connection, "logoff")
-    res = await connection.re_auth(auth)
+    res = connection.re_auth(auth)
 
     assert res is False
     logon_spy.assert_not_called()
@@ -317,4 +317,4 @@ async def test_re_auth(auth1, auth2, fake_socket):
                               PoolConfig.max_connection_lifetime, auth=auth1)
     with pytest.raises(ConfigurationError,
                        match="Session level authentication is not supported"):
-        await connection.re_auth(auth2)
+        connection.re_auth(auth2)

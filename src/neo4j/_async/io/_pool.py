@@ -246,10 +246,7 @@ class AsyncIOPool(abc.ABC):
                     or connection_.stale()):
                 return False
             try:
-                if await connection_.re_auth(auth or await self.get_auth()):
-                    # no need for an extra liveness check if the connection was
-                    # successfully re-authenticated
-                    return True
+                connection_.re_auth(auth or await self.get_auth())
             except ConfigurationError:
                 # protocol does not support re-authentication
                 if auth:

@@ -65,7 +65,7 @@ class AsyncQuickConnection:
     async def reset(self):
         pass
 
-    async def re_auth(self, auth):
+    def re_auth(self, auth):
         return False
 
     def close(self):
