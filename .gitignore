@@ -30,3 +30,4 @@ neo4j-enterprise-*
 
 testkit/CAs
 testkit/CustomCAs
+/.vs

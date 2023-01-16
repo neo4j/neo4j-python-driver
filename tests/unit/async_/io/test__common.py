@@ -18,7 +18,8 @@
 
 import pytest
 
-from neo4j._async.io._common import AsyncOutbox
+from neo4j import basic_auth
+from neo4j._async.io._common import AsyncOutbox, auth_to_dict
 from neo4j._codec.packstream.v1 import PackableBuffer
 
 from ...._async_compat import mark_async_test
@@ -58,3 +59,27 @@ async def test_async_outbox_chunking(chunk_size, data, result, mocker):
 
     assert not await outbox.flush()
     socket_mock.sendall.assert_awaited_once()
+
+
+def test_auth_to_dict_without_refresher():
+    auth = basic_auth("some_login", "some_password")
+    result = auth_to_dict(auth)
+    assert result == {"principal": "some_login",
+                      "credentials": "some_password",
+                      "scheme": "basic"}
+
+
+def test_auth_to_dict_with_refresher():
+    creds = "old credentials"
+    auth = basic_auth("some_login", "ignored")
+    auth.add_credentials_refresher(lambda: creds)
+    result = auth_to_dict(auth)
+    assert result == {"principal": "some_login",
+                      "credentials": "old credentials",
+                      "scheme": "basic"}
+    # run again and should get new credentials
+    creds = "new credentials"
+    result = auth_to_dict(auth)
+    assert result == {"principal": "some_login",
+                      "credentials": "new credentials",
+                      "scheme": "basic"}

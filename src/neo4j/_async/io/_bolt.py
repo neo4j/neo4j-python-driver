@@ -49,6 +49,7 @@ from ._common import (
     AsyncInbox,
     AsyncOutbox,
     CommitResponse,
+    auth_to_dict,
 )
 
 
@@ -142,7 +143,7 @@ class AsyncBolt:
             self.auth_dict = vars(Auth("basic", *auth))
         else:
             try:
-                self.auth_dict = vars(auth)
+                self.auth_dict = auth_to_dict(auth)
             except (KeyError, TypeError):
                 raise AuthError("Cannot determine auth details from %r" % auth)
 

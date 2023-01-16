@@ -294,3 +294,12 @@ async def receive_into_buffer(sock, buffer, n_bytes):
             if n == 0:
                 raise OSError("No data")
             buffer.used += n
+
+
+def auth_to_dict(auth):
+    auth_dict = vars(auth).copy()
+    if "credentials_refresher" in auth_dict:
+        if auth_dict["credentials_refresher"] is not None:
+            auth_dict["credentials"] = auth_dict["credentials_refresher"]()
+        auth_dict.pop("credentials_refresher")
+    return auth_dict

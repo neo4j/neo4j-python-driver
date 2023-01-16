@@ -102,6 +102,10 @@ class Auth:
             self.realm = realm
         if parameters:
             self.parameters = parameters
+        self.credentials_refresher = None
+
+    def add_credentials_refresher(self, credentials_refresher: t.Any):
+        self.credentials_refresher = credentials_refresher
 
 
 # For backwards compatibility

@@ -24,6 +24,7 @@ from collections import deque
 from logging import getLogger
 from time import perf_counter
 
+from ..._async.io._common import auth_to_dict
 from ..._async_compat.network import BoltSocket
 from ..._codec.hydration import v1 as hydration_v1
 from ..._codec.packstream import v1 as packstream_v1
@@ -142,7 +143,7 @@ class Bolt:
             self.auth_dict = vars(Auth("basic", *auth))
         else:
             try:
-                self.auth_dict = vars(auth)
+                self.auth_dict = auth_to_dict(auth)
             except (KeyError, TypeError):
                 raise AuthError("Cannot determine auth details from %r" % auth)
 
