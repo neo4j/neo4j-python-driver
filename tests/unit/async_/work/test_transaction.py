@@ -131,6 +131,35 @@ async def test_transaction_run_takes_no_query_object(async_fake_connection):
 
 
 @mark_async_test
+@pytest.mark.parametrize("params", (
+    {"x": 1},
+    {"x": "1"},
+    {"x": "1", "y": 2},
+    {"parameters": {"nested": "parameters"}},
+))
+@pytest.mark.parametrize("as_kwargs", (True, False))
+async def test_transaction_run_parameters(
+    async_fake_connection, params, as_kwargs
+):
+    on_closed = MagicMock()
+    on_error = MagicMock()
+    on_cancel = MagicMock()
+    tx = AsyncTransaction(async_fake_connection, 2, on_closed, on_error,
+                          on_cancel)
+    if not as_kwargs:
+        params = {"parameters": params}
+    await tx.run("RETURN $x", **params)
+    calls = [call for call in async_fake_connection.method_calls
+             if call[0] in ("run", "send_all", "fetch_message")]
+    assert [call[0] for call in calls] == ["run", "send_all", "fetch_message"]
+    run = calls[0]
+    assert run[1][0] == "RETURN $x"
+    if "parameters" in params:
+        params = params["parameters"]
+    assert run[2]["parameters"] == params
+
+
+@mark_async_test
 async def test_transaction_rollbacks_on_open_connections(
     async_fake_connection
 ):

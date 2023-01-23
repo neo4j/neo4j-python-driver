@@ -107,7 +107,7 @@ def test_address_unresolve() -> None:
     custom_resolved = [("127.0.0.1", 7687), ("localhost", 4321)]
 
     address = Address(("foobar", 1234))
-    unresolved = address.unresolved
+    unresolved = address._unresolved
     assert address.__class__ == unresolved.__class__
     assert address == unresolved
     resolved = NetworkUtil.resolve_address(
@@ -115,7 +115,7 @@ def test_address_unresolve() -> None:
     )
     resolved_list = Util.list(resolved)
     custom_resolved_addresses = sorted(Address(a) for a in custom_resolved)
-    unresolved_list = sorted(a.unresolved for a in resolved_list)
+    unresolved_list = sorted(a._unresolved for a in resolved_list)
     assert custom_resolved_addresses == unresolved_list
     assert (list(map(lambda a: a.__class__, custom_resolved_addresses))
             == list(map(lambda a: a.__class__, unresolved_list)))

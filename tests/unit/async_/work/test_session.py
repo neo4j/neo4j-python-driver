@@ -40,8 +40,11 @@ from ...._async_compat import mark_async_test
 @contextmanager
 def assert_warns_tx_func_deprecation(tx_func_name):
     if tx_func_name.endswith("_transaction"):
-        with pytest.warns(DeprecationWarning,
-                          match=f"{tx_func_name}.*execute_"):
+        mode = tx_func_name.split("_")[0]
+        with pytest.warns(
+            DeprecationWarning,
+            match=f"^{mode}_transaction has been renamed to execute_{mode}$"
+        ):
             yield
     else:
         yield
@@ -289,6 +292,12 @@ async def test_decorated_tx_function_argument_type(
         with assert_warns_tx_func_deprecation(tx_type):
             await getattr(session, tx_type)(work)
         assert called
+    assert len(fake_pool.acquired_connection_mocks) == 1
+    cx = fake_pool.acquired_connection_mocks[0]
+    cx.begin.assert_called_once()
+    for key in ("timeout", "metadata"):
+        value = decorator_kwargs.get(key)
+        assert cx.begin.call_args[1][key] == value
 
 
 @mark_async_test
@@ -406,11 +415,12 @@ async def test_with_bookmark_manager(
         if home_db_gets_resolved:
             database_callback("homedb")
 
-    async def bmm_get_bookmarks(database):
-        return [f"{database}:bm1"]
+    async def bmm_get_bookmarks():
+        nonlocal get_bookmarks_count
+        get_bookmarks_count += 1
+        return ["all", f"bookmarks{get_bookmarks_count}"]
 
-    async def bmm_gat_all_bookmarks():
-        return ["all", "bookmarks"]
+    get_bookmarks_count = 0
 
     async_scripted_connection.set_script([
         ("run", {"on_success": None, "on_summary": None}),
@@ -424,7 +434,6 @@ async def test_with_bookmark_manager(
 
     bmm = mocker.Mock(spec=AsyncBookmarkManager)
     bmm.get_bookmarks.side_effect = bmm_get_bookmarks
-    bmm.get_all_bookmarks.side_effect = bmm_gat_all_bookmarks
 
     if routing:
         fake_pool.mock_add_spec(AsyncNeo4jPool)
@@ -447,33 +456,35 @@ async def test_with_bookmark_manager(
         await session.run("RETURN 1")
 
         # assert called bmm accordingly
-        expected_bmm_method_calls = [mocker.call.get_bookmarks("system"),
-                                     mocker.call.get_all_bookmarks()]
+        expected_bmm_method_calls = [mocker.call.get_bookmarks(),
+                                     mocker.call.get_bookmarks()]
         if routing and db is None:
             expected_bmm_method_calls = [
                 # extra call for resolving the home database
-                mocker.call.get_bookmarks("system"),
+                mocker.call.get_bookmarks(),
                 *expected_bmm_method_calls
             ]
         assert bmm.method_calls == expected_bmm_method_calls
-        assert (bmm.get_bookmarks.await_count
-                == len(expected_bmm_method_calls) - 1)
-        bmm.get_all_bookmarks.assert_awaited_once()
+        assert bmm.get_bookmarks.await_count == len(expected_bmm_method_calls)
         bmm.method_calls.clear()
 
-    expected_update_for_db = db
-    if not db:
-        if home_db_gets_resolved and routing:
-            expected_update_for_db = "homedb"
-        else:
-            expected_update_for_db = ""
+    expected_bookmarks_home_db_resolution = {
+        "all", "bookmarks1", *(additional_session_bookmarks or [])
+    }
+    expected_bookmarks_acquire = {
+        "all", f"bookmarks{len(expected_bmm_method_calls) - 1}",
+        *(additional_session_bookmarks or [])
+    }
+    expected_bookmarks_run = {
+        "all", f"bookmarks{len(expected_bmm_method_calls)}",
+        *(additional_session_bookmarks or [])
+    }
     assert [call[0] for call in bmm.method_calls] == ["update_bookmarks"]
     assert bmm.method_calls[0].kwargs == {}
-    assert len(bmm.method_calls[0].args) == 3
-    assert bmm.method_calls[0].args[0] == expected_update_for_db
-    assert (set(bmm.method_calls[0].args[1])
-            == {"all", "bookmarks", *(additional_session_bookmarks or [])})
-    assert set(bmm.method_calls[0].args[2]) == {"res:bm1"}
+    assert len(bmm.method_calls[0].args) == 2
+    assert (set(bmm.method_calls[0].args[0])
+            == expected_bookmarks_run)
+    assert set(bmm.method_calls[0].args[1]) == {"res:bm1"}
 
     expected_pool_method_calls = ["acquire", "release"]
     if routing and db is None:
@@ -482,11 +493,11 @@ async def test_with_bookmark_manager(
     assert ([call[0] for call in fake_pool.method_calls]
             == expected_pool_method_calls)
     assert (set(fake_pool.acquire.call_args.kwargs["bookmarks"])
-            == {"system:bm1", *(additional_session_bookmarks or [])})
+            == expected_bookmarks_acquire)
     if routing and db is None:
         assert (
             set(fake_pool.update_routing_table.call_args.kwargs["bookmarks"])
-            == {"system:bm1", *(additional_session_bookmarks or [])}
+            == expected_bookmarks_home_db_resolution
         )
 
     assert len(fake_pool.acquired_connection_mocks) == 1
@@ -494,26 +505,22 @@ async def test_with_bookmark_manager(
     connection_mock.run.assert_called_once()
     connection_run_call_kwargs = connection_mock.run.call_args.kwargs
     assert (set(connection_run_call_kwargs["bookmarks"])
-            == {"all", "bookmarks", *(additional_session_bookmarks or [])})
+            == expected_bookmarks_run)
 
 
 @pytest.mark.parametrize("routing", (True, False))
 @pytest.mark.parametrize("session_method", ("run", "get_server_info"))
 @mark_async_test
-async def test_last_bookmarks_do_not_leak_bookmark_managers_bookmarks(
+async def test_last_bookmarks_does_not_leak_bookmark_managers_bookmarks(
     fake_pool, routing, session_method, mocker
 ):
-    async def bmm_get_bookmarks(database):
-        return [f"bmm:{database}"]
-
-    async def bmm_gat_all_bookmarks():
-        return ["bmm:all", "bookmarks"]
+    async def bmm_get_bookmarks():
+        return [f"bmm:bm1"]
 
     fake_pool.mock_add_spec(AsyncNeo4jPool if routing else AsyncBoltPool)
 
     bmm = mocker.Mock(spec=AsyncBookmarkManager)
     bmm.get_bookmarks.side_effect = bmm_get_bookmarks
-    bmm.get_all_bookmarks.side_effect = bmm_gat_all_bookmarks
 
     config = SessionConfig()
     config.bookmark_manager = bmm

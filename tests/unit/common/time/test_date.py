@@ -514,11 +514,6 @@ class TestDate:
         assert repr(Date(2018, 4, 30)) == "neo4j.time.Date(2018, 4, 30)"
         assert repr(Date(0, 0, 0)) == "neo4j.time.ZeroDate"
 
-    def test_format(self) -> None:
-        d = Date(2018, 4, 30)
-        with pytest.raises(NotImplementedError):
-            _ = d.__format__("")
-
     def test_from_native(self) -> None:
         native = date(2018, 10, 1)
         d = Date.from_native(native)
@@ -573,3 +568,16 @@ def test_today(tz, expected) -> None:
     d = Date.today(tz=tz)
     assert isinstance(d, Date)
     assert d.year_month_day == expected
+
+
+def test_str() -> None:
+    d = Date(2018, 4, 26)
+    assert str(d) == "2018-04-26"
+
+
+def test_format() -> None:
+    d = Date(2018, 4, 26)
+    assert f"{d}" == "2018-04-26"
+    assert f"{d:%Y-%m-%d}" == "2018-04-26"
+    assert f"{d:%H:%M:%S}" == f"{date(2018, 4, 26):%H:%M:%S}"
+    assert f"{d:%Y-%m-%d %H:%M:%S.%f}" == "2018-04-26 00:00:00.000000000"

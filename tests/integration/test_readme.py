@@ -22,6 +22,10 @@ from pathlib import Path
 # python -m pytest tests/integration/test_readme.py -s -v
 
 
+def _work(tx, query, **params):
+    tx.run(query, **params).consume()
+
+
 def test_should_run_readme(uri, auth):
     names = set()
     print = names.add
@@ -49,14 +53,14 @@ def test_should_run_readme(uri, auth):
 
     with driver.session(database="neo4j") as session:
         # === END: README ===
-        session.run("MATCH (a) DETACH DELETE a")
+        session.execute_write(_work, "MATCH (a) DETACH DELETE a")
         # === START: README ===
         session.execute_write(add_friend, "Arthur", "Guinevere")
         session.execute_write(add_friend, "Arthur", "Lancelot")
         session.execute_write(add_friend, "Arthur", "Merlin")
         session.execute_read(print_friends, "Arthur")
         # === END: README ===
-        session.run("MATCH (a) DETACH DELETE a")
+        session.execute_write(_work, "MATCH (a) DETACH DELETE a")
         # === START: README ===
 
     driver.close()

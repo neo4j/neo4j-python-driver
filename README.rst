@@ -3,16 +3,18 @@ Neo4j Bolt Driver for Python
 ****************************
 
 This repository contains the official Neo4j driver for Python.
-Each driver release (from 5.0 upwards) is built specifically to work with a
-corresponding Neo4j release, i.e. that with the same ``major.minor`` version
-number.
-Only the latest ``major.minor`` release of each ``major`` driver series
-receives patches and support.
-These drivers will also be compatible with the previous Neo4j LTS release as
-well as the very next release, although only the common set of features
-between the chosen driver and server versions will be available.
 
-See `Version Compatibility`_ for a compatibility matrix.
+Starting with 5.0, the Neo4j Drivers will be moving to a monthly release
+cadence. A minor version will be released on the last Friday of each month so
+as to maintain versioning consistency with the core product (Neo4j DBMS) which
+has also moved to a monthly cadence.
+
+As a policy, patch versions will not be released except on rare occasions. Bug
+fixes and updates will go into the latest minor version and users should
+upgrade to that. Driver upgrades within a major version will never contain
+breaking API changes.
+
+See also: https://neo4j.com/developer/kb/neo4j-supported-versions/
 
 + Python 3.10 supported.
 + Python 3.9 supported.
@@ -28,6 +30,15 @@ To install the latest stable version, use:
 .. code:: bash
 
     pip install neo4j
+
+
+.. TODO: 7.0 - remove this note
+
+.. note::
+
+    ``neo4j-driver`` is the old name for this package. It is now deprecated and
+    and will receive no further updates starting with 6.0.0. Make sure to
+    install ``neo4j`` as shown above.
 
 
 Quick Example
@@ -111,38 +122,6 @@ Using the Python Driver 1.7 and connecting to Neo4j 4.x with default connection 
 .. code-block:: python
 
     driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "password"), encrypted=False)
-
-
-Version Compatibility
-=====================
-
-+------------------+-------+-------+-------+-------+-------+-------+-------+-------+
-| Server \\ Driver |  1.7  |  4.0  |  4.1  |  4.2  |  4.3  | *4.4* |  5.0  | *5.1* |
-+==================+=======+=======+=======+=======+=======+=======+=======+=======+
-| Neo4j 3.5 (EOL)  |  Yes  |  Yes  |   ?   |   ?   |   ?   |   ?   |   ?   |   ?   |
-+------------------+-------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 4.0 (EOL)  |  Yes  |  Yes  |  Yes  |  Yes  |  Yes  |  Yes  |   ?   |   ?   |
-+------------------+-------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 4.1 (EOL)  |   ?   |  Yes  |  Yes  |  Yes  |  Yes  |  Yes  |   ?   |   ?   |
-+------------------+-------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 4.2 (EOL)  |   ?   |   ?   |  Yes  |  Yes  |  Yes  |  Yes  |   ?   |   ?   |
-+------------------+-------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 4.3        |   ?   |   ?   |   ?   |  Yes  |  Yes  |  Yes  |   ?   |   ?   |
-+------------------+-------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 4.4 (LTS)  |   ?   |   ?   |   ?   |   ?   |  Yes  |  Yes  |  Yes  |  Yes  |
-+------------------+-------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 5.0 (EOL)  |   ?   |   ?   |   ?   |   ?   |   ?   |  Yes  |  Yes  |  Yes  |
-+------------------+-------+-------+-------+-------+-------+-------+-------+-------+
-| Neo4j 5.1        |   ?   |   ?   |   ?   |   ?   |   ?   |   ?   |  Yes  |  Yes  |
-+------------------+-------+-------+-------+-------+-------+-------+-------+-------+
-
-Table as of Neo4j 5.1 and Python Driver 5.1 are the latest available versions.
-
-* *emphasized*: currently supported driver versions
-* Yes: supported combination, although only the common set of features
-  between the chosen driver and server versions will be available.
-* ?: might work, untested, no support.
-* (blank): not working.
 
 
 Other Information

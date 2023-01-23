@@ -6,12 +6,16 @@ The Official Neo4j Driver for Python.
 
 Neo4j versions supported:
 
+* Neo4j 5.4
+* Neo4j 5.3
+* Neo4j 5.2
 * Neo4j 5.1
 * Neo4j 5.0
 * Neo4j 4.4
 
 Python versions supported:
 
+* Python 3.11 (added in driver version 5.3.0)
 * Python 3.10
 * Python 3.9
 * Python 3.8
@@ -98,23 +102,26 @@ Creating nodes and relationships.
 
     from neo4j import GraphDatabase
 
-    uri = "neo4j://localhost:7687"
-    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
+
+    URI = "neo4j://localhost:7687"
+    AUTH = ("neo4j", "password")
+
 
     def create_person(tx, name):
         tx.run("CREATE (a:Person {name: $name})", name=name)
+
 
     def create_friend_of(tx, name, friend):
         tx.run("MATCH (a:Person) WHERE a.name = $name "
                "CREATE (a)-[:KNOWS]->(:Person {name: $friend})",
                name=name, friend=friend)
 
-    with driver.session() as session:
-        session.execute_write(create_person, "Alice")
-        session.execute_write(create_friend_of, "Alice", "Bob")
-        session.execute_write(create_friend_of, "Alice", "Carl")
 
-    driver.close()
+    with GraphDatabase.driver(URI, auth=AUTH) as driver:
+        with driver.session() as session:
+            session.execute_write(create_person, "Alice")
+            session.execute_write(create_friend_of, "Alice", "Bob")
+            session.execute_write(create_friend_of, "Alice", "Carl")
 
 
 Finding nodes.
@@ -123,8 +130,10 @@ Finding nodes.
 
     from neo4j import GraphDatabase
 
-    uri = "neo4j://localhost:7687"
-    driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
+
+    URI = "neo4j://localhost:7687"
+    AUTH = ("neo4j", "password")
+
 
     def get_friends_of(tx, name):
         friends = []
@@ -135,12 +144,12 @@ Finding nodes.
             friends.append(record["friend"])
         return friends
 
-    with driver.session() as session:
-        friends = session.execute_read(get_friends_of, "Alice")
-        for friend in friends:
-            print(friend)
 
-    driver.close()
+    with GraphDatabase.driver(URI, auth=AUTH) as driver:
+        with driver.session() as session:
+            friends = session.execute_read(get_friends_of, "Alice")
+            for friend in friends:
+                print(friend)
 
 
 *******************
@@ -152,6 +161,7 @@ Example Application
     import logging
     from neo4j import GraphDatabase
     from neo4j.exceptions import ServiceUnavailable
+
 
     class App:
 
@@ -217,13 +227,15 @@ Example Application
         scheme = "neo4j"  # Connecting to Aura, use the "neo4j+s" URI scheme
         host_name = "example.com"
         port = 7687
-        url = "{scheme}://{host_name}:{port}".format(scheme=scheme, host_name=host_name, port=port)
+        url = f"{scheme}://{host_name}:{port}"
         user = "<Username for Neo4j database>"
         password = "<Password for Neo4j database>"
         app = App(url, user, password)
-        app.create_friendship("Alice", "David")
-        app.find_person("Alice")
-        app.close()
+        try:
+            app.create_friendship("Alice", "David")
+            app.find_person("Alice")
+        finally:
+            app.close()
 
 
 *****************
@@ -232,17 +244,14 @@ Other Information
 
 * `Neo4j Documentation`_
 * `The Neo4j Drivers Manual`_
-* `Neo4j Quick Reference Card`_
+* `Cypher Cheat Sheet`_
 * `Example Project`_
 * `Driver Wiki`_ (includes change logs)
-* `Migration Guide - Upgrade Neo4j drivers`_
 * `Neo4j Aura`_
 
-.. _`Python Driver 1.7`: https://neo4j.com/docs/api/python-driver/1.7/
 .. _`Neo4j Documentation`: https://neo4j.com/docs/
 .. _`The Neo4j Drivers Manual`: https://neo4j.com/docs/driver-manual/current/
-.. _`Neo4j Quick Reference Card`: https://neo4j.com/docs/cypher-refcard/current/
+.. _`Cypher Cheat Sheet`: https://neo4j.com/docs/cypher-cheat-sheet/current/
 .. _`Example Project`: https://github.com/neo4j-examples/movies-python-bolt
 .. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki
-.. _`Migration Guide - Upgrade Neo4j drivers`: https://neo4j.com/docs/migration-guide/4.0/upgrade-driver/
 .. _`Neo4j Aura`: https://neo4j.com/neo4j-aura/
