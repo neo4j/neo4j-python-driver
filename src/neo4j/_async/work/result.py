@@ -616,7 +616,10 @@ class AsyncResult:
             was obtained has been closed or the Result has been explicitly
             consumed.
 
-        .. versionadded:: 5.2
+        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        It might be changed or removed any time even without prior notice.
+
+        .. versionadded:: 5.5
         """
 
         await self._buffer_all()

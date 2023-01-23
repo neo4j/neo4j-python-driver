@@ -37,10 +37,13 @@ class RoutingControl(str, Enum):
         >>> RoutingControl.WRITERS == "w"
         True
 
+    **This is experimental.** (See :ref:`filter-warnings-ref`)
+    It might be changed or removed any time even without prior notice.
+
     .. seealso::
         :attr:`.AsyncDriver.execute_query`, :attr:`.Driver.execute_query`
 
-    .. versionadded:: 5.2
+    .. versionadded:: 5.5
     """
     READERS = "r"
     WRITERS = "w"

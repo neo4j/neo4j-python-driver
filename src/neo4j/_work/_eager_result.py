@@ -33,6 +33,9 @@ class EagerResult(t.NamedTuple):
      * keys - the list of keys returned by the query
        (see :attr:`AsyncResult.keys` and :attr:`.Result.keys`)
 
+    **This is experimental.** (See :ref:`filter-warnings-ref`)
+    It might be changed or removed any time even without prior notice.
+
     .. seealso::
         :attr:`.AsyncDriver.execute_query`, :attr:`.Driver.execute_query`
             Which by default return an instance of this class.
@@ -40,7 +43,7 @@ class EagerResult(t.NamedTuple):
         :attr:`.AsyncResult.to_eager_result`, :attr:`.Result.to_eager_result`
             Which can be used to convert to instance of this class.
 
-    .. versionadded:: 5.2
+    .. versionadded:: 5.5
     """
     #: Alias for field 0 (``eager_result[0]``)
     records: t.List[Record]

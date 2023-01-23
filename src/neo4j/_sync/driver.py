@@ -695,6 +695,33 @@ class Driver:
                     summary = result.consume()
                     return record, summary
 
+            Note that methods of :class:`neo4j.Result` that don't take
+            mandatory arguments can be used directly as transformer functions.
+            For example::
+
+                import neo4j
+
+
+                def example(driver: neo4j.Driver) -> neo4j.Record::
+                    record = driver.execute_query(
+                        "SOME QUERY",
+                        result_transformer_=neo4j.Result.single
+                    )
+
+
+                # is equivalent to:
+
+
+                def transformer(result: neo4j.Result) -> neo4j.Record:
+                    return result.single()
+
+
+                def example(driver: neo4j.Driver) -> neo4j.Record::
+                    record = driver.execute_query(
+                        "SOME QUERY",
+                        result_transformer_=transformer
+                    )
+
         :type result_transformer_:
             typing.Callable[[neo4j.Result], typing.Union[T]]
         :param bookmark_manager_:
@@ -719,7 +746,10 @@ class Driver:
         :returns: the result of the ``result_transformer``
         :rtype: T
 
-        .. versionadded:: 5.2
+        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        It might be changed or removed any time even without prior notice.
+
+        .. versionadded:: 5.5
         """
         invalid_kwargs = [k for k in kwargs if
                           k[-2:-1] != "_" and k[-1:] == "_"]
@@ -775,6 +805,11 @@ class Driver:
                 # subsequent execute_query calls will be causally chained
                 # (i.e., can read what was written by <QUERY 2>)
                 driver.execute_query("<QUERY 3>")
+
+        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        It might be changed or removed any time even without prior notice.
+
+        .. versionadded:: 5.5
         """
         return self._query_bookmark_manager
 

@@ -148,8 +148,10 @@ def NewDriver(backend, data):
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
+    kwargs["max_transaction_retry_time"] = 10
+
     driver = neo4j.GraphDatabase.driver(
-        data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs
+        data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
     )
     key = backend.next_key()
     backend.drivers[key] = driver
@@ -194,9 +196,9 @@ def ExecuteQuery(backend, data):
     config = data.get("config", {})
     kwargs = {}
     for config_key, kwargs_key in (
-        ("database", "database"),
-        ("routing", "routing"),
-        ("impersonatedUser", "impersonated_user"),
+        ("database", "database_"),
+        ("routing", "routing_"),
+        ("impersonatedUser", "impersonated_user_"),
     ):
         value = config.get(config_key, None)
         if value is not None:
@@ -204,10 +206,10 @@ def ExecuteQuery(backend, data):
     bookmark_manager_id = config.get("bookmarkManagerId")
     if bookmark_manager_id is not None:
         if bookmark_manager_id == -1:
-            kwargs["bookmark_manager"] = None
+            kwargs["bookmark_manager_"] = None
         else:
             bookmark_manager = backend.bookmark_managers[bookmark_manager_id]
-            kwargs["bookmark_manager"] = bookmark_manager
+            kwargs["bookmark_manager_"] = bookmark_manager
 
     eager_result = driver.execute_query(cypher, params, **kwargs)
     backend.send_response("EagerResult", {
