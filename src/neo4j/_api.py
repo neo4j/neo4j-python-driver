@@ -37,7 +37,7 @@ class RoutingControl(str, Enum):
         >>> RoutingControl.WRITERS == "w"
         True
 
-    **This is experimental.** (See :ref:`filter-warnings-ref`)
+    **This is experimental.**
     It might be changed or removed any time even without prior notice.
 
     .. seealso::

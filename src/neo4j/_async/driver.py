@@ -552,6 +552,10 @@ class AsyncDriver:
     ) -> _T:
         ...
 
+    @experimental(
+        "Driver.execute_query is experimental. "
+        "It might be changed or removed any time even without prior notice."
+    )
     async def execute_query(
         self,
         query_: str,

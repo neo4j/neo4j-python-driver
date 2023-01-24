@@ -209,7 +209,12 @@ async def ExecuteQuery(backend, data):
             bookmark_manager = backend.bookmark_managers[bookmark_manager_id]
             kwargs["bookmark_manager_"] = bookmark_manager
 
-    eager_result = await driver.execute_query(cypher, params, **kwargs)
+    with warning_check(
+        neo4j.ExperimentalWarning,
+        "Driver.execute_query is experimental. "
+        "It might be changed or removed any time even without prior notice."
+    ):
+        eager_result = await driver.execute_query(cypher, params, **kwargs)
     await backend.send_response("EagerResult", {
         "keys": eager_result.keys,
         "records": list(map(totestkit.record, eager_result.records)),
