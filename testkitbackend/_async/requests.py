@@ -148,8 +148,6 @@ async def NewDriver(backend, data):
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
-    kwargs["max_transaction_retry_time"] = 10
-
     driver = neo4j.AsyncGraphDatabase.driver(
         data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
     )
