@@ -2,8 +2,8 @@
 
 See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
 
-## Version 5.6
-- No breaking or major changes.
+## NEXT RELEASE
+- ...
 
 
 ## Version 5.5
