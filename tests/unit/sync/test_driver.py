@@ -61,6 +61,15 @@ def assert_warns_execute_query_experimental():
         yield
 
 
+@contextmanager
+def assert_warns_execute_query_bmm_experimental():
+    with pytest.warns(
+        ExperimentalWarning,
+        match=f"^Driver.query_bookmark_manager is experimental."
+    ):
+        yield
+
+
 
 @pytest.mark.parametrize("protocol", ("bolt://", "bolt+s://", "bolt+ssc://"))
 @pytest.mark.parametrize("host", ("localhost", "127.0.0.1",
@@ -718,7 +727,8 @@ def test_execute_query_bookmark_manager(
     with driver as driver:
         with assert_warns_execute_query_experimental():
             if bookmark_manager is Ellipsis:
-                bookmark_manager = driver.query_bookmark_manager
+                with assert_warns_execute_query_bmm_experimental():
+                    bookmark_manager = driver.query_bookmark_manager
                 driver.execute_query("")
             else:
                 if positional:
@@ -755,9 +765,10 @@ def test_execute_query_result_transformer(
             else:
                 res_custom: SomeClass
                 if positional:
+                    with assert_warns_execute_query_bmm_experimental():
+                        bmm = driver.query_bookmark_manager
                     res_custom = driver.execute_query(
-                        "", None, "w", None, None,
-                        driver.query_bookmark_manager, result_transformer
+                        "", None, "w", None, None, bmm, result_transformer
                     )
                 else:
                     res_custom = driver.execute_query(

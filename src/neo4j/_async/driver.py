@@ -793,6 +793,10 @@ class AsyncDriver:
             )
 
     @property
+    @experimental(
+        "Driver.query_bookmark_manager is experimental. "
+        "It might be changed or removed any time even without prior notice."
+    )
     def query_bookmark_manager(self) -> AsyncBookmarkManager:
         """The driver's default query bookmark manager.
 
