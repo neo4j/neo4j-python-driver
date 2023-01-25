@@ -14,8 +14,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
 import uuid
 import warnings
+from contextlib import contextmanager
 from unittest import mock
 
 import pandas as pd
@@ -26,6 +29,7 @@ from neo4j import (
     Address,
     AsyncResult,
     EagerResult,
+    ExperimentalWarning,
     Record,
     ResultSummary,
     ServerInfo,
@@ -50,6 +54,15 @@ from neo4j.graph import (
 )
 
 from ...._async_compat import mark_async_test
+
+
+@contextmanager
+def assert_warns_to_eager_result_experimental():
+    with pytest.warns(
+        ExperimentalWarning,
+        match=r"^Result\.to_eager_result is experimental\."
+    ):
+        yield
 
 
 class Records:
@@ -707,7 +720,8 @@ async def test_to_eager_result(records):
     connection = AsyncConnectionStub(records=records, summary_meta=summary)
     result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None)
-    eager_result = await result.to_eager_result()
+    with assert_warns_to_eager_result_experimental():
+        eager_result = await result.to_eager_result()
 
     assert isinstance(eager_result, EagerResult)
 

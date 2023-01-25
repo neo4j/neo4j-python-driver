@@ -57,7 +57,7 @@ from ..._async_compat import (
 def assert_warns_execute_query_experimental():
     with pytest.warns(
         ExperimentalWarning,
-        match=f"^Driver.execute_query is experimental."
+        match=r"^Driver\.execute_query is experimental\."
     ):
         yield
 
@@ -66,7 +66,7 @@ def assert_warns_execute_query_experimental():
 def assert_warns_execute_query_bmm_experimental():
     with pytest.warns(
         ExperimentalWarning,
-        match=f"^Driver.query_bookmark_manager is experimental."
+        match=r"^Driver\.query_bookmark_manager is experimental\."
     ):
         yield
 

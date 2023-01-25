@@ -975,6 +975,12 @@ async def _work(
     transformer: t.Callable[[AsyncResult], t.Awaitable[_T]]
 ) -> _T:
     res = await tx.run(query, parameters)
+    if transformer is AsyncResult.to_eager_result:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore",
+                                    message=r".*\bto_eager_result\b.*",
+                                    category=ExperimentalWarning)
+            return await transformer(res)
     return await transformer(res)
 
 

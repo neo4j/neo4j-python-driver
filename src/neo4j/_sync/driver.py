@@ -973,6 +973,12 @@ def _work(
     transformer: t.Callable[[Result], t.Union[_T]]
 ) -> _T:
     res = tx.run(query, parameters)
+    if transformer is Result.to_eager_result:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore",
+                                    message=r".*\bto_eager_result\b.*",
+                                    category=ExperimentalWarning)
+            return transformer(res)
     return transformer(res)
 
 

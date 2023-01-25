@@ -604,6 +604,10 @@ class Result:
         """
         return [record.data(*keys) for record in self]
 
+    @experimental(
+        "Result.to_eager_result is experimental. "
+        "It might be changed or removed any time even without prior notice."
+    )
     def to_eager_result(self) -> EagerResult:
         """Convert this result to an :class:`.EagerResult`.
 

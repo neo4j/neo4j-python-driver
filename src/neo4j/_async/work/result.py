@@ -604,6 +604,10 @@ class AsyncResult:
         """
         return [record.data(*keys) async for record in self]
 
+    @experimental(
+        "Result.to_eager_result is experimental. "
+        "It might be changed or removed any time even without prior notice."
+    )
     async def to_eager_result(self) -> EagerResult:
         """Convert this result to an :class:`.EagerResult`.
 
