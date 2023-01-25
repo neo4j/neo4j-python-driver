@@ -435,7 +435,7 @@ class SomeClass:
 
 
 @mark_async_test
-async def test_execute_query_work(mocker):
+async def test_execute_query_work(mocker) -> None:
     tx_mock = mocker.AsyncMock(spec=neo4j.AsyncManagedTransaction)
     transformer_mock = mocker.AsyncMock()
     transformer: t.Callable[[AsyncResult], t.Awaitable[SomeClass]] = \

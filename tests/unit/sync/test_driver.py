@@ -434,7 +434,7 @@ class SomeClass:
 
 
 @mark_sync_test
-def test_execute_query_work(mocker):
+def test_execute_query_work(mocker) -> None:
     tx_mock = mocker.Mock(spec=neo4j.ManagedTransaction)
     transformer_mock = mocker.Mock()
     transformer: t.Callable[[Result], t.Union[SomeClass]] = \
