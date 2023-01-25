@@ -2,8 +2,13 @@
 
 See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
 
+## Version 5.6
+- No breaking or major changes.
+
+
 ## Version 5.5
 - No breaking or major changes.
+
 
 ## Version 5.4
 - Undocumented helper methods `Neo4jError.is_fatal_during_discovery` and
