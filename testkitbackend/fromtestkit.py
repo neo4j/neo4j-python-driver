@@ -35,7 +35,7 @@ from neo4j.time import (
 
 def to_cypher_and_params(data):
     from .backend import Request
-    params = data["params"]
+    params = data.get("params")
     # Optional
     if params is None:
         return data["cypher"], None

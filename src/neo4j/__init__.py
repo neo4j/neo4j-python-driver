@@ -18,6 +18,7 @@
 
 from logging import getLogger as _getLogger
 
+from ._api import RoutingControl
 from ._async.driver import (
     AsyncBoltDriver,
     AsyncDriver,
@@ -59,6 +60,7 @@ from ._sync.work import (
     Session,
     Transaction,
 )
+from ._work import EagerResult
 from .addressing import (
     Address,
     IPv4Address,
@@ -114,6 +116,7 @@ __all__ = [
     "custom_auth",
     "DEFAULT_DATABASE",
     "Driver",
+    "EagerResult",
     "ExperimentalWarning",
     "get_user_agent",
     "GraphDatabase",
@@ -129,6 +132,7 @@ __all__ = [
     "Record",
     "Result",
     "ResultSummary",
+    "RoutingControl",
     "ServerInfo",
     "Session",
     "SessionConfig",
