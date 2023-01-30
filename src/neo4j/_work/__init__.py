@@ -15,27 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .result import (
-    EagerResult,
-    Result,
-)
-from .session import (
-    Session,
-    Workspace,
-)
-from .transaction import (
-    ManagedTransaction,
-    Transaction,
-    TransactionBase,
-)
+
+from ._eager_result import EagerResult
 
 
 __all__ = [
-    "Result",
-    "Session",
-    "ManagedTransaction",
-    "Transaction",
-    "TransactionBase",
-    "Workspace",
     "EagerResult",
 ]

@@ -160,7 +160,7 @@ def NewDriver(backend, data):
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
     driver = neo4j.GraphDatabase.driver(
-        data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs
+        data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
     )
     key = backend.next_key()
     backend.drivers[key] = driver
@@ -244,6 +244,40 @@ def CheckMultiDBSupport(backend, data):
         available = driver.supports_multi_db()
     backend.send_response("MultiDBSupport", {
         "id": backend.next_key(), "available": available
+    })
+
+
+def ExecuteQuery(backend, data):
+    driver = backend.drivers[data["driverId"]]
+    cypher, params = fromtestkit.to_cypher_and_params(data)
+    config = data.get("config", {})
+    kwargs = {}
+    for config_key, kwargs_key in (
+        ("database", "database_"),
+        ("routing", "routing_"),
+        ("impersonatedUser", "impersonated_user_"),
+    ):
+        value = config.get(config_key, None)
+        if value is not None:
+            kwargs[kwargs_key] = value
+    bookmark_manager_id = config.get("bookmarkManagerId")
+    if bookmark_manager_id is not None:
+        if bookmark_manager_id == -1:
+            kwargs["bookmark_manager_"] = None
+        else:
+            bookmark_manager = backend.bookmark_managers[bookmark_manager_id]
+            kwargs["bookmark_manager_"] = bookmark_manager
+
+    with warning_check(
+        neo4j.ExperimentalWarning,
+        "Driver.execute_query is experimental. "
+        "It might be changed or removed any time even without prior notice."
+    ):
+        eager_result = driver.execute_query(cypher, params, **kwargs)
+    backend.send_response("EagerResult", {
+        "keys": eager_result.keys,
+        "records": list(map(totestkit.record, eager_result.records)),
+        "summary": totestkit.summary(eager_result.summary),
     })
 
 
@@ -645,42 +679,7 @@ def ResultConsume(backend, data):
     summary = result.consume()
     from neo4j import ResultSummary
     assert isinstance(summary, ResultSummary)
-    backend.send_response("Summary", {
-        "serverInfo": {
-            "address": ":".join(map(str, summary.server.address)),
-            "agent": summary.server.agent,
-            "protocolVersion":
-                ".".join(map(str, summary.server.protocol_version)),
-        },
-        "counters": None if not summary.counters else {
-            "constraintsAdded": summary.counters.constraints_added,
-            "constraintsRemoved": summary.counters.constraints_removed,
-            "containsSystemUpdates": summary.counters.contains_system_updates,
-            "containsUpdates": summary.counters.contains_updates,
-            "indexesAdded": summary.counters.indexes_added,
-            "indexesRemoved": summary.counters.indexes_removed,
-            "labelsAdded": summary.counters.labels_added,
-            "labelsRemoved": summary.counters.labels_removed,
-            "nodesCreated": summary.counters.nodes_created,
-            "nodesDeleted": summary.counters.nodes_deleted,
-            "propertiesSet": summary.counters.properties_set,
-            "relationshipsCreated": summary.counters.relationships_created,
-            "relationshipsDeleted": summary.counters.relationships_deleted,
-            "systemUpdates": summary.counters.system_updates,
-        },
-        "database": summary.database,
-        "notifications": summary.notifications,
-        "plan": summary.plan,
-        "profile": summary.profile,
-        "query": {
-            "text": summary.query,
-            "parameters": {k: totestkit.field(v)
-                           for k, v in summary.parameters.items()},
-        },
-        "queryType": summary.query_type,
-        "resultAvailableAfter": summary.result_available_after,
-        "resultConsumedAfter": summary.result_consumed_after,
-    })
+    backend.send_response("Summary", totestkit.summary(summary))
 
 
 def ForcedRoutingTableUpdate(backend, data):

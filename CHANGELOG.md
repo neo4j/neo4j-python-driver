@@ -2,6 +2,14 @@
 
 See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
 
+## NEXT RELEASE
+- ...
+
+
+## Version 5.5
+- No breaking or major changes.
+
+
 ## Version 5.4
 - Undocumented helper methods `Neo4jError.is_fatal_during_discovery` and
   `Neo4jError.invalidates_all_connections` have been deprecated and will be
@@ -36,17 +44,14 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
 
 
 ## Version 5.2
-
 - No breaking or major changes.
 
 
 ## Version 5.1
-
 - No breaking or major changes.
 
 
 ## Version 5.0
-
 - Python 3.10 support added
 - Python 3.6 support has been dropped.
 - `Result`, `Session`, and `Transaction` can no longer be imported from
@@ -178,27 +183,22 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
 
 
 ## Version 4.4
-
 - Python 3.5 support has been dropped.
 
 
 ## Version 4.3
-
 - Python 3.9 support added
 
 
 ## Version 4.2
-
 - No driver changes have been made for Neo4j 4.2
 
 
 ## Version 4.1
-
 - Routing context is now forwarded to the server for when required by server-side routing
 
 
 ## Version 4.0 - Breaking Changes
-
 - The package version has jumped from `1.7` directly to `4.0`, in order to bring the version in line with Neo4j itself.
 - The package can now no longer be installed as `neo4j-driver`; use `pip install neo4j` instead.
 - The `neo4j.v1` subpackage is now no longer available; all imports should be taken from the `neo4j` package instead.

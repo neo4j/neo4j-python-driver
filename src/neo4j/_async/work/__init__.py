@@ -15,9 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from .session import (
+from .result import (
     AsyncResult,
+    EagerResult,
+)
+from .session import (
     AsyncSession,
     AsyncWorkspace,
 )
@@ -35,4 +37,5 @@ __all__ = [
     "AsyncTransaction",
     "AsyncTransactionBase",
     "AsyncWorkspace",
+    "EagerResult",
 ]
