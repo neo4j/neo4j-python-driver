@@ -181,7 +181,7 @@ Closing a driver will immediately shut down all connections in the pool.
 
 
             async def example(driver: neo4j.AsyncDriver) -> List[str]:
-                \"""Get the name of all 42 year-olds.\"""
+                """Get the name of all 42 year-olds."""
                 records, summary, keys = await driver.execute_query(
                     "MATCH (p:Person {age: $age}) RETURN p.name",
                     {"age": 42},
@@ -200,7 +200,7 @@ Closing a driver will immediately shut down all connections in the pool.
 
 
             async def example(driver: neo4j.AsyncDriver) -> int:
-                \"""Call all young people "My dear" and get their count.\"""
+                """Call all young people "My dear" and get their count."""
                 record = await driver.execute_query(
                     "MATCH (p:Person) WHERE p.age <= 15 "
                     "SET p.nickname = 'My dear' "

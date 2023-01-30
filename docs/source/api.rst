@@ -198,7 +198,7 @@ Closing a driver will immediately shut down all connections in the pool.
 
 
             def example(driver: neo4j.Driver) -> List[str]:
-                \"""Get the name of all 42 year-olds.\"""
+                """Get the name of all 42 year-olds."""
                 records, summary, keys = driver.execute_query(
                     "MATCH (p:Person {age: $age}) RETURN p.name",
                     {"age": 42},
@@ -217,7 +217,7 @@ Closing a driver will immediately shut down all connections in the pool.
 
 
             def example(driver: neo4j.Driver) -> int:
-                \"""Call all young people "My dear" and get their count.\"""
+                """Call all young people "My dear" and get their count."""
                 record = driver.execute_query(
                     "MATCH (p:Person) WHERE p.age <= $age "
                     "SET p.nickname = 'My dear' "
