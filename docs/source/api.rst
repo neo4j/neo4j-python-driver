@@ -107,10 +107,11 @@ Auth
 
 To authenticate with Neo4j the authentication details are supplied at driver creation.
 
-The auth token is an object of the class :class:`neo4j.Auth` containing the details.
+The auth token is an object of the class :class:`neo4j.Auth` containing static details or a a callable that returns a :class:`neo4j.RenewableAuth` object.
 
 .. autoclass:: neo4j.Auth
 
+.. autoclass:: neo4j.RenewableAuth
 
 
 Example:
@@ -154,7 +155,8 @@ Closing a driver will immediately shut down all connections in the pool.
 
 .. autoclass:: neo4j.Driver()
     :members: session, query_bookmark_manager, encrypted, close,
-              verify_connectivity, get_server_info
+              verify_connectivity, get_server_info, verify_authentication,
+              supports_session_auth, supports_multi_db
 
     .. method:: execute_query(query, parameters_=None,routing_=neo4j.RoutingControl.WRITERS, database_=None, impersonated_user_=None, bookmark_manager_=self.query_bookmark_manager, result_transformer_=Result.to_eager_result, **kwargs)
 
@@ -726,6 +728,7 @@ Session
     .. automethod:: execute_write
 
 
+
 Query
 =====
 
@@ -746,6 +749,7 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 + :ref:`default-access-mode-ref`
 + :ref:`fetch-size-ref`
 + :ref:`bookmark-manager-ref`
++ :ref:`session-auth-ref`
 
 
 .. _bookmarks-ref:
@@ -938,6 +942,20 @@ See :class:`.BookmarkManager` for more information.
 **This is experimental.** (See :ref:`filter-warnings-ref`)
 It might be changed or removed any time even without prior notice.
 
+
+.. _session-auth-ref:
+
+``auth``
+--------
+Optional :class:`neo4j.Auth` or ``(user, password)``-tuple. Use this overwrite the
+authentication information for the session.
+This requires the server to support re-authentication on the protocol level. You can
+check this by calling :meth:`.Driver.supports_session_auth` / :meth:`.AsyncDriver.supports_session_auth`.
+
+:Type: :data:`None`, :class:`.Auth` or ``(user, password)``-tuple
+:Default: :data:`None` - use the authentication information provided during driver creation.
+
+.. versionadded:: 5.x
 
 
 

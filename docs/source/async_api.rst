@@ -136,7 +136,8 @@ Closing a driver will immediately shut down all connections in the pool.
 
 .. autoclass:: neo4j.AsyncDriver()
     :members: session, query_bookmark_manager, encrypted, close,
-              verify_connectivity, get_server_info
+              verify_connectivity, get_server_info, verify_authentication,
+              supports_session_auth, supports_multi_db
 
     .. method:: execute_query(query, parameters_=None, routing_=neo4j.RoutingControl.WRITERS, database_=None, impersonated_user_=None, bookmark_manager_=self.query_bookmark_manager, result_transformer_=AsyncResult.to_eager_result, **kwargs)
         :async:
@@ -334,8 +335,9 @@ Async Driver Configuration
 ==========================
 
 :class:`neo4j.AsyncDriver` is configured exactly like :class:`neo4j.Driver`
-(see :ref:`driver-configuration-ref`). The only difference is that the async
-driver accepts an async custom resolver function:
+(see :ref:`driver-configuration-ref`). The only differences are that the async
+driver accepts an async custom resolver function (see :ref:`async-resolver-ref`)
+as well as an async auth token provider (see :class:`neo4j.RenewableAuth`).
 
 
 .. _async-resolver-ref:

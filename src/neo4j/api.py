@@ -182,21 +182,53 @@ def custom_auth(
 
 
 class RenewableAuth:
-    """Container for details which potentially expire.
+    """Container for authentication details which potentially expire.
 
-    This is meant to be used with auth token provider which is a callable
-    that returns...
+    This is meant to be used as a return value for a callable auth token
+    provider to accommodate for expiring authentication information.
+
+    For Example::
+
+        import neo4j
+
+
+        def auth_provider():
+            sso_token = get_sso_token()  # some way to getting a fresh token
+            expires_in = 60  # we know our tokens expire every 60 seconds
+
+            return neo4j.RenewableAuth(
+                neo4j.bearer_auth(sso_token),
+                # The driver will continue to use the old token until a new one
+                # has been fetched. So we want the auth provider to be called
+                # a little before the token expires.
+                expires_in - 10
+            )
+
+
+        with neo4j.GraphDatabase.driver(
+            "neo4j://example.com:7687",
+            auth=auth_provider
+        ) as driver:
+            ...  # do stuff
 
     .. warning::
 
-        This function **must not** interact with the driver in any way as this
-        can cause a deadlock or undefined behaviour.
+        The auth provider **must not** interact with the driver in any way as
+        this can cause deadlocks and undefined behaviour.
 
-    :param auth: The auth token. :param expires_in: The expected expiry time
+    The driver will call the auth provider when either the last token it
+    provided has expired (see :attr:`expires_in`) or when the driver has
+    received an authentication error from the server that indicates new
+    authentication information is required.
+
+    :param auth: The auth token.
+    :param expires_in: The expected expiry time
         of the auth token in seconds from now. It is recommended to set this
         a little before the actual expiry time to give the driver time to
         renew the auth token before connections start to fail. If set to
         :data:`None`, the token is assumed to never expire.
+
+    .. versionadded:: 5.x
     """
 
     def __init__(
@@ -221,12 +253,6 @@ class RenewableAuth:
     def expired(self):
         return (self.expires_at is not None
                 and self.expires_at < time.monotonic())
-
-
-_TAuthTokenProvider = t.Callable[[], t.Union[
-    RenewableAuth, Auth, t.Tuple[t.Any, t.Any], None,
-    t.Awaitable[t.Union[RenewableAuth, Auth, t.Tuple[t.Any, t.Any], None]]
-]]
 
 
 # TODO: 6.0 - remove this class

@@ -48,7 +48,6 @@ from .._meta import (
 from .._work import EagerResult
 from ..addressing import Address
 from ..api import (
-    _TAuthTokenProvider,
     Auth,
     BookmarkManager,
     Bookmarks,
@@ -57,6 +56,7 @@ from ..api import (
     parse_neo4j_uri,
     parse_routing_context,
     READ_ACCESS,
+    RenewableAuth,
     SECURITY_TYPE_SECURE,
     SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
     ServerInfo,
@@ -69,6 +69,7 @@ from ..api import (
     URI_SCHEME_NEO4J_SECURE,
     URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
 )
+from ..exceptions import Neo4jError
 from .bookmark_manager import (
     Neo4jBookmarkManager,
     TBmConsumer as _TBmConsumer,
@@ -99,6 +100,12 @@ else:
     _default = object()
 
 _T = t.TypeVar("_T")
+
+
+_TAuthTokenProvider = t.Callable[[], t.Union[
+    RenewableAuth, Auth, t.Tuple[t.Any, t.Any], None,
+    t.Union[t.Union[RenewableAuth, Auth, t.Tuple[t.Any, t.Any], None]]
+]]
 
 
 class GraphDatabase:
@@ -856,7 +863,6 @@ class Driver:
 
     else:
 
-        # TODO: 6.0 - remove config argument
         def verify_connectivity(self, **config) -> None:
             """Verify that the driver can establish a connection to the server.
 
@@ -875,7 +881,7 @@ class Driver:
                     They might be changed or removed in any future version
                     without prior notice.
 
-            :raises DriverError: if the driver cannot connect to the remote.
+            :raises Exception: if the driver cannot connect to the remote.
                 Use the exception to further understand the cause of the
                 connectivity problem.
 
@@ -891,8 +897,7 @@ class Driver:
                     "changed or removed in any future version without prior "
                     "notice."
                 )
-            with self.session(**config) as session:
-                session._get_server_info()
+            self._get_server_info()
 
     if t.TYPE_CHECKING:
 
@@ -943,7 +948,7 @@ class Driver:
                     They might be changed or removed in any future version
                     without prior notice.
 
-            :raises DriverError: if the driver cannot connect to the remote.
+            :raises Exception: if the driver cannot connect to the remote.
                 Use the exception to further understand the cause of the
                 connectivity problem.
 
@@ -952,14 +957,12 @@ class Driver:
             if config:
                 experimental_warn(
                     "All configuration key-word arguments to "
-                    "verify_connectivity() are experimental. They might be "
+                    "get_server_info() are experimental. They might be "
                     "changed or removed in any future version without prior "
                     "notice."
                 )
-            with self.session(**config) as session:
-                return session._get_server_info()
+            return self._get_server_info()
 
-    @experimental("Feature support query, based on Bolt protocol version and Neo4j server version will change in the future.")
     def supports_multi_db(self) -> bool:
         """ Check if the server or cluster supports multi-databases.
 
@@ -967,13 +970,124 @@ class Driver:
             supports multi-databases, otherwise false.
 
         .. note::
-            Feature support query, based on Bolt Protocol Version and Neo4j
-            server version will change in the future.
+            Feature support query based solely on the Bolt protocol version.
+            The feature might still be disabled on the server side even if this
+            function return :const:`True`. It just guarantees that the driver
+            won't throw a :exc:`ConfigurationError` when trying to use this
+            driver feature.
         """
         with self.session() as session:
             session._connect(READ_ACCESS)
             assert session._connection
             return session._connection.supports_multiple_databases
+
+    if t.TYPE_CHECKING:
+
+        def verify_authentication(
+            self,
+            auth: t.Union[Auth, t.Tuple[t.Any, t.Any]],
+            # all other arguments are experimental
+            # they may be change or removed any time without prior notice
+            session_connection_timeout: float = ...,
+            connection_acquisition_timeout: float = ...,
+            max_transaction_retry_time: float = ...,
+            database: t.Optional[str] = ...,
+            fetch_size: int = ...,
+            impersonated_user: t.Optional[str] = ...,
+            bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
+            default_access_mode: str = ...,
+            bookmark_manager: t.Union[
+                BookmarkManager, BookmarkManager, None
+            ] = ...,
+
+            # undocumented/unsupported options
+            initial_retry_delay: float = ...,
+            retry_delay_multiplier: float = ...,
+            retry_delay_jitter_factor: float = ...
+        ) -> bool:
+            ...
+
+    else:
+
+        def verify_authentication(
+            self, auth: t.Union[Auth, t.Tuple[t.Any, t.Any]], **config
+        ) -> bool:
+            """Verify that the authentication information is valid.
+
+            Like :meth:`.verify_connectivity`, but for checking authentication.
+
+            Try to establish a working read connection to the remote server or
+            a member of a cluster and exchange some data. In a cluster, there
+            is no guarantee about which server will be contacted. If the data
+            exchange is successful, the authentication information is valid and
+            :const:`True` is returned. Otherwise, the error will be matched
+            against a list of known authentication errors. If the error is on
+            that list, :const:`False` is returned indicating that the
+            authentication information is invalid. Otherwise, the error is
+            re-raised.
+
+            :param auth: authentication information to verify.
+                Same as the session config :ref:`auth-ref`.
+            :param config: accepts the same configuration key-word arguments as
+                :meth:`session`.
+
+                .. warning::
+                    All configuration key-word arguments (except ``auth``) are
+                    experimental. They might be changed or removed in any
+                    future version without prior notice.
+
+            :raises Exception: if the driver cannot connect to the remote.
+                Use the exception to further understand the cause of the
+                connectivity problem.
+
+            .. versionadded:: 5.x
+            """
+            if config:
+                experimental_warn(
+                    "All configuration key-word arguments but auth to "
+                    "verify_authentication() are experimental. They might be "
+                    "changed or removed in any future version without prior "
+                    "notice."
+                )
+            config["auth"] = auth
+            try:
+                self._get_server_info(**config)
+            except Neo4jError as exc:
+                if exc.code in (
+                    "Neo.ClientError.Security.CredentialsExpired",
+                    "Neo.ClientError.Security.Forbidden",
+                    "Neo.ClientError.Security.TokenExpired",
+                    "Neo.ClientError.Security.Unauthorized",
+                ):
+                    return False
+                raise
+            return True
+
+
+    def supports_session_auth(self) -> bool:
+        """Check if the remote supports connection re-authentication.
+
+        :returns: Returns true if the server or cluster the driver connects to
+            supports re-authentication of existing connections, otherwise
+            false.
+
+        .. note::
+            Feature support query based solely on the Bolt protocol version.
+            The feature might still be disabled on the server side even if this
+            function return :const:`True`. It just guarantees that the driver
+            won't throw a :exc:`ConfigurationError` when trying to use this
+            driver feature.
+
+        .. versionadded:: 5.x
+        """
+        with self.session() as session:
+            session._connect(READ_ACCESS)
+            assert session._connection
+            return session._connection.supports_re_auth
+
+    def _get_server_info(self, **config) -> ServerInfo:
+        with self.session(**config) as session:
+            return session._get_server_info()
 
 
 def _work(
