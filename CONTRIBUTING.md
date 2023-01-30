@@ -58,7 +58,7 @@ install the pre-commit hooks as described below instead. They will take care of
 updating the code if necessary.
 
 Setting up the development environment:
- * Install Python 3.7+
+ * Install Python 3.8+
  * Install the requirements
    ```bash
    $ python3 -m pip install -U pip
