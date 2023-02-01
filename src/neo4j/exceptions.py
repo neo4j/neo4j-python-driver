@@ -227,6 +227,8 @@ class Neo4jError(Exception):
 
         :returns: :const:`True` if the error is retryable,
             :const:`False` otherwise.
+
+        .. versionadded:: 5.0
         """
         return False
 
@@ -406,6 +408,8 @@ class DriverError(Exception):
 
         :returns: :const:`True` if the error is retryable,
             :const:`False` otherwise.
+
+        .. versionadded:: 5.0
         """
         return False
 
