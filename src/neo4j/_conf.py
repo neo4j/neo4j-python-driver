@@ -405,6 +405,8 @@ class PoolConfig(Config):
     keep_alive = True
     # Specify whether TCP keep-alive should be enabled.
 
+    driver_socket_timeout = None
+
     def get_ssl_context(self):
         if self.ssl_context is not None:
             return self.ssl_context
