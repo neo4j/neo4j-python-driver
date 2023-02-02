@@ -952,6 +952,10 @@ authentication information for the session.
 This requires the server to support re-authentication on the protocol level. You can
 check this by calling :meth:`.Driver.supports_session_auth` / :meth:`.AsyncDriver.supports_session_auth`.
 
+It is not possible to overwrite the authentication information for the session with no authentication,
+i.e., downgrade the authentication at session level.
+Instead, you should create a driver with no authentication and upgrade the authentication at session level as needed.
+
 :Type: :data:`None`, :class:`.Auth` or ``(user, password)``-tuple
 :Default: :data:`None` - use the authentication information provided during driver creation.
 
