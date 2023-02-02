@@ -233,7 +233,9 @@ class IOPool(abc.ABC):
                 return connection_creator
         return None
 
-    def _acquire(self, address, auth, deadline, liveness_check_timeout):
+    def _acquire(
+        self, address, auth, deadline, liveness_check_timeout, force_auth=False
+    ):
         """ Acquire a connection to a given address from the pool.
         The address supplied should always be an IP address, not
         a host name.
@@ -246,7 +248,8 @@ class IOPool(abc.ABC):
                     or connection_.stale()):
                 return False
             try:
-                connection_.re_auth(auth or self.get_auth())
+                connection_.re_auth(auth or self.get_auth(),
+                                    force=force_auth)
             except ConfigurationError:
                 # protocol does not support re-authentication
                 if auth:
@@ -255,6 +258,9 @@ class IOPool(abc.ABC):
                  # expiring tokens supported by flushing the pool
                  # => give up this connection
                 return False
+            if force_auth:
+                connection_.send_all()
+                connection_.fetch_all()
             if liveness_check_timeout is not None:
                 if connection_.is_idle_for(liveness_check_timeout):
                     with connection_deadline(connection_, deadline_):
@@ -302,7 +308,7 @@ class IOPool(abc.ABC):
     @abc.abstractmethod
     def acquire(
         self, access_mode, timeout, database, bookmarks, auth,
-        liveness_check_timeout
+        liveness_check_timeout, force_re_auth=False
     ):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
@@ -313,6 +319,7 @@ class IOPool(abc.ABC):
         :param bookmarks:
         :param auth:
         :param liveness_check_timeout:
+        :param force_re_auth:
         """
         ...
 
@@ -495,7 +502,7 @@ class BoltPool(IOPool):
 
     def acquire(
         self, access_mode, timeout, database, bookmarks, auth,
-        liveness_check_timeout
+        liveness_check_timeout, force_re_auth=False
     ):
         # The access_mode and database is not needed for a direct connection,
         # it's just there for consistency.
@@ -503,7 +510,7 @@ class BoltPool(IOPool):
                   "access_mode=%r, database=%r", access_mode, database)
         deadline = Deadline.from_timeout_or_deadline(timeout)
         return self._acquire(
-            self.address, auth, deadline, liveness_check_timeout
+            self.address, auth, deadline, liveness_check_timeout, force_re_auth
         )
 
 
@@ -857,7 +864,7 @@ class Neo4jPool(IOPool):
 
     def acquire(
         self, access_mode, timeout, database, bookmarks, auth,
-        liveness_check_timeout
+        liveness_check_timeout, force_re_auth=False
     ):
         if access_mode not in (WRITE_ACCESS, READ_ACCESS):
             raise ClientError("Non valid 'access_mode'; {}".format(access_mode))
@@ -877,7 +884,7 @@ class Neo4jPool(IOPool):
                   "access_mode=%r, database=%r", access_mode, database)
         self.ensure_routing_table_is_fresh(
             access_mode=access_mode, database=database,
-            imp_user=None, bookmarks=bookmarks,
+            imp_user=None, bookmarks=bookmarks, auth=auth,
             acquisition_timeout=timeout
         )
 
@@ -896,7 +903,8 @@ class Neo4jPool(IOPool):
                 deadline = Deadline.from_timeout_or_deadline(timeout)
                 # should always be a resolved address
                 connection = self._acquire(
-                    address, auth, deadline, liveness_check_timeout
+                    address, auth, deadline, liveness_check_timeout,
+                    force_re_auth
                 )
             except (ServiceUnavailable, SessionExpired):
                 self.deactivate(address=address)

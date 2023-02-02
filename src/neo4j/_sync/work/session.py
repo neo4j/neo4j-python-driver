@@ -118,8 +118,9 @@ class Session(Workspace):
         if access_mode is None:
             access_mode = self._config.default_access_mode
         try:
-            super()._connect(access_mode, auth=self._config.auth,
-                                   **access_kwargs)
+            super()._connect(
+                access_mode, auth=self._config.auth, **access_kwargs
+            )
         except asyncio.CancelledError:
             self._handle_cancellation(message="_connect")
             raise
@@ -163,6 +164,10 @@ class Session(Workspace):
         server_info = self._connection.server_info
         self._disconnect()
         return server_info
+
+    def _verify_authentication(self):
+        assert not self._connection
+        self._connect(READ_ACCESS, force_re_auth=True)
 
     def close(self) -> None:
         """Close the session.

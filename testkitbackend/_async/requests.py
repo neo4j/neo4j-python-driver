@@ -247,6 +247,27 @@ async def CheckMultiDBSupport(backend, data):
     })
 
 
+async def VerifyAuthentication(backend, data):
+    driver_id = data["driverId"]
+    driver = backend.drivers[driver_id]
+    auth = None
+    if data.get("auth_token"):
+        auth = _convert_auth_token(data, "auth_token")
+    authenticated = await driver.verify_authentication(auth=auth)
+    await backend.send_response("DriverIsAuthenticated", {
+        "id": backend.next_key(), "authenticated": authenticated
+    })
+
+
+async def CheckSessionAuthSupport(backend, data):
+    driver_id = data["driverId"]
+    driver = backend.drivers[driver_id]
+    available = await driver.supports_session_auth()
+    await backend.send_response("SessionAuthSupport", {
+        "id": backend.next_key(), "available": available
+    })
+
+
 async def ExecuteQuery(backend, data):
     driver = backend.drivers[data["driverId"]]
     cypher, params = fromtestkit.to_cypher_and_params(data)

@@ -985,7 +985,7 @@ class Driver:
 
         def verify_authentication(
             self,
-            auth: t.Union[Auth, t.Tuple[t.Any, t.Any]],
+            auth: t.Union[Auth, t.Tuple[t.Any, t.Any], None] = None,
             # all other arguments are experimental
             # they may be change or removed any time without prior notice
             session_connection_timeout: float = ...,
@@ -1010,7 +1010,9 @@ class Driver:
     else:
 
         def verify_authentication(
-            self, auth: t.Union[Auth, t.Tuple[t.Any, t.Any]], **config
+            self,
+            auth: t.Union[Auth, t.Tuple[t.Any, t.Any], None] = None,
+            **config
         ) -> bool:
             """Verify that the authentication information is valid.
 
@@ -1050,8 +1052,11 @@ class Driver:
                     "notice."
                 )
             config["auth"] = auth
+            if "database" not in config:
+                config["database"] = "system"
             try:
-                self._get_server_info(**config)
+                with self.session(**config) as session:
+                    session._verify_authentication()
             except Neo4jError as exc:
                 if exc.code in (
                     "Neo.ClientError.Security.CredentialsExpired",

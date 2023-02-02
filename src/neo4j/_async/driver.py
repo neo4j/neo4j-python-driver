@@ -987,7 +987,7 @@ class AsyncDriver:
 
         async def verify_authentication(
             self,
-            auth: t.Union[Auth, t.Tuple[t.Any, t.Any]],
+            auth: t.Union[Auth, t.Tuple[t.Any, t.Any], None] = None,
             # all other arguments are experimental
             # they may be change or removed any time without prior notice
             session_connection_timeout: float = ...,
@@ -1012,7 +1012,9 @@ class AsyncDriver:
     else:
 
         async def verify_authentication(
-            self, auth: t.Union[Auth, t.Tuple[t.Any, t.Any]], **config
+            self,
+            auth: t.Union[Auth, t.Tuple[t.Any, t.Any], None] = None,
+            **config
         ) -> bool:
             """Verify that the authentication information is valid.
 
@@ -1052,8 +1054,11 @@ class AsyncDriver:
                     "notice."
                 )
             config["auth"] = auth
+            if "database" not in config:
+                config["database"] = "system"
             try:
-                await self._get_server_info(**config)
+                async with self.session(**config) as session:
+                    await session._verify_authentication()
             except Neo4jError as exc:
                 if exc.code in (
                     "Neo.ClientError.Security.CredentialsExpired",

@@ -65,7 +65,7 @@ class AsyncQuickConnection:
     async def reset(self):
         pass
 
-    def re_auth(self, auth):
+    def re_auth(self, auth, force=False):
         return False
 
     def close(self):
@@ -96,10 +96,10 @@ class AsyncFakeBoltPool(AsyncIOPool):
 
     async def acquire(
         self, access_mode, timeout, database, bookmarks, auth,
-        liveness_check_timeout
+        liveness_check_timeout, force_re_auth=False
     ):
         return await self._acquire(
-            self.address, auth, timeout, liveness_check_timeout
+            self.address, auth, timeout, liveness_check_timeout, force_re_auth
         )
 
 

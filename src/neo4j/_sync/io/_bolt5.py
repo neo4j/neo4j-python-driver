@@ -346,7 +346,8 @@ class Bolt5x0(Bolt):
                     self.pool.on_write_failure(address=self.unresolved_address)
                 raise
             except Neo4jError as e:
-                self.pool.on_neo4j_error(e, self.server_info.address)
+                if self.pool:
+                    self.pool.on_neo4j_error(e, self.server_info.address)
                 raise
         else:
             raise BoltProtocolError(

@@ -21,6 +21,7 @@
     "Feature:API:Driver.ExecuteQuery": true,
     "Feature:API:Driver:GetServerInfo": true,
     "Feature:API:Driver.IsEncrypted": true,
+    "Feature:API:Driver.VerifyAuthentication": true,
     "Feature:API:Driver.VerifyConnectivity": true,
     "Feature:API:Driver.SupportsSessionAuth": true,
     "Feature:API:Liveness.Check": false,

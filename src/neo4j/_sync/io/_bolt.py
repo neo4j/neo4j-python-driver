@@ -464,7 +464,7 @@ class Bolt:
         self.auth_dict = {}
 
     def re_auth(
-        self, auth, dehydration_hooks=None, hydration_hooks=None
+        self, auth, dehydration_hooks=None, hydration_hooks=None, force=False
     ):
         """Append LOGON, LOGOFF to the outgoing queue.
 
@@ -473,7 +473,7 @@ class Bolt:
         :returns: whether the auth was changed
         """
         new_auth_dict = self._to_auth_dict(auth)
-        if new_auth_dict == self.auth_dict:
+        if not force and new_auth_dict == self.auth_dict:
             return False
         self.logoff(dehydration_hooks=dehydration_hooks,
                      hydration_hooks=hydration_hooks)
