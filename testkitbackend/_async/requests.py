@@ -142,12 +142,18 @@ async def NewDriver(backend, data):
     for k in ("sessionConnectionTimeoutMs", "updateRoutingTableTimeoutMs"):
         if k in data:
             data.mark_item_as_read_if_equals(k, None)
-    if data.get("maxConnectionPoolSize"):
-        kwargs["max_connection_pool_size"] = data["maxConnectionPoolSize"]
-    if data.get("fetchSize"):
-        kwargs["fetch_size"] = data["fetchSize"]
-    if "encrypted" in data:
-        kwargs["encrypted"] = data["encrypted"]
+    for (conf_name, data_name) in (
+        ("max_connection_pool_size", "maxConnectionPoolSize"),
+        ("fetch_size", "fetchSize"),
+    ):
+        if data.get(data_name):
+            kwargs[conf_name] = data[data_name]
+    for (conf_name, data_name) in (
+        ("encrypted", "encrypted"),
+        ("backwards_compatible_auth", "backwardsCompatibleAuth"),
+    ):
+        if data_name in data:
+            kwargs[conf_name] = data[data_name]
     if "trustedCertificates" in data:
         if data["trustedCertificates"] is None:
             kwargs["trusted_certificates"] = neo4j.TrustSystemCAs()
@@ -236,12 +242,7 @@ async def GetServerInfo(backend, data):
 async def CheckMultiDBSupport(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
-    with warning_check(
-        neo4j.ExperimentalWarning,
-        "Feature support query, based on Bolt protocol version and Neo4j "
-        "server version will change in the future."
-    ):
-        available = await driver.supports_multi_db()
+    available = await driver.supports_multi_db()
     await backend.send_response("MultiDBSupport", {
         "id": backend.next_key(), "available": available
     })
@@ -250,9 +251,7 @@ async def CheckMultiDBSupport(backend, data):
 async def VerifyAuthentication(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
-    auth = None
-    if data.get("auth_token"):
-        auth = _convert_auth_token(data, "auth_token")
+    auth = _convert_auth_token(data, "auth_token")
     authenticated = await driver.verify_authentication(auth=auth)
     await backend.send_response("DriverIsAuthenticated", {
         "id": backend.next_key(), "authenticated": authenticated

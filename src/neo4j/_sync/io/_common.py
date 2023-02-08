@@ -257,18 +257,29 @@ class Response:
 
 class InitResponse(Response):
     def on_failure(self, metadata):
-        code = metadata.get("code")
-        if code == "Neo.ClientError.Security.Unauthorized":
-            # this branch is only needed as long as we support Bolt 5.0
-            raise Neo4jError.hydrate(**metadata)
-        else:
-            raise ServiceUnavailable(
-                metadata.get("message", "Connection initialisation failed")
-            )
+        # No sense in resetting the connection,
+        # the server will have closed it already.
+        self.connection.kill()
+        handler = self.handlers.get("on_failure")
+        Util.callback(handler, metadata)
+        handler = self.handlers.get("on_summary")
+        Util.callback(handler)
+        metadata["message"] = metadata.get(
+            "message",
+            "Connection initialisation failed due to an unknown error"
+        )
+        raise Neo4jError.hydrate(**metadata)
 
 
-class LogonResponse(Response):
+class LogonResponse(InitResponse):
     def on_failure(self, metadata):
+        # No sense in resetting the connection,
+        # the server will have closed it already.
+        self.connection.kill()
+        handler = self.handlers.get("on_failure")
+        Util.callback(handler, metadata)
+        handler = self.handlers.get("on_summary")
+        Util.callback(handler)
         raise Neo4jError.hydrate(**metadata)
 
 

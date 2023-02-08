@@ -24,6 +24,7 @@ the `session` module provides the main user-facing abstractions.
 
 
 __all__ = [
+    "AcquireAuth",
     "Bolt",
     "BoltPool",
     "Neo4jPool",
@@ -38,6 +39,7 @@ from ._common import (
     ConnectionErrorHandler,
 )
 from ._pool import (
+    AcquireAuth,
     BoltPool,
     Neo4jPool,
 )

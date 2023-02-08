@@ -28,7 +28,6 @@ if t.TYPE_CHECKING:
 
     import ssl
 
-
 from .._api import RoutingControl
 from .._async_compat.util import AsyncUtil
 from .._conf import (

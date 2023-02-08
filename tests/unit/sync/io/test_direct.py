@@ -96,10 +96,10 @@ class FakeBoltPool(IOPool):
 
     def acquire(
         self, access_mode, timeout, database, bookmarks, auth,
-        liveness_check_timeout, force_re_auth=False
+        liveness_check_timeout
     ):
         return self._acquire(
-            self.address, auth, timeout, liveness_check_timeout, force_re_auth
+            self.address, auth, timeout, liveness_check_timeout
         )
 
 

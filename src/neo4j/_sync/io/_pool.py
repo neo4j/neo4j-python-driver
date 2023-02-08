@@ -26,6 +26,8 @@ from collections import (
     defaultdict,
     deque,
 )
+from copy import copy
+from dataclasses import dataclass
 from logging import getLogger
 from random import choice
 
@@ -47,6 +49,7 @@ from ..._deadline import (
 from ..._exceptions import BoltError
 from ..._routing import RoutingTable
 from ...api import (
+    Auth,
     READ_ACCESS,
     RenewableAuth,
     WRITE_ACCESS,
@@ -66,6 +69,13 @@ from ._bolt import Bolt
 
 # Set up logger
 log = getLogger("neo4j")
+
+
+@dataclass
+class AcquireAuth:
+    auth: t.Optional[Auth]
+    backwards_compatible: bool = False
+    force_auth: bool = False
 
 
 class IOPool(abc.ABC):
@@ -153,6 +163,22 @@ class IOPool(abc.ABC):
                 return connection
         return None  # no free connection available
 
+    def _remove_connection(self, connection):
+        address = connection.unresolved_address
+        with self.lock:
+            log.debug(
+                "[#%04X]  _: <POOL> remove connection from pool %r %s",
+                connection.local_port, address, connection.connection_id
+            )
+            try:
+                self.connections.get(address, []).remove(connection)
+            except ValueError:
+                # If closure fails (e.g. because the server went
+                # down), all connections to the same address will
+                # be removed. Therefore, we silently ignore if the
+                # connection isn't in the pool anymore.
+                pass
+
     def _acquire_from_pool_checked(
         self, address, health_check, deadline
     ):
@@ -167,27 +193,20 @@ class IOPool(abc.ABC):
                 # `stale` but still alive.
                 if log.isEnabledFor(logging.DEBUG):
                     log.debug(
-                        "[#%04X]  _: <POOL> removing old connection %s "
+                        "[#%04X]  _: <POOL> found unhealthy connection %s "
                         "(closed=%s, defunct=%s, stale=%s, in_use=%s)",
                         connection.local_port, connection.connection_id,
                         connection.closed(), connection.defunct(),
                         connection.stale(), connection.in_use
                     )
                 connection.close()
-                with self.lock:
-                    try:
-                        self.connections.get(address, []).remove(connection)
-                    except ValueError:
-                        # If closure fails (e.g. because the server went
-                        # down), all connections to the same address will
-                        # be removed. Therefore, we silently ignore if the
-                        # connection isn't in the pool anymore.
-                        pass
+                self._remove_connection(connection)
                 continue  # try again with a new connection
             else:
                 return connection
 
-    def _acquire_new_later(self, address, auth, deadline):
+    def _acquire_new_later(self, address, auth, deadline,
+                           backwards_compatible_auth):
         def connection_creator():
             released_reservation = False
             try:
@@ -206,8 +225,14 @@ class IOPool(abc.ABC):
                     try:
                         connection.assert_re_auth_support()
                     except ConfigurationError:
-                        connection.close()
-                        raise
+                        if not backwards_compatible_auth:
+                            log.debug("[#%04X]  _: <POOL> no re-auth support",
+                                      connection.local_port)
+                            connection.close()
+                            raise
+                        log.debug("[#%04X]  _: <POOL> is throwaway connection",
+                                  connection.local_port)
+                        connection.throwaway = True
                 connection.pool = self
                 connection.in_use = True
                 with self.lock:
@@ -233,8 +258,26 @@ class IOPool(abc.ABC):
                 return connection_creator
         return None
 
+    def _re_auth_connection(self, connection, auth, force):
+        new_auth = auth or self.get_auth()
+        log_auth = "******" if auth else "None"
+        try:
+            updated = connection.re_auth(new_auth, force=force)
+            log.debug("[#%04X]  _: <POOL> checked re_auth auth=%s updated=%s "
+                      "force=%s",
+                      connection.local_port, log_auth, updated, force)
+        except Exception as exc:
+            log.debug("[#%04X]  _: <POOL> check re_auth failed %r auth=%s "
+                      "force=%s",
+                      connection.local_port, exc, log_auth, force)
+            raise
+        assert not force or updated  # force=True implies updated=True
+        if force:
+            connection.send_all()
+            connection.fetch_all()
+
     def _acquire(
-        self, address, auth, deadline, liveness_check_timeout, force_auth=False
+        self, address, auth, deadline, liveness_check_timeout
     ):
         """ Acquire a connection to a given address from the pool.
         The address supplied should always be an IP address, not
@@ -242,25 +285,17 @@ class IOPool(abc.ABC):
 
         This method is thread safe.
         """
+        if auth is None:
+            auth = AcquireAuth(None)
+        force_auth = auth.force_auth
+        backwards_compatible_auth = auth.backwards_compatible
+        auth = auth.auth
+
         def health_check(connection_, deadline_):
             if (connection_.closed()
                     or connection_.defunct()
                     or connection_.stale()):
                 return False
-            try:
-                connection_.re_auth(auth or self.get_auth(),
-                                    force=force_auth)
-            except ConfigurationError:
-                # protocol does not support re-authentication
-                if auth:
-                    # session-level not supported
-                    raise
-                 # expiring tokens supported by flushing the pool
-                 # => give up this connection
-                return False
-            if force_auth:
-                connection_.send_all()
-                connection_.fetch_all()
             if liveness_check_timeout is not None:
                 if connection_.is_idle_for(liveness_check_timeout):
                     with connection_deadline(connection_, deadline_):
@@ -278,14 +313,54 @@ class IOPool(abc.ABC):
                 address, health_check, deadline
             )
             if connection:
-                log.debug("[#%04X]  _: <POOL> handing out existing connection "
-                          "%s", connection.local_port,
-                          connection.connection_id)
+                log.debug("[#%04X]  _: <POOL> picked existing connection %s",
+                          connection.local_port, connection.connection_id)
+                try:
+                    self._re_auth_connection(
+                        connection, auth, force_auth
+                    )
+                except ConfigurationError:
+                    if not auth:
+                        # expiring tokens supported by flushing the pool
+                        # => give up this connection
+                        log.debug("[#%04X]  _: <POOL> backwards compatible "
+                                  "auth token refresh: purge connection",
+                                  connection.local_port)
+                        connection.close()
+                        self.release(connection)
+                        continue
+                    if not backwards_compatible_auth:
+                        raise
+                    # backwards compatibility mode:
+                    # create new throwaway connection,
+                    connection_creator = self._acquire_new_later(
+                        address, auth, deadline,
+                        backwards_compatible_auth=True
+                    )
+                    if connection_creator:
+                        self.release(connection)
+                    if not connection_creator:
+                        #  pool is full => kill the picked connection
+                        log.debug("[#%04X]  _: <POOL> backwards compatible "
+                                  "session auth making room by purge",
+                                  connection.local_port)
+                        connection.close()
+                        with self.lock:
+                            self._remove_connection(connection)
+                            connection_creator = self._acquire_new_later(
+                                address, auth, deadline,
+                                backwards_compatible_auth=True
+                            )
+                            assert connection_creator is not None
+                    break
+                log.debug("[#%04X]  _: <POOL> handing out existing connection",
+                          connection.local_port)
                 return connection
             # all connections in pool are in-use
             with self.lock:
                 connection_creator = self._acquire_new_later(
-                    address, auth, deadline
+                    address, auth, deadline,
+                    backwards_compatible_auth=backwards_compatible_auth
                 )
                 if connection_creator:
                     break
@@ -307,8 +382,8 @@ class IOPool(abc.ABC):
 
     @abc.abstractmethod
     def acquire(
-        self, access_mode, timeout, database, bookmarks, auth,
-        liveness_check_timeout, force_re_auth=False
+        self, access_mode, timeout, database, bookmarks, auth: AcquireAuth,
+        liveness_check_timeout
     ):
         """ Acquire a connection to a server that can satisfy a set of parameters.
 
@@ -319,7 +394,6 @@ class IOPool(abc.ABC):
         :param bookmarks:
         :param auth:
         :param liveness_check_timeout:
-        :param force_re_auth:
         """
         ...
 
@@ -341,6 +415,29 @@ class IOPool(abc.ABC):
                 connection.in_use = False
             self.cond.notify_all()
 
+    @staticmethod
+    def _close_throwaway_connection(connection, cancelled):
+        if connection.throwaway:
+            if cancelled is not None:
+                log.debug(
+                    "[#%04X]  _: <POOL> kill throwaway connection %s",
+                    connection.local_port, connection.connection_id
+                )
+                connection.kill()
+            else:
+                try:
+                    log.debug(
+                        "[#%04X]  _: <POOL> close throwaway connection %s",
+                        connection.local_port, connection.connection_id
+                    )
+                    connection.close()
+                except asyncio.CancelledError as exc:
+                    log.debug("[#%04X]  _: <POOL> cancelled close of "
+                              "throwaway connection: %r",
+                              connection.local_port, exc)
+                    cancelled = exc
+        return cancelled
+
     def release(self, *connections):
         """ Release connections back into the pool.
 
@@ -348,29 +445,32 @@ class IOPool(abc.ABC):
         """
         cancelled = None
         for connection in connections:
+            cancelled = self._close_throwaway_connection(
+                connection, cancelled
+            )
             if not (connection.defunct()
                     or connection.closed()
                     or connection.is_reset):
                 if cancelled is not None:
                     log.debug(
-                        "[#%04X]  _: <POOL> released unclean connection %s",
+                        "[#%04X]  _: <POOL> kill unclean connection %s",
                         connection.local_port, connection.connection_id
                     )
                     connection.kill()
                     continue
                 try:
                     log.debug(
-                        "[#%04X]  _: <POOL> released unclean connection %s",
+                        "[#%04X]  _: <POOL> release unclean connection %s",
                         connection.local_port, connection.connection_id
                     )
                     connection.reset()
-                except (Neo4jError, DriverError, BoltError) as e:
+                except (Neo4jError, DriverError, BoltError) as exc:
                     log.debug("[#%04X]  _: <POOL> failed to reset connection "
-                              "on release: %r", connection.local_port, e)
-                except asyncio.CancelledError as e:
+                              "on release: %r", connection.local_port, exc)
+                except asyncio.CancelledError as exc:
                     log.debug("[#%04X]  _: <POOL> cancelled reset connection "
-                              "on release: %r", connection.local_port, e)
-                    cancelled = e
+                              "on release: %r", connection.local_port, exc)
+                    cancelled = exc
                     connection.kill()
         with self.lock:
             for connection in connections:
@@ -501,8 +601,8 @@ class BoltPool(IOPool):
                                           self.address)
 
     def acquire(
-        self, access_mode, timeout, database, bookmarks, auth,
-        liveness_check_timeout, force_re_auth=False
+        self, access_mode, timeout, database, bookmarks, auth: AcquireAuth,
+        liveness_check_timeout
     ):
         # The access_mode and database is not needed for a direct connection,
         # it's just there for consistency.
@@ -510,7 +610,7 @@ class BoltPool(IOPool):
                   "access_mode=%r, database=%r", access_mode, database)
         deadline = Deadline.from_timeout_or_deadline(timeout)
         return self._acquire(
-            self.address, auth, deadline, liveness_check_timeout, force_re_auth
+            self.address, auth, deadline, liveness_check_timeout
         )
 
 
@@ -602,6 +702,9 @@ class Neo4jPool(IOPool):
         deadline = Deadline.from_timeout_or_deadline(acquisition_timeout)
         log.debug("[#0000]  _: <POOL> _acquire router connection, "
                   "database=%r, address=%r", database, address)
+        if auth:
+            auth = copy(auth)
+            auth.force_auth = False
         cx = self._acquire(address, auth, deadline, None)
         try:
             routing_table = cx.route(
@@ -863,8 +966,8 @@ class Neo4jPool(IOPool):
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
     def acquire(
-        self, access_mode, timeout, database, bookmarks, auth,
-        liveness_check_timeout, force_re_auth=False
+        self, access_mode, timeout, database, bookmarks, auth: AcquireAuth,
+        liveness_check_timeout
     ):
         if access_mode not in (WRITE_ACCESS, READ_ACCESS):
             raise ClientError("Non valid 'access_mode'; {}".format(access_mode))
@@ -904,7 +1007,6 @@ class Neo4jPool(IOPool):
                 # should always be a resolved address
                 connection = self._acquire(
                     address, auth, deadline, liveness_check_timeout,
-                    force_re_auth
                 )
             except (ServiceUnavailable, SessionExpired):
                 self.deactivate(address=address)

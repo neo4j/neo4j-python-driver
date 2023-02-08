@@ -114,12 +114,12 @@ class AsyncSession(AsyncWorkspace):
             self._state_failed = True
         await self.close()
 
-    async def _connect(self, access_mode, **access_kwargs):
+    async def _connect(self, access_mode, **acquire_kwargs):
         if access_mode is None:
             access_mode = self._config.default_access_mode
         try:
             await super()._connect(
-                access_mode, auth=self._config.auth, **access_kwargs
+                access_mode, auth=self._config.auth, **acquire_kwargs
             )
         except asyncio.CancelledError:
             self._handle_cancellation(message="_connect")
@@ -167,7 +167,14 @@ class AsyncSession(AsyncWorkspace):
 
     async def _verify_authentication(self):
         assert not self._connection
-        await self._connect(READ_ACCESS, force_re_auth=True)
+        await self._connect(READ_ACCESS, force_auth=True)
+        if not self._config.backwards_compatible_auth:
+            # Even without backwards compatibility and an old server, the
+            # _connect call above can succeed if the connection is a new one.
+            # Hence, we enforce support explicitly to always let the user know
+            # that this is not supported.
+            self._connection.assert_re_auth_support()
+        await self._disconnect()
 
     async def close(self) -> None:
         """Close the session.

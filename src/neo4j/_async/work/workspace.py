@@ -33,7 +33,10 @@ from ...exceptions import (
     SessionError,
     SessionExpired,
 )
-from ..io import AsyncNeo4jPool
+from ..io import (
+    AcquireAuth,
+    AsyncNeo4jPool,
+)
 
 
 log = logging.getLogger("neo4j")
@@ -132,6 +135,12 @@ class AsyncWorkspace:
 
     async def _connect(self, access_mode, auth=None, **acquire_kwargs):
         acquisition_timeout = self._config.connection_acquisition_timeout
+        auth = AcquireAuth(
+            auth,
+            backwards_compatible=self._config.backwards_compatible_auth,
+            force_auth=acquire_kwargs.pop("force_auth", False),
+        )
+
         if self._connection:
             # TODO: Investigate this
             # log.warning("FIXME: should always disconnect before connect")

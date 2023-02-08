@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import abc
 import asyncio
-import typing as t
 from collections import deque
 from logging import getLogger
 from time import perf_counter
@@ -98,6 +97,8 @@ class Bolt:
 
     # The socket
     in_use = False
+
+    throwaway = False
 
     # When the connection was last put back into the pool
     idle_since = float("-inf")

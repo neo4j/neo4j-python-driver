@@ -348,7 +348,8 @@ class AsyncBolt4x0(AsyncBolt):
                     self.pool.on_write_failure(address=self.unresolved_address)
                 raise
             except Neo4jError as e:
-                await self.pool.on_neo4j_error(e, self.server_info.address)
+                if self.pool:
+                    await self.pool.on_neo4j_error(e, self.server_info.address)
                 raise
         else:
             raise BoltProtocolError("Unexpected response message with signature "
