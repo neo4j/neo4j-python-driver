@@ -23,9 +23,14 @@ from datetime import (
     timedelta,
 )
 
+import numpy as np
+import pandas as pd
 import pytest
 
-from neo4j._codec.hydration import HydrationScope
+from neo4j._codec.hydration import (
+    DehydrationHooks,
+    HydrationScope,
+)
 from neo4j._codec.hydration.v1 import HydrationHandler
 from neo4j._codec.packstream import Structure
 from neo4j.graph import Graph
@@ -64,12 +69,15 @@ class TestHydrationHandler(HydrationHandlerTestBase):
 
     def test_scope_dehydration_keys(self, hydration_scope):
         hooks = hydration_scope.dehydration_hooks
-        assert isinstance(hooks, dict)
-        assert set(hooks.keys()) == {
+        assert isinstance(hooks, DehydrationHooks)
+        assert set(hooks.exact_types.keys()) == {
             date, datetime, time, timedelta,
             Date, DateTime, Duration, Time,
-            CartesianPoint, Point, WGS84Point
+            CartesianPoint, Point, WGS84Point,
+            np.datetime64, np.timedelta64,
+            pd.Timestamp, pd.Timedelta, type(pd.NaT)
         }
+        assert not hooks.subtypes
 
     def test_scope_get_graph(self, hydration_scope):
         graph = hydration_scope.get_graph()

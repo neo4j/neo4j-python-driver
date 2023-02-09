@@ -1,2 +1,3 @@
-global-exclude *.class *.pyc *.pyo *.so *.dll __pycache__
-prune tests
+include NOTICE* src/**/py.typed
+global-exclude *.class *.py[cod] *.so *.dll __pycache__
+prune test*

@@ -16,7 +16,9 @@
 # limitations under the License.
 
 
+import uuid
 import warnings
+from contextlib import contextmanager
 from unittest import mock
 
 import pandas as pd
@@ -26,6 +28,7 @@ import pytz
 from neo4j import (
     Address,
     AsyncResult,
+    EagerResult,
     ExperimentalWarning,
     Record,
     ResultSummary,
@@ -51,6 +54,15 @@ from neo4j.graph import (
 )
 
 from ...._async_compat import mark_async_test
+
+
+@contextmanager
+def assert_warns_to_eager_result_experimental():
+    with pytest.warns(
+        ExperimentalWarning,
+        match=r"^Result\.to_eager_result is experimental\."
+    ):
+        yield
 
 
 class Records:
@@ -685,6 +697,50 @@ async def test_result_graph(records):
             assert rel.type == "KNOWS"
             assert set(rel.keys()) == {"since"}
             assert rel["since"] == 1999
+
+
+@pytest.mark.parametrize("records", (
+    Records(["n"], []),
+    Records(["n"], [[42], [69], [420], [1337]]),
+    Records(["n1", "r", "n2"], [
+        [
+            # Node
+            Structure(b"N", 0, ["Person", "LabelTest1"], {"name": "Alice"}),
+            # Relationship
+            Structure(b"R", 0, 0, 1, "KNOWS", {"since": 1999}),
+            # Node
+            Structure(b"N", 1, ["Person", "LabelTest2"], {"name": "Bob"}),
+        ]
+    ]),
+    Records(["secret_sauce"], [[object()], [object()]]),
+))
+@mark_async_test
+async def test_to_eager_result(records):
+    summary = {"test_to_eager_result": uuid.uuid4()}
+    connection = AsyncConnectionStub(records=records, summary_meta=summary)
+    result = AsyncResult(connection, 1, noop, noop)
+    await result._run("CYPHER", {}, None, None, "r", None, None)
+    with assert_warns_to_eager_result_experimental():
+        eager_result = await result.to_eager_result()
+
+    assert isinstance(eager_result, EagerResult)
+
+    assert eager_result.records is eager_result[0]
+    assert isinstance(eager_result.records, list)
+    assert all(isinstance(r, Record) for r in eager_result.records)
+    assert len(eager_result.records) == len(records)
+    assert all(list(record) == list(raw)
+               for record, raw in zip(eager_result.records, records))
+
+    assert eager_result.summary is eager_result[1]
+    assert isinstance(eager_result.summary, ResultSummary)
+    assert (eager_result.summary.metadata.get("test_to_eager_result")
+            == summary["test_to_eager_result"])
+
+    assert eager_result.keys is eager_result[2]
+    assert isinstance(eager_result.keys, list)
+    assert all(isinstance(k, str) for k in eager_result.keys)
+    assert eager_result.keys == list(records.fields)
 
 
 @pytest.mark.parametrize(

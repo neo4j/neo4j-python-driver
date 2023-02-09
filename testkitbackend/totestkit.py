@@ -18,6 +18,7 @@
 
 import math
 
+import neo4j
 from neo4j.graph import (
     Node,
     Path,
@@ -42,6 +43,56 @@ def record(rec):
     for f in rec:
         fields.append(field(f))
     return {"values": fields}
+
+
+def summary(summary_: neo4j.ResultSummary) -> dict:
+    return {
+        "serverInfo": {
+            "address": ":".join(map(str, summary_.server.address)),
+            "agent": summary_.server.agent,
+            "protocolVersion":
+                ".".join(map(str, summary_.server.protocol_version)),
+        },
+        "counters": None if not summary_.counters else {
+            "constraintsAdded": summary_.counters.constraints_added,
+            "constraintsRemoved": summary_.counters.constraints_removed,
+            "containsSystemUpdates": summary_.counters.contains_system_updates,
+            "containsUpdates": summary_.counters.contains_updates,
+            "indexesAdded": summary_.counters.indexes_added,
+            "indexesRemoved": summary_.counters.indexes_removed,
+            "labelsAdded": summary_.counters.labels_added,
+            "labelsRemoved": summary_.counters.labels_removed,
+            "nodesCreated": summary_.counters.nodes_created,
+            "nodesDeleted": summary_.counters.nodes_deleted,
+            "propertiesSet": summary_.counters.properties_set,
+            "relationshipsCreated": summary_.counters.relationships_created,
+            "relationshipsDeleted": summary_.counters.relationships_deleted,
+            "systemUpdates": summary_.counters.system_updates,
+        },
+        "database": summary_.database,
+        "notifications": [
+            {
+                "title": n.title,
+                "code": n.code,
+                "description": n.description,
+                "severityLevel": n.severity_level.name.replace("_", "."),
+                "category": n.category.name.replace("_", "."),
+                "severity": n.raw_severity_level,
+                "rawCategory": n.raw_category,
+            }
+            for n in summary_.summary_notifications
+        ],
+        "plan": summary_.plan,
+        "profile": summary_.profile,
+        "query": {
+            "text": summary_.query,
+            "parameters": {k: field(v)
+                           for k, v in (summary_.parameters or {}).items()},
+        },
+        "queryType": summary_.query_type,
+        "resultAvailableAfter": summary_.result_available_after,
+        "resultConsumedAfter": summary_.result_consumed_after,
+    }
 
 
 def field(v):

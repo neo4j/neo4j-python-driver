@@ -38,12 +38,14 @@ from neo4j.time import (
 
 def to_cypher_and_params(data):
     from .backend import Request
-    params = data["params"]
+    params = data.get("params")
     # Optional
     if params is None:
         return data["cypher"], None
     # Transform the params to Python native
-    params_dict = {p: to_param(params[p]) for p in params}
+    params_dict = {k: to_param(v) for k, v in params.items()}
+    if isinstance(params, Request):
+        params.mark_all_as_read()
     return data["cypher"], params_dict
 
 
@@ -51,9 +53,12 @@ def to_tx_kwargs(data):
     from .backend import Request
     kwargs = {}
     if "txMeta" in data:
-        kwargs["metadata"] = data["txMeta"]
-        if isinstance(kwargs["metadata"], Request):
-            kwargs["metadata"].mark_all_as_read()
+        metadata = data["txMeta"]
+        kwargs["metadata"] = metadata
+        if metadata is not None:
+            kwargs["metadata"] = {k: to_param(v) for k, v in metadata.items()}
+        if isinstance(metadata, Request):
+            metadata.mark_all_as_read()
     if "timeout" in data:
         kwargs["timeout"] = data["timeout"]
         if kwargs["timeout"] is not None:

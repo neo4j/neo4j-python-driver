@@ -33,6 +33,7 @@ The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the
 
             from neo4j import AsyncGraphDatabase
 
+
             async def main():
                 uri = "neo4j://example.com:7687"
                 driver = AsyncGraphDatabase.driver(uri, auth=("neo4j", "password"))
@@ -51,7 +52,7 @@ The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the
         This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
         Other authentication methods are described under :ref:`auth-ref`.
 
-        ``with`` block context example:
+        ``with`` block context example:Change
 
         .. code-block:: python
 
@@ -59,12 +60,12 @@ The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the
 
             from neo4j import AsyncGraphDatabase
 
+
             async def main():
                 uri = "neo4j://example.com:7687"
                 auth = ("neo4j", "password")
                 async with AsyncGraphDatabase.driver(uri, auth=auth) as driver:
-                    # use the driver
-                    ...
+                    ...  # use the driver
 
              asyncio.run(main())
 
@@ -134,7 +135,197 @@ Closing a driver will immediately shut down all connections in the pool.
     query, use :meth:`neo4j.AsyncDriver.verify_connectivity`.
 
 .. autoclass:: neo4j.AsyncDriver()
-   :members: session, encrypted, close, verify_connectivity, get_server_info
+    :members: session, query_bookmark_manager, encrypted, close,
+              verify_connectivity, get_server_info
+
+    .. method:: execute_query(query, parameters_=None, routing_=neo4j.RoutingControl.WRITERS, database_=None, impersonated_user_=None, bookmark_manager_=self.query_bookmark_manager, result_transformer_=AsyncResult.to_eager_result, **kwargs)
+        :async:
+
+        Execute a query in a transaction function and return all results.
+
+        This method is a handy wrapper for lower-level driver APIs like
+        sessions, transactions, and transaction functions. It is intended
+        for simple use cases where there is no need for managing all possible
+        options.
+
+        The internal usage of transaction functions provides a retry-mechanism
+        for appropriate errors. Furthermore, this means that queries using
+        ``CALL {} IN TRANSACTIONS`` or the older ``USING PERIODIC COMMIT``
+        will not work (use :meth:`AsyncSession.run` for these).
+
+        The method is roughly equivalent to::
+
+            async def execute_query(
+                query_, parameters_, routing_, database_, impersonated_user_,
+                bookmark_manager_, result_transformer_, **kwargs
+            ):
+                async def work(tx):
+                    result = await tx.run(query_, parameters_, **kwargs)
+                    return await result_transformer_(result)
+
+                async with driver.session(
+                    database=database_,
+                    impersonated_user=impersonated_user_,
+                    bookmark_manager=bookmark_manager_,
+                ) as session:
+                    if routing_ == RoutingControl.WRITERS:
+                        return await session.execute_write(work)
+                    elif routing_ == RoutingControl.READERS:
+                        return await session.execute_read(work)
+
+        Usage example::
+
+            from typing import List
+
+            import neo4j
+
+
+            async def example(driver: neo4j.AsyncDriver) -> List[str]:
+                """Get the name of all 42 year-olds."""
+                records, summary, keys = await driver.execute_query(
+                    "MATCH (p:Person {age: $age}) RETURN p.name",
+                    {"age": 42},
+                    routing_=neo4j.RoutingControl.READERS,  # or just "r"
+                    database_="neo4j",
+                )
+                assert keys == ["p.name"]  # not needed, just for illustration
+                # log_summary(summary)  # log some metadata
+                return [str(record["p.name"]) for record in records]
+                # or: return [str(record[0]) for record in records]
+                # or even: return list(map(lambda r: str(r[0]), records))
+
+        Another example::
+
+            import neo4j
+
+
+            async def example(driver: neo4j.AsyncDriver) -> int:
+                """Call all young people "My dear" and get their count."""
+                record = await driver.execute_query(
+                    "MATCH (p:Person) WHERE p.age <= 15 "
+                    "SET p.nickname = 'My dear' "
+                    "RETURN count(*)",
+                    # optional routing parameter, as write is default
+                    # routing_=neo4j.RoutingControl.WRITERS,  # or just "w",
+                    database_="neo4j",
+                    result_transformer_=neo4j.AsyncResult.single,
+                )
+                assert record is not None  # for typechecking and illustration
+                count = record[0]
+                assert isinstance(count, int)
+                return count
+
+        :param query_: cypher query to execute
+        :type query_: typing.Optional[str]
+        :param parameters_: parameters to use in the query
+        :type parameters_: typing.Optional[typing.Dict[str, typing.Any]]
+        :param routing_:
+            whether to route the query to a reader (follower/read replica) or
+            a writer (leader) in the cluster. Default is to route to a writer.
+        :type routing_: neo4j.RoutingControl
+        :param database_:
+            database to execute the query against.
+
+            None (default) uses the database configured on the server side.
+
+            .. Note::
+                It is recommended to always specify the database explicitly
+                when possible. This allows the driver to work more efficiently,
+                as it will not have to resolve the default database first.
+
+            See also the Session config :ref:`database-ref`.
+        :type database_: typing.Optional[str]
+        :param impersonated_user_:
+            Name of the user to impersonate.
+
+            This means that all query will be executed in the security context
+            of the impersonated user. For this, the user for which the
+            :class:`Driver` has been created needs to have the appropriate
+            permissions.
+
+            See also the Session config :ref:`impersonated-user-ref`.
+        :type impersonated_user_: typing.Optional[str]
+        :param result_transformer_:
+            A function that gets passed the :class:`neo4j.AsyncResult` object
+            resulting from the query and converts it to a different type. The
+            result of the transformer function is returned by this method.
+
+            .. warning::
+
+                The transformer function must **not** return the
+                :class:`neo4j.AsyncResult` itself.
+
+            Example transformer that checks that exactly one record is in the
+            result stream, then returns the record and the result summary::
+
+                from typing import Tuple
+
+                import neo4j
+
+
+                async def transformer(
+                    result: neo4j.AsyncResult
+                ) -> Tuple[neo4j.Record, neo4j.ResultSummary]:
+                    record = await result.single(strict=True)
+                    summary = await result.consume()
+                    return record, summary
+
+            Note that methods of :class:`neo4j.AsyncResult` that don't take
+            mandatory arguments can be used directly as transformer functions.
+            For example::
+
+                import neo4j
+
+
+                async def example(driver: neo4j.AsyncDriver) -> neo4j.Record::
+                    record = await driver.execute_query(
+                        "SOME QUERY",
+                        result_transformer_=neo4j.AsyncResult.single
+                    )
+
+
+                # is equivalent to:
+
+
+                async def transformer(result: neo4j.AsyncResult) -> neo4j.Record:
+                    return await result.single()
+
+
+                async def example(driver: neo4j.AsyncDriver) -> neo4j.Record::
+                    record = await driver.execute_query(
+                        "SOME QUERY",
+                        result_transformer_=transformer
+                    )
+
+        :type result_transformer_:
+            typing.Callable[[neo4j.AsyncResult], typing.Awaitable[T]]
+        :param bookmark_manager_:
+            Specify a bookmark manager to use.
+
+            If present, the bookmark manager is used to keep the query causally
+            consistent with all work executed using the same bookmark manager.
+
+            Defaults to the driver's :attr:`.query_bookmark_manager`.
+
+            Pass :const:`None` to disable causal consistency.
+        :type bookmark_manager_:
+            typing.Union[neo4j.AsyncBookmarkManager, neo4j.BookmarkManager,
+                         None]
+        :param kwargs: additional keyword parameters. None of these can end
+            with a single underscore. This is to avoid collisions with the
+            keyword configuration parameters of this method. If you need to
+            pass such a parameter, use the ``parameters_`` parameter instead.
+            These take precedence over parameters passed as ``parameters_``.
+        :type kwargs: typing.Any
+
+        :returns: the result of the ``result_transformer``
+        :rtype: T
+
+
+        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        It might be changed or removed any time even without prior notice.
+
+        .. versionadded:: 5.5
 
 
 .. _async-driver-configuration-ref:
@@ -151,8 +342,8 @@ driver accepts an async custom resolver function:
 
 ``resolver``
 ------------
-A custom resolver function to resolve host and port values ahead of DNS resolution.
-This function is called with a 2-tuple of (host, port) and should return an iterable of 2-tuples (host, port).
+A custom resolver function to resolve any addresses the driver receives ahead of DNS resolution.
+This function is called with an :class:`.Address` and should return an iterable of :class:`.Address` objects or values that can be used to construct :class:`.Address` objects.
 
 If no custom resolver function is supplied, the internal resolver moves straight to regular DNS resolution.
 
@@ -162,26 +353,41 @@ For example:
 
 .. code-block:: python
 
-    from neo4j import AsyncGraphDatabase
+   import neo4j
+
 
     async def custom_resolver(socket_address):
-        if socket_address == ("example.com", 9999):
-            yield "::1", 7687
-            yield "127.0.0.1", 7687
-        else:
-            from socket import gaierror
-            raise gaierror("Unexpected socket address %r" % socket_address)
+        # assert isinstance(socket_address, neo4j.Address)
+        if socket_address != ("example.com", 9999):
+            raise OSError(f"Unexpected socket address {socket_address!r}")
+
+        # You can return any neo4j.Address object
+        yield neo4j.Address(("localhost", 7687))  # IPv4
+        yield neo4j.Address(("::1", 7687, 0, 0))  # IPv6
+        yield neo4j.Address.parse("localhost:7687")
+        yield neo4j.Address.parse("[::1]:7687")
+
+        # or any tuple that can be passed to neo4j.Address(...).
+        # Initially, this will be interpreted as IPv4, but DNS resolution
+        # will turn it into IPv6 if appropriate.
+        yield "::1", 7687
+        # This will be interpreted as IPv6 directly, but DNS resolution will
+        # still happen.
+        yield "::1", 7687, 0, 0
+        yield "127.0.0.1", 7687
+
 
     # alternatively
     def custom_resolver(socket_address):
         ...
 
-    driver = AsyncGraphDatabase.driver("neo4j://example.com:9999",
+
+   driver = neo4j.GraphDatabase.driver("neo4j://example.com:9999",
                                        auth=("neo4j", "password"),
                                        resolver=custom_resolver)
 
 
-:Default: ``None``
+:Default: :data:`None`
 
 
 
@@ -196,6 +402,7 @@ For example:
 
     from neo4j import AsyncGraphDatabase
 
+
     class Application:
 
         def __init__(self, uri, user, password)
@@ -206,7 +413,7 @@ For example:
 
 Connection details held by the :class:`neo4j.AsyncDriver` are immutable.
 Therefore if, for example, a password is changed, a replacement :class:`neo4j.AsyncDriver` object must be created.
-More than one :class:`.AsyncDriver` may be required if connections to multiple databases, or connections as multiple users, are required,
+More than one :class:`.AsyncDriver` may be required if connections to multiple remotes, or connections as multiple users, are required,
 unless when using impersonation (:ref:`impersonated-user-ref`).
 
 :class:`neo4j.AsyncDriver` objects are safe to be used in concurrent coroutines.
@@ -270,13 +477,18 @@ To construct a :class:`neo4j.AsyncSession` use the :meth:`neo4j.AsyncDriver.sess
 
     from neo4j import AsyncGraphDatabase
 
+
     async def main():
-        driver = AsyncGraphDatabase(uri, auth=(user, password))
-        session = driver.session()
-        result = await session.run("MATCH (a:Person) RETURN a.name AS name")
-        names = [record["name"] async for record in result]
-        await session.close()
-        await driver.close()
+        async with AsyncGraphDatabase(uri, auth=(user, password)) as driver:
+            session = driver.session()
+            try:
+                result = await session.run("MATCH (a:Person) RETURN a.name AS name")
+                names = [record["name"] async for record in result]
+            except asyncio.CancelledError:
+                session.cancel()
+                raise
+            finally:
+                await session.close()
 
     asyncio.run(main())
 
@@ -289,7 +501,7 @@ properly even when an exception is raised.
 
     async with driver.session() as session:
         result = await session.run("MATCH (a:Person) RETURN a.name AS name")
-        # do something with the result...
+        ...  # do something with the result
 
 
 Sessions will often be created with some configuration settings, see :ref:`async-session-configuration-ref`.
@@ -299,7 +511,7 @@ Sessions will often be created with some configuration settings, see :ref:`async
     async with driver.session(database="example_database",
                               fetch_size=100) as session:
         result = await session.run("MATCH (a:Person) RETURN a.name AS name")
-        # do something with the result...
+        ...  # do something with the result
 
 
 ************
@@ -315,7 +527,9 @@ AsyncSession
         This introduces concurrency and can lead to undefined behavior as
         :class:`AsyncSession` is not concurrency-safe.
 
-        Consider this **wrong** example::
+        Consider this **wrong** example
+
+        .. code-block:: python
 
             async def dont_do_this(driver):
                 async with driver.session() as session:
@@ -330,7 +544,9 @@ AsyncSession
 
         In this particular example, the problem could be solved by shielding
         the whole coroutine ``dont_do_this`` instead of only the
-        ``session.run``. Like so::
+        ``session.run``. Like so
+
+        .. code-block:: python
 
             async def thats_better(driver):
                 async def inner()
@@ -392,8 +608,8 @@ See :class:`BookmarkManager` for more information.
     group a series of queries together that will be causally chained
     automatically.
 
-:Type: :const:`None`, :class:`BookmarkManager`, or :class:`AsyncBookmarkManager`
-:Default: :const:`None`
+:Type: :data:`None`, :class:`BookmarkManager`, or :class:`AsyncBookmarkManager`
+:Default: :data:`None`
 
 **This is experimental.** (See :ref:`filter-warnings-ref`)
 It might be changed or removed any time even without prior notice.
@@ -426,30 +642,32 @@ Auto-commit transactions are also the only way to run ``PERIODIC COMMIT``
 newer) statements, since those Cypher clauses manage their own transactions
 internally.
 
-Example:
+Write example:
 
 .. code-block:: python
 
     import neo4j
 
+
     async def create_person(driver, name):
-        async with driver.session(
-            default_access_mode=neo4j.WRITE_ACCESS
-        ) as session:
+        # default_access_mode defaults to WRITE_ACCESS
+        async with driver.session(database="neo4j") as session:
             query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
             result = await session.run(query, name=name)
             record = await result.single()
             return record["node_id"]
 
-Example:
+Read example:
 
 .. code-block:: python
 
     import neo4j
 
+
     async def get_numbers(driver):
         numbers = []
         async with driver.session(
+            database="neo4j",
             default_access_mode=neo4j.READ_ACCESS
         ) as session:
             result = await session.run("UNWIND [1, 2, 3] AS x RETURN x")
@@ -460,8 +678,8 @@ Example:
 
 .. _async-explicit-transactions-ref:
 
-Explicit Async Transactions
-===========================
+Explicit Transactions (Unmanaged Transactions)
+==============================================
 Explicit transactions support multiple statements and must be created with an explicit :meth:`neo4j.AsyncSession.begin_transaction` call.
 
 This creates a new :class:`neo4j.AsyncTransaction` object that can be used to run Cypher.
@@ -485,41 +703,74 @@ It also gives applications the ability to directly control ``commit`` and ``roll
 Closing an explicit transaction can either happen automatically at the end of a ``async with`` block,
 or can be explicitly controlled through the :meth:`neo4j.AsyncTransaction.commit`, :meth:`neo4j.AsyncTransaction.rollback`, :meth:`neo4j.AsyncTransaction.close` or :meth:`neo4j.AsyncTransaction.cancel` methods.
 
-Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction.
+Explicit transactions are most useful for applications that need to distribute Cypher execution across multiple functions for the same transaction or that need to run multiple queries within a single transaction but without the retries provided by managed transactions.
 
 Example:
 
 .. code-block:: python
 
+    import asyncio
+
     import neo4j
 
-    async def create_person(driver, name):
+
+    async def transfer_to_other_bank(driver, customer_id, other_bank_id, amount):
         async with driver.session(
+            database="neo4j",
+            # optional, defaults to WRITE_ACCESS
             default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
             tx = await session.begin_transaction()
-            node_id = await create_person_node(tx)
-            await set_person_name(tx, node_id, name)
-            await tx.commit()
+            # or just use a `with` context instead of try/excpet/finally
+            try:
+                if not await customer_balance_check(tx, customer_id, amount):
+                    # give up
+                    return
+                await other_bank_transfer_api(customer_id, other_bank_id, amount)
+                # Now the money has been transferred
+                # => we can't retry or rollback anymore
+                try:
+                    await decrease_customer_balance(tx, customer_id, amount)
+                    await tx.commit()
+                except Exception as e:
+                    request_inspection(customer_id, other_bank_id, amount, e)
+                    raise
+            except asyncio.CancelledError:
+                tx.cancel()
+                raise
+            finally:
+                await tx.close()  # rolls back if not yet committed
 
-    async def create_person_node(tx):
-        query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
-        name = "default_name"
-        result = await tx.run(query, name=name)
-        record = await result.single()
-        return record["node_id"]
 
-    async def set_person_name(tx, node_id, name):
-        query = "MATCH (a:Person) WHERE id(a) = $id SET a.name = $name"
-        result = await tx.run(query, id=node_id, name=name)
-        summary = await result.consume()
-        # use the summary for logging etc.
+    async def customer_balance_check(tx, customer_id, amount):
+        query = ("MATCH (c:Customer {id: $id}) "
+                 "RETURN c.balance >= $amount AS sufficient")
+        result = await tx.run(query, id=customer_id, amount=amount)
+        record = await result.single(strict=True)
+        return record["sufficient"]
+
+
+    async def other_bank_transfer_api(customer_id, other_bank_id, amount):
+        ...  # make some API call to other bank
+
+
+    async def decrease_customer_balance(tx, customer_id, amount):
+        query = ("MATCH (c:Customer {id: $id}) "
+                 "SET c.balance = c.balance - $amount")
+        await tx.run(query, id=customer_id, amount=amount)
+
+
+    def request_inspection(customer_id, other_bank_id, amount, e):
+        # manual cleanup required; log this or similar
+        print("WARNING: transaction rolled back due to exception:", repr(e))
+        print("customer_id:", customer_id, "other_bank_id:", other_bank_id,
+              "amount:", amount)
 
 .. _async-managed-transactions-ref:
 
 
-Managed Async Transactions (`transaction functions`)
-====================================================
+Managed Transactions (`transaction functions`)
+==============================================
 Transaction functions are the most powerful form of transaction, providing access mode override and retry capabilities.
 
 + :meth:`neo4j.AsyncSession.execute_write`
@@ -530,7 +781,7 @@ This function is called one or more times, within a configurable time limit, unt
 Results should be fully consumed within the function and only aggregate or status values should be returned.
 Returning a live result object would prevent the driver from correctly managing connections and would break retry guarantees.
 
-This function will receive a :class:`neo4j.AsyncManagedTransaction` object as its first parameter.
+This function will receive a :class:`neo4j.AsyncManagedTransaction` object as its first parameter. For more details see :meth:`neo4j.AsyncSession.execute_write` and :meth:`neo4j.AsyncSession.execute_read`.
 
 .. autoclass:: neo4j.AsyncManagedTransaction()
 
@@ -544,8 +795,10 @@ Example:
         async with driver.session() as session:
             node_id = await session.execute_write(create_person_tx, name)
 
+
     async def create_person_tx(tx, name):
-        query = "CREATE (a:Person { name: $name }) RETURN id(a) AS node_id"
+        query = ("CREATE (a:Person {name: $name, id: randomUUID()}) "
+                 "RETURN a.id AS node_id")
         result = await tx.run(query, name=name)
         record = await result.single()
         return record["node_id"]
@@ -592,6 +845,8 @@ A :class:`neo4j.AsyncResult` is attached to an active connection, through a :cla
     .. automethod:: data
 
     .. automethod:: to_df
+
+    .. automethod:: to_eager_result
 
     .. automethod:: closed
 
@@ -648,3 +903,51 @@ successfully executed on the server side or not, when a cancellation happens:
 ``await transaction.commit()`` and other methods can throw
 :exc:`asyncio.CancelledError` but still have managed to complete from the
 server's perspective.
+
+
+.. _async-logging-ref:
+
+*************
+Async Logging
+*************
+
+For the most parts, logging works the same way as in the synchronous driver.
+See :ref:`logging-ref` for more information.
+
+However, when following the manual approach to logging, it is recommended to
+include information about the current async task in the log record.
+Like so:
+
+.. code-block:: python
+
+    import asyncio
+    import logging
+    import sys
+
+    class TaskIdFilter(logging.Filter):
+        """Injecting async task id into log records."""
+
+        def filter(self, record):
+            try:
+                record.taskId = id(asyncio.current_task())
+            except RuntimeError:
+                record.taskId = None
+            return True
+
+
+    # create a handler, e.g. to log to stdout
+    handler = logging.StreamHandler(sys.stdout)
+    # configure the handler to your liking
+    handler.setFormatter(logging.Formatter(
+        "[%(levelname)-8s] [Task %(taskId)-15s] %(asctime)s  %(message)s"
+        # or when using threading AND asyncio
+        # "[%(levelname)-8s] [Thread %(thread)d] [Task %(taskId)-15s] "
+        # "%(asctime)s  %(message)s"
+    ))
+    # attache the filter injecting the task id to the handler
+    handler.addFilter(TaskIdFilter())
+    # add the handler to the driver's logger
+    logging.getLogger("neo4j").addHandler(handler)
+    # make sure the logger logs on the desired log level
+    logging.getLogger("neo4j").setLevel(logging.DEBUG)
+    # from now on, DEBUG logging to stdout is enabled in the driver

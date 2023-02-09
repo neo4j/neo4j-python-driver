@@ -18,6 +18,7 @@
 
 import datetime
 
+import pandas as pd
 import pytest
 import pytz
 
@@ -35,42 +36,82 @@ class TestTimeDehydration(_TestTemporalDehydrationV1):
     def hydration_handler(self):
         return HydrationHandler()
 
-    def test_date_time(self, hydration_scope):
+    def test_date_time_fixed_offset(self, assert_transforms):
         dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
                       pytz.FixedOffset(60))
-        struct = hydration_scope.dehydration_hooks[type(dt)](dt)
-        assert struct == Structure(b"I", 1539340661, 474716862, 3600)
+        assert_transforms(
+            dt,
+            Structure(b"I", 1539340661, 474716862, 3600)
+        )
 
-    def test_native_date_time(self, hydration_scope):
+    def test_native_date_time_fixed_offset(self, assert_transforms):
         dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716,
                                pytz.FixedOffset(60))
-        struct = hydration_scope.dehydration_hooks[type(dt)](dt)
-        assert struct == Structure(b"I", 1539340661, 474716000, 3600)
+        assert_transforms(
+            dt,
+            Structure(b"I", 1539340661, 474716000, 3600)
+        )
 
-    def test_date_time_negative_offset(self, hydration_scope):
+    def test_pandas_date_time_fixed_offset(self, assert_transforms):
+        dt = pd.Timestamp("2018-10-12T11:37:41.474716862+0100")
+        assert_transforms(dt, Structure(b"I", 1539340661, 474716862, 3600))
+
+    def test_date_time_fixed_negative_offset(self, assert_transforms):
         dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
                       pytz.FixedOffset(-60))
-        struct = hydration_scope.dehydration_hooks[type(dt)](dt)
-        assert struct == Structure(b"I", 1539347861, 474716862, -3600)
+        assert_transforms(
+            dt,
+            Structure(b"I", 1539347861, 474716862, -3600)
+        )
 
-    def test_native_date_time_negative_offset(self, hydration_scope):
+    def test_native_date_time_fixed_negative_offset(self, assert_transforms):
         dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716,
                                pytz.FixedOffset(-60))
-        struct = hydration_scope.dehydration_hooks[type(dt)](dt)
-        assert struct == Structure(b"I", 1539347861, 474716000, -3600)
+        assert_transforms(
+            dt,
+            Structure(b"I", 1539347861, 474716000, -3600)
+        )
 
-    def test_date_time_zone_id(self, hydration_scope):
+    def test_pandas_date_time_fixed_negative_offset(self, assert_transforms):
+        dt = pd.Timestamp("2018-10-12T11:37:41.474716862-0100")
+        assert_transforms(dt, Structure(b"I", 1539347861, 474716862, -3600))
+
+    def test_date_time_zone_id(self, assert_transforms):
         dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862)
         dt = pytz.timezone("Europe/Stockholm").localize(dt)
         # offset should be UTC+2 (7200 seconds)
-        struct = hydration_scope.dehydration_hooks[type(dt)](dt)
-        assert struct == Structure(b"i", 1539337061, 474716862,
-                                   "Europe/Stockholm")
+        assert_transforms(
+            dt,
+            Structure(b"i", 1539337061, 474716862, "Europe/Stockholm")
+        )
 
-    def test_native_date_time_zone_id(self, hydration_scope):
+    def test_native_date_time_zone_id(self, assert_transforms):
         dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716)
         dt = pytz.timezone("Europe/Stockholm").localize(dt)
         # offset should be UTC+2 (7200 seconds)
-        struct = hydration_scope.dehydration_hooks[type(dt)](dt)
-        assert struct == Structure(b"i", 1539337061, 474716000,
-                                   "Europe/Stockholm")
+        assert_transforms(
+            dt,
+            Structure(b"i", 1539337061, 474716000, "Europe/Stockholm")
+        )
+
+    @pytest.mark.parametrize(("dt", "fields"), (
+        (
+            pd.Timestamp("2018-10-12T11:37:41.474716862+0200",
+                         tz="Europe/Stockholm"),
+            (1539337061, 474716862, "Europe/Stockholm"),
+        ),
+        (
+            # 1972-10-29 02:00:01.001000001+0100 pre DST change
+            pd.Timestamp((1032 * 24 + 2) * 3600 * 1000000000 + 1001000001,
+                         tz="Europe/London"),
+            ((1032 * 24 + 2) * 3600 + 1, 1000001, "Europe/London"),
+        ),
+        (
+            # 1972-10-29 02:00:01.001000001+0000 post DST change
+            pd.Timestamp((1032 * 24 + 1) * 3600 * 1000000000 + 1001000001,
+                            tz="Europe/London"),
+            ((1032 * 24 + 1) * 3600 + 1, 1000001, "Europe/London"),
+        )
+    ))
+    def test_pandas_date_time_zone_id(self, dt, fields, assert_transforms):
+        assert_transforms(dt, Structure(b"i", *fields))

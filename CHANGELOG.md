@@ -1,22 +1,58 @@
 # Neo4j Driver Change Log (breaking/major changes only)
 
-## Version 5.x
+See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
 
-* Deprecated importing from `neo4j.work` and its submodules. Everything should be imported directly from `neo4j` instead.
+## NEXT RELEASE
+- Deprecated importing from `neo4j.work` and its submodules. Everything should be imported directly from `neo4j` instead.
+- ...
+
+
+## Version 5.5
+- No breaking or major changes.
+
+
+## Version 5.4
+- Undocumented helper methods `Neo4jError.is_fatal_during_discovery` and
+  `Neo4jError.invalidates_all_connections` have been deprecated and will be
+  removed without replacement in version 6.0.
+
+
+## Version 5.3
+- Python 3.11 support added
+- Removed undocumented, unused `neo4j.data.map_type`
+- Query strings are now typed `LiteralString` instead of `str` to help mitigate
+  accidental Cypher injections. There are rare use-cases where a computed
+  string is necessary. Please use `# type: ignore`, or `typing.cast` to
+  suppress the type checking in those cases.
+- The experimental bookmark manager feature was changed to no longer track
+  bookmarks per database.  
+  This effectively changes the signature of almost all bookmark
+  manager related methods:
+  - `neo4j.BookmarkManger` and `neo4j.AsyncBookmarkManger` abstract base
+    classes:
+    - ``update_bookmarks`` has no longer a ``database`` argument.
+    - ``get_bookmarks`` has no longer a ``database`` argument.
+    - The ``get_all_bookmarks`` method was removed.
+    - The ``forget`` method was removed.
+  - `neo4j.GraphDatabase.bookmark_manager` and
+    `neo4j.AsyncGraphDatabase.bookmark_manager` factory methods:
+    - ``initial_bookmarks`` is no longer a mapping from database name
+      to bookmarks but plain bookmarks.
+    - ``bookmarks_supplier`` no longer receives the database name as
+      an argument.
+    - ``bookmarks_consumer`` no longer receives the database name as
+      an argument.  
 
 
 ## Version 5.2
-
 - No breaking or major changes.
 
 
 ## Version 5.1
-
 - No breaking or major changes.
 
 
 ## Version 5.0
-
 - Python 3.10 support added
 - Python 3.6 support has been dropped.
 - `Result`, `Session`, and `Transaction` can no longer be imported from
@@ -148,27 +184,22 @@
 
 
 ## Version 4.4
-
 - Python 3.5 support has been dropped.
 
 
 ## Version 4.3
-
 - Python 3.9 support added
 
 
 ## Version 4.2
-
 - No driver changes have been made for Neo4j 4.2
 
 
 ## Version 4.1
-
 - Routing context is now forwarded to the server for when required by server-side routing
 
 
 ## Version 4.0 - Breaking Changes
-
 - The package version has jumped from `1.7` directly to `4.0`, in order to bring the version in line with Neo4j itself.
 - The package can now no longer be installed as `neo4j-driver`; use `pip install neo4j` instead.
 - The `neo4j.v1` subpackage is now no longer available; all imports should be taken from the `neo4j` package instead.

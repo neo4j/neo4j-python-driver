@@ -32,8 +32,8 @@ import unasync
 
 
 ROOT_DIR = Path(__file__).parents[1].absolute()
-ASYNC_DIR = ROOT_DIR / "neo4j" / "_async"
-SYNC_DIR = ROOT_DIR / "neo4j" / "_sync"
+ASYNC_DIR = ROOT_DIR / "src" / "neo4j" / "_async"
+SYNC_DIR = ROOT_DIR / "src" / "neo4j" / "_sync"
 ASYNC_UNIT_TEST_DIR = ROOT_DIR / "tests" / "unit" / "async_"
 SYNC_UNIT_TEST_DIR = ROOT_DIR / "tests" / "unit" / "sync"
 ASYNC_INTEGRATION_TEST_DIR = ROOT_DIR / "tests" / "integration" / "async_"
@@ -47,7 +47,7 @@ PY_FILE_EXTENSIONS = {".py", ".pyi"}
 
 # copy from unasync for customization -----------------------------------------
 # https://github.com/python-trio/unasync
-# License: MIT and Apache2
+# License: MIT or Apache2
 
 
 Token = collections.namedtuple(
@@ -109,9 +109,10 @@ class CustomRule(unasync.Rule):
         self.token_replacements["Awaitable"] = "Union"
 
     def _unasync_tokens(self, tokens):
-        # copy from unasync to hook into string handling
+        # copy from unasync to fix handling of multiline strings
         # https://github.com/python-trio/unasync
-        # License: MIT and Apache2
+        # License: MIT or Apache2
+
         # TODO __await__, ...?
         used_space = None
         for space, toknum, tokval in tokens:
@@ -186,7 +187,7 @@ class CustomRule(unasync.Rule):
     def _unasync_name(self, name):
         # copy from unasync to customize renaming rules
         # https://github.com/python-trio/unasync
-        # License: MIT and Apache2
+        # License: MIT or Apache2
         if name in self.token_replacements:
             return self.token_replacements[name]
         return self._unasync_prefix(name)
@@ -194,7 +195,7 @@ class CustomRule(unasync.Rule):
     def _unasync_file(self, filepath):
         # copy from unasync to append file suffix to out path
         # https://github.com/python-trio/unasync
-        # License: MIT and Apache2
+        # License: MIT or Apache2
         with open(filepath, "rb") as f:
             write_kwargs = {}
             if sys.version_info[0] >= 3:
