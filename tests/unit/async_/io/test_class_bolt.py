@@ -38,7 +38,7 @@ def test_class_method_protocol_handlers():
     expected_handlers = {
         (3, 0),
         (4, 1), (4, 2), (4, 3), (4, 4),
-        (5, 0), (5, 1),
+        (5, 0), (5, 1), (5, 2),
     }
 
     protocol_handlers = AsyncBolt.protocol_handlers()
@@ -62,7 +62,8 @@ def test_class_method_protocol_handlers():
         ((4, 4), 1),
         ((5, 0), 1),
         ((5, 1), 1),
-        ((5, 2), 0),
+        ((5, 2), 1),
+        ((5, 3), 0),
         ((6, 0), 0),
     ]
 )
@@ -82,7 +83,7 @@ def test_class_method_protocol_handlers_with_invalid_protocol_version():
 # [bolt-version-bump] search tag when changing bolt version support
 def test_class_method_get_handshake():
     handshake = AsyncBolt.get_handshake()
-    assert (b"\x00\x01\x01\x05\x00\x02\x04\x04\x00\x00\x01\x04\x00\x00\x00\x03"
+    assert (b"\x00\x02\x02\x05\x00\x02\x04\x04\x00\x00\x01\x04\x00\x00\x00\x03"
             == handshake)
 
 
@@ -151,6 +152,7 @@ def _bolt_cls(bolt_cls_path):
         ((4, 4), "neo4j._async.io._bolt4.AsyncBolt4x4"),
         ((5, 0), "neo4j._async.io._bolt5.AsyncBolt5x0"),
         ((5, 1), "neo4j._async.io._bolt5.AsyncBolt5x1"),
+        ((5, 2), "neo4j._async.io._bolt5.AsyncBolt5x2"),
     ),
 )
 @mark_async_test
@@ -181,11 +183,13 @@ async def test_version_negotiation(mocker, bolt_version, bolt_cls_path):
     (2, 0),
     (4, 0),
     (3, 1),
-    (5, 2),
+    (5, 3),
+    (6, 0),
 ))
 @mark_async_test
 async def test_failing_version_negotiation(mocker, bolt_version):
-    supported_protocols = "('3.0', '4.1', '4.2', '4.3', '4.4', '5.0', '5.1')"
+    supported_protocols = \
+        "('3.0', '4.1', '4.2', '4.3', '4.4', '5.0', '5.1', '5.2')"
 
     address = ("localhost", 7687)
     socket_mock = mocker.AsyncMock(spec=AsyncBoltSocket)

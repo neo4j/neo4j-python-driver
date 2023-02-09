@@ -183,7 +183,7 @@ class Bolt:
         """
         pass
 
-    # [bolt-version-bump] search tag for changing bolt version support
+    # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
     def protocol_handlers(cls, protocol_version=None):
         """ Return a dictionary of available Bolt protocol handlers,
@@ -210,6 +210,7 @@ class Bolt:
         from ._bolt5 import (
             Bolt5x0,
             Bolt5x1,
+            Bolt5x2,
         )
 
         handlers = {
@@ -221,6 +222,7 @@ class Bolt:
             Bolt4x4.PROTOCOL_VERSION: Bolt4x4,
             Bolt5x0.PROTOCOL_VERSION: Bolt5x0,
             Bolt5x1.PROTOCOL_VERSION: Bolt5x1,
+            Bolt5x2.PROTOCOL_VERSION: Bolt5x2,
         }
 
         if protocol_version is None:
@@ -291,7 +293,7 @@ class Bolt:
             BoltSocket.close_socket(s)
             return protocol_version
 
-    # [bolt-version-bump] search tag for changing bolt version support
+    # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
     def open(
         cls, address, *, auth=None, timeout=None, routing_context=None,
@@ -340,7 +342,10 @@ class Bolt:
 
         # Carry out Bolt subclass imports locally to avoid circular dependency
         # issues.
-        if protocol_version == (5, 1):
+        if protocol_version == (5, 2):
+            from ._bolt5 import Bolt5x2
+            bolt_cls = Bolt5x2
+        elif protocol_version == (5, 1):
             from ._bolt5 import Bolt5x1
             bolt_cls = Bolt5x1
         elif protocol_version == (5, 0):

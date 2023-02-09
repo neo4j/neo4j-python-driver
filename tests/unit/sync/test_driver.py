@@ -492,8 +492,7 @@ def test_driver_factory_with_notification_filters(
         pool_cls, "open",
         return_value=mocker.MagicMock(spec=pool_cls)
     )
-    if pool_cls is BoltPool:
-        open_mock.return_value.address = mocker.Mock()
+    open_mock.return_value.address = mocker.Mock()
     mocker.patch.object(BoltPool, "open", new=open_mock)
 
     if filters is ...:
@@ -535,8 +534,7 @@ def test_session_factory_with_notification_filter(
     pool_cls = Neo4jPool if uri.startswith("neo4j://") else BoltPool
     pool_mock: t.Any = mocker.MagicMock(spec=pool_cls)
     mocker.patch.object(pool_cls, "open", return_value=pool_mock)
-    if pool_cls is BoltPool:
-        pool_mock.address = mocker.Mock()
+    pool_mock.address = mocker.Mock()
     driver_filters = object()
     pool_mock.pool_config = PoolConfig(notification_filters=driver_filters)
     session_cls_mock = mocker.patch("neo4j._sync.driver.Session",

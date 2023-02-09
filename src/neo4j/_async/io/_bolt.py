@@ -183,7 +183,7 @@ class AsyncBolt:
         """
         pass
 
-    # [bolt-version-bump] search tag for changing bolt version support
+    # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
     def protocol_handlers(cls, protocol_version=None):
         """ Return a dictionary of available Bolt protocol handlers,
@@ -210,6 +210,7 @@ class AsyncBolt:
         from ._bolt5 import (
             AsyncBolt5x0,
             AsyncBolt5x1,
+            AsyncBolt5x2,
         )
 
         handlers = {
@@ -221,6 +222,7 @@ class AsyncBolt:
             AsyncBolt4x4.PROTOCOL_VERSION: AsyncBolt4x4,
             AsyncBolt5x0.PROTOCOL_VERSION: AsyncBolt5x0,
             AsyncBolt5x1.PROTOCOL_VERSION: AsyncBolt5x1,
+            AsyncBolt5x2.PROTOCOL_VERSION: AsyncBolt5x2,
         }
 
         if protocol_version is None:
@@ -291,7 +293,7 @@ class AsyncBolt:
             await AsyncBoltSocket.close_socket(s)
             return protocol_version
 
-    # [bolt-version-bump] search tag for changing bolt version support
+    # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
     async def open(
         cls, address, *, auth=None, timeout=None, routing_context=None,
@@ -340,7 +342,10 @@ class AsyncBolt:
 
         # Carry out Bolt subclass imports locally to avoid circular dependency
         # issues.
-        if protocol_version == (5, 1):
+        if protocol_version == (5, 2):
+            from ._bolt5 import AsyncBolt5x2
+            bolt_cls = AsyncBolt5x2
+        elif protocol_version == (5, 1):
             from ._bolt5 import AsyncBolt5x1
             bolt_cls = AsyncBolt5x1
         elif protocol_version == (5, 0):

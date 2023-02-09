@@ -360,6 +360,12 @@ class AsyncBolt5x1(AsyncBolt5x0):
     PROTOCOL_VERSION = Version(5, 1)
 
     async def hello(self, dehydration_hooks=None, hydration_hooks=None):
+        if self.notification_filters is not None:
+            raise ConfigurationError(
+                "Notification filters are not supported by the Bolt Protocol "
+                "{!r}".format(self.PROTOCOL_VERSION)
+            )
+
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
@@ -370,27 +376,83 @@ class AsyncBolt5x1(AsyncBolt5x0):
                 if isinstance(recv_timeout, int) and recv_timeout > 0:
                     self.socket.settimeout(recv_timeout)
                 else:
-                    log.info("[#%04X]  Server supplied an invalid value for "
+                    log.info("[#%04X]  _: <CONNECTION> Server supplied an "
+                             "invalid value for "
                              "connection.recv_timeout_seconds (%r). Make sure "
                              "the server and network is set up correctly.",
                              self.local_port, recv_timeout)
 
         extra = self.get_base_headers()
-        if self.notification_filters is not None:
-            extra["notifications"] = list(set(
-                map(str, self.notification_filters)
-            ))
-        logged_headers = dict(extra)
-        if "credentials" in logged_headers:
-            logged_headers["credentials"] = "*******"
-        log.debug("[#%04X]  C: HELLO %r", self.local_port, logged_headers)
-        self._append(b"\x01", (self.auth_dict, extra),
+        log.debug("[#%04X]  C: HELLO %r", self.local_port, extra)
+        self._append(b"\x01", (extra,),
                      response=InitResponse(self, "hello", hydration_hooks,
                                            on_success=on_success),
                      dehydration_hooks=dehydration_hooks)
+
+        self.logon(dehydration_hooks, hydration_hooks)
         await self.send_all()
         await self.fetch_all()
         check_supported_server_product(self.server_info.agent)
+
+    def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        logged_auth_dict = dict(self.auth_dict)
+        if "credentials" in logged_auth_dict:
+            logged_auth_dict["credentials"] = "*******"
+        log.debug("[#%04X]  C: LOGON %r", self.local_port, self.auth_dict)
+        self._append(b"\x6A", (self.auth_dict,),
+                     response=Response(self, "logon", hydration_hooks),
+                     dehydration_hooks=dehydration_hooks)
+
+
+class AsyncBolt5x2(AsyncBolt5x1):
+
+    PROTOCOL_VERSION = Version(5, 2)
+
+    def get_base_headers(self):
+        headers = super().get_base_headers()
+        if self.notification_filters is not None:
+            headers["notifications"] = list(set(
+                map(str, self.notification_filters)
+            ))
+        return headers
+
+    async def hello(self, dehydration_hooks=None, hydration_hooks=None):
+        def on_success(metadata):
+            self.configuration_hints.update(metadata.pop("hints", {}))
+            self.server_info.update(metadata)
+            if "connection.recv_timeout_seconds" in self.configuration_hints:
+                recv_timeout = self.configuration_hints[
+                    "connection.recv_timeout_seconds"
+                ]
+                if isinstance(recv_timeout, int) and recv_timeout > 0:
+                    self.socket.settimeout(recv_timeout)
+                else:
+                    log.info("[#%04X]  _: <CONNECTION> Server supplied an "
+                             "invalid value for "
+                             "connection.recv_timeout_seconds (%r). Make sure "
+                             "the server and network is set up correctly.",
+                             self.local_port, recv_timeout)
+
+        extra = self.get_base_headers()
+        log.debug("[#%04X]  C: HELLO %r", self.local_port, extra)
+        self._append(b"\x01", (extra,),
+                     response=InitResponse(self, "hello", hydration_hooks,
+                                           on_success=on_success),
+                     dehydration_hooks=dehydration_hooks)
+
+        self.logon(dehydration_hooks, hydration_hooks)
+        await self.send_all()
+        await self.fetch_all()
+        check_supported_server_product(self.server_info.agent)
+
+    def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        logged_auth_dict = dict(self.auth_dict)
+        if "credentials" in logged_auth_dict:
+            logged_auth_dict["credentials"] = "*******"
+        log.debug("[#%04X]  C: LOGON %r", self.local_port, logged_auth_dict)
+        self._append(b"\x6A", (self.auth_dict,),
+                     response=Response(self, "logon", hydration_hooks),
+                     dehydration_hooks=dehydration_hooks)
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
