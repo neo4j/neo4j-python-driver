@@ -156,9 +156,9 @@ class AsyncBolt5x0(AsyncBolt):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            notification_filters=None, dehydration_hooks=None,
+            noti_min_sev=None, noti_disabled_cats=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
-        if notification_filters is not None:
+        if noti_min_sev is not None or noti_disabled_cats:
             raise ConfigurationError(
                 "Notification filters are not supported by the Bolt Protocol "
                 "{!r}".format(self.PROTOCOL_VERSION)
@@ -218,9 +218,10 @@ class AsyncBolt5x0(AsyncBolt):
                      dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, notification_filters=None,
-              dehydration_hooks=None, hydration_hooks=None, **handlers):
-        if notification_filters is not None:
+              db=None, imp_user=None, noti_min_sev=None,
+              noti_disabled_cats=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
+        if noti_min_sev is not None or noti_disabled_cats:
             raise ConfigurationError(
                 "Notification filters are not supported by the Bolt Protocol "
                 "{!r}".format(self.PROTOCOL_VERSION)
@@ -410,10 +411,10 @@ class AsyncBolt5x2(AsyncBolt5x1):
 
     def get_base_headers(self):
         headers = super().get_base_headers()
-        if self.notification_filters is not None:
-            headers["notifications"] = list(set(
-                map(str, self.notification_filters)
-            ))
+        if self.noti_min_sev is not None:
+            headers["noti_min_sev"] = self.noti_min_sev
+        if self.noti_disabled_cats is not None:
+            headers["noti_disabled_cats"] = self.noti_disabled_cats
         return headers
 
     async def hello(self, dehydration_hooks=None, hydration_hooks=None):
@@ -456,7 +457,7 @@ class AsyncBolt5x2(AsyncBolt5x1):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            notification_filters=..., dehydration_hooks=None,
+            noti_min_sev=None, noti_disabled_cats=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
         if not parameters:
             parameters = {}
@@ -468,15 +469,10 @@ class AsyncBolt5x2(AsyncBolt5x1):
             extra["db"] = db
         if imp_user:
             extra["imp_user"] = imp_user
-        if notification_filters is ...:
-            notification_filters = self.notification_filters
-        if notification_filters != self.notification_filters:
-            if notification_filters is None:
-                extra["notifications"] = None
-            else:
-                extra["notifications"] = list(set(
-                    map(str, notification_filters)
-                ))
+        if noti_min_sev is not None:
+            extra["noti_min_sev"] = noti_min_sev
+        if noti_disabled_cats is not None:
+            extra["noti_disabled_cats"] = noti_disabled_cats
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
@@ -502,8 +498,9 @@ class AsyncBolt5x2(AsyncBolt5x1):
                      dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, notification_filters=...,
-              dehydration_hooks=None, hydration_hooks=None, **handlers):
+              db=None, imp_user=None, noti_min_sev=None,
+              noti_disabled_cats=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
         extra = {}
         if mode in (READ_ACCESS, "r"):
             # It will default to mode "w" if nothing is specified
@@ -529,15 +526,10 @@ class AsyncBolt5x2(AsyncBolt5x1):
                 raise TypeError("Timeout must be a number (in seconds)")
             if extra["tx_timeout"] < 0:
                 raise ValueError("Timeout must be a number <= 0")
-        if notification_filters is ...:
-            notification_filters = self.notification_filters
-        if notification_filters != self.notification_filters:
-            if notification_filters is None:
-                extra["notifications"] = None
-            else:
-                extra["notifications"] = list(set(
-                    map(str, notification_filters)
-                ))
+        if noti_min_sev is not None:
+            extra["noti_min_sev"] = noti_min_sev
+        if noti_disabled_cats is not None:
+            extra["noti_disabled_cats"] = noti_disabled_cats
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,),
                      Response(self, "begin", hydration_hooks, **handlers),

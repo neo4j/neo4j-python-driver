@@ -73,13 +73,13 @@ class AsyncTransactionBase:
 
     async def _begin(
         self, database, imp_user, bookmarks, access_mode, metadata, timeout,
-        notification_filters
+        noti_min_sev, noti_disabled_cats,
     ):
         self._database = database
         self._connection.begin(
             bookmarks=bookmarks, metadata=metadata, timeout=timeout,
             mode=access_mode, db=database, imp_user=imp_user,
-            notification_filters=notification_filters
+            noti_min_sev=noti_min_sev, noti_disabled_cats=noti_disabled_cats
         )
         await self._error_handling_connection.send_all()
         await self._error_handling_connection.fetch_all()

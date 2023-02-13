@@ -410,8 +410,11 @@ class PoolConfig(Config):
     keep_alive = True
     # Specify whether TCP keep-alive should be enabled.
 
-    #: Notification filters to be sent to the server
-    notification_filters = None
+    #: Lowest notification severity for the server to return
+    notifications_min_severity = None
+
+    #: List of notification categories for the server to ignore
+    notifications_disabled_categories = None
 
     def get_ssl_context(self):
         if self.ssl_context is not None:
@@ -500,9 +503,6 @@ class WorkspaceConfig(Config):
     bookmark_manager = ExperimentalOption(None)
     # Specify the bookmark manager to be used for sessions by default.
 
-    #: Notification filters to be sent to the server
-    notification_filters = None
-
 
 class SessionConfig(WorkspaceConfig):
     """ Session configuration.
@@ -513,6 +513,12 @@ class SessionConfig(WorkspaceConfig):
 
     #: Default AccessMode
     default_access_mode = WRITE_ACCESS
+
+    #: Lowest notification severity for the server to return
+    notifications_min_severity = None
+
+    #: List of notification categories for the server to ignore
+    notifications_disabled_categories = None
 
 
 class TransactionConfig(Config):

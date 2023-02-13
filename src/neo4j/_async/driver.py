@@ -27,7 +27,10 @@ if t.TYPE_CHECKING:
     import ssl
     import typing_extensions as te
 
-    from .._api import T_NotificationFilter
+    from .._api import (
+        T_DisabledNotificationCategory,
+        T_MinimumNotificationSeverity,
+    )
 
 
 from .._api import RoutingControl
@@ -131,8 +134,11 @@ class AsyncGraphDatabase:
             ssl_context: ssl.SSLContext = ...,
             user_agent: str = ...,
             keep_alive: bool = ...,
-            notification_filters: t.Union[
-                None, T_NotificationFilter, t.Iterable[T_NotificationFilter]
+            notifications_min_severity: t.Optional[
+                T_MinimumNotificationSeverity
+            ] = ...,
+            notifications_disabled_categories: t.Optional[
+                t.Iterable[T_DisabledNotificationCategory]
             ] = ...,
 
             # undocumented/unsupported options
@@ -231,6 +237,14 @@ class AsyncGraphDatabase:
             elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
                 config["encrypted"] = True
                 config["trusted_certificates"] = TrustAll()
+            if "notifications_disabled_categories" in config:
+                config["notifications_disabled_categories"] = list(
+                    map(str, config["notifications_disabled_categories"])
+                )
+            if "notifications_min_severity" in config:
+                config["notifications_min_severity"] = str(
+                    config["notifications_min_severity"]
+                )
 
             assert driver_type in (DRIVER_BOLT, DRIVER_NEO4J)
             if driver_type == DRIVER_BOLT:
@@ -475,9 +489,20 @@ class AsyncDriver:
         return bool(self._pool.pool_config.encrypted)
 
     def _prepare_session_config(self, **config):
-        if "notification_filters" not in config:
-            config["notification_filters"] = \
-                self._pool.pool_config.notification_filters
+        # if "notifications_min_severity" not in config:
+        #     config["notifications_min_severity"] = \
+        #         self._pool.pool_config.notifications_min_severity
+        # if "notifications_disabled_categories" not in config:
+        #     config["notifications_disabled_categories"] = \
+        #         self._pool.pool_config.notifications_disabled_categories
+        if "notifications_disabled_categories" in config:
+            config["notifications_disabled_categories"] = list(map(
+                str, config["notifications_disabled_categories"]
+            ))
+        if "notifications_min_severity" in config:
+            config["notifications_min_severity"] = str(
+                config["notifications_min_severity"]
+            )
         return config
 
     if t.TYPE_CHECKING:
@@ -494,8 +519,11 @@ class AsyncDriver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
-            notification_filters: t.Union[
-                None, T_NotificationFilter, t.Iterable[T_NotificationFilter]
+            notifications_min_severity: t.Optional[
+                T_MinimumNotificationSeverity
+            ] = ...,
+            notifications_disabled_categories: t.Optional[
+                t.Iterable[T_DisabledNotificationCategory]
             ] = ...,
 
             # undocumented/unsupported options
@@ -854,7 +882,12 @@ class AsyncDriver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
-            notification_filters: t.Optional[T_NotificationFilter] = ...,
+            notifications_min_severity: t.Optional[
+                T_MinimumNotificationSeverity
+            ] = ...,
+            notifications_disabled_categories: t.Optional[
+                t.Iterable[T_DisabledNotificationCategory]
+            ] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
@@ -920,7 +953,12 @@ class AsyncDriver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
-            notification_filters: t.Optional[T_NotificationFilter] = ...,
+            notifications_min_severity: t.Optional[
+                T_MinimumNotificationSeverity
+            ] = ...,
+            notifications_disabled_categories: t.Optional[
+                t.Iterable[T_DisabledNotificationCategory]
+            ] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,

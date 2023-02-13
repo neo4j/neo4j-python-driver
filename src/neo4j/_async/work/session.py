@@ -289,7 +289,8 @@ class AsyncSession(AsyncWorkspace):
         await self._auto_result._run(
             query, parameters, self._config.database,
             self._config.impersonated_user, self._config.default_access_mode,
-            bookmarks, self._config.notification_filters
+            bookmarks, self._config.notifications_min_severity,
+            self._config.notifications_disabled_categories,
         )
 
         return self._auto_result
@@ -396,7 +397,8 @@ class AsyncSession(AsyncWorkspace):
         await self._transaction._begin(
             self._config.database, self._config.impersonated_user,
             bookmarks, access_mode, metadata, timeout,
-            self._config.notification_filters
+            self._config.notifications_min_severity,
+            self._config.notifications_disabled_categories,
         )
 
     async def begin_transaction(

@@ -27,8 +27,9 @@ if t.TYPE_CHECKING:
 
 
 __all__ = [
+    "DisabledNotificationCategory",
+    "MinimumNotificationSeverity",
     "NotificationCategory",
-    "NotificationFilter",
     "NotificationSeverity",
     "RoutingControl",
 ]
@@ -62,93 +63,29 @@ class NotificationFilter(str, Enum):
     .. seealso::
         :ref:`driver-configuration-ref`, :ref:`session-configuration-ref`
     """
+    ...
 
-    ALL_ALL = "*.*"
-    WARNING_ALL = "WARNING.*"
-    WARNING_DEPRECATION = "WARNING.DEPRECATION"
-    WARNING_HINT = "WARNING.HINT"
-    WARNING_UNRECOGNIZED = "WARNING.UNRECOGNIZED"
-    WARNING_UNSUPPORTED = "WARNING.UNSUPPORTED"
-    WARNING_GENERIC = "WARNING.GENERIC"
-    WARNING_PERFORMANCE = "WARNING.PERFORMANCE"
-    INFORMATION_ALL = "INFORMATION.*"
-    INFORMATION_DEPRECATION = "INFORMATION.DEPRECATION"
-    INFORMATION_HINT = "INFORMATION.HINT"
-    INFORMATION_UNRECOGNIZED = "INFORMATION.UNRECOGNIZED"
-    INFORMATION_UNSUPPORTED = "INFORMATION.UNSUPPORTED"
-    INFORMATION_GENERIC = "INFORMATION.GENERIC"
-    INFORMATION_PERFORMANCE = "INFORMATION.PERFORMANCE"
-    ALL_DEPRECATION = "*.DEPRECATION"
-    ALL_HINT = "*.HINT"
-    ALL_UNRECOGNIZED = "*.UNRECOGNIZED"
-    ALL_UNSUPPORTED = "*.UNSUPPORTED"
-    ALL_GENERIC = "*.GENERIC"
-    ALL_PERFORMANCE = "*.PERFORMANCE"
 
-    @staticmethod
-    def none() -> t.List[NotificationFilter]:
-        """Value to disable all notifications.
+class MinimumNotificationSeverity(str, Enum):
+    """
+    TODO
+    """
 
-            >>> NotificationFilter.none() == []
-            True
-
-        Example::
-
-            driver = neo4j.GraphDatabase.driver(
-                uri, auth=auth,
-                notification_filters=neo4j.NotificationFilter.none()
-            )
-        """
-
-        return []
-
-    @staticmethod
-    def server_default() -> None:
-        """Value to let the server choose which notifications to send.
-
-            >>> NotificationFilter.server_default() is None
-            True
-
-        Example::
-
-            driver = neo4j.GraphDatabase.driver(
-                uri, auth=auth,
-                notification_filters=neo4j.NotificationFilter.server_default()
-            )
-        """
-        return None
-
-    def __str__(self):
-        return self.value
+    OFF = "OFF"
+    WARNING = "WARNING"
+    INFORMATION = "INFORMATION"
 
 
 if t.TYPE_CHECKING:
-    T_NotificationFilter = t.Union[
-        NotificationFilter,
+    T_MinimumNotificationSeverity = t.Union[
+        MinimumNotificationSeverity,
         te.Literal[
-            "*.*",
-            "WARNING.*",
-            "WARNING.DEPRECATION",
-            "WARNING.HINT",
-            "WARNING.UNRECOGNIZED",
-            "WARNING.UNSUPPORTED",
-            "WARNING.GENERIC",
-            "WARNING.PERFORMANCE",
-            "INFORMATION.*",
-            "INFORMATION.DEPRECATION",
-            "INFORMATION.HINT",
-            "INFORMATION.UNRECOGNIZED",
-            "INFORMATION.UNSUPPORTED",
-            "INFORMATION.GENERIC",
-            "INFORMATION.PERFORMANCE",
-            "*.DEPRECATION",
-            "*.HINT",
-            "*.UNRECOGNIZED",
-            "*.UNSUPPORTED",
-            "*.GENERIC",
-            "*.PERFORMANCE",
+            "OFF",
+            "WARNING",
+            "INFORMATION",
         ],
     ]
+    __all__.append("T_MinimumNotificationSeverity")
 
 
 class NotificationSeverity(str, Enum):
@@ -199,6 +136,34 @@ class NotificationSeverity(str, Enum):
     #: Used when the server provides a Severity which the driver is unaware of.
     #: This can happen when connecting to a server newer than the driver.
     UNKNOWN = "UNKNOWN"
+
+
+class DisabledNotificationCategory(str, Enum):
+    """
+    TODO
+    """
+
+    HINT = "HINT"
+    UNRECOGNIZED = "UNRECOGNIZED"
+    UNSUPPORTED = "UNSUPPORTED"
+    PERFORMANCE = "PERFORMANCE"
+    DEPRECATION = "DEPRECATION"
+    GENERIC = "GENERIC"
+
+
+if t.TYPE_CHECKING:
+    T_DisabledNotificationCategory = t.Union[
+        DisabledNotificationCategory,
+        te.Literal[
+            "HINT",
+            "UNRECOGNIZED",
+            "UNSUPPORTED",
+            "PERFORMANCE",
+            "DEPRECATION",
+            "GENERIC",
+        ],
+    ]
+    __all__.append("T_DisabledNotificationCategory")
 
 
 class NotificationCategory(str, Enum):
@@ -258,3 +223,4 @@ if t.TYPE_CHECKING:
         RoutingControl,
         te.Literal["r", "w"],
     ]
+    __all__.append("T_RoutingControl")

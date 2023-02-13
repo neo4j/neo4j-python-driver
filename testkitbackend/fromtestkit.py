@@ -21,7 +21,8 @@ from datetime import timedelta
 import pytz
 
 from neo4j import (
-    NotificationFilter,
+    MinimumNotificationSeverity,
+    DisabledNotificationCategory,
     Query,
 )
 from neo4j.spatial import (
@@ -156,11 +157,11 @@ def to_param(m):
     raise ValueError("Unknown param type " + name)
 
 
-def to_notification_filters(notification_filters):
-    if notification_filters == ["NONE"]:
-        return []
-    elif notification_filters == ["SERVER_DEFAULT"]:
-        return None
-    else:
-        return [NotificationFilter[f.replace(".", "_")]
-                for f in notification_filters]
+def set_notifications_config(config, data):
+    if "notificationsMinSeverity" in data:
+        config["notifications_min_severity"] = \
+            MinimumNotificationSeverity[data["notificationsMinSeverity"]]
+    if "notificationsDisabledCategories" in data:
+        config["notifications_disabled_categories"] = \
+            [DisabledNotificationCategory[c]
+             for c in data["notificationsDisabledCategories"]]

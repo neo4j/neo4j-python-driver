@@ -103,7 +103,7 @@ class AsyncBolt:
 
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *,
                  auth=None, user_agent=None, routing_context=None,
-                 notification_filters=None):
+                 noti_min_sev=None, noti_disabled_cats=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
         self.local_port = self.socket.getsockname()[1]
@@ -156,7 +156,8 @@ class AsyncBolt:
             if credentials is None:
                 raise AuthError("Password cannot be None")
 
-        self.notification_filters = notification_filters
+        self.noti_min_sev = noti_min_sev
+        self.noti_disabled_cats = noti_disabled_cats
 
     def __del__(self):
         if not asyncio.iscoroutinefunction(self.close):
@@ -387,7 +388,8 @@ class AsyncBolt:
         connection = bolt_cls(
             address, s, pool_config.max_connection_lifetime, auth=auth,
             user_agent=pool_config.user_agent, routing_context=routing_context,
-            notification_filters=pool_config.notification_filters,
+            noti_min_sev=pool_config.notifications_min_severity,
+            noti_disabled_cats=pool_config.notifications_disabled_categories
         )
 
         try:
@@ -464,7 +466,7 @@ class AsyncBolt:
     @abc.abstractmethod
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            notification_filters=None, dehydration_hooks=None,
+            noti_min_sev=None, noti_disabled_cats=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
         """ Appends a RUN message to the output queue.
 
@@ -478,8 +480,11 @@ class AsyncBolt:
             Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
             Requires Bolt 4.4+.
-        :param notification_filters: set of `api.NotificationFilter` instances.
-            Requires Bolt 5.1+.
+        :param noti_min_sev: minimum severity of notifications to be received.
+            Requires Bolt 5.2+.
+        :param noti_disabled_cats:
+            list of notification categories to be disabled.
+            Requires Bolt 5.2+.
         :param dehydration_hooks:
             Hooks to dehydrate types (dict from type (class) to dehydration
             function). Dehydration functions receive the value and returns an
@@ -532,8 +537,9 @@ class AsyncBolt:
 
     @abc.abstractmethod
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, notification_filters=None,
-              dehydration_hooks=None, hydration_hooks=None, **handlers):
+              db=None, imp_user=None, noti_min_sev=None,
+              noti_disabled_cats=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
         """ Appends a BEGIN message to the output queue.
 
         :param mode: access mode for routing - "READ" or "WRITE" (default)
@@ -544,8 +550,11 @@ class AsyncBolt:
             Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
             Requires Bolt 4.4+
-        :param notification_filters: set of `api.NotificationFilter` instances.
-            Requires Bolt 5.1+.
+        :param noti_min_sev: minimum severity of notifications to be received.
+            Requires Bolt 5.2+.
+        :param noti_disabled_cats:
+            list of notification categories to be disabled.
+            Requires Bolt 5.2+.
         :param dehydration_hooks:
             Hooks to dehydrate types (dict from type (class) to dehydration
             function). Dehydration functions receive the value and returns an

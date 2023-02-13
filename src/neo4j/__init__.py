@@ -19,9 +19,10 @@
 from logging import getLogger as _getLogger
 
 from ._api import (
+    DisabledNotificationCategory,
     NotificationCategory,
-    NotificationFilter,
     NotificationSeverity,
+    MinimumNotificationSeverity,
     RoutingControl,
 )
 from ._async.driver import (
@@ -122,6 +123,7 @@ __all__ = [
     "Config",
     "custom_auth",
     "DEFAULT_DATABASE",
+    "DisabledNotificationCategory",
     "Driver",
     "EagerResult",
     "ExperimentalWarning",
@@ -132,6 +134,7 @@ __all__ = [
     "kerberos_auth",
     "log",
     "ManagedTransaction",
+    "MinimumNotificationSeverity",
     "Neo4jDriver",
     "NotificationCategory",
     "NotificationFilter",

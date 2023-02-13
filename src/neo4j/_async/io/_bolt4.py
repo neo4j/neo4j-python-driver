@@ -162,7 +162,7 @@ class AsyncBolt4x0(AsyncBolt):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            notification_filters=None, dehydration_hooks=None,
+            noti_min_sev=None, noti_disabled_cats=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
         if imp_user is not None:
             raise ConfigurationError(
@@ -171,7 +171,7 @@ class AsyncBolt4x0(AsyncBolt):
                     self.PROTOCOL_VERSION, imp_user
                 )
             )
-        if notification_filters is not None:
+        if noti_min_sev is not None or noti_disabled_cats:
             raise ConfigurationError(
                 "Notification filters are not supported by the Bolt Protocol "
                 "{!r}".format(self.PROTOCOL_VERSION)
@@ -227,8 +227,9 @@ class AsyncBolt4x0(AsyncBolt):
                      dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, notification_filters=None,
-              dehydration_hooks=None, hydration_hooks=None, **handlers):
+              db=None, imp_user=None, noti_min_sev=None,
+              noti_disabled_cats=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
         if imp_user is not None:
             raise ConfigurationError(
                 "Impersonation is not supported in Bolt Protocol {!r}. "
@@ -236,7 +237,7 @@ class AsyncBolt4x0(AsyncBolt):
                     self.PROTOCOL_VERSION, imp_user
                 )
             )
-        if notification_filters is not None:
+        if noti_min_sev is not None or noti_disabled_cats:
             raise ConfigurationError(
                 "Notification filters are not supported by the Bolt Protocol "
                 "{!r}".format(self.PROTOCOL_VERSION)
@@ -507,9 +508,9 @@ class AsyncBolt4x4(AsyncBolt4x3):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            notification_filters=None, dehydration_hooks=None,
+            noti_min_sev=None, noti_disabled_cats=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
-        if notification_filters is not None:
+        if noti_min_sev is not None or noti_disabled_cats:
             raise ConfigurationError(
                 "Notification filters are not supported by the Bolt Protocol "
                 "{!r}".format(self.PROTOCOL_VERSION)
@@ -549,9 +550,10 @@ class AsyncBolt4x4(AsyncBolt4x3):
                      dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, notification_filters=None,
-              dehydration_hooks=None, hydration_hooks=None, **handlers):
-        if notification_filters is not None:
+              db=None, imp_user=None, noti_min_sev=None,
+              noti_disabled_cats=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
+        if noti_min_sev is not None or noti_disabled_cats:
             raise ConfigurationError(
                 "Notification filters are not supported by the Bolt Protocol "
                 "{!r}".format(self.PROTOCOL_VERSION)

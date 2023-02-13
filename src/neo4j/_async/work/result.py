@@ -121,7 +121,7 @@ class AsyncResult:
 
     async def _run(
         self, query, parameters, db, imp_user, access_mode, bookmarks,
-        notification_filters
+        noti_min_sev, noti_disabled_cats
     ):
         query_text = str(query)  # Query or string object
         query_metadata = getattr(query, "metadata", None)
@@ -158,7 +158,8 @@ class AsyncResult:
             timeout=query_timeout,
             db=db,
             imp_user=imp_user,
-            notification_filters=notification_filters,
+            noti_min_sev=noti_min_sev,
+            noti_disabled_cats=noti_disabled_cats,
             dehydration_hooks=self._hydration_scope.dehydration_hooks,
             on_success=on_attached,
             on_failure=on_failed_attach,
