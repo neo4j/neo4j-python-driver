@@ -441,7 +441,7 @@ class AsyncDriver:
             warnings.filterwarnings("ignore",
                                     message=r".*\bbookmark manager\b.*",
                                     category=ExperimentalWarning)
-            self._query_bookmark_manager = \
+            self._default_execute_query_bookmark_manager = \
                 AsyncGraphDatabase.bookmark_manager()
 
     async def __aenter__(self) -> AsyncDriver:
@@ -778,7 +778,7 @@ class AsyncDriver:
         parameters = dict(parameters_ or {}, **kwargs)
 
         if bookmark_manager_ is _default:
-            bookmark_manager_ = self._query_bookmark_manager
+            bookmark_manager_ = self._default_execute_query_bookmark_manager
         assert bookmark_manager_ is not _default
 
         with warnings.catch_warnings():
@@ -805,7 +805,7 @@ class AsyncDriver:
         "Driver.query_bookmark_manager is experimental. "
         "It might be changed or removed any time even without prior notice."
     )
-    def query_bookmark_manager(self) -> AsyncBookmarkManager:
+    def default_execute_query_bookmark_manager(self) -> AsyncBookmarkManager:
         """The driver's default query bookmark manager.
 
         This is the default :class:`AsyncBookmarkManager` used by
@@ -829,7 +829,7 @@ class AsyncDriver:
 
         .. versionadded:: 5.5
         """
-        return self._query_bookmark_manager
+        return self._default_execute_query_bookmark_manager
 
     if t.TYPE_CHECKING:
 

@@ -728,7 +728,7 @@ def test_execute_query_bookmark_manager(
         with assert_warns_execute_query_experimental():
             if bookmark_manager is Ellipsis:
                 with assert_warns_execute_query_bmm_experimental():
-                    bookmark_manager = driver.query_bookmark_manager
+                    bookmark_manager = driver.default_execute_query_bookmark_manager
                 driver.execute_query("")
             else:
                 if positional:
@@ -766,7 +766,7 @@ def test_execute_query_result_transformer(
                 res_custom: SomeClass
                 if positional:
                     with assert_warns_execute_query_bmm_experimental():
-                        bmm = driver.query_bookmark_manager
+                        bmm = driver.default_execute_query_bookmark_manager
                     res_custom = driver.execute_query(
                         "", None, "w", None, None, bmm, result_transformer
                     )

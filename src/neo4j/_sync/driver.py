@@ -439,7 +439,7 @@ class Driver:
             warnings.filterwarnings("ignore",
                                     message=r".*\bbookmark manager\b.*",
                                     category=ExperimentalWarning)
-            self._query_bookmark_manager = \
+            self._default_execute_query_bookmark_manager = \
                 GraphDatabase.bookmark_manager()
 
     def __enter__(self) -> Driver:
@@ -776,7 +776,7 @@ class Driver:
         parameters = dict(parameters_ or {}, **kwargs)
 
         if bookmark_manager_ is _default:
-            bookmark_manager_ = self._query_bookmark_manager
+            bookmark_manager_ = self._default_execute_query_bookmark_manager
         assert bookmark_manager_ is not _default
 
         with warnings.catch_warnings():
@@ -803,7 +803,7 @@ class Driver:
         "Driver.query_bookmark_manager is experimental. "
         "It might be changed or removed any time even without prior notice."
     )
-    def query_bookmark_manager(self) -> BookmarkManager:
+    def default_execute_query_bookmark_manager(self) -> BookmarkManager:
         """The driver's default query bookmark manager.
 
         This is the default :class:`BookmarkManager` used by
@@ -827,7 +827,7 @@ class Driver:
 
         .. versionadded:: 5.5
         """
-        return self._query_bookmark_manager
+        return self._default_execute_query_bookmark_manager
 
     if t.TYPE_CHECKING:
 
