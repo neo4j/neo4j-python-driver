@@ -66,7 +66,8 @@ def assert_warns_execute_query_experimental():
 def assert_warns_execute_query_bmm_experimental():
     with pytest.warns(
         ExperimentalWarning,
-        match=r"^Driver\.query_bookmark_manager is experimental\."
+        match=
+        r"^Driver\.default_execute_query_bookmark_manager is experimental\."
     ):
         yield
 

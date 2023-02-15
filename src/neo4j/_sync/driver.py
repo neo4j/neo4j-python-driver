@@ -742,7 +742,7 @@ class Driver:
             If present, the bookmark manager is used to keep the query causally
             consistent with all work executed using the same bookmark manager.
 
-            Defaults to the driver's :attr:`.query_bookmark_manager`.
+            Defaults to the driver's :attr:`.default_execute_query_bookmark_manager`.
 
             Pass :const:`None` to disable causal consistency.
         :type bookmark_manager_:
@@ -800,7 +800,7 @@ class Driver:
 
     @property
     @experimental(
-        "Driver.query_bookmark_manager is experimental. "
+        "Driver.default_execute_query_bookmark_manager is experimental. "
         "It might be changed or removed any time even without prior notice."
     )
     def default_execute_query_bookmark_manager(self) -> BookmarkManager:
@@ -813,7 +813,7 @@ class Driver:
             def example(driver: neo4j.Driver) -> None:
                 driver.execute_query("<QUERY 1>")
                 with driver.session(
-                    bookmark_manager=driver.query_bookmark_manager
+                    bookmark_manager=driver.default_execute_query_bookmark_manager
                 ) as session:
                     # every query inside this session will be causally chained
                     # (i.e., can read what was written by <QUERY 1>)
