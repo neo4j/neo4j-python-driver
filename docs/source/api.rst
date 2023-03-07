@@ -107,11 +107,17 @@ Auth
 
 To authenticate with Neo4j the authentication details are supplied at driver creation.
 
-The auth token is an object of the class :class:`neo4j.Auth` containing static details or a a callable that returns a :class:`neo4j.RenewableAuth` object.
+The auth token is an object of the class :class:`neo4j.Auth` containing static details or :class:`neo4j.auth_management.AuthManager` object.
 
 .. autoclass:: neo4j.Auth
 
-.. autoclass:: neo4j.RenewableAuth
+.. autoclass:: neo4j.auth_management.AuthManager
+    :members:
+
+.. autoclass:: neo4j.auth_management.AuthManagers
+    :members:
+
+.. autoclass:: neo4j.auth_management.TemporalAuth
 
 
 Example:
@@ -327,7 +333,7 @@ Closing a driver will immediately shut down all connections in the pool.
 
             Defaults to the driver's :attr:`.query_bookmark_manager`.
 
-            Pass :const:`None` to disable causal consistency.
+            Pass :data:`None` to disable causal consistency.
         :type bookmark_manager_:
             typing.Union[neo4j.BookmarkManager, neo4j.BookmarkManager,
                          None]
@@ -760,7 +766,7 @@ Optional :class:`neo4j.Bookmarks`. Use this to causally chain sessions.
 See :meth:`Session.last_bookmarks` or :meth:`AsyncSession.last_bookmarks` for
 more information.
 
-:Default: ``None``
+:Default: :data:`None`
 
 .. deprecated:: 5.0
     Alternatively, an iterable of strings can be passed. This usage is

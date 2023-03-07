@@ -349,7 +349,7 @@ class Bolt4x0(Bolt):
                 raise
             except Neo4jError as e:
                 if self.pool:
-                    self.pool.on_neo4j_error(e, self.server_info.address)
+                    self.pool.on_neo4j_error(e, self)
                 raise
         else:
             raise BoltProtocolError("Unexpected response message with signature "

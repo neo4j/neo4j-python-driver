@@ -31,7 +31,7 @@ from ...._async_compat import mark_sync_test
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_stale(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 0
     connection = Bolt3(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
@@ -41,7 +41,7 @@ def test_conn_is_stale(fake_socket, set_stale):
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = -1
     connection = Bolt3(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
@@ -51,7 +51,7 @@ def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_not_stale(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 999999999
     connection = Bolt3(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
@@ -60,14 +60,14 @@ def test_conn_is_not_stale(fake_socket, set_stale):
 
 
 def test_db_extra_not_supported_in_begin(fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
     with pytest.raises(ConfigurationError):
         connection.begin(db="something")
 
 
 def test_db_extra_not_supported_in_run(fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     connection = Bolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
     with pytest.raises(ConfigurationError):
         connection.run("", db="something")
@@ -75,7 +75,7 @@ def test_db_extra_not_supported_in_run(fake_socket):
 
 @mark_sync_test
 def test_simple_discard(fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt3.UNPACKER_CLS)
     connection = Bolt3(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard()
@@ -87,7 +87,7 @@ def test_simple_discard(fake_socket):
 
 @mark_sync_test
 def test_simple_pull(fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt3.UNPACKER_CLS)
     connection = Bolt3(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull()
@@ -102,7 +102,7 @@ def test_simple_pull(fake_socket):
 def test_hint_recv_timeout_seconds_gets_ignored(
     fake_socket_pair, recv_timeout, mocker
 ):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(
         address, Bolt3.PACKER_CLS, Bolt3.UNPACKER_CLS
     )
@@ -133,7 +133,7 @@ CREDENTIALS = "+++super-secret-sauce+++"
 def test_credentials_are_not_logged(
     auth, fake_socket_pair, mocker, caplog
 ):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt3.PACKER_CLS,
                                unpacker_cls=Bolt3.UNPACKER_CLS)
@@ -156,7 +156,7 @@ def test_credentials_are_not_logged(
 
 @pytest.mark.parametrize("message", ("logon", "logoff"))
 def test_auth_message_raises_configuration_error(message, fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     connection = Bolt3(address, fake_socket(address),
                             PoolConfig.max_connection_lifetime)
     with pytest.raises(ConfigurationError,
@@ -171,12 +171,12 @@ def test_auth_message_raises_configuration_error(message, fake_socket):
 ))
 @mark_sync_test
 def test_re_auth_noop(auth, fake_socket, mocker):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     connection = Bolt3(address, fake_socket(address),
                             PoolConfig.max_connection_lifetime, auth=auth)
     logon_spy = mocker.spy(connection, "logon")
     logoff_spy = mocker.spy(connection, "logoff")
-    res = connection.re_auth(auth)
+    res = connection.re_auth(auth, None)
 
     assert res is False
     logon_spy.assert_not_called()
@@ -196,9 +196,9 @@ def test_re_auth_noop(auth, fake_socket, mocker):
 )
 @mark_sync_test
 def test_re_auth(auth1, auth2, fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     connection = Bolt3(address, fake_socket(address),
                             PoolConfig.max_connection_lifetime, auth=auth1)
     with pytest.raises(ConfigurationError,
                        match="Session level authentication is not supported"):
-        connection.re_auth(auth2)
+        connection.re_auth(auth2, None)

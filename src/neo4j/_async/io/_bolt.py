@@ -25,6 +25,7 @@ from logging import getLogger
 from time import perf_counter
 
 from ..._async_compat.network import AsyncBoltSocket
+from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import v1 as hydration_v1
 from ..._codec.packstream import v1 as packstream_v1
 from ..._conf import PoolConfig
@@ -33,7 +34,7 @@ from ..._exceptions import (
     BoltHandshakeError,
 )
 from ..._meta import get_user_agent
-from ...addressing import Address
+from ...addressing import ResolvedAddress
 from ...api import (
     ServerInfo,
     Version,
@@ -119,12 +120,16 @@ class AsyncBolt:
     most_recent_qid = None
 
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *,
-                 auth=None, user_agent=None, routing_context=None):
+                 auth=None, auth_manager=None, user_agent=None,
+                 routing_context=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
         self.local_port = self.socket.getsockname()[1]
-        self.server_info = ServerInfo(Address(sock.getpeername()),
-                                      self.PROTOCOL_VERSION)
+        self.server_info = ServerInfo(
+            ResolvedAddress(sock.getpeername(),
+                            host_name=unresolved_address.host),
+            self.PROTOCOL_VERSION
+        )
         # so far `connection.recv_timeout_seconds` is the only available
         # configuration hint that exists. Therefore, all hints can be stored at
         # connection level. This might change in the future.
@@ -151,16 +156,9 @@ class AsyncBolt:
         else:
             self.user_agent = get_user_agent()
 
+        self.auth = auth
         self.auth_dict = self._to_auth_dict(auth)
-
-        # Check for missing password
-        try:
-            credentials = self.auth_dict["credentials"]
-        except KeyError:
-            pass
-        else:
-            if credentials is None:
-                raise AuthError("Password cannot be None")
+        self.auth_manager = auth_manager
 
     def __del__(self):
         if not asyncio.iscoroutinefunction(self.close):
@@ -328,13 +326,13 @@ class AsyncBolt:
 
     @classmethod
     async def open(
-        cls, address, *, auth=None, timeout=None, routing_context=None,
+        cls, address, *, auth_manager=None, timeout=None, routing_context=None,
         pool_config=None
     ):
         """Open a new Bolt connection to a given server address.
 
         :param address:
-        :param auth:
+        :param auth_manager:
         :param timeout: the connection timeout in seconds
         :param routing_context: dict containing routing context
         :param pool_config:
@@ -400,7 +398,7 @@ class AsyncBolt:
             from ._bolt5 import AsyncBolt5x1
             bolt_cls = AsyncBolt5x1
         else:
-            log.debug("[#%04X]  S: <CLOSE>", s.getsockname()[1])
+            log.debug("[#%04X]  C: <CLOSE>", s.getsockname()[1])
             await AsyncBoltSocket.close_socket(s)
 
             supported_versions = cls.protocol_handlers().keys()
@@ -411,9 +409,23 @@ class AsyncBolt:
                 address=address, request_data=handshake, response_data=data
             )
 
+        try:
+            auth = await AsyncUtil.callback(auth_manager.get_auth)
+        except asyncio.CancelledError as e:
+            log.debug("[#%04X]  C: <KILL> open auth manager failed: %r",
+                      s.getsockname()[1], e)
+            s.kill()
+            raise
+        except Exception as e:
+            log.debug("[#%04X]  C: <CLOSE> open auth manager failed: %r",
+                      s.getsockname()[1], e)
+            await s.close()
+            raise
+
         connection = bolt_cls(
             address, s, pool_config.max_connection_lifetime, auth=auth,
-            user_agent=pool_config.user_agent, routing_context=routing_context
+            auth_manager=auth_manager, user_agent=pool_config.user_agent,
+            routing_context=routing_context
         )
 
         try:
@@ -465,7 +477,8 @@ class AsyncBolt:
         self.auth_dict = {}
 
     def re_auth(
-        self, auth, dehydration_hooks=None, hydration_hooks=None, force=False
+        self, auth, auth_manager, force=False,
+        dehydration_hooks=None, hydration_hooks=None,
     ):
         """Append LOGON, LOGOFF to the outgoing queue.
 
@@ -475,10 +488,14 @@ class AsyncBolt:
         """
         new_auth_dict = self._to_auth_dict(auth)
         if not force and new_auth_dict == self.auth_dict:
+            self.auth_manager = auth_manager
+            self.auth = auth
             return False
         self.logoff(dehydration_hooks=dehydration_hooks,
                      hydration_hooks=hydration_hooks)
         self.auth_dict = new_auth_dict
+        self.auth_manager = auth_manager
+        self.auth = auth
         self.logon(dehydration_hooks=dehydration_hooks,
                     hydration_hooks=hydration_hooks)
         return True

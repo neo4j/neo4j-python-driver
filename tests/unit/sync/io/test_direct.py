@@ -26,6 +26,7 @@ from neo4j._conf import (
 from neo4j._deadline import Deadline
 from neo4j._sync.io import Bolt
 from neo4j._sync.io._pool import IOPool
+from neo4j.auth_management import AuthManagers
 from neo4j.exceptions import (
     ClientError,
     ServiceUnavailable,
@@ -59,13 +60,17 @@ class QuickConnection:
     def is_reset(self):
         return True
 
+    @property
+    def throwaway(self):
+        return False
+
     def stale(self):
         return False
 
     def reset(self):
         pass
 
-    def re_auth(self, auth, force=False):
+    def re_auth(self, auth, auth_manager, force=False):
         return False
 
     def close(self):
@@ -82,8 +87,8 @@ class QuickConnection:
 
 
 class FakeBoltPool(IOPool):
-
     def __init__(self, address, *, auth=None, **config):
+        config["auth"] = AuthManagers.static(None)
         self.pool_config, self.workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         if config:
             raise ValueError("Unexpected config keys: %s" % ", ".join(config.keys()))
@@ -105,15 +110,18 @@ class FakeBoltPool(IOPool):
 
 @mark_sync_test
 def test_bolt_connection_open():
+    auth_manager = AuthManagers.static(("test", "test"))
     with pytest.raises(ServiceUnavailable):
-        Bolt.open(("localhost", 9999), auth=("test", "test"))
+        Bolt.open(("localhost", 9999), auth_manager=auth_manager)
 
 
 @mark_sync_test
 def test_bolt_connection_open_timeout():
+    auth_manager = AuthManagers.static(("test", "test"))
     with pytest.raises(ServiceUnavailable):
-        Bolt.open(("localhost", 9999), auth=("test", "test"),
-                             timeout=1)
+        Bolt.open(
+            ("localhost", 9999), auth_manager=auth_manager, timeout=1
+        )
 
 
 @mark_sync_test

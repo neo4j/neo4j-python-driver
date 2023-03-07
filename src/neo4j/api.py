@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 import abc
-import time
 import typing as t
 from urllib.parse import (
     parse_qs,
@@ -113,6 +112,12 @@ class Auth:
 # For backwards compatibility
 AuthToken = Auth
 
+# if t.TYPE_CHECKING:
+# commented out as work around for
+# https://github.com/sphinx-doc/sphinx/pull/10880
+# make sure TAuth is resolved in the docs, else they're pretty useless
+_TAuth = t.Union[t.Tuple[t.Any, t.Any], Auth, None]
+
 
 def basic_auth(
     user: str, password: str, realm: t.Optional[str] = None
@@ -179,80 +184,6 @@ def custom_auth(
         :meth:`AsyncGraphDatabase.driver`
     """
     return Auth(scheme, principal, credentials, realm, **parameters)
-
-
-class RenewableAuth:
-    """Container for authentication details which potentially expire.
-
-    This is meant to be used as a return value for a callable auth token
-    provider to accommodate for expiring authentication information.
-
-    For Example::
-
-        import neo4j
-
-
-        def auth_provider():
-            sso_token = get_sso_token()  # some way to getting a fresh token
-            expires_in = 60  # we know our tokens expire every 60 seconds
-
-            return neo4j.RenewableAuth(
-                neo4j.bearer_auth(sso_token),
-                # The driver will continue to use the old token until a new one
-                # has been fetched. So we want the auth provider to be called
-                # a little before the token expires.
-                expires_in - 10
-            )
-
-
-        with neo4j.GraphDatabase.driver(
-            "neo4j://example.com:7687",
-            auth=auth_provider
-        ) as driver:
-            ...  # do stuff
-
-    .. warning::
-
-        The auth provider **must not** interact with the driver in any way as
-        this can cause deadlocks and undefined behaviour.
-
-    The driver will call the auth provider when either the last token it
-    provided has expired (see :attr:`expires_in`) or when the driver has
-    received an authentication error from the server that indicates new
-    authentication information is required.
-
-    :param auth: The auth token.
-    :param expires_in: The expected expiry time
-        of the auth token in seconds from now. It is recommended to set this
-        a little before the actual expiry time to give the driver time to
-        renew the auth token before connections start to fail. If set to
-        :data:`None`, the token is assumed to never expire.
-
-    .. versionadded:: 5.x
-    """
-
-    def __init__(
-        self,
-        auth: t.Union[Auth, t.Tuple[t.Any, t.Any], None],
-        expires_in: t.Optional[float] = None,
-    ) -> None:
-        self.auth = auth
-        self.created_at: t.Optional[float]
-        self.expires_in: t.Optional[float]
-        self.expires_at: t.Optional[float]
-        if expires_in is not None:
-            self.expires_in = expires_in
-            self.created_at = time.monotonic()
-            self.expires_at = self.created_at + expires_in
-        else:
-            self.expires_in = None
-            self.created_at = None
-            self.expires_at = None
-
-    @property
-    def expired(self):
-        return (self.expires_at is not None
-                and self.expires_at < time.monotonic())
 
 
 # TODO: 6.0 - remove this class

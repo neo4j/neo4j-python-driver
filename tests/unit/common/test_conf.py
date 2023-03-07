@@ -72,6 +72,7 @@ test_session_config = {
     "fetch_size": 100,
     "bookmark_manager": object(),
     "auth": None,
+    "backwards_compatible_auth": False,
 }
 
 

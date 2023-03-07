@@ -24,13 +24,14 @@ import neo4j
 import neo4j.exceptions
 from neo4j._async.io._bolt5 import AsyncBolt5x1
 from neo4j._conf import PoolConfig
+from neo4j.auth_management import AsyncAuthManagers
 
 from ...._async_compat import mark_async_test
 
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_stale(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 0
     connection = AsyncBolt5x1(address, fake_socket(address),
                               max_connection_lifetime)
@@ -41,7 +42,7 @@ def test_conn_is_stale(fake_socket, set_stale):
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = -1
     connection = AsyncBolt5x1(address, fake_socket(address),
                               max_connection_lifetime)
@@ -52,7 +53,7 @@ def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_not_stale(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 999999999
     connection = AsyncBolt5x1(address, fake_socket(address),
                               max_connection_lifetime)
@@ -72,7 +73,7 @@ def test_conn_is_not_stale(fake_socket, set_stale):
 ))
 @mark_async_test
 async def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
                               PoolConfig.max_connection_lifetime)
@@ -94,7 +95,7 @@ async def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
 ))
 @mark_async_test
 async def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
                               PoolConfig.max_connection_lifetime)
@@ -107,7 +108,7 @@ async def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
 
 @mark_async_test
 async def test_n_extra_in_discard(fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
                               PoolConfig.max_connection_lifetime)
@@ -128,7 +129,7 @@ async def test_n_extra_in_discard(fake_socket):
 )
 @mark_async_test
 async def test_qid_extra_in_discard(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
                               PoolConfig.max_connection_lifetime)
@@ -149,7 +150,7 @@ async def test_qid_extra_in_discard(fake_socket, test_input, expected):
 )
 @mark_async_test
 async def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
                               PoolConfig.max_connection_lifetime)
@@ -170,7 +171,7 @@ async def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
 )
 @mark_async_test
 async def test_n_extra_in_pull(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
                               PoolConfig.max_connection_lifetime)
@@ -191,7 +192,7 @@ async def test_n_extra_in_pull(fake_socket, test_input, expected):
 )
 @mark_async_test
 async def test_qid_extra_in_pull(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
                               PoolConfig.max_connection_lifetime)
@@ -205,7 +206,7 @@ async def test_qid_extra_in_pull(fake_socket, test_input, expected):
 
 @mark_async_test
 async def test_n_and_qid_extras_in_pull(fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
                               PoolConfig.max_connection_lifetime)
@@ -219,7 +220,7 @@ async def test_n_and_qid_extras_in_pull(fake_socket):
 
 @mark_async_test
 async def test_hello_passes_routing_metadata(fake_socket_pair):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=AsyncBolt5x1.PACKER_CLS,
                                unpacker_cls=AsyncBolt5x1.UNPACKER_CLS)
@@ -249,7 +250,7 @@ async def _assert_logon_message(sockets, auth):
 @mark_async_test
 async def test_hello_pipelines_logon(fake_socket_pair):
     auth = neo4j.Auth("basic", "alice123", "supersecret123")
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=AsyncBolt5x1.PACKER_CLS,
                                unpacker_cls=AsyncBolt5x1.UNPACKER_CLS)
@@ -260,7 +261,7 @@ async def test_hello_pipelines_logon(fake_socket_pair):
     connection = AsyncBolt5x1(
         address, sockets.client, PoolConfig.max_connection_lifetime, auth=auth
     )
-    with pytest.raises(neo4j.exceptions.ServiceUnavailable):
+    with pytest.raises(neo4j.exceptions.Neo4jError):
         await connection.hello()
     tag, fields = await sockets.server.pop_message()
     assert tag == b"\x01"  # HELLO
@@ -273,7 +274,7 @@ async def test_hello_pipelines_logon(fake_socket_pair):
 @mark_async_test
 async def test_logon(fake_socket_pair):
     auth = neo4j.Auth("basic", "alice123", "supersecret123")
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=AsyncBolt5x1.PACKER_CLS,
                                unpacker_cls=AsyncBolt5x1.UNPACKER_CLS)
@@ -287,7 +288,8 @@ async def test_logon(fake_socket_pair):
 @mark_async_test
 async def test_re_auth(fake_socket_pair, mocker):
     auth = neo4j.Auth("basic", "alice123", "supersecret123")
-    address = ("127.0.0.1", 7687)
+    auth_manager = AsyncAuthManagers.static(auth)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=AsyncBolt5x1.PACKER_CLS,
                                unpacker_cls=AsyncBolt5x1.UNPACKER_CLS)
@@ -298,7 +300,7 @@ async def test_re_auth(fake_socket_pair, mocker):
     connection = AsyncBolt5x1(address, sockets.client,
                               PoolConfig.max_connection_lifetime)
     connection.pool = mocker.AsyncMock()
-    connection.re_auth(auth)
+    connection.re_auth(auth, auth_manager)
     await connection.send_all()
     with pytest.raises(neo4j.exceptions.Neo4jError):
         await connection.fetch_all()
@@ -306,11 +308,13 @@ async def test_re_auth(fake_socket_pair, mocker):
     assert tag == b"\x6B"  # LOGOFF
     assert len(fields) == 0
     await _assert_logon_message(sockets, auth)
+    assert connection.auth is auth
+    assert connection.auth_manager is auth_manager
 
 
 @mark_async_test
 async def test_logoff(fake_socket_pair):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=AsyncBolt5x1.PACKER_CLS,
                                unpacker_cls=AsyncBolt5x1.UNPACKER_CLS)
@@ -342,7 +346,7 @@ async def test_logoff(fake_socket_pair):
 async def test_hint_recv_timeout_seconds(
     fake_socket_pair, hints, valid, caplog, mocker
 ):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=AsyncBolt5x1.PACKER_CLS,
                                unpacker_cls=AsyncBolt5x1.UNPACKER_CLS)
@@ -387,7 +391,7 @@ CREDENTIALS = "+++super-secret-sauce+++"
 ))
 @mark_async_test
 async def test_credentials_are_not_logged(auth, fake_socket_pair, caplog):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=AsyncBolt5x1.PACKER_CLS,
                                unpacker_cls=AsyncBolt5x1.UNPACKER_CLS)

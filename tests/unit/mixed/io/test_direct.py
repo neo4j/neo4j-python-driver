@@ -26,7 +26,9 @@ from threading import (
 
 import pytest
 
+from neo4j._async.io._pool import AcquireAuth as AsyncAcquireAuth
 from neo4j._deadline import Deadline
+from neo4j._sync.io._pool import AcquireAuth
 
 from ...async_.io.test_direct import AsyncFakeBoltPool
 from ...sync.io.test_direct import FakeBoltPool
@@ -59,7 +61,7 @@ class TestMixedConnectionPoolTestCase:
         def acquire_release_conn(pool_, address_, acquired_counter_,
                                  release_event_):
             nonlocal connections, connections_lock
-            conn_ = pool_._acquire(address_, None, Deadline(3), None, False)
+            conn_ = pool_._acquire(address_, None, Deadline(3), None)
             with connections_lock:
                 if connections is not None:
                     connections.append(conn_)
@@ -74,7 +76,7 @@ class TestMixedConnectionPoolTestCase:
 
             # pre-populate the pool with connections
             for _ in range(pre_populated):
-                conn = pool._acquire(address, None, Deadline(3), None, False)
+                conn = pool._acquire(address, None, Deadline(3), None)
                 pre_populated_connections.append(conn)
             for conn in pre_populated_connections:
                 pool.release(conn)
@@ -120,8 +122,7 @@ class TestMixedConnectionPoolTestCase:
         async def acquire_release_conn(pool_, address_, acquired_counter_,
                                        release_event_):
             nonlocal connections
-            conn_ = await pool_._acquire(address_, None, Deadline(3), None,
-                                         False)
+            conn_ = await pool_._acquire(address_, None, Deadline(3), None)
             if connections is not None:
                 connections.append(conn_)
             await acquired_counter_.increment()
@@ -155,8 +156,7 @@ class TestMixedConnectionPoolTestCase:
 
             # pre-populate the pool with connections
             for _ in range(pre_populated):
-                conn = await pool._acquire(address, None, Deadline(3), None,
-                                           False)
+                conn = await pool._acquire(address, None, Deadline(3), None)
                 pre_populated_connections.append(conn)
             for conn in pre_populated_connections:
                 await pool.release(conn)

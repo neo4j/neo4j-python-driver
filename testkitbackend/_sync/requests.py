@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import datetime
 import json
 import re
@@ -25,7 +26,13 @@ from freezegun import freeze_time
 
 import neo4j
 import neo4j.api
+import neo4j.auth_management
 from neo4j._async_compat.util import Util
+from neo4j.auth_management import (
+    AuthManager,
+    AuthManagers,
+    TemporalAuth,
+)
 
 from .. import (
     fromtestkit,
@@ -95,37 +102,12 @@ def GetFeatures(backend, data):
     backend.send_response("FeatureList", {"features": FEATURES})
 
 
-def _convert_auth_token(data, key):
-    if data[key] is None:
-        return None
-    auth_token = data[key]["data"]
-    data[key].mark_item_as_read_if_equals("name", "AuthorizationToken")
-    scheme = auth_token["scheme"]
-    if scheme == "basic":
-        auth = neo4j.basic_auth(
-            auth_token["principal"], auth_token["credentials"],
-            realm=auth_token.get("realm", None)
-        )
-    elif scheme == "kerberos":
-        auth = neo4j.kerberos_auth(auth_token["credentials"])
-    elif scheme == "bearer":
-        auth = neo4j.bearer_auth(auth_token["credentials"])
-    else:
-        auth = neo4j.custom_auth(
-            auth_token["principal"], auth_token["credentials"],
-            auth_token["realm"], auth_token["scheme"],
-            **auth_token.get("parameters", {})
-        )
-        auth_token.mark_item_as_read("parameters", recursive=True)
-    return auth
-
-
 def NewDriver(backend, data):
-    auth = _convert_auth_token(data, "authorizationToken")
-    if auth is None and data.get("authTokenProviderId") is not None:
-        auth = backend.auth_token_providers[data["authTokenProviderId"]]
+    auth = fromtestkit.to_auth_token(data, "authorizationToken")
+    if auth is None and data.get("authTokenManagerId") is not None:
+        auth = backend.auth_token_managers[data["authTokenManagerId"]]
     else:
-        data.mark_item_as_read_if_equals("authTokenProviderId", None)
+        data.mark_item_as_read_if_equals("authTokenManagerId", None)
     kwargs = {}
     if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
         kwargs["resolver"] = resolution_func(
@@ -173,52 +155,106 @@ def NewDriver(backend, data):
     backend.send_response("Driver", {"id": key})
 
 
-def NewAuthTokenProvider(backend, data):
-    auth_token_provider_id = backend.next_key()
+def NewAuthTokenManager(backend, data):
+    auth_token_manager_id = backend.next_key()
+
+    class TestKitAuthManager(AuthManager):
+        def get_auth(self):
+            key = backend.next_key()
+            backend.send_response("AuthTokenManagerGetAuthRequest", {
+                "id": key,
+                "authTokenManagerId": auth_token_manager_id,
+            })
+            if not backend.process_request():
+                # connection was closed before end of next message
+                return None
+            if key not in backend.auth_token_supplies:
+                raise RuntimeError(
+                    "Backend did not receive expected "
+                    f"AuthTokenManagerGetAuthCompleted message for id {key}"
+                )
+            return backend.auth_token_supplies.pop(key)
+
+        def on_auth_expired(self, auth):
+            key = backend.next_key()
+            backend.send_response(
+                "AuthTokenManagerOnAuthExpiredRequest", {
+                    "id": key,
+                    "authTokenManagerId": auth_token_manager_id,
+                    "auth": totestkit.auth_token(auth),
+                }
+            )
+            if not backend.process_request():
+                # connection was closed before end of next message
+                return None
+            if key not in backend.auth_token_on_expiration_supplies:
+                raise RuntimeError(
+                    "Backend did not receive expected "
+                    "AuthTokenManagerOnAuthExpiredCompleted message for id "
+                    f"{key}"
+                )
+            backend.auth_token_on_expiration_supplies.pop(key)
+
+    auth_manager = TestKitAuthManager()
+    backend.auth_token_managers[auth_token_manager_id] = auth_manager
+    backend.send_response("AuthTokenManager",
+                                {"id": auth_token_manager_id})
+
+
+def AuthTokenManagerGetAuthCompleted(backend, data):
+    auth_token = fromtestkit.to_auth_token(data, "auth")
+
+    backend.auth_token_supplies[data["requestId"]] = auth_token
+
+
+def AuthTokenManagerOnAuthExpiredCompleted(backend, data):
+    backend.auth_token_on_expiration_supplies[data["requestId"]] = True
+
+
+def AuthTokenManagerClose(backend, data):
+    auth_token_manager_id = data["id"]
+    del backend.auth_token_managers[auth_token_manager_id]
+    backend.send_response("AuthTokenManager",
+                                {"id": auth_token_manager_id})
+
+
+def NewTemporalAuthTokenManager(backend, data):
+    auth_token_manager_id = backend.next_key()
 
     def auth_token_provider():
         key = backend.next_key()
-        backend.send_response("AuthTokenProviderRequest", {
+        backend.send_response("TemporalAuthTokenProviderRequest", {
             "id": key,
-            "authTokenProviderId": auth_token_provider_id,
+            "temporalAuthTokenManagerId": auth_token_manager_id,
         })
         if not backend.process_request():
             # connection was closed before end of next message
-            return None
-        if key not in backend.renewable_auth_token_supplies:
+            return neo4j.auth_management.TemporalAuth(None, None)
+        if key not in backend.temporal_auth_token_supplies:
             raise RuntimeError(
                 "Backend did not receive expected "
-                f"AuthTokenProviderCompleted message for id {key}"
+                f"TemporalAuthTokenManagerCompleted message for id {key}"
             )
-        return backend.renewable_auth_token_supplies.pop(key)
+        return backend.temporal_auth_token_supplies.pop(key)
+
+    auth_manager = AuthManagers.temporal(auth_token_provider)
+    backend.auth_token_managers[auth_token_manager_id] = auth_manager
+    backend.send_response("TemporalAuthTokenManager",
+                                {"id": auth_token_manager_id})
 
 
-    backend.auth_token_providers[auth_token_provider_id] = auth_token_provider
-    backend.send_response("AuthTokenProvider",
-                                {"id": auth_token_provider_id})
-
-
-def AuthTokenProviderClose(backend, data):
-    auth_token_provider_id = data["id"]
-    del backend.auth_token_providers[auth_token_provider_id]
-    backend.send_response("AuthTokenProvider",
-                                {"id": auth_token_provider_id})
-
-
-def AuthTokenProviderCompleted(backend, data):
-    backend.renewable_auth_token_supplies[data["requestId"]] = \
-        parse_renewable_auth(data["auth"])
-
-
-def parse_renewable_auth(data):
-    data.mark_item_as_read_if_equals("name", "RenewableAuthToken")
-    data = data["data"]
-    auth_token = _convert_auth_token(data, "auth")
-    if data["expiresInMs"] is not None:
-        expires_in = data["expiresInMs"] / 1000
+def TemporalAuthTokenProviderCompleted(backend, data):
+    temp_auth_data = data["auth"]
+    temp_auth_data.mark_item_as_read_if_equals("name", "TemporalAuthToken")
+    temp_auth_data = temp_auth_data["data"]
+    auth_token = fromtestkit.to_auth_token(temp_auth_data, "auth")
+    if temp_auth_data["expiresInMs"] is not None:
+        expires_in = temp_auth_data["expiresInMs"] / 1000
     else:
         expires_in = None
-    return neo4j.RenewableAuth(auth_token, expires_in)
+    temporal_auth = TemporalAuth(auth_token, expires_in)
+
+    backend.temporal_auth_token_supplies[data["requestId"]] = temporal_auth
 
 
 def VerifyConnectivity(backend, data):
@@ -251,7 +287,7 @@ def CheckMultiDBSupport(backend, data):
 def VerifyAuthentication(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
-    auth = _convert_auth_token(data, "auth_token")
+    auth = fromtestkit.to_auth_token(data, "auth_token")
     authenticated = driver.verify_authentication(auth=auth)
     backend.send_response("DriverIsAuthenticated", {
         "id": backend.next_key(), "authenticated": authenticated
@@ -499,7 +535,7 @@ def NewSession(backend, data):
         if data_name in data:
             config[conf_name] = data[data_name]
     if data.get("authorizationToken"):
-        config["auth"] = _convert_auth_token(data, "authorizationToken")
+        config["auth"] = fromtestkit.to_auth_token(data, "authorizationToken")
     if "bookmark_manager" in config:
         with warning_check(
             neo4j.ExperimentalWarning,

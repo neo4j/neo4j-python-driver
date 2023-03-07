@@ -103,6 +103,9 @@ class FakeSocket2:
     def close(self):
         return
 
+    def kill(self):
+        return
+
     def inject(self, data):
         self.recv_buffer += data
 

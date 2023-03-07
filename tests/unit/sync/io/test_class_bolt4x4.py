@@ -31,7 +31,7 @@ from ...._async_compat import mark_sync_test
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_stale(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 0
     connection = Bolt4x4(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
@@ -41,7 +41,7 @@ def test_conn_is_stale(fake_socket, set_stale):
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = -1
     connection = Bolt4x4(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
@@ -51,7 +51,7 @@ def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_not_stale(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 999999999
     connection = Bolt4x4(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
@@ -70,7 +70,7 @@ def test_conn_is_not_stale(fake_socket, set_stale):
 ))
 @mark_sync_test
 def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.begin(*args, **kwargs)
@@ -91,7 +91,7 @@ def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
 ))
 @mark_sync_test
 def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.run(*args, **kwargs)
@@ -103,7 +103,7 @@ def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
 
 @mark_sync_test
 def test_n_extra_in_discard(fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666)
@@ -123,7 +123,7 @@ def test_n_extra_in_discard(fake_socket):
 )
 @mark_sync_test
 def test_qid_extra_in_discard(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(qid=test_input)
@@ -144,7 +144,7 @@ def test_qid_extra_in_discard(fake_socket, test_input, expected):
 @mark_sync_test
 def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
     # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_n_and_qid_extras_in_discard
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666, qid=test_input)
@@ -164,7 +164,7 @@ def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
 )
 @mark_sync_test
 def test_n_extra_in_pull(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=test_input)
@@ -185,7 +185,7 @@ def test_n_extra_in_pull(fake_socket, test_input, expected):
 @mark_sync_test
 def test_qid_extra_in_pull(fake_socket, test_input, expected):
     # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_qid_extra_in_pull
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(qid=test_input)
@@ -198,7 +198,7 @@ def test_qid_extra_in_pull(fake_socket, test_input, expected):
 
 @mark_sync_test
 def test_n_and_qid_extras_in_pull(fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt4x4.UNPACKER_CLS)
     connection = Bolt4x4(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=666, qid=777)
@@ -211,7 +211,7 @@ def test_n_and_qid_extras_in_pull(fake_socket):
 
 @mark_sync_test
 def test_hello_passes_routing_metadata(fake_socket_pair):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt4x4.PACKER_CLS,
                                unpacker_cls=Bolt4x4.UNPACKER_CLS)
@@ -243,7 +243,7 @@ def test_hello_passes_routing_metadata(fake_socket_pair):
 def test_hint_recv_timeout_seconds(
     fake_socket_pair, hints, valid, caplog, mocker
 ):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt4x4.PACKER_CLS,
                                unpacker_cls=Bolt4x4.UNPACKER_CLS)
@@ -289,7 +289,7 @@ CREDENTIALS = "+++super-secret-sauce+++"
 def test_credentials_are_not_logged(
     auth, fake_socket_pair, mocker, caplog
 ):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt4x4.PACKER_CLS,
                                unpacker_cls=Bolt4x4.UNPACKER_CLS)
@@ -312,7 +312,7 @@ def test_credentials_are_not_logged(
 
 @pytest.mark.parametrize("message", ("logon", "logoff"))
 def test_auth_message_raises_configuration_error(message, fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     connection = Bolt4x4(address, fake_socket(address),
                               PoolConfig.max_connection_lifetime)
     with pytest.raises(ConfigurationError,
@@ -327,12 +327,12 @@ def test_auth_message_raises_configuration_error(message, fake_socket):
 ))
 @mark_sync_test
 def test_re_auth_noop(auth, fake_socket, mocker):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     connection = Bolt4x4(address, fake_socket(address),
                               PoolConfig.max_connection_lifetime, auth=auth)
     logon_spy = mocker.spy(connection, "logon")
     logoff_spy = mocker.spy(connection, "logoff")
-    res = connection.re_auth(auth)
+    res = connection.re_auth(auth, None)
 
     assert res is False
     logon_spy.assert_not_called()
@@ -352,9 +352,9 @@ def test_re_auth_noop(auth, fake_socket, mocker):
 )
 @mark_sync_test
 def test_re_auth(auth1, auth2, fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     connection = Bolt4x4(address, fake_socket(address),
                               PoolConfig.max_connection_lifetime, auth=auth1)
     with pytest.raises(ConfigurationError,
                        match="Session level authentication is not supported"):
-        connection.re_auth(auth2)
+        connection.re_auth(auth2, None)

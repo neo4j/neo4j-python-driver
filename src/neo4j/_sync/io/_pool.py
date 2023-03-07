@@ -49,11 +49,10 @@ from ..._deadline import (
 from ..._exceptions import BoltError
 from ..._routing import RoutingTable
 from ...api import (
-    Auth,
     READ_ACCESS,
-    RenewableAuth,
     WRITE_ACCESS,
 )
+from ...auth_management import AuthManager
 from ...exceptions import (
     ClientError,
     ConfigurationError,
@@ -73,7 +72,7 @@ log = getLogger("neo4j")
 
 @dataclass
 class AcquireAuth:
-    auth: t.Optional[Auth]
+    auth: t.Union[AuthManager, AuthManager, None]
     backwards_compatible: bool = False
     force_auth: bool = False
 
@@ -94,9 +93,6 @@ class IOPool(abc.ABC):
         self.connections_reservations = defaultdict(lambda: 0)
         self.lock = CooperativeRLock()
         self.cond = Condition(self.lock)
-        self.refreshing_auth = False
-        self.auth_condition = Condition()
-        self.last_auth: t.Optional[RenewableAuth] = None
 
     def __enter__(self):
         return self
@@ -105,53 +101,7 @@ class IOPool(abc.ABC):
         self.close()
 
     def get_auth(self):
-        with self.auth_condition:
-            auth_missing = self.last_auth is None
-            needs_refresh = auth_missing or self.last_auth.expired
-            if not needs_refresh:
-                return self.last_auth.auth
-
-            if self.refreshing_auth:
-                # someone else is already getting new auth info
-                if not auth_missing:
-                    # there is old auth info we can use in the meantime
-                    return self.last_auth.auth
-                else:
-                    while self.last_auth is None:
-                        self.auth_condition.wait()
-                    return self.last_auth.auth
-            else:
-                # we need to get new auth info
-                self.refreshing_auth = True
-
-        auth = self._get_new_auth()
-        with self.auth_condition:
-            self.last_auth = auth
-            self.refreshing_auth = False
-            self.auth_condition.notify_all()
-            return self.last_auth.auth
-
-    def force_new_auth(self):
-        with self.auth_condition:
-            log.debug("[#0000]  _: <POOL> force new auth info")
-            if self.refreshing_auth:
-                return
-            self.last_auth = None
-            self.refreshing_auth = True
-
-        auth = self._get_new_auth()
-        with self.auth_condition:
-            self.last_auth = auth
-            self.refreshing_auth = False
-            self.auth_condition.notify_all()
-
-    def _get_new_auth(self):
-        log.debug("[#0000]  _: <POOL> requesting new auth info from %r",
-                  self.pool_config.auth)
-        new_auth = Util.callback(self.pool_config.auth)
-        if not isinstance(new_auth, RenewableAuth):
-            return RenewableAuth(new_auth)
-        return new_auth
+        return Util.callback(self.pool_config.auth.get_auth)
 
     def _acquire_from_pool(self, address):
         with self.lock:
@@ -212,7 +162,7 @@ class IOPool(abc.ABC):
             try:
                 try:
                     connection = self.opener(
-                        address, auth or self.get_auth(),
+                        address, auth or self.pool_config.auth,
                         deadline.to_timeout()
                     )
                 except ServiceUnavailable:
@@ -258,11 +208,22 @@ class IOPool(abc.ABC):
                 return connection_creator
         return None
 
-    def _re_auth_connection(self, connection, auth, force):
-        new_auth = auth or self.get_auth()
+    def _re_auth_connection(
+        self, connection, auth, force, backwards_compatible_auth
+    ):
+        if auth and not backwards_compatible_auth:
+            # Assert session auth is supported by the protocol.
+            # The Bolt implementation will try as hard as it can to make the
+            # re-auth work. So if the session auth token is identical to the
+            # driver auth token, the connection doesn't have to do anything so
+            # it won't fail regardless of the protocol version.
+            connection.assert_re_auth_support()
+        new_auth_manager = auth or self.pool_config.auth
         log_auth = "******" if auth else "None"
+        new_auth = Util.callback(new_auth_manager.get_auth)
         try:
-            updated = connection.re_auth(new_auth, force=force)
+            updated = connection.re_auth(new_auth, new_auth_manager,
+                                         force=force)
             log.debug("[#%04X]  _: <POOL> checked re_auth auth=%s updated=%s "
                       "force=%s",
                       connection.local_port, log_auth, updated, force)
@@ -317,7 +278,7 @@ class IOPool(abc.ABC):
                           connection.local_port, connection.connection_id)
                 try:
                     self._re_auth_connection(
-                        connection, auth, force_auth
+                        connection, auth, force_auth, backwards_compatible_auth
                     )
                 except ConfigurationError:
                     if not auth:
@@ -541,7 +502,8 @@ class IOPool(abc.ABC):
             "No write service available for pool {}".format(self)
         )
 
-    def on_neo4j_error(self, error, address):
+    def on_neo4j_error(self, error, connection):
+        address = connection.unresolved_address
         assert isinstance(error, Neo4jError)
         if error._unauthenticates_all_connections():
             log.debug(
@@ -552,7 +514,10 @@ class IOPool(abc.ABC):
                 for connection in self.connections.get(address, ()):
                     connection.mark_unauthenticated()
         if error._requires_new_credentials():
-            self.force_new_auth()
+            Util.callback(
+                connection.auth_manager.on_auth_expired,
+                connection.auth
+            )
 
     def close(self):
         """ Close all connections and empty the pool.
@@ -582,10 +547,10 @@ class BoltPool(IOPool):
         :returns: BoltPool
         """
 
-        def opener(addr, auth, timeout):
+        def opener(addr, auth_manager, timeout):
             return Bolt.open(
-                addr, auth=auth, timeout=timeout, routing_context=None,
-                pool_config=pool_config
+                addr, auth_manager=auth_manager, timeout=timeout,
+                routing_context=None, pool_config=pool_config
             )
 
         pool = cls(opener, pool_config, workspace_config, address)
@@ -637,9 +602,9 @@ class Neo4jPool(IOPool):
             raise ConfigurationError("The key 'address' is reserved for routing context.")
         routing_context["address"] = str(address)
 
-        def opener(addr, auth, timeout):
+        def opener(addr, auth_manager, timeout):
             return Bolt.open(
-                addr, auth=auth, timeout=timeout,
+                addr, auth_manager=auth_manager, timeout=timeout,
                 routing_context=routing_context, pool_config=pool_config
             )
 
@@ -966,8 +931,8 @@ class Neo4jPool(IOPool):
         return choice(addresses_by_usage[min(addresses_by_usage)])
 
     def acquire(
-        self, access_mode, timeout, database, bookmarks, auth: AcquireAuth,
-        liveness_check_timeout
+        self, access_mode, timeout, database, bookmarks,
+        auth: t.Optional[AcquireAuth], liveness_check_timeout
     ):
         if access_mode not in (WRITE_ACCESS, READ_ACCESS):
             raise ClientError("Non valid 'access_mode'; {}".format(access_mode))

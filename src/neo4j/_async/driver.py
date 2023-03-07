@@ -57,7 +57,6 @@ from ..api import (
     parse_neo4j_uri,
     parse_routing_context,
     READ_ACCESS,
-    RenewableAuth,
     SECURITY_TYPE_SECURE,
     SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
     ServerInfo,
@@ -69,6 +68,11 @@ from ..api import (
     URI_SCHEME_NEO4J,
     URI_SCHEME_NEO4J_SECURE,
     URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
+)
+from ..auth_management import (
+    AsyncAuthManager,
+    AsyncAuthManagers,
+    AuthManager,
 )
 from ..exceptions import Neo4jError
 from .bookmark_manager import (
@@ -90,6 +94,7 @@ if t.TYPE_CHECKING:
     import typing_extensions as te
 
     from .._api import T_RoutingControl
+    from ..api import _TAuth
 
 
     class _DefaultEnum(Enum):
@@ -101,12 +106,6 @@ else:
     _default = object()
 
 _T = t.TypeVar("_T")
-
-
-_TAuthTokenProvider = t.Callable[[], t.Union[
-    RenewableAuth, Auth, t.Tuple[t.Any, t.Any], None,
-    t.Awaitable[t.Union[RenewableAuth, Auth, t.Tuple[t.Any, t.Any], None]]
-]]
 
 
 class AsyncGraphDatabase:
@@ -121,7 +120,12 @@ class AsyncGraphDatabase:
             uri: str,
             *,
             auth: t.Union[
-                t.Tuple[t.Any, t.Any], Auth, _TAuthTokenProvider, None
+                # work around https://github.com/sphinx-doc/sphinx/pull/10880
+                # make sure TAuth is resolved in the docs
+                # TAuth,
+                t.Union[t.Tuple[t.Any, t.Any], Auth, None],
+                AsyncAuthManager,
+                AuthManager
             ] = ...,
             max_connection_lifetime: float = ...,
             max_connection_pool_size: int = ...,
@@ -161,7 +165,12 @@ class AsyncGraphDatabase:
         def driver(
             cls, uri: str, *,
             auth: t.Union[
-                t.Tuple[t.Any, t.Any], Auth, _TAuthTokenProvider, None
+                # work around https://github.com/sphinx-doc/sphinx/pull/10880
+                # make sure TAuth is resolved in the docs
+                # TAuth,
+                t.Union[t.Tuple[t.Any, t.Any], Auth, None],
+                AsyncAuthManager,
+                AuthManager
             ] = None,
             **config
         ) -> AsyncDriver:
@@ -178,7 +187,9 @@ class AsyncGraphDatabase:
 
             driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
-            config["auth"] = auth if callable(auth) else lambda: auth
+            if not isinstance(auth, (AsyncAuthManager, AuthManager)):
+                auth = AsyncAuthManagers.static(auth)
+            config["auth"] = auth
 
             # TODO: 6.0 - remove "trust" config option
             if "trust" in config.keys():
@@ -496,7 +507,7 @@ class AsyncDriver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
-            auth: t.Union[Auth, t.Tuple[t.Any, t.Any]] = ...,
+            auth: _TAuth = ...,
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
@@ -752,7 +763,7 @@ class AsyncDriver:
 
             Defaults to the driver's :attr:`.query_bookmark_manager`.
 
-            Pass :const:`None` to disable causal consistency.
+            Pass :data:`None` to disable causal consistency.
         :type bookmark_manager_:
             typing.Union[neo4j.AsyncBookmarkManager, neo4j.BookmarkManager,
                          None]

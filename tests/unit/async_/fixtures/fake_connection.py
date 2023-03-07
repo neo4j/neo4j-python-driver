@@ -23,6 +23,7 @@ import pytest
 from neo4j import ServerInfo
 from neo4j._async.io import AsyncBolt
 from neo4j._deadline import Deadline
+from neo4j.auth_management import AsyncAuthManager
 
 
 __all__ = [
@@ -51,7 +52,10 @@ def async_fake_connection_generator(session_mocker):
             self.attach_mock(mock.Mock(return_value=False), "closed")
             self.attach_mock(mock.Mock(return_value=False), "socket")
             self.attach_mock(mock.Mock(return_value=False), "re_auth")
-            self.attach_mock(mock.Mock(), "unresolved_address")
+            self.attach_mock(mock.AsyncMock(spec=AsyncAuthManager),
+                             "auth_manager")
+            self.unresolved_address = next(iter(args), "localhost")
+            self.throwaway = False
 
             def close_side_effect():
                 self.closed.return_value = True

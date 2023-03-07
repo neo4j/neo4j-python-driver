@@ -2544,7 +2544,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
         :param tz: the new timezone
 
-        :returns: the same object if ``tz`` is :const:``None``.
+        :returns: the same object if ``tz`` is :data:``None``.
             Else, a new :class:`.DateTime` that's the same point in time but in
             a different timezone.
         """

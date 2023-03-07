@@ -399,7 +399,7 @@ class Bolt3(Bolt):
                     self.pool.on_write_failure(address=self.unresolved_address)
                 raise
             except Neo4jError as e:
-                self.pool.on_neo4j_error(e, self.server_info.address)
+                self.pool.on_neo4j_error(e, self)
                 raise
         else:
             raise BoltProtocolError("Unexpected response message with signature %02X" % summary_signature, address=self.unresolved_address)

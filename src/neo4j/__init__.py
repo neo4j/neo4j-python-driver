@@ -79,7 +79,6 @@ from .api import (
     DEFAULT_DATABASE,
     kerberos_auth,
     READ_ACCESS,
-    RenewableAuth,
     ServerInfo,
     SYSTEM_DATABASE,
     TRUST_ALL_CERTIFICATES,

@@ -42,6 +42,7 @@ from ...exceptions import (
     TransactionError,
 )
 from ...work import Query
+from ..auth_management import AsyncAuthManagers
 from .result import AsyncResult
 from .transaction import (
     AsyncManagedTransaction,
@@ -97,6 +98,8 @@ class AsyncSession(AsyncWorkspace):
 
     def __init__(self, pool, session_config):
         assert isinstance(session_config, SessionConfig)
+        if session_config.auth is not None:
+            session_config.auth = AsyncAuthManagers.static(session_config.auth)
         super().__init__(pool, session_config)
         self._config = session_config
         self._initialize_bookmarks(session_config.bookmarks)

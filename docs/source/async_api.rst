@@ -40,7 +40,7 @@ The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the
 
                 await driver.close()  # close the driver object
 
-             asyncio.run(main())
+            asyncio.run(main())
 
 
         For basic authentication, ``auth`` can be a simple tuple, for example:
@@ -67,7 +67,7 @@ The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the
                 async with AsyncGraphDatabase.driver(uri, auth=auth) as driver:
                     ...  # use the driver
 
-             asyncio.run(main())
+            asyncio.run(main())
 
 
 
@@ -117,6 +117,20 @@ Each supported scheme maps to a particular :class:`neo4j.AsyncDriver` subclass t
 
     See https://neo4j.com/docs/operations-manual/current/configuration/ports/ for Neo4j ports.
 
+
+.. _async-auth-ref:
+
+Async Auth
+==========
+
+Authentication mostly works the same as in the synchronous driver.
+However, there are async equivalents of the synchronous constructs.
+
+.. autoclass:: neo4j.auth_management.AsyncAuthManager
+    :members:
+
+.. autoclass:: neo4j.auth_management.AsyncAuthManagers
+    :members:
 
 
 ***********
@@ -336,8 +350,10 @@ Async Driver Configuration
 
 :class:`neo4j.AsyncDriver` is configured exactly like :class:`neo4j.Driver`
 (see :ref:`driver-configuration-ref`). The only differences are that the async
-driver accepts an async custom resolver function (see :ref:`async-resolver-ref`)
-as well as an async auth token provider (see :class:`neo4j.RenewableAuth`).
+driver accepts
+
+ * a sync as well as an async custom resolver function (see :ref:`async-resolver-ref`)
+ * as sync as well as an async auth token manager (see :class:`neo4j.AsyncAuthManager`).
 
 
 .. _async-resolver-ref:
