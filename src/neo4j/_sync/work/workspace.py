@@ -137,7 +137,8 @@ class Workspace:
         acquisition_timeout = self._config.connection_acquisition_timeout
         auth = AcquireAuth(
             auth,
-            backwards_compatible=self._config.backwards_compatible_auth,
+            # TODO: wait for decision on backwards_compatible_auth
+            # backwards_compatible=self._config.backwards_compatible_auth,
             force_auth=acquire_kwargs.pop("force_auth", False),
         )
 

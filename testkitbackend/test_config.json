@@ -37,6 +37,7 @@
     "Feature:Auth:Bearer": true,
     "Feature:Auth:Custom": true,
     "Feature:Auth:Kerberos": true,
+    "Feature:Auth:Managed": true,
     "Feature:Bolt:3.0": true,
     "Feature:Bolt:4.1": true,
     "Feature:Bolt:4.2": true,

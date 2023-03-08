@@ -76,6 +76,7 @@ log = getLogger("neo4j")
 @dataclass
 class AcquireAuth:
     auth: t.Union[AsyncAuthManager, AuthManager, None]
+    # TODO: wait for decision on backwards_compatible_auth
     backwards_compatible: bool = False
     force_auth: bool = False
 

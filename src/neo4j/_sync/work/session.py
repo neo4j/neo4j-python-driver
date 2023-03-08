@@ -171,12 +171,13 @@ class Session(Workspace):
     def _verify_authentication(self):
         assert not self._connection
         self._connect(READ_ACCESS, force_auth=True)
-        if not self._config.backwards_compatible_auth:
-            # Even without backwards compatibility and an old server, the
-            # _connect call above can succeed if the connection is a new one.
-            # Hence, we enforce support explicitly to always let the user know
-            # that this is not supported.
-            self._connection.assert_re_auth_support()
+        # TODO: wait for decision on backwards_compatible_auth
+        # if not self._config.backwards_compatible_auth:
+        #     # Even without backwards compatibility and an old server, the
+        #     # _connect call above can succeed if the connection is a new one.
+        #     # Hence, we enforce support explicitly to always let the user know
+        #     # that this is not supported.
+        #     self._connection.assert_re_auth_support()
         self._disconnect()
 
     def close(self) -> None:

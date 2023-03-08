@@ -495,12 +495,13 @@ class WorkspaceConfig(Config):
     bookmark_manager = ExperimentalOption(None)
     # Specify the bookmark manager to be used for sessions by default.
 
-    #: Session Auth Backward Compatibility Layer
-    backwards_compatible_auth = False
-    # Enable session level authentication (user-switching) on session level
-    # even over Bolt 5.0 and earlier. This is done using a very costly
-    # backwards compatible authentication layer in the driver utilizing
-    # throwaway connections.
+    # TODO: wait for decision on backwards_compatible_auth
+    # #: Session Auth Backward Compatibility Layer
+    # backwards_compatible_auth = False
+    # # Enable session level authentication (user-switching) on session level
+    # # even over Bolt 5.0 and earlier. This is done using a very costly
+    # # backwards compatible authentication layer in the driver utilizing
+    # # throwaway connections.
 
 
 class SessionConfig(WorkspaceConfig):
