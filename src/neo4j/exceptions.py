@@ -310,8 +310,24 @@ class AuthError(ClientError):
 class TokenExpired(AuthError):
     """ Raised when the authentication token has expired.
 
-    A new driver instance with a fresh authentication token needs to be created.
+    A new driver instance with a fresh authentication token needs to be
+    created, unless the driver was configured using a non-static
+    :class:`.AuthManager`. In that case, the error will be
+    :exc:`.TokenExpiredRetryable` instead.
     """
+
+
+# Neo4jError > ClientError > AuthError > TokenExpired > TokenExpiredRetryable
+class TokenExpiredRetryable(TokenExpired):
+    """Raised when the authentication token has expired but can be refreshed.
+
+    This is the same server error as :exc:`.TokenExpired`, but raised when
+    the driver is configured to be able to refresh the token, hence making
+    the error retryable.
+    """
+
+    def is_retryable(self) -> bool:
+        return True
 
 
 # Neo4jError > ClientError > Forbidden

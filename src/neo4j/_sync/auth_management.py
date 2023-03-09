@@ -39,7 +39,7 @@ from ..api import _TAuth
 log = getLogger("neo4j")
 
 
-class _StaticAuthManager(AuthManager):
+class StaticAuthManager(AuthManager):
     _auth: _TAuth
 
     def __init__(self, auth: _TAuth) -> None:
@@ -68,7 +68,7 @@ class _TemporalAuthHolder:
             return False
         return time.monotonic() > self._expiry
 
-class _TemporalAuthManager(AuthManager):
+class TemporalAuthManager(AuthManager):
     _current_auth: t.Optional[_TemporalAuthHolder]
     _provider: t.Callable[[], t.Union[TemporalAuth]]
     _lock: Lock
@@ -135,7 +135,7 @@ class AuthManagers:
             An instance of an implementation of :class:`.AuthManager` that
             always returns the same auth.
         """
-        return _StaticAuthManager(auth)
+        return StaticAuthManager(auth)
 
     @staticmethod
     def temporal(
@@ -187,4 +187,4 @@ class AuthManagers:
             reached its expiry time or because the server flagged it as
             expired).
         """
-        return _TemporalAuthManager(provider)
+        return TemporalAuthManager(provider)

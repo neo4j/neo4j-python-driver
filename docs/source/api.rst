@@ -1651,6 +1651,8 @@ Server-side errors
 
       * :class:`neo4j.exceptions.TokenExpired`
 
+        * :class:`neo4j.exceptions.TokenExpiredRetryable`
+
     * :class:`neo4j.exceptions.Forbidden`
 
   * :class:`neo4j.exceptions.DatabaseError`
@@ -1684,6 +1686,9 @@ Server-side errors
     :show-inheritance:
 
 .. autoexception:: neo4j.exceptions.TokenExpired()
+    :show-inheritance:
+
+.. autoexception:: neo4j.exceptions.TokenExpiredRetryable()
     :show-inheritance:
 
 .. autoexception:: neo4j.exceptions.Forbidden()

@@ -39,7 +39,7 @@ from ..api import _TAuth
 log = getLogger("neo4j")
 
 
-class _AsyncStaticAuthManager(AsyncAuthManager):
+class AsyncStaticAuthManager(AsyncAuthManager):
     _auth: _TAuth
 
     def __init__(self, auth: _TAuth) -> None:
@@ -68,7 +68,7 @@ class _TemporalAuthHolder:
             return False
         return time.monotonic() > self._expiry
 
-class _AsyncTemporalAuthManager(AsyncAuthManager):
+class AsyncTemporalAuthManager(AsyncAuthManager):
     _current_auth: t.Optional[_TemporalAuthHolder]
     _provider: t.Callable[[], t.Awaitable[TemporalAuth]]
     _lock: AsyncLock
@@ -135,7 +135,7 @@ class AsyncAuthManagers:
             An instance of an implementation of :class:`.AsyncAuthManager` that
             always returns the same auth.
         """
-        return _AsyncStaticAuthManager(auth)
+        return AsyncStaticAuthManager(auth)
 
     @staticmethod
     def temporal(
@@ -187,4 +187,4 @@ class AsyncAuthManagers:
             reached its expiry time or because the server flagged it as
             expired).
         """
-        return _AsyncTemporalAuthManager(provider)
+        return AsyncTemporalAuthManager(provider)
