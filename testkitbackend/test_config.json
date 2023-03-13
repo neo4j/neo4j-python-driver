@@ -55,7 +55,6 @@
     "Optimization:EagerTransactionBegin": true,
     "Optimization:ImplicitDefaultArguments": true,
     "Optimization:MinimalBookmarksSet": true,
-    "Optimization:MinimalNotificationsConfig": true,
     "Optimization:MinimalResets": true,
     "Optimization:PullPipelining": true,
     "Optimization:ResultListFetchAll": "The idiomatic way to cast to list is indistinguishable from iterating over the result.",

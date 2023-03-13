@@ -27,7 +27,10 @@ if t.TYPE_CHECKING:
     import ssl
     import typing_extensions as te
 
-    from .._api import T_NotificationFilter
+    from .._api import (
+        T_NotificationDisabledCategory,
+        T_NotificationMinimumSeverity,
+    )
 
 from .._api import RoutingControl
 from .._async_compat.util import Util
@@ -129,8 +132,11 @@ class GraphDatabase:
             ssl_context: ssl.SSLContext = ...,
             user_agent: str = ...,
             keep_alive: bool = ...,
-            notification_filters: t.Union[
-                None, T_NotificationFilter, t.Iterable[T_NotificationFilter]
+            notifications_min_severity: t.Optional[
+                T_NotificationMinimumSeverity
+            ] = ...,
+            notifications_disabled_categories: t.Optional[
+                t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
 
             # undocumented/unsupported options
@@ -156,7 +162,7 @@ class GraphDatabase:
             auth: t.Union[t.Tuple[t.Any, t.Any], Auth, None] = None,
             **config
         ) -> Driver:
-            """Create a driver.
+            """Create a driver.'
 
             :param uri: the connection URI for the driver,
                 see :ref:`uri-ref` for available URIs.
@@ -229,6 +235,7 @@ class GraphDatabase:
             elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
                 config["encrypted"] = True
                 config["trusted_certificates"] = TrustAll()
+            _normalize_notifications_config(config)
 
             assert driver_type in (DRIVER_BOLT, DRIVER_NEO4J)
             if driver_type == DRIVER_BOLT:
@@ -473,9 +480,7 @@ class Driver:
         return bool(self._pool.pool_config.encrypted)
 
     def _prepare_session_config(self, **config):
-        if "notification_filters" not in config:
-            config["notification_filters"] = \
-                self._pool.pool_config.notification_filters
+        _normalize_notifications_config(config)
         return config
 
     if t.TYPE_CHECKING:
@@ -492,8 +497,11 @@ class Driver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[BookmarkManager,
                                       BookmarkManager, None] = ...,
-            notification_filters: t.Union[
-                None, T_NotificationFilter, t.Iterable[T_NotificationFilter]
+            notifications_min_severity: t.Optional[
+                T_NotificationMinimumSeverity
+            ] = ...,
+            notifications_disabled_categories: t.Optional[
+                t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
 
             # undocumented/unsupported options
@@ -852,7 +860,12 @@ class Driver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[BookmarkManager,
                                       BookmarkManager, None] = ...,
-            notification_filters: t.Optional[T_NotificationFilter] = ...,
+            notifications_min_severity: t.Optional[
+                T_NotificationMinimumSeverity
+            ] = ...,
+            notifications_disabled_categories: t.Optional[
+                t.Iterable[T_NotificationDisabledCategory]
+            ] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
@@ -918,7 +931,12 @@ class Driver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[BookmarkManager,
                                       BookmarkManager, None] = ...,
-            notification_filters: t.Optional[T_NotificationFilter] = ...,
+            notifications_min_severity: t.Optional[
+                T_NotificationMinimumSeverity
+            ] = ...,
+            notifications_disabled_categories: t.Optional[
+                t.Iterable[T_NotificationDisabledCategory]
+            ] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
@@ -1079,3 +1097,16 @@ class Neo4jDriver(_Routing, Driver):
             session_config = SessionConfig(self._default_workspace_config,
                                            config)
             return Session(self._pool, session_config)
+
+
+def _normalize_notifications_config(config):
+    if config.get("notifications_disabled_categories") is not None:
+        config["notifications_disabled_categories"] = [
+            getattr(e, "value", e)
+            for e in config["notifications_disabled_categories"]
+        ]
+    if config.get("notifications_min_severity") is not None:
+        config["notifications_min_severity"] = getattr(
+            config["notifications_min_severity"], "value",
+            config["notifications_min_severity"]
+        )

@@ -18,7 +18,6 @@
 
 from __future__ import annotations
 
-import itertools
 import typing as t
 
 import pytest
@@ -26,7 +25,6 @@ import pytest
 import neo4j
 from neo4j._async_compat.util import Util
 from neo4j._meta import copy_signature
-from neo4j._sync.bookmark_manager import Neo4jBookmarkManager
 from neo4j.api import Bookmarks
 
 from ..._async_compat import mark_sync_test

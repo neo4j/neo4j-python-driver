@@ -62,6 +62,8 @@ class Bolt4x0(Bolt):
 
     supports_multiple_databases = True
 
+    supports_notification_filtering = False
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._server_state_manager = ServerStateManager(
@@ -96,11 +98,11 @@ class Bolt4x0(Bolt):
         }
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
-        if self.notification_filters is not None:
-            raise ConfigurationError(
-                "Notification filters are not supported by the Bolt Protocol "
-                "{!r}".format(self.PROTOCOL_VERSION)
-            )
+        if (
+            self.notifications_min_severity is not None
+            or self.notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
         headers = self.get_base_headers()
         headers.update(self.auth_dict)
         logged_headers = dict(headers)
@@ -162,7 +164,8 @@ class Bolt4x0(Bolt):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            notification_filters=None, dehydration_hooks=None,
+            notifications_min_severity=None,
+            notifications_disabled_categories=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
         if imp_user is not None:
             raise ConfigurationError(
@@ -171,11 +174,11 @@ class Bolt4x0(Bolt):
                     self.PROTOCOL_VERSION, imp_user
                 )
             )
-        if notification_filters is not None:
-            raise ConfigurationError(
-                "Notification filters are not supported by the Bolt Protocol "
-                "{!r}".format(self.PROTOCOL_VERSION)
-            )
+        if (
+            notifications_min_severity is not None
+            or notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
         if not parameters:
             parameters = {}
         extra = {}
@@ -227,8 +230,9 @@ class Bolt4x0(Bolt):
                      dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, notification_filters=None,
-              dehydration_hooks=None, hydration_hooks=None, **handlers):
+              db=None, imp_user=None, notifications_min_severity=None,
+              notifications_disabled_categories=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
         if imp_user is not None:
             raise ConfigurationError(
                 "Impersonation is not supported in Bolt Protocol {!r}. "
@@ -236,11 +240,11 @@ class Bolt4x0(Bolt):
                     self.PROTOCOL_VERSION, imp_user
                 )
             )
-        if notification_filters is not None:
-            raise ConfigurationError(
-                "Notification filters are not supported by the Bolt Protocol "
-                "{!r}".format(self.PROTOCOL_VERSION)
-            )
+        if (
+            notifications_min_severity is not None
+            or notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
         extra = {}
         if mode in (READ_ACCESS, "r"):
             extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
@@ -432,11 +436,11 @@ class Bolt4x3(Bolt4x2):
         return [metadata.get("rt")]
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
-        if self.notification_filters is not None:
-            raise ConfigurationError(
-                "Notification filters are not supported by the Bolt Protocol "
-                "{!r}".format(self.PROTOCOL_VERSION)
-            )
+        if (
+            self.notifications_min_severity is not None
+            or self.notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
 
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
@@ -507,13 +511,14 @@ class Bolt4x4(Bolt4x3):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            notification_filters=None, dehydration_hooks=None,
+            notifications_min_severity=None,
+            notifications_disabled_categories=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
-        if notification_filters is not None:
-            raise ConfigurationError(
-                "Notification filters are not supported by the Bolt Protocol "
-                "{!r}".format(self.PROTOCOL_VERSION)
-            )
+        if (
+            notifications_min_severity is not None
+            or notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
         if not parameters:
             parameters = {}
         extra = {}
@@ -549,13 +554,14 @@ class Bolt4x4(Bolt4x3):
                      dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, notification_filters=None,
-              dehydration_hooks=None, hydration_hooks=None, **handlers):
-        if notification_filters is not None:
-            raise ConfigurationError(
-                "Notification filters are not supported by the Bolt Protocol "
-                "{!r}".format(self.PROTOCOL_VERSION)
-            )
+              db=None, imp_user=None, notifications_min_severity=None,
+              notifications_disabled_categories=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
+        if (
+            notifications_min_severity is not None
+            or notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
         extra = {}
         if mode in (READ_ACCESS, "r"):
             # It will default to mode "w" if nothing is specified

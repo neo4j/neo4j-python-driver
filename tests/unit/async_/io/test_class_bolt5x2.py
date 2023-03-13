@@ -14,8 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
+import itertools
 import logging
 
 import pytest
@@ -275,15 +274,10 @@ async def test_hint_recv_timeout_seconds(
 
 
 def _assert_notifications_in_extra(extra, expected):
-    if expected is ...:
-        assert "notifications" not in extra
-        return
-    sent_filters = extra["notifications"]
-    if expected is None:
-        assert sent_filters is None
-    else:
-        assert isinstance(sent_filters, list)
-        assert sorted(sent_filters) == sorted(expected)
+    for key in expected:
+        assert key in extra
+        assert extra[key] == expected[key]
+
 
 
 @pytest.mark.parametrize(("method", "args", "extra_idx"), (
@@ -291,61 +285,47 @@ def _assert_notifications_in_extra(extra, expected):
     ("begin", (), 0),
 ))
 @pytest.mark.parametrize(
-    ("cls_filters", "method_filters", "expected"),
-    (
-        (None, None, ...),
-        (None, ["*.*"], ["*.*"]),
-        (["*.*"], None, None),
-        (None, [], []),
-        ([], None, None),
-        # optimization
-        (["*.*"], ["*.*"], ...),
-        ([], [], ...),
-        (["*.*"], ["NONE"], ["NONE"]),
-        (["NONE"], ["*.*"], ["*.*"]),
-        (["NONE"], ["*.*"], ["*.*"]),
-        (["SERVER_DEFAULT", "*.*"], ["NONE"], ["NONE"]),
-        (["NONE"], ["SERVER_DEFAULT", "*.*"], ["SERVER_DEFAULT", "*.*"]),
-        # optimization
-        (["SERVER_DEFAULT", "*.*"], ["SERVER_DEFAULT", "*.*"], ...),
-        (["SERVER_DEFAULT", "*.*"], ["*.*"], ["*.*"]),
-        (["*.*"], ["SERVER_DEFAULT", "*.*"], ["SERVER_DEFAULT", "*.*"]),
-    )
+    ("cls_min_sev", "method_min_sev"),
+    itertools.product((None, "WARNING", "OFF"), repeat=2)
+)
+@pytest.mark.parametrize(
+    ("cls_dis_cats", "method_dis_cats"),
+    itertools.product((None, [], ["HINT"], ["HINT", "DEPRECATION"]), repeat=2)
 )
 @mark_async_test
 async def test_supports_notification_filters(
-    fake_socket, method, args, extra_idx, cls_filters, method_filters,
-    expected
+    fake_socket, method, args, extra_idx, cls_min_sev, method_min_sev,
+    cls_dis_cats, method_dis_cats
 ):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address, AsyncBolt5x2.UNPACKER_CLS)
     connection = AsyncBolt5x2(
         address, socket, PoolConfig.max_connection_lifetime,
-        notification_filters=cls_filters
+        notifications_min_severity=cls_min_sev,
+        notifications_disabled_categories=cls_dis_cats
     )
     method = getattr(connection, method)
 
-    method(*args, notification_filters=method_filters)
+    method(*args, notifications_min_severity=method_min_sev,
+           notifications_disabled_categories=method_dis_cats)
     await connection.send_all()
 
     _, fields = await socket.pop_message()
     extra = fields[extra_idx]
+    expected = {}
+    if method_min_sev is not None:
+        expected["notifications_minimum_severity"] = method_min_sev
+    if method_dis_cats is not None:
+        expected["notifications_disabled_categories"] = method_dis_cats
     _assert_notifications_in_extra(extra, expected)
 
 
-@pytest.mark.parametrize(
-    ("filters", "expected"),
-    (
-        (None, ...),
-        ([], []),
-        (["NONE"], ["NONE"]),
-        (["*.*"], ["*.*"]),
-        (["SERVER_DEFAULT", "*.*"], ["SERVER_DEFAULT", "*.*"]),
-    )
-)
+@pytest.mark.parametrize("min_sev", (None, "WARNING", "OFF"))
+@pytest.mark.parametrize("dis_cats",
+                         (None, [], ["HINT"], ["HINT", "DEPRECATION"]))
 @mark_async_test
 async def test_hello_supports_notification_filters(
-    fake_socket_pair, filters, expected
+    fake_socket_pair, min_sev, dis_cats
 ):
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address,
@@ -355,13 +335,19 @@ async def test_hello_supports_notification_filters(
     await sockets.server.send_message(b"\x70", {})
     connection = AsyncBolt5x2(
         address, sockets.client, PoolConfig.max_connection_lifetime,
-        notification_filters=filters
+        notifications_min_severity=min_sev,
+        notifications_disabled_categories=dis_cats
     )
 
     await connection.hello()
 
     tag, fields = await sockets.server.pop_message()
     extra = fields[0]
+    expected = {}
+    if min_sev is not None:
+        expected["notifications_minimum_severity"] = min_sev
+    if dis_cats is not None:
+        expected["notifications_disabled_categories"] = dis_cats
     _assert_notifications_in_extra(extra, expected)
 
 

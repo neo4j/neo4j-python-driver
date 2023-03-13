@@ -32,7 +32,8 @@ from neo4j import (
     AsyncNeo4jDriver,
     AsyncResult,
     ExperimentalWarning,
-    NotificationFilter,
+    NotificationDisabledCategory,
+    NotificationMinimumSeverity,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
     TrustAll,
@@ -44,7 +45,10 @@ from neo4j._async.io import (
     AsyncBoltPool,
     AsyncNeo4jPool,
 )
-from neo4j._conf import PoolConfig
+from neo4j._conf import (
+    PoolConfig,
+    SessionConfig,
+)
 from neo4j.api import (
     AsyncBookmarkManager,
     BookmarkManager,
@@ -235,6 +239,7 @@ async def test_driver_opens_write_session_by_default(uri, fake_pool, mocker):
         mocker.ANY,
         mocker.ANY,
         WRITE_ACCESS,
+        mocker.ANY,
         mocker.ANY,
         mocker.ANY,
         mocker.ANY
@@ -437,44 +442,48 @@ async def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
 
 
-_T_NotificationFilter = t.Union[
-    NotificationFilter,
+_T_NotificationMinimumSeverity = t.Union[
+    NotificationMinimumSeverity,
     te.Literal[
-        "*.*",
-        "WARNING.*",
-        "WARNING.DEPRECATION",
-        "WARNING.HINT",
-        "WARNING.UNRECOGNIZED",
-        "WARNING.UNSUPPORTED",
-        "WARNING.GENERIC",
-        "WARNING.PERFORMANCE",
-        "INFORMATION.*",
-        "INFORMATION.DEPRECATION",
-        "INFORMATION.HINT",
-        "INFORMATION.UNRECOGNIZED",
-        "INFORMATION.UNSUPPORTED",
-        "INFORMATION.GENERIC",
-        "INFORMATION.PERFORMANCE",
-        "*.DEPRECATION",
-        "*.HINT",
-        "*.UNRECOGNIZED",
-        "*.UNSUPPORTED",
-        "*.GENERIC",
-        "*.PERFORMANCE",
+        "OFF",
+        "WARNING",
+        "INFORMATION",
+    ]
+]
+
+_T_NotificationDisabledCategory = t.Union[
+    NotificationDisabledCategory,
+    te.Literal[
+        "HINT",
+        "UNRECOGNIZED",
+        "UNSUPPORTED",
+        "PERFORMANCE",
+        "DEPRECATION",
+        "GENERIC",
     ]
 ]
 
 
-@pytest.mark.parametrize("filters", (
+@pytest.mark.parametrize("min_sev", (
     ...,
     None,
-    NotificationFilter.none(),
+    "OFF",
+    NotificationMinimumSeverity.OFF,
+    "WARNING",
+    NotificationMinimumSeverity.INFORMATION,
+))
+@pytest.mark.parametrize("dis_cats", (
+    ...,
+    None,
     [],
-    NotificationFilter.server_default(),
-    "*.*",
-    NotificationFilter.ALL_ALL,
-    ["*.*", "WARNING.*"],
-    [NotificationFilter.ALL_ALL, NotificationFilter.WARNING_ALL],
+    ["GENERIC"],
+    [NotificationDisabledCategory.GENERIC],
+    [NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT],
+    (NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT),
+    (NotificationDisabledCategory.GENERIC, "HINT"),
+    # please no :/
+    {"GENERIC", "HINT"},
+    {"GENERIC": True, NotificationDisabledCategory.HINT: 0},
 ))
 @pytest.mark.parametrize("uri", [
     "bolt://localhost:7687",
@@ -485,8 +494,8 @@ async def test_driver_factory_with_notification_filters(
     uri: str,
     mocker,
     fake_pool,
-    filters: t.Union[None, _T_NotificationFilter,
-                     t.Iterable[_T_NotificationFilter]]
+    min_sev: t.Optional[_T_NotificationMinimumSeverity],
+    dis_cats: t.Optional[t.Iterable[_T_NotificationDisabledCategory]],
 ) -> None:
     pool_cls = AsyncNeo4jPool if uri.startswith("neo4j://") else AsyncBoltPool
     open_mock = mocker.patch.object(
@@ -496,32 +505,69 @@ async def test_driver_factory_with_notification_filters(
     open_mock.return_value.address = mocker.Mock()
     mocker.patch.object(AsyncBoltPool, "open", new=open_mock)
 
-    if filters is ...:
-        driver = AsyncGraphDatabase.driver(uri, auth=None)
-    else:
-        driver = AsyncGraphDatabase.driver(uri, auth=None,
-                                           notification_filters=filters)
-    async with driver:
-        if filters is ...:
-            expected_conf = PoolConfig()
+    if min_sev is ...:
+        if dis_cats is ...:
+            driver = AsyncGraphDatabase.driver(uri, auth=None)
         else:
-            expected_conf = PoolConfig(notification_filters=filters)
+            driver = AsyncGraphDatabase.driver(
+                uri, auth=None,
+                notifications_disabled_categories=dis_cats
+            )
+    else:
+        if dis_cats is ...:
+            driver = AsyncGraphDatabase.driver(
+                uri, auth=None,
+                notifications_min_severity=min_sev
+            )
+        else:
+            driver = AsyncGraphDatabase.driver(
+                uri, auth=None,
+                notifications_min_severity=min_sev,
+                notifications_disabled_categories=dis_cats
+            )
+
+    async with driver:
+        default_conf = PoolConfig()
+        if min_sev is None:
+            expected_min_sev = min_sev
+        elif min_sev is not ...:
+            expected_min_sev = getattr(min_sev, "value", min_sev)
+        else:
+            expected_min_sev = default_conf.notifications_min_severity
+        if dis_cats is None:
+            expected_dis_cats = dis_cats
+        elif dis_cats is not ...:
+            expected_dis_cats = [getattr(d, "value", d) for d in dis_cats]
+        else:
+            expected_dis_cats = default_conf.notifications_disabled_categories
+
         open_mock.assert_called_once()
         open_pool_conf = open_mock.call_args.kwargs["pool_config"]
-        assert (open_pool_conf.notification_filters
-                == expected_conf.notification_filters)
+        assert open_pool_conf.notifications_min_severity == expected_min_sev
+        assert (open_pool_conf.notifications_disabled_categories
+                == expected_dis_cats)
 
 
-@pytest.mark.parametrize("filters", (
+@pytest.mark.parametrize("min_sev", (
     ...,
     None,
-    NotificationFilter.none(),
+    "OFF",
+    NotificationMinimumSeverity.OFF,
+    "WARNING",
+    NotificationMinimumSeverity.INFORMATION,
+))
+@pytest.mark.parametrize("dis_cats", (
+    ...,
+    None,
     [],
-    NotificationFilter.server_default(),
-    "*.*",
-    NotificationFilter.ALL_ALL,
-    ["*.*", "WARNING.*"],
-    [NotificationFilter.ALL_ALL, NotificationFilter.WARNING_ALL],
+    ["GENERIC"],
+    [NotificationDisabledCategory.GENERIC],
+    [NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT],
+    (NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT),
+    (NotificationDisabledCategory.GENERIC, "HINT"),
+    # please no :/
+    {"GENERIC", "HINT"},
+    {"GENERIC": True, NotificationDisabledCategory.HINT: 0},
 ))
 @pytest.mark.parametrize("uri", [
     "bolt://localhost:7687",
@@ -529,32 +575,62 @@ async def test_driver_factory_with_notification_filters(
 ])
 @mark_async_test
 async def test_session_factory_with_notification_filter(
-    uri: str, mocker, filters: t.Union[None, _T_NotificationFilter,
-                                       t.Iterable[_T_NotificationFilter]]
+    uri: str,
+    mocker,
+    min_sev: t.Optional[_T_NotificationMinimumSeverity],
+    dis_cats: t.Optional[t.Iterable[_T_NotificationDisabledCategory]],
 ) -> None:
     pool_cls = AsyncNeo4jPool if uri.startswith("neo4j://") else AsyncBoltPool
     pool_mock: t.Any = mocker.AsyncMock(spec=pool_cls)
     mocker.patch.object(pool_cls, "open", return_value=pool_mock)
     pool_mock.address = mocker.Mock()
-    driver_filters = object()
-    pool_mock.pool_config = PoolConfig(notification_filters=driver_filters)
+    # driver_filters = object()
+    # pool_mock.pool_config = PoolConfig(notification_filters=driver_filters)
     session_cls_mock = mocker.patch("neo4j._async.driver.AsyncSession",
                                     autospec=True)
 
     async with AsyncGraphDatabase.driver(uri, auth=None) as driver:
-        if filters is ...:
-            session = driver.session()
+        if min_sev is ...:
+            if dis_cats is ...:
+                session = driver.session()
+            else:
+                session = driver.session(
+                    notifications_disabled_categories=dis_cats
+                )
         else:
-            session = driver.session(notification_filters=filters)
+            if dis_cats is ...:
+                session = driver.session(
+                    notifications_min_severity=min_sev
+                )
+            else:
+                session = driver.session(
+                    notifications_min_severity=min_sev,
+                    notifications_disabled_categories=dis_cats
+                )
 
         async with session:
             session_cls_mock.assert_called_once()
             (_, session_config), _ = session_cls_mock.call_args
 
-            if filters is ...:
-                assert session_config.notification_filters is driver_filters
+            default_conf = SessionConfig()
+            if min_sev is None:
+                expected_min_sev = min_sev
+            elif min_sev is not ...:
+                expected_min_sev = getattr(min_sev, "value", min_sev)
             else:
-                assert session_config.notification_filters == filters
+                expected_min_sev = default_conf.notifications_min_severity
+            if dis_cats is None:
+                expected_dis_cats = dis_cats
+            elif dis_cats is not ...:
+                expected_dis_cats = [getattr(d, "value", d) for d in dis_cats]
+            else:
+                expected_dis_cats = \
+                    default_conf.notifications_disabled_categories
+
+            assert (session_config.notifications_min_severity
+                    == expected_min_sev)
+            assert (session_config.notifications_disabled_categories
+                    == expected_dis_cats)
 
 
 class SomeClass:

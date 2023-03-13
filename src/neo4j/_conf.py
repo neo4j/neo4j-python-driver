@@ -18,13 +18,10 @@
 
 from __future__ import annotations
 
-import typing as t
 import warnings
 from abc import ABCMeta
 from collections.abc import Mapping
-from dataclasses import dataclass
 
-from ._api import NotificationFilter
 from ._meta import (
     deprecation_warn,
     experimental_warn,

@@ -540,14 +540,29 @@ async def test_last_bookmarks_does_not_leak_bookmark_managers_bookmarks(
 
 @pytest.mark.parametrize("routing", (True, False))
 @mark_async_test
-async def test_run_notification_filters(fake_pool, routing):
+async def test_run_notification_min_severity(fake_pool, routing):
     fake_pool.mock_add_spec(AsyncNeo4jPool if routing else AsyncBoltPool)
-    filters = object()
-    config = SessionConfig(notification_filters=filters)
+    min_sev = object()
+    config = SessionConfig(notifications_min_severity=min_sev)
     async with AsyncSession(fake_pool, config) as session:
         await session.run("RETURN 1")
         assert len(fake_pool.acquired_connection_mocks) == 1
         connection_mock = fake_pool.acquired_connection_mocks[0]
         connection_mock.run.assert_called_once()
         call_kwargs = connection_mock.run.call_args.kwargs
-        assert call_kwargs["notification_filters"] is filters
+        assert call_kwargs["notifications_min_severity"] is min_sev
+
+
+@pytest.mark.parametrize("routing", (True, False))
+@mark_async_test
+async def test_run_notification_disabled_categories(fake_pool, routing):
+    fake_pool.mock_add_spec(AsyncNeo4jPool if routing else AsyncBoltPool)
+    dis_cats = object()
+    config = SessionConfig(notifications_disabled_categories=dis_cats)
+    async with AsyncSession(fake_pool, config) as session:
+        await session.run("RETURN 1")
+        assert len(fake_pool.acquired_connection_mocks) == 1
+        connection_mock = fake_pool.acquired_connection_mocks[0]
+        connection_mock.run.assert_called_once()
+        call_kwargs = connection_mock.run.call_args.kwargs
+        assert call_kwargs["notifications_disabled_categories"] is dis_cats

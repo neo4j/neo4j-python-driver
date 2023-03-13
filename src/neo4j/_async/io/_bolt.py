@@ -40,6 +40,7 @@ from ...api import (
 )
 from ...exceptions import (
     AuthError,
+    ConfigurationError,
     DriverError,
     IncompleteCommit,
     ServiceUnavailable,
@@ -103,7 +104,7 @@ class AsyncBolt:
 
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *,
                  auth=None, user_agent=None, routing_context=None,
-                 noti_min_sev=None, noti_disabled_cats=None):
+                 notifications_min_severity=None, notifications_disabled_categories=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
         self.local_port = self.socket.getsockname()[1]
@@ -156,8 +157,9 @@ class AsyncBolt:
             if credentials is None:
                 raise AuthError("Password cannot be None")
 
-        self.noti_min_sev = noti_min_sev
-        self.noti_disabled_cats = noti_disabled_cats
+        self.notifications_min_severity = notifications_min_severity
+        self.notifications_disabled_categories = \
+            notifications_disabled_categories
 
     def __del__(self):
         if not asyncio.iscoroutinefunction(self.close):
@@ -183,6 +185,20 @@ class AsyncBolt:
         databases.
         """
         pass
+
+    @property
+    @abc.abstractmethod
+    def supports_notification_filtering(self):
+        """Whether the connection version supports re-authentication."""
+        pass
+
+    def assert_notification_filtering_support(self):
+        if not self.supports_notification_filtering:
+            raise ConfigurationError(
+                "Notification filtering is not supported for the Bolt "
+                f"Protocol {self.PROTOCOL_VERSION!r}. Server Agent "
+                f"{self.server_info.agent!r}"
+            )
 
     # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
@@ -388,8 +404,9 @@ class AsyncBolt:
         connection = bolt_cls(
             address, s, pool_config.max_connection_lifetime, auth=auth,
             user_agent=pool_config.user_agent, routing_context=routing_context,
-            noti_min_sev=pool_config.notifications_min_severity,
-            noti_disabled_cats=pool_config.notifications_disabled_categories
+            notifications_min_severity=pool_config.notifications_min_severity,
+            notifications_disabled_categories=
+                pool_config.notifications_disabled_categories
         )
 
         try:
@@ -466,7 +483,8 @@ class AsyncBolt:
     @abc.abstractmethod
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            noti_min_sev=None, noti_disabled_cats=None, dehydration_hooks=None,
+            notifications_min_severity=None,
+            notifications_disabled_categories=None, dehydration_hooks=None,
             hydration_hooks=None, **handlers):
         """ Appends a RUN message to the output queue.
 
@@ -480,9 +498,10 @@ class AsyncBolt:
             Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
             Requires Bolt 4.4+.
-        :param noti_min_sev: minimum severity of notifications to be received.
+        :param notifications_min_severity:
+            minimum severity of notifications to be received.
             Requires Bolt 5.2+.
-        :param noti_disabled_cats:
+        :param notifications_disabled_categories:
             list of notification categories to be disabled.
             Requires Bolt 5.2+.
         :param dehydration_hooks:
@@ -537,8 +556,8 @@ class AsyncBolt:
 
     @abc.abstractmethod
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, noti_min_sev=None,
-              noti_disabled_cats=None, dehydration_hooks=None,
+              db=None, imp_user=None, notifications_min_severity=None,
+              notifications_disabled_categories=None, dehydration_hooks=None,
               hydration_hooks=None, **handlers):
         """ Appends a BEGIN message to the output queue.
 
@@ -550,9 +569,10 @@ class AsyncBolt:
             Requires Bolt 4.0+.
         :param imp_user: the user to impersonate
             Requires Bolt 4.4+
-        :param noti_min_sev: minimum severity of notifications to be received.
+        :param notifications_min_severity:
+            minimum severity of notifications to be received.
             Requires Bolt 5.2+.
-        :param noti_disabled_cats:
+        :param notifications_disabled_categories:
             list of notification categories to be disabled.
             Requires Bolt 5.2+.
         :param dehydration_hooks:

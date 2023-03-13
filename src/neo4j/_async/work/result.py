@@ -117,11 +117,11 @@ class AsyncResult:
         # BEGIN+RUN does not carry any extra on the RUN message.
         # BEGIN {extra}
         # RUN "query" {parameters} {extra}
-        await self._run(query, parameters, None, None, None, None, ...)
+        await self._run(query, parameters, None, None, None, None, None, None)
 
     async def _run(
         self, query, parameters, db, imp_user, access_mode, bookmarks,
-        noti_min_sev, noti_disabled_cats
+        notifications_min_severity, notifications_disabled_categories
     ):
         query_text = str(query)  # Query or string object
         query_metadata = getattr(query, "metadata", None)
@@ -158,8 +158,9 @@ class AsyncResult:
             timeout=query_timeout,
             db=db,
             imp_user=imp_user,
-            noti_min_sev=noti_min_sev,
-            noti_disabled_cats=noti_disabled_cats,
+            notifications_min_severity=notifications_min_severity,
+            notifications_disabled_categories=
+                notifications_disabled_categories,
             dehydration_hooks=self._hydration_scope.dehydration_hooks,
             on_success=on_attached,
             on_failure=on_failed_attach,

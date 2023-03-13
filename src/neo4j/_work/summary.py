@@ -34,11 +34,6 @@ from ..addressing import Address
 from ..api import ServerInfo
 
 
-BOLT_VERSION_1 = 1
-BOLT_VERSION_2 = 2
-BOLT_VERSION_3 = 3
-BOLT_VERSION_4 = 4
-
 # TODO: This logic should be inside the Bolt subclasses, because it can change depending on Bolt Protocol Version.
 
 
@@ -108,7 +103,7 @@ class ResultSummary:
         self.profile = metadata.get("profile")
         self.notifications = metadata.get("notifications")
         self.counters = SummaryCounters(metadata.get("stats", {}))
-        if self.server.protocol_version[0] < BOLT_VERSION_3:
+        if self.server.protocol_version[0] < 3:
             self.result_available_after = metadata.get("result_available_after")
             self.result_consumed_after = metadata.get("result_consumed_after")
         else:
@@ -119,9 +114,9 @@ class ResultSummary:
     def summary_notifications(self) -> t.List[SummaryNotification]:
         """The same as ``notifications`` but in a parsed, structured form.
 
-        .. versionadded:: 5.2
+        .. versionadded:: 5.7
 
-        .. seealso:: :attr:`.notifications`
+        .. seealso:: :attr:`.notifications`, :class:`.SummaryNotification`
         """
         if getattr(self, "_summary_notifications", None) is None:
             self._summary_notifications = [
@@ -241,7 +236,7 @@ _CATEGORY_LOOKUP = {
 class SummaryNotification:
     """Structured form of a notification received from the server.
 
-    .. versionadded:: 5.2
+    .. versionadded:: 5.7
 
     .. seealso:: :attr:`.ResultSummary.summary_notifications`
     """
@@ -278,14 +273,14 @@ class SummaryNotification:
             kwargs["category"] = _CATEGORY_LOOKUP.get(
                 category, NotificationCategory.UNKNOWN
             )
-        return SummaryNotification(**kwargs)
+        return cls(**kwargs)
 
 
 @dataclass
 class SummaryNotificationPosition:
     """Structured form of a notification position received from the server.
 
-    .. versionadded:: 5.2
+    .. versionadded:: 5.7
 
     .. seealso:: :class:`.SummaryNotification`
     """
@@ -310,4 +305,4 @@ class SummaryNotificationPosition:
             value = metadata.get(key)
             if isinstance(value, int):
                 kwargs[key] = value
-        return SummaryNotificationPosition(**kwargs)
+        return cls(**kwargs)

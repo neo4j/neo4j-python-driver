@@ -22,7 +22,6 @@ import pytest
 
 from neo4j import (
     ExperimentalWarning,
-    NotificationFilter,
     TrustAll,
     TrustCustomCAs,
     TrustSystemCAs,
@@ -57,7 +56,8 @@ test_pool_config = {
     "user_agent": "test",
     "trusted_certificates": TrustSystemCAs(),
     "ssl_context": None,
-    "notification_filters": None,
+    "notifications_min_severity": None,
+    "notifications_disabled_categories": None,
 }
 
 test_session_config = {
@@ -72,7 +72,8 @@ test_session_config = {
     "impersonated_user": None,
     "fetch_size": 100,
     "bookmark_manager": object(),
-    "notification_filters": None,
+    "notifications_min_severity": None,
+    "notifications_disabled_categories": None,
 }
 
 

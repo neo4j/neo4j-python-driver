@@ -75,10 +75,11 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
                 "title": n.title,
                 "code": n.code,
                 "description": n.description,
-                "severityLevel": n.severity_level.name.replace("_", "."),
-                "category": n.category.name.replace("_", "."),
+                "severityLevel": n.severity_level.name,
+                "category": n.category.name,
                 "severity": n.raw_severity_level,
                 "rawCategory": n.raw_category,
+                "rawSeverityLevel": n.raw_severity_level,
             }
             for n in summary_.summary_notifications
         ],

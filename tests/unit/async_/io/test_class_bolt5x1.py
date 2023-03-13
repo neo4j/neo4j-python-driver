@@ -20,14 +20,64 @@ import logging
 
 import pytest
 
-from neo4j._async.io._bolt5 import AsyncBolt5x2
+from neo4j._async.io._bolt5 import AsyncBolt5x1
+from neo4j._conf import PoolConfig
 from neo4j.api import Auth
+from neo4j.exceptions import ConfigurationError
 
 from ...._async_compat import mark_async_test
 
 
 # TODO: proper testing should come from the re-auth ADR,
 #       which properly introduces Bolt 5.1
+
+
+@pytest.mark.parametrize(("method", "args"), (
+    ("run", ("RETURN 1",)),
+    ("begin", ()),
+))
+@pytest.mark.parametrize("kwargs", (
+    {"notifications_min_severity": "WARNING"},
+    {"notifications_disabled_categories": ["HINT"]},
+    {"notifications_disabled_categories": []},
+    {
+        "notifications_min_severity": "WARNING",
+        "notifications_disabled_categories": ["HINT"]
+    },
+))
+def test_does_not_support_notification_filters(fake_socket, method,
+                                               args, kwargs):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
+    connection = AsyncBolt5x1(address, socket,
+                            PoolConfig.max_connection_lifetime)
+    method = getattr(connection, method)
+    with pytest.raises(ConfigurationError, match="Notification filtering"):
+        method(*args, **kwargs)
+
+
+@mark_async_test
+@pytest.mark.parametrize("kwargs", (
+    {"notifications_min_severity": "WARNING"},
+    {"notifications_disabled_categories": ["HINT"]},
+    {"notifications_disabled_categories": []},
+    {
+        "notifications_min_severity": "WARNING",
+        "notifications_disabled_categories": ["HINT"]
+    },
+))
+async def test_hello_does_not_support_notification_filters(
+    fake_socket, kwargs
+):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
+    connection = AsyncBolt5x1(
+        address, socket, PoolConfig.max_connection_lifetime,
+        **kwargs
+    )
+    with pytest.raises(ConfigurationError, match="Notification filtering"):
+        await connection.hello()
+
 
 class HackedAuth:
     def __init__(self, dict_):
@@ -70,12 +120,12 @@ async def test_hello_does_not_log_credentials(fake_socket_pair, caplog, auth):
 
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address,
-                               packer_cls=AsyncBolt5x2.PACKER_CLS,
-                               unpacker_cls=AsyncBolt5x2.UNPACKER_CLS)
+                               packer_cls=AsyncBolt5x1.PACKER_CLS,
+                               unpacker_cls=AsyncBolt5x1.UNPACKER_CLS)
     await sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
     await sockets.server.send_message(b"\x70", {})
     max_connection_lifetime = 0
-    connection = AsyncBolt5x2(address, sockets.client,
+    connection = AsyncBolt5x1(address, sockets.client,
                               max_connection_lifetime, auth=auth)
 
     with caplog.at_level(logging.DEBUG):

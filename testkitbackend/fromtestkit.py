@@ -21,8 +21,8 @@ from datetime import timedelta
 import pytz
 
 from neo4j import (
-    MinimumNotificationSeverity,
-    DisabledNotificationCategory,
+    NotificationDisabledCategory,
+    NotificationMinimumSeverity,
     Query,
 )
 from neo4j.spatial import (
@@ -160,8 +160,8 @@ def to_param(m):
 def set_notifications_config(config, data):
     if "notificationsMinSeverity" in data:
         config["notifications_min_severity"] = \
-            MinimumNotificationSeverity[data["notificationsMinSeverity"]]
+            NotificationMinimumSeverity[data["notificationsMinSeverity"]]
     if "notificationsDisabledCategories" in data:
         config["notifications_disabled_categories"] = \
-            [DisabledNotificationCategory[c]
+            [NotificationDisabledCategory[c]
              for c in data["notificationsDisabledCategories"]]

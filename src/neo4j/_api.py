@@ -27,48 +27,32 @@ if t.TYPE_CHECKING:
 
 
 __all__ = [
-    "DisabledNotificationCategory",
-    "MinimumNotificationSeverity",
+    "NotificationDisabledCategory",
+    "NotificationMinimumSeverity",
     "NotificationCategory",
     "NotificationSeverity",
     "RoutingControl",
 ]
 
 
-class NotificationFilter(str, Enum):
-    """A filter criterion for which notifications the server should return.
+class NotificationMinimumSeverity(str, Enum):
+    """Filter notifications returned by the server by minimum severity.
 
     Inherits from :class:`str` and :class:`Enum`. Hence, every driver API
     accepting a :class:`.NotificationFilter` value will also accept a string::
 
-        >>> ALL_ALL == "*.*"
+        >>> OFF == "OFF"
         True
-        >>> WARNING_ALL == "WARNING.*"
+        >>> WARNING == "WARNING"
         True
-        >>> ALL_DEPRECATION == "*.DEPRECATION"
-        True
-        >>> INFORMATION_HINT == "INFORMATION.HINT"
+        >>> INFORMATION == "INFORMATION"
         True
 
-    When connected to a server version 5.? or older, configuring anything other
-    than :meth:`.server_default` will result in an :exc:`.ConfigurationError`.
-
-    When connected to an older server version, and choosing a filter that is
-    not supported by that server version, the server will ignore that filter
-    and return a notification of type `WARNING.UNSUPPORTED` which cannot be
-    suppressed by any filters.
-
-    .. versionadded:: 5.?
+    .. versionadded:: 5.7
 
     .. seealso::
-        :ref:`driver-configuration-ref`, :ref:`session-configuration-ref`
-    """
-    ...
-
-
-class MinimumNotificationSeverity(str, Enum):
-    """
-    TODO
+        driver config :ref:`driver-notifications-min-severity-ref`,
+        session config :ref:`session-notifications-min-severity-ref`
     """
 
     OFF = "OFF"
@@ -77,15 +61,15 @@ class MinimumNotificationSeverity(str, Enum):
 
 
 if t.TYPE_CHECKING:
-    T_MinimumNotificationSeverity = t.Union[
-        MinimumNotificationSeverity,
+    T_NotificationMinimumSeverity = t.Union[
+        NotificationMinimumSeverity,
         te.Literal[
             "OFF",
             "WARNING",
             "INFORMATION",
         ],
     ]
-    __all__.append("T_MinimumNotificationSeverity")
+    __all__.append("T_NotificationMinimumSeverity")
 
 
 class NotificationSeverity(str, Enum):
@@ -107,6 +91,7 @@ class NotificationSeverity(str, Enum):
 
         from neo4j import NotificationSeverity
 
+
         log = logging.getLogger(__name__)
 
         ...
@@ -126,7 +111,7 @@ class NotificationSeverity(str, Enum):
                 # or severity_level == "UNKNOWN"
                 log.debug("%r", notification)
 
-    .. versionadded:: 5.?
+    .. versionadded:: 5.7
 
     .. seealso:: :attr:`SummaryNotification.severity_level`
     """
@@ -138,9 +123,30 @@ class NotificationSeverity(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class DisabledNotificationCategory(str, Enum):
-    """
-    TODO
+class NotificationDisabledCategory(str, Enum):
+    """Filter notifications returned by the server by category.
+
+    Inherits from :class:`str` and :class:`Enum`. Hence, every driver API
+    accepting a :class:`.NotificationFilter` value will also accept a string::
+
+        >>> HINT == "HINT"
+        True
+        >>> UNRECOGNIZED == "UNRECOGNIZED"
+        True
+        >>> UNSUPPORTED == "UNSUPPORTED"
+        True
+        >>> PERFORMANCE == "PERFORMANCE"
+        True
+        >>> DEPRECATION == "DEPRECATION"
+        True
+        >>> GENERIC == "GENERIC"
+        True
+
+    .. versionadded:: 5.7
+
+    .. seealso::
+        driver config :ref:`driver-notifications-disabled-categories-ref`,
+        session config :ref:`session-notifications-disabled-categories-ref`
     """
 
     HINT = "HINT"
@@ -152,8 +158,8 @@ class DisabledNotificationCategory(str, Enum):
 
 
 if t.TYPE_CHECKING:
-    T_DisabledNotificationCategory = t.Union[
-        DisabledNotificationCategory,
+    T_NotificationDisabledCategory = t.Union[
+        NotificationDisabledCategory,
         te.Literal[
             "HINT",
             "UNRECOGNIZED",
@@ -163,7 +169,7 @@ if t.TYPE_CHECKING:
             "GENERIC",
         ],
     ]
-    __all__.append("T_DisabledNotificationCategory")
+    __all__.append("T_NotificationDisabledCategory")
 
 
 class NotificationCategory(str, Enum):
@@ -179,7 +185,7 @@ class NotificationCategory(str, Enum):
         >>> UNKNOWN == "UNKNOWN"
         True
 
-    .. versionadded:: 5.?
+    .. versionadded:: 5.7
 
     .. seealso:: :attr:`SummaryNotification.category`
     """

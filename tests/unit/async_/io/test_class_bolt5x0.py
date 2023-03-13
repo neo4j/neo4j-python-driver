@@ -277,25 +277,46 @@ async def test_hint_recv_timeout_seconds(
     ("run", ("RETURN 1",)),
     ("begin", ()),
 ))
-def test_does_not_support_notification_filters(fake_socket, method, args):
+@pytest.mark.parametrize("kwargs", (
+    {"notifications_min_severity": "WARNING"},
+    {"notifications_disabled_categories": ["HINT"]},
+    {"notifications_disabled_categories": []},
+    {
+        "notifications_min_severity": "WARNING",
+        "notifications_disabled_categories": ["HINT"]
+    },
+))
+def test_does_not_support_notification_filters(fake_socket, method,
+                                               args, kwargs):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address, AsyncBolt5x0.UNPACKER_CLS)
     connection = AsyncBolt5x0(address, socket,
                             PoolConfig.max_connection_lifetime)
     method = getattr(connection, method)
-    with pytest.raises(ConfigurationError, match="Notification filters"):
-        method(*args, notification_filters={"*.*"})
+    with pytest.raises(ConfigurationError, match="Notification filtering"):
+        method(*args, **kwargs)
 
 
 @mark_async_test
-async def test_hello_does_not_support_notification_filters(fake_socket):
+@pytest.mark.parametrize("kwargs", (
+    {"notifications_min_severity": "WARNING"},
+    {"notifications_disabled_categories": ["HINT"]},
+    {"notifications_disabled_categories": []},
+    {
+        "notifications_min_severity": "WARNING",
+        "notifications_disabled_categories": ["HINT"]
+    },
+))
+async def test_hello_does_not_support_notification_filters(
+    fake_socket, kwargs
+):
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address, AsyncBolt5x0.UNPACKER_CLS)
     connection = AsyncBolt5x0(
         address, socket, PoolConfig.max_connection_lifetime,
-        notification_filters={"*.*"}
+        **kwargs
     )
-    with pytest.raises(ConfigurationError, match="Notification filters"):
+    with pytest.raises(ConfigurationError, match="Notification filtering"):
         await connection.hello()
 
 

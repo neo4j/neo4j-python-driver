@@ -28,8 +28,8 @@ if t.TYPE_CHECKING:
     import typing_extensions as te
 
     from .._api import (
-        T_DisabledNotificationCategory,
-        T_MinimumNotificationSeverity,
+        T_NotificationDisabledCategory,
+        T_NotificationMinimumSeverity,
     )
 
 
@@ -135,10 +135,10 @@ class AsyncGraphDatabase:
             user_agent: str = ...,
             keep_alive: bool = ...,
             notifications_min_severity: t.Optional[
-                T_MinimumNotificationSeverity
+                T_NotificationMinimumSeverity
             ] = ...,
             notifications_disabled_categories: t.Optional[
-                t.Iterable[T_DisabledNotificationCategory]
+                t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
 
             # undocumented/unsupported options
@@ -164,7 +164,7 @@ class AsyncGraphDatabase:
             auth: t.Union[t.Tuple[t.Any, t.Any], Auth, None] = None,
             **config
         ) -> AsyncDriver:
-            """Create a driver.
+            """Create a driver.'
 
             :param uri: the connection URI for the driver,
                 see :ref:`async-uri-ref` for available URIs.
@@ -237,14 +237,7 @@ class AsyncGraphDatabase:
             elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
                 config["encrypted"] = True
                 config["trusted_certificates"] = TrustAll()
-            if "notifications_disabled_categories" in config:
-                config["notifications_disabled_categories"] = list(
-                    map(str, config["notifications_disabled_categories"])
-                )
-            if "notifications_min_severity" in config:
-                config["notifications_min_severity"] = str(
-                    config["notifications_min_severity"]
-                )
+            _normalize_notifications_config(config)
 
             assert driver_type in (DRIVER_BOLT, DRIVER_NEO4J)
             if driver_type == DRIVER_BOLT:
@@ -489,20 +482,7 @@ class AsyncDriver:
         return bool(self._pool.pool_config.encrypted)
 
     def _prepare_session_config(self, **config):
-        # if "notifications_min_severity" not in config:
-        #     config["notifications_min_severity"] = \
-        #         self._pool.pool_config.notifications_min_severity
-        # if "notifications_disabled_categories" not in config:
-        #     config["notifications_disabled_categories"] = \
-        #         self._pool.pool_config.notifications_disabled_categories
-        if "notifications_disabled_categories" in config:
-            config["notifications_disabled_categories"] = list(map(
-                str, config["notifications_disabled_categories"]
-            ))
-        if "notifications_min_severity" in config:
-            config["notifications_min_severity"] = str(
-                config["notifications_min_severity"]
-            )
+        _normalize_notifications_config(config)
         return config
 
     if t.TYPE_CHECKING:
@@ -520,10 +500,10 @@ class AsyncDriver:
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
             notifications_min_severity: t.Optional[
-                T_MinimumNotificationSeverity
+                T_NotificationMinimumSeverity
             ] = ...,
             notifications_disabled_categories: t.Optional[
-                t.Iterable[T_DisabledNotificationCategory]
+                t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
 
             # undocumented/unsupported options
@@ -883,10 +863,10 @@ class AsyncDriver:
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
             notifications_min_severity: t.Optional[
-                T_MinimumNotificationSeverity
+                T_NotificationMinimumSeverity
             ] = ...,
             notifications_disabled_categories: t.Optional[
-                t.Iterable[T_DisabledNotificationCategory]
+                t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
 
             # undocumented/unsupported options
@@ -954,10 +934,10 @@ class AsyncDriver:
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
             notifications_min_severity: t.Optional[
-                T_MinimumNotificationSeverity
+                T_NotificationMinimumSeverity
             ] = ...,
             notifications_disabled_categories: t.Optional[
-                t.Iterable[T_DisabledNotificationCategory]
+                t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
 
             # undocumented/unsupported options
@@ -1119,3 +1099,16 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
             session_config = SessionConfig(self._default_workspace_config,
                                            config)
             return AsyncSession(self._pool, session_config)
+
+
+def _normalize_notifications_config(config):
+    if config.get("notifications_disabled_categories") is not None:
+        config["notifications_disabled_categories"] = [
+            getattr(e, "value", e)
+            for e in config["notifications_disabled_categories"]
+        ]
+    if config.get("notifications_min_severity") is not None:
+        config["notifications_min_severity"] = getattr(
+            config["notifications_min_severity"], "value",
+            config["notifications_min_severity"]
+        )

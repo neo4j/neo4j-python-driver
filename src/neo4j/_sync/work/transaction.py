@@ -73,13 +73,14 @@ class TransactionBase:
 
     def _begin(
         self, database, imp_user, bookmarks, access_mode, metadata, timeout,
-        notification_filters
+        notifications_min_severity, notifications_disabled_categories,
     ):
         self._database = database
         self._connection.begin(
             bookmarks=bookmarks, metadata=metadata, timeout=timeout,
             mode=access_mode, db=database, imp_user=imp_user,
-            notification_filters=notification_filters
+            notifications_min_severity=notifications_min_severity,
+            notifications_disabled_categories=notifications_disabled_categories
         )
         self._error_handling_connection.send_all()
         self._error_handling_connection.fetch_all()

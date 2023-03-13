@@ -19,11 +19,15 @@
 
 
 from .._meta import deprecation_warn
-from .._work import ResultSummary
+from .._work import (
+    ResultSummary,
+    SummaryCounters,
+)
 
 
 __all__ = [
     "ResultSummary",
+    "SummaryCounters",
 ]
 
 deprecation_warn(
