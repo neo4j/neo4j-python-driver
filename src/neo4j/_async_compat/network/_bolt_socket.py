@@ -437,16 +437,16 @@ class BoltSocket:
         self.getpeername = socket_.getpeername
         if hasattr(socket, "getpeercert"):
             self.getpeercert = t.cast(SSLSocket, socket_).getpeercert
-        elif hasattr(self, "getpeercert"):
-            del self.getpeercert
+        elif "getpeercert" in self.__dict__:
+            del self.__dict__["getpeercert"]
         self.gettimeout = socket_.gettimeout
         self.settimeout = socket_.settimeout
 
-    getsockname: t.Callable
-    getpeername: t.Callable
-    getpeercert: t.Callable
-    gettimeout: t.Callable
-    settimeout: t.Callable
+    getsockname: t.Callable = None  # type: ignore
+    getpeername: t.Callable = None  # type: ignore
+    getpeercert: t.Callable = None  # type: ignore
+    gettimeout: t.Callable = None  # type: ignore
+    settimeout: t.Callable = None  # type: ignore
 
     def _wait_for_io(self, func, *args, **kwargs):
         if self._deadline is None:
