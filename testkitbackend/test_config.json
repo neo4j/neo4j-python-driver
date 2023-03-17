@@ -51,6 +51,7 @@
     "Feature:TLS:1.3": "Depends on the machine (will be calculated dynamically).",
 
     "AuthorizationExpiredTreatment": true,
+    "Optimization:AuthPipelining": true,
     "Optimization:ConnectionReuse": true,
     "Optimization:EagerTransactionBegin": true,
     "Optimization:ImplicitDefaultArguments": true,
