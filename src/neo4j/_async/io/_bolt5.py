@@ -26,7 +26,6 @@ from ...api import (
     Version,
 )
 from ...exceptions import (
-    ConfigurationError,
     DatabaseUnavailable,
     ForbiddenOnReadOnlyDatabase,
     Neo4jError,
@@ -190,7 +189,7 @@ class AsyncBolt5x0(AsyncBolt):
             except TypeError:
                 raise TypeError("Timeout must be a number (in seconds)")
             if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a number <= 0")
+                raise ValueError("Timeout must be a number >= 0")
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port,
                   " ".join(map(repr, fields)))
@@ -251,7 +250,7 @@ class AsyncBolt5x0(AsyncBolt):
             except TypeError:
                 raise TypeError("Timeout must be a number (in seconds)")
             if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a number <= 0")
+                raise ValueError("Timeout must be a number >= 0")
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,),
                      Response(self, "begin", hydration_hooks, **handlers),
@@ -495,7 +494,7 @@ class AsyncBolt5x2(AsyncBolt5x1):
             except TypeError:
                 raise TypeError("Timeout must be a number (in seconds)")
             if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a number <= 0")
+                raise ValueError("Timeout must be a number >= 0")
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port,
                   " ".join(map(repr, fields)))
@@ -531,7 +530,7 @@ class AsyncBolt5x2(AsyncBolt5x1):
             except TypeError:
                 raise TypeError("Timeout must be a number (in seconds)")
             if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a number <= 0")
+                raise ValueError("Timeout must be a number >= 0")
         if notifications_min_severity is not None:
             extra["notifications_minimum_severity"] = \
                 notifications_min_severity

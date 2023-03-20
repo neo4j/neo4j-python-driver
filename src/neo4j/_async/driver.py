@@ -164,7 +164,7 @@ class AsyncGraphDatabase:
             auth: t.Union[t.Tuple[t.Any, t.Any], Auth, None] = None,
             **config
         ) -> AsyncDriver:
-            """Create a driver.'
+            """Create a driver.
 
             :param uri: the connection URI for the driver,
                 see :ref:`async-uri-ref` for available URIs.

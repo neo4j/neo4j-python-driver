@@ -162,7 +162,7 @@ class GraphDatabase:
             auth: t.Union[t.Tuple[t.Any, t.Any], Auth, None] = None,
             **config
         ) -> Driver:
-            """Create a driver.'
+            """Create a driver.
 
             :param uri: the connection URI for the driver,
                 see :ref:`uri-ref` for available URIs.

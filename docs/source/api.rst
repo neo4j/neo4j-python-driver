@@ -609,7 +609,7 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 :data:`None` will apply the server's default setting.
 
 .. Note::
-    The server or all servers of the cluster need to support notifications filtering.
+    If configured, the server or all servers of the cluster need to support notifications filtering.
     Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
 
 :Type: :data:`None`, :class:`.NotificationMinimumSeverity`, or :class:`str`
@@ -631,10 +631,10 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 :data:`None` will apply the server's default setting.
 
 .. Note::
-    The server or all servers of the cluster need to support notifications filtering.
+    If configured, the server or all servers of the cluster need to support notifications filtering.
     Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
 
-:Type: :data:`None`, :class:`.NotificationDisabledCategory`, or :class:`str`
+:Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledCategory` and/or :class:`str`
 :Default: :data:`None`
 
 .. versionadded:: 5.7
@@ -905,7 +905,7 @@ context of the impersonated user. For this, the user for which the
 
 .. Note::
 
-    The server or all servers of the cluster need to support impersonation.
+    If configured, the server or all servers of the cluster need to support impersonation.
     Otherwise, the driver will raise :exc:`.ConfigurationError`
     as soon as it encounters a server that does not.
 
@@ -1010,7 +1010,7 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 :data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-min-severity-ref`).
 
 .. Note::
-    The server or all servers of the cluster need to support notifications filtering.
+    If configured, the server or all servers of the cluster need to support notifications filtering.
     Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
 
 :Type: :data:`None`, :class:`.NotificationMinimumSeverity`, or :class:`str`
@@ -1032,10 +1032,10 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 :data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-min-severity-ref`).
 
 .. Note::
-    The server or all servers of the cluster need to support notifications filtering.
+    If configured, the server or all servers of the cluster need to support notifications filtering.
     Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
 
-:Type: :data:`None`, :class:`.NotificationDisabledCategory`, or :class:`str`
+:Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledCategory` and/or :class:`str`
 :Default: :data:`None`
 
 .. versionadded:: 5.7

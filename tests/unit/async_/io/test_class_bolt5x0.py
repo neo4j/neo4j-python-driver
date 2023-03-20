@@ -142,7 +142,6 @@ async def test_qid_extra_in_discard(fake_socket, test_input, expected):
 )
 @mark_async_test
 async def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
-    # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_n_and_qid_extras_in_discard
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address, AsyncBolt5x0.UNPACKER_CLS)
     connection = AsyncBolt5x0(address, socket, PoolConfig.max_connection_lifetime)
@@ -183,7 +182,6 @@ async def test_n_extra_in_pull(fake_socket, test_input, expected):
 )
 @mark_async_test
 async def test_qid_extra_in_pull(fake_socket, test_input, expected):
-    # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_qid_extra_in_pull
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address, AsyncBolt5x0.UNPACKER_CLS)
     connection = AsyncBolt5x0(address, socket, PoolConfig.max_connection_lifetime)

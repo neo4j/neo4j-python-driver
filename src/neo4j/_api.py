@@ -38,8 +38,8 @@ __all__ = [
 class NotificationMinimumSeverity(str, Enum):
     """Filter notifications returned by the server by minimum severity.
 
-    Inherits from :class:`str` and :class:`Enum`. Hence, every driver API
-    accepting a :class:`.NotificationFilter` value will also accept a string::
+    Inherits from :class:`str` and :class:`Enum`. Every driver API accepting a
+    :class:`.NotificationFilter` value will also accept a string::
 
         >>> OFF == "OFF"
         True
@@ -126,8 +126,8 @@ class NotificationSeverity(str, Enum):
 class NotificationDisabledCategory(str, Enum):
     """Filter notifications returned by the server by category.
 
-    Inherits from :class:`str` and :class:`Enum`. Hence, every driver API
-    accepting a :class:`.NotificationFilter` value will also accept a string::
+    Inherits from :class:`str` and :class:`Enum`. Every driver API accepting a
+    :class:`.NotificationFilter` value will also accept a string::
 
         >>> HINT == "HINT"
         True
@@ -197,15 +197,16 @@ class NotificationCategory(str, Enum):
     DEPRECATION = "DEPRECATION"
     GENERIC = "GENERIC"
     #: Used when the server provides a Category which the driver is unaware of.
-    #: This can happen when connecting to a server newer than the driver.
+    #: This can happen when connecting to a server newer than the driver or
+    #: before notification categories were introduced.
     UNKNOWN = "UNKNOWN"
 
 
 class RoutingControl(str, Enum):
     """Selection which cluster members to route a query connect to.
 
-    Inherits from :class:`str` and :class:`Enum`. Hence, every driver API
-    accepting a :class:`.RoutingControl` value will also accept a string
+    Inherits from :class:`str` and :class:`Enum`. Every driver API accepting a
+    :class:`.RoutingControl` value will also accept a string
 
         >>> RoutingControl.READERS == "r"
         True

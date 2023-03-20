@@ -481,8 +481,8 @@ _T_NotificationDisabledCategory = t.Union[
     [NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT],
     (NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT),
     (NotificationDisabledCategory.GENERIC, "HINT"),
-    # please no :/
     {"GENERIC", "HINT"},
+    # please no :/
     {"GENERIC": True, NotificationDisabledCategory.HINT: 0},
 ))
 @pytest.mark.parametrize("uri", [
@@ -565,8 +565,8 @@ async def test_driver_factory_with_notification_filters(
     [NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT],
     (NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT),
     (NotificationDisabledCategory.GENERIC, "HINT"),
-    # please no :/
     {"GENERIC", "HINT"},
+    # please no :/
     {"GENERIC": True, NotificationDisabledCategory.HINT: 0},
 ))
 @pytest.mark.parametrize("uri", [
@@ -584,8 +584,6 @@ async def test_session_factory_with_notification_filter(
     pool_mock: t.Any = mocker.AsyncMock(spec=pool_cls)
     mocker.patch.object(pool_cls, "open", return_value=pool_mock)
     pool_mock.address = mocker.Mock()
-    # driver_filters = object()
-    # pool_mock.pool_config = PoolConfig(notification_filters=driver_filters)
     session_cls_mock = mocker.patch("neo4j._async.driver.AsyncSession",
                                     autospec=True)
 

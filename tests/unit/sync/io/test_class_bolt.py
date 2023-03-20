@@ -117,30 +117,6 @@ def test_cancel_hello_in_open(mocker):
     bolt_mock.kill.assert_called_once_with()
 
 
-def _dot_lookup(thing, comp, import_path):
-    try:
-        return getattr(thing, comp)
-    except AttributeError:
-        __import__(import_path)
-        return getattr(thing, comp)
-
-
-def _importer(target):
-    components = target.split('.')
-    import_path = components.pop(0)
-    thing = __import__(import_path)
-
-    for comp in components:
-        import_path += ".%s" % comp
-        thing = _dot_lookup(thing, comp, import_path)
-    return thing
-
-
-def _bolt_cls(bolt_cls_path):
-    import_path, import_attribute = bolt_cls_path.rsplit('.', 1)
-    return getattr(_importer(import_path), import_attribute)
-
-
 # [bolt-version-bump] search tag when changing bolt version support
 @pytest.mark.parametrize(
     ("bolt_version", "bolt_cls_path"),

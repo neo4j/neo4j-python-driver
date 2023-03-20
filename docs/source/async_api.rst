@@ -52,7 +52,7 @@ The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the
         This will implicitly create a :class:`neo4j.Auth` with a ``scheme="basic"``.
         Other authentication methods are described under :ref:`auth-ref`.
 
-        ``with`` block context example:Change
+        ``with`` block context example:
 
         .. code-block:: python
 
