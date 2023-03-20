@@ -41,11 +41,11 @@ class NotificationMinimumSeverity(str, Enum):
     Inherits from :class:`str` and :class:`Enum`. Every driver API accepting a
     :class:`.NotificationFilter` value will also accept a string::
 
-        >>> OFF == "OFF"
+        >>> NotificationMinimumSeverity.OFF == "OFF"
         True
-        >>> WARNING == "WARNING"
+        >>> NotificationMinimumSeverity.WARNING == "WARNING"
         True
-        >>> INFORMATION == "INFORMATION"
+        >>> NotificationMinimumSeverity.INFORMATION == "INFORMATION"
         True
 
     .. versionadded:: 5.7
@@ -78,11 +78,11 @@ class NotificationSeverity(str, Enum):
     Inherits from :class:`str` and :class:`Enum`. Hence, can also be compared
     to its string value::
 
-        >>> WARNING == "WARNING"
+        >>> NotificationSeverity.WARNING == "WARNING"
         True
-        >>> INFORMATION == "INFORMATION"
+        >>> NotificationSeverity.INFORMATION == "INFORMATION"
         True
-        >>> UNKNOWN == "UNKNOWN"
+        >>> NotificationSeverity.UNKNOWN == "UNKNOWN"
         True
 
     Example::
@@ -129,17 +129,17 @@ class NotificationDisabledCategory(str, Enum):
     Inherits from :class:`str` and :class:`Enum`. Every driver API accepting a
     :class:`.NotificationFilter` value will also accept a string::
 
-        >>> HINT == "HINT"
+        >>> NotificationDisabledCategory.HINT == "HINT"
         True
-        >>> UNRECOGNIZED == "UNRECOGNIZED"
+        >>> NotificationDisabledCategory.UNRECOGNIZED == "UNRECOGNIZED"
         True
-        >>> UNSUPPORTED == "UNSUPPORTED"
+        >>> NotificationDisabledCategory.UNSUPPORTED == "UNSUPPORTED"
         True
-        >>> PERFORMANCE == "PERFORMANCE"
+        >>> NotificationDisabledCategory.PERFORMANCE == "PERFORMANCE"
         True
-        >>> DEPRECATION == "DEPRECATION"
+        >>> NotificationDisabledCategory.DEPRECATION == "DEPRECATION"
         True
-        >>> GENERIC == "GENERIC"
+        >>> NotificationDisabledCategory.GENERIC == "GENERIC"
         True
 
     .. versionadded:: 5.7
@@ -178,11 +178,11 @@ class NotificationCategory(str, Enum):
     Inherits from :class:`str` and :class:`Enum`. Hence, can also be compared
     to its string value::
 
-        >>> DEPRECATION == "DEPRECATION"
+        >>> NotificationCategory.DEPRECATION == "DEPRECATION"
         True
-        >>> GENERIC == "GENERIC"
+        >>> NotificationCategory.GENERIC == "GENERIC"
         True
-        >>> UNKNOWN == "UNKNOWN"
+        >>> NotificationCategory.UNKNOWN == "UNKNOWN"
         True
 
     .. versionadded:: 5.7
