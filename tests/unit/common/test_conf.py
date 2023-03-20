@@ -56,6 +56,8 @@ test_pool_config = {
     "user_agent": "test",
     "trusted_certificates": TrustSystemCAs(),
     "ssl_context": None,
+    "notifications_min_severity": None,
+    "notifications_disabled_categories": None,
 }
 
 test_session_config = {
@@ -70,6 +72,8 @@ test_session_config = {
     "impersonated_user": None,
     "fetch_size": 100,
     "bookmark_manager": object(),
+    "notifications_min_severity": None,
+    "notifications_disabled_categories": None,
 }
 
 
@@ -114,7 +118,7 @@ def test_pool_config_consume_key_not_valid():
     test_config["not_valid_key"] = "test"
 
     with pytest.raises(ConfigurationError) as error:
-        consumed_pool_config = PoolConfig.consume(test_config)
+        PoolConfig.consume(test_config)
 
     error.match("Unexpected config keys: not_valid_key")
 
@@ -139,7 +143,6 @@ def test_pool_config_set_value():
 
 
 def test_pool_config_consume_and_then_consume_again():
-
     test_config = dict(test_pool_config)
     consumed_pool_config = PoolConfig.consume(test_config)
     assert consumed_pool_config.encrypted is False

@@ -31,6 +31,8 @@ from neo4j import (
     ExperimentalWarning,
     GraphDatabase,
     Neo4jDriver,
+    NotificationDisabledCategory,
+    NotificationMinimumSeverity,
     Result,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
@@ -38,7 +40,15 @@ from neo4j import (
     TrustCustomCAs,
     TrustSystemCAs,
 )
+from neo4j._conf import (
+    PoolConfig,
+    SessionConfig,
+)
 from neo4j._sync.driver import _work
+from neo4j._sync.io import (
+    BoltPool,
+    Neo4jPool,
+)
 from neo4j.api import (
     BookmarkManager,
     READ_ACCESS,
@@ -228,6 +238,8 @@ def test_driver_opens_write_session_by_default(uri, fake_pool, mocker):
         mocker.ANY,
         mocker.ANY,
         WRITE_ACCESS,
+        mocker.ANY,
+        mocker.ANY,
         mocker.ANY,
         mocker.ANY
     )
@@ -429,14 +441,203 @@ def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
 
 
+_T_NotificationMinimumSeverity = t.Union[
+    NotificationMinimumSeverity,
+    te.Literal[
+        "OFF",
+        "WARNING",
+        "INFORMATION",
+    ]
+]
+
+_T_NotificationDisabledCategory = t.Union[
+    NotificationDisabledCategory,
+    te.Literal[
+        "HINT",
+        "UNRECOGNIZED",
+        "UNSUPPORTED",
+        "PERFORMANCE",
+        "DEPRECATION",
+        "GENERIC",
+    ]
+]
+
+
+@pytest.mark.parametrize("min_sev", (
+    ...,
+    None,
+    "OFF",
+    NotificationMinimumSeverity.OFF,
+    "WARNING",
+    NotificationMinimumSeverity.INFORMATION,
+))
+@pytest.mark.parametrize("dis_cats", (
+    ...,
+    None,
+    [],
+    ["GENERIC"],
+    [NotificationDisabledCategory.GENERIC],
+    [NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT],
+    (NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT),
+    (NotificationDisabledCategory.GENERIC, "HINT"),
+    {"GENERIC", "HINT"},
+    # please no :/
+    {"GENERIC": True, NotificationDisabledCategory.HINT: 0},
+))
+@pytest.mark.parametrize("uri", [
+    "bolt://localhost:7687",
+    "neo4j://localhost:7687",
+])
+@mark_sync_test
+def test_driver_factory_with_notification_filters(
+    uri: str,
+    mocker,
+    fake_pool,
+    min_sev: t.Optional[_T_NotificationMinimumSeverity],
+    dis_cats: t.Optional[t.Iterable[_T_NotificationDisabledCategory]],
+) -> None:
+    pool_cls = Neo4jPool if uri.startswith("neo4j://") else BoltPool
+    open_mock = mocker.patch.object(
+        pool_cls, "open",
+        return_value=mocker.MagicMock(spec=pool_cls)
+    )
+    open_mock.return_value.address = mocker.Mock()
+    mocker.patch.object(BoltPool, "open", new=open_mock)
+
+    if min_sev is ...:
+        if dis_cats is ...:
+            driver = GraphDatabase.driver(uri, auth=None)
+        else:
+            driver = GraphDatabase.driver(
+                uri, auth=None,
+                notifications_disabled_categories=dis_cats
+            )
+    else:
+        if dis_cats is ...:
+            driver = GraphDatabase.driver(
+                uri, auth=None,
+                notifications_min_severity=min_sev
+            )
+        else:
+            driver = GraphDatabase.driver(
+                uri, auth=None,
+                notifications_min_severity=min_sev,
+                notifications_disabled_categories=dis_cats
+            )
+
+    with driver:
+        default_conf = PoolConfig()
+        if min_sev is None:
+            expected_min_sev = min_sev
+        elif min_sev is not ...:
+            expected_min_sev = getattr(min_sev, "value", min_sev)
+        else:
+            expected_min_sev = default_conf.notifications_min_severity
+        if dis_cats is None:
+            expected_dis_cats = dis_cats
+        elif dis_cats is not ...:
+            expected_dis_cats = [getattr(d, "value", d) for d in dis_cats]
+        else:
+            expected_dis_cats = default_conf.notifications_disabled_categories
+
+        open_mock.assert_called_once()
+        open_pool_conf = open_mock.call_args.kwargs["pool_config"]
+        assert open_pool_conf.notifications_min_severity == expected_min_sev
+        assert (open_pool_conf.notifications_disabled_categories
+                == expected_dis_cats)
+
+
+@pytest.mark.parametrize("min_sev", (
+    ...,
+    None,
+    "OFF",
+    NotificationMinimumSeverity.OFF,
+    "WARNING",
+    NotificationMinimumSeverity.INFORMATION,
+))
+@pytest.mark.parametrize("dis_cats", (
+    ...,
+    None,
+    [],
+    ["GENERIC"],
+    [NotificationDisabledCategory.GENERIC],
+    [NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT],
+    (NotificationDisabledCategory.GENERIC, NotificationDisabledCategory.HINT),
+    (NotificationDisabledCategory.GENERIC, "HINT"),
+    {"GENERIC", "HINT"},
+    # please no :/
+    {"GENERIC": True, NotificationDisabledCategory.HINT: 0},
+))
+@pytest.mark.parametrize("uri", [
+    "bolt://localhost:7687",
+    "neo4j://localhost:7687",
+])
+@mark_sync_test
+def test_session_factory_with_notification_filter(
+    uri: str,
+    mocker,
+    min_sev: t.Optional[_T_NotificationMinimumSeverity],
+    dis_cats: t.Optional[t.Iterable[_T_NotificationDisabledCategory]],
+) -> None:
+    pool_cls = Neo4jPool if uri.startswith("neo4j://") else BoltPool
+    pool_mock: t.Any = mocker.MagicMock(spec=pool_cls)
+    mocker.patch.object(pool_cls, "open", return_value=pool_mock)
+    pool_mock.address = mocker.Mock()
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+
+    with GraphDatabase.driver(uri, auth=None) as driver:
+        if min_sev is ...:
+            if dis_cats is ...:
+                session = driver.session()
+            else:
+                session = driver.session(
+                    notifications_disabled_categories=dis_cats
+                )
+        else:
+            if dis_cats is ...:
+                session = driver.session(
+                    notifications_min_severity=min_sev
+                )
+            else:
+                session = driver.session(
+                    notifications_min_severity=min_sev,
+                    notifications_disabled_categories=dis_cats
+                )
+
+        with session:
+            session_cls_mock.assert_called_once()
+            (_, session_config), _ = session_cls_mock.call_args
+
+            default_conf = SessionConfig()
+            if min_sev is None:
+                expected_min_sev = min_sev
+            elif min_sev is not ...:
+                expected_min_sev = getattr(min_sev, "value", min_sev)
+            else:
+                expected_min_sev = default_conf.notifications_min_severity
+            if dis_cats is None:
+                expected_dis_cats = dis_cats
+            elif dis_cats is not ...:
+                expected_dis_cats = [getattr(d, "value", d) for d in dis_cats]
+            else:
+                expected_dis_cats = \
+                    default_conf.notifications_disabled_categories
+
+            assert (session_config.notifications_min_severity
+                    == expected_min_sev)
+            assert (session_config.notifications_disabled_categories
+                    == expected_dis_cats)
+
+
 class SomeClass:
     pass
 
 
 @mark_sync_test
 def test_execute_query_work(mocker) -> None:
-    tx_mock = mocker.Mock(spec=neo4j.ManagedTransaction)
-    transformer_mock = mocker.Mock()
+    tx_mock = mocker.MagicMock(spec=neo4j.ManagedTransaction)
+    transformer_mock = mocker.MagicMock()
     transformer: t.Callable[[Result], t.Union[SomeClass]] = \
         transformer_mock
     query = "QUERY"

@@ -224,7 +224,7 @@ def test_pool_reset_when_released(is_reset, pool, mocker):
     )
     reset_mock = mocker.patch(
         f"{__name__}.{quick_connection_name}.reset",
-        new_callable=mocker.Mock
+        new_callable=mocker.MagicMock
     )
     is_reset_mock.return_value = is_reset
     connection = pool._acquire(address, Deadline(3), None)

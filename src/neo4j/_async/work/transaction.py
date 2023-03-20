@@ -23,8 +23,8 @@ import typing as t
 from functools import wraps
 
 from ..._async_compat.util import AsyncUtil
+from ..._work import Query
 from ...exceptions import TransactionError
-from ...work import Query
 from ..io import ConnectionErrorHandler
 from .result import AsyncResult
 
@@ -72,12 +72,15 @@ class AsyncTransactionBase:
         await self._close()
 
     async def _begin(
-        self, database, imp_user, bookmarks, access_mode, metadata, timeout
+        self, database, imp_user, bookmarks, access_mode, metadata, timeout,
+        notifications_min_severity, notifications_disabled_categories,
     ):
         self._database = database
         self._connection.begin(
             bookmarks=bookmarks, metadata=metadata, timeout=timeout,
-            mode=access_mode, db=database, imp_user=imp_user
+            mode=access_mode, db=database, imp_user=imp_user,
+            notifications_min_severity=notifications_min_severity,
+            notifications_disabled_categories=notifications_disabled_categories
         )
         await self._error_handling_connection.send_all()
         await self._error_handling_connection.fetch_all()

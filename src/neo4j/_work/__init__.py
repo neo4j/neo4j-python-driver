@@ -16,9 +16,25 @@
 # limitations under the License.
 
 
-from ._eager_result import EagerResult
+from .eager_result import EagerResult
+from .query import (
+    Query,
+    unit_of_work,
+)
+from .summary import (
+    ResultSummary,
+    SummaryCounters,
+    SummaryNotification,
+    SummaryNotificationPosition,
+)
 
 
 __all__ = [
     "EagerResult",
+    "Query",
+    "ResultSummary",
+    "SummaryCounters",
+    "SummaryNotification",
+    "SummaryNotificationPosition",
+    "unit_of_work",
 ]

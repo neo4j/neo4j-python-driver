@@ -28,6 +28,7 @@ from ..._async_compat import sleep
 from ..._async_compat.util import Util
 from ..._conf import SessionConfig
 from ..._meta import deprecated
+from ..._work import Query
 from ...api import (
     Bookmarks,
     READ_ACCESS,
@@ -41,7 +42,6 @@ from ...exceptions import (
     SessionExpired,
     TransactionError,
 )
-from ...work import Query
 from .result import Result
 from .transaction import (
     ManagedTransaction,
@@ -289,7 +289,8 @@ class Session(Workspace):
         self._auto_result._run(
             query, parameters, self._config.database,
             self._config.impersonated_user, self._config.default_access_mode,
-            bookmarks
+            bookmarks, self._config.notifications_min_severity,
+            self._config.notifications_disabled_categories,
         )
 
         return self._auto_result
@@ -395,7 +396,9 @@ class Session(Workspace):
         bookmarks = self._get_bookmarks()
         self._transaction._begin(
             self._config.database, self._config.impersonated_user,
-            bookmarks, access_mode, metadata, timeout
+            bookmarks, access_mode, metadata, timeout,
+            self._config.notifications_min_severity,
+            self._config.notifications_disabled_categories,
         )
 
     def begin_transaction(

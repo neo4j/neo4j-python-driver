@@ -297,7 +297,7 @@ def fetch_and_compare_all_records(
 def test_result_iteration(method, records):
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, 2, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     fetch_and_compare_all_records(result, "x", records, method)
 
 
@@ -306,7 +306,7 @@ def test_result_iteration_mixed_methods():
     records = [[i] for i in range(10)]
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, 4, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     iter1 = Util.iter(result)
     iter2 = Util.iter(result)
     assert (Util.next(iter1)).get("x") == records[0][0]
@@ -342,9 +342,9 @@ def test_parallel_result_iteration(method, invert_fetch):
         records=(Records(["x"], records1), Records(["x"], records2))
     )
     result1 = Result(connection, 2, noop, noop)
-    result1._run("CYPHER1", {}, None, None, "r", None)
+    result1._run("CYPHER1", {}, None, None, "r", None, None, None)
     result2 = Result(connection, 2, noop, noop)
-    result2._run("CYPHER2", {}, None, None, "r", None)
+    result2._run("CYPHER2", {}, None, None, "r", None, None, None)
     if invert_fetch:
         fetch_and_compare_all_records(
             result2, "x", records2, method
@@ -372,9 +372,9 @@ def test_interwoven_result_iteration(method, invert_fetch):
         records=(Records(["x"], records1), Records(["y"], records2))
     )
     result1 = Result(connection, 2, noop, noop)
-    result1._run("CYPHER1", {}, None, None, "r", None)
+    result1._run("CYPHER1", {}, None, None, "r", None, None, None)
     result2 = Result(connection, 2, noop, noop)
-    result2._run("CYPHER2", {}, None, None, "r", None)
+    result2._run("CYPHER2", {}, None, None, "r", None, None, None)
     start = 0
     for n in (1, 2, 3, 1, None):
         end = n if n is None else start + n
@@ -401,7 +401,7 @@ def test_interwoven_result_iteration(method, invert_fetch):
 def test_result_peek(records, fetch_size):
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, fetch_size, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     for i in range(len(records) + 1):
         record = result.peek()
         if i == len(records):
@@ -424,7 +424,7 @@ def test_result_single_non_strict(records, fetch_size, default):
 
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, fetch_size, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     if len(records) == 0:
         assert result.single(**kwargs) is None
     else:
@@ -443,7 +443,7 @@ def test_result_single_non_strict(records, fetch_size, default):
 def test_result_single_strict(records, fetch_size):
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, fetch_size, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     try:
         record = result.single(strict=True)
     except ResultNotSingleError as exc:
@@ -470,7 +470,7 @@ def test_result_single_strict(records, fetch_size):
 def test_result_single_exhausts_records(records, fetch_size, strict):
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, fetch_size, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -492,7 +492,7 @@ def test_result_single_exhausts_records(records, fetch_size, strict):
 def test_result_fetch(records, fetch_size, strict):
     connection = ConnectionStub(records=Records(["x"], records))
     result = Result(connection, fetch_size, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     assert result.fetch(0) == []
     assert result.fetch(-1) == []
     assert [[r.get("x")] for r in result.fetch(2)] == records[:2]
@@ -504,7 +504,7 @@ def test_result_fetch(records, fetch_size, strict):
 def test_keys_are_available_before_and_after_stream():
     connection = ConnectionStub(records=Records(["x"], [[1], [2]]))
     result = Result(connection, 1, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     assert list(result.keys()) == ["x"]
     Util.list(result)
     assert list(result.keys()) == ["x"]
@@ -520,7 +520,7 @@ def test_consume(records, consume_one, summary_meta, consume_times):
         records=Records(["x"], records), summary_meta=summary_meta
     )
     result = Result(connection, 1, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     if consume_one:
         try:
             Util.next(Util.iter(result))
@@ -555,7 +555,7 @@ def test_time_in_summary(t_first, t_last):
     )
 
     result = Result(connection, 1, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     summary = result.consume()
 
     if t_first is not None:
@@ -577,7 +577,7 @@ def test_counts_in_summary():
     connection = ConnectionStub(records=Records(["n"], [[1], [2]]))
 
     result = Result(connection, 1, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     summary = result.consume()
 
     assert isinstance(summary.counters, SummaryCounters)
@@ -591,7 +591,7 @@ def test_query_type(query_type):
     )
 
     result = Result(connection, 1, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     summary = result.consume()
 
     assert isinstance(summary.query_type, str)
@@ -606,7 +606,7 @@ def test_data(num_records):
     )
 
     result = Result(connection, 1, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     result._buffer_all()
     records = result._record_buffer.copy()
     assert len(records) == num_records
@@ -638,7 +638,7 @@ def test_data(num_records):
 def test_result_graph(records):
     connection = ConnectionStub(records=records)
     result = Result(connection, 1, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     graph = result.graph()
     assert isinstance(graph, Graph)
     if records.fields == ("n",):
@@ -719,7 +719,7 @@ def test_to_eager_result(records):
     summary = {"test_to_eager_result": uuid.uuid4()}
     connection = ConnectionStub(records=records, summary_meta=summary)
     result = Result(connection, 1, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     with assert_warns_to_eager_result_experimental():
         eager_result = result.to_eager_result()
 
@@ -780,7 +780,7 @@ def test_to_eager_result(records):
 def test_to_df(keys, values, types, instances, test_default_expand):
     connection = ConnectionStub(records=Records(keys, values))
     result = Result(connection, 1, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     if test_default_expand:
         df = result.to_df()
     else:
@@ -937,7 +937,7 @@ def test_to_df_expand(keys, values, expected_columns, expected_rows,
                             expected_types):
     connection = ConnectionStub(records=Records(keys, values))
     result = Result(connection, 1, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     df = result.to_df(expand=True)
 
     assert isinstance(df, pd.DataFrame)
@@ -1136,7 +1136,7 @@ def test_to_df_expand(keys, values, expected_columns, expected_rows,
 def test_to_df_parse_dates(keys, values, expected_df, expand):
     connection = ConnectionStub(records=Records(keys, values))
     result = Result(connection, 1, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     df = result.to_df(expand=expand, parse_dates=True)
 
     pd.testing.assert_frame_equal(df, expected_df)
@@ -1151,7 +1151,7 @@ def test_broken_hydration(nested):
     records_in = Records(["foo", "bar"], [["foobar", value_in]])
     connection = ConnectionStub(records=records_in)
     result = Result(connection, 1, noop, noop)
-    result._run("CYPHER", {}, None, None, "r", None)
+    result._run("CYPHER", {}, None, None, "r", None, None, None)
     records_out = Util.list(result)
     assert len(records_out) == 1
     record_out = records_out[0]

@@ -377,6 +377,8 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`ssl-context-ref`
 + :ref:`trusted-certificates-ref`
 + :ref:`user-agent-ref`
++ :ref:`driver-notifications-min-severity-ref`
++ :ref:`driver-notifications-disabled-categories-ref`
 
 
 .. _connection-acquisition-timeout-ref:
@@ -596,6 +598,49 @@ Specify the client agent name.
 :Default: *The Python Driver will generate a user agent name.*
 
 
+.. _driver-notifications-min-severity-ref:
+
+``notifications_min_severity``
+------------------------------
+Set the minimum severity for notifications the server should send to the client.
+
+Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+
+:data:`None` will apply the server's default setting.
+
+.. Note::
+    If configured, the server or all servers of the cluster need to support notifications filtering.
+    Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
+
+:Type: :data:`None`, :class:`.NotificationMinimumSeverity`, or :class:`str`
+:Default: :data:`None`
+
+.. versionadded:: 5.7
+
+.. seealso:: :class:`.NotificationMinimumSeverity`, session config :ref:`session-notifications-min-severity-ref`
+
+
+.. _driver-notifications-disabled-categories-ref:
+
+``notifications_disabled_categories``
+-------------------------------------
+Set categories of notifications the server should not send to the client.
+
+Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+
+:data:`None` will apply the server's default setting.
+
+.. Note::
+    If configured, the server or all servers of the cluster need to support notifications filtering.
+    Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
+
+:Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledCategory` and/or :class:`str`
+:Default: :data:`None`
+
+.. versionadded:: 5.7
+
+.. seealso:: :class:`.NotificationDisabledCategory`, session config :ref:`session-notifications-disabled-categories-ref`
+
 
 Driver Object Lifetime
 ======================
@@ -759,6 +804,8 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 + :ref:`default-access-mode-ref`
 + :ref:`fetch-size-ref`
 + :ref:`bookmark-manager-ref`
++ :ref:`session-notifications-min-severity-ref`
++ :ref:`session-notifications-disabled-categories-ref`
 
 
 .. _bookmarks-ref:
@@ -858,7 +905,7 @@ context of the impersonated user. For this, the user for which the
 
 .. Note::
 
-    The server or all servers of the cluster need to support impersonation.
+    If configured, the server or all servers of the cluster need to support impersonation.
     Otherwise, the driver will raise :exc:`.ConfigurationError`
     as soon as it encounters a server that does not.
 
@@ -951,6 +998,49 @@ See :class:`.BookmarkManager` for more information.
 **This is experimental.** (See :ref:`filter-warnings-ref`)
 It might be changed or removed any time even without prior notice.
 
+
+.. _session-notifications-min-severity-ref:
+
+``notifications_min_severity``
+------------------------------
+Set the minimum severity for notifications the server should send to the client.
+
+Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+
+:data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-min-severity-ref`).
+
+.. Note::
+    If configured, the server or all servers of the cluster need to support notifications filtering.
+    Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
+
+:Type: :data:`None`, :class:`.NotificationMinimumSeverity`, or :class:`str`
+:Default: :data:`None`
+
+.. versionadded:: 5.7
+
+.. seealso:: :class:`.NotificationMinimumSeverity`
+
+
+.. _session-notifications-disabled-categories-ref:
+
+``notifications_disabled_categories``
+-------------------------------------
+Set categories of notifications the server should not send to the client.
+
+Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+
+:data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-min-severity-ref`).
+
+.. Note::
+    If configured, the server or all servers of the cluster need to support notifications filtering.
+    Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
+
+:Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledCategory` and/or :class:`str`
+:Default: :data:`None`
+
+.. versionadded:: 5.7
+
+.. seealso:: :class:`.NotificationDisabledCategory`
 
 
 
@@ -1288,6 +1378,34 @@ ServerInfo
    :members:
 
 
+SummaryNotification
+===================
+
+.. autoclass:: neo4j.SummaryNotification()
+    :members:
+
+
+NotificationSeverity
+--------------------
+
+.. autoclass:: neo4j.NotificationSeverity()
+    :members:
+
+
+NotificationCategory
+--------------------
+
+.. autoclass:: neo4j.NotificationCategory()
+    :members:
+
+
+SummaryNotificationPosition
+---------------------------
+
+.. autoclass:: neo4j.SummaryNotificationPosition()
+    :members:
+
+
 
 ***************
 Core Data Types
@@ -1582,6 +1700,14 @@ BookmarkManager
 *************************
 Constants, Enums, Helpers
 *************************
+
+.. autoclass:: neo4j.NotificationMinimumSeverity
+    :show-inheritance:
+    :members:
+
+.. autoclass:: neo4j.NotificationDisabledCategory
+    :show-inheritance:
+    :members:
 
 .. autoclass:: neo4j.RoutingControl
     :show-inheritance:

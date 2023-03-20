@@ -18,6 +18,7 @@
 
 import pytest
 
+from neo4j._conf import PoolConfig
 from neo4j._sync.io._pool import IOPool
 
 
@@ -28,10 +29,11 @@ __all__ = [
 
 @pytest.fixture
 def fake_pool(fake_connection_generator, mocker):
-    pool = mocker.Mock(spec=IOPool)
+    pool = mocker.MagicMock(spec=IOPool)
     assert not hasattr(pool, "acquired_connection_mocks")
     pool.buffered_connection_mocks = []
     pool.acquired_connection_mocks = []
+    pool.pool_config = PoolConfig()
 
     def acquire_side_effect(*_, **__):
         if pool.buffered_connection_mocks:

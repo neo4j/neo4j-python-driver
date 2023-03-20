@@ -94,6 +94,12 @@ class Bolt5x0(Bolt):
         return headers
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
+        if (
+            self.notifications_min_severity is not None
+            or self.notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
+
         def on_success(metadata):
             self.configuration_hints.update(metadata.pop("hints", {}))
             self.server_info.update(metadata)
@@ -149,7 +155,14 @@ class Bolt5x0(Bolt):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            dehydration_hooks=None, hydration_hooks=None, **handlers):
+            notifications_min_severity=None,
+            notifications_disabled_categories=None, dehydration_hooks=None,
+            hydration_hooks=None, **handlers):
+        if (
+            notifications_min_severity is not None
+            or notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
         if not parameters:
             parameters = {}
         extra = {}
@@ -176,7 +189,7 @@ class Bolt5x0(Bolt):
             except TypeError:
                 raise TypeError("Timeout must be a number (in seconds)")
             if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a number <= 0")
+                raise ValueError("Timeout must be a number >= 0")
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port,
                   " ".join(map(repr, fields)))
@@ -205,8 +218,14 @@ class Bolt5x0(Bolt):
                      dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, dehydration_hooks=None,
+              db=None, imp_user=None, notifications_min_severity=None,
+              notifications_disabled_categories=None, dehydration_hooks=None,
               hydration_hooks=None, **handlers):
+        if (
+            notifications_min_severity is not None
+            or notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
         extra = {}
         if mode in (READ_ACCESS, "r"):
             # It will default to mode "w" if nothing is specified
@@ -231,7 +250,7 @@ class Bolt5x0(Bolt):
             except TypeError:
                 raise TypeError("Timeout must be a number (in seconds)")
             if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a number <= 0")
+                raise ValueError("Timeout must be a number >= 0")
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,),
                      Response(self, "begin", hydration_hooks, **handlers),
@@ -335,3 +354,190 @@ class Bolt5x0(Bolt):
             )
 
         return len(details), 1
+
+
+class Bolt5x1(Bolt5x0):
+
+    PROTOCOL_VERSION = Version(5, 1)
+
+    def hello(self, dehydration_hooks=None, hydration_hooks=None):
+        if (
+            self.notifications_min_severity is not None
+            or self.notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
+
+        def on_success(metadata):
+            self.configuration_hints.update(metadata.pop("hints", {}))
+            self.server_info.update(metadata)
+            if "connection.recv_timeout_seconds" in self.configuration_hints:
+                recv_timeout = self.configuration_hints[
+                    "connection.recv_timeout_seconds"
+                ]
+                if isinstance(recv_timeout, int) and recv_timeout > 0:
+                    self.socket.settimeout(recv_timeout)
+                else:
+                    log.info("[#%04X]  _: <CONNECTION> Server supplied an "
+                             "invalid value for "
+                             "connection.recv_timeout_seconds (%r). Make sure "
+                             "the server and network is set up correctly.",
+                             self.local_port, recv_timeout)
+
+        extra = self.get_base_headers()
+        log.debug("[#%04X]  C: HELLO %r", self.local_port, extra)
+        self._append(b"\x01", (extra,),
+                     response=InitResponse(self, "hello", hydration_hooks,
+                                           on_success=on_success),
+                     dehydration_hooks=dehydration_hooks)
+
+        self.logon(dehydration_hooks, hydration_hooks)
+        self.send_all()
+        self.fetch_all()
+        check_supported_server_product(self.server_info.agent)
+
+    def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        logged_auth_dict = dict(self.auth_dict)
+        if "credentials" in logged_auth_dict:
+            logged_auth_dict["credentials"] = "*******"
+        log.debug("[#%04X]  C: LOGON %r", self.local_port, logged_auth_dict)
+        self._append(b"\x6A", (self.auth_dict,),
+                     response=Response(self, "logon", hydration_hooks),
+                     dehydration_hooks=dehydration_hooks)
+
+
+class Bolt5x2(Bolt5x1):
+
+    PROTOCOL_VERSION = Version(5, 2)
+
+    def get_base_headers(self):
+        headers = super().get_base_headers()
+        if self.notifications_min_severity is not None:
+            headers["notifications_minimum_severity"] = \
+                self.notifications_min_severity
+        if self.notifications_disabled_categories is not None:
+            headers["notifications_disabled_categories"] = \
+                self.notifications_disabled_categories
+        return headers
+
+    def hello(self, dehydration_hooks=None, hydration_hooks=None):
+        def on_success(metadata):
+            self.configuration_hints.update(metadata.pop("hints", {}))
+            self.server_info.update(metadata)
+            if "connection.recv_timeout_seconds" in self.configuration_hints:
+                recv_timeout = self.configuration_hints[
+                    "connection.recv_timeout_seconds"
+                ]
+                if isinstance(recv_timeout, int) and recv_timeout > 0:
+                    self.socket.settimeout(recv_timeout)
+                else:
+                    log.info("[#%04X]  _: <CONNECTION> Server supplied an "
+                             "invalid value for "
+                             "connection.recv_timeout_seconds (%r). Make sure "
+                             "the server and network is set up correctly.",
+                             self.local_port, recv_timeout)
+
+        extra = self.get_base_headers()
+        log.debug("[#%04X]  C: HELLO %r", self.local_port, extra)
+        self._append(b"\x01", (extra,),
+                     response=InitResponse(self, "hello", hydration_hooks,
+                                           on_success=on_success),
+                     dehydration_hooks=dehydration_hooks)
+
+        self.logon(dehydration_hooks, hydration_hooks)
+        self.send_all()
+        self.fetch_all()
+        check_supported_server_product(self.server_info.agent)
+
+    def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        logged_auth_dict = dict(self.auth_dict)
+        if "credentials" in logged_auth_dict:
+            logged_auth_dict["credentials"] = "*******"
+        log.debug("[#%04X]  C: LOGON %r", self.local_port, logged_auth_dict)
+        self._append(b"\x6A", (self.auth_dict,),
+                     response=Response(self, "logon", hydration_hooks),
+                     dehydration_hooks=dehydration_hooks)
+
+    def run(self, query, parameters=None, mode=None, bookmarks=None,
+            metadata=None, timeout=None, db=None, imp_user=None,
+            notifications_min_severity=None,
+            notifications_disabled_categories=None, dehydration_hooks=None,
+            hydration_hooks=None, **handlers):
+        if not parameters:
+            parameters = {}
+        extra = {}
+        if mode in (READ_ACCESS, "r"):
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
+        if db:
+            extra["db"] = db
+        if imp_user:
+            extra["imp_user"] = imp_user
+        if notifications_min_severity is not None:
+            extra["notifications_minimum_severity"] = \
+                notifications_min_severity
+        if notifications_disabled_categories is not None:
+            extra["notifications_disabled_categories"] = \
+                notifications_disabled_categories
+        if bookmarks:
+            try:
+                extra["bookmarks"] = list(bookmarks)
+            except TypeError:
+                raise TypeError("Bookmarks must be provided as iterable")
+        if metadata:
+            try:
+                extra["tx_metadata"] = dict(metadata)
+            except TypeError:
+                raise TypeError("Metadata must be coercible to a dict")
+        if timeout is not None:
+            try:
+                extra["tx_timeout"] = int(1000 * float(timeout))
+            except TypeError:
+                raise TypeError("Timeout must be a number (in seconds)")
+            if extra["tx_timeout"] < 0:
+                raise ValueError("Timeout must be a number >= 0")
+        fields = (query, parameters, extra)
+        log.debug("[#%04X]  C: RUN %s", self.local_port,
+                  " ".join(map(repr, fields)))
+        self._append(b"\x10", fields,
+                     Response(self, "run", hydration_hooks, **handlers),
+                     dehydration_hooks=dehydration_hooks)
+
+    def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
+              db=None, imp_user=None, notifications_min_severity=None,
+              notifications_disabled_categories=None, dehydration_hooks=None,
+              hydration_hooks=None, **handlers):
+        extra = {}
+        if mode in (READ_ACCESS, "r"):
+            # It will default to mode "w" if nothing is specified
+            extra["mode"] = "r"
+        if db:
+            extra["db"] = db
+        if imp_user:
+            extra["imp_user"] = imp_user
+        if bookmarks:
+            try:
+                extra["bookmarks"] = list(bookmarks)
+            except TypeError:
+                raise TypeError("Bookmarks must be provided as iterable")
+        if metadata:
+            try:
+                extra["tx_metadata"] = dict(metadata)
+            except TypeError:
+                raise TypeError("Metadata must be coercible to a dict")
+        if timeout is not None:
+            try:
+                extra["tx_timeout"] = int(1000 * float(timeout))
+            except TypeError:
+                raise TypeError("Timeout must be a number (in seconds)")
+            if extra["tx_timeout"] < 0:
+                raise ValueError("Timeout must be a number >= 0")
+        if notifications_min_severity is not None:
+            extra["notifications_minimum_severity"] = \
+                notifications_min_severity
+        if notifications_disabled_categories is not None:
+            extra["notifications_disabled_categories"] = \
+                notifications_disabled_categories
+        log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
+        self._append(b"\x11", (extra,),
+                     Response(self, "begin", hydration_hooks, **handlers),
+                     dehydration_hooks=dehydration_hooks)

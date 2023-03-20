@@ -24,7 +24,10 @@ from neo4j import (
     READ_ACCESS,
     WRITE_ACCESS,
 )
-from neo4j._async.io import AsyncNeo4jPool
+from neo4j._async.io import (
+    AsyncBolt,
+    AsyncNeo4jPool,
+)
 from neo4j._async_compat.util import AsyncUtil
 from neo4j._conf import (
     PoolConfig,
@@ -491,6 +494,25 @@ async def test__acquire_new_later_without_room(opener):
     creator = pool._acquire_new_later(READER_ADDRESS, Deadline(1))
     assert pool.connections_reservations[READER_ADDRESS] == 0
     assert creator is None
+
+
+@mark_async_test
+async def test_passes_pool_config_to_connection(mocker):
+    bolt_mock = mocker.patch.object(AsyncBolt, "open", autospec=True)
+
+    pool_config = PoolConfig()
+    workspace_config = WorkspaceConfig()
+    pool = AsyncNeo4jPool.open(
+        mocker.Mock, auth=("a", "b"), pool_config=pool_config, workspace_config=workspace_config
+    )
+
+    _ = await pool._acquire(
+        mocker.Mock, Deadline.from_timeout_or_deadline(30), None
+    )
+
+    bolt_mock.assert_awaited_once()
+    assert bolt_mock.call_args.kwargs["pool_config"] is pool_config
+
 
 
 @pytest.mark.parametrize("error", (

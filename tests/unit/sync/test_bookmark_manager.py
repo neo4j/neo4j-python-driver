@@ -18,7 +18,6 @@
 
 from __future__ import annotations
 
-import itertools
 import typing as t
 
 import pytest
@@ -26,7 +25,6 @@ import pytest
 import neo4j
 from neo4j._async_compat.util import Util
 from neo4j._meta import copy_signature
-from neo4j._sync.bookmark_manager import Neo4jBookmarkManager
 from neo4j.api import Bookmarks
 
 from ..._async_compat import mark_sync_test
@@ -81,7 +79,7 @@ def test_get_bookmarks_return_from_bookmarks_supplier(
     mocker, initial_bookmarks: t.Optional[t.List[str]], supplier_async: bool
 ) -> None:
     extra_bookmarks = ["foo:bm1", "bar:bm2", "foo:bm1"]
-    mock_cls = mocker.Mock if supplier_async else mocker.Mock
+    mock_cls = mocker.MagicMock if supplier_async else mocker.Mock
     supplier = mock_cls(
         return_value=Bookmarks.from_raw_values(extra_bookmarks)
     )
@@ -129,7 +127,7 @@ def test_notify_on_new_bookmarks(
         initial_bookmarks = ["db1:bm1", "db1:bm1", "db1:bm2", "db2:bm1"]
     else:
         initial_bookmarks = None
-    mock_cls = mocker.Mock if consumer_async else mocker.Mock
+    mock_cls = mocker.MagicMock if consumer_async else mocker.Mock
     consumer = mock_cls()
     bmm = bookmark_manager(
         initial_bookmarks=initial_bookmarks,
@@ -164,7 +162,7 @@ def test_does_not_notify_on_empty_new_bookmark_set(
         initial_bookmarks = ["db1:bm1", "db1:bm2"]
     else:
         initial_bookmarks = None
-    mock_cls = mocker.Mock if consumer_async else mocker.Mock
+    mock_cls = mocker.MagicMock if consumer_async else mocker.Mock
     consumer = mock_cls()
     bmm = bookmark_manager(
         initial_bookmarks=initial_bookmarks,

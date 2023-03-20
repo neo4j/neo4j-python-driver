@@ -22,6 +22,8 @@ import pytest
 
 from neo4j._async.io._bolt4 import AsyncBolt4x3
 from neo4j._conf import PoolConfig
+from neo4j.api import Auth
+from neo4j.exceptions import ConfigurationError
 
 from ...._async_compat import mark_async_test
 
@@ -126,7 +128,6 @@ async def test_qid_extra_in_discard(fake_socket, test_input, expected):
 )
 @mark_async_test
 async def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
-    # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_n_and_qid_extras_in_discard
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address, AsyncBolt4x3.UNPACKER_CLS)
     connection = AsyncBolt4x3(address, socket, PoolConfig.max_connection_lifetime)
@@ -167,7 +168,6 @@ async def test_n_extra_in_pull(fake_socket, test_input, expected):
 )
 @mark_async_test
 async def test_qid_extra_in_pull(fake_socket, test_input, expected):
-    # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_qid_extra_in_pull
     address = ("127.0.0.1", 7687)
     socket = fake_socket(address, AsyncBolt4x3.UNPACKER_CLS)
     connection = AsyncBolt4x3(address, socket, PoolConfig.max_connection_lifetime)
@@ -255,3 +255,112 @@ async def test_hint_recv_timeout_seconds(
                    and "recv_timeout_seconds" in msg
                    and "invalid" in msg
                    for msg in caplog.messages)
+
+
+@pytest.mark.parametrize(("method", "args"), (
+    ("run", ("RETURN 1",)),
+    ("begin", ()),
+))
+@pytest.mark.parametrize("kwargs", (
+    {"notifications_min_severity": "WARNING"},
+    {"notifications_disabled_categories": ["HINT"]},
+    {"notifications_disabled_categories": []},
+    {
+        "notifications_min_severity": "WARNING",
+        "notifications_disabled_categories": ["HINT"]
+    },
+))
+def test_does_not_support_notification_filters(fake_socket, method,
+                                               args, kwargs):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address, AsyncBolt4x3.UNPACKER_CLS)
+    connection = AsyncBolt4x3(address, socket,
+                            PoolConfig.max_connection_lifetime)
+    method = getattr(connection, method)
+    with pytest.raises(ConfigurationError, match="Notification filtering"):
+        method(*args, **kwargs)
+
+
+@mark_async_test
+@pytest.mark.parametrize("kwargs", (
+    {"notifications_min_severity": "WARNING"},
+    {"notifications_disabled_categories": ["HINT"]},
+    {"notifications_disabled_categories": []},
+    {
+        "notifications_min_severity": "WARNING",
+        "notifications_disabled_categories": ["HINT"]
+    },
+))
+async def test_hello_does_not_support_notification_filters(
+    fake_socket, kwargs
+):
+    address = ("127.0.0.1", 7687)
+    socket = fake_socket(address, AsyncBolt4x3.UNPACKER_CLS)
+    connection = AsyncBolt4x3(
+        address, socket, PoolConfig.max_connection_lifetime,
+        **kwargs
+    )
+    with pytest.raises(ConfigurationError, match="Notification filtering"):
+        await connection.hello()
+
+
+class HackedAuth:
+    def __init__(self, dict_):
+        self.__dict__ = dict_
+
+
+@mark_async_test
+@pytest.mark.parametrize("auth", (
+    ("awesome test user", "safe p4ssw0rd"),
+    Auth("super nice scheme", "awesome test user", "safe p4ssw0rd"),
+    Auth("super nice scheme", "awesome test user", "safe p4ssw0rd",
+         realm="super duper realm"),
+    Auth("super nice scheme", "awesome test user", "safe p4ssw0rd",
+         realm="super duper realm"),
+    Auth("super nice scheme", "awesome test user", "safe p4ssw0rd",
+         foo="bar"),
+    HackedAuth({
+        "scheme": "super nice scheme", "principal": "awesome test user",
+        "credentials": "safe p4ssw0rd", "realm": "super duper realm",
+        "parameters": {"credentials": "should be visible!"},
+    })
+
+))
+async def test_hello_does_not_log_credentials(fake_socket_pair, caplog, auth):
+    def items():
+        if isinstance(auth, tuple):
+            yield "scheme", "basic"
+            yield "principal", auth[0]
+            yield "credentials", auth[1]
+        elif isinstance(auth, Auth):
+            for key in ("scheme", "principal", "credentials", "realm",
+                        "parameters"):
+                value = getattr(auth, key, None)
+                if value:
+                    yield key, value
+        elif isinstance(auth, HackedAuth):
+            yield from auth.__dict__.items()
+        else:
+            raise TypeError(auth)
+
+    address = ("127.0.0.1", 7687)
+    sockets = fake_socket_pair(address,
+                               packer_cls=AsyncBolt4x3.PACKER_CLS,
+                               unpacker_cls=AsyncBolt4x3.UNPACKER_CLS)
+    await sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    max_connection_lifetime = 0
+    connection = AsyncBolt4x3(address, sockets.client,
+                              max_connection_lifetime, auth=auth)
+
+    with caplog.at_level(logging.DEBUG):
+        await connection.hello()
+
+    hellos = [m for m in caplog.messages if "C: HELLO" in m]
+    assert len(hellos) == 1
+    hello = hellos[0]
+
+    for key, value in items():
+        if key == "credentials":
+            assert value not in hello
+        else:
+            assert str({key: value})[1:-1] in hello

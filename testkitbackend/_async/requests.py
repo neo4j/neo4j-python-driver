@@ -146,6 +146,7 @@ async def NewDriver(backend, data):
             cert_paths = ("/usr/local/share/custom-ca-certificates/" + cert
                           for cert in data["trustedCertificates"])
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
+    fromtestkit.set_notifications_config(kwargs, data)
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
     driver = neo4j.AsyncGraphDatabase.driver(
@@ -419,6 +420,7 @@ async def NewSession(backend, data):
     ):
         if data_name in data:
             config[conf_name] = data[data_name]
+    fromtestkit.set_notifications_config(config, data)
     if "bookmark_manager" in config:
         with warning_check(
             neo4j.ExperimentalWarning,
@@ -616,8 +618,7 @@ async def ResultList(backend, data):
 async def ResultConsume(backend, data):
     result = backend.results[data["resultId"]]
     summary = await result.consume()
-    from neo4j import ResultSummary
-    assert isinstance(summary, ResultSummary)
+    assert isinstance(summary, neo4j.ResultSummary)
     await backend.send_response("Summary", totestkit.summary(summary))
 
 

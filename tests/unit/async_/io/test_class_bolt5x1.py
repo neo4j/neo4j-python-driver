@@ -20,7 +20,7 @@ import logging
 
 import pytest
 
-from neo4j._async.io._bolt3 import AsyncBolt3
+from neo4j._async.io._bolt5 import AsyncBolt5x1
 from neo4j._conf import PoolConfig
 from neo4j.api import Auth
 from neo4j.exceptions import ConfigurationError
@@ -28,93 +28,8 @@ from neo4j.exceptions import ConfigurationError
 from ...._async_compat import mark_async_test
 
 
-@pytest.mark.parametrize("set_stale", (True, False))
-def test_conn_is_stale(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
-    max_connection_lifetime = 0
-    connection = AsyncBolt3(address, fake_socket(address), max_connection_lifetime)
-    if set_stale:
-        connection.set_stale()
-    assert connection.stale() is True
-
-
-@pytest.mark.parametrize("set_stale", (True, False))
-def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
-    max_connection_lifetime = -1
-    connection = AsyncBolt3(address, fake_socket(address), max_connection_lifetime)
-    if set_stale:
-        connection.set_stale()
-    assert connection.stale() is set_stale
-
-
-@pytest.mark.parametrize("set_stale", (True, False))
-def test_conn_is_not_stale(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
-    max_connection_lifetime = 999999999
-    connection = AsyncBolt3(address, fake_socket(address), max_connection_lifetime)
-    if set_stale:
-        connection.set_stale()
-    assert connection.stale() is set_stale
-
-
-def test_db_extra_not_supported_in_begin(fake_socket):
-    address = ("127.0.0.1", 7687)
-    connection = AsyncBolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
-    with pytest.raises(ConfigurationError):
-        connection.begin(db="something")
-
-
-def test_db_extra_not_supported_in_run(fake_socket):
-    address = ("127.0.0.1", 7687)
-    connection = AsyncBolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
-    with pytest.raises(ConfigurationError):
-        connection.run("", db="something")
-
-
-@mark_async_test
-async def test_simple_discard(fake_socket):
-    address = ("127.0.0.1", 7687)
-    socket = fake_socket(address, AsyncBolt3.UNPACKER_CLS)
-    connection = AsyncBolt3(address, socket, PoolConfig.max_connection_lifetime)
-    connection.discard()
-    await connection.send_all()
-    tag, fields = await socket.pop_message()
-    assert tag == b"\x2F"
-    assert len(fields) == 0
-
-
-@mark_async_test
-async def test_simple_pull(fake_socket):
-    address = ("127.0.0.1", 7687)
-    socket = fake_socket(address, AsyncBolt3.UNPACKER_CLS)
-    connection = AsyncBolt3(address, socket, PoolConfig.max_connection_lifetime)
-    connection.pull()
-    await connection.send_all()
-    tag, fields = await socket.pop_message()
-    assert tag == b"\x3F"
-    assert len(fields) == 0
-
-
-@pytest.mark.parametrize("recv_timeout", (1, -1))
-@mark_async_test
-async def test_hint_recv_timeout_seconds_gets_ignored(
-    fake_socket_pair, recv_timeout, mocker
-):
-    address = ("127.0.0.1", 7687)
-    sockets = fake_socket_pair(
-        address, AsyncBolt3.PACKER_CLS, AsyncBolt3.UNPACKER_CLS
-    )
-    sockets.client.settimeout = mocker.AsyncMock()
-    await sockets.server.send_message(b"\x70", {
-        "server": "Neo4j/3.5.0",
-        "hints": {"connection.recv_timeout_seconds": recv_timeout},
-    })
-    connection = AsyncBolt3(
-        address, sockets.client, PoolConfig.max_connection_lifetime
-    )
-    await connection.hello()
-    sockets.client.settimeout.assert_not_called()
+# TODO: proper testing should come from the re-auth ADR,
+#       which properly introduces Bolt 5.1
 
 
 @pytest.mark.parametrize(("method", "args"), (
@@ -133,8 +48,8 @@ async def test_hint_recv_timeout_seconds_gets_ignored(
 def test_does_not_support_notification_filters(fake_socket, method,
                                                args, kwargs):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address, AsyncBolt3.UNPACKER_CLS)
-    connection = AsyncBolt3(address, socket,
+    socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
+    connection = AsyncBolt5x1(address, socket,
                             PoolConfig.max_connection_lifetime)
     method = getattr(connection, method)
     with pytest.raises(ConfigurationError, match="Notification filtering"):
@@ -155,8 +70,8 @@ async def test_hello_does_not_support_notification_filters(
     fake_socket, kwargs
 ):
     address = ("127.0.0.1", 7687)
-    socket = fake_socket(address, AsyncBolt3.UNPACKER_CLS)
-    connection = AsyncBolt3(
+    socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
+    connection = AsyncBolt5x1(
         address, socket, PoolConfig.max_connection_lifetime,
         **kwargs
     )
@@ -205,22 +120,23 @@ async def test_hello_does_not_log_credentials(fake_socket_pair, caplog, auth):
 
     address = ("127.0.0.1", 7687)
     sockets = fake_socket_pair(address,
-                               packer_cls=AsyncBolt3.PACKER_CLS,
-                               unpacker_cls=AsyncBolt3.UNPACKER_CLS)
+                               packer_cls=AsyncBolt5x1.PACKER_CLS,
+                               unpacker_cls=AsyncBolt5x1.UNPACKER_CLS)
     await sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    await sockets.server.send_message(b"\x70", {})
     max_connection_lifetime = 0
-    connection = AsyncBolt3(address, sockets.client,
-                            max_connection_lifetime, auth=auth)
+    connection = AsyncBolt5x1(address, sockets.client,
+                              max_connection_lifetime, auth=auth)
 
     with caplog.at_level(logging.DEBUG):
         await connection.hello()
 
-    hellos = [m for m in caplog.messages if "C: HELLO" in m]
-    assert len(hellos) == 1
-    hello = hellos[0]
+    logons = [m for m in caplog.messages if "C: LOGON " in m]
+    assert len(logons) == 1
+    logon = logons[0]
 
     for key, value in items():
         if key == "credentials":
-            assert value not in hello
+            assert value not in logon
         else:
-            assert str({key: value})[1:-1] in hello
+            assert str({key: value})[1:-1] in logon

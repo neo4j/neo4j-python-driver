@@ -18,13 +18,11 @@
 
 from __future__ import annotations
 
-import itertools
 import typing as t
 
 import pytest
 
 import neo4j
-from neo4j._async.bookmark_manager import AsyncNeo4jBookmarkManager
 from neo4j._async_compat.util import AsyncUtil
 from neo4j._meta import copy_signature
 from neo4j.api import Bookmarks

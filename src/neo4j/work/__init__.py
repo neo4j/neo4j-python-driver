@@ -15,14 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: 6.0 - remove this file
 
-from .query import (
+
+from .._meta import deprecation_warn
+from .._work import (
     Query,
-    unit_of_work,
-)
-from .summary import (
     ResultSummary,
     SummaryCounters,
+    unit_of_work,
 )
 
 
@@ -32,3 +33,11 @@ __all__ = [
     "SummaryCounters",
     "unit_of_work",
 ]
+
+
+deprecation_warn(
+    "The module `neo4j.work` was made internal and will "
+    "no longer be available for import in future versions. "
+    "Everything from there should be imported directly from `neo4j`.",
+    stack_level=2
+)

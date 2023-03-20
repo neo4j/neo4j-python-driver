@@ -170,11 +170,11 @@ class Backend:
             data = request["data"]
             log.info("<<< " + name + dumps(data))
             handler(self, data)
-            unsused_keys = request.unseen_keys
-            if unsused_keys:
+            unused_keys = request.unseen_keys
+            if unused_keys:
                 raise NotImplementedError(
                     "Backend does not support some properties of the " + name +
-                    " request: " + ", ".join(unsused_keys)
+                    " request: " + ", ".join(unused_keys)
                 )
         except (Neo4jError, DriverError, UnsupportedServerProduct,
                 BoltError, MarkdAsDriverException) as e:

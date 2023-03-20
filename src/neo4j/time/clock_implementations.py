@@ -33,7 +33,7 @@ __all__ = [
 ]
 
 deprecation_warn(
-    "The module 'neo4j.time.clock_implementations' was made internal and will "
+    "The module `neo4j.time.clock_implementations` was made internal and will "
     "no longer be available for import in future versions.",
     stack_level=2
 )
