@@ -511,9 +511,9 @@ class AsyncIOPool(abc.ABC):
         )
 
     async def on_neo4j_error(self, error, connection):
-        address = connection.unresolved_address
         assert isinstance(error, Neo4jError)
         if error._unauthenticates_all_connections():
+            address = connection.unresolved_address
             log.debug(
                 "[#0000]  _: <POOL> mark all connections to %r as "
                 "unauthenticated", address
