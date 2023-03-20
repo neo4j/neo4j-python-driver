@@ -46,6 +46,31 @@ def record(rec):
 
 
 def summary(summary_: neo4j.ResultSummary) -> dict:
+    def serialize_notification(n: neo4j.SummaryNotification):
+        res: dict = {
+            "title": n.title,
+            "code": n.code,
+            "description": n.description,
+            "severityLevel": n.severity_level.name,
+            "category": n.category.name,
+            "severity": n.raw_severity_level,
+            "rawCategory": n.raw_category,
+            "rawSeverityLevel": n.raw_severity_level,
+        }
+        if n.position is not None:
+            res["position"] = {
+                "column": n.position.column,
+                "offset": n.position.offset,
+                "line": n.position.line,
+            }
+        return res
+
+    def serialize_notifications():
+        if summary_.notifications is None:
+            return None
+        return [serialize_notification(n)
+                for n in summary_.summary_notifications]
+
     return {
         "serverInfo": {
             "address": ":".join(map(str, summary_.server.address)),
@@ -70,19 +95,7 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
             "systemUpdates": summary_.counters.system_updates,
         },
         "database": summary_.database,
-        "notifications": [
-            {
-                "title": n.title,
-                "code": n.code,
-                "description": n.description,
-                "severityLevel": n.severity_level.name,
-                "category": n.category.name,
-                "severity": n.raw_severity_level,
-                "rawCategory": n.raw_category,
-                "rawSeverityLevel": n.raw_severity_level,
-            }
-            for n in summary_.summary_notifications
-        ],
+        "notifications": serialize_notifications(),
         "plan": summary_.plan,
         "profile": summary_.profile,
         "query": {
