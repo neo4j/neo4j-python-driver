@@ -72,8 +72,6 @@ test_session_config = {
     "fetch_size": 100,
     "bookmark_manager": object(),
     "auth": None,
-    # TODO: wait for decision on backwards_compatible_auth
-    # "backwards_compatible_auth": False,
 }
 
 

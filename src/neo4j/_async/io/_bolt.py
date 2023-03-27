@@ -99,8 +99,6 @@ class AsyncBolt:
     # The socket
     in_use = False
 
-    throwaway = False
-
     # When the connection was last put back into the pool
     idle_since = float("-inf")
 

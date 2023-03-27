@@ -360,9 +360,6 @@ Driver Configuration
 
 Additional configuration can be provided via the :class:`neo4j.Driver` constructor.
 
-.. TODO: wait for decision on backwards_compatible_auth
-    + :ref:`backwards-compatible-auth-ref`
-
 + :ref:`connection-acquisition-timeout-ref`
 + :ref:`connection-timeout-ref`
 + :ref:`encrypted-ref`
@@ -374,15 +371,6 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`trust-ref`
 + :ref:`ssl-context-ref`
 + :ref:`trusted-certificates-ref`
-+ :ref:`user-agent-ref`
-
-
-.. TODO: wait for decision on backwards_compatible_auth
-    .. _backwards-compatible-auth-ref:
-
-    ``backwards_compatible_auth``
-    -----------------------------
-    ...
 
 
 .. _connection-acquisition-timeout-ref:

@@ -462,7 +462,7 @@ def test__acquire_new_later_with_room(opener):
         opener, config, WorkspaceConfig(), ROUTER1_ADDRESS
     )
     assert pool.connections_reservations[READER_ADDRESS] == 0
-    creator = pool._acquire_new_later(READER_ADDRESS, None, Deadline(1), False)
+    creator = pool._acquire_new_later(READER_ADDRESS, None, Deadline(1))
     assert pool.connections_reservations[READER_ADDRESS] == 1
     assert callable(creator)
     if Util.is_async_code:
@@ -479,7 +479,7 @@ def test__acquire_new_later_without_room(opener):
     _ = pool.acquire(READ_ACCESS, 30, "test_db", None, None, None)
     # pool is full now
     assert pool.connections_reservations[READER_ADDRESS] == 0
-    creator = pool._acquire_new_later(READER_ADDRESS, None, Deadline(1), False)
+    creator = pool._acquire_new_later(READER_ADDRESS, None, Deadline(1))
     assert pool.connections_reservations[READER_ADDRESS] == 0
     assert creator is None
 

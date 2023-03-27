@@ -60,10 +60,6 @@ class QuickConnection:
     def is_reset(self):
         return True
 
-    @property
-    def throwaway(self):
-        return False
-
     def stale(self):
         return False
 

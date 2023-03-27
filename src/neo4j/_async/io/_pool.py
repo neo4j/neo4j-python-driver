@@ -80,8 +80,6 @@ log = getLogger("neo4j")
 @dataclass
 class AcquireAuth:
     auth: t.Union[AsyncAuthManager, AuthManager, None]
-    # TODO: wait for decision on backwards_compatible_auth
-    backwards_compatible: bool = False
     force_auth: bool = False
 
 
@@ -163,8 +161,7 @@ class AsyncIOPool(abc.ABC):
             else:
                 return connection
 
-    def _acquire_new_later(self, address, auth, deadline,
-                           backwards_compatible_auth):
+    def _acquire_new_later(self, address, auth, deadline):
         async def connection_creator():
             released_reservation = False
             try:
@@ -183,14 +180,10 @@ class AsyncIOPool(abc.ABC):
                     try:
                         connection.assert_re_auth_support()
                     except ConfigurationError:
-                        if not backwards_compatible_auth:
-                            log.debug("[#%04X]  _: <POOL> no re-auth support",
-                                      connection.local_port)
-                            await connection.close()
-                            raise
-                        log.debug("[#%04X]  _: <POOL> is throwaway connection",
+                        log.debug("[#%04X]  _: <POOL> no re-auth support",
                                   connection.local_port)
-                        connection.throwaway = True
+                        await connection.close()
+                        raise
                 connection.pool = self
                 connection.in_use = True
                 with self.lock:
@@ -216,10 +209,8 @@ class AsyncIOPool(abc.ABC):
                 return connection_creator
         return None
 
-    async def _re_auth_connection(
-        self, connection, auth, force, backwards_compatible_auth
-    ):
-        if auth and not backwards_compatible_auth:
+    async def _re_auth_connection(self, connection, auth, force):
+        if auth:
             # Assert session auth is supported by the protocol.
             # The Bolt implementation will try as hard as it can to make the
             # re-auth work. So if the session auth token is identical to the
@@ -257,7 +248,6 @@ class AsyncIOPool(abc.ABC):
         if auth is None:
             auth = AcquireAuth(None)
         force_auth = auth.force_auth
-        backwards_compatible_auth = auth.backwards_compatible
         auth = auth.auth
 
         async def health_check(connection_, deadline_):
@@ -286,42 +276,21 @@ class AsyncIOPool(abc.ABC):
                           connection.local_port, connection.connection_id)
                 try:
                     await self._re_auth_connection(
-                        connection, auth, force_auth, backwards_compatible_auth
+                        connection, auth, force_auth
                     )
                 except ConfigurationError:
-                    if not auth:
-                        # expiring tokens supported by flushing the pool
-                        # => give up this connection
-                        log.debug("[#%04X]  _: <POOL> backwards compatible "
-                                  "auth token refresh: purge connection",
-                                  connection.local_port)
-                        await connection.close()
-                        await self.release(connection)
-                        continue
-                    if not backwards_compatible_auth:
+                    if auth:
+                        # protocol version lacks support for re-auth
+                        # => session auth token is not supported
                         raise
-                    # backwards compatibility mode:
-                    # create new throwaway connection,
-                    connection_creator = self._acquire_new_later(
-                        address, auth, deadline,
-                        backwards_compatible_auth=True
-                    )
-                    if connection_creator:
-                        await self.release(connection)
-                    if not connection_creator:
-                        #  pool is full => kill the picked connection
-                        log.debug("[#%04X]  _: <POOL> backwards compatible "
-                                  "session auth making room by purge",
-                                  connection.local_port)
-                        await connection.close()
-                        with self.lock:
-                            self._remove_connection(connection)
-                            connection_creator = self._acquire_new_later(
-                                address, auth, deadline,
-                                backwards_compatible_auth=True
-                            )
-                            assert connection_creator is not None
-                    break
+                    # expiring tokens supported by flushing the pool
+                    # => give up this connection
+                    log.debug("[#%04X]  _: <POOL> backwards compatible "
+                              "auth token refresh: purge connection",
+                              connection.local_port)
+                    await connection.close()
+                    await self.release(connection)
+                    continue
                 log.debug("[#%04X]  _: <POOL> handing out existing connection",
                           connection.local_port)
                 return connection
@@ -329,7 +298,6 @@ class AsyncIOPool(abc.ABC):
             with self.lock:
                 connection_creator = self._acquire_new_later(
                     address, auth, deadline,
-                    backwards_compatible_auth=backwards_compatible_auth
                 )
                 if connection_creator:
                     break
@@ -384,29 +352,6 @@ class AsyncIOPool(abc.ABC):
                 connection.in_use = False
             self.cond.notify_all()
 
-    @staticmethod
-    async def _close_throwaway_connection(connection, cancelled):
-        if connection.throwaway:
-            if cancelled is not None:
-                log.debug(
-                    "[#%04X]  _: <POOL> kill throwaway connection %s",
-                    connection.local_port, connection.connection_id
-                )
-                connection.kill()
-            else:
-                try:
-                    log.debug(
-                        "[#%04X]  _: <POOL> close throwaway connection %s",
-                        connection.local_port, connection.connection_id
-                    )
-                    await connection.close()
-                except asyncio.CancelledError as exc:
-                    log.debug("[#%04X]  _: <POOL> cancelled close of "
-                              "throwaway connection: %r",
-                              connection.local_port, exc)
-                    cancelled = exc
-        return cancelled
-
     async def release(self, *connections):
         """ Release connections back into the pool.
 
@@ -414,9 +359,6 @@ class AsyncIOPool(abc.ABC):
         """
         cancelled = None
         for connection in connections:
-            cancelled = await self._close_throwaway_connection(
-                connection, cancelled
-            )
             if not (connection.defunct()
                     or connection.closed()
                     or connection.is_reset):

@@ -132,14 +132,9 @@ async def NewDriver(backend, data):
             kwargs[conf_name] = data[data_name]
     for (conf_name, data_name) in (
         ("encrypted", "encrypted"),
-        # TODO: wait for decision on backwards_compatible_auth
-        # ("backwards_compatible_auth", "backwardsCompatibleAuth"),
     ):
         if data_name in data:
             kwargs[conf_name] = data[data_name]
-    # TODO: wait for decision on backwards_compatible_auth
-    if "backwardsCompatibleAuth" in data:
-        data.mark_item_as_read_if_equals("backwardsCompatibleAuth", False)
     if "trustedCertificates" in data:
         if data["trustedCertificates"] is None:
             kwargs["trusted_certificates"] = neo4j.TrustSystemCAs()
