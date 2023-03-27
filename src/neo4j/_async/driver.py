@@ -24,9 +24,13 @@ import warnings
 
 
 if t.TYPE_CHECKING:
+    import ssl
     import typing_extensions as te
 
-    import ssl
+    from .._api import (
+        T_NotificationDisabledCategory,
+        T_NotificationMinimumSeverity,
+    )
 
 from .._api import RoutingControl
 from .._async_compat.util import AsyncUtil
@@ -143,6 +147,12 @@ class AsyncGraphDatabase:
             ssl_context: ssl.SSLContext = ...,
             user_agent: str = ...,
             keep_alive: bool = ...,
+            notifications_min_severity: t.Optional[
+                T_NotificationMinimumSeverity
+            ] = ...,
+            notifications_disabled_categories: t.Optional[
+                t.Iterable[T_NotificationDisabledCategory]
+            ] = ...,
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
@@ -251,6 +261,7 @@ class AsyncGraphDatabase:
             elif security_type == SECURITY_TYPE_SELF_SIGNED_CERTIFICATE:
                 config["encrypted"] = True
                 config["trusted_certificates"] = TrustAll()
+            _normalize_notifications_config(config)
 
             assert driver_type in (DRIVER_BOLT, DRIVER_NEO4J)
             if driver_type == DRIVER_BOLT:
@@ -494,10 +505,15 @@ class AsyncDriver:
         """Indicate whether the driver was configured to use encryption."""
         return bool(self._pool.pool_config.encrypted)
 
+    def _prepare_session_config(self, **config):
+        _normalize_notifications_config(config)
+        return config
+
     if t.TYPE_CHECKING:
 
         def session(
             self,
+            *,
             connection_acquisition_timeout: float = ...,
             max_transaction_retry_time: float = ...,
             database: t.Optional[str] = ...,
@@ -508,6 +524,12 @@ class AsyncDriver:
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
             auth: _TAuth = ...,
+            notifications_min_severity: t.Optional[
+                T_NotificationMinimumSeverity
+            ] = ...,
+            notifications_disabled_categories: t.Optional[
+                t.Iterable[T_NotificationDisabledCategory]
+            ] = ...,
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
@@ -711,6 +733,14 @@ class AsyncDriver:
                 The transformer function must **not** return the
                 :class:`neo4j.AsyncResult` itself.
 
+            .. warning::
+
+                N.B. the driver might retry the underlying transaction so the
+                transformer might get invoked more than once (with different
+                :class:`neo4j.AsyncResult` objects).
+                Therefore, it needs to be idempotent (i.e., have the same
+                effect, regardless if called once or many times).
+
             Example transformer that checks that exactly one record is in the
             result stream, then returns the record and the result summary::
 
@@ -852,6 +882,7 @@ class AsyncDriver:
 
         async def verify_connectivity(
             self,
+            *,
             # all arguments are experimental
             # they may be change or removed any time without prior notice
             session_connection_timeout: float = ...,
@@ -865,6 +896,12 @@ class AsyncDriver:
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
             auth: t.Union[Auth, t.Tuple[t.Any, t.Any]] = ...,
+            notifications_min_severity: t.Optional[
+                T_NotificationMinimumSeverity
+            ] = ...,
+            notifications_disabled_categories: t.Optional[
+                t.Iterable[T_NotificationDisabledCategory]
+            ] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
@@ -915,6 +952,7 @@ class AsyncDriver:
 
         async def get_server_info(
             self,
+            *,
             # all arguments are experimental
             # they may be change or removed any time without prior notice
             session_connection_timeout: float = ...,
@@ -928,6 +966,12 @@ class AsyncDriver:
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
             auth: t.Union[Auth, t.Tuple[t.Any, t.Any]] = ...,
+            notifications_min_severity: t.Optional[
+                T_NotificationMinimumSeverity
+            ] = ...,
+            notifications_disabled_categories: t.Optional[
+                t.Iterable[T_NotificationDisabledCategory]
+            ] = ...,
 
             # undocumented/unsupported options
             initial_retry_delay: float = ...,
@@ -1166,6 +1210,7 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
             :returns:
             :rtype: :class: `neo4j.AsyncSession`
             """
+            config = self._prepare_session_config(**config)
             session_config = SessionConfig(self._default_workspace_config,
                                            config)
             return AsyncSession(self._pool, session_config)
@@ -1197,6 +1242,20 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
     if not t.TYPE_CHECKING:
 
         def session(self, **config) -> AsyncSession:
+            config = self._prepare_session_config(**config)
             session_config = SessionConfig(self._default_workspace_config,
                                            config)
             return AsyncSession(self._pool, session_config)
+
+
+def _normalize_notifications_config(config):
+    if config.get("notifications_disabled_categories") is not None:
+        config["notifications_disabled_categories"] = [
+            getattr(e, "value", e)
+            for e in config["notifications_disabled_categories"]
+        ]
+    if config.get("notifications_min_severity") is not None:
+        config["notifications_min_severity"] = getattr(
+            config["notifications_min_severity"], "value",
+            config["notifications_min_severity"]
+        )

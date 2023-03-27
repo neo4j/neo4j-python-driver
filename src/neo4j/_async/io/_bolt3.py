@@ -115,6 +115,8 @@ class AsyncBolt3(AsyncBolt):
 
     supports_re_auth = False
 
+    supports_notification_filtering = False
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._server_state_manager = ServerStateManager(
@@ -152,6 +154,11 @@ class AsyncBolt3(AsyncBolt):
         }
 
     async def hello(self, dehydration_hooks=None, hydration_hooks=None):
+        if (
+            self.notifications_min_severity is not None
+            or self.notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
         headers = self.get_base_headers()
         headers.update(self.auth_dict)
         logged_headers = dict(headers)
@@ -217,7 +224,9 @@ class AsyncBolt3(AsyncBolt):
 
     def run(self, query, parameters=None, mode=None, bookmarks=None,
             metadata=None, timeout=None, db=None, imp_user=None,
-            dehydration_hooks=None, hydration_hooks=None, **handlers):
+            notifications_min_severity=None,
+            notifications_disabled_categories=None, dehydration_hooks=None,
+            hydration_hooks=None, **handlers):
         if db is not None:
             raise ConfigurationError(
                 "Database name parameter for selecting database is not "
@@ -232,6 +241,11 @@ class AsyncBolt3(AsyncBolt):
                     self.PROTOCOL_VERSION, imp_user
                 )
             )
+        if (
+            notifications_min_severity is not None
+            or notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
         if not parameters:
             parameters = {}
         extra = {}
@@ -277,7 +291,8 @@ class AsyncBolt3(AsyncBolt):
                      dehydration_hooks=dehydration_hooks)
 
     def begin(self, mode=None, bookmarks=None, metadata=None, timeout=None,
-              db=None, imp_user=None, dehydration_hooks=None,
+              db=None, imp_user=None, notifications_min_severity=None,
+              notifications_disabled_categories=None, dehydration_hooks=None,
               hydration_hooks=None, **handlers):
         if db is not None:
             raise ConfigurationError(
@@ -293,6 +308,11 @@ class AsyncBolt3(AsyncBolt):
                     self.PROTOCOL_VERSION, imp_user
                 )
             )
+        if (
+            notifications_min_severity is not None
+            or notifications_disabled_categories is not None
+        ):
+            self.assert_notification_filtering_support()
         extra = {}
         if mode in (READ_ACCESS, "r"):
             extra["mode"] = "r"  # It will default to mode "w" if nothing is specified

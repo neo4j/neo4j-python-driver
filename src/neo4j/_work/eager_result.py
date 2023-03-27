@@ -19,7 +19,7 @@
 import typing as t
 
 from .._data import Record
-from ..work import ResultSummary
+from .summary import ResultSummary
 
 
 class EagerResult(t.NamedTuple):

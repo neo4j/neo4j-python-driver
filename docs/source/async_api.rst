@@ -270,6 +270,14 @@ Closing a driver will immediately shut down all connections in the pool.
                 The transformer function must **not** return the
                 :class:`neo4j.AsyncResult` itself.
 
+            .. warning::
+
+                N.B. the driver might retry the underlying transaction so the
+                transformer might get invoked more than once (with different
+                :class:`neo4j.AsyncResult` objects).
+                Therefore, it needs to be idempotent (i.e., have the same
+                effect, regardless if called once or many times).
+
             Example transformer that checks that exactly one record is in the
             result stream, then returns the record and the result summary::
 
@@ -336,9 +344,12 @@ Closing a driver will immediately shut down all connections in the pool.
         :returns: the result of the ``result_transformer``
         :rtype: T
 
-
         **This is experimental.** (See :ref:`filter-warnings-ref`)
         It might be changed or removed any time even without prior notice.
+
+        We are looking for feedback on this feature. Please let us know what
+        you think about it here:
+        https://github.com/neo4j/neo4j-python-driver/discussions/896
 
         .. versionadded:: 5.5
 

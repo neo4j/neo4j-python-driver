@@ -28,6 +28,7 @@ from ..._async_compat import async_sleep
 from ..._async_compat.util import AsyncUtil
 from ..._conf import SessionConfig
 from ..._meta import deprecated
+from ..._work import Query
 from ...api import (
     Bookmarks,
     READ_ACCESS,
@@ -41,7 +42,6 @@ from ...exceptions import (
     SessionExpired,
     TransactionError,
 )
-from ...work import Query
 from ..auth_management import AsyncAuthManagers
 from .result import AsyncResult
 from .transaction import (
@@ -300,7 +300,8 @@ class AsyncSession(AsyncWorkspace):
         await self._auto_result._run(
             query, parameters, self._config.database,
             self._config.impersonated_user, self._config.default_access_mode,
-            bookmarks
+            bookmarks, self._config.notifications_min_severity,
+            self._config.notifications_disabled_categories,
         )
 
         return self._auto_result
@@ -406,7 +407,9 @@ class AsyncSession(AsyncWorkspace):
         bookmarks = await self._get_bookmarks()
         await self._transaction._begin(
             self._config.database, self._config.impersonated_user,
-            bookmarks, access_mode, metadata, timeout
+            bookmarks, access_mode, metadata, timeout,
+            self._config.notifications_min_severity,
+            self._config.notifications_disabled_categories,
         )
 
     async def begin_transaction(

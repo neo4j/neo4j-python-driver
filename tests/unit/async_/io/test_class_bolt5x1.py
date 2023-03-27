@@ -25,6 +25,7 @@ import neo4j.exceptions
 from neo4j._async.io._bolt5 import AsyncBolt5x1
 from neo4j._conf import PoolConfig
 from neo4j.auth_management import AsyncAuthManagers
+from neo4j.exceptions import ConfigurationError
 
 from ...._async_compat import mark_async_test
 
@@ -410,3 +411,50 @@ async def test_credentials_are_not_logged(auth, fake_socket_pair, caplog):
         if value:
             assert repr(value) in caplog.text
     assert CREDENTIALS not in caplog.text
+
+
+@pytest.mark.parametrize(("method", "args"), (
+    ("run", ("RETURN 1",)),
+    ("begin", ()),
+))
+@pytest.mark.parametrize("kwargs", (
+    {"notifications_min_severity": "WARNING"},
+    {"notifications_disabled_categories": ["HINT"]},
+    {"notifications_disabled_categories": []},
+    {
+        "notifications_min_severity": "WARNING",
+        "notifications_disabled_categories": ["HINT"]
+    },
+))
+def test_does_not_support_notification_filters(fake_socket, method,
+                                               args, kwargs):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
+    connection = AsyncBolt5x1(address, socket,
+                            PoolConfig.max_connection_lifetime)
+    method = getattr(connection, method)
+    with pytest.raises(ConfigurationError, match="Notification filtering"):
+        method(*args, **kwargs)
+
+
+@mark_async_test
+@pytest.mark.parametrize("kwargs", (
+    {"notifications_min_severity": "WARNING"},
+    {"notifications_disabled_categories": ["HINT"]},
+    {"notifications_disabled_categories": []},
+    {
+        "notifications_min_severity": "WARNING",
+        "notifications_disabled_categories": ["HINT"]
+    },
+))
+async def test_hello_does_not_support_notification_filters(
+    fake_socket, kwargs
+):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
+    connection = AsyncBolt5x1(
+        address, socket, PoolConfig.max_connection_lifetime,
+        **kwargs
+    )
+    with pytest.raises(ConfigurationError, match="Notification filtering"):
+        await connection.hello()

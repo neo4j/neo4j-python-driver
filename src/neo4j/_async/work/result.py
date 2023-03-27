@@ -29,8 +29,6 @@ from warnings import warn
 if t.TYPE_CHECKING:
     import typing_extensions as te
 
-
-
 from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import BrokenHydrationObject
 from ..._data import (
@@ -38,7 +36,10 @@ from ..._data import (
     RecordTableRowExporter,
 )
 from ..._meta import experimental
-from ..._work import EagerResult
+from ..._work import (
+    EagerResult,
+    ResultSummary,
+)
 from ...exceptions import (
     ResultConsumedError,
     ResultNotSingleError,
@@ -47,7 +48,6 @@ from ...time import (
     Date,
     DateTime,
 )
-from ...work import ResultSummary
 from ..io import ConnectionErrorHandler
 
 
@@ -117,10 +117,11 @@ class AsyncResult:
         # BEGIN+RUN does not carry any extra on the RUN message.
         # BEGIN {extra}
         # RUN "query" {parameters} {extra}
-        await self._run(query, parameters, None, None, None, None)
+        await self._run(query, parameters, None, None, None, None, None, None)
 
     async def _run(
-        self, query, parameters, db, imp_user, access_mode, bookmarks
+        self, query, parameters, db, imp_user, access_mode, bookmarks,
+        notifications_min_severity, notifications_disabled_categories
     ):
         query_text = str(query)  # Query or string object
         query_metadata = getattr(query, "metadata", None)
@@ -157,6 +158,9 @@ class AsyncResult:
             timeout=query_timeout,
             db=db,
             imp_user=imp_user,
+            notifications_min_severity=notifications_min_severity,
+            notifications_disabled_categories=
+                notifications_disabled_categories,
             dehydration_hooks=self._hydration_scope.dehydration_hooks,
             on_success=on_attached,
             on_failure=on_failed_attach,

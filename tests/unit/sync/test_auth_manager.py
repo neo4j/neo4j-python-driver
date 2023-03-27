@@ -56,7 +56,7 @@ def test_temporal_manager_manual_expiry(
         temporal_auth = TemporalAuth(auth1, expires_in)
     else:
         temporal_auth = TemporalAuth(auth1)
-    provider = mocker.Mock(return_value=temporal_auth)
+    provider = mocker.MagicMock(return_value=temporal_auth)
     manager: AuthManager = AuthManagers.temporal(provider)
 
     provider.assert_not_called()
@@ -93,7 +93,7 @@ def test_temporal_manager_time_expiry(
             temporal_auth = TemporalAuth(auth1, expires_in)
         else:
             temporal_auth = TemporalAuth(auth1)
-        provider = mocker.Mock(return_value=temporal_auth)
+        provider = mocker.MagicMock(return_value=temporal_auth)
         manager: AuthManager = AuthManagers.temporal(provider)
 
         provider.assert_not_called()

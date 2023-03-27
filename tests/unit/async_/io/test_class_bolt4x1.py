@@ -129,7 +129,6 @@ async def test_qid_extra_in_discard(fake_socket, test_input, expected):
 )
 @mark_async_test
 async def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
-    # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_n_and_qid_extras_in_discard
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt4x1.UNPACKER_CLS)
     connection = AsyncBolt4x1(address, socket, PoolConfig.max_connection_lifetime)
@@ -170,7 +169,6 @@ async def test_n_extra_in_pull(fake_socket, test_input, expected):
 )
 @mark_async_test
 async def test_qid_extra_in_pull(fake_socket, test_input, expected):
-    # python -m pytest tests/unit/io/test_class_bolt4x0.py -s -k test_qid_extra_in_pull
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt4x1.UNPACKER_CLS)
     connection = AsyncBolt4x1(address, socket, PoolConfig.max_connection_lifetime)
@@ -317,3 +315,50 @@ async def test_re_auth(auth1, auth2, fake_socket):
     with pytest.raises(ConfigurationError,
                        match="Session level authentication is not supported"):
         connection.re_auth(auth2, None)
+
+
+@pytest.mark.parametrize(("method", "args"), (
+    ("run", ("RETURN 1",)),
+    ("begin", ()),
+))
+@pytest.mark.parametrize("kwargs", (
+    {"notifications_min_severity": "WARNING"},
+    {"notifications_disabled_categories": ["HINT"]},
+    {"notifications_disabled_categories": []},
+    {
+        "notifications_min_severity": "WARNING",
+        "notifications_disabled_categories": ["HINT"]
+    },
+))
+def test_does_not_support_notification_filters(fake_socket, method,
+                                               args, kwargs):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    socket = fake_socket(address, AsyncBolt4x1.UNPACKER_CLS)
+    connection = AsyncBolt4x1(address, socket,
+                            PoolConfig.max_connection_lifetime)
+    method = getattr(connection, method)
+    with pytest.raises(ConfigurationError, match="Notification filtering"):
+        method(*args, **kwargs)
+
+
+@mark_async_test
+@pytest.mark.parametrize("kwargs", (
+    {"notifications_min_severity": "WARNING"},
+    {"notifications_disabled_categories": ["HINT"]},
+    {"notifications_disabled_categories": []},
+    {
+        "notifications_min_severity": "WARNING",
+        "notifications_disabled_categories": ["HINT"]
+    },
+))
+async def test_hello_does_not_support_notification_filters(
+    fake_socket, kwargs
+):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    socket = fake_socket(address, AsyncBolt4x1.UNPACKER_CLS)
+    connection = AsyncBolt4x1(
+        address, socket, PoolConfig.max_connection_lifetime,
+        **kwargs
+    )
+    with pytest.raises(ConfigurationError, match="Notification filtering"):
+        await connection.hello()

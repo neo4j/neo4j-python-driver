@@ -31,7 +31,10 @@ from neo4j._conf import (
     WorkspaceConfig,
 )
 from neo4j._deadline import Deadline
-from neo4j._sync.io import Neo4jPool
+from neo4j._sync.io import (
+    Bolt,
+    Neo4jPool,
+)
 from neo4j.addressing import ResolvedAddress
 from neo4j.auth_management import AuthManagers
 from neo4j.exceptions import (
@@ -75,7 +78,7 @@ def routing_failure_opener(fake_connection_generator, mocker):
             connection.unresolved_address = addr
             connection.timeout = timeout
             connection.auth = auth
-            route_mock = mocker.Mock()
+            route_mock = mocker.MagicMock()
 
             route_mock.side_effect = routing_side_effect
             connection.attach_mock(route_mock, "route")
@@ -83,7 +86,7 @@ def routing_failure_opener(fake_connection_generator, mocker):
             return connection
 
         failures = iter(failures or [])
-        opener_ = mocker.Mock()
+        opener_ = mocker.MagicMock()
         opener_.connections = []
         opener_.side_effect = open_
         return opener_
@@ -419,7 +422,7 @@ def test_multiple_broken_connections_on_close(opener, mocker):
             cx.defunct.return_value = True
             pool.deactivate(READER_ADDRESS)
 
-        cx.attach_mock(mocker.Mock(side_effect=close_side_effect),
+        cx.attach_mock(mocker.MagicMock(side_effect=close_side_effect),
                        "close")
 
     # create pool with 2 idle connections
@@ -482,6 +485,25 @@ def test__acquire_new_later_without_room(opener):
     creator = pool._acquire_new_later(READER_ADDRESS, None, Deadline(1))
     assert pool.connections_reservations[READER_ADDRESS] == 0
     assert creator is None
+
+
+@mark_sync_test
+def test_passes_pool_config_to_connection(mocker):
+    bolt_mock = mocker.patch.object(Bolt, "open", autospec=True)
+
+    pool_config = PoolConfig()
+    workspace_config = WorkspaceConfig()
+    pool = Neo4jPool.open(
+        mocker.Mock, pool_config=pool_config, workspace_config=workspace_config
+    )
+
+    _ = pool._acquire(
+        mocker.Mock, None, Deadline.from_timeout_or_deadline(30), None
+    )
+
+    bolt_mock.assert_called_once()
+    assert bolt_mock.call_args.kwargs["pool_config"] is pool_config
+
 
 
 @pytest.mark.parametrize("error", (

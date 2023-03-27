@@ -281,6 +281,15 @@ Closing a driver will immediately shut down all connections in the pool.
                 The transformer function must **not** return the
                 :class:`neo4j.Result` itself.
 
+
+            .. warning::
+
+                N.B. the driver might retry the underlying transaction so the
+                transformer might get invoked more than once (with different
+                :class:`neo4j.Result` objects).
+                Therefore, it needs to be idempotent (i.e., have the same
+                effect, regardless if called once or many times).
+
             Example transformer that checks that exactly one record is in the
             result stream, then returns the record and the result summary::
 
@@ -350,6 +359,10 @@ Closing a driver will immediately shut down all connections in the pool.
         **This is experimental.** (See :ref:`filter-warnings-ref`)
         It might be changed or removed any time even without prior notice.
 
+        We are looking for feedback on this feature. Please let us know what
+        you think about it here:
+        https://github.com/neo4j/neo4j-python-driver/discussions/896
+
         .. versionadded:: 5.5
 
 
@@ -371,6 +384,9 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`trust-ref`
 + :ref:`ssl-context-ref`
 + :ref:`trusted-certificates-ref`
++ :ref:`user-agent-ref`
++ :ref:`driver-notifications-min-severity-ref`
++ :ref:`driver-notifications-disabled-categories-ref`
 
 
 .. _connection-acquisition-timeout-ref:
@@ -590,6 +606,49 @@ Specify the client agent name.
 :Default: *The Python Driver will generate a user agent name.*
 
 
+.. _driver-notifications-min-severity-ref:
+
+``notifications_min_severity``
+------------------------------
+Set the minimum severity for notifications the server should send to the client.
+
+Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+
+:data:`None` will apply the server's default setting.
+
+.. Note::
+    If configured, the server or all servers of the cluster need to support notifications filtering.
+    Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
+
+:Type: :data:`None`, :class:`.NotificationMinimumSeverity`, or :class:`str`
+:Default: :data:`None`
+
+.. versionadded:: 5.7
+
+.. seealso:: :class:`.NotificationMinimumSeverity`, session config :ref:`session-notifications-min-severity-ref`
+
+
+.. _driver-notifications-disabled-categories-ref:
+
+``notifications_disabled_categories``
+-------------------------------------
+Set categories of notifications the server should not send to the client.
+
+Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+
+:data:`None` will apply the server's default setting.
+
+.. Note::
+    If configured, the server or all servers of the cluster need to support notifications filtering.
+    Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
+
+:Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledCategory` and/or :class:`str`
+:Default: :data:`None`
+
+.. versionadded:: 5.7
+
+.. seealso:: :class:`.NotificationDisabledCategory`, session config :ref:`session-notifications-disabled-categories-ref`
+
 
 Driver Object Lifetime
 ======================
@@ -755,6 +814,8 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 + :ref:`fetch-size-ref`
 + :ref:`bookmark-manager-ref`
 + :ref:`session-auth-ref`
++ :ref:`session-notifications-min-severity-ref`
++ :ref:`session-notifications-disabled-categories-ref`
 
 
 .. _bookmarks-ref:
@@ -854,7 +915,7 @@ context of the impersonated user. For this, the user for which the
 
 .. Note::
 
-    The server or all servers of the cluster need to support impersonation.
+    If configured, the server or all servers of the cluster need to support impersonation.
     Otherwise, the driver will raise :exc:`.ConfigurationError`
     as soon as it encounters a server that does not.
 
@@ -965,6 +1026,50 @@ Instead, you should create a driver with no authentication and upgrade the authe
 :Default: :data:`None` - use the authentication information provided during driver creation.
 
 .. versionadded:: 5.x
+
+
+.. _session-notifications-min-severity-ref:
+
+``notifications_min_severity``
+------------------------------
+Set the minimum severity for notifications the server should send to the client.
+
+Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+
+:data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-min-severity-ref`).
+
+.. Note::
+    If configured, the server or all servers of the cluster need to support notifications filtering.
+    Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
+
+:Type: :data:`None`, :class:`.NotificationMinimumSeverity`, or :class:`str`
+:Default: :data:`None`
+
+.. versionadded:: 5.7
+
+.. seealso:: :class:`.NotificationMinimumSeverity`
+
+
+.. _session-notifications-disabled-categories-ref:
+
+``notifications_disabled_categories``
+-------------------------------------
+Set categories of notifications the server should not send to the client.
+
+Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
+
+:data:`None` will apply the driver's configuration setting (:ref:`driver-notifications-min-severity-ref`).
+
+.. Note::
+    If configured, the server or all servers of the cluster need to support notifications filtering.
+    Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
+
+:Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledCategory` and/or :class:`str`
+:Default: :data:`None`
+
+.. versionadded:: 5.7
+
+.. seealso:: :class:`.NotificationDisabledCategory`
 
 
 
@@ -1302,6 +1407,34 @@ ServerInfo
    :members:
 
 
+SummaryNotification
+===================
+
+.. autoclass:: neo4j.SummaryNotification()
+    :members:
+
+
+NotificationSeverity
+--------------------
+
+.. autoclass:: neo4j.NotificationSeverity()
+    :members:
+
+
+NotificationCategory
+--------------------
+
+.. autoclass:: neo4j.NotificationCategory()
+    :members:
+
+
+SummaryNotificationPosition
+---------------------------
+
+.. autoclass:: neo4j.SummaryNotificationPosition()
+    :members:
+
+
 
 ***************
 Core Data Types
@@ -1596,6 +1729,14 @@ BookmarkManager
 *************************
 Constants, Enums, Helpers
 *************************
+
+.. autoclass:: neo4j.NotificationMinimumSeverity
+    :show-inheritance:
+    :members:
+
+.. autoclass:: neo4j.NotificationDisabledCategory
+    :show-inheritance:
+    :members:
 
 .. autoclass:: neo4j.RoutingControl
     :show-inheritance:

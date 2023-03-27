@@ -21,7 +21,11 @@ from datetime import timedelta
 import pytz
 
 import neo4j
-from neo4j import Query
+from neo4j import (
+    NotificationDisabledCategory,
+    NotificationMinimumSeverity,
+    Query,
+)
 from neo4j.spatial import (
     CartesianPoint,
     WGS84Point,
@@ -177,3 +181,13 @@ def to_auth_token(data, key):
         )
         auth_token.mark_item_as_read("parameters", recursive=True)
     return auth
+
+
+def set_notifications_config(config, data):
+    if "notificationsMinSeverity" in data:
+        config["notifications_min_severity"] = \
+            NotificationMinimumSeverity[data["notificationsMinSeverity"]]
+    if "notificationsDisabledCategories" in data:
+        config["notifications_disabled_categories"] = \
+            [NotificationDisabledCategory[c]
+             for c in data["notificationsDisabledCategories"]]

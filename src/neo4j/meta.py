@@ -40,7 +40,7 @@ __all__ = [
 ]
 
 deprecation_warn(
-    "The module 'neo4j.meta' was made internal and will "
+    "The module `neo4j.meta` was made internal and will "
     "no longer be available for import in future versions."
     "`ExperimentalWarning` can be imported from `neo4j` directly and "
     "`neo4j.meta.version` is exposed as `neo4j.__version__`.",

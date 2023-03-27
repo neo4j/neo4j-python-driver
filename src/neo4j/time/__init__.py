@@ -415,7 +415,8 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
         if not MIN_INT64 <= avg_total_seconds <= MAX_INT64:
             raise ValueError("Duration value out of range: %r",
                              tuple.__repr__((mo, d, s, ns)))
-        return tuple.__new__(cls, (mo, d, s, ns))
+        # mypy issue https://github.com/python/mypy/issues/14890
+        return tuple.__new__(cls, (mo, d, s, ns))  # type: ignore[type-var]
 
     def __bool__(self) -> bool:
         """Falsy if all primary instance attributes are."""

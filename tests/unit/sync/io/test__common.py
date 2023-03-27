@@ -44,7 +44,7 @@ from ...._async_compat import mark_sync_test
 @mark_sync_test
 def test_async_outbox_chunking(chunk_size, data, result, mocker):
     buffer = PackableBuffer()
-    socket_mock = mocker.Mock()
+    socket_mock = mocker.MagicMock()
     packer_mock = mocker.Mock()
     packer_mock.return_value = packer_mock
     packer_mock.new_packable_buffer.return_value = buffer

@@ -16,6 +16,8 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import warnings
 from abc import ABCMeta
 from collections.abc import Mapping
@@ -408,6 +410,12 @@ class PoolConfig(Config):
     #: Authentication provider
     auth = None
 
+    #: Lowest notification severity for the server to return
+    notifications_min_severity = None
+
+    #: List of notification categories for the server to ignore
+    notifications_disabled_categories = None
+
     def get_ssl_context(self):
         if self.ssl_context is not None:
             return self.ssl_context
@@ -508,6 +516,12 @@ class SessionConfig(WorkspaceConfig):
 
     #: Auth token to temporarily switch the user
     auth = None
+
+    #: Lowest notification severity for the server to return
+    notifications_min_severity = None
+
+    #: List of notification categories for the server to ignore
+    notifications_disabled_categories = None
 
 
 class TransactionConfig(Config):

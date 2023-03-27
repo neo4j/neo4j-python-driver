@@ -18,7 +18,13 @@
 
 from logging import getLogger as _getLogger
 
-from ._api import RoutingControl
+from ._api import (
+    NotificationCategory,
+    NotificationDisabledCategory,
+    NotificationMinimumSeverity,
+    NotificationSeverity,
+    RoutingControl,
+)
 from ._async.driver import (
     AsyncBoltDriver,
     AsyncDriver,
@@ -60,7 +66,15 @@ from ._sync.work import (
     Session,
     Transaction,
 )
-from ._work import EagerResult
+from ._work import (
+    EagerResult,
+    Query,
+    ResultSummary,
+    SummaryCounters,
+    SummaryNotification,
+    SummaryNotificationPosition,
+    unit_of_work,
+)
 from .addressing import (
     Address,
     IPv4Address,
@@ -86,12 +100,6 @@ from .api import (
     Version,
     WRITE_ACCESS,
 )
-from .work import (
-    Query,
-    ResultSummary,
-    SummaryCounters,
-    unit_of_work,
-)
 
 
 __all__ = [
@@ -115,6 +123,7 @@ __all__ = [
     "Config",
     "custom_auth",
     "DEFAULT_DATABASE",
+    "NotificationDisabledCategory",
     "Driver",
     "EagerResult",
     "ExperimentalWarning",
@@ -125,7 +134,11 @@ __all__ = [
     "kerberos_auth",
     "log",
     "ManagedTransaction",
+    "NotificationMinimumSeverity",
     "Neo4jDriver",
+    "NotificationCategory",
+    "NotificationFilter",
+    "NotificationSeverity",
     "PoolConfig",
     "Query",
     "READ_ACCESS",
@@ -138,6 +151,8 @@ __all__ = [
     "Session",
     "SessionConfig",
     "SummaryCounters",
+    "SummaryNotification",
+    "SummaryNotificationPosition",
     "Transaction",
     "TRUST_ALL_CERTIFICATES",
     "TRUST_SYSTEM_CA_SIGNED_CERTIFICATES",
