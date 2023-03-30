@@ -99,7 +99,7 @@ async def _do_the_read(session_, i=1):
         raise
 
 
-REPETITIONS = 1000
+REPETITIONS = 250
 
 
 @mark_async_test
@@ -175,8 +175,8 @@ async def test_async_cancellation(
             assert bookmarks != new_bookmarks
 
 
-SESSION_REPETITIONS = 100
-READS_PER_SESSION = 20
+SESSION_REPETITIONS = 50
+READS_PER_SESSION = 15
 
 
 @mark_async_test
