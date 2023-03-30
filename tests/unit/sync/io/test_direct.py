@@ -102,14 +102,17 @@ class FakeBoltPool(IOPool):
 @mark_sync_test
 def test_bolt_connection_open():
     with pytest.raises(ServiceUnavailable):
-        Bolt.open(("localhost", 9999), auth=("test", "test"))
+        Bolt.open(
+            ("localhost", 9999), auth=("test", "test")
+        )
 
 
 @mark_sync_test
 def test_bolt_connection_open_timeout():
     with pytest.raises(ServiceUnavailable):
-        Bolt.open(("localhost", 9999), auth=("test", "test"),
-                             timeout=1)
+        Bolt.open(
+            ("localhost", 9999), auth=("test", "test"), deadline=Deadline(1)
+        )
 
 
 @mark_sync_test
@@ -120,7 +123,9 @@ def test_bolt_connection_ping():
 
 @mark_sync_test
 def test_bolt_connection_ping_timeout():
-    protocol_version = Bolt.ping(("localhost", 9999), timeout=1)
+    protocol_version = Bolt.ping(
+        ("localhost", 9999), deadline=Deadline(1)
+    )
     assert protocol_version is None
 
 
