@@ -16,6 +16,7 @@ breaking API changes.
 
 See also: https://neo4j.com/developer/kb/neo4j-supported-versions/
 
++ Python 3.11 supported.
 + Python 3.10 supported.
 + Python 3.9 supported.
 + Python 3.8 supported.
