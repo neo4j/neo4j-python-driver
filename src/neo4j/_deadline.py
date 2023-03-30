@@ -72,6 +72,9 @@ class Deadline:
             return timeout
         return cls(timeout)
 
+    def __str__(self):
+        return f"Deadline(timeout={self._original_timeout})"
+
 
 merge_deadlines = min
 

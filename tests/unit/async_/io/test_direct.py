@@ -102,14 +102,17 @@ class AsyncFakeBoltPool(AsyncIOPool):
 @mark_async_test
 async def test_bolt_connection_open():
     with pytest.raises(ServiceUnavailable):
-        await AsyncBolt.open(("localhost", 9999), auth=("test", "test"))
+        await AsyncBolt.open(
+            ("localhost", 9999), auth=("test", "test")
+        )
 
 
 @mark_async_test
 async def test_bolt_connection_open_timeout():
     with pytest.raises(ServiceUnavailable):
-        await AsyncBolt.open(("localhost", 9999), auth=("test", "test"),
-                             timeout=1)
+        await AsyncBolt.open(
+            ("localhost", 9999), auth=("test", "test"), deadline=Deadline(1)
+        )
 
 
 @mark_async_test
@@ -120,7 +123,9 @@ async def test_bolt_connection_ping():
 
 @mark_async_test
 async def test_bolt_connection_ping_timeout():
-    protocol_version = await AsyncBolt.ping(("localhost", 9999), timeout=1)
+    protocol_version = await AsyncBolt.ping(
+        ("localhost", 9999), deadline=Deadline(1)
+    )
     assert protocol_version is None
 
 
