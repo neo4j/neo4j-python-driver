@@ -64,6 +64,9 @@ class AuthManager(metaclass=abc.ABCMeta):
 
         Furthermore, the manager is expected to be thread-safe.
 
+        The token returned must always belong to the same identity.
+        Switching identities using the `AuthManager` is undefined behavior.
+
     .. seealso:: :class:`.AuthManagers`
 
     .. versionadded:: 5.x
@@ -75,6 +78,12 @@ class AuthManager(metaclass=abc.ABCMeta):
 
         The driver will call this method very frequently. It is recommended
         to implement some form of caching to avoid unnecessary overhead.
+
+        .. warning::
+
+            The method must only ever return auth information belonging to the
+            same identity.
+            Switching identities using the `AuthManager` is undefined behavior.
         """
         ...
 

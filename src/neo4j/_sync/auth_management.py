@@ -141,12 +141,16 @@ class AuthManagers:
     def temporal(
         provider: t.Callable[[], t.Union[TemporalAuth]]
     ) -> AuthManager:
-        """Create a auth manager for potentially expiring auth info.
+        """Create an auth manager for potentially expiring auth info.
 
         .. warning::
 
             The provider function **must not** interact with the driver in any
             way as this can cause deadlocks and undefined behaviour.
+
+            The provider function only ever return auth information belonging
+            to the same identity.
+            Switching identities is undefined behavior.
 
         Example::
 
