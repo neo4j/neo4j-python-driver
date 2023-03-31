@@ -3,8 +3,12 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
 
 ## NEXT RELEASE
-- Deprecated importing from `neo4j.work` and its submodules. Everything should be imported directly from `neo4j` instead.
 - ...
+
+
+## Version 5.7
+- Deprecated importing from `neo4j.work` and its submodules.
+  Everything should be imported directly from `neo4j` instead.
 
 
 ## Version 5.6
