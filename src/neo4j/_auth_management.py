@@ -28,7 +28,7 @@ from .api import _TAuth
 
 
 @dataclass
-class TemporalAuth:
+class ExpiringAuth:
     """Represents potentially expiring authentication information.
 
     This class is used with :meth:`.AuthManagers.temporal` and

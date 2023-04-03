@@ -117,7 +117,7 @@ The auth token is an object of the class :class:`neo4j.Auth` containing static d
 .. autoclass:: neo4j.auth_management.AuthManagers
     :members:
 
-.. autoclass:: neo4j.auth_management.TemporalAuth
+.. autoclass:: neo4j.auth_management.ExpiringAuth
 
 
 Example:

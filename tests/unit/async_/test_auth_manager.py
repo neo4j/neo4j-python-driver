@@ -12,7 +12,7 @@ from neo4j import (
 from neo4j.auth_management import (
     AsyncAuthManager,
     AsyncAuthManagers,
-    TemporalAuth,
+    ExpiringAuth,
 )
 
 from ..._async_compat import mark_async_test
@@ -53,18 +53,18 @@ async def test_temporal_manager_manual_expiry(
     mocker
 ) -> None:
     if expires_in is None or expires_in >= 0:
-        temporal_auth = TemporalAuth(auth1, expires_in)
+        temporal_auth = ExpiringAuth(auth1, expires_in)
     else:
-        temporal_auth = TemporalAuth(auth1)
+        temporal_auth = ExpiringAuth(auth1)
     provider = mocker.AsyncMock(return_value=temporal_auth)
-    manager: AsyncAuthManager = AsyncAuthManagers.temporal(provider)
+    manager: AsyncAuthManager = AsyncAuthManagers.expiration_based(provider)
 
     provider.assert_not_called()
     assert await manager.get_auth() is auth1
     provider.assert_awaited_once()
     provider.reset_mock()
 
-    provider.return_value = TemporalAuth(auth2)
+    provider.return_value = ExpiringAuth(auth2)
 
     await manager.on_auth_expired(("something", "else"))
     assert await manager.get_auth() is auth1
@@ -90,18 +90,18 @@ async def test_temporal_manager_time_expiry(
     with freeze_time() as frozen_time:
         assert isinstance(frozen_time, FrozenDateTimeFactory)
         if expires_in is None or expires_in >= 0:
-            temporal_auth = TemporalAuth(auth1, expires_in)
+            temporal_auth = ExpiringAuth(auth1, expires_in)
         else:
-            temporal_auth = TemporalAuth(auth1)
+            temporal_auth = ExpiringAuth(auth1)
         provider = mocker.AsyncMock(return_value=temporal_auth)
-        manager: AsyncAuthManager = AsyncAuthManagers.temporal(provider)
+        manager: AsyncAuthManager = AsyncAuthManagers.expiration_based(provider)
 
         provider.assert_not_called()
         assert await manager.get_auth() is auth1
         provider.assert_awaited_once()
         provider.reset_mock()
 
-        provider.return_value = TemporalAuth(auth2)
+        provider.return_value = ExpiringAuth(auth2)
 
         if expires_in is None or expires_in < 0:
             frozen_time.tick(1_000_000)

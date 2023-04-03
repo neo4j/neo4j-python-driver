@@ -20,7 +20,7 @@ from ._async.auth_management import AsyncAuthManagers
 from ._auth_management import (
     AsyncAuthManager,
     AuthManager,
-    TemporalAuth,
+    ExpiringAuth,
 )
 from ._sync.auth_management import AuthManagers
 
@@ -30,5 +30,5 @@ __all__ = [
     "AsyncAuthManagers",
     "AuthManager",
     "AuthManagers",
-    "TemporalAuth",
+    "ExpiringAuth",
 ]

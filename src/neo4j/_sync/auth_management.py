@@ -27,7 +27,7 @@ from logging import getLogger
 from .._async_compat.concurrency import Lock
 from .._auth_management import (
     AuthManager,
-    TemporalAuth,
+    ExpiringAuth,
 )
 
 # work around for https://github.com/sphinx-doc/sphinx/pull/10880
@@ -52,8 +52,8 @@ class StaticAuthManager(AuthManager):
         pass
 
 
-class _TemporalAuthHolder:
-    def __init__(self, auth: TemporalAuth) -> None:
+class _ExpiringAuthHolder:
+    def __init__(self, auth: ExpiringAuth) -> None:
         self._auth = auth
         self._expiry = None
         if auth.expires_in is not None:
@@ -68,22 +68,22 @@ class _TemporalAuthHolder:
             return False
         return time.monotonic() > self._expiry
 
-class TemporalAuthManager(AuthManager):
-    _current_auth: t.Optional[_TemporalAuthHolder]
-    _provider: t.Callable[[], t.Union[TemporalAuth]]
+class ExpirationBasedAuthManager(AuthManager):
+    _current_auth: t.Optional[_ExpiringAuthHolder]
+    _provider: t.Callable[[], t.Union[ExpiringAuth]]
     _lock: Lock
 
 
     def __init__(
         self,
-        provider: t.Callable[[], t.Union[TemporalAuth]]
+        provider: t.Callable[[], t.Union[ExpiringAuth]]
     ) -> None:
         self._provider = provider
         self._current_auth = None
         self._lock = Lock()
 
     def _refresh_auth(self):
-        self._current_auth = _TemporalAuthHolder(self._provider())
+        self._current_auth = _ExpiringAuthHolder(self._provider())
 
     def get_auth(self) -> _TAuth:
         with self._lock:
@@ -138,8 +138,8 @@ class AuthManagers:
         return StaticAuthManager(auth)
 
     @staticmethod
-    def temporal(
-        provider: t.Callable[[], t.Union[TemporalAuth]]
+    def expiration_based(
+        provider: t.Callable[[], t.Union[ExpiringAuth]]
     ) -> AuthManager:
         """Create an auth manager for potentially expiring auth info.
 
@@ -157,7 +157,7 @@ class AuthManagers:
             import neo4j
             from neo4j.auth_management import (
                 AuthManagers,
-                TemporalAuth,
+                ExpiringAuth,
             )
 
 
@@ -167,7 +167,7 @@ class AuthManagers:
                 # assume we know our tokens expire every 60 seconds
                 expires_in = 60
 
-                return TemporalAuth(
+                return ExpiringAuth(
                     auth=neo4j.bearer_auth(sso_token),
                     # Include a little buffer so that we fetch a new token
                     # *before* the old one expires
@@ -182,7 +182,7 @@ class AuthManagers:
                 ...  # do stuff
 
         :param provider:
-            A callable that provides a :class:`.TemporalAuth` instance.
+            A callable that provides a :class:`.ExpiringAuth` instance.
 
         :returns:
             An instance of an implementation of :class:`.AuthManager` that
@@ -191,4 +191,4 @@ class AuthManagers:
             reached its expiry time or because the server flagged it as
             expired).
         """
-        return TemporalAuthManager(provider)
+        return ExpirationBasedAuthManager(provider)

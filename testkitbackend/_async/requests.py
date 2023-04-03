@@ -31,7 +31,7 @@ from neo4j._async_compat.util import AsyncUtil
 from neo4j.auth_management import (
     AsyncAuthManager,
     AsyncAuthManagers,
-    TemporalAuth,
+    ExpiringAuth,
 )
 
 from .. import (
@@ -197,8 +197,9 @@ async def NewAuthTokenManager(backend, data):
 
     auth_manager = TestKitAuthManager()
     backend.auth_token_managers[auth_token_manager_id] = auth_manager
-    await backend.send_response("AuthTokenManager",
-                                {"id": auth_token_manager_id})
+    await backend.send_response(
+        "AuthTokenManager", {"id": auth_token_manager_id}
+    )
 
 
 async def AuthTokenManagerGetAuthCompleted(backend, data):
@@ -214,47 +215,54 @@ async def AuthTokenManagerOnAuthExpiredCompleted(backend, data):
 async def AuthTokenManagerClose(backend, data):
     auth_token_manager_id = data["id"]
     del backend.auth_token_managers[auth_token_manager_id]
-    await backend.send_response("AuthTokenManager",
-                                {"id": auth_token_manager_id})
+    await backend.send_response(
+        "AuthTokenManager", {"id": auth_token_manager_id}
+    )
 
 
-async def NewTemporalAuthTokenManager(backend, data):
+async def NewExpirationBasedAuthTokenManager(backend, data):
     auth_token_manager_id = backend.next_key()
 
     async def auth_token_provider():
         key = backend.next_key()
-        await backend.send_response("TemporalAuthTokenProviderRequest", {
-            "id": key,
-            "temporalAuthTokenManagerId": auth_token_manager_id,
-        })
+        await backend.send_response(
+            "ExpirationBasedAuthTokenProviderRequest",
+            {
+                "id": key,
+                "expirationBasedAuthTokenManagerId": auth_token_manager_id,
+            }
+        )
         if not await backend.process_request():
             # connection was closed before end of next message
-            return neo4j.auth_management.TemporalAuth(None, None)
-        if key not in backend.temporal_auth_token_supplies:
+            return neo4j.auth_management.ExpiringAuth(None, None)
+        if key not in backend.expiring_auth_token_supplies:
             raise RuntimeError(
                 "Backend did not receive expected "
-                f"TemporalAuthTokenManagerCompleted message for id {key}"
+                "ExpirationBasedAuthTokenManagerCompleted message for id "
+                f"{key}"
             )
-        return backend.temporal_auth_token_supplies.pop(key)
+        return backend.expiring_auth_token_supplies.pop(key)
 
-    auth_manager = AsyncAuthManagers.temporal(auth_token_provider)
+    auth_manager = AsyncAuthManagers.expiration_based(auth_token_provider)
     backend.auth_token_managers[auth_token_manager_id] = auth_manager
-    await backend.send_response("TemporalAuthTokenManager",
-                                {"id": auth_token_manager_id})
+    await backend.send_response(
+        "ExpirationBasedAuthTokenManager", {"id": auth_token_manager_id}
+    )
 
 
-async def TemporalAuthTokenProviderCompleted(backend, data):
+async def ExpirationBasedAuthTokenProviderCompleted(backend, data):
     temp_auth_data = data["auth"]
-    temp_auth_data.mark_item_as_read_if_equals("name", "TemporalAuthToken")
+    temp_auth_data.mark_item_as_read_if_equals("name",
+                                               "AuthTokenAndExpiration")
     temp_auth_data = temp_auth_data["data"]
     auth_token = fromtestkit.to_auth_token(temp_auth_data, "auth")
     if temp_auth_data["expiresInMs"] is not None:
         expires_in = temp_auth_data["expiresInMs"] / 1000
     else:
         expires_in = None
-    temporal_auth = TemporalAuth(auth_token, expires_in)
+    expiring_auth = ExpiringAuth(auth_token, expires_in)
 
-    backend.temporal_auth_token_supplies[data["requestId"]] = temporal_auth
+    backend.expiring_auth_token_supplies[data["requestId"]] = expiring_auth
 
 
 async def VerifyConnectivity(backend, data):
