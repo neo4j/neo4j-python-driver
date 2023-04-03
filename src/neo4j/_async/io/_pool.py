@@ -167,8 +167,7 @@ class AsyncIOPool(abc.ABC):
             try:
                 try:
                     connection = await self.opener(
-                        address, auth or self.pool_config.auth,
-                        deadline.to_timeout()
+                        address, auth or self.pool_config.auth, deadline
                     )
                 except ServiceUnavailable:
                     await self.deactivate(address)
@@ -501,9 +500,9 @@ class AsyncBoltPool(AsyncIOPool):
         :returns: BoltPool
         """
 
-        async def opener(addr, auth_manager, timeout):
+        async def opener(addr, auth_manager, deadline):
             return await AsyncBolt.open(
-                addr, auth_manager=auth_manager, timeout=timeout,
+                addr, auth_manager=auth_manager, deadline=deadline,
                 routing_context=None, pool_config=pool_config
             )
 
@@ -556,9 +555,9 @@ class AsyncNeo4jPool(AsyncIOPool):
             raise ConfigurationError("The key 'address' is reserved for routing context.")
         routing_context["address"] = str(address)
 
-        async def opener(addr, auth_manager, timeout):
+        async def opener(addr, auth_manager, deadline):
             return await AsyncBolt.open(
-                addr, auth_manager=auth_manager, timeout=timeout,
+                addr, auth_manager=auth_manager, deadline=deadline,
                 routing_context=routing_context, pool_config=pool_config
             )
 

@@ -29,6 +29,7 @@ from ..._async_compat.util import Util
 from ..._codec.hydration import v1 as hydration_v1
 from ..._codec.packstream import v1 as packstream_v1
 from ..._conf import PoolConfig
+from ..._deadline import Deadline
 from ..._exceptions import (
     BoltError,
     BoltHandshakeError,
@@ -323,17 +324,21 @@ class Bolt:
         return b"".join(version.to_bytes() for version in offered_versions).ljust(16, b"\x00")
 
     @classmethod
-    def ping(cls, address, *, timeout=None, pool_config=None):
+    def ping(cls, address, *, deadline=None, pool_config=None):
         """ Attempt to establish a Bolt connection, returning the
         agreed Bolt protocol version if successful.
         """
         if pool_config is None:
             pool_config = PoolConfig()
+        if deadline is None:
+            deadline = Deadline(None)
+
         try:
             s, protocol_version, handshake, data = \
                 BoltSocket.connect(
                     address,
-                    timeout=timeout,
+                    tcp_timeout=pool_config.connection_timeout,
+                    deadline=deadline,
                     custom_resolver=pool_config.resolver,
                     ssl_context=pool_config.get_ssl_context(),
                     keep_alive=pool_config.keep_alive,
@@ -347,14 +352,14 @@ class Bolt:
     # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
     def open(
-        cls, address, *, auth_manager=None, timeout=None, routing_context=None,
-        pool_config=None
+        cls, address, *, auth_manager=None, deadline=None,
+        routing_context=None, pool_config=None
     ):
         """Open a new Bolt connection to a given server address.
 
         :param address:
         :param auth_manager:
-        :param timeout: the connection timeout in seconds
+        :param deadline: how long to wait for the connection to be established
         :param routing_context: dict containing routing context
         :param pool_config:
 
@@ -364,26 +369,17 @@ class Bolt:
             raised if the Bolt Protocol can not negotiate a protocol version.
         :raise ServiceUnavailable: raised if there was a connection issue.
         """
-        def time_remaining():
-            if timeout is None:
-                return None
-            t = timeout - (perf_counter() - t0)
-            return t if t > 0 else 0
 
-        t0 = perf_counter()
         if pool_config is None:
             pool_config = PoolConfig()
+        if deadline is None:
+            deadline = Deadline(None)
 
-        socket_connection_timeout = pool_config.connection_timeout
-        if socket_connection_timeout is None:
-            socket_connection_timeout = time_remaining()
-        elif timeout is not None:
-            socket_connection_timeout = min(pool_config.connection_timeout,
-                                            time_remaining())
         s, protocol_version, handshake, data = \
             BoltSocket.connect(
                 address,
-                timeout=socket_connection_timeout,
+                tcp_timeout=pool_config.connection_timeout,
+                deadline=deadline,
                 custom_resolver=pool_config.resolver,
                 ssl_context=pool_config.get_ssl_context(),
                 keep_alive=pool_config.keep_alive,
@@ -458,7 +454,7 @@ class Bolt:
         )
 
         try:
-            connection.socket.set_deadline(time_remaining())
+            connection.socket.set_deadline(deadline)
             try:
                 connection.hello()
             finally:

@@ -207,11 +207,11 @@ class Backend:
         self._wr.write(log_output.encode("utf-8"))
         response = {"name": name, "data": data}
         response = dumps(response)
-        log.info(">>> " + name + dumps(data))
         self._wr.write(b"#response begin\n")
-        self._wr.write(bytes(response+"\n", "utf-8"))
+        self._wr.write(bytes(response + "\n", "utf-8"))
         self._wr.write(b"#response end\n")
         if isinstance(self._wr, asyncio.StreamWriter):
             self._wr.drain()
         else:
             self._wr.flush()
+        log.info(">>> " + name + dumps(data))

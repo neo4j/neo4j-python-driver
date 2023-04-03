@@ -164,8 +164,7 @@ class IOPool(abc.ABC):
             try:
                 try:
                     connection = self.opener(
-                        address, auth or self.pool_config.auth,
-                        deadline.to_timeout()
+                        address, auth or self.pool_config.auth, deadline
                     )
                 except ServiceUnavailable:
                     self.deactivate(address)
@@ -498,9 +497,9 @@ class BoltPool(IOPool):
         :returns: BoltPool
         """
 
-        def opener(addr, auth_manager, timeout):
+        def opener(addr, auth_manager, deadline):
             return Bolt.open(
-                addr, auth_manager=auth_manager, timeout=timeout,
+                addr, auth_manager=auth_manager, deadline=deadline,
                 routing_context=None, pool_config=pool_config
             )
 
@@ -553,9 +552,9 @@ class Neo4jPool(IOPool):
             raise ConfigurationError("The key 'address' is reserved for routing context.")
         routing_context["address"] = str(address)
 
-        def opener(addr, auth_manager, timeout):
+        def opener(addr, auth_manager, deadline):
             return Bolt.open(
-                addr, auth_manager=auth_manager, timeout=timeout,
+                addr, auth_manager=auth_manager, deadline=deadline,
                 routing_context=routing_context, pool_config=pool_config
             )
 

@@ -116,7 +116,8 @@ async def test_bolt_connection_open_timeout():
     auth_manager = AsyncAuthManagers.static(("test", "test"))
     with pytest.raises(ServiceUnavailable):
         await AsyncBolt.open(
-            ("localhost", 9999), auth_manager=auth_manager, timeout=1
+            ("localhost", 9999), auth_manager=auth_manager,
+            deadline=Deadline(1)
         )
 
 
@@ -128,7 +129,9 @@ async def test_bolt_connection_ping():
 
 @mark_async_test
 async def test_bolt_connection_ping_timeout():
-    protocol_version = await AsyncBolt.ping(("localhost", 9999), timeout=1)
+    protocol_version = await AsyncBolt.ping(
+        ("localhost", 9999), deadline=Deadline(1)
+    )
     assert protocol_version is None
 
 
