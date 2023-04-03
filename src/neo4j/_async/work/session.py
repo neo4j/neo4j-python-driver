@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import typing as t
+import warnings
 from logging import getLogger
 from random import random
 from time import perf_counter
@@ -27,7 +28,10 @@ from time import perf_counter
 from ..._async_compat import async_sleep
 from ..._async_compat.util import AsyncUtil
 from ..._conf import SessionConfig
-from ..._meta import deprecated
+from ..._meta import (
+    deprecated,
+    PreviewWarning,
+)
 from ..._work import Query
 from ...api import (
     Bookmarks,
@@ -99,7 +103,14 @@ class AsyncSession(AsyncWorkspace):
     def __init__(self, pool, session_config):
         assert isinstance(session_config, SessionConfig)
         if session_config.auth is not None:
-            session_config.auth = AsyncAuthManagers.static(session_config.auth)
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore", message=r".*\bAuth managers\b.*",
+                    category=PreviewWarning
+                )
+                session_config.auth = AsyncAuthManagers.static(
+                    session_config.auth
+                )
         super().__init__(pool, session_config)
         self._config = session_config
         self._initialize_bookmarks(session_config.bookmarks)

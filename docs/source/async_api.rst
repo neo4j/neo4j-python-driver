@@ -172,7 +172,7 @@ Closing a driver will immediately shut down all connections in the pool.
 
             async def execute_query(
                 query_, parameters_, routing_, database_, impersonated_user_,
-                bookmark_manager_, result_transformer_, **kwargs
+                bookmark_manager_, auth_, result_transformer_, **kwargs
             ):
                 async def work(tx):
                     result = await tx.run(query_, parameters_, **kwargs)
@@ -182,6 +182,7 @@ Closing a driver will immediately shut down all connections in the pool.
                     database=database_,
                     impersonated_user=impersonated_user_,
                     bookmark_manager=bookmark_manager_,
+                    auth=auth_,
                 ) as session:
                     if routing_ == RoutingControl.WRITERS:
                         return await session.execute_write(work)
@@ -217,13 +218,14 @@ Closing a driver will immediately shut down all connections in the pool.
             async def example(driver: neo4j.AsyncDriver) -> int:
                 """Call all young people "My dear" and get their count."""
                 record = await driver.execute_query(
-                    "MATCH (p:Person) WHERE p.age <= 15 "
+                    "MATCH (p:Person) WHERE p.age <= $age "
                     "SET p.nickname = 'My dear' "
                     "RETURN count(*)",
                     # optional routing parameter, as write is default
                     # routing_=neo4j.RoutingControl.WRITERS,  # or just "w",
                     database_="neo4j",
                     result_transformer_=neo4j.AsyncResult.single,
+                    age=15,
                 )
                 assert record is not None  # for typechecking and illustration
                 count = record[0]
@@ -260,6 +262,20 @@ Closing a driver will immediately shut down all connections in the pool.
 
             See also the Session config :ref:`impersonated-user-ref`.
         :type impersonated_user_: typing.Optional[str]
+        :param auth_:
+            Authentication information to use for this query.
+
+            By default, the driver configuration is used.
+
+            **This is a preview** (see :ref:`filter-warnings-ref`).
+            It might be changed without following the deprecation policy.
+            See also
+            https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+            See also the Session config :ref:`session-auth-ref`.
+        :type auth_: typing.Union[
+            typing.Tuple[typing.Any, typing.Any], neo4j.Auth, None
+        ]
         :param result_transformer_:
             A function that gets passed the :class:`neo4j.AsyncResult` object
             resulting from the query and converts it to a different type. The
@@ -330,7 +346,7 @@ Closing a driver will immediately shut down all connections in the pool.
 
             Defaults to the driver's :attr:`.query_bookmark_manager`.
 
-            Pass :const:`None` to disable causal consistency.
+            Pass :data:`None` to disable causal consistency.
         :type bookmark_manager_:
             typing.Union[neo4j.AsyncBookmarkManager, neo4j.BookmarkManager,
                          None]
@@ -344,7 +360,7 @@ Closing a driver will immediately shut down all connections in the pool.
         :returns: the result of the ``result_transformer``
         :rtype: T
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        **This is experimental** (see :ref:`filter-warnings-ref`).
         It might be changed or removed any time even without prior notice.
 
         We are looking for feedback on this feature. Please let us know what
@@ -352,6 +368,9 @@ Closing a driver will immediately shut down all connections in the pool.
         https://github.com/neo4j/neo4j-python-driver/discussions/896
 
         .. versionadded:: 5.5
+
+        .. versionchanged:: 5.8
+            Added the ``auth_`` parameter.
 
 
 .. _async-driver-configuration-ref:
@@ -640,7 +659,7 @@ See :class:`BookmarkManager` for more information.
 :Type: :data:`None`, :class:`BookmarkManager`, or :class:`AsyncBookmarkManager`
 :Default: :data:`None`
 
-**This is experimental.** (See :ref:`filter-warnings-ref`)
+**This is experimental** (see :ref:`filter-warnings-ref`).
 It might be changed or removed any time even without prior notice.
 
 

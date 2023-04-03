@@ -624,7 +624,7 @@ class Result:
             was obtained has been closed or the Result has been explicitly
             consumed.
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        **This is experimental** (see :ref:`filter-warnings-ref`).
         It might be changed or removed any time even without prior notice.
 
         .. versionadded:: 5.5

@@ -256,7 +256,7 @@ def test_auth_message_raises_configuration_error(message, fake_socket):
     connection = Bolt4x0(address, fake_socket(address),
                               PoolConfig.max_connection_lifetime)
     with pytest.raises(ConfigurationError,
-                       match="Session level authentication is not supported"):
+                       match="User switching is not supported"):
         getattr(connection, message)()
 
 
@@ -296,7 +296,7 @@ def test_re_auth(auth1, auth2, fake_socket):
     connection = Bolt4x0(address, fake_socket(address),
                               PoolConfig.max_connection_lifetime, auth=auth1)
     with pytest.raises(ConfigurationError,
-                       match="Session level authentication is not supported"):
+                       match="User switching is not supported"):
         connection.re_auth(auth2, None)
 
 

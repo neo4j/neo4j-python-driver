@@ -95,7 +95,7 @@ def test_magic_preamble():
 
 
 @AsyncTestDecorators.mark_async_only_test
-async def test_cancel_hello_in_open(mocker):
+async def test_cancel_hello_in_open(mocker, none_auth):
     address = ("localhost", 7687)
     socket_mock = mocker.AsyncMock(spec=AsyncBoltSocket)
 
@@ -113,10 +113,7 @@ async def test_cancel_hello_in_open(mocker):
     bolt_mock.local_port = 1234
 
     with pytest.raises(asyncio.CancelledError):
-        await AsyncBolt.open(
-            address,
-            auth_manager=neo4j.auth_management.AsyncAuthManagers.static(None)
-        )
+        await AsyncBolt.open(address, auth_manager=none_auth)
 
     bolt_mock.kill.assert_called_once_with()
 
@@ -136,7 +133,9 @@ async def test_cancel_hello_in_open(mocker):
     ),
 )
 @mark_async_test
-async def test_version_negotiation(mocker, bolt_version, bolt_cls_path):
+async def test_version_negotiation(
+    mocker, bolt_version, bolt_cls_path, none_auth
+):
     address = ("localhost", 7687)
     socket_mock = mocker.AsyncMock(spec=AsyncBoltSocket)
 
@@ -151,10 +150,7 @@ async def test_version_negotiation(mocker, bolt_version, bolt_cls_path):
     bolt_mock = bolt_cls_mock.return_value
     bolt_mock.socket = socket_mock
 
-    connection = await AsyncBolt.open(
-        address,
-        auth_manager=neo4j.auth_management.AsyncAuthManagers.static(None)
-    )
+    connection = await AsyncBolt.open(address, auth_manager=none_auth)
 
     bolt_cls_mock.assert_called_once()
     assert connection is bolt_mock
@@ -170,7 +166,7 @@ async def test_version_negotiation(mocker, bolt_version, bolt_cls_path):
     (6, 0),
 ))
 @mark_async_test
-async def test_failing_version_negotiation(mocker, bolt_version):
+async def test_failing_version_negotiation(mocker, bolt_version, none_auth):
     supported_protocols = \
         "('3.0', '4.1', '4.2', '4.3', '4.4', '5.0', '5.1', '5.2')"
 
@@ -185,10 +181,7 @@ async def test_failing_version_negotiation(mocker, bolt_version):
     socket_mock.getpeername.return_value = address
 
     with pytest.raises(BoltHandshakeError) as exc:
-        await AsyncBolt.open(
-            address,
-            auth_manager=neo4j.auth_management.AsyncAuthManagers.static(None)
-        )
+        await AsyncBolt.open(address, auth_manager=none_auth)
 
     assert exc.match(supported_protocols)
 

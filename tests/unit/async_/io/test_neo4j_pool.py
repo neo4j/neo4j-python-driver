@@ -21,6 +21,7 @@ import inspect
 import pytest
 
 from neo4j import (
+    PreviewWarning,
     READ_ACCESS,
     WRITE_ACCESS,
 )
@@ -101,8 +102,13 @@ def opener(routing_failure_opener):
 
 def _pool_config():
     pool_config = PoolConfig()
-    pool_config.auth = AsyncAuthManagers.static(("user", "pass"))
+    pool_config.auth = _auth_manager(("user", "pass"))
     return pool_config
+
+
+def _auth_manager(auth):
+    with pytest.warns(PreviewWarning, match="Auth managers"):
+        return AsyncAuthManagers.static(auth)
 
 
 def _simple_pool(opener) -> AsyncNeo4jPool:
@@ -606,7 +612,7 @@ async def test_connection_error_callback(
     opener, error, marks_unauthenticated, fetches_new, mocker
 ):
     config = _pool_config()
-    auth_manager = AsyncAuthManagers.static(("user", "auth"))
+    auth_manager = _auth_manager(("user", "auth"))
     on_auth_expired_mock = mocker.patch.object(auth_manager, "on_auth_expired",
                                                autospec=True)
     config.auth = auth_manager

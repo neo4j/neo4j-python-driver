@@ -39,7 +39,10 @@ from .. import (
     test_subtest_skips,
     totestkit,
 )
-from .._warning_check import warning_check
+from .._warning_check import (
+    warning_check,
+    warnings_check,
+)
 from ..exceptions import MarkdAsDriverException
 
 
@@ -104,8 +107,12 @@ async def GetFeatures(backend, data):
 
 async def NewDriver(backend, data):
     auth = fromtestkit.to_auth_token(data, "authorizationToken")
+    expected_warnings = []
     if auth is None and data.get("authTokenManagerId") is not None:
         auth = backend.auth_token_managers[data["authTokenManagerId"]]
+        expected_warnings.append(
+            (neo4j.PreviewWarning, "Auth managers are a preview feature.")
+        )
     else:
         data.mark_item_as_read_if_equals("authTokenManagerId", None)
     kwargs = {}
@@ -147,9 +154,15 @@ async def NewDriver(backend, data):
     fromtestkit.set_notifications_config(kwargs, data)
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
-    driver = neo4j.AsyncGraphDatabase.driver(
-        data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
-    )
+    if expected_warnings:
+        with warnings_check(expected_warnings):
+            driver = neo4j.AsyncGraphDatabase.driver(
+                data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
+            )
+    else:
+        driver = neo4j.AsyncGraphDatabase.driver(
+            data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
+        )
     key = backend.next_key()
     backend.drivers[key] = driver
     await backend.send_response("Driver", {"id": key})
@@ -243,7 +256,9 @@ async def NewExpirationBasedAuthTokenManager(backend, data):
             )
         return backend.expiring_auth_token_supplies.pop(key)
 
-    auth_manager = AsyncAuthManagers.expiration_based(auth_token_provider)
+    with warning_check(neo4j.PreviewWarning,
+                       "Auth managers are a preview feature."):
+        auth_manager = AsyncAuthManagers.expiration_based(auth_token_provider)
     backend.auth_token_managers[auth_token_manager_id] = auth_manager
     await backend.send_response(
         "ExpirationBasedAuthTokenManager", {"id": auth_token_manager_id}
@@ -260,7 +275,9 @@ async def ExpirationBasedAuthTokenProviderCompleted(backend, data):
         expires_in = temp_auth_data["expiresInMs"] / 1000
     else:
         expires_in = None
-    expiring_auth = ExpiringAuth(auth_token, expires_in)
+    with warning_check(neo4j.PreviewWarning,
+                       "Auth managers are a preview feature."):
+        expiring_auth = ExpiringAuth(auth_token, expires_in)
 
     backend.expiring_auth_token_supplies[data["requestId"]] = expiring_auth
 
@@ -296,7 +313,9 @@ async def VerifyAuthentication(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
     auth = fromtestkit.to_auth_token(data, "auth_token")
-    authenticated = await driver.verify_authentication(auth=auth)
+    with warning_check(neo4j.PreviewWarning,
+                       "User switching is a preview feature."):
+        authenticated = await driver.verify_authentication(auth=auth)
     await backend.send_response("DriverIsAuthenticated", {
         "id": backend.next_key(), "authenticated": authenticated
     })
@@ -518,6 +537,7 @@ class SessionTracker:
 async def NewSession(backend, data):
     driver = backend.drivers[data["driverId"]]
     access_mode = data["accessMode"]
+    expected_warnings = []
     if access_mode == "r":
         access_mode = neo4j.READ_ACCESS
     elif access_mode == "w":
@@ -536,6 +556,11 @@ async def NewSession(backend, data):
         config["bookmark_manager"] = backend.bookmark_managers[
             data["bookmarkManagerId"]
         ]
+        expected_warnings.append((
+            neo4j.ExperimentalWarning,
+            "The 'bookmark_manager' config key is experimental. It might be "
+            "changed or removed any time even without prior notice."
+        ))
     for (conf_name, data_name) in (
         ("fetch_size", "fetchSize"),
         ("impersonated_user", "impersonatedUser"),
@@ -544,13 +569,12 @@ async def NewSession(backend, data):
             config[conf_name] = data[data_name]
     if data.get("authorizationToken"):
         config["auth"] = fromtestkit.to_auth_token(data, "authorizationToken")
+        expected_warnings.append(
+            (neo4j.PreviewWarning, "User switching is a preview features.")
+        )
     fromtestkit.set_notifications_config(config, data)
-    if "bookmark_manager" in config:
-        with warning_check(
-            neo4j.ExperimentalWarning,
-            "The 'bookmark_manager' config key is experimental. It might be "
-            "changed or removed any time even without prior notice."
-        ):
+    if expected_warnings:
+        with warnings_check(expected_warnings):
             session = driver.session(**config)
     else:
         session = driver.session(**config)

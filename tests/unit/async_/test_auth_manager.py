@@ -1,3 +1,21 @@
+# Copyright (c) "Neo4j"
+# Neo4j Sweden AB [https://neo4j.com]
+#
+# This file is part of Neo4j.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import itertools
 import typing as t
 
@@ -8,7 +26,9 @@ from freezegun.api import FrozenDateTimeFactory
 from neo4j import (
     Auth,
     basic_auth,
+    PreviewWarning,
 )
+from neo4j._meta import copy_signature
 from neo4j.auth_management import (
     AsyncAuthManager,
     AsyncAuthManagers,
@@ -27,12 +47,29 @@ SAMPLE_AUTHS = (
 )
 
 
+@copy_signature(AsyncAuthManagers.static)
+def static_auth_manager(*args, **kwargs):
+    with pytest.warns(PreviewWarning, match="Auth managers"):
+        return AsyncAuthManagers.static(*args, **kwargs)
+
+@copy_signature(AsyncAuthManagers.expiration_based)
+def expiration_based_auth_manager(*args, **kwargs):
+    with pytest.warns(PreviewWarning, match="Auth managers"):
+        return AsyncAuthManagers.expiration_based(*args, **kwargs)
+
+
+@copy_signature(ExpiringAuth)
+def expiring_auth(*args, **kwargs):
+    with pytest.warns(PreviewWarning, match="Auth managers"):
+        return ExpiringAuth(*args, **kwargs)
+
+
 @mark_async_test
 @pytest.mark.parametrize("auth", SAMPLE_AUTHS)
 async def test_static_manager(
     auth
 ) -> None:
-    manager: AsyncAuthManager = AsyncAuthManagers.static(auth)
+    manager: AsyncAuthManager = static_auth_manager(auth)
     assert await manager.get_auth() is auth
 
     await manager.on_auth_expired(("something", "else"))
@@ -46,25 +83,25 @@ async def test_static_manager(
 @pytest.mark.parametrize(("auth1", "auth2"),
                          itertools.product(SAMPLE_AUTHS, repeat=2))
 @pytest.mark.parametrize("expires_in", (None, -1, 1., 1, 1000.))
-async def test_temporal_manager_manual_expiry(
+async def test_expiration_based_manager_manual_expiry(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
     auth2: t.Union[t.Tuple[str, str], Auth, None],
     expires_in: t.Union[float, int],
     mocker
 ) -> None:
     if expires_in is None or expires_in >= 0:
-        temporal_auth = ExpiringAuth(auth1, expires_in)
+        temporal_auth = expiring_auth(auth1, expires_in)
     else:
-        temporal_auth = ExpiringAuth(auth1)
+        temporal_auth = expiring_auth(auth1)
     provider = mocker.AsyncMock(return_value=temporal_auth)
-    manager: AsyncAuthManager = AsyncAuthManagers.expiration_based(provider)
+    manager: AsyncAuthManager = expiration_based_auth_manager(provider)
 
     provider.assert_not_called()
     assert await manager.get_auth() is auth1
     provider.assert_awaited_once()
     provider.reset_mock()
 
-    provider.return_value = ExpiringAuth(auth2)
+    provider.return_value = expiring_auth(auth2)
 
     await manager.on_auth_expired(("something", "else"))
     assert await manager.get_auth() is auth1
@@ -81,7 +118,7 @@ async def test_temporal_manager_manual_expiry(
 @pytest.mark.parametrize(("auth1", "auth2"),
                          itertools.product(SAMPLE_AUTHS, repeat=2))
 @pytest.mark.parametrize("expires_in", (None, -1, 1., 1, 1000.))
-async def test_temporal_manager_time_expiry(
+async def test_expiration_based_manager_time_expiry(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
     auth2: t.Union[t.Tuple[str, str], Auth, None],
     expires_in: t.Union[float, int, None],
@@ -90,18 +127,18 @@ async def test_temporal_manager_time_expiry(
     with freeze_time() as frozen_time:
         assert isinstance(frozen_time, FrozenDateTimeFactory)
         if expires_in is None or expires_in >= 0:
-            temporal_auth = ExpiringAuth(auth1, expires_in)
+            temporal_auth = expiring_auth(auth1, expires_in)
         else:
-            temporal_auth = ExpiringAuth(auth1)
+            temporal_auth = expiring_auth(auth1)
         provider = mocker.AsyncMock(return_value=temporal_auth)
-        manager: AsyncAuthManager = AsyncAuthManagers.expiration_based(provider)
+        manager: AsyncAuthManager = expiration_based_auth_manager(provider)
 
         provider.assert_not_called()
         assert await manager.get_auth() is auth1
         provider.assert_awaited_once()
         provider.reset_mock()
 
-        provider.return_value = ExpiringAuth(auth2)
+        provider.return_value = expiring_auth(auth2)
 
         if expires_in is None or expires_in < 0:
             frozen_time.tick(1_000_000)

@@ -24,9 +24,11 @@ import abc
 import typing as t
 from dataclasses import dataclass
 
+from ._meta import preview
 from .api import _TAuth
 
 
+@preview("Auth managers are a preview feature.")
 @dataclass
 class ExpiringAuth:
     """Represents potentially expiring authentication information.
@@ -39,10 +41,14 @@ class ExpiringAuth:
         information expires. If :data:`None`, the authentication information
         is considered to not expire until the server explicitly indicates so.
 
+    **This is a preview** (see :ref:`filter-warnings-ref`).
+    It might be changed without following the deprecation policy.
+    See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
     .. seealso::
         :meth:`.AuthManagers.temporal`, :meth:`.AsyncAuthManagers.temporal`
 
-    .. versionadded:: 5.x
+    .. versionadded:: 5.8
     """
     auth: _TAuth
     expires_in: t.Optional[float] = None
@@ -67,9 +73,13 @@ class AuthManager(metaclass=abc.ABCMeta):
         The token returned must always belong to the same identity.
         Switching identities using the `AuthManager` is undefined behavior.
 
+    **This is a preview** (see :ref:`filter-warnings-ref`).
+    It might be changed without following the deprecation policy.
+    See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
     .. seealso:: :class:`.AuthManagers`
 
-    .. versionadded:: 5.x
+    .. versionadded:: 5.8
     """
 
     @abc.abstractmethod
@@ -104,9 +114,13 @@ class AuthManager(metaclass=abc.ABCMeta):
 class AsyncAuthManager(metaclass=abc.ABCMeta):
     """Async version of :class:`.AuthManager`.
 
+    **This is a preview** (see :ref:`filter-warnings-ref`).
+    It might be changed without following the deprecation policy.
+    See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
     .. seealso:: :class:`.AuthManager`
 
-    .. versionadded:: 5.x
+    .. versionadded:: 5.8
     """
 
     @abc.abstractmethod

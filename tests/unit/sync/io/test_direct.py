@@ -18,6 +18,7 @@
 
 import pytest
 
+from neo4j import PreviewWarning
 from neo4j._conf import (
     Config,
     PoolConfig,
@@ -84,7 +85,7 @@ class QuickConnection:
 
 class FakeBoltPool(IOPool):
     def __init__(self, address, *, auth=None, **config):
-        config["auth"] = AuthManagers.static(None)
+        config["auth"] = static_auth(None)
         self.pool_config, self.workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         if config:
             raise ValueError("Unexpected config keys: %s" % ", ".join(config.keys()))
@@ -103,17 +104,22 @@ class FakeBoltPool(IOPool):
             self.address, auth, timeout, liveness_check_timeout
         )
 
+def static_auth(auth):
+    with pytest.warns(PreviewWarning, match="Auth managers"):
+        return AuthManagers.static(auth)
+
+@pytest.fixture
+def auth_manager():
+    static_auth(("test", "test"))
 
 @mark_sync_test
-def test_bolt_connection_open():
-    auth_manager = AuthManagers.static(("test", "test"))
+def test_bolt_connection_open(auth_manager):
     with pytest.raises(ServiceUnavailable):
         Bolt.open(("localhost", 9999), auth_manager=auth_manager)
 
 
 @mark_sync_test
-def test_bolt_connection_open_timeout():
-    auth_manager = AuthManagers.static(("test", "test"))
+def test_bolt_connection_open_timeout(auth_manager):
     with pytest.raises(ServiceUnavailable):
         Bolt.open(
             ("localhost", 9999), auth_manager=auth_manager,

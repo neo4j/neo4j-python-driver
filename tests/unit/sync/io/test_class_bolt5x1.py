@@ -287,9 +287,9 @@ def test_logon(fake_socket_pair):
 
 
 @mark_sync_test
-def test_re_auth(fake_socket_pair, mocker):
+def test_re_auth(fake_socket_pair, mocker, static_auth):
     auth = neo4j.Auth("basic", "alice123", "supersecret123")
-    auth_manager = AuthManagers.static(auth)
+    auth_manager = static_auth(auth)
     address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt5x1.PACKER_CLS,

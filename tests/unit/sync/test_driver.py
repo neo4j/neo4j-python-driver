@@ -970,7 +970,8 @@ def test_execute_query_result_transformer(
                     with assert_warns_execute_query_bmm_experimental():
                         bmm = driver.query_bookmark_manager
                     res_custom = driver.execute_query(
-                        "", None, "w", None, None, bmm, result_transformer
+                        "", None, "w", None, None, bmm, None,
+                        result_transformer
                     )
                 else:
                     res_custom = driver.execute_query(

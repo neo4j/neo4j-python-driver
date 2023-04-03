@@ -29,6 +29,7 @@ from .._auth_management import (
     AuthManager,
     ExpiringAuth,
 )
+from .._meta import preview
 
 # work around for https://github.com/sphinx-doc/sphinx/pull/10880
 # make sure TAuth is resolved in the docs, else they're pretty useless
@@ -104,9 +105,17 @@ class ExpirationBasedAuthManager(AuthManager):
 
 
 class AuthManagers:
-    """A collection of :class:`.AuthManager` factories."""
+    """A collection of :class:`.AuthManager` factories.
+
+    **This is a preview** (see :ref:`filter-warnings-ref`).
+    It might be changed without following the deprecation policy.
+    See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+    .. versionadded:: 5.8
+    """
 
     @staticmethod
+    @preview("Auth managers are a preview feature.")
     def static(auth: _TAuth) -> AuthManager:
         """Create a static auth manager.
 
@@ -138,6 +147,7 @@ class AuthManagers:
         return StaticAuthManager(auth)
 
     @staticmethod
+    @preview("Auth managers are a preview feature.")
     def expiration_based(
         provider: t.Callable[[], t.Union[ExpiringAuth]]
     ) -> AuthManager:
@@ -190,5 +200,7 @@ class AuthManagers:
             the provider again, when the auth info expires (either because it's
             reached its expiry time or because the server flagged it as
             expired).
+
+
         """
         return ExpirationBasedAuthManager(provider)

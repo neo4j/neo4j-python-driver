@@ -52,6 +52,7 @@ from ._meta import (
     deprecation_warn as _deprecation_warn,
     ExperimentalWarning,
     get_user_agent,
+    PreviewWarning,
     version as __version__,
 )
 from ._sync.driver import (
@@ -140,6 +141,7 @@ __all__ = [
     "NotificationFilter",
     "NotificationSeverity",
     "PoolConfig",
+    "PreviewWarning",
     "Query",
     "READ_ACCESS",
     "Record",

@@ -216,7 +216,7 @@ class Bolt:
     def assert_re_auth_support(self):
         if not self.supports_re_auth:
             raise ConfigurationError(
-                "Session level authentication is not supported for Bolt "
+                "User switching is not supported for Bolt "
                 f"Protocol {self.PROTOCOL_VERSION!r}. Server Agent "
                 f"{self.server_info.agent!r}"
             )

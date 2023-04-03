@@ -47,6 +47,9 @@ from .._meta import (
     experimental,
     experimental_warn,
     ExperimentalWarning,
+    preview,
+    preview_warn,
+    PreviewWarning,
     unclosed_resource_warn,
 )
 from .._work import EagerResult
@@ -198,7 +201,15 @@ class AsyncGraphDatabase:
             driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
             if not isinstance(auth, (AsyncAuthManager, AuthManager)):
-                auth = AsyncAuthManagers.static(auth)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                        "ignore", message=r".*\bAuth managers\b.*",
+                        category=PreviewWarning
+                    )
+                    auth = AsyncAuthManagers.static(auth)
+            else:
+                preview_warn("Auth managers are a preview feature.",
+                             stack_level=2)
             config["auth"] = auth
 
             # TODO: 6.0 - remove "trust" config option
@@ -349,7 +360,7 @@ class AsyncGraphDatabase:
 
         :returns: A default implementation of :class:`AsyncBookmarkManager`.
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        **This is experimental** (see :ref:`filter-warnings-ref`).
         It might be changed or removed any time even without prior notice.
 
         .. versionadded:: 5.0
@@ -506,6 +517,9 @@ class AsyncDriver:
         return bool(self._pool.pool_config.encrypted)
 
     def _prepare_session_config(self, **config):
+        if "auth" in config:
+            preview_warn("User switching is a preview features.",
+                         stack_level=3)
         _normalize_notifications_config(config)
         return config
 
@@ -574,6 +588,7 @@ class AsyncDriver:
         bookmark_manager_: t.Union[
             AsyncBookmarkManager, BookmarkManager, None
         ] = ...,
+        auth_: _TAuth = None,
         result_transformer_: t.Callable[
             [AsyncResult], t.Awaitable[EagerResult]
         ] = ...,
@@ -592,6 +607,7 @@ class AsyncDriver:
         bookmark_manager_: t.Union[
             AsyncBookmarkManager, BookmarkManager, None
         ] = ...,
+        auth_: _TAuth = None,
         result_transformer_: t.Callable[
             [AsyncResult], t.Awaitable[_T]
         ] = ...,
@@ -614,6 +630,7 @@ class AsyncDriver:
             AsyncBookmarkManager, BookmarkManager, None,
             te.Literal[_DefaultEnum.default]
         ] = _default,
+        auth_: _TAuth = None,
         result_transformer_: t.Callable[
             [AsyncResult], t.Awaitable[t.Any]
         ] = AsyncResult.to_eager_result,
@@ -635,7 +652,7 @@ class AsyncDriver:
 
             async def execute_query(
                 query_, parameters_, routing_, database_, impersonated_user_,
-                bookmark_manager_, result_transformer_, **kwargs
+                bookmark_manager_, auth_, result_transformer_, **kwargs
             ):
                 async def work(tx):
                     result = await tx.run(query_, parameters_, **kwargs)
@@ -645,6 +662,7 @@ class AsyncDriver:
                     database=database_,
                     impersonated_user=impersonated_user_,
                     bookmark_manager=bookmark_manager_,
+                    auth=auth_,
                 ) as session:
                     if routing_ == RoutingControl.WRITERS:
                         return await session.execute_write(work)
@@ -680,13 +698,14 @@ class AsyncDriver:
             async def example(driver: neo4j.AsyncDriver) -> int:
                 \"""Call all young people "My dear" and get their count.\"""
                 record = await driver.execute_query(
-                    "MATCH (p:Person) WHERE p.age <= 15 "
+                    "MATCH (p:Person) WHERE p.age <= $age "
                     "SET p.nickname = 'My dear' "
                     "RETURN count(*)",
                     # optional routing parameter, as write is default
                     # routing_=neo4j.RoutingControl.WRITERS,  # or just "w",
                     database_="neo4j",
                     result_transformer_=neo4j.AsyncResult.single,
+                    age=15,
                 )
                 assert record is not None  # for typechecking and illustration
                 count = record[0]
@@ -723,6 +742,20 @@ class AsyncDriver:
 
             See also the Session config :ref:`impersonated-user-ref`.
         :type impersonated_user_: typing.Optional[str]
+        :param auth_:
+            Authentication information to use for this query.
+
+            By default, the driver configuration is used.
+
+            **This is a preview** (see :ref:`filter-warnings-ref`).
+            It might be changed without following the deprecation policy.
+            See also
+            https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+            See also the Session config :ref:`session-auth-ref`.
+        :type auth_: typing.Union[
+            typing.Tuple[typing.Any, typing.Any], neo4j.Auth, None
+        ]
         :param result_transformer_:
             A function that gets passed the :class:`neo4j.AsyncResult` object
             resulting from the query and converts it to a different type. The
@@ -807,10 +840,17 @@ class AsyncDriver:
         :returns: the result of the ``result_transformer``
         :rtype: T
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        **This is experimental** (see :ref:`filter-warnings-ref`).
         It might be changed or removed any time even without prior notice.
 
+        We are looking for feedback on this feature. Please let us know what
+        you think about it here:
+        https://github.com/neo4j/neo4j-python-driver/discussions/896
+
         .. versionadded:: 5.5
+
+        .. versionchanged:: 5.8
+            Added the ``auth_`` parameter.
         """
         invalid_kwargs = [k for k in kwargs if
                           k[-2:-1] != "_" and k[-1:] == "_"]
@@ -832,9 +872,13 @@ class AsyncDriver:
             warnings.filterwarnings("ignore",
                                     message=r".*\bbookmark_manager\b.*",
                                     category=ExperimentalWarning)
+            warnings.filterwarnings("ignore",
+                                    message=r"^User switching\b.*",
+                                    category=PreviewWarning)
             session = self.session(database=database_,
                                    impersonated_user=impersonated_user_,
-                                   bookmark_manager=bookmark_manager_)
+                                   bookmark_manager=bookmark_manager_,
+                                   auth=auth_)
         async with session:
             if routing_ == RoutingControl.WRITERS:
                 executor = session.execute_write
@@ -871,7 +915,7 @@ class AsyncDriver:
                 # (i.e., can read what was written by <QUERY 2>)
                 await driver.execute_query("<QUERY 3>")
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        **This is experimental** (see :ref:`filter-warnings-ref`).
         It might be changed or removed any time even without prior notice.
 
         .. versionadded:: 5.5
@@ -1065,6 +1109,7 @@ class AsyncDriver:
 
     else:
 
+        @preview("User switching is a preview feature.")
         async def verify_authentication(
             self,
             auth: t.Union[Auth, t.Tuple[t.Any, t.Any], None] = None,
@@ -1098,7 +1143,12 @@ class AsyncDriver:
                 Use the exception to further understand the cause of the
                 connectivity problem.
 
-            .. versionadded:: 5.x
+            **This is a preview** (see :ref:`filter-warnings-ref`).
+            It might be changed without following the deprecation policy.
+            See also
+            https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+            .. versionadded:: 5.8
             """
             if config:
                 experimental_warn(
@@ -1111,7 +1161,13 @@ class AsyncDriver:
             if "database" not in config:
                 config["database"] = "system"
             try:
-                async with self.session(**config) as session:
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                        "ignore", message=r"^User switching\b.*",
+                        category=PreviewWarning
+                )
+                    session = self.session(**config)
+                async with session as session:
                     await session._verify_authentication()
             except Neo4jError as exc:
                 if exc.code in (

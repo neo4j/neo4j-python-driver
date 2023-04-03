@@ -24,10 +24,12 @@ from struct import (
 
 import pytest
 
+from neo4j import PreviewWarning
 from neo4j._sync.io._common import (
     Inbox,
     Outbox,
 )
+from neo4j.auth_management import AuthManagers
 
 
 class FakeSocket:
@@ -145,3 +147,16 @@ def fake_socket_2():
 @pytest.fixture
 def fake_socket_pair():
     return FakeSocketPair
+
+@pytest.fixture
+def static_auth():
+    def inner(auth):
+        with pytest.warns(PreviewWarning, match="Auth managers"):
+            return AuthManagers.static(auth)
+
+    return inner
+
+
+@pytest.fixture
+def none_auth(static_auth):
+    return static_auth(None)
