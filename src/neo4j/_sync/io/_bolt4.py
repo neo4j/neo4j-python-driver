@@ -19,8 +19,8 @@
 from logging import getLogger
 from ssl import SSLSocket
 
-from ..._async_compat.util import Util
 from ..._exceptions import BoltProtocolError
+from ..._meta import BOLT_AGENT
 from ...api import (
     READ_ACCESS,
     SYSTEM_DATABASE,
@@ -93,8 +93,11 @@ class Bolt4x0(Bolt):
         return self.socket.getpeercert(binary_form=True)
 
     def get_base_headers(self):
+        user_agent = self.user_agent
+        if user_agent is None:
+            user_agent = BOLT_AGENT
         return {
-            "user_agent": self.user_agent,
+            "user_agent": user_agent,
         }
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
@@ -377,8 +380,11 @@ class Bolt4x1(Bolt4x0):
         enables server-side routing to propagate the same behaviour
         through its driver.
         """
+        user_agent = self.user_agent
+        if user_agent is None:
+            user_agent = BOLT_AGENT
         headers = {
-            "user_agent": self.user_agent,
+            "user_agent": user_agent,
         }
         if self.routing_context is not None:
             headers["routing"] = self.routing_context

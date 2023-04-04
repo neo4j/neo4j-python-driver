@@ -33,7 +33,7 @@ from ..._exceptions import (
     BoltError,
     BoltHandshakeError,
 )
-from ..._meta import get_user_agent
+from ..._meta import BOLT_AGENT
 from ...addressing import Address
 from ...api import (
     ServerInfo,
@@ -131,11 +131,7 @@ class AsyncBolt:
         self.routing_context = routing_context
         self.idle_since = perf_counter()
 
-        # Determine the user agent
-        if user_agent:
-            self.user_agent = user_agent
-        else:
-            self.user_agent = get_user_agent()
+        self.user_agent = user_agent
 
         # Determine auth details
         if not auth:
@@ -229,6 +225,7 @@ class AsyncBolt:
             AsyncBolt5x0,
             AsyncBolt5x1,
             AsyncBolt5x2,
+            AsyncBolt5x3,
         )
 
         handlers = {
@@ -241,6 +238,7 @@ class AsyncBolt:
             AsyncBolt5x0.PROTOCOL_VERSION: AsyncBolt5x0,
             AsyncBolt5x1.PROTOCOL_VERSION: AsyncBolt5x1,
             AsyncBolt5x2.PROTOCOL_VERSION: AsyncBolt5x2,
+            AsyncBolt5x3.PROTOCOL_VERSION: AsyncBolt5x3,
         }
 
         if protocol_version is None:
@@ -355,7 +353,10 @@ class AsyncBolt:
 
         # Carry out Bolt subclass imports locally to avoid circular dependency
         # issues.
-        if protocol_version == (5, 2):
+        if protocol_version == (5, 3):
+            from ._bolt5 import AsyncBolt5x3
+            bolt_cls = AsyncBolt5x3
+        elif protocol_version == (5, 2):
             from ._bolt5 import AsyncBolt5x2
             bolt_cls = AsyncBolt5x2
         elif protocol_version == (5, 1):

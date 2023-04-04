@@ -14,6 +14,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
 import itertools
 import logging
 
@@ -21,6 +23,7 @@ import pytest
 
 from neo4j._async.io._bolt5 import AsyncBolt5x2
 from neo4j._conf import PoolConfig
+from neo4j._meta import BOLT_AGENT
 from neo4j.api import Auth
 
 from ...._async_compat import mark_async_test
@@ -395,8 +398,9 @@ async def test_hello_does_not_log_credentials(fake_socket_pair, caplog, auth):
     await sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
     await sockets.server.send_message(b"\x70", {})
     max_connection_lifetime = 0
-    connection = AsyncBolt5x2(address, sockets.client,
-                              max_connection_lifetime, auth=auth)
+    connection = AsyncBolt5x2(
+        address, sockets.client, max_connection_lifetime, auth=auth
+    )
 
     with caplog.at_level(logging.DEBUG):
         await connection.hello()
@@ -410,3 +414,50 @@ async def test_hello_does_not_log_credentials(fake_socket_pair, caplog, auth):
             assert value not in logon
         else:
             assert str({key: value})[1:-1] in logon
+
+
+@mark_async_test
+@pytest.mark.parametrize(
+    "user_agent", (None, "test user agent", "", BOLT_AGENT)
+)
+async def test_user_agent(fake_socket_pair, user_agent):
+    address = ("127.0.0.1", 7687)
+    sockets = fake_socket_pair(address,
+                               packer_cls=AsyncBolt5x2.PACKER_CLS,
+                               unpacker_cls=AsyncBolt5x2.UNPACKER_CLS)
+    await sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    await sockets.server.send_message(b"\x70", {})
+    max_connection_lifetime = 0
+    connection = AsyncBolt5x2(
+        address, sockets.client, max_connection_lifetime, user_agent=user_agent
+    )
+    await connection.hello()
+
+    tag, fields = await sockets.server.pop_message()
+    extra = fields[0]
+    if user_agent is None:
+        assert extra["user_agent"] == BOLT_AGENT
+    else:
+        assert extra["user_agent"] == user_agent
+
+
+@mark_async_test
+@pytest.mark.parametrize(
+    "user_agent", (None, "test user agent", "", BOLT_AGENT)
+)
+async def test_does_not_send_bolt_agent(fake_socket_pair, user_agent):
+    address = ("127.0.0.1", 7687)
+    sockets = fake_socket_pair(address,
+                               packer_cls=AsyncBolt5x2.PACKER_CLS,
+                               unpacker_cls=AsyncBolt5x2.UNPACKER_CLS)
+    await sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    await sockets.server.send_message(b"\x70", {})
+    max_connection_lifetime = 0
+    connection = AsyncBolt5x2(
+        address, sockets.client, max_connection_lifetime, user_agent=user_agent
+    )
+    await connection.hello()
+
+    tag, fields = await sockets.server.pop_message()
+    extra = fields[0]
+    assert "bolt_agent" not in extra

@@ -17,6 +17,8 @@
 
 
 import asyncio
+import platform
+import sys
 import tracemalloc
 import typing as t
 from functools import wraps
@@ -32,17 +34,34 @@ version = "5.7.dev0"
 deprecated_package = False
 
 
-def get_user_agent():
+def _compute_bolt_agent() -> str:
+    def format_version_info(version_info):
+        return "{}.{}.{}-{}-{}".format(*version_info)
+
+    return (
+        # product/version
+        f"neo4j-python/{version} "
+        # platform
+        f"({platform.system() or 'Unknown'} {platform.release() or 'unknown'}"
+        f"; {platform.machine() or 'unknown'}) "
+        # language/version
+        f"Python/{format_version_info(sys.version_info)} "
+        # language details
+        f"({platform.python_implementation()}; "
+        f"{format_version_info(sys.implementation.version)} "
+        f"({', '.join(platform.python_build())}) "
+        f"[{platform.python_compiler()}])"
+    )
+
+
+BOLT_AGENT = _compute_bolt_agent()
+
+
+def get_user_agent() -> str:
     """ Obtain the default user agent string sent to the server after
     a successful handshake.
     """
-    from sys import (
-        platform,
-        version_info,
-    )
-    template = "neo4j-python/{} Python/{}.{}.{}-{}-{} ({})"
-    fields = (version,) + tuple(version_info) + (platform,)
-    return template.format(*fields)
+    return BOLT_AGENT
 
 
 def _id(x):

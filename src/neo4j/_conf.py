@@ -400,7 +400,7 @@ class PoolConfig(Config):
     # The use of this option is strongly discouraged.
 
     #: User Agent (Python Driver Specific)
-    user_agent = get_user_agent()
+    user_agent = None
     # Specify the client agent name.
 
     #: Socket Keep Alive (Python and .NET Driver Specific)
