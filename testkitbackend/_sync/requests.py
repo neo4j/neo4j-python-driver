@@ -312,7 +312,7 @@ def CheckMultiDBSupport(backend, data):
 def VerifyAuthentication(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
-    auth = fromtestkit.to_auth_token(data, "auth_token")
+    auth = fromtestkit.to_auth_token(data, "authorizationToken")
     with warning_check(neo4j.PreviewWarning,
                        "User switching is a preview feature."):
         authenticated = driver.verify_authentication(auth=auth)
