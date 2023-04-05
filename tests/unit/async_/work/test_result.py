@@ -29,7 +29,6 @@ from neo4j import (
     Address,
     AsyncResult,
     EagerResult,
-    ExperimentalWarning,
     Record,
     ResultSummary,
     ServerInfo,
@@ -54,15 +53,6 @@ from neo4j.graph import (
 )
 
 from ...._async_compat import mark_async_test
-
-
-@contextmanager
-def assert_warns_to_eager_result_experimental():
-    with pytest.warns(
-        ExperimentalWarning,
-        match=r"^Result\.to_eager_result is experimental\."
-    ):
-        yield
 
 
 class Records:
@@ -720,8 +710,7 @@ async def test_to_eager_result(records):
     connection = AsyncConnectionStub(records=records, summary_meta=summary)
     result = AsyncResult(connection, 1, noop, noop)
     await result._run("CYPHER", {}, None, None, "r", None, None, None)
-    with assert_warns_to_eager_result_experimental():
-        eager_result = await result.to_eager_result()
+    eager_result = await result.to_eager_result()
 
     assert isinstance(eager_result, EagerResult)
 

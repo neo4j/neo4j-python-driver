@@ -46,7 +46,6 @@ from .._meta import (
     deprecation_warn,
     experimental,
     experimental_warn,
-    ExperimentalWarning,
     unclosed_resource_warn,
 )
 from .._work import EagerResult
@@ -259,10 +258,6 @@ class GraphDatabase:
                                     routing_context=routing_context, **config)
 
     @classmethod
-    @experimental(
-        "The bookmark manager feature is experimental. "
-        "It might be changed or removed any time even without prior notice."
-    )
     def bookmark_manager(
         cls,
         initial_bookmarks: t.Union[None, Bookmarks, t.Iterable[str]] = None,
@@ -323,9 +318,6 @@ class GraphDatabase:
 
         :returns: A default implementation of :class:`BookmarkManager`.
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
-        It might be changed or removed any time even without prior notice.
-
         .. versionadded:: 5.0
 
         .. versionchanged:: 5.3
@@ -339,6 +331,8 @@ class GraphDatabase:
               an argument.
             * ``bookmarks_consumer`` no longer receives the database name as
               an argument.
+
+        .. versionchanged:: 5.8 stabilized from experimental
         """
         return Neo4jBookmarkManager(
             initial_bookmarks=initial_bookmarks,
@@ -446,12 +440,7 @@ class Driver:
         assert default_workspace_config is not None
         self._pool = pool
         self._default_workspace_config = default_workspace_config
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore",
-                                    message=r".*\bbookmark manager\b.*",
-                                    category=ExperimentalWarning)
-            self._query_bookmark_manager = \
-                GraphDatabase.bookmark_manager()
+        self._query_bookmark_manager = GraphDatabase.bookmark_manager()
 
     def __enter__(self) -> Driver:
         return self
@@ -541,7 +530,7 @@ class Driver:
         self,
         query_: str,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
-        routing_: T_RoutingControl = RoutingControl.WRITERS,
+        routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
         impersonated_user_: t.Optional[str] = None,
         bookmark_manager_: t.Union[
@@ -559,7 +548,7 @@ class Driver:
         self,
         query_: str,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
-        routing_: T_RoutingControl = RoutingControl.WRITERS,
+        routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
         impersonated_user_: t.Optional[str] = None,
         bookmark_manager_: t.Union[
@@ -572,15 +561,11 @@ class Driver:
     ) -> _T:
         ...
 
-    @experimental(
-        "Driver.execute_query is experimental. "
-        "It might be changed or removed any time even without prior notice."
-    )
     def execute_query(
         self,
         query_: str,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
-        routing_: T_RoutingControl = RoutingControl.WRITERS,
+        routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
         impersonated_user_: t.Optional[str] = None,
         bookmark_manager_: t.Union[
@@ -619,9 +604,9 @@ class Driver:
                     impersonated_user=impersonated_user_,
                     bookmark_manager=bookmark_manager_,
                 ) as session:
-                    if routing_ == RoutingControl.WRITERS:
+                    if routing_ == RoutingControl.WRITE:
                         return session.execute_write(work)
-                    elif routing_ == RoutingControl.READERS:
+                    elif routing_ == RoutingControl.READ:
                         return session.execute_read(work)
 
         Usage example::
@@ -636,7 +621,7 @@ class Driver:
                 records, summary, keys = driver.execute_query(
                     "MATCH (p:Person {age: $age}) RETURN p.name",
                     {"age": 42},
-                    routing_=neo4j.RoutingControl.READERS,  # or just "r"
+                    routing_=neo4j.RoutingControl.READ,  # or just "r"
                     database_="neo4j",
                 )
                 assert keys == ["p.name"]  # not needed, just for illustration
@@ -657,7 +642,7 @@ class Driver:
                     "SET p.nickname = 'My dear' "
                     "RETURN count(*)",
                     # optional routing parameter, as write is default
-                    # routing_=neo4j.RoutingControl.WRITERS,  # or just "w",
+                    # routing_=neo4j.RoutingControl.WRITE,  # or just "w",
                     database_="neo4j",
                     result_transformer_=neo4j.Result.single,
                 )
@@ -780,10 +765,9 @@ class Driver:
         :returns: the result of the ``result_transformer``
         :rtype: T
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
-        It might be changed or removed any time even without prior notice.
-
         .. versionadded:: 5.5
+
+        .. versionchanged:: 5.8 stabilized from experimental
         """
         invalid_kwargs = [k for k in kwargs if
                           k[-2:-1] != "_" and k[-1:] == "_"]
@@ -801,17 +785,13 @@ class Driver:
             bookmark_manager_ = self._query_bookmark_manager
         assert bookmark_manager_ is not _default
 
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore",
-                                    message=r".*\bbookmark_manager\b.*",
-                                    category=ExperimentalWarning)
-            session = self.session(database=database_,
-                                   impersonated_user=impersonated_user_,
-                                   bookmark_manager=bookmark_manager_)
+        session = self.session(database=database_,
+                               impersonated_user=impersonated_user_,
+                               bookmark_manager=bookmark_manager_)
         with session:
-            if routing_ == RoutingControl.WRITERS:
+            if routing_ == RoutingControl.WRITE:
                 executor = session.execute_write
-            elif routing_ == RoutingControl.READERS:
+            elif routing_ == RoutingControl.READ:
                 executor = session.execute_read
             else:
                 raise ValueError("Invalid routing control value: %r"
@@ -821,11 +801,7 @@ class Driver:
             )
 
     @property
-    @experimental(
-        "Driver.query_bookmark_manager is experimental. "
-        "It might be changed or removed any time even without prior notice."
-    )
-    def query_bookmark_manager(self) -> BookmarkManager:
+    def execute_query_bookmark_manager(self) -> BookmarkManager:
         """The driver's default query bookmark manager.
 
         This is the default :class:`BookmarkManager` used by
@@ -844,10 +820,12 @@ class Driver:
                 # (i.e., can read what was written by <QUERY 2>)
                 driver.execute_query("<QUERY 3>")
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
-        It might be changed or removed any time even without prior notice.
-
         .. versionadded:: 5.5
+
+        .. versionchanged:: 5.8
+            * renamed from ``query_bookmark_manager`` to
+              ``execute_query_bookmark_manager``
+            * stabilized from experimental
         """
         return self._query_bookmark_manager
 
@@ -1018,11 +996,7 @@ def _work(
 ) -> _T:
     res = tx.run(query, parameters)
     if transformer is Result.to_eager_result:
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore",
-                                    message=r".*\bto_eager_result\b.*",
-                                    category=ExperimentalWarning)
-            return transformer(res)
+        return transformer(res)
     return transformer(res)
 
 

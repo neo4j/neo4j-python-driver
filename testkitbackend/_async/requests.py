@@ -210,12 +210,7 @@ async def ExecuteQuery(backend, data):
             bookmark_manager = backend.bookmark_managers[bookmark_manager_id]
             kwargs["bookmark_manager_"] = bookmark_manager
 
-    with warning_check(
-        neo4j.ExperimentalWarning,
-        "Driver.execute_query is experimental. "
-        "It might be changed or removed any time even without prior notice."
-    ):
-        eager_result = await driver.execute_query(cypher, params, **kwargs)
+    eager_result = await driver.execute_query(cypher, params, **kwargs)
     await backend.send_response("EagerResult", {
         "keys": eager_result.keys,
         "records": list(map(totestkit.record, eager_result.records)),
@@ -300,14 +295,7 @@ async def NewBookmarkManager(backend, data):
             backend, bookmark_manager_id
         )
 
-    with warning_check(
-        neo4j.ExperimentalWarning,
-        "The bookmark manager feature is experimental. It might be changed or "
-        "removed any time even without prior notice."
-    ):
-        bookmark_manager = neo4j.AsyncGraphDatabase.bookmark_manager(
-            **bmm_kwargs
-        )
+    bookmark_manager = neo4j.AsyncGraphDatabase.bookmark_manager(**bmm_kwargs)
     backend.bookmark_managers[bookmark_manager_id] = bookmark_manager
     await backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
 
@@ -421,15 +409,7 @@ async def NewSession(backend, data):
         if data_name in data:
             config[conf_name] = data[data_name]
     fromtestkit.set_notifications_config(config, data)
-    if "bookmark_manager" in config:
-        with warning_check(
-            neo4j.ExperimentalWarning,
-            "The 'bookmark_manager' config key is experimental. It might be "
-            "changed or removed any time even without prior notice."
-        ):
-            session = driver.session(**config)
-    else:
-        session = driver.session(**config)
+    session = driver.session(**config)
     key = backend.next_key()
     backend.sessions[key] = SessionTracker(session)
     await backend.send_response("Session", {"id": key})

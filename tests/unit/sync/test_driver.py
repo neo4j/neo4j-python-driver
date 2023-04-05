@@ -62,25 +62,6 @@ from ..._async_compat import (
 )
 
 
-@contextmanager
-def assert_warns_execute_query_experimental():
-    with pytest.warns(
-        ExperimentalWarning,
-        match=r"^Driver\.execute_query is experimental\."
-    ):
-        yield
-
-
-@contextmanager
-def assert_warns_execute_query_bmm_experimental():
-    with pytest.warns(
-        ExperimentalWarning,
-        match=r"^Driver\.query_bookmark_manager is experimental\."
-    ):
-        yield
-
-
-
 @pytest.mark.parametrize("protocol", ("bolt://", "bolt+s://", "bolt+ssc://"))
 @pytest.mark.parametrize("host", ("localhost", "127.0.0.1",
                                   "[::1]", "[0:0:0:0:0:0:0:1]"))
@@ -315,16 +296,14 @@ def test_get_server_info_parameters_are_experimental(
 
 @mark_sync_test
 def test_with_builtin_bookmark_manager(mocker) -> None:
-    with pytest.warns(ExperimentalWarning, match="bookmark manager"):
-        bmm = GraphDatabase.bookmark_manager()
+    bmm = GraphDatabase.bookmark_manager()
     # could be one line, but want to make sure the type checker assigns
     # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
     session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
                                     autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
-        with pytest.warns(ExperimentalWarning, match="bookmark_manager"):
-            _ = driver.session(bookmark_manager=bmm)
+        _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
 
@@ -351,8 +330,7 @@ def test_with_custom_inherited_async_bookmark_manager(mocker) -> None:
                                     autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
-        with pytest.warns(ExperimentalWarning, match="bookmark_manager"):
-            _ = driver.session(bookmark_manager=bmm)
+        _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
 
@@ -379,8 +357,7 @@ def test_with_custom_inherited_sync_bookmark_manager(mocker) -> None:
                                     autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
-        with pytest.warns(ExperimentalWarning, match="bookmark_manager"):
-            _ = driver.session(bookmark_manager=bmm)
+        _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
 
@@ -407,8 +384,7 @@ def test_with_custom_ducktype_async_bookmark_manager(mocker) -> None:
                                     autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
-        with pytest.warns(ExperimentalWarning, match="bookmark_manager"):
-            _ = driver.session(bookmark_manager=bmm)
+        _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
 
@@ -435,8 +411,7 @@ def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
                                     autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
-        with pytest.warns(ExperimentalWarning, match="bookmark_manager"):
-            _ = driver.session(bookmark_manager=bmm)
+        _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
 
@@ -660,11 +635,10 @@ def test_execute_query_query(
     session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
                                     autospec=True)
     with driver as driver:
-        with assert_warns_execute_query_experimental():
-            if positional:
-                res = driver.execute_query(query)
-            else:
-                res = driver.execute_query(query_=query)
+        if positional:
+            res = driver.execute_query(query)
+        else:
+            res = driver.execute_query(query_=query)
 
     session_cls_mock.assert_called_once()
     session_mock = session_cls_mock.return_value
@@ -690,16 +664,14 @@ def test_execute_query_parameters(
     session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
                                     autospec=True)
     with driver as driver:
-        with assert_warns_execute_query_experimental():
-            if parameters is Ellipsis:
-                parameters = None
-                res = driver.execute_query("")
+        if parameters is Ellipsis:
+            parameters = None
+            res = driver.execute_query("")
+        else:
+            if positional:
+                res = driver.execute_query("", parameters)
             else:
-                if positional:
-                    res = driver.execute_query("", parameters)
-                else:
-                    res = driver.execute_query("",
-                                                     parameters_=parameters)
+                res = driver.execute_query("", parameters_=parameters)
 
     session_cls_mock.assert_called_once()
     session_mock = session_cls_mock.return_value
@@ -723,11 +695,10 @@ def test_execute_query_keyword_parameters(
     session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
                                     autospec=True)
     with driver as driver:
-        with assert_warns_execute_query_experimental():
-            if parameters is None:
-                res = driver.execute_query("")
-            else:
-                res = driver.execute_query("", **parameters)
+        if parameters is None:
+            res = driver.execute_query("")
+        else:
+            res = driver.execute_query("", **parameters)
 
     session_cls_mock.assert_called_once()
     session_mock = session_cls_mock.return_value
@@ -750,8 +721,7 @@ def test_reserved_query_keyword_parameters(
     mocker.patch("neo4j._sync.driver.Session", autospec=True)
     with driver as driver:
         with pytest.raises(ValueError) as exc:
-            with assert_warns_execute_query_experimental():
-                driver.execute_query("", **parameters)
+            driver.execute_query("", **parameters)
         exc.match("reserved")
         exc.match(", ".join(f"'{k}'" for k in parameters))
 
@@ -798,15 +768,14 @@ def test_execute_query_parameter_precedence(
     session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
                                     autospec=True)
     with driver as driver:
-        with assert_warns_execute_query_experimental():
-            if params is None:
-                res = driver.execute_query("", **kw_params)
+        if params is None:
+            res = driver.execute_query("", **kw_params)
+        else:
+            if positional:
+                res = driver.execute_query("", params, **kw_params)
             else:
-                if positional:
-                    res = driver.execute_query("", params, **kw_params)
-                else:
-                    res = driver.execute_query("", parameters_=params,
-                                                     **kw_params)
+                res = driver.execute_query("", parameters_=params,
+                                                 **kw_params)
 
     session_cls_mock.assert_called_once()
     session_mock = session_cls_mock.return_value
@@ -825,8 +794,8 @@ def test_execute_query_parameter_precedence(
         (None, "execute_write"),
         ("r", "execute_read"),
         ("w", "execute_write"),
-        (neo4j.RoutingControl.READERS, "execute_read"),
-        (neo4j.RoutingControl.WRITERS, "execute_write"),
+        (neo4j.RoutingControl.READ, "execute_read"),
+        (neo4j.RoutingControl.WRITE, "execute_write"),
     )
 )
 @pytest.mark.parametrize("positional", (True, False))
@@ -839,14 +808,13 @@ def test_execute_query_routing_control(
     session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
                                     autospec=True)
     with driver as driver:
-        with assert_warns_execute_query_experimental():
-            if routing_mode is None:
-                res = driver.execute_query("")
+        if routing_mode is None:
+            res = driver.execute_query("")
+        else:
+            if positional:
+                res = driver.execute_query("", None, routing_mode)
             else:
-                if positional:
-                    res = driver.execute_query("", None, routing_mode)
-                else:
-                    res = driver.execute_query("", routing_=routing_mode)
+                res = driver.execute_query("", routing_=routing_mode)
 
     session_cls_mock.assert_called_once()
     session_mock = session_cls_mock.return_value
@@ -871,15 +839,14 @@ def test_execute_query_database(
     session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
                                     autospec=True)
     with driver as driver:
-        with assert_warns_execute_query_experimental():
-            if database is Ellipsis:
-                database = None
-                driver.execute_query("")
+        if database is Ellipsis:
+            database = None
+            driver.execute_query("")
+        else:
+            if positional:
+                driver.execute_query("", None, "w", database)
             else:
-                if positional:
-                    driver.execute_query("", None, "w", database)
-                else:
-                    driver.execute_query("", database_=database)
+                driver.execute_query("", database_=database)
 
     session_cls_mock.assert_called_once()
     session_config = session_cls_mock.call_args.args[1]
@@ -896,19 +863,18 @@ def test_execute_query_impersonated_user(
     session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
                                     autospec=True)
     with driver as driver:
-        with assert_warns_execute_query_experimental():
-            if impersonated_user is Ellipsis:
-                impersonated_user = None
-                driver.execute_query("")
+        if impersonated_user is Ellipsis:
+            impersonated_user = None
+            driver.execute_query("")
+        else:
+            if positional:
+                driver.execute_query(
+                    "", None, "w", None, impersonated_user
+                )
             else:
-                if positional:
-                    driver.execute_query(
-                        "", None, "w", None, impersonated_user
-                    )
-                else:
-                    driver.execute_query(
-                        "", impersonated_user_=impersonated_user
-                    )
+                driver.execute_query(
+                    "", impersonated_user_=impersonated_user
+                )
 
     session_cls_mock.assert_called_once()
     session_config = session_cls_mock.call_args.args[1]
@@ -926,20 +892,18 @@ def test_execute_query_bookmark_manager(
     session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
                                     autospec=True)
     with driver as driver:
-        with assert_warns_execute_query_experimental():
-            if bookmark_manager is Ellipsis:
-                with assert_warns_execute_query_bmm_experimental():
-                    bookmark_manager = driver.query_bookmark_manager
-                driver.execute_query("")
+        if bookmark_manager is Ellipsis:
+            bookmark_manager = driver.execute_query_bookmark_manager
+            driver.execute_query("")
+        else:
+            if positional:
+                driver.execute_query(
+                    "", None, "w", None, None, bookmark_manager
+                )
             else:
-                if positional:
-                    driver.execute_query(
-                        "", None, "w", None, None, bookmark_manager
-                    )
-                else:
-                    driver.execute_query(
-                        "", bookmark_manager_=bookmark_manager
-                    )
+                driver.execute_query(
+                    "", bookmark_manager_=bookmark_manager
+                )
 
     session_cls_mock.assert_called_once()
     session_config = session_cls_mock.call_args.args[1]
@@ -958,24 +922,22 @@ def test_execute_query_result_transformer(
                                     autospec=True)
     res: t.Any
     with driver as driver:
-        with assert_warns_execute_query_experimental():
-            if result_transformer is Ellipsis:
-                result_transformer = Result.to_eager_result
-                res_default: neo4j.EagerResult = driver.execute_query("")
-                res = res_default
+        if result_transformer is Ellipsis:
+            result_transformer = Result.to_eager_result
+            res_default: neo4j.EagerResult = driver.execute_query("")
+            res = res_default
+        else:
+            res_custom: SomeClass
+            if positional:
+                bmm = driver.execute_query_bookmark_manager
+                res_custom = driver.execute_query(
+                    "", None, "w", None, None, bmm, result_transformer
+                )
             else:
-                res_custom: SomeClass
-                if positional:
-                    with assert_warns_execute_query_bmm_experimental():
-                        bmm = driver.query_bookmark_manager
-                    res_custom = driver.execute_query(
-                        "", None, "w", None, None, bmm, result_transformer
-                    )
-                else:
-                    res_custom = driver.execute_query(
-                        "", result_transformer_=result_transformer
-                    )
-                res = res_custom
+                res_custom = driver.execute_query(
+                    "", result_transformer_=result_transformer
+                )
+            res = res_custom
 
     session_cls_mock.assert_called_once()
     session_mock = session_cls_mock.return_value

@@ -497,7 +497,7 @@ class WorkspaceConfig(Config):
     # Note that you need appropriate permissions to do so.
 
     #: Bookmark Manager
-    bookmark_manager = ExperimentalOption(None)
+    bookmark_manager = None
     # Specify the bookmark manager to be used for sessions by default.
 
 
