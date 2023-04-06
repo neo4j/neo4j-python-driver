@@ -401,7 +401,7 @@ async def NewSession(backend, data):
     access_mode = data["accessMode"]
     if access_mode is not None:
         if access_mode == "r":
-            config["default_access_mode"] = neo4j.WRITE_ACCESS
+            config["default_access_mode"] = neo4j.READ_ACCESS
         elif access_mode == "w":
             config["default_access_mode"] = neo4j.WRITE_ACCESS
         else:
