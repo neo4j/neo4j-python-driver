@@ -20,7 +20,10 @@ from datetime import (
     datetime,
     time,
     timedelta,
+    timezone,
 )
+
+import pytz
 
 from ...._optional_deps import (
     np,
@@ -172,10 +175,15 @@ def dehydrate_datetime(value):
         seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"f", seconds, nanoseconds, tz.key)
     else:
+        if isinstance(tz, timezone):
+            # offset of the timezone is constant, so any date will do
+            offset = tz.utcoffset(datetime(1970, 1, 1))
+        else:
+            offset = tz.utcoffset(value)
         # with time offset
         seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"F", seconds, nanoseconds,
-                         int(tz.utcoffset(value).total_seconds()))
+                         int(offset.total_seconds()))
 
 
 if np is not None:

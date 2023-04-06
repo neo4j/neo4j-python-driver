@@ -83,8 +83,12 @@ def dehydrate_datetime(value):  # type: ignore[no-redef]
         return Structure(b"i", seconds, nanoseconds, tz.key)
     else:
         # with time offset
+        if isinstance(tz, timezone):
+            # offset of the timezone is constant, so any date will do
+            offset = tz.utcoffset(datetime(1970, 1, 1))
+        else:
+            offset = tz.utcoffset(value)
         seconds, nanoseconds = seconds_and_nanoseconds(value)
-        offset = tz.utcoffset(value)
         if offset.microseconds:
             raise ValueError("Bolt protocol does not support sub-second "
                              "UTC offsets.")
