@@ -130,7 +130,6 @@ class GraphDatabase:
                 # TAuth,
                 t.Union[t.Tuple[t.Any, t.Any], Auth, None],
                 AuthManager,
-                AuthManager
             ] = ...,
             max_connection_lifetime: float = ...,
             max_connection_pool_size: int = ...,
@@ -181,7 +180,6 @@ class GraphDatabase:
                 # TAuth,
                 t.Union[t.Tuple[t.Any, t.Any], Auth, None],
                 AuthManager,
-                AuthManager
             ] = None,
             **config
         ) -> Driver:
@@ -198,7 +196,7 @@ class GraphDatabase:
 
             driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
-            if not isinstance(auth, (AuthManager, AuthManager)):
+            if not isinstance(auth, AuthManager):
                 with warnings.catch_warnings():
                     warnings.filterwarnings(
                         "ignore", message=r".*\bAuth managers\b.*",

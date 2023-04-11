@@ -79,7 +79,6 @@ from ..api import (
 from ..auth_management import (
     AsyncAuthManager,
     AsyncAuthManagers,
-    AuthManager,
 )
 from ..exceptions import Neo4jError
 from .bookmark_manager import (
@@ -132,7 +131,6 @@ class AsyncGraphDatabase:
                 # TAuth,
                 t.Union[t.Tuple[t.Any, t.Any], Auth, None],
                 AsyncAuthManager,
-                AuthManager
             ] = ...,
             max_connection_lifetime: float = ...,
             max_connection_pool_size: int = ...,
@@ -183,7 +181,6 @@ class AsyncGraphDatabase:
                 # TAuth,
                 t.Union[t.Tuple[t.Any, t.Any], Auth, None],
                 AsyncAuthManager,
-                AuthManager
             ] = None,
             **config
         ) -> AsyncDriver:
@@ -200,7 +197,7 @@ class AsyncGraphDatabase:
 
             driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
-            if not isinstance(auth, (AsyncAuthManager, AuthManager)):
+            if not isinstance(auth, AsyncAuthManager):
                 with warnings.catch_warnings():
                     warnings.filterwarnings(
                         "ignore", message=r".*\bAuth managers\b.*",
