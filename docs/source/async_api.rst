@@ -123,8 +123,8 @@ Each supported scheme maps to a particular :class:`neo4j.AsyncDriver` subclass t
 Async Auth
 ==========
 
-Authentication mostly works the same as in the synchronous driver.
-However, there are async equivalents of the synchronous constructs.
+Authentication works the same as in the synchronous driver.
+With the exception that when using AuthManagers, their asynchronous equivalents have to be used.
 
 .. autoclass:: neo4j.auth_management.AsyncAuthManager
     :members:
