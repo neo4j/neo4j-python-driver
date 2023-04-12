@@ -282,7 +282,7 @@ class AsyncResult:
 
         Might end up with more records in the buffer if the fetch size makes it
         overshoot.
-        Might ent up with fewer records in the buffer if there are not enough
+        Might end up with fewer records in the buffer if there are not enough
         records available.
         """
         if self._out_of_scope:
@@ -624,7 +624,7 @@ class AsyncResult:
             was obtained has been closed or the Result has been explicitly
             consumed.
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        **This is experimental** (see :ref:`filter-warnings-ref`).
         It might be changed or removed any time even without prior notice.
 
         .. versionadded:: 5.5

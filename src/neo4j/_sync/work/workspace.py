@@ -33,7 +33,10 @@ from ...exceptions import (
     SessionError,
     SessionExpired,
 )
-from ..io import Neo4jPool
+from ..io import (
+    AcquireAuth,
+    Neo4jPool,
+)
 
 
 log = logging.getLogger("neo4j")
@@ -130,8 +133,13 @@ class Workspace:
             return
         self._update_bookmarks((bookmark,))
 
-    def _connect(self, access_mode, **acquire_kwargs):
+    def _connect(self, access_mode, auth=None, **acquire_kwargs):
         acquisition_timeout = self._config.connection_acquisition_timeout
+        auth = AcquireAuth(
+            auth,
+            force_auth=acquire_kwargs.pop("force_auth", False),
+        )
+
         if self._connection:
             # TODO: Investigate this
             # log.warning("FIXME: should always disconnect before connect")
@@ -154,6 +162,7 @@ class Workspace:
                     database=self._config.database,
                     imp_user=self._config.impersonated_user,
                     bookmarks=self._get_bookmarks(),
+                    auth=auth,
                     acquisition_timeout=acquisition_timeout,
                     database_callback=self._set_cached_database
                 )
@@ -162,6 +171,7 @@ class Workspace:
             "timeout": acquisition_timeout,
             "database": self._config.database,
             "bookmarks": self._get_bookmarks(),
+            "auth": auth,
             "liveness_check_timeout": None,
         }
         acquire_kwargs_.update(acquire_kwargs)

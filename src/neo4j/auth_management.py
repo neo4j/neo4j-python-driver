@@ -16,30 +16,19 @@
 # limitations under the License.
 
 
-"""
-This module contains the low-level functionality required for speaking
-Bolt. It is not intended to be used directly by driver users. Instead,
-the `session` module provides the main user-facing abstractions.
-"""
+from ._async.auth_management import AsyncAuthManagers
+from ._auth_management import (
+    AsyncAuthManager,
+    AuthManager,
+    ExpiringAuth,
+)
+from ._sync.auth_management import AuthManagers
 
 
 __all__ = [
-    "AcquireAuth",
-    "AsyncBolt",
-    "AsyncBoltPool",
-    "AsyncNeo4jPool",
-    "check_supported_server_product",
-    "ConnectionErrorHandler",
+    "AsyncAuthManager",
+    "AsyncAuthManagers",
+    "AuthManager",
+    "AuthManagers",
+    "ExpiringAuth",
 ]
-
-
-from ._bolt import AsyncBolt
-from ._common import (
-    check_supported_server_product,
-    ConnectionErrorHandler,
-)
-from ._pool import (
-    AcquireAuth,
-    AsyncBoltPool,
-    AsyncNeo4jPool,
-)

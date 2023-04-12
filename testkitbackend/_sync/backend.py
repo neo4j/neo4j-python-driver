@@ -55,6 +55,10 @@ class Backend:
         self.drivers = {}
         self.custom_resolutions = {}
         self.dns_resolutions = {}
+        self.auth_token_managers = {}
+        self.auth_token_supplies = {}
+        self.auth_token_on_expiration_supplies = {}
+        self.expiring_auth_token_supplies = {}
         self.bookmark_managers = {}
         self.bookmarks_consumptions = {}
         self.bookmarks_supplies = {}
@@ -64,6 +68,8 @@ class Backend:
         self.transactions = {}
         self.errors = {}
         self.key = 0
+        self.fake_time = None
+        self.fake_time_ticker = None
         # Collect all request handlers
         self._requestHandlers = dict(
             [m for m in getmembers(requests, isfunction)])

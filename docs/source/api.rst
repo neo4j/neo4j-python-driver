@@ -107,10 +107,17 @@ Auth
 
 To authenticate with Neo4j the authentication details are supplied at driver creation.
 
-The auth token is an object of the class :class:`neo4j.Auth` containing the details.
+The auth token is an object of the class :class:`neo4j.Auth` containing static details or :class:`neo4j.auth_management.AuthManager` object.
 
 .. autoclass:: neo4j.Auth
 
+.. autoclass:: neo4j.auth_management.AuthManager
+    :members:
+
+.. autoclass:: neo4j.auth_management.AuthManagers
+    :members:
+
+.. autoclass:: neo4j.auth_management.ExpiringAuth
 
 
 Example:
@@ -154,7 +161,8 @@ Closing a driver will immediately shut down all connections in the pool.
 
 .. autoclass:: neo4j.Driver()
     :members: session, query_bookmark_manager, encrypted, close,
-              verify_connectivity, get_server_info
+              verify_connectivity, get_server_info, verify_authentication,
+              supports_session_auth, supports_multi_db
 
     .. method:: execute_query(query, parameters_=None,routing_=neo4j.RoutingControl.WRITERS, database_=None, impersonated_user_=None, bookmark_manager_=self.query_bookmark_manager, result_transformer_=Result.to_eager_result, **kwargs)
 
@@ -174,7 +182,7 @@ Closing a driver will immediately shut down all connections in the pool.
 
             def execute_query(
                 query_, parameters_, routing_, database_, impersonated_user_,
-                bookmark_manager_, result_transformer_, **kwargs
+                bookmark_manager_, auth_, result_transformer_, **kwargs
             ):
                 def work(tx):
                     result = tx.run(query_, parameters_, **kwargs)
@@ -184,6 +192,7 @@ Closing a driver will immediately shut down all connections in the pool.
                     database=database_,
                     impersonated_user=impersonated_user_,
                     bookmark_manager=bookmark_manager_,
+                    auth=auth_,
                 ) as session:
                     if routing_ == RoutingControl.WRITERS:
                         return session.execute_write(work)
@@ -263,6 +272,20 @@ Closing a driver will immediately shut down all connections in the pool.
 
             See also the Session config :ref:`impersonated-user-ref`.
         :type impersonated_user_: typing.Optional[str]
+        :param auth_:
+            Authentication information to use for this query.
+
+            By default, the driver configuration is used.
+
+            **This is a preview** (see :ref:`filter-warnings-ref`).
+            It might be changed without following the deprecation policy.
+            See also
+            https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+            See also the Session config :ref:`session-auth-ref`.
+        :type auth_: typing.Union[
+            typing.Tuple[typing.Any, typing.Any], neo4j.Auth, None
+        ]
         :param result_transformer_:
             A function that gets passed the :class:`neo4j.Result` object
             resulting from the query and converts it to a different type. The
@@ -272,7 +295,6 @@ Closing a driver will immediately shut down all connections in the pool.
 
                 The transformer function must **not** return the
                 :class:`neo4j.Result` itself.
-
 
             .. warning::
 
@@ -334,7 +356,7 @@ Closing a driver will immediately shut down all connections in the pool.
 
             Defaults to the driver's :attr:`.query_bookmark_manager`.
 
-            Pass :const:`None` to disable causal consistency.
+            Pass :data:`None` to disable causal consistency.
         :type bookmark_manager_:
             typing.Union[neo4j.BookmarkManager, neo4j.BookmarkManager,
                          None]
@@ -348,7 +370,7 @@ Closing a driver will immediately shut down all connections in the pool.
         :returns: the result of the ``result_transformer``
         :rtype: T
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        **This is experimental** (see :ref:`filter-warnings-ref`).
         It might be changed or removed any time even without prior notice.
 
         We are looking for feedback on this feature. Please let us know what
@@ -356,6 +378,9 @@ Closing a driver will immediately shut down all connections in the pool.
         https://github.com/neo4j/neo4j-python-driver/discussions/896
 
         .. versionadded:: 5.5
+
+        .. versionchanged:: 5.8
+            Added the ``auth_`` parameter.
 
 
 .. _driver-configuration-ref:
@@ -433,7 +458,7 @@ Specify whether TCP keep-alive should be enabled.
 :Type: ``bool``
 :Default: ``True``
 
-**This is experimental.** (See :ref:`filter-warnings-ref`)
+**This is experimental** (see :ref:`filter-warnings-ref`).
 It might be changed or removed any time even without prior notice.
 
 
@@ -784,6 +809,7 @@ Session
     .. automethod:: execute_write
 
 
+
 Query
 =====
 
@@ -804,6 +830,7 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 + :ref:`default-access-mode-ref`
 + :ref:`fetch-size-ref`
 + :ref:`bookmark-manager-ref`
++ :ref:`session-auth-ref`
 + :ref:`session-notifications-min-severity-ref`
 + :ref:`session-notifications-disabled-categories-ref`
 
@@ -816,7 +843,7 @@ Optional :class:`neo4j.Bookmarks`. Use this to causally chain sessions.
 See :meth:`Session.last_bookmarks` or :meth:`AsyncSession.last_bookmarks` for
 more information.
 
-:Default: ``None``
+:Default: :data:`None`
 
 .. deprecated:: 5.0
     Alternatively, an iterable of strings can be passed. This usage is
@@ -995,8 +1022,31 @@ See :class:`.BookmarkManager` for more information.
 
 .. versionadded:: 5.0
 
-**This is experimental.** (See :ref:`filter-warnings-ref`)
+**This is experimental** (see :ref:`filter-warnings-ref`).
 It might be changed or removed any time even without prior notice.
+
+
+.. _session-auth-ref:
+
+``auth``
+--------
+Optional :class:`neo4j.Auth` or ``(user, password)``-tuple. Use this overwrite the
+authentication information for the session.
+This requires the server to support re-authentication on the protocol level. You can
+check this by calling :meth:`.Driver.supports_session_auth` / :meth:`.AsyncDriver.supports_session_auth`.
+
+It is not possible to overwrite the authentication information for the session with no authentication,
+i.e., downgrade the authentication at session level.
+Instead, you should create a driver with no authentication and upgrade the authentication at session level as needed.
+
+**This is a preview** (see :ref:`filter-warnings-ref`).
+It might be changed without following the deprecation policy.
+See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+:Type: :data:`None`, :class:`.Auth` or ``(user, password)``-tuple
+:Default: :data:`None` - use the authentication information provided during driver creation.
+
+.. versionadded:: 5.x
 
 
 .. _session-notifications-min-severity-ref:
@@ -1293,7 +1343,7 @@ Graph
 
     .. automethod:: relationship_type
 
-**This is experimental.** (See :ref:`filter-warnings-ref`)
+**This is experimental** (see :ref:`filter-warnings-ref`).
 It might be changed or removed any time even without prior notice.
 
 
@@ -1751,6 +1801,8 @@ Server-side errors
 
       * :class:`neo4j.exceptions.TokenExpired`
 
+        * :class:`neo4j.exceptions.TokenExpiredRetryable`
+
     * :class:`neo4j.exceptions.Forbidden`
 
   * :class:`neo4j.exceptions.DatabaseError`
@@ -1784,6 +1836,9 @@ Server-side errors
     :show-inheritance:
 
 .. autoexception:: neo4j.exceptions.TokenExpired()
+    :show-inheritance:
+
+.. autoexception:: neo4j.exceptions.TokenExpiredRetryable()
     :show-inheritance:
 
 .. autoexception:: neo4j.exceptions.Forbidden()

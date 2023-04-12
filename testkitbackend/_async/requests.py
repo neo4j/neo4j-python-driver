@@ -16,21 +16,33 @@
 # limitations under the License.
 
 
+import datetime
 import json
 import re
 import warnings
 from os import path
 
+from freezegun import freeze_time
+
 import neo4j
 import neo4j.api
+import neo4j.auth_management
 from neo4j._async_compat.util import AsyncUtil
+from neo4j.auth_management import (
+    AsyncAuthManager,
+    AsyncAuthManagers,
+    ExpiringAuth,
+)
 
 from .. import (
     fromtestkit,
     test_subtest_skips,
     totestkit,
 )
-from .._warning_check import warning_check
+from .._warning_check import (
+    warning_check,
+    warnings_check,
+)
 from ..exceptions import MarkdAsDriverException
 
 
@@ -94,27 +106,15 @@ async def GetFeatures(backend, data):
 
 
 async def NewDriver(backend, data):
-    auth_token = data["authorizationToken"]["data"]
-    data["authorizationToken"].mark_item_as_read_if_equals(
-        "name", "AuthorizationToken"
-    )
-    scheme = auth_token["scheme"]
-    if scheme == "basic":
-        auth = neo4j.basic_auth(
-            auth_token["principal"], auth_token["credentials"],
-            realm=auth_token.get("realm", None)
+    auth = fromtestkit.to_auth_token(data, "authorizationToken")
+    expected_warnings = []
+    if auth is None and data.get("authTokenManagerId") is not None:
+        auth = backend.auth_token_managers[data["authTokenManagerId"]]
+        expected_warnings.append(
+            (neo4j.PreviewWarning, "Auth managers are a preview feature.")
         )
-    elif scheme == "kerberos":
-        auth = neo4j.kerberos_auth(auth_token["credentials"])
-    elif scheme == "bearer":
-        auth = neo4j.bearer_auth(auth_token["credentials"])
     else:
-        auth = neo4j.custom_auth(
-            auth_token["principal"], auth_token["credentials"],
-            auth_token["realm"], auth_token["scheme"],
-            **auth_token.get("parameters", {})
-        )
-        auth_token.mark_item_as_read("parameters", recursive=True)
+        data.mark_item_as_read_if_equals("authTokenManagerId", None)
     kwargs = {}
     if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
         kwargs["resolver"] = resolution_func(
@@ -131,12 +131,17 @@ async def NewDriver(backend, data):
     for k in ("sessionConnectionTimeoutMs", "updateRoutingTableTimeoutMs"):
         if k in data:
             data.mark_item_as_read_if_equals(k, None)
-    if data.get("maxConnectionPoolSize"):
-        kwargs["max_connection_pool_size"] = data["maxConnectionPoolSize"]
-    if data.get("fetchSize"):
-        kwargs["fetch_size"] = data["fetchSize"]
-    if "encrypted" in data:
-        kwargs["encrypted"] = data["encrypted"]
+    for (conf_name, data_name) in (
+        ("max_connection_pool_size", "maxConnectionPoolSize"),
+        ("fetch_size", "fetchSize"),
+    ):
+        if data.get(data_name):
+            kwargs[conf_name] = data[data_name]
+    for (conf_name, data_name) in (
+        ("encrypted", "encrypted"),
+    ):
+        if data_name in data:
+            kwargs[conf_name] = data[data_name]
     if "trustedCertificates" in data:
         if data["trustedCertificates"] is None:
             kwargs["trusted_certificates"] = neo4j.TrustSystemCAs()
@@ -149,12 +154,132 @@ async def NewDriver(backend, data):
     fromtestkit.set_notifications_config(kwargs, data)
     data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
-    driver = neo4j.AsyncGraphDatabase.driver(
-        data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
-    )
+    if expected_warnings:
+        with warnings_check(expected_warnings):
+            driver = neo4j.AsyncGraphDatabase.driver(
+                data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
+            )
+    else:
+        driver = neo4j.AsyncGraphDatabase.driver(
+            data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
+        )
     key = backend.next_key()
     backend.drivers[key] = driver
     await backend.send_response("Driver", {"id": key})
+
+
+async def NewAuthTokenManager(backend, data):
+    auth_token_manager_id = backend.next_key()
+
+    class TestKitAuthManager(AsyncAuthManager):
+        async def get_auth(self):
+            key = backend.next_key()
+            await backend.send_response("AuthTokenManagerGetAuthRequest", {
+                "id": key,
+                "authTokenManagerId": auth_token_manager_id,
+            })
+            if not await backend.process_request():
+                # connection was closed before end of next message
+                return None
+            if key not in backend.auth_token_supplies:
+                raise RuntimeError(
+                    "Backend did not receive expected "
+                    f"AuthTokenManagerGetAuthCompleted message for id {key}"
+                )
+            return backend.auth_token_supplies.pop(key)
+
+        async def on_auth_expired(self, auth):
+            key = backend.next_key()
+            await backend.send_response(
+                "AuthTokenManagerOnAuthExpiredRequest", {
+                    "id": key,
+                    "authTokenManagerId": auth_token_manager_id,
+                    "auth": totestkit.auth_token(auth),
+                }
+            )
+            if not await backend.process_request():
+                # connection was closed before end of next message
+                return None
+            if key not in backend.auth_token_on_expiration_supplies:
+                raise RuntimeError(
+                    "Backend did not receive expected "
+                    "AuthTokenManagerOnAuthExpiredCompleted message for id "
+                    f"{key}"
+                )
+            backend.auth_token_on_expiration_supplies.pop(key)
+
+    auth_manager = TestKitAuthManager()
+    backend.auth_token_managers[auth_token_manager_id] = auth_manager
+    await backend.send_response(
+        "AuthTokenManager", {"id": auth_token_manager_id}
+    )
+
+
+async def AuthTokenManagerGetAuthCompleted(backend, data):
+    auth_token = fromtestkit.to_auth_token(data, "auth")
+
+    backend.auth_token_supplies[data["requestId"]] = auth_token
+
+
+async def AuthTokenManagerOnAuthExpiredCompleted(backend, data):
+    backend.auth_token_on_expiration_supplies[data["requestId"]] = True
+
+
+async def AuthTokenManagerClose(backend, data):
+    auth_token_manager_id = data["id"]
+    del backend.auth_token_managers[auth_token_manager_id]
+    await backend.send_response(
+        "AuthTokenManager", {"id": auth_token_manager_id}
+    )
+
+
+async def NewExpirationBasedAuthTokenManager(backend, data):
+    auth_token_manager_id = backend.next_key()
+
+    async def auth_token_provider():
+        key = backend.next_key()
+        await backend.send_response(
+            "ExpirationBasedAuthTokenProviderRequest",
+            {
+                "id": key,
+                "expirationBasedAuthTokenManagerId": auth_token_manager_id,
+            }
+        )
+        if not await backend.process_request():
+            # connection was closed before end of next message
+            return neo4j.auth_management.ExpiringAuth(None, None)
+        if key not in backend.expiring_auth_token_supplies:
+            raise RuntimeError(
+                "Backend did not receive expected "
+                "ExpirationBasedAuthTokenManagerCompleted message for id "
+                f"{key}"
+            )
+        return backend.expiring_auth_token_supplies.pop(key)
+
+    with warning_check(neo4j.PreviewWarning,
+                       "Auth managers are a preview feature."):
+        auth_manager = AsyncAuthManagers.expiration_based(auth_token_provider)
+    backend.auth_token_managers[auth_token_manager_id] = auth_manager
+    await backend.send_response(
+        "ExpirationBasedAuthTokenManager", {"id": auth_token_manager_id}
+    )
+
+
+async def ExpirationBasedAuthTokenProviderCompleted(backend, data):
+    temp_auth_data = data["auth"]
+    temp_auth_data.mark_item_as_read_if_equals("name",
+                                               "AuthTokenAndExpiration")
+    temp_auth_data = temp_auth_data["data"]
+    auth_token = fromtestkit.to_auth_token(temp_auth_data, "auth")
+    if temp_auth_data["expiresInMs"] is not None:
+        expires_in = temp_auth_data["expiresInMs"] / 1000
+    else:
+        expires_in = None
+    with warning_check(neo4j.PreviewWarning,
+                       "Auth managers are a preview feature."):
+        expiring_auth = ExpiringAuth(auth_token, expires_in)
+
+    backend.expiring_auth_token_supplies[data["requestId"]] = expiring_auth
 
 
 async def VerifyConnectivity(backend, data):
@@ -178,13 +303,29 @@ async def GetServerInfo(backend, data):
 async def CheckMultiDBSupport(backend, data):
     driver_id = data["driverId"]
     driver = backend.drivers[driver_id]
-    with warning_check(
-        neo4j.ExperimentalWarning,
-        "Feature support query, based on Bolt protocol version and Neo4j "
-        "server version will change in the future."
-    ):
-        available = await driver.supports_multi_db()
+    available = await driver.supports_multi_db()
     await backend.send_response("MultiDBSupport", {
+        "id": backend.next_key(), "available": available
+    })
+
+
+async def VerifyAuthentication(backend, data):
+    driver_id = data["driverId"]
+    driver = backend.drivers[driver_id]
+    auth = fromtestkit.to_auth_token(data, "authorizationToken")
+    with warning_check(neo4j.PreviewWarning,
+                       "User switching is a preview feature."):
+        authenticated = await driver.verify_authentication(auth=auth)
+    await backend.send_response("DriverIsAuthenticated", {
+        "id": backend.next_key(), "authenticated": authenticated
+    })
+
+
+async def CheckSessionAuthSupport(backend, data):
+    driver_id = data["driverId"]
+    driver = backend.drivers[driver_id]
+    available = await driver.supports_session_auth()
+    await backend.send_response("SessionAuthSupport", {
         "id": backend.next_key(), "available": available
     })
 
@@ -395,6 +536,7 @@ class SessionTracker:
 
 async def NewSession(backend, data):
     driver = backend.drivers[data["driverId"]]
+    expected_warnings = []
     config = {
         "database": data["database"],
     }
@@ -414,19 +556,25 @@ async def NewSession(backend, data):
         config["bookmark_manager"] = backend.bookmark_managers[
             data["bookmarkManagerId"]
         ]
+        expected_warnings.append((
+            neo4j.ExperimentalWarning,
+            "The 'bookmark_manager' config key is experimental. It might be "
+            "changed or removed any time even without prior notice."
+        ))
     for (conf_name, data_name) in (
         ("fetch_size", "fetchSize"),
         ("impersonated_user", "impersonatedUser"),
     ):
         if data_name in data:
             config[conf_name] = data[data_name]
+    if data.get("authorizationToken"):
+        config["auth"] = fromtestkit.to_auth_token(data, "authorizationToken")
+        expected_warnings.append(
+            (neo4j.PreviewWarning, "User switching is a preview features.")
+        )
     fromtestkit.set_notifications_config(config, data)
-    if "bookmark_manager" in config:
-        with warning_check(
-            neo4j.ExperimentalWarning,
-            "The 'bookmark_manager' config key is experimental. It might be "
-            "changed or removed any time even without prior notice."
-        ):
+    if expected_warnings:
+        with warnings_check(expected_warnings):
             session = driver.session(**config)
     else:
         session = driver.session(**config)
@@ -647,3 +795,30 @@ async def GetRoutingTable(backend, data):
         addresses = routing_table.__getattribute__(role)
         response_data[role] = list(map(str, addresses))
     await backend.send_response("RoutingTable", response_data)
+
+async def FakeTimeInstall(backend, _data):
+    assert backend.fake_time is None
+    assert backend.fake_time_ticker is None
+
+    backend.fake_time = freeze_time()
+    backend.fake_time_ticker = backend.fake_time.start()
+    await backend.send_response("FakeTimeAck", {})
+
+async def FakeTimeTick(backend, data):
+    assert backend.fake_time is not None
+    assert backend.fake_time_ticker is not None
+
+    increment_ms = data["incrementMs"]
+    delta = datetime.timedelta(milliseconds=increment_ms)
+    backend.fake_time_ticker.tick(delta=delta)
+    await backend.send_response("FakeTimeAck", {})
+
+
+async def FakeTimeUninstall(backend, _data):
+    assert backend.fake_time is not None
+    assert backend.fake_time_ticker is not None
+
+    backend.fake_time.stop()
+    backend.fake_time_ticker = None
+    backend.fake_time = None
+    await backend.send_response("FakeTimeAck", {})

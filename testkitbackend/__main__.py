@@ -30,6 +30,7 @@ from .server import (
 
 def sync_main():
     server = Server(("0.0.0.0", 9876))
+    print("Start serving")
     while True:
         server.handle_request()
 
@@ -39,6 +40,7 @@ def async_main():
         server = AsyncServer(("0.0.0.0", 9876))
         await server.start()
         try:
+            print("Start serving")
             await server.serve_forever()
         finally:
             server.stop()
