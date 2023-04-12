@@ -20,6 +20,7 @@ from datetime import timedelta
 
 import pytz
 
+import neo4j
 from neo4j import (
     NotificationDisabledCategory,
     NotificationMinimumSeverity,
@@ -155,6 +156,31 @@ def to_param(m):
             seconds=data["seconds"], nanoseconds=data["nanoseconds"]
         )
     raise ValueError("Unknown param type " + name)
+
+
+def to_auth_token(data, key):
+    if data[key] is None:
+        return None
+    auth_token = data[key]["data"]
+    data[key].mark_item_as_read_if_equals("name", "AuthorizationToken")
+    scheme = auth_token["scheme"]
+    if scheme == "basic":
+        auth = neo4j.basic_auth(
+            auth_token["principal"], auth_token["credentials"],
+            realm=auth_token.get("realm", None)
+        )
+    elif scheme == "kerberos":
+        auth = neo4j.kerberos_auth(auth_token["credentials"])
+    elif scheme == "bearer":
+        auth = neo4j.bearer_auth(auth_token["credentials"])
+    else:
+        auth = neo4j.custom_auth(
+            auth_token["principal"], auth_token["credentials"],
+            auth_token["realm"], auth_token["scheme"],
+            **auth_token.get("parameters", {})
+        )
+        auth_token.mark_item_as_read("parameters", recursive=True)
+    return auth
 
 
 def set_notifications_config(config, data):

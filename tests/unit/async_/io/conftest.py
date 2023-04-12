@@ -24,10 +24,12 @@ from struct import (
 
 import pytest
 
+from neo4j import PreviewWarning
 from neo4j._async.io._common import (
     AsyncInbox,
     AsyncOutbox,
 )
+from neo4j.auth_management import AsyncAuthManagers
 
 
 class AsyncFakeSocket:
@@ -103,6 +105,9 @@ class AsyncFakeSocket2:
     def close(self):
         return
 
+    def kill(self):
+        return
+
     def inject(self, data):
         self.recv_buffer += data
 
@@ -142,3 +147,16 @@ def fake_socket_2():
 @pytest.fixture
 def fake_socket_pair():
     return AsyncFakeSocketPair
+
+@pytest.fixture
+def static_auth():
+    def inner(auth):
+        with pytest.warns(PreviewWarning, match="Auth managers"):
+            return AsyncAuthManagers.static(auth)
+
+    return inner
+
+
+@pytest.fixture
+def none_auth(static_auth):
+    return static_auth(None)

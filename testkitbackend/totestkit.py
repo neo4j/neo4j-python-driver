@@ -255,3 +255,7 @@ def field(v):
         }
 
     raise ValueError("Unhandled type:" + str(type(v)))
+
+
+def auth_token(auth):
+    return {"name": "AuthorizationToken", "data": vars(auth)}

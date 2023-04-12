@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import selectors
 import struct
 import typing as t
 from socket import (

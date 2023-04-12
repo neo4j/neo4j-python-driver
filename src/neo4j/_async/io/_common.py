@@ -256,19 +256,34 @@ class Response:
 
 
 class InitResponse(Response):
-
     async def on_failure(self, metadata):
-        code = metadata.get("code")
-        if code == "Neo.ClientError.Security.Unauthorized":
-            raise Neo4jError.hydrate(**metadata)
-        else:
-            raise ServiceUnavailable(
-                metadata.get("message", "Connection initialisation failed")
-            )
+        # No sense in resetting the connection,
+        # the server will have closed it already.
+        self.connection.kill()
+        handler = self.handlers.get("on_failure")
+        await AsyncUtil.callback(handler, metadata)
+        handler = self.handlers.get("on_summary")
+        await AsyncUtil.callback(handler)
+        metadata["message"] = metadata.get(
+            "message",
+            "Connection initialisation failed due to an unknown error"
+        )
+        raise Neo4jError.hydrate(**metadata)
+
+
+class LogonResponse(InitResponse):
+    async def on_failure(self, metadata):
+        # No sense in resetting the connection,
+        # the server will have closed it already.
+        self.connection.kill()
+        handler = self.handlers.get("on_failure")
+        await AsyncUtil.callback(handler, metadata)
+        handler = self.handlers.get("on_summary")
+        await AsyncUtil.callback(handler)
+        raise Neo4jError.hydrate(**metadata)
 
 
 class CommitResponse(Response):
-
     pass
 
 

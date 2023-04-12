@@ -33,7 +33,7 @@ class EagerResult(t.NamedTuple):
      * keys - the list of keys returned by the query
        (see :attr:`AsyncResult.keys` and :attr:`.Result.keys`)
 
-    **This is experimental.** (See :ref:`filter-warnings-ref`)
+    **This is experimental** (see :ref:`filter-warnings-ref`).
     It might be changed or removed any time even without prior notice.
 
     .. seealso::
