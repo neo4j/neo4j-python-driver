@@ -544,11 +544,6 @@ def NewSession(backend, data):
         config["bookmark_manager"] = backend.bookmark_managers[
             data["bookmarkManagerId"]
         ]
-        expected_warnings.append((
-            neo4j.ExperimentalWarning,
-            "The 'bookmark_manager' config key is experimental. It might be "
-            "changed or removed any time even without prior notice."
-        ))
     for (conf_name, data_name) in (
         ("fetch_size", "fetchSize"),
         ("impersonated_user", "impersonatedUser"),
