@@ -31,7 +31,7 @@ from ...._async_compat import mark_sync_test
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_stale(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 0
     connection = Bolt5x3(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
@@ -41,7 +41,7 @@ def test_conn_is_stale(fake_socket, set_stale):
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = -1
     connection = Bolt5x3(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
@@ -51,7 +51,7 @@ def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_not_stale(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 999999999
     connection = Bolt5x3(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
@@ -70,7 +70,7 @@ def test_conn_is_not_stale(fake_socket, set_stale):
 ))
 @mark_sync_test
 def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x3.UNPACKER_CLS)
     connection = Bolt5x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.begin(*args, **kwargs)
@@ -91,7 +91,7 @@ def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
 ))
 @mark_sync_test
 def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x3.UNPACKER_CLS)
     connection = Bolt5x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.run(*args, **kwargs)
@@ -103,7 +103,7 @@ def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
 
 @mark_sync_test
 def test_n_extra_in_discard(fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x3.UNPACKER_CLS)
     connection = Bolt5x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666)
@@ -123,7 +123,7 @@ def test_n_extra_in_discard(fake_socket):
 )
 @mark_sync_test
 def test_qid_extra_in_discard(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x3.UNPACKER_CLS)
     connection = Bolt5x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(qid=test_input)
@@ -143,7 +143,7 @@ def test_qid_extra_in_discard(fake_socket, test_input, expected):
 )
 @mark_sync_test
 def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x3.UNPACKER_CLS)
     connection = Bolt5x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666, qid=test_input)
@@ -163,7 +163,7 @@ def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
 )
 @mark_sync_test
 def test_n_extra_in_pull(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x3.UNPACKER_CLS)
     connection = Bolt5x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=test_input)
@@ -183,7 +183,7 @@ def test_n_extra_in_pull(fake_socket, test_input, expected):
 )
 @mark_sync_test
 def test_qid_extra_in_pull(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x3.UNPACKER_CLS)
     connection = Bolt5x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(qid=test_input)
@@ -196,7 +196,7 @@ def test_qid_extra_in_pull(fake_socket, test_input, expected):
 
 @mark_sync_test
 def test_n_and_qid_extras_in_pull(fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x3.UNPACKER_CLS)
     connection = Bolt5x3(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=666, qid=777)
@@ -209,7 +209,7 @@ def test_n_and_qid_extras_in_pull(fake_socket):
 
 @mark_sync_test
 def test_hello_passes_routing_metadata(fake_socket_pair):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt5x3.PACKER_CLS,
                                unpacker_cls=Bolt5x3.UNPACKER_CLS)
@@ -242,7 +242,7 @@ def test_hello_passes_routing_metadata(fake_socket_pair):
 def test_hint_recv_timeout_seconds(
     fake_socket_pair, hints, valid, caplog, mocker
 ):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt5x3.PACKER_CLS,
                                unpacker_cls=Bolt5x3.UNPACKER_CLS)
@@ -332,7 +332,7 @@ def test_supports_notification_filters(
     fake_socket, method, args, extra_idx, cls_min_sev, method_min_sev,
     cls_dis_cats, method_dis_cats
 ):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x3.UNPACKER_CLS)
     connection = Bolt5x3(
         address, socket, PoolConfig.max_connection_lifetime,
@@ -362,7 +362,7 @@ def test_supports_notification_filters(
 def test_hello_supports_notification_filters(
     fake_socket_pair, min_sev, dis_cats
 ):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt5x3.PACKER_CLS,
                                unpacker_cls=Bolt5x3.UNPACKER_CLS)
@@ -391,7 +391,7 @@ def test_hello_supports_notification_filters(
     "user_agent", (None, "test user agent", "", BOLT_AGENT)
 )
 def test_user_agent(fake_socket_pair, user_agent):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt5x3.PACKER_CLS,
                                unpacker_cls=Bolt5x3.UNPACKER_CLS)
@@ -416,7 +416,7 @@ def test_user_agent(fake_socket_pair, user_agent):
     "user_agent", (None, "test user agent", "", BOLT_AGENT)
 )
 def test_sends_bolt_agent(fake_socket_pair, user_agent):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt5x3.PACKER_CLS,
                                unpacker_cls=Bolt5x3.UNPACKER_CLS)

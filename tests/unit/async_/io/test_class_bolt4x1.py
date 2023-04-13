@@ -370,7 +370,7 @@ async def test_hello_does_not_support_notification_filters(
     "user_agent", (None, "test user agent", "", BOLT_AGENT)
 )
 async def test_user_agent(fake_socket_pair, user_agent):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=AsyncBolt4x1.PACKER_CLS,
                                unpacker_cls=AsyncBolt4x1.UNPACKER_CLS)
@@ -395,7 +395,7 @@ async def test_user_agent(fake_socket_pair, user_agent):
     "user_agent", (None, "test user agent", "", BOLT_AGENT)
 )
 async def test_does_not_send_bolt_agent(fake_socket_pair, user_agent):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=AsyncBolt4x1.PACKER_CLS,
                                unpacker_cls=AsyncBolt4x1.UNPACKER_CLS)
