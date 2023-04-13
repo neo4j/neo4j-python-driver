@@ -52,6 +52,24 @@ class TestTimeDehydration(_TestTemporalDehydrationV1):
             Structure(b"I", 1539340661, 474716000, 3600)
         )
 
+    def test_date_time_fixed_native_offset(self, assert_transforms):
+        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
+                      datetime.timezone(datetime.timedelta(minutes=60)))
+        assert_transforms(
+            dt,
+            Structure(b"I", 1539340661, 474716862, 3600)
+        )
+
+    def test_native_date_time_fixed_native_offset(self, assert_transforms):
+        dt = datetime.datetime(
+            2018, 10, 12, 11, 37, 41, 474716,
+            datetime.timezone(datetime.timedelta(minutes=60))
+        )
+        assert_transforms(
+            dt,
+            Structure(b"I", 1539340661, 474716000, 3600)
+        )
+
     def test_pandas_date_time_fixed_offset(self, assert_transforms):
         dt = pd.Timestamp("2018-10-12T11:37:41.474716862+0100")
         assert_transforms(dt, Structure(b"I", 1539340661, 474716862, 3600))
@@ -67,6 +85,25 @@ class TestTimeDehydration(_TestTemporalDehydrationV1):
     def test_native_date_time_fixed_negative_offset(self, assert_transforms):
         dt = datetime.datetime(2018, 10, 12, 11, 37, 41, 474716,
                                pytz.FixedOffset(-60))
+        assert_transforms(
+            dt,
+            Structure(b"I", 1539347861, 474716000, -3600)
+        )
+
+    def test_date_time_fixed_negative_native_offset(self, assert_transforms):
+        dt = DateTime(2018, 10, 12, 11, 37, 41, 474716862,
+                      datetime.timezone(datetime.timedelta(minutes=-60)))
+        assert_transforms(
+            dt,
+            Structure(b"I", 1539347861, 474716862, -3600)
+        )
+
+    def test_native_date_time_fixed_negative_native_offset(self,
+                                                           assert_transforms):
+        dt = datetime.datetime(
+            2018, 10, 12, 11, 37, 41, 474716,
+            datetime.timezone(datetime.timedelta(minutes=-60))
+        )
         assert_transforms(
             dt,
             Structure(b"I", 1539347861, 474716000, -3600)

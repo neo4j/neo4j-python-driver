@@ -34,9 +34,13 @@ class UTCPatchedTimeDehydrationMeta(type):
         for test_func in (
             "test_date_time_fixed_offset",
             "test_native_date_time_fixed_offset",
+            "test_date_time_fixed_native_offset",
+            "test_native_date_time_fixed_native_offset",
             "test_pandas_date_time_fixed_offset",
             "test_date_time_fixed_negative_offset",
             "test_native_date_time_fixed_negative_offset",
+            "test_date_time_fixed_negative_native_offset",
+            "test_native_date_time_fixed_negative_native_offset",
             "test_pandas_date_time_fixed_negative_offset",
             "test_date_time_zone_id",
             "test_native_date_time_zone_id",

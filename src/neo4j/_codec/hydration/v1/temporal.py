@@ -20,6 +20,7 @@ from datetime import (
     datetime,
     time,
     timedelta,
+    timezone,
 )
 
 from ...._optional_deps import (
@@ -36,6 +37,9 @@ from ....time import (
     Time,
 )
 from ...packstream import Structure
+
+
+ANY_BUILTIN_DATETIME = datetime(1970, 1, 1)
 
 
 def get_date_unix_epoch():
@@ -172,10 +176,15 @@ def dehydrate_datetime(value):
         seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"f", seconds, nanoseconds, tz.key)
     else:
+        if isinstance(tz, timezone):
+            # offset of the timezone is constant, so any date will do
+            offset = tz.utcoffset(ANY_BUILTIN_DATETIME)
+        else:
+            offset = tz.utcoffset(value)
         # with time offset
         seconds, nanoseconds = seconds_and_nanoseconds(value)
         return Structure(b"F", seconds, nanoseconds,
-                         int(tz.utcoffset(value).total_seconds()))
+                         int(offset.total_seconds()))
 
 
 if np is not None:
