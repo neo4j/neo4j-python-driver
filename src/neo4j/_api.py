@@ -208,21 +208,22 @@ class RoutingControl(str, Enum):
     Inherits from :class:`str` and :class:`Enum`. Every driver API accepting a
     :class:`.RoutingControl` value will also accept a string
 
-        >>> RoutingControl.READERS == "r"
+        >>> RoutingControl.READ == "r"
         True
-        >>> RoutingControl.WRITERS == "w"
+        >>> RoutingControl.WRITE == "w"
         True
-
-    **This is experimental.**
-    It might be changed or removed any time even without prior notice.
 
     .. seealso::
         :attr:`.AsyncDriver.execute_query`, :attr:`.Driver.execute_query`
 
     .. versionadded:: 5.5
+
+    .. versionchanged:: 5.8
+        * renamed ``READERS`` to ``READ`` and ``WRITERS`` to ``WRITE``
+        * stabilized from experimental
     """
-    READERS = "r"
-    WRITERS = "w"
+    READ = "r"
+    WRITE = "w"
 
 
 if t.TYPE_CHECKING:

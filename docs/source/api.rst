@@ -164,7 +164,7 @@ Closing a driver will immediately shut down all connections in the pool.
               verify_connectivity, get_server_info, verify_authentication,
               supports_session_auth, supports_multi_db
 
-    .. method:: execute_query(query, parameters_=None,routing_=neo4j.RoutingControl.WRITERS, database_=None, impersonated_user_=None, bookmark_manager_=self.query_bookmark_manager, result_transformer_=Result.to_eager_result, **kwargs)
+    .. method:: execute_query(query, parameters_=None,routing_=neo4j.RoutingControl.WRITE, database_=None, impersonated_user_=None, bookmark_manager_=self.query_bookmark_manager, result_transformer_=Result.to_eager_result, **kwargs)
 
         Execute a query in a transaction function and return all results.
 
@@ -194,9 +194,9 @@ Closing a driver will immediately shut down all connections in the pool.
                     bookmark_manager=bookmark_manager_,
                     auth=auth_,
                 ) as session:
-                    if routing_ == RoutingControl.WRITERS:
+                    if routing_ == RoutingControl.WRITE:
                         return session.execute_write(work)
-                    elif routing_ == RoutingControl.READERS:
+                    elif routing_ == RoutingControl.READ:
                         return session.execute_read(work)
 
         Usage example::
@@ -211,7 +211,7 @@ Closing a driver will immediately shut down all connections in the pool.
                 records, summary, keys = driver.execute_query(
                     "MATCH (p:Person {age: $age}) RETURN p.name",
                     {"age": 42},
-                    routing_=neo4j.RoutingControl.READERS,  # or just "r"
+                    routing_=neo4j.RoutingControl.READ,  # or just "r"
                     database_="neo4j",
                 )
                 assert keys == ["p.name"]  # not needed, just for illustration
@@ -232,7 +232,7 @@ Closing a driver will immediately shut down all connections in the pool.
                     "SET p.nickname = 'My dear' "
                     "RETURN count(*)",
                     # optional routing parameter, as write is default
-                    # routing_=neo4j.RoutingControl.WRITERS,  # or just "w",
+                    # routing_=neo4j.RoutingControl.WRITE,  # or just "w",
                     database_="neo4j",
                     result_transformer_=neo4j.Result.single,
                     age=15,
@@ -380,7 +380,8 @@ Closing a driver will immediately shut down all connections in the pool.
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
-            Added the ``auth_`` parameter.
+            * Added the ``auth_`` parameter.
+            * Stabilized from experimental.
 
 
 .. _driver-configuration-ref:
@@ -1022,8 +1023,7 @@ See :class:`.BookmarkManager` for more information.
 
 .. versionadded:: 5.0
 
-**This is experimental** (see :ref:`filter-warnings-ref`).
-It might be changed or removed any time even without prior notice.
+.. versionchanged:: 5.8 stabilized from experimental
 
 
 .. _session-auth-ref:

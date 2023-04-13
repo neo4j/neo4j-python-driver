@@ -20,6 +20,7 @@
 # work around for https://github.com/sphinx-doc/sphinx/pull/10880
 # make sure TAuth is resolved in the docs, else they're pretty useless
 
+
 import abc
 import typing as t
 from dataclasses import dataclass
