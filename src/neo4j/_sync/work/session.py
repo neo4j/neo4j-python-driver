@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import typing as t
+import warnings
 from logging import getLogger
 from random import random
 from time import perf_counter
@@ -27,7 +28,10 @@ from time import perf_counter
 from ..._async_compat import sleep
 from ..._async_compat.util import Util
 from ..._conf import SessionConfig
-from ..._meta import deprecated
+from ..._meta import (
+    deprecated,
+    PreviewWarning,
+)
 from ..._work import Query
 from ...api import (
     Bookmarks,
@@ -42,6 +46,7 @@ from ...exceptions import (
     SessionExpired,
     TransactionError,
 )
+from ..auth_management import AuthManagers
 from .result import Result
 from .transaction import (
     ManagedTransaction,
@@ -97,7 +102,17 @@ class Session(Workspace):
 
     def __init__(self, pool, session_config):
         assert isinstance(session_config, SessionConfig)
+        if session_config.auth is not None:
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore", message=r".*\bAuth managers\b.*",
+                    category=PreviewWarning
+                )
+                session_config.auth = AuthManagers.static(
+                    session_config.auth
+                )
         super().__init__(pool, session_config)
+        self._config = session_config
         self._initialize_bookmarks(session_config.bookmarks)
         self._bookmark_manager = session_config.bookmark_manager
 
@@ -113,11 +128,13 @@ class Session(Workspace):
             self._state_failed = True
         self.close()
 
-    def _connect(self, access_mode, **access_kwargs):
+    def _connect(self, access_mode, **acquire_kwargs):
         if access_mode is None:
             access_mode = self._config.default_access_mode
         try:
-            super()._connect(access_mode, **access_kwargs)
+            super()._connect(
+                access_mode, auth=self._config.auth, **acquire_kwargs
+            )
         except asyncio.CancelledError:
             self._handle_cancellation(message="_connect")
             raise
@@ -161,6 +178,11 @@ class Session(Workspace):
         server_info = self._connection.server_info
         self._disconnect()
         return server_info
+
+    def _verify_authentication(self):
+        assert not self._connection
+        self._connect(READ_ACCESS, force_auth=True)
+        self._disconnect()
 
     def close(self) -> None:
         """Close the session.

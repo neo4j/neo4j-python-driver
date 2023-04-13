@@ -34,7 +34,10 @@ from ...exceptions import (
     NotALeader,
     ServiceUnavailable,
 )
-from ._bolt import AsyncBolt
+from ._bolt import (
+    AsyncBolt,
+    ServerStateManagerBase,
+)
 from ._bolt3 import (
     ServerStateManager,
     ServerStates,
@@ -62,6 +65,8 @@ class AsyncBolt4x0(AsyncBolt):
 
     supports_multiple_databases = True
 
+    supports_re_auth = False
+
     supports_notification_filtering = False
 
     def __init__(self, *args, **kwargs):
@@ -73,6 +78,9 @@ class AsyncBolt4x0(AsyncBolt):
     def _on_server_state_change(self, old_state, new_state):
         log.debug("[#%04X]  _: <CONNECTION> state: %s > %s", self.local_port,
                   old_state.name, new_state.name)
+
+    def _get_server_state_manager(self) -> ServerStateManagerBase:
+        return self._server_state_manager
 
     @property
     def is_reset(self):
@@ -121,6 +129,14 @@ class AsyncBolt4x0(AsyncBolt):
         await self.send_all()
         await self.fetch_all()
         check_supported_server_product(self.server_info.agent)
+
+    def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        """Append a LOGON message to the outgoing queue."""
+        self.assert_re_auth_support()
+
+    def logoff(self, dehydration_hooks=None, hydration_hooks=None):
+        """Append a LOGOFF message to the outgoing queue."""
+        self.assert_re_auth_support()
 
     async def route(
         self, database=None, imp_user=None, bookmarks=None,
@@ -356,8 +372,8 @@ class AsyncBolt4x0(AsyncBolt):
                     self.pool.on_write_failure(address=self.unresolved_address)
                 raise
             except Neo4jError as e:
-                if self.pool and e._invalidates_all_connections():
-                    await self.pool.mark_all_stale()
+                if self.pool:
+                    await self.pool.on_neo4j_error(e, self)
                 raise
         else:
             raise BoltProtocolError("Unexpected response message with signature "

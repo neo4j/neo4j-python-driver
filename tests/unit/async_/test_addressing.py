@@ -16,10 +16,7 @@
 # limitations under the License.
 
 
-from socket import (
-    AF_INET,
-    AF_INET6,
-)
+from socket import AF_INET
 
 import pytest
 

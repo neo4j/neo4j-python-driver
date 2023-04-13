@@ -21,17 +21,17 @@ import logging
 
 import pytest
 
+import neo4j
 from neo4j._conf import PoolConfig
 from neo4j._meta import BOLT_AGENT
 from neo4j._sync.io._bolt5 import Bolt5x2
-from neo4j.api import Auth
 
 from ...._async_compat import mark_sync_test
 
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_stale(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 0
     connection = Bolt5x2(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
@@ -41,7 +41,7 @@ def test_conn_is_stale(fake_socket, set_stale):
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = -1
     connection = Bolt5x2(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
@@ -51,7 +51,7 @@ def test_conn_is_not_stale_if_not_enabled(fake_socket, set_stale):
 
 @pytest.mark.parametrize("set_stale", (True, False))
 def test_conn_is_not_stale(fake_socket, set_stale):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     max_connection_lifetime = 999999999
     connection = Bolt5x2(address, fake_socket(address), max_connection_lifetime)
     if set_stale:
@@ -70,7 +70,7 @@ def test_conn_is_not_stale(fake_socket, set_stale):
 ))
 @mark_sync_test
 def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x2.UNPACKER_CLS)
     connection = Bolt5x2(address, socket, PoolConfig.max_connection_lifetime)
     connection.begin(*args, **kwargs)
@@ -91,7 +91,7 @@ def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
 ))
 @mark_sync_test
 def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x2.UNPACKER_CLS)
     connection = Bolt5x2(address, socket, PoolConfig.max_connection_lifetime)
     connection.run(*args, **kwargs)
@@ -103,7 +103,7 @@ def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
 
 @mark_sync_test
 def test_n_extra_in_discard(fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x2.UNPACKER_CLS)
     connection = Bolt5x2(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666)
@@ -123,7 +123,7 @@ def test_n_extra_in_discard(fake_socket):
 )
 @mark_sync_test
 def test_qid_extra_in_discard(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x2.UNPACKER_CLS)
     connection = Bolt5x2(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(qid=test_input)
@@ -143,7 +143,7 @@ def test_qid_extra_in_discard(fake_socket, test_input, expected):
 )
 @mark_sync_test
 def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x2.UNPACKER_CLS)
     connection = Bolt5x2(address, socket, PoolConfig.max_connection_lifetime)
     connection.discard(n=666, qid=test_input)
@@ -163,7 +163,7 @@ def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
 )
 @mark_sync_test
 def test_n_extra_in_pull(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x2.UNPACKER_CLS)
     connection = Bolt5x2(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=test_input)
@@ -183,7 +183,7 @@ def test_n_extra_in_pull(fake_socket, test_input, expected):
 )
 @mark_sync_test
 def test_qid_extra_in_pull(fake_socket, test_input, expected):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x2.UNPACKER_CLS)
     connection = Bolt5x2(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(qid=test_input)
@@ -196,7 +196,7 @@ def test_qid_extra_in_pull(fake_socket, test_input, expected):
 
 @mark_sync_test
 def test_n_and_qid_extras_in_pull(fake_socket):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x2.UNPACKER_CLS)
     connection = Bolt5x2(address, socket, PoolConfig.max_connection_lifetime)
     connection.pull(n=666, qid=777)
@@ -209,7 +209,7 @@ def test_n_and_qid_extras_in_pull(fake_socket):
 
 @mark_sync_test
 def test_hello_passes_routing_metadata(fake_socket_pair):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt5x2.PACKER_CLS,
                                unpacker_cls=Bolt5x2.UNPACKER_CLS)
@@ -224,6 +224,99 @@ def test_hello_passes_routing_metadata(fake_socket_pair):
     assert tag == b"\x01"
     assert len(fields) == 1
     assert fields[0]["routing"] == {"foo": "bar"}
+
+
+def _assert_logon_message(sockets, auth):
+    tag, fields = sockets.server.pop_message()
+    assert tag == b"\x6A"  # LOGON
+    assert len(fields) == 1
+    keys = ["scheme", "principal", "credentials"]
+    assert list(fields[0].keys()) == keys
+    for key in keys:
+        assert fields[0][key] == getattr(auth, key)
+
+
+@mark_sync_test
+def test_hello_pipelines_logon(fake_socket_pair):
+    auth = neo4j.Auth("basic", "alice123", "supersecret123")
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt5x2.PACKER_CLS,
+                               unpacker_cls=Bolt5x2.UNPACKER_CLS)
+    sockets.server.send_message(
+        b"\x7F", {"code": "Neo.DatabaseError.General.MadeUpError",
+                  "message": "kthxbye"}
+    )
+    connection = Bolt5x2(
+        address, sockets.client, PoolConfig.max_connection_lifetime, auth=auth
+    )
+    with pytest.raises(neo4j.exceptions.Neo4jError):
+        connection.hello()
+    tag, fields = sockets.server.pop_message()
+    assert tag == b"\x01"  # HELLO
+    assert len(fields) == 1
+    assert list(fields[0].keys()) == ["user_agent"]
+    assert auth.credentials not in repr(fields)
+    _assert_logon_message(sockets, auth)
+
+
+@mark_sync_test
+def test_logon(fake_socket_pair):
+    auth = neo4j.Auth("basic", "alice123", "supersecret123")
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt5x2.PACKER_CLS,
+                               unpacker_cls=Bolt5x2.UNPACKER_CLS)
+    connection = Bolt5x2(address, sockets.client,
+                              PoolConfig.max_connection_lifetime, auth=auth)
+    connection.logon()
+    connection.send_all()
+    _assert_logon_message(sockets, auth)
+
+
+@mark_sync_test
+def test_re_auth(fake_socket_pair, mocker, static_auth):
+    auth = neo4j.Auth("basic", "alice123", "supersecret123")
+    auth_manager = static_auth(auth)
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt5x2.PACKER_CLS,
+                               unpacker_cls=Bolt5x2.UNPACKER_CLS)
+    sockets.server.send_message(
+        b"\x7F", {"code": "Neo.DatabaseError.General.MadeUpError",
+                  "message": "kthxbye"}
+    )
+    connection = Bolt5x2(address, sockets.client,
+                              PoolConfig.max_connection_lifetime)
+    connection.pool = mocker.MagicMock()
+    connection.re_auth(auth, auth_manager)
+    connection.send_all()
+    with pytest.raises(neo4j.exceptions.Neo4jError):
+        connection.fetch_all()
+    tag, fields = sockets.server.pop_message()
+    assert tag == b"\x6B"  # LOGOFF
+    assert len(fields) == 0
+    _assert_logon_message(sockets, auth)
+    assert connection.auth is auth
+    assert connection.auth_manager is auth_manager
+
+
+@mark_sync_test
+def test_logoff(fake_socket_pair):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt5x2.PACKER_CLS,
+                               unpacker_cls=Bolt5x2.UNPACKER_CLS)
+    sockets.server.send_message(b"\x70", {})
+    connection = Bolt5x2(address, sockets.client,
+                              PoolConfig.max_connection_lifetime)
+    connection.logoff()
+    assert not sockets.server.recv_buffer  # pipelined, so no response yet
+    connection.send_all()
+    assert sockets.server.recv_buffer  # now!
+    tag, fields = sockets.server.pop_message()
+    assert tag == b"\x6B"  # LOGOFF
+    assert len(fields) == 0
 
 
 @pytest.mark.parametrize(("hints", "valid"), (
@@ -242,7 +335,7 @@ def test_hello_passes_routing_metadata(fake_socket_pair):
 def test_hint_recv_timeout_seconds(
     fake_socket_pair, hints, valid, caplog, mocker
 ):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt5x2.PACKER_CLS,
                                unpacker_cls=Bolt5x2.UNPACKER_CLS)
@@ -274,11 +367,44 @@ def test_hint_recv_timeout_seconds(
                    for msg in caplog.messages)
 
 
+CREDENTIALS = "+++super-secret-sauce+++"
+
+
+@pytest.mark.parametrize("auth", (
+    ("user", CREDENTIALS),
+    neo4j.basic_auth("user", CREDENTIALS),
+    neo4j.kerberos_auth(CREDENTIALS),
+    neo4j.bearer_auth(CREDENTIALS),
+    neo4j.custom_auth("user", CREDENTIALS, "realm", "scheme"),
+    neo4j.Auth("scheme", "principal", CREDENTIALS, "realm", foo="bar"),
+))
+@mark_sync_test
+def test_credentials_are_not_logged(auth, fake_socket_pair, caplog):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt5x2.PACKER_CLS,
+                               unpacker_cls=Bolt5x2.UNPACKER_CLS)
+    sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.4"})
+    sockets.server.send_message(b"\x70", {})
+    connection = Bolt5x2(
+        address, sockets.client, PoolConfig.max_connection_lifetime, auth=auth
+    )
+    with caplog.at_level(logging.DEBUG):
+        connection.hello()
+
+    if isinstance(auth, tuple):
+        auth = neo4j.basic_auth(*auth)
+    for field in ("scheme", "principal", "realm", "parameters"):
+        value = getattr(auth, field, None)
+        if value:
+            assert repr(value) in caplog.text
+    assert CREDENTIALS not in caplog.text
+
+
 def _assert_notifications_in_extra(extra, expected):
     for key in expected:
         assert key in extra
         assert extra[key] == expected[key]
-
 
 
 @pytest.mark.parametrize(("method", "args", "extra_idx"), (
@@ -298,7 +424,7 @@ def test_supports_notification_filters(
     fake_socket, method, args, extra_idx, cls_min_sev, method_min_sev,
     cls_dis_cats, method_dis_cats
 ):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, Bolt5x2.UNPACKER_CLS)
     connection = Bolt5x2(
         address, socket, PoolConfig.max_connection_lifetime,
@@ -328,7 +454,7 @@ def test_supports_notification_filters(
 def test_hello_supports_notification_filters(
     fake_socket_pair, min_sev, dis_cats
 ):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     sockets = fake_socket_pair(address,
                                packer_cls=Bolt5x2.PACKER_CLS,
                                unpacker_cls=Bolt5x2.UNPACKER_CLS)
@@ -350,70 +476,6 @@ def test_hello_supports_notification_filters(
     if dis_cats is not None:
         expected["notifications_disabled_categories"] = dis_cats
     _assert_notifications_in_extra(extra, expected)
-
-
-class HackedAuth:
-    def __init__(self, dict_):
-        self.__dict__ = dict_
-
-
-@mark_sync_test
-@pytest.mark.parametrize("auth", (
-    ("awesome test user", "safe p4ssw0rd"),
-    Auth("super nice scheme", "awesome test user", "safe p4ssw0rd"),
-    Auth("super nice scheme", "awesome test user", "safe p4ssw0rd",
-         realm="super duper realm"),
-    Auth("super nice scheme", "awesome test user", "safe p4ssw0rd",
-         realm="super duper realm"),
-    Auth("super nice scheme", "awesome test user", "safe p4ssw0rd",
-         foo="bar"),
-    HackedAuth({
-        "scheme": "super nice scheme", "principal": "awesome test user",
-        "credentials": "safe p4ssw0rd", "realm": "super duper realm",
-        "parameters": {"credentials": "should be visible!"},
-    })
-
-))
-def test_hello_does_not_log_credentials(fake_socket_pair, caplog, auth):
-    def items():
-        if isinstance(auth, tuple):
-            yield "scheme", "basic"
-            yield "principal", auth[0]
-            yield "credentials", auth[1]
-        elif isinstance(auth, Auth):
-            for key in ("scheme", "principal", "credentials", "realm",
-                        "parameters"):
-                value = getattr(auth, key, None)
-                if value:
-                    yield key, value
-        elif isinstance(auth, HackedAuth):
-            yield from auth.__dict__.items()
-        else:
-            raise TypeError(auth)
-
-    address = ("127.0.0.1", 7687)
-    sockets = fake_socket_pair(address,
-                               packer_cls=Bolt5x2.PACKER_CLS,
-                               unpacker_cls=Bolt5x2.UNPACKER_CLS)
-    sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
-    sockets.server.send_message(b"\x70", {})
-    max_connection_lifetime = 0
-    connection = Bolt5x2(
-        address, sockets.client, max_connection_lifetime, auth=auth
-    )
-
-    with caplog.at_level(logging.DEBUG):
-        connection.hello()
-
-    logons = [m for m in caplog.messages if "C: LOGON " in m]
-    assert len(logons) == 1
-    logon = logons[0]
-
-    for key, value in items():
-        if key == "credentials":
-            assert value not in logon
-        else:
-            assert str({key: value})[1:-1] in logon
 
 
 @mark_sync_test

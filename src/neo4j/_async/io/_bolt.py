@@ -25,6 +25,7 @@ from logging import getLogger
 from time import perf_counter
 
 from ..._async_compat.network import AsyncBoltSocket
+from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import v1 as hydration_v1
 from ..._codec.packstream import v1 as packstream_v1
 from ..._conf import PoolConfig
@@ -34,7 +35,7 @@ from ..._exceptions import (
     BoltHandshakeError,
 )
 from ..._meta import BOLT_AGENT
-from ...addressing import Address
+from ...addressing import ResolvedAddress
 from ...api import (
     ServerInfo,
     Version,
@@ -56,6 +57,20 @@ from ._common import (
 
 # Set up logger
 log = getLogger("neo4j")
+
+
+class ServerStateManagerBase(abc.ABC):
+    @abc.abstractmethod
+    def __init__(self, init_state, on_change=None):
+        ...
+
+    @abc.abstractmethod
+    def transition(self, message, metadata):
+        ...
+
+    @abc.abstractmethod
+    def failed(self):
+        ...
 
 
 class AsyncBolt:
@@ -104,13 +119,17 @@ class AsyncBolt:
     most_recent_qid = None
 
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *,
-                 auth=None, user_agent=None, routing_context=None,
-                 notifications_min_severity=None, notifications_disabled_categories=None):
+                 auth=None, auth_manager=None, user_agent=None,
+                 routing_context=None, notifications_min_severity=None,
+                 notifications_disabled_categories=None):
         self.unresolved_address = unresolved_address
         self.socket = sock
         self.local_port = self.socket.getsockname()[1]
-        self.server_info = ServerInfo(Address(sock.getpeername()),
-                                      self.PROTOCOL_VERSION)
+        self.server_info = ServerInfo(
+            ResolvedAddress(sock.getpeername(),
+                            host_name=unresolved_address.host),
+            self.PROTOCOL_VERSION
+        )
         # so far `connection.recv_timeout_seconds` is the only available
         # configuration hint that exists. Therefore, all hints can be stored at
         # connection level. This might change in the future.
@@ -133,26 +152,9 @@ class AsyncBolt:
 
         self.user_agent = user_agent
 
-        # Determine auth details
-        if not auth:
-            self.auth_dict = {}
-        elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
-            from ...api import Auth
-            self.auth_dict = vars(Auth("basic", *auth))
-        else:
-            try:
-                self.auth_dict = vars(auth)
-            except (KeyError, TypeError):
-                raise AuthError("Cannot determine auth details from %r" % auth)
-
-        # Check for missing password
-        try:
-            credentials = self.auth_dict["credentials"]
-        except KeyError:
-            pass
-        else:
-            if credentials is None:
-                raise AuthError("Password cannot be None")
+        self.auth = auth
+        self.auth_dict = self._to_auth_dict(auth)
+        self.auth_manager = auth_manager
 
         self.notifications_min_severity = notifications_min_severity
         self.notifications_disabled_categories = \
@@ -161,6 +163,24 @@ class AsyncBolt:
     def __del__(self):
         if not asyncio.iscoroutinefunction(self.close):
             self.close()
+
+    @abc.abstractmethod
+    def _get_server_state_manager(self) -> ServerStateManagerBase:
+        ...
+
+    @classmethod
+    def _to_auth_dict(cls, auth):
+        # Determine auth details
+        if not auth:
+            return {}
+        elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
+            from ...api import Auth
+            return vars(Auth("basic", *auth))
+        else:
+            try:
+                return vars(auth)
+            except (KeyError, TypeError):
+                raise AuthError("Cannot determine auth details from %r" % auth)
 
     @property
     def connection_id(self):
@@ -182,6 +202,20 @@ class AsyncBolt:
         databases.
         """
         pass
+
+    @property
+    @abc.abstractmethod
+    def supports_re_auth(self):
+        """Whether the connection version supports re-authentication."""
+        pass
+
+    def assert_re_auth_support(self):
+        if not self.supports_re_auth:
+            raise ConfigurationError(
+                "User switching is not supported for Bolt "
+                f"Protocol {self.PROTOCOL_VERSION!r}. Server Agent "
+                f"{self.server_info.agent!r}"
+            )
 
     @property
     @abc.abstractmethod
@@ -316,13 +350,13 @@ class AsyncBolt:
     # [bolt-version-bump] search tag when changing bolt version support
     @classmethod
     async def open(
-        cls, address, *, auth=None, deadline=None, routing_context=None,
-        pool_config=None
+        cls, address, *, auth_manager=None, deadline=None,
+        routing_context=None, pool_config=None
     ):
         """Open a new Bolt connection to a given server address.
 
         :param address:
-        :param auth:
+        :param auth_manager:
         :param deadline: how long to wait for the connection to be established
         :param routing_context: dict containing routing context
         :param pool_config:
@@ -387,7 +421,7 @@ class AsyncBolt:
             from ._bolt3 import AsyncBolt3
             bolt_cls = AsyncBolt3
         else:
-            log.debug("[#%04X]  S: <CLOSE>", s.getsockname()[1])
+            log.debug("[#%04X]  C: <CLOSE>", s.getsockname()[1])
             await AsyncBoltSocket.close_socket(s)
 
             supported_versions = cls.protocol_handlers().keys()
@@ -398,9 +432,23 @@ class AsyncBolt:
                 address=address, request_data=handshake, response_data=data
             )
 
+        try:
+            auth = await AsyncUtil.callback(auth_manager.get_auth)
+        except asyncio.CancelledError as e:
+            log.debug("[#%04X]  C: <KILL> open auth manager failed: %r",
+                      s.getsockname()[1], e)
+            s.kill()
+            raise
+        except Exception as e:
+            log.debug("[#%04X]  C: <CLOSE> open auth manager failed: %r",
+                      s.getsockname()[1], e)
+            await s.close()
+            raise
+
         connection = bolt_cls(
             address, s, pool_config.max_connection_lifetime, auth=auth,
-            user_agent=pool_config.user_agent, routing_context=routing_context,
+            auth_manager=auth_manager, user_agent=pool_config.user_agent,
+            routing_context=routing_context,
             notifications_min_severity=pool_config.notifications_min_severity,
             notifications_disabled_categories=
                 pool_config.notifications_disabled_categories
@@ -448,6 +496,45 @@ class AsyncBolt:
             type understood by packstream and are free to return anything.
         """
         pass
+
+    @abc.abstractmethod
+    def logon(self, dehydration_hooks=None, hydration_hooks=None):
+        """Append a LOGON message to the outgoing queue."""
+        pass
+
+    @abc.abstractmethod
+    def logoff(self, dehydration_hooks=None, hydration_hooks=None):
+        """Append a LOGOFF message to the outgoing queue."""
+        pass
+
+    def mark_unauthenticated(self):
+        """Mark the connection as unauthenticated."""
+        self.auth_dict = {}
+
+    def re_auth(
+        self, auth, auth_manager, force=False,
+        dehydration_hooks=None, hydration_hooks=None,
+    ):
+        """Append LOGON, LOGOFF to the outgoing queue.
+
+        If auth is the same as the current auth, this method does nothing.
+
+        :returns: whether the auth was changed
+        """
+        new_auth_dict = self._to_auth_dict(auth)
+        if not force and new_auth_dict == self.auth_dict:
+            self.auth_manager = auth_manager
+            self.auth = auth
+            return False
+        self.logoff(dehydration_hooks=dehydration_hooks,
+                     hydration_hooks=hydration_hooks)
+        self.auth_dict = new_auth_dict
+        self.auth_manager = auth_manager
+        self.auth = auth
+        self.logon(dehydration_hooks=dehydration_hooks,
+                    hydration_hooks=hydration_hooks)
+        return True
+
 
     @abc.abstractmethod
     async def route(
@@ -768,7 +855,7 @@ class AsyncBolt:
             # remove the connection from the pool, nor to try to close the
             # connection again.
             await self.close()
-            if self.pool:
+            if self.pool and not self._get_server_state_manager().failed():
                 await self.pool.deactivate(address=self.unresolved_address)
 
         # Iterate through the outstanding responses, and if any correspond

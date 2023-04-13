@@ -231,6 +231,7 @@ def test_driver_opens_write_session_by_default(uri, fake_pool, mocker):
         timeout=mocker.ANY,
         database=mocker.ANY,
         bookmarks=mocker.ANY,
+        auth=mocker.ANY,
         liveness_check_timeout=mocker.ANY
     )
     tx._begin.assert_called_once_with(
@@ -969,7 +970,8 @@ def test_execute_query_result_transformer(
                     with assert_warns_execute_query_bmm_experimental():
                         bmm = driver.query_bookmark_manager
                     res_custom = driver.execute_query(
-                        "", None, "w", None, None, bmm, result_transformer
+                        "", None, "w", None, None, bmm, None,
+                        result_transformer
                     )
                 else:
                     res_custom = driver.execute_query(
@@ -986,3 +988,18 @@ def test_execute_query_result_transformer(
         _work, mocker.ANY, mocker.ANY, result_transformer
     )
     assert res is session_executor_mock.return_value
+
+
+@mark_sync_test
+def test_supports_session_auth(mocker) -> None:
+    driver = GraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    with driver as driver:
+        res = driver.supports_session_auth()
+
+    session_cls_mock.assert_called_once()
+    session_cls_mock.return_value.__enter__.assert_called_once()
+    session_mock = session_cls_mock.return_value.__enter__.return_value
+    connection_mock = session_mock._connection
+    assert res is connection_mock.supports_re_auth

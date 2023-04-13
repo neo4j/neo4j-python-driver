@@ -103,9 +103,20 @@ class Auth:
         if parameters:
             self.parameters = parameters
 
+    def __eq__(self, other):
+        if not isinstance(other, Auth):
+            return NotImplemented
+        return vars(self) == vars(other)
+
 
 # For backwards compatibility
 AuthToken = Auth
+
+# if t.TYPE_CHECKING:
+# commented out as work around for
+# https://github.com/sphinx-doc/sphinx/pull/10880
+# make sure TAuth is resolved in the docs, else they're pretty useless
+_TAuth = t.Union[t.Tuple[t.Any, t.Any], Auth, None]
 
 
 def basic_auth(

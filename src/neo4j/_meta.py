@@ -113,11 +113,28 @@ def deprecated_property(message: str):
 
 class ExperimentalWarning(Warning):
     """ Base class for warnings about experimental features.
+
+    .. deprecated:: 5.8
+        we now use "preview" instead of "experimental".
     """
 
 
 def experimental_warn(message, stack_level=1):
     warn(message, category=ExperimentalWarning, stacklevel=stack_level + 1)
+
+
+class PreviewWarning(Warning):
+    """ Base class for warnings about experimental features.
+    """
+
+
+def preview_warn(message, stack_level=1):
+    message += (
+        " It might be changed without following the deprecation policy. "
+        "See also "
+        "https://github.com/neo4j/neo4j-python-driver/wiki/preview-features."
+    )
+    warn(message, category=PreviewWarning, stacklevel=stack_level + 1)
 
 
 def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
@@ -130,6 +147,8 @@ def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
         def foo(x):
             pass
 
+    .. deprecated:: 5.8
+        we now use "preview" instead of "experimental".
     """
     def decorator(f):
         if asyncio.iscoroutinefunction(f):
@@ -143,6 +162,33 @@ def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
             @wraps(f)
             def inner(*args, **kwargs):
                 experimental_warn(message, stack_level=2)
+                return f(*args, **kwargs)
+
+            return inner
+
+    return decorator
+
+
+def preview(message) -> t.Callable[[_FuncT], _FuncT]:
+    """
+    Decorator for tagging preview functions and methods.
+
+        @preview("foo is a preview.")
+        def foo(x):
+            pass
+    """
+    def decorator(f):
+        if asyncio.iscoroutinefunction(f):
+            @wraps(f)
+            async def inner(*args, **kwargs):
+                preview_warn(message, stack_level=2)
+                return await f(*args, **kwargs)
+
+            return inner
+        else:
+            @wraps(f)
+            def inner(*args, **kwargs):
+                preview_warn(message, stack_level=2)
                 return f(*args, **kwargs)
 
             return inner
