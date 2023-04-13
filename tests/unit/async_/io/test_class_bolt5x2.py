@@ -24,7 +24,6 @@ import pytest
 import neo4j
 from neo4j._async.io._bolt5 import AsyncBolt5x2
 from neo4j._conf import PoolConfig
-from neo4j.auth_management import AsyncAuthManagers
 
 from ...._async_compat import mark_async_test
 

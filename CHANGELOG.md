@@ -3,7 +3,8 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
 
 ## NEXT RELEASE
-- ...
+- Renamed experimental `neo4j.RoutingControl.READERS` to `READ` and `WRITERS` to `WRITE`.
+- Renamed experimental `driver.query_bookmark_manager` to `execute_query_bookmark_manager`.
 
 
 ## Version 5.7

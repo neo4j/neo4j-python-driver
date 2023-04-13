@@ -23,8 +23,6 @@ import inspect
 import typing as t
 from functools import wraps
 
-from .._meta import experimental
-
 
 if t.TYPE_CHECKING:
     import typing_extensions as te

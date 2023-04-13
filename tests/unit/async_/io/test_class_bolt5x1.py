@@ -24,7 +24,6 @@ import neo4j
 import neo4j.exceptions
 from neo4j._async.io._bolt5 import AsyncBolt5x1
 from neo4j._conf import PoolConfig
-from neo4j.auth_management import AsyncAuthManagers
 from neo4j.exceptions import ConfigurationError
 
 from ...._async_compat import mark_async_test
