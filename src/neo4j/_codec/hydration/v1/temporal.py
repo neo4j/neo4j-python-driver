@@ -39,6 +39,9 @@ from ....time import (
 from ...packstream import Structure
 
 
+ANY_BUILTIN_DATETIME = datetime(1970, 1, 1)
+
+
 def get_date_unix_epoch():
     return Date(1970, 1, 1)
 
@@ -175,7 +178,7 @@ def dehydrate_datetime(value):
     else:
         if isinstance(tz, timezone):
             # offset of the timezone is constant, so any date will do
-            offset = tz.utcoffset(datetime(1970, 1, 1))
+            offset = tz.utcoffset(ANY_BUILTIN_DATETIME)
         else:
             offset = tz.utcoffset(value)
         # with time offset
