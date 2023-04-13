@@ -17,14 +17,8 @@
 
 
 import asyncio
-import time
-from asyncio import (
-    Condition as AsyncCondition,
-    Event as AsyncEvent,
-    Lock as AsyncLock,
-)
+from asyncio import Event as AsyncEvent
 from threading import (
-    Condition,
     Event,
     Lock,
     Thread,
@@ -32,105 +26,14 @@ from threading import (
 
 import pytest
 
-from neo4j._async_compat.shims import wait_for
 from neo4j._deadline import Deadline
 
 from ...async_.io.test_direct import AsyncFakeBoltPool
 from ...sync.io.test_direct import FakeBoltPool
-
-
-class MultiEvent:
-    # Adopted from threading.Event
-
-    def __init__(self):
-        super().__init__()
-        self._cond = Condition(Lock())
-        self._counter = 0
-
-    def _reset_internal_locks(self):
-        # private!  called by Thread._reset_internal_locks by _after_fork()
-        self._cond.__init__(Lock())
-
-    def counter(self):
-        return self._counter
-
-    def increment(self):
-        with self._cond:
-            self._counter += 1
-            self._cond.notify_all()
-
-    def decrement(self):
-        with self._cond:
-            self._counter -= 1
-            self._cond.notify_all()
-
-    def clear(self):
-        with self._cond:
-            self._counter = 0
-            self._cond.notify_all()
-
-    def wait(self, value=0, timeout=None):
-        with self._cond:
-            t_start = time.time()
-            while True:
-                if value == self._counter:
-                    return True
-                if timeout is None:
-                    time_left = None
-                else:
-                    time_left = timeout - (time.time() - t_start)
-                    if time_left <= 0:
-                        return False
-                if not self._cond.wait(time_left):
-                    return False
-
-
-class AsyncMultiEvent:
-    # Adopted from threading.Event
-
-    def __init__(self):
-        super().__init__()
-        self._cond = AsyncCondition()
-        self._counter = 0
-
-    def _reset_internal_locks(self):
-        # private!  called by Thread._reset_internal_locks by _after_fork()
-        self._cond.__init__(AsyncLock())
-
-    def counter(self):
-        return self._counter
-
-    async def increment(self):
-        async with self._cond:
-            self._counter += 1
-            self._cond.notify_all()
-
-    async def decrement(self):
-        async with self._cond:
-            self._counter -= 1
-            self._cond.notify_all()
-
-    async def clear(self):
-        async with self._cond:
-            self._counter = 0
-            self._cond.notify_all()
-
-    async def wait(self, value=0, timeout=None):
-        async with self._cond:
-            t_start = time.time()
-            while True:
-                if value == self._counter:
-                    return True
-                if timeout is None:
-                    time_left = None
-                else:
-                    time_left = timeout - (time.time() - t_start)
-                    if time_left <= 0:
-                        return False
-                try:
-                    await wait_for(self._cond.wait(), time_left)
-                except asyncio.TimeoutError:
-                    return False
+from ._common import (
+    AsyncMultiEvent,
+    MultiEvent,
+)
 
 
 class TestMixedConnectionPoolTestCase:
@@ -156,7 +59,7 @@ class TestMixedConnectionPoolTestCase:
         def acquire_release_conn(pool_, address_, acquired_counter_,
                                  release_event_):
             nonlocal connections, connections_lock
-            conn_ = pool_._acquire(address_, Deadline(3), None)
+            conn_ = pool_._acquire(address_, None, Deadline(3), None)
             with connections_lock:
                 if connections is not None:
                     connections.append(conn_)
@@ -171,7 +74,7 @@ class TestMixedConnectionPoolTestCase:
 
             # pre-populate the pool with connections
             for _ in range(pre_populated):
-                conn = pool._acquire(address, Deadline(3), None)
+                conn = pool._acquire(address, None, Deadline(3), None)
                 pre_populated_connections.append(conn)
             for conn in pre_populated_connections:
                 pool.release(conn)
@@ -217,7 +120,7 @@ class TestMixedConnectionPoolTestCase:
         async def acquire_release_conn(pool_, address_, acquired_counter_,
                                        release_event_):
             nonlocal connections
-            conn_ = await pool_._acquire(address_, Deadline(3), None)
+            conn_ = await pool_._acquire(address_, None, Deadline(3), None)
             if connections is not None:
                 connections.append(conn_)
             await acquired_counter_.increment()
@@ -251,7 +154,7 @@ class TestMixedConnectionPoolTestCase:
 
             # pre-populate the pool with connections
             for _ in range(pre_populated):
-                conn = await pool._acquire(address, Deadline(3), None)
+                conn = await pool._acquire(address, None, Deadline(3), None)
                 pre_populated_connections.append(conn)
             for conn in pre_populated_connections:
                 await pool.release(conn)

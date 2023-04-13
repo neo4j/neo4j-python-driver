@@ -409,7 +409,7 @@ def test_with_bookmark_manager(
     additional_session_bookmarks, mocker
 ):
     def update_routing_table_side_effect(
-        database, imp_user, bookmarks, acquisition_timeout=None,
+        database, imp_user, bookmarks, auth=None, acquisition_timeout=None,
         database_callback=None
     ):
         if home_db_gets_resolved:

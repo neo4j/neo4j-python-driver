@@ -19,10 +19,7 @@
 from __future__ import annotations
 
 import typing as t
-from collections import (
-    deque,
-    namedtuple,
-)
+from collections import deque
 from warnings import warn
 
 
@@ -281,7 +278,7 @@ class Result:
 
         Might end up with more records in the buffer if the fetch size makes it
         overshoot.
-        Might ent up with fewer records in the buffer if there are not enough
+        Might end up with fewer records in the buffer if there are not enough
         records available.
         """
         if self._out_of_scope:

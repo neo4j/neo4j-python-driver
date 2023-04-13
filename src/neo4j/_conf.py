@@ -407,6 +407,9 @@ class PoolConfig(Config):
     keep_alive = True
     # Specify whether TCP keep-alive should be enabled.
 
+    #: Authentication provider
+    auth = None
+
     #: Lowest notification severity for the server to return
     notifications_min_severity = None
 
@@ -510,6 +513,9 @@ class SessionConfig(WorkspaceConfig):
 
     #: Default AccessMode
     default_access_mode = WRITE_ACCESS
+
+    #: Auth token to temporarily switch the user
+    auth = None
 
     #: Lowest notification severity for the server to return
     notifications_min_severity = None

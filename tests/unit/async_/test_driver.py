@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import ssl
 import typing as t
-from contextlib import contextmanager
 
 import pytest
 import typing_extensions as te
@@ -213,6 +212,7 @@ async def test_driver_opens_write_session_by_default(uri, fake_pool, mocker):
         timeout=mocker.ANY,
         database=mocker.ANY,
         bookmarks=mocker.ANY,
+        auth=mocker.ANY,
         liveness_check_timeout=mocker.ANY
     )
     tx._begin.assert_awaited_once_with(
@@ -932,7 +932,7 @@ async def test_execute_query_result_transformer(
             if positional:
                 bmm = driver.execute_query_bookmark_manager
                 res_custom = await driver.execute_query(
-                    "", None, "w", None, None, bmm, result_transformer
+                    "", None, "w", None, None, bmm, None, result_transformer
                 )
             else:
                 res_custom = await driver.execute_query(
@@ -949,3 +949,18 @@ async def test_execute_query_result_transformer(
         _work, mocker.ANY, mocker.ANY, result_transformer
     )
     assert res is session_executor_mock.return_value
+
+
+@mark_async_test
+async def test_supports_session_auth(mocker) -> None:
+    driver = AsyncGraphDatabase.driver("bolt://localhost")
+    session_cls_mock = mocker.patch("neo4j._async.driver.AsyncSession",
+                                    autospec=True)
+    async with driver as driver:
+        res = await driver.supports_session_auth()
+
+    session_cls_mock.assert_called_once()
+    session_cls_mock.return_value.__aenter__.assert_awaited_once()
+    session_mock = session_cls_mock.return_value.__aenter__.return_value
+    connection_mock = session_mock._connection
+    assert res is connection_mock.supports_re_auth

@@ -40,7 +40,7 @@ The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the
 
                 await driver.close()  # close the driver object
 
-             asyncio.run(main())
+            asyncio.run(main())
 
 
         For basic authentication, ``auth`` can be a simple tuple, for example:
@@ -67,7 +67,7 @@ The :class:`neo4j.AsyncDriver` construction is done via a ``classmethod`` on the
                 async with AsyncGraphDatabase.driver(uri, auth=auth) as driver:
                     ...  # use the driver
 
-             asyncio.run(main())
+            asyncio.run(main())
 
 
 
@@ -118,6 +118,20 @@ Each supported scheme maps to a particular :class:`neo4j.AsyncDriver` subclass t
     See https://neo4j.com/docs/operations-manual/current/configuration/ports/ for Neo4j ports.
 
 
+.. _async-auth-ref:
+
+Async Auth
+==========
+
+Authentication works the same as in the synchronous driver.
+With the exception that when using AuthManagers, their asynchronous equivalents have to be used.
+
+.. autoclass:: neo4j.auth_management.AsyncAuthManager
+    :members:
+
+.. autoclass:: neo4j.auth_management.AsyncAuthManagers
+    :members:
+
 
 ***********
 AsyncDriver
@@ -136,7 +150,8 @@ Closing a driver will immediately shut down all connections in the pool.
 
 .. autoclass:: neo4j.AsyncDriver()
     :members: session, query_bookmark_manager, encrypted, close,
-              verify_connectivity, get_server_info
+              verify_connectivity, get_server_info, verify_authentication,
+              supports_session_auth, supports_multi_db
 
     .. method:: execute_query(query, parameters_=None, routing_=neo4j.RoutingControl.WRITE, database_=None, impersonated_user_=None, bookmark_manager_=self.query_bookmark_manager, result_transformer_=AsyncResult.to_eager_result, **kwargs)
         :async:
@@ -157,7 +172,7 @@ Closing a driver will immediately shut down all connections in the pool.
 
             async def execute_query(
                 query_, parameters_, routing_, database_, impersonated_user_,
-                bookmark_manager_, result_transformer_, **kwargs
+                bookmark_manager_, auth_, result_transformer_, **kwargs
             ):
                 async def work(tx):
                     result = await tx.run(query_, parameters_, **kwargs)
@@ -167,6 +182,7 @@ Closing a driver will immediately shut down all connections in the pool.
                     database=database_,
                     impersonated_user=impersonated_user_,
                     bookmark_manager=bookmark_manager_,
+                    auth=auth_,
                 ) as session:
                     if routing_ == RoutingControl.WRITE:
                         return await session.execute_write(work)
@@ -202,13 +218,14 @@ Closing a driver will immediately shut down all connections in the pool.
             async def example(driver: neo4j.AsyncDriver) -> int:
                 """Call all young people "My dear" and get their count."""
                 record = await driver.execute_query(
-                    "MATCH (p:Person) WHERE p.age <= 15 "
+                    "MATCH (p:Person) WHERE p.age <= $age "
                     "SET p.nickname = 'My dear' "
                     "RETURN count(*)",
                     # optional routing parameter, as write is default
                     # routing_=neo4j.RoutingControl.WRITE,  # or just "w",
                     database_="neo4j",
                     result_transformer_=neo4j.AsyncResult.single,
+                    age=15,
                 )
                 assert record is not None  # for typechecking and illustration
                 count = record[0]
@@ -245,6 +262,20 @@ Closing a driver will immediately shut down all connections in the pool.
 
             See also the Session config :ref:`impersonated-user-ref`.
         :type impersonated_user_: typing.Optional[str]
+        :param auth_:
+            Authentication information to use for this query.
+
+            By default, the driver configuration is used.
+
+            **This is a preview** (see :ref:`filter-warnings-ref`).
+            It might be changed without following the deprecation policy.
+            See also
+            https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+            See also the Session config :ref:`session-auth-ref`.
+        :type auth_: typing.Union[
+            typing.Tuple[typing.Any, typing.Any], neo4j.Auth, None
+        ]
         :param result_transformer_:
             A function that gets passed the :class:`neo4j.AsyncResult` object
             resulting from the query and converts it to a different type. The
@@ -315,7 +346,7 @@ Closing a driver will immediately shut down all connections in the pool.
 
             Defaults to the driver's :attr:`.query_bookmark_manager`.
 
-            Pass :const:`None` to disable causal consistency.
+            Pass :data:`None` to disable causal consistency.
         :type bookmark_manager_:
             typing.Union[neo4j.AsyncBookmarkManager, neo4j.BookmarkManager,
                          None]
@@ -331,7 +362,9 @@ Closing a driver will immediately shut down all connections in the pool.
 
         .. versionadded:: 5.5
 
-        .. versionchanged:: 5.8 stabilized from experimental
+        .. versionchanged:: 5.8
+            * Added the ``auth_`` parameter.
+            * Stabilized from experimental.
 
 
 .. _async-driver-configuration-ref:
@@ -340,8 +373,11 @@ Async Driver Configuration
 ==========================
 
 :class:`neo4j.AsyncDriver` is configured exactly like :class:`neo4j.Driver`
-(see :ref:`driver-configuration-ref`). The only difference is that the async
-driver accepts an async custom resolver function:
+(see :ref:`driver-configuration-ref`). The only differences are that the async
+driver accepts
+
+ * a sync as well as an async custom resolver function (see :ref:`async-resolver-ref`)
+ * as sync as well as an async auth token manager (see :class:`neo4j.AsyncAuthManager`).
 
 
 .. _async-resolver-ref:
