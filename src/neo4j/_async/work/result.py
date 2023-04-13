@@ -19,10 +19,7 @@
 from __future__ import annotations
 
 import typing as t
-from collections import (
-    deque,
-    namedtuple,
-)
+from collections import deque
 from warnings import warn
 
 
@@ -35,7 +32,6 @@ from ..._data import (
     Record,
     RecordTableRowExporter,
 )
-from ..._meta import experimental
 from ..._work import (
     EagerResult,
     ResultSummary,
@@ -608,10 +604,6 @@ class AsyncResult:
         """
         return [record.data(*keys) async for record in self]
 
-    @experimental(
-        "Result.to_eager_result is experimental. "
-        "It might be changed or removed any time even without prior notice."
-    )
     async def to_eager_result(self) -> EagerResult:
         """Convert this result to an :class:`.EagerResult`.
 
@@ -624,10 +616,9 @@ class AsyncResult:
             was obtained has been closed or the Result has been explicitly
             consumed.
 
-        **This is experimental** (see :ref:`filter-warnings-ref`).
-        It might be changed or removed any time even without prior notice.
-
         .. versionadded:: 5.5
+
+        .. versionchanged:: 5.8 stabilized from experimental
         """
 
         await self._buffer_all()

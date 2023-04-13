@@ -351,12 +351,7 @@ def ExecuteQuery(backend, data):
             bookmark_manager = backend.bookmark_managers[bookmark_manager_id]
             kwargs["bookmark_manager_"] = bookmark_manager
 
-    with warning_check(
-        neo4j.ExperimentalWarning,
-        "Driver.execute_query is experimental. "
-        "It might be changed or removed any time even without prior notice."
-    ):
-        eager_result = driver.execute_query(cypher, params, **kwargs)
+    eager_result = driver.execute_query(cypher, params, **kwargs)
     backend.send_response("EagerResult", {
         "keys": eager_result.keys,
         "records": list(map(totestkit.record, eager_result.records)),
@@ -441,14 +436,7 @@ def NewBookmarkManager(backend, data):
             backend, bookmark_manager_id
         )
 
-    with warning_check(
-        neo4j.ExperimentalWarning,
-        "The bookmark manager feature is experimental. It might be changed or "
-        "removed any time even without prior notice."
-    ):
-        bookmark_manager = neo4j.GraphDatabase.bookmark_manager(
-            **bmm_kwargs
-        )
+    bookmark_manager = neo4j.GraphDatabase.bookmark_manager(**bmm_kwargs)
     backend.bookmark_managers[bookmark_manager_id] = bookmark_manager
     backend.send_response("BookmarkManager", {"id": bookmark_manager_id})
 
@@ -556,11 +544,6 @@ def NewSession(backend, data):
         config["bookmark_manager"] = backend.bookmark_managers[
             data["bookmarkManagerId"]
         ]
-        expected_warnings.append((
-            neo4j.ExperimentalWarning,
-            "The 'bookmark_manager' config key is experimental. It might be "
-            "changed or removed any time even without prior notice."
-        ))
     for (conf_name, data_name) in (
         ("fetch_size", "fetchSize"),
         ("impersonated_user", "impersonatedUser"),

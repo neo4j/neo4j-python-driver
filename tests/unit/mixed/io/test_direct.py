@@ -26,9 +26,7 @@ from threading import (
 
 import pytest
 
-from neo4j._async.io._pool import AcquireAuth as AsyncAcquireAuth
 from neo4j._deadline import Deadline
-from neo4j._sync.io._pool import AcquireAuth
 
 from ...async_.io.test_direct import AsyncFakeBoltPool
 from ...sync.io.test_direct import FakeBoltPool

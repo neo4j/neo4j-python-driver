@@ -15,8 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 """ Base classes and helpers.
 """
+
 
 from __future__ import annotations
 
@@ -408,9 +410,6 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     .. note::
         All methods must be concurrency safe.
 
-    **This is experimental.**
-    It might be changed or removed any time even without prior notice.
-
     .. versionadded:: 5.0
 
     .. versionchanged:: 5.3
@@ -422,6 +421,8 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
         * :meth:`.get_bookmarks` has no longer a ``database`` argument.
         * The ``get_all_bookmarks`` method was removed.
         * The ``forget`` method was removed.
+
+    .. versionchanged:: 5.8 stabilized from experimental
     """
 
     @abc.abstractmethod
@@ -453,13 +454,12 @@ class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     The driver comes with a default implementation of the async bookmark
     manager accessible through :attr:`.AsyncGraphDatabase.bookmark_manager()`.
 
-    **This is experimental.**
-    It might be changed or removed any time even without prior notice.
-
     .. versionadded:: 5.0
 
     .. versionchanged:: 5.3
         See :class:`.BookmarkManager` for changes.
+
+    .. versionchanged:: 5.8 stabilized from experimental
     """
 
     @abc.abstractmethod

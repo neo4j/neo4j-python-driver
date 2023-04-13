@@ -44,9 +44,7 @@ from .._conf import (
 )
 from .._meta import (
     deprecation_warn,
-    experimental,
     experimental_warn,
-    ExperimentalWarning,
     preview,
     preview_warn,
     PreviewWarning,
@@ -293,10 +291,6 @@ class AsyncGraphDatabase:
                                     routing_context=routing_context, **config)
 
     @classmethod
-    @experimental(
-        "The bookmark manager feature is experimental. "
-        "It might be changed or removed any time even without prior notice."
-    )
     def bookmark_manager(
         cls,
         initial_bookmarks: t.Union[None, Bookmarks, t.Iterable[str]] = None,
@@ -357,9 +351,6 @@ class AsyncGraphDatabase:
 
         :returns: A default implementation of :class:`AsyncBookmarkManager`.
 
-        **This is experimental** (see :ref:`filter-warnings-ref`).
-        It might be changed or removed any time even without prior notice.
-
         .. versionadded:: 5.0
 
         .. versionchanged:: 5.3
@@ -373,6 +364,8 @@ class AsyncGraphDatabase:
               an argument.
             * ``bookmarks_consumer`` no longer receives the database name as
               an argument.
+
+        .. versionchanged:: 5.8 stabilized from experimental
         """
         return AsyncNeo4jBookmarkManager(
             initial_bookmarks=initial_bookmarks,
@@ -480,12 +473,7 @@ class AsyncDriver:
         assert default_workspace_config is not None
         self._pool = pool
         self._default_workspace_config = default_workspace_config
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore",
-                                    message=r".*\bbookmark manager\b.*",
-                                    category=ExperimentalWarning)
-            self._query_bookmark_manager = \
-                AsyncGraphDatabase.bookmark_manager()
+        self._query_bookmark_manager = AsyncGraphDatabase.bookmark_manager()
 
     async def __aenter__(self) -> AsyncDriver:
         return self
@@ -579,7 +567,7 @@ class AsyncDriver:
         self,
         query_: str,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
-        routing_: T_RoutingControl = RoutingControl.WRITERS,
+        routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
         impersonated_user_: t.Optional[str] = None,
         bookmark_manager_: t.Union[
@@ -598,7 +586,7 @@ class AsyncDriver:
         self,
         query_: str,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
-        routing_: T_RoutingControl = RoutingControl.WRITERS,
+        routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
         impersonated_user_: t.Optional[str] = None,
         bookmark_manager_: t.Union[
@@ -612,15 +600,11 @@ class AsyncDriver:
     ) -> _T:
         ...
 
-    @experimental(
-        "Driver.execute_query is experimental. "
-        "It might be changed or removed any time even without prior notice."
-    )
     async def execute_query(
         self,
         query_: str,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
-        routing_: T_RoutingControl = RoutingControl.WRITERS,
+        routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
         impersonated_user_: t.Optional[str] = None,
         bookmark_manager_: t.Union[
@@ -661,9 +645,9 @@ class AsyncDriver:
                     bookmark_manager=bookmark_manager_,
                     auth=auth_,
                 ) as session:
-                    if routing_ == RoutingControl.WRITERS:
+                    if routing_ == RoutingControl.WRITE:
                         return await session.execute_write(work)
-                    elif routing_ == RoutingControl.READERS:
+                    elif routing_ == RoutingControl.READ:
                         return await session.execute_read(work)
 
         Usage example::
@@ -678,7 +662,7 @@ class AsyncDriver:
                 records, summary, keys = await driver.execute_query(
                     "MATCH (p:Person {age: $age}) RETURN p.name",
                     {"age": 42},
-                    routing_=neo4j.RoutingControl.READERS,  # or just "r"
+                    routing_=neo4j.RoutingControl.READ,  # or just "r"
                     database_="neo4j",
                 )
                 assert keys == ["p.name"]  # not needed, just for illustration
@@ -699,7 +683,7 @@ class AsyncDriver:
                     "SET p.nickname = 'My dear' "
                     "RETURN count(*)",
                     # optional routing parameter, as write is default
-                    # routing_=neo4j.RoutingControl.WRITERS,  # or just "w",
+                    # routing_=neo4j.RoutingControl.WRITE,  # or just "w",
                     database_="neo4j",
                     result_transformer_=neo4j.AsyncResult.single,
                     age=15,
@@ -837,17 +821,11 @@ class AsyncDriver:
         :returns: the result of the ``result_transformer``
         :rtype: T
 
-        **This is experimental** (see :ref:`filter-warnings-ref`).
-        It might be changed or removed any time even without prior notice.
-
-        We are looking for feedback on this feature. Please let us know what
-        you think about it here:
-        https://github.com/neo4j/neo4j-python-driver/discussions/896
-
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
-            Added the ``auth_`` parameter.
+            * Added the ``auth_`` parameter.
+            * Stabilized from experimental.
         """
         invalid_kwargs = [k for k in kwargs if
                           k[-2:-1] != "_" and k[-1:] == "_"]
@@ -867,9 +845,6 @@ class AsyncDriver:
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore",
-                                    message=r".*\bbookmark_manager\b.*",
-                                    category=ExperimentalWarning)
-            warnings.filterwarnings("ignore",
                                     message=r"^User switching\b.*",
                                     category=PreviewWarning)
             session = self.session(database=database_,
@@ -877,9 +852,9 @@ class AsyncDriver:
                                    bookmark_manager=bookmark_manager_,
                                    auth=auth_)
         async with session:
-            if routing_ == RoutingControl.WRITERS:
+            if routing_ == RoutingControl.WRITE:
                 executor = session.execute_write
-            elif routing_ == RoutingControl.READERS:
+            elif routing_ == RoutingControl.READ:
                 executor = session.execute_read
             else:
                 raise ValueError("Invalid routing control value: %r"
@@ -889,11 +864,7 @@ class AsyncDriver:
             )
 
     @property
-    @experimental(
-        "Driver.query_bookmark_manager is experimental. "
-        "It might be changed or removed any time even without prior notice."
-    )
-    def query_bookmark_manager(self) -> AsyncBookmarkManager:
+    def execute_query_bookmark_manager(self) -> AsyncBookmarkManager:
         """The driver's default query bookmark manager.
 
         This is the default :class:`AsyncBookmarkManager` used by
@@ -912,10 +883,12 @@ class AsyncDriver:
                 # (i.e., can read what was written by <QUERY 2>)
                 await driver.execute_query("<QUERY 3>")
 
-        **This is experimental** (see :ref:`filter-warnings-ref`).
-        It might be changed or removed any time even without prior notice.
-
         .. versionadded:: 5.5
+
+        .. versionchanged:: 5.8
+            * Renamed from ``query_bookmark_manager`` to
+              ``execute_query_bookmark_manager``.
+            * Stabilized from experimental.
         """
         return self._query_bookmark_manager
 
@@ -1212,11 +1185,7 @@ async def _work(
 ) -> _T:
     res = await tx.run(query, parameters)
     if transformer is AsyncResult.to_eager_result:
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore",
-                                    message=r".*\bto_eager_result\b.*",
-                                    category=ExperimentalWarning)
-            return await transformer(res)
+        return await transformer(res)
     return await transformer(res)
 
 
