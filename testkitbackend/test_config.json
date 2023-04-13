@@ -21,13 +21,16 @@
     "Feature:API:Driver.ExecuteQuery": true,
     "Feature:API:Driver:GetServerInfo": true,
     "Feature:API:Driver.IsEncrypted": true,
+    "Feature:API:Driver.VerifyAuthentication": true,
     "Feature:API:Driver.VerifyConnectivity": true,
+    "Feature:API:Driver.SupportsSessionAuth": true,
     "Feature:API:Driver:NotificationsConfig": true,
     "Feature:API:Liveness.Check": false,
     "Feature:API:Result.List": true,
     "Feature:API:Result.Peek": true,
     "Feature:API:Result.Single": true,
     "Feature:API:Result.SingleOptional": true,
+    "Feature:API:Session:AuthConfig": true,
     "Feature:API:Session:NotificationsConfig": true,
     "Feature:API:SSLConfig": true,
     "Feature:API:SSLSchemes": true,
@@ -36,6 +39,7 @@
     "Feature:Auth:Bearer": true,
     "Feature:Auth:Custom": true,
     "Feature:Auth:Kerberos": true,
+    "Feature:Auth:Managed": true,
     "Feature:Bolt:3.0": true,
     "Feature:Bolt:4.1": true,
     "Feature:Bolt:4.2": true,
@@ -62,6 +66,7 @@
 
     "ConfHint:connection.recv_timeout_seconds": true,
 
+    "Backend:MockTime": true,
     "Backend:RTFetch": true,
     "Backend:RTForceUpdate": true
   }

@@ -232,15 +232,18 @@ class Neo4jError(Exception):
         """
         return False
 
-    def _invalidates_all_connections(self) -> bool:
+    def _unauthenticates_all_connections(self) -> bool:
         return self.code == "Neo.ClientError.Security.AuthorizationExpired"
+
+    def _requires_new_credentials(self) -> bool:
+        return self.code == "Neo.ClientError.Security.TokenExpired"
 
     # TODO: 6.0 - Remove this alias
     invalidates_all_connections = deprecated(
         "Neo4jError.invalidates_all_connections is deprecated and will be "
         "removed in a future version. It is an internal method and not meant "
         "for external use."
-    )(_invalidates_all_connections)
+    )(_unauthenticates_all_connections)
 
     def _is_fatal_during_discovery(self) -> bool:
         # checks if the code is an error that is caused by the client. In this
@@ -309,8 +312,24 @@ class AuthError(ClientError):
 class TokenExpired(AuthError):
     """ Raised when the authentication token has expired.
 
-    A new driver instance with a fresh authentication token needs to be created.
+    A new driver instance with a fresh authentication token needs to be
+    created, unless the driver was configured using a non-static
+    :class:`.AuthManager`. In that case, the error will be
+    :exc:`.TokenExpiredRetryable` instead.
     """
+
+
+# Neo4jError > ClientError > AuthError > TokenExpired > TokenExpiredRetryable
+class TokenExpiredRetryable(TokenExpired):
+    """Raised when the authentication token has expired but can be refreshed.
+
+    This is the same server error as :exc:`.TokenExpired`, but raised when
+    the driver is configured to be able to refresh the token, hence making
+    the error retryable.
+    """
+
+    def is_retryable(self) -> bool:
+        return True
 
 
 # Neo4jError > ClientError > Forbidden

@@ -17,6 +17,7 @@
 
 
 import neo4j
+from neo4j._sync.auth_management import StaticAuthManager
 
 from . import DriverSetupExample
 
@@ -54,7 +55,8 @@ def test_example(uri, mocker):
     assert len(calls) == 1
     args_, kwargs = calls[0]
     auth = kwargs.get("auth")
-    assert isinstance(auth, neo4j.Auth)
+    assert isinstance(auth, StaticAuthManager)
+    auth = auth._auth
     assert auth.scheme == "bearer"
     assert not hasattr(auth, "principal")
     assert auth.credentials == token

@@ -56,6 +56,7 @@ test_pool_config = {
     "user_agent": "test",
     "trusted_certificates": TrustSystemCAs(),
     "ssl_context": None,
+    "auth": None,
     "notifications_min_severity": None,
     "notifications_disabled_categories": None,
 }
@@ -72,6 +73,7 @@ test_session_config = {
     "impersonated_user": None,
     "fetch_size": 100,
     "bookmark_manager": object(),
+    "auth": None,
     "notifications_min_severity": None,
     "notifications_disabled_categories": None,
 }

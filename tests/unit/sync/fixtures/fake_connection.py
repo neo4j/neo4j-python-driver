@@ -23,6 +23,7 @@ import pytest
 from neo4j import ServerInfo
 from neo4j._deadline import Deadline
 from neo4j._sync.io import Bolt
+from neo4j.auth_management import AuthManager
 
 
 __all__ = [
@@ -50,7 +51,10 @@ def fake_connection_generator(session_mocker):
             self.attach_mock(mock.Mock(return_value=False), "stale")
             self.attach_mock(mock.Mock(return_value=False), "closed")
             self.attach_mock(mock.Mock(return_value=False), "socket")
-            self.attach_mock(mock.Mock(), "unresolved_address")
+            self.attach_mock(mock.Mock(return_value=False), "re_auth")
+            self.attach_mock(mock.MagicMock(spec=AuthManager),
+                             "auth_manager")
+            self.unresolved_address = next(iter(args), "localhost")
 
             def close_side_effect():
                 self.closed.return_value = True

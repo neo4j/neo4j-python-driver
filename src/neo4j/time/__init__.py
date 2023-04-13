@@ -1392,7 +1392,7 @@ class Time(time_base_class, metaclass=TimeType):
 
     :raises ValueError: if one of the parameters is out of range.
 
-    ..versionchanged:: 5.0
+    .. versionchanged:: 5.0
         The parameter ``second`` no longer accepts :class:`float` values.
     """
 
@@ -1512,7 +1512,7 @@ class Time(time_base_class, metaclass=TimeType):
         :raises ValueError: if ticks is out of bounds
             (0 <= ticks < 86400000000000)
 
-        ..versionchanged:: 5.0
+        .. versionchanged:: 5.0
             The parameter ``ticks`` no longer accepts :class:`float` values
             but only :class:`int`. It's now nanoseconds since midnight instead
             of seconds.
@@ -2545,7 +2545,7 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
         :param tz: the new timezone
 
-        :returns: the same object if ``tz`` is :const:``None``.
+        :returns: the same object if ``tz`` is :data:``None``.
             Else, a new :class:`.DateTime` that's the same point in time but in
             a different timezone.
         """

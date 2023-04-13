@@ -18,6 +18,7 @@
 
 import pytest
 
+from neo4j import PreviewWarning
 from neo4j._async.io import AsyncBolt
 from neo4j._async.io._pool import AsyncIOPool
 from neo4j._conf import (
@@ -26,6 +27,7 @@ from neo4j._conf import (
     WorkspaceConfig,
 )
 from neo4j._deadline import Deadline
+from neo4j.auth_management import AsyncAuthManagers
 from neo4j.exceptions import (
     ClientError,
     ServiceUnavailable,
@@ -65,6 +67,9 @@ class AsyncQuickConnection:
     async def reset(self):
         pass
 
+    def re_auth(self, auth, auth_manager, force=False):
+        return False
+
     def close(self):
         self.socket.close()
 
@@ -79,39 +84,46 @@ class AsyncQuickConnection:
 
 
 class AsyncFakeBoltPool(AsyncIOPool):
-
     def __init__(self, address, *, auth=None, **config):
+        config["auth"] = static_auth(None)
         self.pool_config, self.workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         if config:
             raise ValueError("Unexpected config keys: %s" % ", ".join(config.keys()))
 
-        async def opener(addr, timeout):
+        async def opener(addr, auth, timeout):
             return AsyncQuickConnection(AsyncFakeSocket(addr))
 
         super().__init__(opener, self.pool_config, self.workspace_config)
         self.address = address
 
     async def acquire(
-        self, access_mode, timeout, database, bookmarks, liveness_check_timeout
+        self, access_mode, timeout, database, bookmarks, auth,
+        liveness_check_timeout
     ):
         return await self._acquire(
-            self.address, timeout, liveness_check_timeout
+            self.address, auth, timeout, liveness_check_timeout
         )
+
+def static_auth(auth):
+    with pytest.warns(PreviewWarning, match="Auth managers"):
+        return AsyncAuthManagers.static(auth)
+
+@pytest.fixture
+def auth_manager():
+    static_auth(("test", "test"))
+
+@mark_async_test
+async def test_bolt_connection_open(auth_manager):
+    with pytest.raises(ServiceUnavailable):
+        await AsyncBolt.open(("localhost", 9999), auth_manager=auth_manager)
 
 
 @mark_async_test
-async def test_bolt_connection_open():
+async def test_bolt_connection_open_timeout(auth_manager):
     with pytest.raises(ServiceUnavailable):
         await AsyncBolt.open(
-            ("localhost", 9999), auth=("test", "test")
-        )
-
-
-@mark_async_test
-async def test_bolt_connection_open_timeout():
-    with pytest.raises(ServiceUnavailable):
-        await AsyncBolt.open(
-            ("localhost", 9999), auth=("test", "test"), deadline=Deadline(1)
+            ("localhost", 9999), auth_manager=auth_manager,
+            deadline=Deadline(1)
         )
 
 
@@ -150,7 +162,7 @@ def assert_pool_size( address, expected_active, expected_inactive, pool):
 @mark_async_test
 async def test_pool_can_acquire(pool):
     address = ("127.0.0.1", 7687)
-    connection = await pool._acquire(address, Deadline(3), None)
+    connection = await pool._acquire(address, None, Deadline(3), None)
     assert connection.address == address
     assert_pool_size(address, 1, 0, pool)
 
@@ -158,8 +170,8 @@ async def test_pool_can_acquire(pool):
 @mark_async_test
 async def test_pool_can_acquire_twice(pool):
     address = ("127.0.0.1", 7687)
-    connection_1 = await pool._acquire(address, Deadline(3), None)
-    connection_2 = await pool._acquire(address, Deadline(3), None)
+    connection_1 = await pool._acquire(address, None, Deadline(3), None)
+    connection_2 = await pool._acquire(address, None, Deadline(3), None)
     assert connection_1.address == address
     assert connection_2.address == address
     assert connection_1 is not connection_2
@@ -170,8 +182,8 @@ async def test_pool_can_acquire_twice(pool):
 async def test_pool_can_acquire_two_addresses(pool):
     address_1 = ("127.0.0.1", 7687)
     address_2 = ("127.0.0.1", 7474)
-    connection_1 = await pool._acquire(address_1, Deadline(3), None)
-    connection_2 = await pool._acquire(address_2, Deadline(3), None)
+    connection_1 = await pool._acquire(address_1, None, Deadline(3), None)
+    connection_2 = await pool._acquire(address_2, None, Deadline(3), None)
     assert connection_1.address == address_1
     assert connection_2.address == address_2
     assert_pool_size(address_1, 1, 0, pool)
@@ -181,7 +193,7 @@ async def test_pool_can_acquire_two_addresses(pool):
 @mark_async_test
 async def test_pool_can_acquire_and_release(pool):
     address = ("127.0.0.1", 7687)
-    connection = await pool._acquire(address, Deadline(3), None)
+    connection = await pool._acquire(address, None, Deadline(3), None)
     assert_pool_size(address, 1, 0, pool)
     await pool.release(connection)
     assert_pool_size(address, 0, 1, pool)
@@ -190,7 +202,7 @@ async def test_pool_can_acquire_and_release(pool):
 @mark_async_test
 async def test_pool_releasing_twice(pool):
     address = ("127.0.0.1", 7687)
-    connection = await pool._acquire(address, Deadline(3), None)
+    connection = await pool._acquire(address, None, Deadline(3), None)
     await pool.release(connection)
     assert_pool_size(address, 0, 1, pool)
     await pool.release(connection)
@@ -201,7 +213,7 @@ async def test_pool_releasing_twice(pool):
 async def test_pool_in_use_count(pool):
     address = ("127.0.0.1", 7687)
     assert pool.in_use_connection_count(address) == 0
-    connection = await pool._acquire(address, Deadline(3), None)
+    connection = await pool._acquire(address, None, Deadline(3), None)
     assert pool.in_use_connection_count(address) == 1
     await pool.release(connection)
     assert pool.in_use_connection_count(address) == 0
@@ -211,10 +223,10 @@ async def test_pool_in_use_count(pool):
 async def test_pool_max_conn_pool_size(pool):
     async with AsyncFakeBoltPool((), max_connection_pool_size=1) as pool:
         address = ("127.0.0.1", 7687)
-        await pool._acquire(address, Deadline(0), None)
+        await pool._acquire(address, None, Deadline(0), None)
         assert pool.in_use_connection_count(address) == 1
         with pytest.raises(ClientError):
-            await pool._acquire(address, Deadline(0), None)
+            await pool._acquire(address, None, Deadline(0), None)
         assert pool.in_use_connection_count(address) == 1
 
 
@@ -232,7 +244,7 @@ async def test_pool_reset_when_released(is_reset, pool, mocker):
         new_callable=mocker.AsyncMock
     )
     is_reset_mock.return_value = is_reset
-    connection = await pool._acquire(address, Deadline(3), None)
+    connection = await pool._acquire(address, None, Deadline(3), None)
     assert isinstance(connection, AsyncQuickConnection)
     assert is_reset_mock.call_count == 0
     assert reset_mock.call_count == 0

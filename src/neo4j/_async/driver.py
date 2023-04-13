@@ -32,7 +32,6 @@ if t.TYPE_CHECKING:
         T_NotificationMinimumSeverity,
     )
 
-
 from .._api import RoutingControl
 from .._async_compat.util import AsyncUtil
 from .._conf import (
@@ -48,6 +47,9 @@ from .._meta import (
     experimental,
     experimental_warn,
     ExperimentalWarning,
+    preview,
+    preview_warn,
+    PreviewWarning,
     unclosed_resource_warn,
 )
 from .._work import EagerResult
@@ -74,6 +76,11 @@ from ..api import (
     URI_SCHEME_NEO4J_SECURE,
     URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
 )
+from ..auth_management import (
+    AsyncAuthManager,
+    AsyncAuthManagers,
+)
+from ..exceptions import Neo4jError
 from .bookmark_manager import (
     AsyncNeo4jBookmarkManager,
     TBmConsumer as _TBmConsumer,
@@ -93,6 +100,7 @@ if t.TYPE_CHECKING:
     import typing_extensions as te
 
     from .._api import T_RoutingControl
+    from ..api import _TAuth
 
 
     class _DefaultEnum(Enum):
@@ -117,7 +125,13 @@ class AsyncGraphDatabase:
             cls,
             uri: str,
             *,
-            auth: t.Union[t.Tuple[t.Any, t.Any], Auth, None] = ...,
+            auth: t.Union[
+                # work around https://github.com/sphinx-doc/sphinx/pull/10880
+                # make sure TAuth is resolved in the docs
+                # TAuth,
+                t.Union[t.Tuple[t.Any, t.Any], Auth, None],
+                AsyncAuthManager,
+            ] = ...,
             max_connection_lifetime: float = ...,
             max_connection_pool_size: int = ...,
             connection_timeout: float = ...,
@@ -161,7 +175,13 @@ class AsyncGraphDatabase:
         @classmethod
         def driver(
             cls, uri: str, *,
-            auth: t.Union[t.Tuple[t.Any, t.Any], Auth, None] = None,
+            auth: t.Union[
+                # work around https://github.com/sphinx-doc/sphinx/pull/10880
+                # make sure TAuth is resolved in the docs
+                # TAuth,
+                t.Union[t.Tuple[t.Any, t.Any], Auth, None],
+                AsyncAuthManager,
+            ] = None,
             **config
         ) -> AsyncDriver:
             """Create a driver.
@@ -176,6 +196,18 @@ class AsyncGraphDatabase:
             """
 
             driver_type, security_type, parsed = parse_neo4j_uri(uri)
+
+            if not isinstance(auth, AsyncAuthManager):
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                        "ignore", message=r".*\bAuth managers\b.*",
+                        category=PreviewWarning
+                    )
+                    auth = AsyncAuthManagers.static(auth)
+            else:
+                preview_warn("Auth managers are a preview feature.",
+                             stack_level=2)
+            config["auth"] = auth
 
             # TODO: 6.0 - remove "trust" config option
             if "trust" in config.keys():
@@ -254,10 +286,10 @@ class AsyncGraphDatabase:
                     #     'Routing parameters are not supported with scheme '
                     #     '"bolt". Given URI "{}".'.format(uri)
                     # )
-                return cls.bolt_driver(parsed.netloc, auth=auth, **config)
+                return cls.bolt_driver(parsed.netloc, **config)
             # else driver_type == DRIVER_NEO4J
             routing_context = parse_routing_context(parsed.query)
-            return cls.neo4j_driver(parsed.netloc, auth=auth,
+            return cls.neo4j_driver(parsed.netloc,
                                     routing_context=routing_context, **config)
 
     @classmethod
@@ -325,7 +357,7 @@ class AsyncGraphDatabase:
 
         :returns: A default implementation of :class:`AsyncBookmarkManager`.
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        **This is experimental** (see :ref:`filter-warnings-ref`).
         It might be changed or removed any time even without prior notice.
 
         .. versionadded:: 5.0
@@ -349,7 +381,7 @@ class AsyncGraphDatabase:
         )
 
     @classmethod
-    def bolt_driver(cls, target, *, auth=None, **config):
+    def bolt_driver(cls, target, **config):
         """ Create a driver for direct Bolt server access that uses
         socket I/O and thread-based concurrency.
         """
@@ -359,13 +391,13 @@ class AsyncGraphDatabase:
         )
 
         try:
-            return AsyncBoltDriver.open(target, auth=auth, **config)
+            return AsyncBoltDriver.open(target, **config)
         except (BoltHandshakeError, BoltSecurityError) as error:
             from ..exceptions import ServiceUnavailable
             raise ServiceUnavailable(str(error)) from error
 
     @classmethod
-    def neo4j_driver(cls, *targets, auth=None, routing_context=None, **config):
+    def neo4j_driver(cls, *targets, routing_context=None, **config):
         """ Create a driver for routing-capable Neo4j service access
         that uses socket I/O and thread-based concurrency.
         """
@@ -375,7 +407,7 @@ class AsyncGraphDatabase:
         )
 
         try:
-            return AsyncNeo4jDriver.open(*targets, auth=auth, routing_context=routing_context, **config)
+            return AsyncNeo4jDriver.open(*targets, routing_context=routing_context, **config)
         except (BoltHandshakeError, BoltSecurityError) as error:
             from ..exceptions import ServiceUnavailable
             raise ServiceUnavailable(str(error)) from error
@@ -482,6 +514,9 @@ class AsyncDriver:
         return bool(self._pool.pool_config.encrypted)
 
     def _prepare_session_config(self, **config):
+        if "auth" in config:
+            preview_warn("User switching is a preview features.",
+                         stack_level=3)
         _normalize_notifications_config(config)
         return config
 
@@ -499,6 +534,7 @@ class AsyncDriver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
+            auth: _TAuth = ...,
             notifications_min_severity: t.Optional[
                 T_NotificationMinimumSeverity
             ] = ...,
@@ -549,6 +585,7 @@ class AsyncDriver:
         bookmark_manager_: t.Union[
             AsyncBookmarkManager, BookmarkManager, None
         ] = ...,
+        auth_: _TAuth = None,
         result_transformer_: t.Callable[
             [AsyncResult], t.Awaitable[EagerResult]
         ] = ...,
@@ -567,6 +604,7 @@ class AsyncDriver:
         bookmark_manager_: t.Union[
             AsyncBookmarkManager, BookmarkManager, None
         ] = ...,
+        auth_: _TAuth = None,
         result_transformer_: t.Callable[
             [AsyncResult], t.Awaitable[_T]
         ] = ...,
@@ -589,6 +627,7 @@ class AsyncDriver:
             AsyncBookmarkManager, BookmarkManager, None,
             te.Literal[_DefaultEnum.default]
         ] = _default,
+        auth_: _TAuth = None,
         result_transformer_: t.Callable[
             [AsyncResult], t.Awaitable[t.Any]
         ] = AsyncResult.to_eager_result,
@@ -610,7 +649,7 @@ class AsyncDriver:
 
             async def execute_query(
                 query_, parameters_, routing_, database_, impersonated_user_,
-                bookmark_manager_, result_transformer_, **kwargs
+                bookmark_manager_, auth_, result_transformer_, **kwargs
             ):
                 async def work(tx):
                     result = await tx.run(query_, parameters_, **kwargs)
@@ -620,6 +659,7 @@ class AsyncDriver:
                     database=database_,
                     impersonated_user=impersonated_user_,
                     bookmark_manager=bookmark_manager_,
+                    auth=auth_,
                 ) as session:
                     if routing_ == RoutingControl.WRITERS:
                         return await session.execute_write(work)
@@ -655,13 +695,14 @@ class AsyncDriver:
             async def example(driver: neo4j.AsyncDriver) -> int:
                 \"""Call all young people "My dear" and get their count.\"""
                 record = await driver.execute_query(
-                    "MATCH (p:Person) WHERE p.age <= 15 "
+                    "MATCH (p:Person) WHERE p.age <= $age "
                     "SET p.nickname = 'My dear' "
                     "RETURN count(*)",
                     # optional routing parameter, as write is default
                     # routing_=neo4j.RoutingControl.WRITERS,  # or just "w",
                     database_="neo4j",
                     result_transformer_=neo4j.AsyncResult.single,
+                    age=15,
                 )
                 assert record is not None  # for typechecking and illustration
                 count = record[0]
@@ -698,6 +739,20 @@ class AsyncDriver:
 
             See also the Session config :ref:`impersonated-user-ref`.
         :type impersonated_user_: typing.Optional[str]
+        :param auth_:
+            Authentication information to use for this query.
+
+            By default, the driver configuration is used.
+
+            **This is a preview** (see :ref:`filter-warnings-ref`).
+            It might be changed without following the deprecation policy.
+            See also
+            https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+            See also the Session config :ref:`session-auth-ref`.
+        :type auth_: typing.Union[
+            typing.Tuple[typing.Any, typing.Any], neo4j.Auth, None
+        ]
         :param result_transformer_:
             A function that gets passed the :class:`neo4j.AsyncResult` object
             resulting from the query and converts it to a different type. The
@@ -768,7 +823,7 @@ class AsyncDriver:
 
             Defaults to the driver's :attr:`.query_bookmark_manager`.
 
-            Pass :const:`None` to disable causal consistency.
+            Pass :data:`None` to disable causal consistency.
         :type bookmark_manager_:
             typing.Union[neo4j.AsyncBookmarkManager, neo4j.BookmarkManager,
                          None]
@@ -782,10 +837,17 @@ class AsyncDriver:
         :returns: the result of the ``result_transformer``
         :rtype: T
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        **This is experimental** (see :ref:`filter-warnings-ref`).
         It might be changed or removed any time even without prior notice.
 
+        We are looking for feedback on this feature. Please let us know what
+        you think about it here:
+        https://github.com/neo4j/neo4j-python-driver/discussions/896
+
         .. versionadded:: 5.5
+
+        .. versionchanged:: 5.8
+            Added the ``auth_`` parameter.
         """
         invalid_kwargs = [k for k in kwargs if
                           k[-2:-1] != "_" and k[-1:] == "_"]
@@ -807,9 +869,13 @@ class AsyncDriver:
             warnings.filterwarnings("ignore",
                                     message=r".*\bbookmark_manager\b.*",
                                     category=ExperimentalWarning)
+            warnings.filterwarnings("ignore",
+                                    message=r"^User switching\b.*",
+                                    category=PreviewWarning)
             session = self.session(database=database_,
                                    impersonated_user=impersonated_user_,
-                                   bookmark_manager=bookmark_manager_)
+                                   bookmark_manager=bookmark_manager_,
+                                   auth=auth_)
         async with session:
             if routing_ == RoutingControl.WRITERS:
                 executor = session.execute_write
@@ -846,7 +912,7 @@ class AsyncDriver:
                 # (i.e., can read what was written by <QUERY 2>)
                 await driver.execute_query("<QUERY 3>")
 
-        **This is experimental.** (See :ref:`filter-warnings-ref`)
+        **This is experimental** (see :ref:`filter-warnings-ref`).
         It might be changed or removed any time even without prior notice.
 
         .. versionadded:: 5.5
@@ -870,6 +936,7 @@ class AsyncDriver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
+            auth: t.Union[Auth, t.Tuple[t.Any, t.Any]] = ...,
             notifications_min_severity: t.Optional[
                 T_NotificationMinimumSeverity
             ] = ...,
@@ -886,7 +953,6 @@ class AsyncDriver:
 
     else:
 
-        # TODO: 6.0 - remove config argument
         async def verify_connectivity(self, **config) -> None:
             """Verify that the driver can establish a connection to the server.
 
@@ -905,7 +971,7 @@ class AsyncDriver:
                     They might be changed or removed in any future version
                     without prior notice.
 
-            :raises DriverError: if the driver cannot connect to the remote.
+            :raises Exception: if the driver cannot connect to the remote.
                 Use the exception to further understand the cause of the
                 connectivity problem.
 
@@ -921,8 +987,7 @@ class AsyncDriver:
                     "changed or removed in any future version without prior "
                     "notice."
                 )
-            async with self.session(**config) as session:
-                await session._get_server_info()
+            await self._get_server_info()
 
     if t.TYPE_CHECKING:
 
@@ -941,6 +1006,7 @@ class AsyncDriver:
             default_access_mode: str = ...,
             bookmark_manager: t.Union[AsyncBookmarkManager,
                                       BookmarkManager, None] = ...,
+            auth: t.Union[Auth, t.Tuple[t.Any, t.Any]] = ...,
             notifications_min_severity: t.Optional[
                 T_NotificationMinimumSeverity
             ] = ...,
@@ -979,7 +1045,7 @@ class AsyncDriver:
                     They might be changed or removed in any future version
                     without prior notice.
 
-            :raises DriverError: if the driver cannot connect to the remote.
+            :raises Exception: if the driver cannot connect to the remote.
                 Use the exception to further understand the cause of the
                 connectivity problem.
 
@@ -988,14 +1054,12 @@ class AsyncDriver:
             if config:
                 experimental_warn(
                     "All configuration key-word arguments to "
-                    "verify_connectivity() are experimental. They might be "
+                    "get_server_info() are experimental. They might be "
                     "changed or removed in any future version without prior "
                     "notice."
                 )
-            async with self.session(**config) as session:
-                return await session._get_server_info()
+            return await self._get_server_info()
 
-    @experimental("Feature support query, based on Bolt protocol version and Neo4j server version will change in the future.")
     async def supports_multi_db(self) -> bool:
         """ Check if the server or cluster supports multi-databases.
 
@@ -1003,13 +1067,141 @@ class AsyncDriver:
             supports multi-databases, otherwise false.
 
         .. note::
-            Feature support query, based on Bolt Protocol Version and Neo4j
-            server version will change in the future.
+            Feature support query based solely on the Bolt protocol version.
+            The feature might still be disabled on the server side even if this
+            function return :const:`True`. It just guarantees that the driver
+            won't throw a :exc:`ConfigurationError` when trying to use this
+            driver feature.
         """
         async with self.session() as session:
             await session._connect(READ_ACCESS)
             assert session._connection
             return session._connection.supports_multiple_databases
+
+    if t.TYPE_CHECKING:
+
+        async def verify_authentication(
+            self,
+            auth: t.Union[Auth, t.Tuple[t.Any, t.Any], None] = None,
+            # all other arguments are experimental
+            # they may be change or removed any time without prior notice
+            session_connection_timeout: float = ...,
+            connection_acquisition_timeout: float = ...,
+            max_transaction_retry_time: float = ...,
+            database: t.Optional[str] = ...,
+            fetch_size: int = ...,
+            impersonated_user: t.Optional[str] = ...,
+            bookmarks: t.Union[t.Iterable[str], Bookmarks, None] = ...,
+            default_access_mode: str = ...,
+            bookmark_manager: t.Union[
+                AsyncBookmarkManager, BookmarkManager, None
+            ] = ...,
+
+            # undocumented/unsupported options
+            initial_retry_delay: float = ...,
+            retry_delay_multiplier: float = ...,
+            retry_delay_jitter_factor: float = ...
+        ) -> bool:
+            ...
+
+    else:
+
+        @preview("User switching is a preview feature.")
+        async def verify_authentication(
+            self,
+            auth: t.Union[Auth, t.Tuple[t.Any, t.Any], None] = None,
+            **config
+        ) -> bool:
+            """Verify that the authentication information is valid.
+
+            Like :meth:`.verify_connectivity`, but for checking authentication.
+
+            Try to establish a working read connection to the remote server or
+            a member of a cluster and exchange some data. In a cluster, there
+            is no guarantee about which server will be contacted. If the data
+            exchange is successful, the authentication information is valid and
+            :const:`True` is returned. Otherwise, the error will be matched
+            against a list of known authentication errors. If the error is on
+            that list, :const:`False` is returned indicating that the
+            authentication information is invalid. Otherwise, the error is
+            re-raised.
+
+            :param auth: authentication information to verify.
+                Same as the session config :ref:`auth-ref`.
+            :param config: accepts the same configuration key-word arguments as
+                :meth:`session`.
+
+                .. warning::
+                    All configuration key-word arguments (except ``auth``) are
+                    experimental. They might be changed or removed in any
+                    future version without prior notice.
+
+            :raises Exception: if the driver cannot connect to the remote.
+                Use the exception to further understand the cause of the
+                connectivity problem.
+
+            **This is a preview** (see :ref:`filter-warnings-ref`).
+            It might be changed without following the deprecation policy.
+            See also
+            https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+            .. versionadded:: 5.8
+            """
+            if config:
+                experimental_warn(
+                    "All configuration key-word arguments but auth to "
+                    "verify_authentication() are experimental. They might be "
+                    "changed or removed in any future version without prior "
+                    "notice."
+                )
+            config["auth"] = auth
+            if "database" not in config:
+                config["database"] = "system"
+            try:
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                        "ignore", message=r"^User switching\b.*",
+                        category=PreviewWarning
+                )
+                    session = self.session(**config)
+                async with session as session:
+                    await session._verify_authentication()
+            except Neo4jError as exc:
+                if exc.code in (
+                    "Neo.ClientError.Security.CredentialsExpired",
+                    "Neo.ClientError.Security.Forbidden",
+                    "Neo.ClientError.Security.TokenExpired",
+                    "Neo.ClientError.Security.Unauthorized",
+                ):
+                    return False
+                raise
+            return True
+
+
+    async def supports_session_auth(self) -> bool:
+        """Check if the remote supports connection re-authentication.
+
+        :returns: Returns true if the server or cluster the driver connects to
+            supports re-authentication of existing connections, otherwise
+            false.
+
+        .. note::
+            Feature support query based solely on the Bolt protocol version.
+            The feature might still be disabled on the server side even if this
+            function return :const:`True`. It just guarantees that the driver
+            won't throw a :exc:`ConfigurationError` when trying to use this
+            driver feature.
+
+        .. versionadded:: 5.x
+        """
+        async with self.session() as session:
+            await session._connect(READ_ACCESS)
+            assert session._connection
+            return session._connection.supports_re_auth
+
+    async def _get_server_info(self, **config) -> ServerInfo:
+        async with self.session(**config) as session:
+            return await session._get_server_info()
 
 
 async def _work(
@@ -1041,7 +1233,7 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
     """
 
     @classmethod
-    def open(cls, target, *, auth=None, **config):
+    def open(cls, target, **config):
         """
         :param target:
         :param auth:
@@ -1053,7 +1245,7 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
         from .io import AsyncBoltPool
         address = cls.parse_target(target)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
-        pool = AsyncBoltPool.open(address, auth=auth, pool_config=pool_config, workspace_config=default_workspace_config)
+        pool = AsyncBoltPool.open(address, pool_config=pool_config, workspace_config=default_workspace_config)
         return cls(pool, default_workspace_config)
 
     def __init__(self, pool, default_workspace_config):
@@ -1089,11 +1281,11 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
     """
 
     @classmethod
-    def open(cls, *targets, auth=None, routing_context=None, **config):
+    def open(cls, *targets, routing_context=None, **config):
         from .io import AsyncNeo4jPool
         addresses = cls.parse_targets(*targets)
         pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
-        pool = AsyncNeo4jPool.open(*addresses, auth=auth, routing_context=routing_context, pool_config=pool_config, workspace_config=default_workspace_config)
+        pool = AsyncNeo4jPool.open(*addresses, routing_context=routing_context, pool_config=pool_config, workspace_config=default_workspace_config)
         return cls(pool, default_workspace_config)
 
     def __init__(self, pool, default_workspace_config):
