@@ -23,8 +23,6 @@ from datetime import (
     timezone,
 )
 
-import pytz
-
 from ...._optional_deps import (
     np,
     pd,
