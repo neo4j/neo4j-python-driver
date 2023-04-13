@@ -279,16 +279,19 @@ class Bolt(abc.ABC):
         return b"".join(version.to_bytes() for version in offered_versions).ljust(16, b"\x00")
 
     @classmethod
-    def ping(cls, address, *, timeout=None, pool_config=None):
+    def ping(cls, address, *, deadline=None, pool_config=None):
         """ Attempt to establish a Bolt connection, returning the
         agreed Bolt protocol version if successful.
         """
         if pool_config is None:
             pool_config = PoolConfig()
+        if deadline is None:
+            deadline = Deadline(None)
         try:
             s, protocol_version, handshake, data = BoltSocket.connect(
                 address,
-                timeout=timeout,
+                tcp_timeout=pool_config.connection_timeout,
+                deadline=deadline,
                 custom_resolver=pool_config.resolver,
                 ssl_context=pool_config.get_ssl_context(),
                 keep_alive=pool_config.keep_alive,
@@ -300,38 +303,30 @@ class Bolt(abc.ABC):
             return protocol_version
 
     @classmethod
-    def open(cls, address, *, auth=None, timeout=None, routing_context=None,
+    def open(cls, address, *, auth=None, deadline=None, routing_context=None,
              pool_config=None):
         """ Open a new Bolt connection to a given server address.
 
         :param address:
         :param auth:
-        :param timeout: the connection timeout in seconds
+        :param deadline: how long to wait for the connection to be established
         :param routing_context: dict containing routing context
         :param pool_config:
         :return:
         :raise BoltHandshakeError: raised if the Bolt Protocol can not negotiate a protocol version.
         :raise ServiceUnavailable: raised if there was a connection issue.
         """
-        def time_remaining():
-            if timeout is None:
-                return None
-            t = timeout - (perf_counter() - t0)
-            return t if t > 0 else 0
 
-        t0 = perf_counter()
         if pool_config is None:
             pool_config = PoolConfig()
+        if deadline is None:
+            deadline = Deadline(None)
 
         socket_connection_timeout = pool_config.connection_timeout
-        if socket_connection_timeout is None:
-            socket_connection_timeout = time_remaining()
-        elif timeout is not None:
-            socket_connection_timeout = min(pool_config.connection_timeout,
-                                            time_remaining())
         s, pool_config.protocol_version, handshake, data = BoltSocket.connect(
             address,
-            timeout=socket_connection_timeout,
+            tcp_timeout=pool_config.connection_timeout,
+            deadline=deadline,
             custom_resolver=pool_config.resolver,
             ssl_context=pool_config.get_ssl_context(),
             keep_alive=pool_config.keep_alive,
@@ -370,7 +365,7 @@ class Bolt(abc.ABC):
         )
 
         try:
-            connection.socket.set_deadline(time_remaining())
+            connection.socket.set_deadline(deadline)
             try:
                 connection.hello()
             finally:
@@ -732,9 +727,7 @@ class IOPool:
             released_reservation = False
             try:
                 try:
-                    connection = self.opener(
-                        address, deadline.to_timeout()
-                    )
+                    connection = self.opener(address, deadline)
                 except ServiceUnavailable:
                     self.deactivate(address)
                     raise
@@ -909,9 +902,9 @@ class BoltPool(IOPool):
         :return: BoltPool
         """
 
-        def opener(addr, timeout):
+        def opener(addr, deadline):
             return Bolt.open(
-                addr, auth=auth, timeout=timeout, routing_context=None,
+                addr, auth=auth, deadline=deadline, routing_context=None,
                 pool_config=pool_config
             )
 
@@ -955,8 +948,8 @@ class Neo4jPool(IOPool):
             raise ConfigurationError("The key 'address' is reserved for routing context.")
         routing_context["address"] = str(address)
 
-        def opener(addr, timeout):
-            return Bolt.open(addr, auth=auth, timeout=timeout,
+        def opener(addr, deadline):
+            return Bolt.open(addr, auth=auth, deadline=deadline,
                              routing_context=routing_context,
                              pool_config=pool_config)
 

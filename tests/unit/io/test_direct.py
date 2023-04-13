@@ -113,19 +113,19 @@ class BoltTestCase(TestCase):
 
     def test_open(self):
         with pytest.raises(ServiceUnavailable):
-            connection = Bolt.open(("localhost", 9999), auth=("test", "test"))
+            Bolt.open(("localhost", 9999), auth=("test", "test"))
 
     def test_open_timeout(self):
-        conf = PoolConfig()
         with pytest.raises(ServiceUnavailable):
-            connection = Bolt.open(("localhost", 9999), auth=("test", "test"), timeout=1)
+            Bolt.open(("localhost", 9999), auth=("test", "test"),
+                      deadline=Deadline(1))
 
     def test_ping(self):
         protocol_version = Bolt.ping(("localhost", 9999))
         assert protocol_version is None
 
     def test_ping_timeout(self):
-        protocol_version = Bolt.ping(("localhost", 9999), timeout=1)
+        protocol_version = Bolt.ping(("localhost", 9999), deadline=Deadline(1))
         assert protocol_version is None
 
 
