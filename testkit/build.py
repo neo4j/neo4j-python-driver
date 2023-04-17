@@ -28,6 +28,8 @@ from _common import run_python
 
 
 if __name__ == "__main__":
-    run_python(["-m", "pip", "install", "-U", "pip"])
+    # freezing pip to avoid deprecation warning
+    # https://github.com/pypa/pip/issues/11975
+    run_python(["-m", "pip", "install", "-U", "pip<23.1"])
     run_python(["-m", "pip", "install", "--use-pep517", "-Ur",
                 "requirements-dev.txt"])
