@@ -2,6 +2,8 @@
 Neo4j Bolt Driver for Python
 ****************************
 
+Hello, World!
+
 This repository contains the official Neo4j driver for Python.
 
 Starting with 5.0, the Neo4j Drivers will be moving to a monthly release
