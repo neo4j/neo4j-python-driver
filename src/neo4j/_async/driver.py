@@ -815,7 +815,8 @@ class AsyncDriver:
             with a single underscore. This is to avoid collisions with the
             keyword configuration parameters of this method. If you need to
             pass such a parameter, use the ``parameters_`` parameter instead.
-            These take precedence over parameters passed as ``parameters_``.
+            Parameters passed as kwargs take precedence over those passed in
+            ``parameters_``.
         :type kwargs: typing.Any
 
         :returns: the result of the ``result_transformer``
