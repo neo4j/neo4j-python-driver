@@ -503,7 +503,7 @@ class AsyncDriver:
 
     def _prepare_session_config(self, **config):
         if "auth" in config:
-            preview_warn("User switching is a preview features.",
+            preview_warn("User switching is a preview feature.",
                          stack_level=3)
         _normalize_notifications_config(config)
         return config
@@ -1165,7 +1165,7 @@ class AsyncDriver:
             won't throw a :exc:`ConfigurationError` when trying to use this
             driver feature.
 
-        .. versionadded:: 5.x
+        .. versionadded:: 5.8
         """
         async with self.session() as session:
             await session._connect(READ_ACCESS)
