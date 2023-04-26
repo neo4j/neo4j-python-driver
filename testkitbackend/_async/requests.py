@@ -553,7 +553,7 @@ async def NewSession(backend, data):
     if data.get("authorizationToken"):
         config["auth"] = fromtestkit.to_auth_token(data, "authorizationToken")
         expected_warnings.append(
-            (neo4j.PreviewWarning, "User switching is a preview features.")
+            (neo4j.PreviewWarning, "User switching is a preview feature.")
         )
     fromtestkit.set_notifications_config(config, data)
     if expected_warnings:

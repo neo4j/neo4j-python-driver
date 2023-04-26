@@ -503,7 +503,7 @@ class AsyncDriver:
 
     def _prepare_session_config(self, **config):
         if "auth" in config:
-            preview_warn("User switching is a preview features.",
+            preview_warn("User switching is a preview feature.",
                          stack_level=3)
         _normalize_notifications_config(config)
         return config
@@ -1093,7 +1093,7 @@ class AsyncDriver:
             Try to establish a working read connection to the remote server or
             a member of a cluster and exchange some data. In a cluster, there
             is no guarantee about which server will be contacted. If the data
-            exchange is successful, the authentication information is valid and
+            exchange is successful and the authentication information is valid,
             :const:`True` is returned. Otherwise, the error will be matched
             against a list of known authentication errors. If the error is on
             that list, :const:`False` is returned indicating that the
@@ -1166,7 +1166,7 @@ class AsyncDriver:
             won't throw a :exc:`ConfigurationError` when trying to use this
             driver feature.
 
-        .. versionadded:: 5.x
+        .. versionadded:: 5.8
         """
         async with self.session() as session:
             await session._connect(READ_ACCESS)
