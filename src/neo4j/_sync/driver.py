@@ -1091,7 +1091,7 @@ class Driver:
             Try to establish a working read connection to the remote server or
             a member of a cluster and exchange some data. In a cluster, there
             is no guarantee about which server will be contacted. If the data
-            exchange is successful, the authentication information is valid and
+            exchange is successful and the authentication information is valid,
             :const:`True` is returned. Otherwise, the error will be matched
             against a list of known authentication errors. If the error is on
             that list, :const:`False` is returned indicating that the
