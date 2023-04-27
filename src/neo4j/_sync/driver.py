@@ -564,7 +564,7 @@ class Driver:
     @t.overload
     def execute_query(
         self,
-        query_: str,
+        query_: te.LiteralString,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -583,7 +583,7 @@ class Driver:
     @t.overload
     def execute_query(
         self,
-        query_: str,
+        query_: te.LiteralString,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -601,7 +601,7 @@ class Driver:
 
     def execute_query(
         self,
-        query_: str,
+        query_: te.LiteralString,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
