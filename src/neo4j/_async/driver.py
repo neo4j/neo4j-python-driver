@@ -565,7 +565,7 @@ class AsyncDriver:
     @t.overload
     async def execute_query(
         self,
-        query_: str,
+        query_: te.LiteralString,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -584,7 +584,7 @@ class AsyncDriver:
     @t.overload
     async def execute_query(
         self,
-        query_: str,
+        query_: te.LiteralString,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -602,7 +602,7 @@ class AsyncDriver:
 
     async def execute_query(
         self,
-        query_: str,
+        query_: te.LiteralString,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,

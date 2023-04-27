@@ -3,8 +3,15 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
 
 ## NEXT RELEASE
-- Renamed experimental `neo4j.RoutingControl.READERS` to `READ` and `WRITERS` to `WRITE`.
-- Renamed experimental `driver.query_bookmark_manager` to `execute_query_bookmark_manager`.
+- Renamed experimental `neo4j.RoutingControl.READERS` to `READ` and `WRITERS` to
+  `WRITE`.
+- Renamed experimental `driver.query_bookmark_manager` to
+  `execute_query_bookmark_manager`.
+- Query argument to experimental `driver.execute_query` not is typed
+  `LiteralString` instead of `str` to help mitigate accidental Cypher
+  injections. There are rare use-cases where a computed string is necessary.
+  Please use `# type: ignore`, or `typing.cast` to suppress the type checking in
+  those cases.
 
 
 ## Version 5.7
