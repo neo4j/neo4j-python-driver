@@ -1,8 +1,12 @@
 # Neo4j Driver Change Log (breaking/major changes only)
 
-See also https://github.com/neo4j/neo4j-python-driver/wiki for more details.
+See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
+- No breaking or major changes.
+
+
+## Version 5.8
 - Renamed experimental `neo4j.RoutingControl.READERS` to `READ` and `WRITERS` to
   `WRITE`.
 - Renamed experimental `driver.query_bookmark_manager` to
