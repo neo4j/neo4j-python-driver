@@ -17,8 +17,10 @@
 from __future__ import annotations
 
 import logging
+import typing as t
 
 from ..._async_compat.util import AsyncUtil
+from ..._auth_management import to_auth_dict
 from ..._conf import WorkspaceConfig
 from ..._meta import (
     deprecation_warn,
@@ -35,6 +37,20 @@ from ..io import (
     AcquireAuth,
     AsyncNeo4jPool,
 )
+
+
+if t.TYPE_CHECKING:
+    from ...api import _TAuth
+    from ...auth_management import (
+        AsyncAuthManager,
+        AuthManager,
+    )
+    from ..home_db_cache import (
+        AsyncHomeDbCache,
+        TKey,
+    )
+else:
+    _TAuth = t.Any
 
 
 log = logging.getLogger("neo4j")
@@ -86,6 +102,18 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
 
     async def __aexit__(self, exc_type, exc_value, traceback):
         await self.close()
+
+    def _make_database_callback(
+        self,
+        cache_key: TKey,
+    ) -> t.Callable[[str], None]:
+        def _database_callback(database: str | None) -> None:
+            db_cache: AsyncHomeDbCache = self._pool.home_db_cache
+            if db_cache.enabled:
+                db_cache.set(cache_key, database)
+            self._set_cached_database(database)
+
+        return _database_callback
 
     def _set_cached_database(self, database):
         self._cached_database = True
@@ -140,10 +168,8 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
 
     async def _connect(self, access_mode, auth=None, **acquire_kwargs):
         acquisition_timeout = self._config.connection_acquisition_timeout
-        auth = AcquireAuth(
-            auth,
-            force_auth=acquire_kwargs.pop("force_auth", False),
-        )
+        force_auth = acquire_kwargs.pop("force_auth", False)
+        acquire_auth = AcquireAuth(auth, force_auth=force_auth)
 
         if self._connection:
             # TODO: Investigate this
@@ -151,6 +177,22 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
             await self._connection.send_all()
             await self._connection.fetch_all()
             await self._disconnect()
+        await self._fill_cached_database(acquire_auth)
+        acquire_kwargs_ = {
+            "access_mode": access_mode,
+            "timeout": acquisition_timeout,
+            "database": self._config.database,
+            "bookmarks": await self._get_bookmarks(),
+            "auth": acquire_auth,
+            "liveness_check_timeout": None,
+        }
+        acquire_kwargs_.update(acquire_kwargs)
+        self._connection = await self._pool.acquire(**acquire_kwargs_)
+        self._connection_access_mode = access_mode
+
+    async def _fill_cached_database(self, acquire_auth: AcquireAuth) -> None:
+        auth = acquire_auth.auth
+        acquisition_timeout = self._config.connection_acquisition_timeout
         if not self._cached_database:
             if self._config.database is not None or not isinstance(
                 self._pool, AsyncNeo4jPool
@@ -163,26 +205,53 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
                 # to try to fetch the home database. If provided by the server,
                 # we shall use this database explicitly for all subsequent
                 # actions within this session.
+                # Unless we have the resolved home db in out cache:
+
+                db_cache: AsyncHomeDbCache = self._pool.home_db_cache
+                cache_key = cached_db = None
+                if db_cache.enabled:
+                    cache_key = db_cache.compute_key(
+                        self._config.impersonated_user,
+                        await self._resolve_session_auth(auth),
+                    )
+                    cached_db = db_cache.get(cache_key)
+                if cached_db is not None:
+                    log.debug(
+                        (
+                            "[#0000]  _: <WORKSPACE> resolved home database "
+                            "from cache: %s"
+                        ),
+                        cached_db,
+                    )
+                    self._set_cached_database(cached_db)
+                    return
                 log.debug("[#0000]  _: <WORKSPACE> resolve home database")
                 await self._pool.update_routing_table(
                     database=self._config.database,
                     imp_user=self._config.impersonated_user,
                     bookmarks=await self._get_bookmarks(),
-                    auth=auth,
+                    auth=acquire_auth,
                     acquisition_timeout=acquisition_timeout,
-                    database_callback=self._set_cached_database,
+                    database_callback=self._make_database_callback(cache_key),
                 )
-        acquire_kwargs_ = {
-            "access_mode": access_mode,
-            "timeout": acquisition_timeout,
-            "database": self._config.database,
-            "bookmarks": await self._get_bookmarks(),
-            "auth": auth,
-            "liveness_check_timeout": None,
-        }
-        acquire_kwargs_.update(acquire_kwargs)
-        self._connection = await self._pool.acquire(**acquire_kwargs_)
-        self._connection_access_mode = access_mode
+
+    @staticmethod
+    async def _resolve_session_auth(
+        auth: AsyncAuthManager | AuthManager | None,
+    ) -> dict | None:
+        if auth is None:
+            return None
+        # resolved_auth = await AsyncUtil.callback(auth.get_auth)
+        # The above line breaks mypy
+        # https://github.com/python/mypy/issues/15295
+        auth_getter: t.Callable[[], _TAuth | t.Awaitable[_TAuth]] = (
+            auth.get_auth
+        )
+        # so we enforce the right type here
+        # (explicit type annotation above added as it's a necessary assumption
+        #  for this cast to be correct)
+        resolved_auth = t.cast(_TAuth, await AsyncUtil.callback(auth_getter))
+        return to_auth_dict(resolved_auth)
 
     async def _disconnect(self, sync=False):
         if self._connection:

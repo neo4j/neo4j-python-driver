@@ -22,6 +22,8 @@ import typing as t
 from dataclasses import dataclass
 
 from ._meta import preview
+from .api import Auth
+from .exceptions import AuthError
 
 
 if t.TYPE_CHECKING:
@@ -321,3 +323,19 @@ class AsyncClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
         .. seealso:: :meth:`.ClientCertificateProvider.get_certificate`
         """
         ...
+
+
+def to_auth_dict(auth: _TAuth) -> dict[str, t.Any]:
+    # Determine auth details
+    if not auth:
+        return {}
+    elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
+        return vars(Auth("basic", *auth))
+    else:
+        try:
+            return vars(auth)
+        except (KeyError, TypeError) as e:
+            # TODO: 6.0 - change this to be a DriverError (or subclass)
+            raise AuthError(
+                f"Cannot determine auth details from {auth!r}"
+            ) from e
