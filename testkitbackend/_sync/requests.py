@@ -125,6 +125,7 @@ def NewDriver(backend, data):
         ("connectionTimeoutMs", "connection_timeout"),
         ("maxTxRetryTimeMs", "max_transaction_retry_time"),
         ("connectionAcquisitionTimeoutMs", "connection_acquisition_timeout"),
+        ("maxHomeDatabaseDelayMs", "max_home_database_delay"),
     ):
         if data.get(timeout_testkit) is not None:
             kwargs[timeout_driver] = data[timeout_testkit] / 1000
@@ -327,6 +328,13 @@ def CheckSessionAuthSupport(backend, data):
     backend.send_response("SessionAuthSupport", {
         "id": backend.next_key(), "available": available
     })
+
+
+def ForceHomeDatabaseResolution(backend, data):
+    driver_id = data["driverId"]
+    driver = backend.drivers[driver_id]
+    driver.force_home_database_resolution()
+    backend.send_response("Driver", {"id": driver_id})
 
 
 def ExecuteQuery(backend, data):

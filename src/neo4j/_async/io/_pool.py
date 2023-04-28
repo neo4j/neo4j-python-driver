@@ -70,6 +70,7 @@ from ...exceptions import (
     WriteServiceUnavailable,
 )
 from ..auth_management import AsyncStaticAuthManager
+from ..home_db_cache import AsyncHomeDbCache
 from ._bolt import AsyncBolt
 
 
@@ -99,6 +100,9 @@ class AsyncIOPool(abc.ABC):
         self.connections_reservations = defaultdict(lambda: 0)
         self.lock = AsyncCooperativeRLock()
         self.cond = AsyncCondition(self.lock)
+        self.home_db_cache = AsyncHomeDbCache(
+            pool_config.max_home_database_delay
+        )
 
     async def __aenter__(self):
         return self
@@ -734,8 +738,7 @@ class AsyncNeo4jPool(AsyncIOPool):
                         "address=%r (%r)",
                         address, self.routing_tables[new_database]
                     )
-                    if callable(database_callback):
-                        database_callback(new_database)
+                    await AsyncUtil.callback(database_callback, new_database)
                     return True
             await self.deactivate(router)
         return False

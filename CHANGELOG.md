@@ -3,6 +3,16 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
+- To improve the performance of the driver, home database caching has been
+  introduced. Other than a speed-up, this shouldn't have an effect on most
+  use-cases.
+  *However*, if your application changes users' home databases frequently and
+  relies on the driver to pick up those changes in the next session, this will
+  be a breaking change. You can either disable home database caching by setting
+  `max_home_database_delay` to `0` to get back the old but poorly performing
+  behavior, or you can force the driver to re-resolve all home databases by
+  calling `driver.force_home_database_resolution` after changing a user's home
+  database.
 - `neo4j.auth_management.ExpiringAuth`'s `expires_in` (in preview) was replaced
   by `expires_at`, which is a unix timestamp.  
   You can use `ExpiringAuth(some_auth).expires_in(123)` instead.

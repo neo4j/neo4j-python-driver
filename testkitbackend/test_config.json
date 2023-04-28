@@ -51,6 +51,7 @@
     "Feature:Bolt:5.3": true,
     "Feature:Bolt:Patch:UTC": true,
     "Feature:Impersonation": true,
+    "Feature:HomeDbCache": true,
     "Feature:TLS:1.1": "Driver blocks TLS 1.1 for security reasons.",
     "Feature:TLS:1.2": true,
     "Feature:TLS:1.3": "Depends on the machine (will be calculated dynamically).",

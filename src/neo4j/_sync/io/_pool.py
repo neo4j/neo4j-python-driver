@@ -67,6 +67,7 @@ from ...exceptions import (
     WriteServiceUnavailable,
 )
 from ..auth_management import StaticAuthManager
+from ..home_db_cache import HomeDbCache
 from ._bolt import Bolt
 
 
@@ -96,6 +97,9 @@ class IOPool(abc.ABC):
         self.connections_reservations = defaultdict(lambda: 0)
         self.lock = CooperativeRLock()
         self.cond = Condition(self.lock)
+        self.home_db_cache = HomeDbCache(
+            pool_config.max_home_database_delay
+        )
 
     def __enter__(self):
         return self
@@ -731,8 +735,7 @@ class Neo4jPool(IOPool):
                         "address=%r (%r)",
                         address, self.routing_tables[new_database]
                     )
-                    if callable(database_callback):
-                        database_callback(new_database)
+                    Util.callback(database_callback, new_database)
                     return True
             self.deactivate(router)
         return False

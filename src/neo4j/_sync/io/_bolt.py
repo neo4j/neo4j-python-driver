@@ -26,6 +26,7 @@ from time import perf_counter
 
 from ..._async_compat.network import BoltSocket
 from ..._async_compat.util import Util
+from ..._auth_management import to_auth_dict
 from ..._codec.hydration import v1 as hydration_v1
 from ..._codec.packstream import v1 as packstream_v1
 from ..._conf import PoolConfig
@@ -41,7 +42,6 @@ from ...api import (
     Version,
 )
 from ...exceptions import (
-    AuthError,
     ConfigurationError,
     DriverError,
     IncompleteCommit,
@@ -157,7 +157,7 @@ class Bolt:
             self.user_agent = USER_AGENT
 
         self.auth = auth
-        self.auth_dict = self._to_auth_dict(auth)
+        self.auth_dict = to_auth_dict(auth)
         self.auth_manager = auth_manager
 
         self.notifications_min_severity = notifications_min_severity
@@ -171,20 +171,6 @@ class Bolt:
     @abc.abstractmethod
     def _get_server_state_manager(self) -> ServerStateManagerBase:
         ...
-
-    @classmethod
-    def _to_auth_dict(cls, auth):
-        # Determine auth details
-        if not auth:
-            return {}
-        elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
-            from ...api import Auth
-            return vars(Auth("basic", *auth))
-        else:
-            try:
-                return vars(auth)
-            except (KeyError, TypeError):
-                raise AuthError("Cannot determine auth details from %r" % auth)
 
     @property
     def connection_id(self):
@@ -525,7 +511,7 @@ class Bolt:
 
         :returns: whether the auth was changed
         """
-        new_auth_dict = self._to_auth_dict(auth)
+        new_auth_dict = to_auth_dict(auth)
         if not force and new_auth_dict == self.auth_dict:
             self.auth_manager = auth_manager
             self.auth = auth

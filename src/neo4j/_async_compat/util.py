@@ -59,11 +59,7 @@ class AsyncUtil:
     @staticmethod
     @t.overload
     async def callback(
-        cb: t.Union[
-            t.Callable[_P, t.Union[_T, t.Awaitable[_T]]],
-            t.Callable[_P, t.Awaitable[_T]],
-            t.Callable[_P, _T],
-        ],
+        cb: t.Callable[_P, t.Union[t.Awaitable[_T], _T]],
         *args: _P.args, **kwargs: _P.kwargs
     ) -> _T:
         ...

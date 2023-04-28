@@ -31,7 +31,11 @@ from ._meta import (
     preview,
     PreviewWarning,
 )
-from .api import _TAuth
+from .api import (
+    _TAuth,
+    Auth,
+)
+from .exceptions import AuthError
 
 
 @preview("Auth managers are a preview feature.")
@@ -176,3 +180,20 @@ class AsyncAuthManager(metaclass=abc.ABCMeta):
         .. seealso:: :meth:`.AuthManager.on_auth_expired`
         """
         ...
+
+
+def to_auth_dict(auth: _TAuth) -> dict:
+    # Determine auth details
+    if not auth:
+        return {}
+    elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
+        return vars(Auth("basic", *auth))
+    else:
+        try:
+            return vars(auth)
+        except (KeyError, TypeError):
+            # TODO: 6.0 - this should not raise an AuthError
+            #     AuthError is reserved for the server
+            #     (inherits from Neo4jError).
+            #     Consider ValueError, TypeError or similar.
+            raise AuthError(f"Cannot determine auth details from {auth!r}")

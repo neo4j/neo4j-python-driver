@@ -151,6 +151,7 @@ class GraphDatabase:
             notifications_disabled_categories: t.Optional[
                 t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
+            max_home_database_delay: float = ...,
 
             # undocumented/unsupported options
             # they may be change or removed any time without prior notice
@@ -703,7 +704,11 @@ class Driver:
         :param database_:
             database to execute the query against.
 
-            None (default) uses the database configured on the server side.
+            :data:`None` (default) uses the database configured on the server
+            side.
+            Depending on the :ref:`max-home-database-delay-ref` configuration,
+            propagation of changes to the server side default might not be
+            immediate.
 
             .. Note::
                 It is recommended to always specify the database explicitly
@@ -1174,6 +1179,28 @@ class Driver:
     def _get_server_info(self, **config) -> ServerInfo:
         with self.session(**config) as session:
             return session._get_server_info()
+
+    def force_home_database_resolution(self) -> None:
+        """Force the driver to resolve all home databases (again).
+
+        The resolution is lazy and will only happen when the driver needs to
+        know the home database.
+        In practice, this means that the driver will flush the cache
+        configured by `max_home_database_delay`.
+
+        This method is for instance useful when an application has changed a
+        user's home database, and the same application wants to pick up the
+        change in the next session while wanting to avoid setting
+        `max_home_database_delay` to `0` because of the performance penalty.
+
+        .. versionadded:: 5.x
+
+        .. seealso::
+            Driver config :ref:`max-home-database-delay-ref`
+        """
+        home_db_cache = self._pool.home_db_cache
+        if home_db_cache.enabled:
+            home_db_cache.clear()
 
 
 def _work(

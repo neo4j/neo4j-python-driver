@@ -415,6 +415,9 @@ class PoolConfig(Config):
     #: List of notification categories for the server to ignore
     notifications_disabled_categories = None
 
+    #: TTL for the home database result cache in seconds
+    max_home_database_delay = 5
+
     def get_ssl_context(self):
         if self.ssl_context is not None:
             return self.ssl_context
