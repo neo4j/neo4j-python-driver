@@ -82,6 +82,9 @@ class QuickConnection:
     def timedout(self):
         return False
 
+    def assert_re_auth_support(self):
+        pass
+
 
 class FakeBoltPool(IOPool):
     def __init__(self, address, *, auth=None, **config):

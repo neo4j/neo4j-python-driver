@@ -82,6 +82,9 @@ class AsyncQuickConnection:
     def timedout(self):
         return False
 
+    def assert_re_auth_support(self):
+        pass
+
 
 class AsyncFakeBoltPool(AsyncIOPool):
     def __init__(self, address, *, auth=None, **config):
