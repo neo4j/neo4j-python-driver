@@ -408,9 +408,9 @@ class AsyncGraphDatabase:
 
 class _Direct:
 
+    # TODO: 6.0 - those attributes should be private
     default_host = "localhost"
     default_port = 7687
-
     default_target = ":"
 
     def __init__(self, address):
@@ -433,9 +433,9 @@ class _Direct:
 
 class _Routing:
 
+    # TODO: 6.0 - those attributes should be private
     default_host = "localhost"
     default_port = 7687
-
     default_targets = ": :17601 :17687"
 
     def __init__(self, initial_addresses):
