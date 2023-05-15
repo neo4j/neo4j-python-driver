@@ -23,7 +23,7 @@ from ssl import SSLSocket
 
 from ..._codec.hydration import v2 as hydration_v2
 from ..._exceptions import BoltProtocolError
-from ..._meta import BOLT_AGENT
+from ..._meta import BOLT_AGENT_DICT
 from ...api import (
     READ_ACCESS,
     Version,
@@ -105,10 +105,7 @@ class Bolt5x0(Bolt):
         return self.socket.getpeercert(binary_form=True)
 
     def get_base_headers(self):
-        user_agent = self.user_agent
-        if user_agent is None:
-            user_agent = BOLT_AGENT
-        headers = {"user_agent": user_agent}
+        headers = {"user_agent": self.user_agent}
         if self.routing_context is not None:
             headers["routing"] = self.routing_context
         return headers
@@ -630,7 +627,5 @@ class Bolt5x3(Bolt5x2):
 
     def get_base_headers(self):
         headers = super().get_base_headers()
-        if self.user_agent is None:
-            del headers["user_agent"]
-        headers["bolt_agent"] = BOLT_AGENT
+        headers["bolt_agent"] = BOLT_AGENT_DICT
         return headers

@@ -26,7 +26,6 @@ from ._meta import (
     deprecation_warn,
     experimental_warn,
     ExperimentalWarning,
-    get_user_agent,
 )
 from .api import (
     DEFAULT_DATABASE,

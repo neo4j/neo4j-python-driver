@@ -34,7 +34,7 @@ from ..._exceptions import (
     BoltError,
     BoltHandshakeError,
 )
-from ..._meta import BOLT_AGENT
+from ..._meta import USER_AGENT
 from ...addressing import ResolvedAddress
 from ...api import (
     ServerInfo,
@@ -150,7 +150,11 @@ class Bolt:
         self.routing_context = routing_context
         self.idle_since = perf_counter()
 
-        self.user_agent = user_agent
+        # Determine the user agent
+        if user_agent is not None:
+            self.user_agent = user_agent
+        else:
+            self.user_agent = USER_AGENT
 
         self.auth = auth
         self.auth_dict = self._to_auth_dict(auth)

@@ -38,30 +38,39 @@ def _compute_bolt_agent() -> str:
     def format_version_info(version_info):
         return "{}.{}.{}-{}-{}".format(*version_info)
 
-    return (
-        # product/version
-        f"neo4j-python/{version} "
-        # platform
-        f"({platform.system() or 'Unknown'} {platform.release() or 'unknown'}"
-        f"; {platform.machine() or 'unknown'}) "
-        # language/version
-        f"Python/{format_version_info(sys.version_info)} "
-        # language details
-        f"({platform.python_implementation()}; "
-        f"{format_version_info(sys.implementation.version)} "
-        f"({', '.join(platform.python_build())}) "
-        f"[{platform.python_compiler()}])"
-    )
+    return {
+        "product": f"neo4j-python/{version}",
+        "platform":
+            f"{platform.system() or 'Unknown'} "
+            f"{platform.release() or 'unknown'}; "
+            f"{platform.machine() or 'unknown'}",
+        "language": f"Python/{format_version_info(sys.version_info)}",
+        "language_details":
+            f"{platform.python_implementation()}; "
+            f"{format_version_info(sys.implementation.version)} "
+            f"({', '.join(platform.python_build())}) "
+            f"[{platform.python_compiler()}]"
+    }
 
 
-BOLT_AGENT = _compute_bolt_agent()
+BOLT_AGENT_DICT = _compute_bolt_agent()
 
 
-def get_user_agent() -> str:
+def _compute_user_agent():
+    template = "neo4j-python/{} Python/{}.{}.{}-{}-{} ({})"
+    fields = (version,) + tuple(sys.version_info) + (sys.platform,)
+    return template.format(*fields)
+
+
+USER_AGENT = _compute_user_agent()
+
+
+# TODO: 6.0 - remove this function
+def get_user_agent():
     """ Obtain the default user agent string sent to the server after
     a successful handshake.
     """
-    return BOLT_AGENT
+    return USER_AGENT
 
 
 def _id(x):

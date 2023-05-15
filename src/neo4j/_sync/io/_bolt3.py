@@ -24,7 +24,6 @@ from logging import getLogger
 from ssl import SSLSocket
 
 from ..._exceptions import BoltProtocolError
-from ..._meta import BOLT_AGENT
 from ...api import (
     READ_ACCESS,
     Version,
@@ -150,11 +149,8 @@ class Bolt3(Bolt):
         return self.socket.getpeercert(binary_form=True)
 
     def get_base_headers(self):
-        user_agent = self.user_agent
-        if user_agent is None:
-            user_agent = BOLT_AGENT
         return {
-            "user_agent": user_agent,
+            "user_agent": self.user_agent,
         }
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):

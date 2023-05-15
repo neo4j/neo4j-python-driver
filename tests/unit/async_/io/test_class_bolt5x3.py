@@ -24,7 +24,10 @@ import pytest
 import neo4j
 from neo4j._async.io._bolt5 import AsyncBolt5x3
 from neo4j._conf import PoolConfig
-from neo4j._meta import BOLT_AGENT
+from neo4j._meta import (
+    BOLT_AGENT_DICT,
+    USER_AGENT,
+)
 
 from ...._async_compat import mark_async_test
 
@@ -388,7 +391,7 @@ async def test_hello_supports_notification_filters(
 
 @mark_async_test
 @pytest.mark.parametrize(
-    "user_agent", (None, "test user agent", "", BOLT_AGENT)
+    "user_agent", (None, "test user agent", "", USER_AGENT)
 )
 async def test_user_agent(fake_socket_pair, user_agent):
     address = neo4j.Address(("127.0.0.1", 7687))
@@ -406,14 +409,14 @@ async def test_user_agent(fake_socket_pair, user_agent):
     tag, fields = await sockets.server.pop_message()
     extra = fields[0]
     if user_agent is None:
-        assert "user_agent" not in extra
+        assert extra["user_agent"] == USER_AGENT
     else:
         assert extra["user_agent"] == user_agent
 
 
 @mark_async_test
 @pytest.mark.parametrize(
-    "user_agent", (None, "test user agent", "", BOLT_AGENT)
+    "user_agent", (None, "test user agent", "", USER_AGENT)
 )
 async def test_sends_bolt_agent(fake_socket_pair, user_agent):
     address = neo4j.Address(("127.0.0.1", 7687))
@@ -430,4 +433,4 @@ async def test_sends_bolt_agent(fake_socket_pair, user_agent):
 
     tag, fields = await sockets.server.pop_message()
     extra = fields[0]
-    assert extra["bolt_agent"] == BOLT_AGENT
+    assert extra["bolt_agent"] == BOLT_AGENT_DICT
