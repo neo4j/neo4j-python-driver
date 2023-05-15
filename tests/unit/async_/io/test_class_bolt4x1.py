@@ -384,7 +384,7 @@ async def test_user_agent(fake_socket_pair, user_agent):
 
     tag, fields = await sockets.server.pop_message()
     extra = fields[0]
-    if user_agent is None:
+    if not user_agent:
         assert extra["user_agent"] == USER_AGENT
     else:
         assert extra["user_agent"] == user_agent

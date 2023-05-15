@@ -151,7 +151,7 @@ class Bolt:
         self.idle_since = perf_counter()
 
         # Determine the user agent
-        if user_agent is not None:
+        if user_agent:
             self.user_agent = user_agent
         else:
             self.user_agent = USER_AGENT
