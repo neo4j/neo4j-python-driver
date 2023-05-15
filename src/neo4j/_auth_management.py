@@ -34,8 +34,8 @@ from .api import _TAuth
 class ExpiringAuth:
     """Represents potentially expiring authentication information.
 
-    This class is used with :meth:`.AuthManagers.temporal` and
-    :meth:`.AsyncAuthManagers.temporal`.
+    This class is used with :meth:`.AuthManagers.expiration_based` and
+    :meth:`.AsyncAuthManagers.expiration_based`.
 
     :param auth: The authentication information.
     :param expires_in: The number of seconds until the authentication
@@ -47,7 +47,8 @@ class ExpiringAuth:
     See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. seealso::
-        :meth:`.AuthManagers.temporal`, :meth:`.AsyncAuthManagers.temporal`
+        :meth:`.AuthManagers.expiration_based`,
+        :meth:`.AsyncAuthManagers.expiration_based`
 
     .. versionadded:: 5.8
     """
