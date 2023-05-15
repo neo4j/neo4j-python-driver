@@ -407,9 +407,9 @@ class GraphDatabase:
 
 class _Direct:
 
+    # TODO: 6.0 - those attributes should be private
     default_host = "localhost"
     default_port = 7687
-
     default_target = ":"
 
     def __init__(self, address):
@@ -432,9 +432,9 @@ class _Direct:
 
 class _Routing:
 
+    # TODO: 6.0 - those attributes should be private
     default_host = "localhost"
     default_port = 7687
-
     default_targets = ": :17601 :17687"
 
     def __init__(self, initial_addresses):
@@ -564,7 +564,7 @@ class Driver:
     @t.overload
     def execute_query(
         self,
-        query_: str,
+        query_: te.LiteralString,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -583,7 +583,7 @@ class Driver:
     @t.overload
     def execute_query(
         self,
-        query_: str,
+        query_: te.LiteralString,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -601,7 +601,7 @@ class Driver:
 
     def execute_query(
         self,
-        query_: str,
+        query_: te.LiteralString,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -814,7 +814,8 @@ class Driver:
             with a single underscore. This is to avoid collisions with the
             keyword configuration parameters of this method. If you need to
             pass such a parameter, use the ``parameters_`` parameter instead.
-            These take precedence over parameters passed as ``parameters_``.
+            Parameters passed as kwargs take precedence over those passed in
+            ``parameters_``.
         :type kwargs: typing.Any
 
         :returns: the result of the ``result_transformer``
