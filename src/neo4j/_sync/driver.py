@@ -407,9 +407,9 @@ class GraphDatabase:
 
 class _Direct:
 
+    # TODO: 6.0 - those attributes should be private
     default_host = "localhost"
     default_port = 7687
-
     default_target = ":"
 
     def __init__(self, address):
@@ -432,9 +432,9 @@ class _Direct:
 
 class _Routing:
 
+    # TODO: 6.0 - those attributes should be private
     default_host = "localhost"
     default_port = 7687
-
     default_targets = ": :17601 :17687"
 
     def __init__(self, initial_addresses):
@@ -502,7 +502,7 @@ class Driver:
 
     def _prepare_session_config(self, **config):
         if "auth" in config:
-            preview_warn("User switching is a preview features.",
+            preview_warn("User switching is a preview feature.",
                          stack_level=3)
         _normalize_notifications_config(config)
         return config
@@ -564,7 +564,7 @@ class Driver:
     @t.overload
     def execute_query(
         self,
-        query_: str,
+        query_: te.LiteralString,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -583,7 +583,7 @@ class Driver:
     @t.overload
     def execute_query(
         self,
-        query_: str,
+        query_: te.LiteralString,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -601,7 +601,7 @@ class Driver:
 
     def execute_query(
         self,
-        query_: str,
+        query_: te.LiteralString,
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -814,7 +814,8 @@ class Driver:
             with a single underscore. This is to avoid collisions with the
             keyword configuration parameters of this method. If you need to
             pass such a parameter, use the ``parameters_`` parameter instead.
-            These take precedence over parameters passed as ``parameters_``.
+            Parameters passed as kwargs take precedence over those passed in
+            ``parameters_``.
         :type kwargs: typing.Any
 
         :returns: the result of the ``result_transformer``
@@ -1091,7 +1092,7 @@ class Driver:
             Try to establish a working read connection to the remote server or
             a member of a cluster and exchange some data. In a cluster, there
             is no guarantee about which server will be contacted. If the data
-            exchange is successful, the authentication information is valid and
+            exchange is successful and the authentication information is valid,
             :const:`True` is returned. Otherwise, the error will be matched
             against a list of known authentication errors. If the error is on
             that list, :const:`False` is returned indicating that the
@@ -1164,7 +1165,7 @@ class Driver:
             won't throw a :exc:`ConfigurationError` when trying to use this
             driver feature.
 
-        .. versionadded:: 5.x
+        .. versionadded:: 5.8
         """
         with self.session() as session:
             session._connect(READ_ACCESS)

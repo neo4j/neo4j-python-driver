@@ -364,7 +364,8 @@ Closing a driver will immediately shut down all connections in the pool.
             with a single underscore. This is to avoid collisions with the
             keyword configuration parameters of this method. If you need to
             pass such a parameter, use the ``parameters_`` parameter instead.
-            These take precedence over parameters passed as ``parameters_``.
+            Parameters passed as kwargs take precedence over those passed in
+            ``parameters_``.
         :type kwargs: typing.Any
 
         :returns: the result of the ``result_transformer``
@@ -1046,7 +1047,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 :Type: :data:`None`, :class:`.Auth` or ``(user, password)``-tuple
 :Default: :data:`None` - use the authentication information provided during driver creation.
 
-.. versionadded:: 5.x
+.. versionadded:: 5.8
 
 
 .. _session-notifications-min-severity-ref:
