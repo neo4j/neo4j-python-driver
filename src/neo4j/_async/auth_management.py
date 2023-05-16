@@ -28,6 +28,7 @@ from logging import getLogger
 from .._async_compat.concurrency import AsyncLock
 from .._auth_management import (
     AsyncAuthManager,
+    expiring_auth_has_expired,
     ExpiringAuth,
 )
 from .._meta import preview
@@ -54,24 +55,8 @@ class AsyncStaticAuthManager(AsyncAuthManager):
         pass
 
 
-class _ExpiringAuthHolder:
-    def __init__(self, auth: ExpiringAuth) -> None:
-        self._auth = auth
-        self._expiry = None
-        if auth.expires_in is not None:
-            self._expiry = time.monotonic() + auth.expires_in
-
-    @property
-    def auth(self) -> _TAuth:
-        return self._auth.auth
-
-    def expired(self) -> bool:
-        if self._expiry is None:
-            return False
-        return time.monotonic() > self._expiry
-
 class AsyncExpirationBasedAuthManager(AsyncAuthManager):
-    _current_auth: t.Optional[_ExpiringAuthHolder]
+    _current_auth: t.Optional[ExpiringAuth]
     _provider: t.Callable[[], t.Awaitable[ExpiringAuth]]
     _lock: AsyncLock
 
@@ -85,16 +70,16 @@ class AsyncExpirationBasedAuthManager(AsyncAuthManager):
         self._lock = AsyncLock()
 
     async def _refresh_auth(self):
-        self._current_auth = _ExpiringAuthHolder(await self._provider())
+        self._current_auth = await self._provider()
 
     async def get_auth(self) -> _TAuth:
         async with self._lock:
             auth = self._current_auth
-            if auth is not None and not auth.expired():
-                return auth.auth
-            log.debug("[     ]  _: <TEMPORAL AUTH> refreshing (time out)")
-            await self._refresh_auth()
-            assert self._current_auth is not None
+            if auth is None or expiring_auth_has_expired(auth):
+                log.debug("[     ]  _: <TEMPORAL AUTH> refreshing (time out)")
+                await self._refresh_auth()
+                auth = self._current_auth
+                assert auth is not None
             return self._current_auth.auth
 
     async def on_auth_expired(self, auth: _TAuth) -> None:

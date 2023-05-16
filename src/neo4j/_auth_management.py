@@ -22,6 +22,7 @@
 
 
 import abc
+import time
 import typing as t
 from dataclasses import dataclass
 
@@ -38,9 +39,11 @@ class ExpiringAuth:
     :meth:`.AsyncAuthManagers.temporal`.
 
     :param auth: The authentication information.
-    :param expires_in: The number of seconds until the authentication
-        information expires. If :data:`None`, the authentication information
-        is considered to not expire until the server explicitly indicates so.
+    :param expires_at:
+        Unix timestamp (seconds since 1970-01-01 00:00:00 UTC)
+        indicating when the authentication information expires.
+        If :data:`None`, the authentication information is considered to not
+        expire until the server explicitly indicates so.
 
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
@@ -51,8 +54,33 @@ class ExpiringAuth:
 
     .. versionadded:: 5.8
     """
-    auth: _TAuth
-    expires_in: t.Optional[float] = None
+    auth: "_TAuth"
+    expires_at: t.Optional[float] = None
+
+    def expires_in(self, seconds: float) -> "ExpiringAuth":
+        """Return a copy of this object with a new expiration time.
+
+        This is a convenience method for creating an :class:`.ExpiringAuth`
+        for a relative expiration time ("expires in" instead of "expires at").
+
+            >>> import time, freezegun
+            >>> with freezegun.freeze_time("1970-01-01 00:00:00"):
+            ...     ExpiringAuth(("user", "pass")).expires_in(60)
+            ExpiringAuth(auth=('user', 'pass'), expires_at=60.0)
+            >>> with freezegun.freeze_time("1970-01-01 00:00:00"):
+            ...     ExpiringAuth(("user", "pass"), time.time() + 60)
+            ExpiringAuth(auth=('user', 'pass'), expires_at=60.0)
+
+        :param seconds:
+            The number of seconds from now until the authentication information
+            expires.
+        """
+        return ExpiringAuth(self.auth, time.time() + seconds)
+
+
+def expiring_auth_has_expired(auth: ExpiringAuth) -> bool:
+    expires_at = auth.expires_at
+    return expires_at is not None and expires_at < time.time()
 
 
 class AuthManager(metaclass=abc.ABCMeta):
