@@ -25,6 +25,7 @@ as a number of utility functions.
 from __future__ import annotations
 
 import re
+import typing
 import typing as t
 from datetime import (
     date,
@@ -1232,9 +1233,9 @@ class Date(date_base_class, metaclass=DateType):
 
         def replace(
             self,
-            year: int = ...,
-            month: int = ...,
-            day: int = ...,
+            year: te.SupportsIndex = ...,
+            month: te.SupportsIndex = ...,
+            day: te.SupportsIndex = ...,
             **kwargs: object
         ) -> Date:
             ...
@@ -1245,16 +1246,16 @@ class Date(date_base_class, metaclass=DateType):
             """Return a :class:`.Date` with one or more components replaced.
 
             :Keyword Arguments:
-               * **year** (`int`): overwrite the year -
-                 default: `self.year`
-               * **month** (`int`): overwrite the month -
-                 default: `self.month`
-               * **day** (`int`): overwrite the day -
-                 default: `self.day`
+               * **year** (:class:`typing.SupportsIndex`):
+                 overwrite the year - default: `self.year`
+               * **month** (:class:`typing.SupportsIndex`):
+                 overwrite the month - default: `self.month`
+               * **day** (:class:`typing.SupportsIndex`):
+                 overwrite the day - default: `self.day`
             """
-            return Date(kwargs.get("year", self.__year),
-                        kwargs.get("month", self.__month),
-                        kwargs.get("day", self.__day))
+            return Date(int(kwargs.get("year", self.__year)),
+                        int(kwargs.get("month", self.__month)),
+                        int(kwargs.get("day", self.__day)))
 
     def time_tuple(self) -> struct_time:
         """Convert the date to :class:`time.struct_time`."""
@@ -1766,10 +1767,10 @@ class Time(time_base_class, metaclass=TimeType):
 
         def replace(  # type: ignore[override]
             self,
-            hour: int = ...,
-            minute: int = ...,
-            second: int = ...,
-            nanosecond: int = ...,
+            hour: te.SupportsIndex = ...,
+            minute: te.SupportsIndex = ...,
+            second: te.SupportsIndex = ...,
+            nanosecond: te.SupportsIndex = ...,
             tzinfo: t.Optional[_tzinfo] = ...,
             **kwargs: object
         ) -> Time:
@@ -1781,21 +1782,22 @@ class Time(time_base_class, metaclass=TimeType):
             """Return a :class:`.Time` with one or more components replaced.
 
             :Keyword Arguments:
-               * **hour** (`int`): overwrite the hour -
-                 default: `self.hour`
-               * **minute** (`int`): overwrite the minute -
-                 default: `self.minute`
-               * **second** (`int`): overwrite the second -
-                 default: `int(self.second)`
-               * **nanosecond** (`int`): overwrite the nanosecond -
-                 default: `self.nanosecond`
-               * **tzinfo** (`datetime.tzinfo` or `None`):
+               * **hour** (:class:`typing.SupportsIndex`):
+                 overwrite the hour - default: `self.hour`
+               * **minute** (:class:`typing.SupportsIndex`):
+                 overwrite the minute - default: `self.minute`
+               * **second** (:class:`typing.SupportsIndex`):
+                 overwrite the second - default: `int(self.second)`
+               * **nanosecond** (:class:`typing.SupportsIndex`):
+                 overwrite the nanosecond - default: `self.nanosecond`
+               * **tzinfo** (:class:`datetime.tzinfo` or `None`):
                  overwrite the timezone - default: `self.tzinfo`
             """
-            return Time(hour=kwargs.get("hour", self.__hour),
-                        minute=kwargs.get("minute", self.__minute),
-                        second=kwargs.get("second", self.__second),
-                        nanosecond=kwargs.get("nanosecond", self.__nanosecond),
+            return Time(hour=int(kwargs.get("hour", self.__hour)),
+                        minute=int(kwargs.get("minute", self.__minute)),
+                        second=int(kwargs.get("second", self.__second)),
+                        nanosecond=int(kwargs.get("nanosecond",
+                                                  self.__nanosecond)),
                         tzinfo=kwargs.get("tzinfo", self.__tzinfo))
 
     def _utc_offset(self, dt=None):
@@ -2516,13 +2518,13 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
 
         def replace(  # type: ignore[override]
             self,
-            year: int = ...,
-            month: int = ...,
-            day: int = ...,
-            hour: int = ...,
-            minute: int = ...,
-            second: int = ...,
-            nanosecond: int = ...,
+            year: te.SupportsIndex = ...,
+            month: te.SupportsIndex = ...,
+            day: te.SupportsIndex = ...,
+            hour: te.SupportsIndex = ...,
+            minute: te.SupportsIndex = ...,
+            second: te.SupportsIndex = ...,
+            nanosecond: te.SupportsIndex = ...,
             tzinfo: t.Optional[_tzinfo] = ...,
             **kwargs: object
         ) -> DateTime:
