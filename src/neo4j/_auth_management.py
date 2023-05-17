@@ -24,9 +24,13 @@
 import abc
 import time
 import typing as t
+import warnings
 from dataclasses import dataclass
 
-from ._meta import preview
+from ._meta import (
+    preview,
+    PreviewWarning,
+)
 from .api import _TAuth
 
 
@@ -65,18 +69,22 @@ class ExpiringAuth:
         for a relative expiration time ("expires in" instead of "expires at").
 
             >>> import time, freezegun
-            >>> with freezegun.freeze_time("1970-01-01 00:00:00"):
-            ...     ExpiringAuth(("user", "pass")).expires_in(60)
-            ExpiringAuth(auth=('user', 'pass'), expires_at=60.0)
-            >>> with freezegun.freeze_time("1970-01-01 00:00:00"):
-            ...     ExpiringAuth(("user", "pass"), time.time() + 60)
-            ExpiringAuth(auth=('user', 'pass'), expires_at=60.0)
+            >>> with freezegun.freeze_time("1970-01-01 00:00:40"):
+            ...     ExpiringAuth(("user", "pass")).expires_in(2)
+            ExpiringAuth(auth=('user', 'pass'), expires_at=42.0)
+            >>> with freezegun.freeze_time("1970-01-01 00:00:40"):
+            ...     ExpiringAuth(("user", "pass"), time.time() + 2)
+            ExpiringAuth(auth=('user', 'pass'), expires_at=42.0)
 
         :param seconds:
             The number of seconds from now until the authentication information
             expires.
         """
-        return ExpiringAuth(self.auth, time.time() + seconds)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore",
+                                    message=r"^Auth managers\b.*",
+                                    category=PreviewWarning)
+            return ExpiringAuth(self.auth, time.time() + seconds)
 
 
 def expiring_auth_has_expired(auth: ExpiringAuth) -> bool:
