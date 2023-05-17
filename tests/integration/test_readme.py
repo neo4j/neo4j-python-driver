@@ -16,6 +16,7 @@
 # limitations under the License.
 
 
+import re
 from pathlib import Path
 
 
@@ -27,10 +28,7 @@ def test_should_run_readme(uri, auth):
     print = names.add
 
     # === START: README ===
-    from neo4j import (
-        GraphDatabase,
-        RoutingControl,
-    )
+    from neo4j import GraphDatabase, RoutingControl  # isort:skip
 
 
     URI = "neo4j://localhost:7687"
@@ -91,6 +89,7 @@ def test_readme_contains_example():
             adding = False
             continue
         if adding:
+            line = re.sub(r"\s+# isort:skip\s+$", "\n", line)
             stripped_test_content += line
 
     assert stripped_test_content in readme_content
