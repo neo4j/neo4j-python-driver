@@ -71,6 +71,11 @@ class AsyncExpirationBasedAuthManager(AsyncAuthManager):
 
     async def _refresh_auth(self):
         self._current_auth = await self._provider()
+        if self._current_auth is None:
+            raise TypeError(
+                "Auth provider function passed to expiration_based "
+                "AuthManager returned None, expected ExpiringAuth"
+            )
 
     async def get_auth(self) -> _TAuth:
         async with self._lock:
@@ -80,7 +85,7 @@ class AsyncExpirationBasedAuthManager(AsyncAuthManager):
                 await self._refresh_auth()
                 auth = self._current_auth
                 assert auth is not None
-            return self._current_auth.auth
+            return auth.auth
 
     async def on_auth_expired(self, auth: _TAuth) -> None:
         async with self._lock:

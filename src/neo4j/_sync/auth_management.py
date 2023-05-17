@@ -71,6 +71,11 @@ class ExpirationBasedAuthManager(AuthManager):
 
     def _refresh_auth(self):
         self._current_auth = self._provider()
+        if self._current_auth is None:
+            raise TypeError(
+                "Auth provider function passed to expiration_based "
+                "AuthManager returned None, expected ExpiringAuth"
+            )
 
     def get_auth(self) -> _TAuth:
         with self._lock:
@@ -80,7 +85,7 @@ class ExpirationBasedAuthManager(AuthManager):
                 self._refresh_auth()
                 auth = self._current_auth
                 assert auth is not None
-            return self._current_auth.auth
+            return auth.auth
 
     def on_auth_expired(self, auth: _TAuth) -> None:
         with self._lock:
