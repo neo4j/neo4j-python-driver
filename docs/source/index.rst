@@ -69,6 +69,14 @@ To install the latest pre-release, use:
     python -m pip install --pre neo4j
 
 
+.. TODO: 7.0 - remove this note
+
+.. note::
+
+    ``neo4j-driver`` is the old name for this package. It is now deprecated and
+    and will receive no further updates starting with 6.0.0. Make sure to
+    install ``neo4j`` as shown above.
+
 .. note::
 
    It is always recommended to install python packages for user space in a virtual environment.
@@ -100,60 +108,39 @@ To deactivate the current active virtual environment, use:
 Quick Example
 *************
 
-Creating nodes and relationships.
-
 .. code-block:: python
 
-    from neo4j import GraphDatabase
+    from neo4j import GraphDatabase, RoutingControl
 
 
     URI = "neo4j://localhost:7687"
     AUTH = ("neo4j", "password")
 
 
-    def create_person(tx, name):
-        tx.run("CREATE (a:Person {name: $name})", name=name)
+    def add_friend(driver, name, friend_name):
+        driver.execute_query(
+            "MERGE (a:Person {name: $name}) "
+            "MERGE (a)-[:KNOWS]->(friend:Person {name: $friend_name})",
+            name=name, friend_name=friend_name, database_="neo4j",
+        )
 
 
-    def create_friend_of(tx, name, friend):
-        tx.run("MATCH (a:Person) WHERE a.name = $name "
-               "CREATE (a)-[:KNOWS]->(:Person {name: $friend})",
-               name=name, friend=friend)
-
-
-    with GraphDatabase.driver(URI, auth=AUTH) as driver:
-        with driver.session() as session:
-            session.execute_write(create_person, "Alice")
-            session.execute_write(create_friend_of, "Alice", "Bob")
-            session.execute_write(create_friend_of, "Alice", "Carl")
-
-
-Finding nodes.
-
-.. code-block:: python
-
-    from neo4j import GraphDatabase
-
-
-    URI = "neo4j://localhost:7687"
-    AUTH = ("neo4j", "password")
-
-
-    def get_friends_of(tx, name):
-        friends = []
-        result = tx.run("MATCH (a:Person)-[:KNOWS]->(f) "
-                        "WHERE a.name = $name "
-                        "RETURN f.name AS friend", name=name)
-        for record in result:
-            friends.append(record["friend"])
-        return friends
+    def print_friends(driver, name):
+        records, _, _ = driver.execute_query(
+            "MATCH (a:Person)-[:KNOWS]->(friend) WHERE a.name = $name "
+            "RETURN friend.name ORDER BY friend.name",
+            name=name, database_="neo4j", routing_=RoutingControl.READ,
+        )
+        for record in records:
+            print(record["friend.name"])
 
 
     with GraphDatabase.driver(URI, auth=AUTH) as driver:
-        with driver.session() as session:
-            friends = session.execute_read(get_friends_of, "Alice")
-            for friend in friends:
-                print(friend)
+        add_friend(driver, "Arthur", "Guinevere")
+        add_friend(driver, "Arthur", "Lancelot")
+        add_friend(driver, "Arthur", "Merlin")
+        print_friends(driver, "Arthur")
+
 
 
 *******************
@@ -163,78 +150,87 @@ Example Application
 .. code-block:: python
 
     import logging
-    from neo4j import GraphDatabase
-    from neo4j.exceptions import ServiceUnavailable
+
+    from neo4j import GraphDatabase, RoutingControl
+    from neo4j.exceptions import DriverError, Neo4jError
 
 
     class App:
 
-        def __init__(self, uri, user, password):
+        def __init__(self, uri, user, password, database=None):
             self.driver = GraphDatabase.driver(uri, auth=(user, password))
+            self.database = database
 
         def close(self):
-            # Don't forget to close the driver connection when you are finished with it
+            # Don't forget to close the driver connection when you are finished
+            # with it
             self.driver.close()
 
         def create_friendship(self, person1_name, person2_name):
             with self.driver.session() as session:
-                # Write transactions allow the driver to handle retries and transient errors
-                result = session.execute_write(
-                    self._create_and_return_friendship, person1_name, person2_name)
-                for record in result:
-                    print("Created friendship between: {p1}, {p2}".format(
-                        p1=record['p1'], p2=record['p2']))
+                # Write transactions allow the driver to handle retries and
+                # transient errors
+                result = self._create_and_return_friendship(
+                    person1_name, person2_name
+                )
+                print("Created friendship between: "
+                      f"{result['p1']}, {result['p2']}")
 
-        @staticmethod
-        def _create_and_return_friendship(tx, person1_name, person2_name):
+        def _create_and_return_friendship(self, person1_name, person2_name):
 
             # To learn more about the Cypher syntax,
             # see https://neo4j.com/docs/cypher-manual/current/
 
-            # The Reference Card is also a good resource for keywords,
-            # see https://neo4j.com/docs/cypher-refcard/current/
+            # The Cheat Sheet is also a good resource for keywords,
+            # see https://neo4j.com/docs/cypher-cheat-sheet/
 
             query = (
                 "CREATE (p1:Person { name: $person1_name }) "
                 "CREATE (p2:Person { name: $person2_name }) "
                 "CREATE (p1)-[:KNOWS]->(p2) "
-                "RETURN p1, p2"
+                "RETURN p1.name, p2.name"
             )
-            result = tx.run(query, person1_name=person1_name, person2_name=person2_name)
             try:
-                return [{"p1": record["p1"]["name"], "p2": record["p2"]["name"]}
-                        for record in result]
+                record = self.driver.execute_query(
+                    query, person1_name=person1_name, person2_name=person2_name,
+                    database_=self.database,
+                    result_transformer_=lambda r: r.single(strict=True)
+                )
+                return {"p1": record["p1.name"], "p2": record["p2.name"]}
             # Capture any errors along with the query and data for traceability
-            except ServiceUnavailable as exception:
-                logging.error("{query} raised an error: \n {exception}".format(
-                    query=query, exception=exception))
+            except (DriverError, Neo4jError) as exception:
+                logging.error("%s raised an error: \n%s", query, exception)
                 raise
 
         def find_person(self, person_name):
-            with self.driver.session() as session:
-                result = session.execute_read(self._find_and_return_person, person_name)
-                for record in result:
-                    print("Found person: {record}".format(record=record))
+            names = self._find_and_return_person(person_name)
+            for name in names:
+                print(f"Found person: {name}")
 
-        @staticmethod
-        def _find_and_return_person(tx, person_name):
+        def _find_and_return_person(self, person_name):
             query = (
                 "MATCH (p:Person) "
                 "WHERE p.name = $person_name "
                 "RETURN p.name AS name"
             )
-            result = tx.run(query, person_name=person_name)
-            return [record["name"] for record in result]
+            names = self.driver.execute_query(
+                query, person_name=person_name,
+                database_=self.database, routing_=RoutingControl.READ,
+                result_transformer_=lambda r: r.value("name")
+            )
+            return names
 
     if __name__ == "__main__":
-        # See https://neo4j.com/developer/aura-connect-driver/ for Aura specific connection URL.
+        # For Aura specific connection URI,
+        # see https://neo4j.com/developer/aura-connect-driver/ .
         scheme = "neo4j"  # Connecting to Aura, use the "neo4j+s" URI scheme
         host_name = "example.com"
         port = 7687
-        url = f"{scheme}://{host_name}:{port}"
+        uri = f"{scheme}://{host_name}:{port}"
         user = "<Username for Neo4j database>"
         password = "<Password for Neo4j database>"
-        app = App(url, user, password)
+        database = "neo4j"
+        app = App(uri, user, password, database)
         try:
             app.create_friendship("Alice", "David")
             app.find_person("Alice")
@@ -242,20 +238,22 @@ Example Application
             app.close()
 
 
-*****************
-Other Information
-*****************
+*******************
+Further Information
+*******************
 
-* `Neo4j Documentation`_
-* `The Neo4j Drivers Manual`_
-* `Cypher Cheat Sheet`_
-* `Example Project`_
+* `The Neo4j Operations Manual`_ (docs on how to run a Neo4j server)
+* `The Neo4j Python Driver Manual`_ (good introduction to this driver)
+* `Python Driver API Documentation`_ (full API documentation for this driver)
+* `Neo4j Cypher Cheat Sheet`_ (summary of Cypher syntax - Neo4j's graph query language)
+* `Example Project`_ (small web application using this driver)
 * `Driver Wiki`_ (includes change logs)
-* `Neo4j Aura`_
+* `Neo4j Migration Guide`_
 
-.. _`Neo4j Documentation`: https://neo4j.com/docs/
-.. _`The Neo4j Drivers Manual`: https://neo4j.com/docs/driver-manual/current/
-.. _`Cypher Cheat Sheet`: https://neo4j.com/docs/cypher-cheat-sheet/current/
+.. _`The Neo4j Operations Manual`: https://neo4j.com/docs/operations-manual/current/
+.. _`The Neo4j Python Driver Manual`: https://neo4j.com/docs/python-manual/current/
+.. _`Python Driver API Documentation`: https://neo4j.com/docs/api/python-driver/current/
+.. _`Neo4j Cypher Cheat Sheet`: https://neo4j.com/docs/cypher-cheat-sheet/
 .. _`Example Project`: https://github.com/neo4j-examples/movies-python-bolt
 .. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki
-.. _`Neo4j Aura`: https://neo4j.com/neo4j-aura/
+.. _`Neo4j Migration Guide`: https://neo4j.com/docs/migration-guide/current/

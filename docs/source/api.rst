@@ -1030,7 +1030,7 @@ See :class:`.BookmarkManager` for more information.
 ``auth``
 --------
 Optional :class:`neo4j.Auth` or ``(user, password)``-tuple. Use this overwrite the
-authentication information for the session.
+authentication information for the session (user-switching).
 This requires the server to support re-authentication on the protocol level. You can
 check this by calling :meth:`.Driver.supports_session_auth` / :meth:`.AsyncDriver.supports_session_auth`.
 

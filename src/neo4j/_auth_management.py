@@ -74,6 +74,8 @@ class AuthManager(metaclass=abc.ABCMeta):
 
         The token returned must always belong to the same identity.
         Switching identities using the `AuthManager` is undefined behavior.
+        You may use session-level authentication for such use-cases
+        :ref:`session-auth-ref`.
 
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
@@ -96,6 +98,8 @@ class AuthManager(metaclass=abc.ABCMeta):
             The method must only ever return auth information belonging to the
             same identity.
             Switching identities using the `AuthManager` is undefined behavior.
+            You may use session-level authentication for such use-cases
+            :ref:`session-auth-ref`.
         """
         ...
 

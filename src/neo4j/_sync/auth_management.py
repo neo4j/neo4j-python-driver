@@ -159,9 +159,11 @@ class AuthManagers:
             The provider function **must not** interact with the driver in any
             way as this can cause deadlocks and undefined behaviour.
 
-            The provider function only ever return auth information belonging
-            to the same identity.
+            The provider must function only ever return auth information
+            belonging to the same identity.
             Switching identities is undefined behavior.
+            You may use session-level authentication for such use-cases
+            :ref:`session-auth-ref`.
 
         Example::
 
