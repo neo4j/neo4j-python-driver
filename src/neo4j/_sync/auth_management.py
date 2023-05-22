@@ -28,6 +28,7 @@ from logging import getLogger
 from .._async_compat.concurrency import Lock
 from .._auth_management import (
     AuthManager,
+    expiring_auth_has_expired,
     ExpiringAuth,
 )
 from .._meta import preview
@@ -54,24 +55,8 @@ class StaticAuthManager(AuthManager):
         pass
 
 
-class _ExpiringAuthHolder:
-    def __init__(self, auth: ExpiringAuth) -> None:
-        self._auth = auth
-        self._expiry = None
-        if auth.expires_in is not None:
-            self._expiry = time.monotonic() + auth.expires_in
-
-    @property
-    def auth(self) -> _TAuth:
-        return self._auth.auth
-
-    def expired(self) -> bool:
-        if self._expiry is None:
-            return False
-        return time.monotonic() > self._expiry
-
 class ExpirationBasedAuthManager(AuthManager):
-    _current_auth: t.Optional[_ExpiringAuthHolder]
+    _current_auth: t.Optional[ExpiringAuth]
     _provider: t.Callable[[], t.Union[ExpiringAuth]]
     _lock: Lock
 
@@ -85,17 +70,22 @@ class ExpirationBasedAuthManager(AuthManager):
         self._lock = Lock()
 
     def _refresh_auth(self):
-        self._current_auth = _ExpiringAuthHolder(self._provider())
+        self._current_auth = self._provider()
+        if self._current_auth is None:
+            raise TypeError(
+                "Auth provider function passed to expiration_based "
+                "AuthManager returned None, expected ExpiringAuth"
+            )
 
     def get_auth(self) -> _TAuth:
         with self._lock:
             auth = self._current_auth
-            if auth is not None and not auth.expired():
-                return auth.auth
-            log.debug("[     ]  _: <TEMPORAL AUTH> refreshing (time out)")
-            self._refresh_auth()
-            assert self._current_auth is not None
-            return self._current_auth.auth
+            if auth is None or expiring_auth_has_expired(auth):
+                log.debug("[     ]  _: <TEMPORAL AUTH> refreshing (time out)")
+                self._refresh_auth()
+                auth = self._current_auth
+                assert auth is not None
+            return auth.auth
 
     def on_auth_expired(self, auth: _TAuth) -> None:
         with self._lock:

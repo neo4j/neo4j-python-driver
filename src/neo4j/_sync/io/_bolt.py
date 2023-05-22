@@ -837,7 +837,7 @@ class Bolt:
         user_cancelled = isinstance(error, asyncio.CancelledError)
 
         if error:
-            log.debug("[#%04X] _: <CONNECTION> error: %r", self.local_port,
+            log.debug("[#%04X]  _: <CONNECTION> error: %r", self.local_port,
                       error)
         if not user_cancelled:
             log.error(message)
