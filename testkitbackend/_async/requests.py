@@ -271,13 +271,12 @@ async def ExpirationBasedAuthTokenProviderCompleted(backend, data):
                                                "AuthTokenAndExpiration")
     temp_auth_data = temp_auth_data["data"]
     auth_token = fromtestkit.to_auth_token(temp_auth_data, "auth")
-    if temp_auth_data["expiresInMs"] is not None:
-        expires_in = temp_auth_data["expiresInMs"] / 1000
-    else:
-        expires_in = None
     with warning_check(neo4j.PreviewWarning,
                        "Auth managers are a preview feature."):
-        expiring_auth = ExpiringAuth(auth_token, expires_in)
+        expiring_auth = ExpiringAuth(auth_token)
+    if temp_auth_data["expiresInMs"] is not None:
+        expires_in = temp_auth_data["expiresInMs"] / 1000
+        expiring_auth = expiring_auth.expires_in(expires_in)
 
     backend.expiring_auth_token_supplies[data["requestId"]] = expiring_auth
 
