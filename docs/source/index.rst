@@ -248,6 +248,7 @@ Further Information
 * `Python Driver API Documentation`_ (full API documentation for this driver)
 * `Neo4j Cypher Cheat Sheet`_ (summary of Cypher syntax - Neo4j's graph query language)
 * `Example Project`_ (small web application using this driver)
+* `GraphAcademy`_ (interactive, free online trainings for Neo4j)
 * `Driver Wiki`_ (includes change logs)
 * `Neo4j Migration Guide`_
 
@@ -256,5 +257,6 @@ Further Information
 .. _`Python Driver API Documentation`: https://neo4j.com/docs/api/python-driver/current/
 .. _`Neo4j Cypher Cheat Sheet`: https://neo4j.com/docs/cypher-cheat-sheet/
 .. _`Example Project`: https://github.com/neo4j-examples/movies-python-bolt
+.. _`GraphAcademy`: https://graphacademy.neo4j.com/categories/python/
 .. _`Driver Wiki`: https://github.com/neo4j/neo4j-python-driver/wiki
 .. _`Neo4j Migration Guide`: https://neo4j.com/docs/migration-guide/current/
