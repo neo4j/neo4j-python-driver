@@ -57,7 +57,8 @@ Quick Example
     def add_friend(driver, name, friend_name):
         driver.execute_query(
             "MERGE (a:Person {name: $name}) "
-            "MERGE (a)-[:KNOWS]->(friend:Person {name: $friend_name})",
+            "MERGE (friend:Person {name: $friend_name}) "
+            "MERGE (a)-[:KNOWS]->(friend)",
             name=name, friend_name=friend_name, database_="neo4j",
         )
 
