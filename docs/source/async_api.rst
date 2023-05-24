@@ -149,11 +149,11 @@ Closing a driver will immediately shut down all connections in the pool.
     query, use :meth:`neo4j.AsyncDriver.verify_connectivity`.
 
 .. autoclass:: neo4j.AsyncDriver()
-    :members: session, query_bookmark_manager, encrypted, close,
+    :members: session, execute_query_bookmark_manager, encrypted, close,
               verify_connectivity, get_server_info, verify_authentication,
               supports_session_auth, supports_multi_db
 
-    .. method:: execute_query(query, parameters_=None, routing_=neo4j.RoutingControl.WRITE, database_=None, impersonated_user_=None, bookmark_manager_=self.query_bookmark_manager, result_transformer_=AsyncResult.to_eager_result, **kwargs)
+    .. method:: execute_query(query, parameters_=None, routing_=neo4j.RoutingControl.WRITE, database_=None, impersonated_user_=None, bookmark_manager_=self.execute_query_bookmark_manager, result_transformer_=AsyncResult.to_eager_result, **kwargs)
         :async:
 
         Execute a query in a transaction function and return all results.
@@ -273,9 +273,8 @@ Closing a driver will immediately shut down all connections in the pool.
             https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
             See also the Session config :ref:`session-auth-ref`.
-        :type auth_: typing.Union[
-            typing.Tuple[typing.Any, typing.Any], neo4j.Auth, None
-        ]
+        :type auth_:
+            typing.Union[typing.Tuple[typing.Any, typing.Any], neo4j.Auth, None]
         :param result_transformer_:
             A function that gets passed the :class:`neo4j.AsyncResult` object
             resulting from the query and converts it to a different type. The
@@ -344,12 +343,11 @@ Closing a driver will immediately shut down all connections in the pool.
             If present, the bookmark manager is used to keep the query causally
             consistent with all work executed using the same bookmark manager.
 
-            Defaults to the driver's :attr:`.query_bookmark_manager`.
+            Defaults to the driver's :attr:`.execute_query_bookmark_manager`.
 
             Pass :data:`None` to disable causal consistency.
         :type bookmark_manager_:
-            typing.Union[neo4j.AsyncBookmarkManager, neo4j.BookmarkManager,
-                         None]
+            typing.Union[AsyncBookmarkManager, BookmarkManager, None]
         :param kwargs: additional keyword parameters. None of these can end
             with a single underscore. This is to avoid collisions with the
             keyword configuration parameters of this method. If you need to

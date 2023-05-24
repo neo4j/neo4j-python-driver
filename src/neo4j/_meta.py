@@ -16,12 +16,15 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import asyncio
 import platform
 import sys
 import tracemalloc
 import typing as t
 from functools import wraps
+from inspect import isclass
 from warnings import warn
 
 
@@ -95,23 +98,7 @@ def deprecated(message: str) -> t.Callable[[_FuncT], _FuncT]:
             pass
 
     """
-    def decorator(f):
-        if asyncio.iscoroutinefunction(f):
-            @wraps(f)
-            async def inner(*args, **kwargs):
-                deprecation_warn(message, stack_level=2)
-                return await f(*args, **kwargs)
-
-            return inner
-        else:
-            @wraps(f)
-            def inner(*args, **kwargs):
-                deprecation_warn(message, stack_level=2)
-                return f(*args, **kwargs)
-
-            return inner
-
-    return decorator
+    return _make_warning_decorator(message, deprecation_warn)
 
 
 def deprecated_property(message: str):
@@ -130,20 +117,6 @@ class ExperimentalWarning(Warning):
 
 def experimental_warn(message, stack_level=1):
     warn(message, category=ExperimentalWarning, stacklevel=stack_level + 1)
-
-
-class PreviewWarning(Warning):
-    """ Base class for warnings about experimental features.
-    """
-
-
-def preview_warn(message, stack_level=1):
-    message += (
-        " It might be changed without following the deprecation policy. "
-        "See also "
-        "https://github.com/neo4j/neo4j-python-driver/wiki/preview-features."
-    )
-    warn(message, category=PreviewWarning, stacklevel=stack_level + 1)
 
 
 def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
@@ -175,7 +148,21 @@ def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
 
             return inner
 
-    return decorator
+    return _make_warning_decorator(message, experimental_warn)
+
+
+class PreviewWarning(Warning):
+    """ Base class for warnings about experimental features.
+    """
+
+
+def preview_warn(message, stack_level=1):
+    message += (
+        " It might be changed without following the deprecation policy. "
+        "See also "
+        "https://github.com/neo4j/neo4j-python-driver/wiki/preview-features."
+    )
+    warn(message, category=PreviewWarning, stacklevel=stack_level + 1)
 
 
 def preview(message) -> t.Callable[[_FuncT], _FuncT]:
@@ -186,18 +173,47 @@ def preview(message) -> t.Callable[[_FuncT], _FuncT]:
         def foo(x):
             pass
     """
+
+    return _make_warning_decorator(message, preview_warn)
+
+
+if t.TYPE_CHECKING:
+    class _WarningFunc(t.Protocol):
+        def __call__(self, message: str, stack_level: int = 1) -> None:
+            ...
+else:
+    _WarningFunc = object
+
+
+def _make_warning_decorator(
+    message: str,
+    warning_func: _WarningFunc,
+) -> t.Callable[[_FuncT], _FuncT]:
     def decorator(f):
         if asyncio.iscoroutinefunction(f):
             @wraps(f)
             async def inner(*args, **kwargs):
-                preview_warn(message, stack_level=2)
+                warning_func(message, stack_level=2)
                 return await f(*args, **kwargs)
 
             return inner
+        if isclass(f):
+            if hasattr(f, "__init__"):
+                original_init = f.__init__
+                @wraps(original_init)
+                def inner(*args, **kwargs):
+                    warning_func(message, stack_level=2)
+                    return original_init(*args, **kwargs)
+
+                f.__init__ = inner
+                return f
+            raise TypeError(
+                "Cannot decorate class without __init__"
+            )
         else:
             @wraps(f)
             def inner(*args, **kwargs):
-                preview_warn(message, stack_level=2)
+                warning_func(message, stack_level=2)
                 return f(*args, **kwargs)
 
             return inner
