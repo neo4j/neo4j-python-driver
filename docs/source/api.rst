@@ -628,6 +628,7 @@ Specify the client agent name.
 ``notifications_min_severity``
 ------------------------------
 Set the minimum severity for notifications the server should send to the client.
+Disabling severities allows the server to skip analysis for those, which can speed up query execution.
 
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
 
@@ -650,6 +651,7 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 ``notifications_disabled_categories``
 -------------------------------------
 Set categories of notifications the server should not send to the client.
+Disabling categories allows the server to skip analysis for those, which can speed up query execution.
 
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
 
@@ -1053,6 +1055,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 ``notifications_min_severity``
 ------------------------------
 Set the minimum severity for notifications the server should send to the client.
+Disabling severities allows the server to skip analysis for those, which can speed up query execution.
 
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
 
@@ -1075,6 +1078,7 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 ``notifications_disabled_categories``
 -------------------------------------
 Set categories of notifications the server should not send to the client.
+Disabling categories allows the server to skip analysis for those, which can speed up query execution.
 
 Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`.ResultSummary.summary_notifications`.
 
