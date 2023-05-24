@@ -37,7 +37,7 @@ version = "5.8.dev0"
 deprecated_package = False
 
 
-def _compute_bolt_agent() -> str:
+def _compute_bolt_agent() -> t.Dict[str, str]:
     def format_version_info(version_info):
         return "{}.{}.{}-{}-{}".format(*version_info)
 
@@ -59,7 +59,7 @@ def _compute_bolt_agent() -> str:
 BOLT_AGENT_DICT = _compute_bolt_agent()
 
 
-def _compute_user_agent():
+def _compute_user_agent() -> str:
     template = "neo4j-python/{} Python/{}.{}.{}-{}-{} ({})"
     fields = (version,) + tuple(sys.version_info) + (sys.platform,)
     return template.format(*fields)
