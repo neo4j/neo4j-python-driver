@@ -23,6 +23,7 @@ from ssl import SSLSocket
 
 from ..._codec.hydration import v2 as hydration_v2
 from ..._exceptions import BoltProtocolError
+from ..._meta import BOLT_AGENT_DICT
 from ...api import (
     READ_ACCESS,
     Version,
@@ -618,3 +619,13 @@ class AsyncBolt5x2(AsyncBolt5x1):
         self._append(b"\x11", (extra,),
                      Response(self, "begin", hydration_hooks, **handlers),
                      dehydration_hooks=dehydration_hooks)
+
+
+class AsyncBolt5x3(AsyncBolt5x2):
+
+    PROTOCOL_VERSION = Version(5, 3)
+
+    def get_base_headers(self):
+        headers = super().get_base_headers()
+        headers["bolt_agent"] = BOLT_AGENT_DICT
+        return headers

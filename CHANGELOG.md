@@ -3,7 +3,9 @@
 See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
-- No breaking or major changes.
+- `neo4j.auth_management.ExpiringAuth`'s `expires_in` (in preview) was replaced
+  by `expires_at`, which is a unix timestamp.  
+  You can use `ExpiringAuth(some_auth).expires_in(123)` instead.
 
 
 ## Version 5.8

@@ -16,10 +16,15 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import asyncio
+import platform
+import sys
 import tracemalloc
 import typing as t
 from functools import wraps
+from inspect import isclass
 from warnings import warn
 
 
@@ -32,17 +37,43 @@ version = "5.8.dev0"
 deprecated_package = False
 
 
+def _compute_bolt_agent() -> t.Dict[str, str]:
+    def format_version_info(version_info):
+        return "{}.{}.{}-{}-{}".format(*version_info)
+
+    return {
+        "product": f"neo4j-python/{version}",
+        "platform":
+            f"{platform.system() or 'Unknown'} "
+            f"{platform.release() or 'unknown'}; "
+            f"{platform.machine() or 'unknown'}",
+        "language": f"Python/{format_version_info(sys.version_info)}",
+        "language_details":
+            f"{platform.python_implementation()}; "
+            f"{format_version_info(sys.implementation.version)} "
+            f"({', '.join(platform.python_build())}) "
+            f"[{platform.python_compiler()}]"
+    }
+
+
+BOLT_AGENT_DICT = _compute_bolt_agent()
+
+
+def _compute_user_agent() -> str:
+    template = "neo4j-python/{} Python/{}.{}.{}-{}-{} ({})"
+    fields = (version,) + tuple(sys.version_info) + (sys.platform,)
+    return template.format(*fields)
+
+
+USER_AGENT = _compute_user_agent()
+
+
+# TODO: 6.0 - remove this function
 def get_user_agent():
     """ Obtain the default user agent string sent to the server after
     a successful handshake.
     """
-    from sys import (
-        platform,
-        version_info,
-    )
-    template = "neo4j-python/{} Python/{}.{}.{}-{}-{} ({})"
-    fields = (version,) + tuple(version_info) + (platform,)
-    return template.format(*fields)
+    return USER_AGENT
 
 
 def _id(x):
@@ -67,23 +98,7 @@ def deprecated(message: str) -> t.Callable[[_FuncT], _FuncT]:
             pass
 
     """
-    def decorator(f):
-        if asyncio.iscoroutinefunction(f):
-            @wraps(f)
-            async def inner(*args, **kwargs):
-                deprecation_warn(message, stack_level=2)
-                return await f(*args, **kwargs)
-
-            return inner
-        else:
-            @wraps(f)
-            def inner(*args, **kwargs):
-                deprecation_warn(message, stack_level=2)
-                return f(*args, **kwargs)
-
-            return inner
-
-    return decorator
+    return _make_warning_decorator(message, deprecation_warn)
 
 
 def deprecated_property(message: str):
@@ -102,20 +117,6 @@ class ExperimentalWarning(Warning):
 
 def experimental_warn(message, stack_level=1):
     warn(message, category=ExperimentalWarning, stacklevel=stack_level + 1)
-
-
-class PreviewWarning(Warning):
-    """ Base class for warnings about experimental features.
-    """
-
-
-def preview_warn(message, stack_level=1):
-    message += (
-        " It might be changed without following the deprecation policy. "
-        "See also "
-        "https://github.com/neo4j/neo4j-python-driver/wiki/preview-features."
-    )
-    warn(message, category=PreviewWarning, stacklevel=stack_level + 1)
 
 
 def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
@@ -147,7 +148,21 @@ def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
 
             return inner
 
-    return decorator
+    return _make_warning_decorator(message, experimental_warn)
+
+
+class PreviewWarning(Warning):
+    """ Base class for warnings about experimental features.
+    """
+
+
+def preview_warn(message, stack_level=1):
+    message += (
+        " It might be changed without following the deprecation policy. "
+        "See also "
+        "https://github.com/neo4j/neo4j-python-driver/wiki/preview-features."
+    )
+    warn(message, category=PreviewWarning, stacklevel=stack_level + 1)
 
 
 def preview(message) -> t.Callable[[_FuncT], _FuncT]:
@@ -158,18 +173,47 @@ def preview(message) -> t.Callable[[_FuncT], _FuncT]:
         def foo(x):
             pass
     """
+
+    return _make_warning_decorator(message, preview_warn)
+
+
+if t.TYPE_CHECKING:
+    class _WarningFunc(t.Protocol):
+        def __call__(self, message: str, stack_level: int = 1) -> None:
+            ...
+else:
+    _WarningFunc = object
+
+
+def _make_warning_decorator(
+    message: str,
+    warning_func: _WarningFunc,
+) -> t.Callable[[_FuncT], _FuncT]:
     def decorator(f):
         if asyncio.iscoroutinefunction(f):
             @wraps(f)
             async def inner(*args, **kwargs):
-                preview_warn(message, stack_level=2)
+                warning_func(message, stack_level=2)
                 return await f(*args, **kwargs)
 
             return inner
+        if isclass(f):
+            if hasattr(f, "__init__"):
+                original_init = f.__init__
+                @wraps(original_init)
+                def inner(*args, **kwargs):
+                    warning_func(message, stack_level=2)
+                    return original_init(*args, **kwargs)
+
+                f.__init__ = inner
+                return f
+            raise TypeError(
+                "Cannot decorate class without __init__"
+            )
         else:
             @wraps(f)
             def inner(*args, **kwargs):
-                preview_warn(message, stack_level=2)
+                warning_func(message, stack_level=2)
                 return f(*args, **kwargs)
 
             return inner

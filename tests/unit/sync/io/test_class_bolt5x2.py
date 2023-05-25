@@ -23,6 +23,7 @@ import pytest
 
 import neo4j
 from neo4j._conf import PoolConfig
+from neo4j._meta import USER_AGENT
 from neo4j._sync.io._bolt5 import Bolt5x2
 
 from ...._async_compat import mark_sync_test
@@ -406,7 +407,6 @@ def _assert_notifications_in_extra(extra, expected):
         assert extra[key] == expected[key]
 
 
-
 @pytest.mark.parametrize(("method", "args", "extra_idx"), (
     ("run", ("RETURN 1",), 2),
     ("begin", (), 0),
@@ -476,3 +476,50 @@ def test_hello_supports_notification_filters(
     if dis_cats is not None:
         expected["notifications_disabled_categories"] = dis_cats
     _assert_notifications_in_extra(extra, expected)
+
+
+@mark_sync_test
+@pytest.mark.parametrize(
+    "user_agent", (None, "test user agent", "", USER_AGENT)
+)
+def test_user_agent(fake_socket_pair, user_agent):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt5x2.PACKER_CLS,
+                               unpacker_cls=Bolt5x2.UNPACKER_CLS)
+    sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    sockets.server.send_message(b"\x70", {})
+    max_connection_lifetime = 0
+    connection = Bolt5x2(
+        address, sockets.client, max_connection_lifetime, user_agent=user_agent
+    )
+    connection.hello()
+
+    tag, fields = sockets.server.pop_message()
+    extra = fields[0]
+    if not user_agent:
+        assert extra["user_agent"] == USER_AGENT
+    else:
+        assert extra["user_agent"] == user_agent
+
+
+@mark_sync_test
+@pytest.mark.parametrize(
+    "user_agent", (None, "test user agent", "", USER_AGENT)
+)
+def test_does_not_send_bolt_agent(fake_socket_pair, user_agent):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt5x2.PACKER_CLS,
+                               unpacker_cls=Bolt5x2.UNPACKER_CLS)
+    sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    sockets.server.send_message(b"\x70", {})
+    max_connection_lifetime = 0
+    connection = Bolt5x2(
+        address, sockets.client, max_connection_lifetime, user_agent=user_agent
+    )
+    connection.hello()
+
+    tag, fields = sockets.server.pop_message()
+    extra = fields[0]
+    assert "bolt_agent" not in extra

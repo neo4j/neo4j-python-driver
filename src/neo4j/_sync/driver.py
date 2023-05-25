@@ -407,9 +407,9 @@ class GraphDatabase:
 
 class _Direct:
 
+    # TODO: 6.0 - those attributes should be private
     default_host = "localhost"
     default_port = 7687
-
     default_target = ":"
 
     def __init__(self, address):
@@ -432,9 +432,9 @@ class _Direct:
 
 class _Routing:
 
+    # TODO: 6.0 - those attributes should be private
     default_host = "localhost"
     default_port = 7687
-
     default_targets = ": :17601 :17687"
 
     def __init__(self, initial_addresses):
@@ -804,12 +804,11 @@ class Driver:
             If present, the bookmark manager is used to keep the query causally
             consistent with all work executed using the same bookmark manager.
 
-            Defaults to the driver's :attr:`.query_bookmark_manager`.
+            Defaults to the driver's :attr:`.execute_query_bookmark_manager`.
 
             Pass :data:`None` to disable causal consistency.
         :type bookmark_manager_:
-            typing.Union[neo4j.BookmarkManager, neo4j.BookmarkManager,
-                         None]
+            typing.Union[BookmarkManager, BookmarkManager, None]
         :param kwargs: additional keyword parameters. None of these can end
             with a single underscore. This is to avoid collisions with the
             keyword configuration parameters of this method. If you need to
@@ -874,7 +873,7 @@ class Driver:
             def example(driver: neo4j.Driver) -> None:
                 driver.execute_query("<QUERY 1>")
                 with driver.session(
-                    bookmark_manager=driver.query_bookmark_manager
+                    bookmark_manager=driver.execute_query_bookmark_manager
                 ) as session:
                     # every query inside this session will be causally chained
                     # (i.e., can read what was written by <QUERY 1>)
