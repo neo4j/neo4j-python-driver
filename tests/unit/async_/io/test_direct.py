@@ -18,6 +18,7 @@
 
 import pytest
 
+import neo4j
 from neo4j import PreviewWarning
 from neo4j._async.io import AsyncBolt
 from neo4j._async.io._pool import AsyncIOPool
@@ -161,7 +162,7 @@ def assert_pool_size( address, expected_active, expected_inactive, pool):
 
 @mark_async_test
 async def test_pool_can_acquire(pool):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     connection = await pool._acquire(address, None, Deadline(3), None)
     assert connection.address == address
     assert_pool_size(address, 1, 0, pool)
@@ -169,7 +170,7 @@ async def test_pool_can_acquire(pool):
 
 @mark_async_test
 async def test_pool_can_acquire_twice(pool):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     connection_1 = await pool._acquire(address, None, Deadline(3), None)
     connection_2 = await pool._acquire(address, None, Deadline(3), None)
     assert connection_1.address == address
@@ -180,8 +181,8 @@ async def test_pool_can_acquire_twice(pool):
 
 @mark_async_test
 async def test_pool_can_acquire_two_addresses(pool):
-    address_1 = ("127.0.0.1", 7687)
-    address_2 = ("127.0.0.1", 7474)
+    address_1 = neo4j.Address(("127.0.0.1", 7687))
+    address_2 = neo4j.Address(("127.0.0.1", 7474))
     connection_1 = await pool._acquire(address_1, None, Deadline(3), None)
     connection_2 = await pool._acquire(address_2, None, Deadline(3), None)
     assert connection_1.address == address_1
@@ -192,7 +193,7 @@ async def test_pool_can_acquire_two_addresses(pool):
 
 @mark_async_test
 async def test_pool_can_acquire_and_release(pool):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     connection = await pool._acquire(address, None, Deadline(3), None)
     assert_pool_size(address, 1, 0, pool)
     await pool.release(connection)
@@ -201,7 +202,7 @@ async def test_pool_can_acquire_and_release(pool):
 
 @mark_async_test
 async def test_pool_releasing_twice(pool):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     connection = await pool._acquire(address, None, Deadline(3), None)
     await pool.release(connection)
     assert_pool_size(address, 0, 1, pool)
@@ -211,7 +212,7 @@ async def test_pool_releasing_twice(pool):
 
 @mark_async_test
 async def test_pool_in_use_count(pool):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     assert pool.in_use_connection_count(address) == 0
     connection = await pool._acquire(address, None, Deadline(3), None)
     assert pool.in_use_connection_count(address) == 1
@@ -222,7 +223,7 @@ async def test_pool_in_use_count(pool):
 @mark_async_test
 async def test_pool_max_conn_pool_size(pool):
     async with AsyncFakeBoltPool((), max_connection_pool_size=1) as pool:
-        address = ("127.0.0.1", 7687)
+        address = neo4j.Address(("127.0.0.1", 7687))
         await pool._acquire(address, None, Deadline(0), None)
         assert pool.in_use_connection_count(address) == 1
         with pytest.raises(ClientError):
@@ -233,7 +234,7 @@ async def test_pool_max_conn_pool_size(pool):
 @pytest.mark.parametrize("is_reset", (True, False))
 @mark_async_test
 async def test_pool_reset_when_released(is_reset, pool, mocker):
-    address = ("127.0.0.1", 7687)
+    address = neo4j.Address(("127.0.0.1", 7687))
     quick_connection_name = AsyncQuickConnection.__name__
     is_reset_mock = mocker.patch(
         f"{__name__}.{quick_connection_name}.is_reset",
