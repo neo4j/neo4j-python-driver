@@ -58,6 +58,12 @@ class ExpiringAuth:
         :meth:`.AsyncAuthManagers.expiration_based`
 
     .. versionadded:: 5.8
+
+    .. versionchanged:: 5.9
+        Removed parameter and member ``expires_in`` (relative expiration time).
+        Replaced with ``expires_at`` (absolute expiration time).
+        :meth:`.expires_in` can be used to create an :class:`.ExpiringAuth`
+        with a relative expiration time.
     """
     auth: "_TAuth"
     expires_at: t.Optional[float] = None
@@ -79,6 +85,8 @@ class ExpiringAuth:
         :param seconds:
             The number of seconds from now until the authentication information
             expires.
+
+        .. versionadded:: 5.9
         """
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore",
