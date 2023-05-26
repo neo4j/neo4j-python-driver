@@ -69,7 +69,7 @@ class ExpiringAuth:
     expires_at: t.Optional[float] = None
 
     def expires_in(self, seconds: float) -> "ExpiringAuth":
-        """Return a copy of this object with a new expiration time.
+        """Return a (flat) copy of this object with a new expiration time.
 
         This is a convenience method for creating an :class:`.ExpiringAuth`
         for a relative expiration time ("expires in" instead of "expires at").
