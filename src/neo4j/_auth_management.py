@@ -60,8 +60,8 @@ class ExpiringAuth:
     .. versionadded:: 5.8
 
     .. versionchanged:: 5.9
-        Removed parameter and member ``expires_in`` (relative expiration time).
-        Replaced with ``expires_at`` (absolute expiration time).
+        Removed parameter and attribute ``expires_in`` (relative expiration
+        time). Replaced with ``expires_at`` (absolute expiration time).
         :meth:`.expires_in` can be used to create an :class:`.ExpiringAuth`
         with a relative expiration time.
     """
