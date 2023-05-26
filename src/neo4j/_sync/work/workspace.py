@@ -39,7 +39,10 @@ from ...exceptions import (
     SessionError,
     SessionExpired,
 )
-from ..home_db_cache import HomeDbCache
+from ..home_db_cache import (
+    HomeDbCache,
+    TKey,
+)
 from ..io import (
     AcquireAuth,
     Neo4jPool,
@@ -93,16 +96,11 @@ class Workspace:
 
     def _make_database_callback(
         self,
-        auth: t.Union[AuthManager, AuthManager, None]
+        cache_key: TKey,
     ) -> t.Callable[[str], t.Union[None]]:
         def _database_callback(database) -> None:
-            nonlocal auth
             db_cache: HomeDbCache = self._pool.home_db_cache
             if db_cache.enabled:
-                cache_key = db_cache.compute_key(
-                    self._config.impersonated_user,
-                    self._resolve_session_auth(auth)
-                )
                 db_cache.set(cache_key, database)
             self._set_cached_database(database)
 
@@ -198,7 +196,7 @@ class Workspace:
                 # Unless we have the resolved home db in out cache:
 
                 db_cache: HomeDbCache = self._pool.home_db_cache
-                cached_db = None
+                cache_key = cached_db = None
                 if db_cache.enabled:
                     cache_key = db_cache.compute_key(
                         self._config.impersonated_user,
@@ -217,7 +215,7 @@ class Workspace:
                     bookmarks=self._get_bookmarks(),
                     auth=acquire_auth,
                     acquisition_timeout=acquisition_timeout,
-                    database_callback=self._make_database_callback(auth),
+                    database_callback=self._make_database_callback(cache_key),
                 )
 
     @staticmethod

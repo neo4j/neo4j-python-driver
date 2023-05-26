@@ -42,7 +42,10 @@ from ...exceptions import (
     SessionError,
     SessionExpired,
 )
-from ..home_db_cache import AsyncHomeDbCache
+from ..home_db_cache import (
+    AsyncHomeDbCache,
+    TKey,
+)
 from ..io import (
     AcquireAuth,
     AsyncNeo4jPool,
@@ -96,16 +99,11 @@ class AsyncWorkspace:
 
     def _make_database_callback(
         self,
-        auth: t.Union[AsyncAuthManager, AuthManager, None]
+        cache_key: TKey,
     ) -> t.Callable[[str], t.Awaitable[None]]:
         async def _database_callback(database) -> None:
-            nonlocal auth
             db_cache: AsyncHomeDbCache = self._pool.home_db_cache
             if db_cache.enabled:
-                cache_key = db_cache.compute_key(
-                    self._config.impersonated_user,
-                    await self._resolve_session_auth(auth)
-                )
                 db_cache.set(cache_key, database)
             self._set_cached_database(database)
 
@@ -201,7 +199,7 @@ class AsyncWorkspace:
                 # Unless we have the resolved home db in out cache:
 
                 db_cache: AsyncHomeDbCache = self._pool.home_db_cache
-                cached_db = None
+                cache_key = cached_db = None
                 if db_cache.enabled:
                     cache_key = db_cache.compute_key(
                         self._config.impersonated_user,
@@ -220,7 +218,7 @@ class AsyncWorkspace:
                     bookmarks=await self._get_bookmarks(),
                     auth=acquire_auth,
                     acquisition_timeout=acquisition_timeout,
-                    database_callback=self._make_database_callback(auth),
+                    database_callback=self._make_database_callback(cache_key),
                 )
 
     @staticmethod
