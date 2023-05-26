@@ -111,15 +111,6 @@ The auth token is an object of the class :class:`neo4j.Auth` containing static d
 
 .. autoclass:: neo4j.Auth
 
-.. autoclass:: neo4j.auth_management.AuthManager
-    :members:
-
-.. autoclass:: neo4j.auth_management.AuthManagers
-    :members:
-
-.. autoclass:: neo4j.auth_management.ExpiringAuth
-
-
 Example:
 
 .. code-block:: python
@@ -128,6 +119,18 @@ Example:
 
 
     auth = neo4j.Auth("basic", "neo4j", "password")
+
+
+.. autoclass:: neo4j.auth_management.AuthManager
+    :members:
+
+.. autoclass:: neo4j.auth_management.AuthManagers
+    :members:
+
+.. autoclass:: neo4j.auth_management.ExpiringAuth
+    :members:
+
+
 
 
 Auth Token Helper Functions
