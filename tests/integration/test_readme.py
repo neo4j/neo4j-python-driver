@@ -16,14 +16,11 @@
 # limitations under the License.
 
 
+import re
 from pathlib import Path
 
 
 # python -m pytest tests/integration/test_readme.py -s -v
-
-
-def _work(tx, query, **params):
-    tx.run(query, **params).consume()
 
 
 def test_should_run_readme(uri, auth):
@@ -31,40 +28,45 @@ def test_should_run_readme(uri, auth):
     print = names.add
 
     # === START: README ===
-    from neo4j import GraphDatabase
+    from neo4j import GraphDatabase, RoutingControl  # isort:skip
 
-    driver = GraphDatabase.driver("neo4j://localhost:7687",
-                                  auth=("neo4j", "password"))
-    # === END: README ===
-    driver.close()
-    driver = GraphDatabase.driver(uri, auth=auth)
-    # === START: README ===
 
-    def add_friend(tx, name, friend_name):
-        tx.run("MERGE (a:Person {name: $name}) "
-               "MERGE (a)-[:KNOWS]->(friend:Person {name: $friend_name})",
-               name=name, friend_name=friend_name)
+    URI = "neo4j://localhost:7687"
+    AUTH = ("neo4j", "password")
 
-    def print_friends(tx, name):
-        query = ("MATCH (a:Person)-[:KNOWS]->(friend) WHERE a.name = $name "
-                 "RETURN friend.name ORDER BY friend.name")
-        for record in tx.run(query, name=name):
+
+    def add_friend(driver, name, friend_name):
+        driver.execute_query(
+            "MERGE (a:Person {name: $name}) "
+            "MERGE (friend:Person {name: $friend_name}) "
+            "MERGE (a)-[:KNOWS]->(friend)",
+            name=name, friend_name=friend_name, database_="neo4j",
+        )
+
+
+    def print_friends(driver, name):
+        records, _, _ = driver.execute_query(
+            "MATCH (a:Person)-[:KNOWS]->(friend) WHERE a.name = $name "
+            "RETURN friend.name ORDER BY friend.name",
+            name=name, database_="neo4j", routing_=RoutingControl.READ,
+        )
+        for record in records:
             print(record["friend.name"])
 
-    with driver.session(database="neo4j") as session:
-        # === END: README ===
-        session.execute_write(_work, "MATCH (a) DETACH DELETE a")
-        # === START: README ===
-        session.execute_write(add_friend, "Arthur", "Guinevere")
-        session.execute_write(add_friend, "Arthur", "Lancelot")
-        session.execute_write(add_friend, "Arthur", "Merlin")
-        session.execute_read(print_friends, "Arthur")
-        # === END: README ===
-        session.execute_write(_work, "MATCH (a) DETACH DELETE a")
-        # === START: README ===
 
-    driver.close()
-    # === END: README ===
+    with GraphDatabase.driver(URI, auth=AUTH) as driver:
+        # === END: README ===
+        pass
+    with GraphDatabase.driver(uri, auth=auth) as driver:
+        driver.execute_query("MATCH (a) DETACH DELETE a")
+        # === START: README ===
+        add_friend(driver, "Arthur", "Guinevere")
+        add_friend(driver, "Arthur", "Lancelot")
+        add_friend(driver, "Arthur", "Merlin")
+        print_friends(driver, "Arthur")
+        # === END: README ===
+        driver.execute_query("MATCH (a) DETACH DELETE a")
+
     assert names == {"Guinevere", "Lancelot", "Merlin"}
 
 
@@ -88,6 +90,7 @@ def test_readme_contains_example():
             adding = False
             continue
         if adding:
+            line = re.sub(r"\s+# isort:skip\s+$", "\n", line)
             stripped_test_content += line
 
     assert stripped_test_content in readme_content
