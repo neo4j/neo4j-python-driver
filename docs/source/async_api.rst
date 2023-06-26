@@ -362,6 +362,7 @@ Closing a driver will immediately shut down all connections in the pool.
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
+
             * Added the ``auth_`` parameter.
             * Stabilized from experimental.
 
