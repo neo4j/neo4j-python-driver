@@ -824,6 +824,7 @@ class AsyncDriver:
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
+
             * Added the ``auth_`` parameter.
             * Stabilized from experimental.
         """
@@ -886,6 +887,7 @@ class AsyncDriver:
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
+
             * Renamed from ``query_bookmark_manager`` to
               ``execute_query_bookmark_manager``.
             * Stabilized from experimental.

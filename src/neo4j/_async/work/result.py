@@ -443,9 +443,9 @@ class AsyncResult:
             consumed.
 
         .. versionchanged:: 5.0
-            Added ``strict`` parameter.
-        .. versionchanged:: 5.0
-            Can raise :exc:`ResultConsumedError`.
+
+            * Added ``strict`` parameter.
+            * Can raise :exc:`ResultConsumedError`.
         """
         await self._buffer(2)
         buffer = self._record_buffer

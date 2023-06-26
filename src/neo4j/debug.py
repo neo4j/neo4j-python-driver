@@ -106,8 +106,7 @@ class Watcher:
     :param task_info: whether to include information about the current
         async task in the log message. Defaults to :const:`True`.
 
-    .. versionchanged::
-        5.3
+    .. versionchanged:: 5.3
 
         * Added ``thread_info`` and ``task_info`` parameters.
         * Logging format around thread and task information changed.
@@ -219,8 +218,7 @@ def watch(
     :returns: Watcher instance
     :rtype: :class:`.Watcher`
 
-    .. versionchanged::
-        5.3
+    .. versionchanged:: 5.3
 
         * Added ``thread_info`` and ``task_info`` parameters.
         * Logging format around thread and task information changed.

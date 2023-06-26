@@ -219,6 +219,7 @@ class RoutingControl(str, Enum):
     .. versionadded:: 5.5
 
     .. versionchanged:: 5.8
+
         * renamed ``READERS`` to ``READ`` and ``WRITERS`` to ``WRITE``
         * stabilized from experimental
     """

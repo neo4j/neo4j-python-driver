@@ -372,16 +372,10 @@ Closing a driver will immediately shut down all connections in the pool.
         :returns: the result of the ``result_transformer``
         :rtype: T
 
-        **This is experimental** (see :ref:`filter-warnings-ref`).
-        It might be changed or removed any time even without prior notice.
-
-        We are looking for feedback on this feature. Please let us know what
-        you think about it here:
-        https://github.com/neo4j/neo4j-python-driver/discussions/896
-
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
+
             * Added the ``auth_`` parameter.
             * Stabilized from experimental.
 
