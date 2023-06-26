@@ -694,7 +694,7 @@ class AsyncDriver:
                 return count
 
         :param query_: cypher query to execute
-        :type query_: typing.Optional[str]
+        :type query_: typing.LiteralString
         :param parameters_: parameters to use in the query
         :type parameters_: typing.Optional[typing.Dict[str, typing.Any]]
         :param routing_:
