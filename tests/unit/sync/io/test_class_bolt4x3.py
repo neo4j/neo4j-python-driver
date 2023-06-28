@@ -438,3 +438,61 @@ def test_does_not_send_bolt_agent(fake_socket_pair, user_agent):
     tag, fields = sockets.server.pop_message()
     extra = fields[0]
     assert "bolt_agent" not in extra
+
+
+@mark_sync_test
+@pytest.mark.parametrize(
+    ("func", "args", "extra_idx"),
+    (
+        ("run", ("RETURN 1",), 2),
+        ("begin", (), 0),
+    )
+)
+@pytest.mark.parametrize(
+    ("timeout", "res"),
+    (
+        (None, None),
+        (0, 0),
+        (0.1, 100),
+        (0.001, 1),
+        (1e-15, 1),
+        (0.0005, 1),
+        (0.0001, 1),
+        (1.0015, 1002),
+        (1.000499, 1000),
+        (1.0025, 1002),
+        (3.0005, 3000),
+        (3.456, 3456),
+        (1, 1000),
+        (
+            "foo",
+            ValueError("Timeout must be specified as a number of seconds")
+        ),
+        (
+            [1, 2],
+            TypeError("Timeout must be specified as a number of seconds")
+        )
+    )
+)
+def test_tx_timeout(
+    fake_socket_pair, func, args, extra_idx, timeout, res
+):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=Bolt4x3.PACKER_CLS,
+                               unpacker_cls=Bolt4x3.UNPACKER_CLS)
+    sockets.server.send_message(b"\x70", {})
+    connection = Bolt4x3(address, sockets.client, 0)
+    func = getattr(connection, func)
+    if isinstance(res, Exception):
+        with pytest.raises(type(res), match=str(res)):
+            func(*args, timeout=timeout)
+    else:
+        func(*args, timeout=timeout)
+        connection.send_all()
+        tag, fields = sockets.server.pop_message()
+        extra = fields[extra_idx]
+        if timeout is None:
+            assert "tx_timeout" not in extra
+        else:
+            assert extra["tx_timeout"] == res
