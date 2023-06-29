@@ -37,6 +37,7 @@ from ..._exceptions import (
 from ..._meta import USER_AGENT
 from ...addressing import ResolvedAddress
 from ...api import (
+    Auth,
     ServerInfo,
     Version,
 )
@@ -178,7 +179,6 @@ class Bolt:
         if not auth:
             return {}
         elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
-            from ...api import Auth
             return vars(Auth("basic", *auth))
         else:
             try:
@@ -837,8 +837,7 @@ class Bolt:
         self._set_defunct(message, error=error, silent=silent)
 
     def _set_defunct(self, message, error=None, silent=False):
-        from ._pool import BoltPool
-        direct_driver = isinstance(self.pool, BoltPool)
+        direct_driver = getattr(self.pool, "is_direct_pool", False)
         user_cancelled = isinstance(error, asyncio.CancelledError)
 
         if error:

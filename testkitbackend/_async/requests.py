@@ -19,6 +19,7 @@
 import datetime
 import json
 import re
+import ssl
 import warnings
 from os import path
 
@@ -56,7 +57,6 @@ def load_config():
         config = json.load(fd)
     skips = config["skips"]
     features = [k for k, v in config["features"].items() if v is True]
-    import ssl
     if ssl.HAS_TLSv1_3:
         features += ["Feature:TLS:1.3"]
     return skips, features

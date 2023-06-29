@@ -17,21 +17,17 @@
 
 
 import asyncio
-import warnings
+import sys
 from functools import wraps
-from os import environ
 
 import pytest
 import pytest_asyncio
 
 from neo4j import (
     AsyncGraphDatabase,
-    ExperimentalWarning,
     GraphDatabase,
 )
-from neo4j._exceptions import BoltHandshakeError
-from neo4j._sync.io import Bolt
-from neo4j.exceptions import ServiceUnavailable
+from neo4j.debug import watch
 
 from . import env
 
@@ -189,8 +185,5 @@ async def aio_benchmark(benchmark, event_loop):
 
 @pytest.fixture
 def watcher():
-    import sys
-
-    from neo4j.debug import watch
     with watch("neo4j", out=sys.stdout, colour=True):
         yield

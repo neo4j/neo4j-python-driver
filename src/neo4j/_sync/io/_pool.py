@@ -97,6 +97,11 @@ class IOPool(abc.ABC):
         self.lock = CooperativeRLock()
         self.cond = Condition(self.lock)
 
+    @property
+    @abc.abstractmethod
+    def is_direct_pool(self) -> bool:
+        ...
+
     def __enter__(self):
         return self
 
@@ -487,6 +492,8 @@ class IOPool(abc.ABC):
 
 class BoltPool(IOPool):
 
+    is_direct_pool = True
+
     @classmethod
     def open(cls, address, *, pool_config, workspace_config):
         """Create a new BoltPool
@@ -533,6 +540,8 @@ class Neo4jPool(IOPool):
     """ Connection pool with routing table.
     """
 
+    is_direct_pool = False
+
     @classmethod
     def open(cls, *addresses, pool_config, workspace_config,
              routing_context=None):
@@ -575,6 +584,7 @@ class Neo4jPool(IOPool):
         self.address = address
         self.routing_tables = {}
         self.refresh_lock = RLock()
+        self.is_direct_pool = False
 
     def __repr__(self):
         """ The representation shows the initial routing addresses.

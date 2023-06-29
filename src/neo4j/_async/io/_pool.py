@@ -100,6 +100,11 @@ class AsyncIOPool(abc.ABC):
         self.lock = AsyncCooperativeRLock()
         self.cond = AsyncCondition(self.lock)
 
+    @property
+    @abc.abstractmethod
+    def is_direct_pool(self) -> bool:
+        ...
+
     async def __aenter__(self):
         return self
 
@@ -490,6 +495,8 @@ class AsyncIOPool(abc.ABC):
 
 class AsyncBoltPool(AsyncIOPool):
 
+    is_direct_pool = True
+
     @classmethod
     def open(cls, address, *, pool_config, workspace_config):
         """Create a new BoltPool
@@ -536,6 +543,8 @@ class AsyncNeo4jPool(AsyncIOPool):
     """ Connection pool with routing table.
     """
 
+    is_direct_pool = False
+
     @classmethod
     def open(cls, *addresses, pool_config, workspace_config,
              routing_context=None):
@@ -578,6 +587,7 @@ class AsyncNeo4jPool(AsyncIOPool):
         self.address = address
         self.routing_tables = {}
         self.refresh_lock = AsyncRLock()
+        self.is_direct_pool = False
 
     def __repr__(self):
         """ The representation shows the initial routing addresses.
