@@ -39,6 +39,7 @@ from ...exceptions import (
 from ._bolt import (
     Bolt,
     ServerStateManagerBase,
+    tx_timeout_as_ms,
 )
 from ._common import (
     check_supported_server_product,
@@ -262,12 +263,7 @@ class Bolt3(Bolt):
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
         if timeout is not None:
-            try:
-                extra["tx_timeout"] = int(1000 * float(timeout))
-            except TypeError:
-                raise TypeError("Timeout must be specified as a number of seconds")
-            if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a positive number or 0.")
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
         self._append(b"\x10", fields,
@@ -327,12 +323,7 @@ class Bolt3(Bolt):
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
         if timeout is not None:
-            try:
-                extra["tx_timeout"] = int(1000 * float(timeout))
-            except TypeError:
-                raise TypeError("Timeout must be specified as a number of seconds")
-            if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a positive number or 0.")
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,),
                      Response(self, "begin", hydration_hooks, **handlers),
