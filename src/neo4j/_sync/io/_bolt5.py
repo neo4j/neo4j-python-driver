@@ -38,6 +38,7 @@ from ...exceptions import (
 from ._bolt import (
     Bolt,
     ServerStateManagerBase,
+    tx_timeout_as_ms,
 )
 from ._bolt3 import (
     ServerStateManager,
@@ -209,12 +210,7 @@ class Bolt5x0(Bolt):
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
         if timeout is not None:
-            try:
-                extra["tx_timeout"] = int(1000 * float(timeout))
-            except TypeError:
-                raise TypeError("Timeout must be a number (in seconds)")
-            if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a number >= 0")
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port,
                   " ".join(map(repr, fields)))
@@ -270,12 +266,7 @@ class Bolt5x0(Bolt):
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
         if timeout is not None:
-            try:
-                extra["tx_timeout"] = int(1000 * float(timeout))
-            except TypeError:
-                raise TypeError("Timeout must be a number (in seconds)")
-            if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a number >= 0")
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,),
                      Response(self, "begin", hydration_hooks, **handlers),
@@ -567,12 +558,7 @@ class Bolt5x2(Bolt5x1):
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
         if timeout is not None:
-            try:
-                extra["tx_timeout"] = int(1000 * float(timeout))
-            except TypeError:
-                raise TypeError("Timeout must be a number (in seconds)")
-            if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a number >= 0")
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port,
                   " ".join(map(repr, fields)))
@@ -603,12 +589,7 @@ class Bolt5x2(Bolt5x1):
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
         if timeout is not None:
-            try:
-                extra["tx_timeout"] = int(1000 * float(timeout))
-            except TypeError:
-                raise TypeError("Timeout must be a number (in seconds)")
-            if extra["tx_timeout"] < 0:
-                raise ValueError("Timeout must be a number >= 0")
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         if notifications_min_severity is not None:
             extra["notifications_minimum_severity"] = \
                 notifications_min_severity

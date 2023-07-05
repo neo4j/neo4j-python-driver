@@ -946,3 +946,32 @@ class AsyncBolt:
 
 
 AsyncBoltSocket.Bolt = AsyncBolt  # type: ignore
+
+
+def tx_timeout_as_ms(timeout: float) -> int:
+    """Round transaction timeout to milliseconds.
+
+    Values in (0, 1], else values are rounded using the built-in round()
+    function (round n.5 values to nearest even).
+
+    :param timeout: timeout in seconds (must be >= 0)
+
+    :returns: timeout in milliseconds (rounded)
+
+    :raise ValueError: if timeout is negative
+    """
+    try:
+        timeout = float(timeout)
+    except (TypeError, ValueError) as e:
+        err_type = type(e)
+        msg = "Timeout must be specified as a number of seconds"
+        raise err_type(msg) from None
+    if timeout < 0:
+        raise ValueError("Timeout must be a positive number or 0.")
+    ms = int(round(1000 * timeout))
+    if ms == 0 and timeout > 0:
+        # Special case for 0 < timeout < 0.5 ms.
+        # This would be rounded to 0 ms, but the server interprets this as
+        # infinite timeout. So we round to the smallest possible timeout: 1 ms.
+        ms = 1
+    return ms
