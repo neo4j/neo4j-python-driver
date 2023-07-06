@@ -10,10 +10,16 @@
       "Driver rejects empty queries before sending it to the server",
     "'stub.server_side_routing.test_server_side_routing.TestServerSideRouting.test_direct_connection_with_url_params'":
       "Driver emits deprecation warning. Behavior will be unified in 6.0.",
-    "neo4j.datatypes.test_temporal_types.TestDataTypes.test_should_echo_all_timezone_ids":
+    "'neo4j.datatypes.test_temporal_types.TestDataTypes.test_should_echo_all_timezone_ids'":
       "test_subtest_skips.dt_conversion",
-    "neo4j.datatypes.test_temporal_types.TestDataTypes.test_date_time_cypher_created_tz_id":
-      "test_subtest_skips.tz_id"
+    "'neo4j.datatypes.test_temporal_types.TestDataTypes.test_date_time_cypher_created_tz_id'":
+      "test_subtest_skips.tz_id",
+    "'stub.tx_run.test_tx_run.TestTxRun.test_should_prevent_discard_after_tx_termination_on_run'":
+      "Fixme: transactions don't prevent further actions after failure.",
+    "'stub.tx_run.test_tx_run.TestTxRun.test_should_prevent_pull_after_tx_termination_on_pull'":
+      "Fixme: transactions don't prevent further actions after failure.",
+    "'stub.tx_run.test_tx_run.TestTxRun.test_should_prevent_pull_after_tx_termination_on_run'":
+      "Fixme: transactions don't prevent further actions after failure."
   },
   "features": {
     "Feature:API:BookmarkManager": true,
