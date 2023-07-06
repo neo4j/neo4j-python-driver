@@ -24,6 +24,7 @@ from ctypes import (
     Structure,
 )
 from platform import uname
+from time import time
 
 from . import (
     Clock,
@@ -53,7 +54,6 @@ class SafeClock(Clock):
         return True
 
     def utc_time(self):
-        from time import time
         seconds, nanoseconds = nano_divmod(int(time() * 1000000), 1000000)
         return ClockTime(seconds, nanoseconds * 1000)
 

@@ -24,6 +24,7 @@ import typing as t
 import pytest
 
 import neo4j.api
+from neo4j.addressing import Address
 from neo4j.exceptions import ConfigurationError
 
 
@@ -276,9 +277,6 @@ def test_version_to_bytes_with_valid_bolt_version(
 
 
 def test_serverinfo_initialization() -> None:
-
-    from neo4j.addressing import Address
-
     address = Address(("bolt://localhost", 7687))
     version = neo4j.Version(3, 0)
 
@@ -301,8 +299,6 @@ def test_serverinfo_initialization() -> None:
 def test_serverinfo_with_metadata(
     test_input, expected_agent, protocol_version
 ) -> None:
-    from neo4j.addressing import Address
-
     address = Address(("bolt://localhost", 7687))
     version = neo4j.Version(*protocol_version)
 
