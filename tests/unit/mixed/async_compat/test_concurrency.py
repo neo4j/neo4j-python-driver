@@ -168,6 +168,69 @@ async def test_async_r_lock_acquire_non_blocking():
     assert lock.locked()  # waiter_non_blocking still owns it!
 
 
+@pytest.mark.asyncio
+async def test_async_r_lock_acquire_non_blocking_exception(mocker):
+    lock = AsyncRLock()
+    exc = RuntimeError("it broke!")
+
+    assert not lock.locked()
+
+    # Not sure asyncio.Lock.acquire is even fallible, but should it be or ever
+    # become, our AsyncRLock should re-raise the exception.
+    acquire_mock = mocker.patch("asyncio.Lock.acquire", autospec=True,
+                                side_effect=asyncio.Lock.acquire)
+    awaits = 0
+
+    async def blocker():
+        nonlocal awaits
+
+        assert awaits == 0
+        awaits += 1
+        assert await lock.acquire()
+
+        assert awaits == 1
+        awaits += 1
+        await asyncio.sleep(0)
+
+        assert awaits == 3
+        awaits += 1
+        await asyncio.sleep(0)
+
+        assert awaits == 5
+        awaits += 1
+        await asyncio.sleep(0)
+
+        assert awaits == 7
+        lock.release()
+
+    async def waiter_non_blocking():
+        nonlocal awaits
+        nonlocal acquire_mock
+
+        assert awaits == 2
+        acquire_mock.side_effect = exc
+        coro = lock.acquire(blocking=False)
+        fut = asyncio.ensure_future(coro)
+        assert not fut.done()
+        awaits += 1
+        await asyncio.sleep(0)
+
+        assert awaits == 4
+        assert not fut.done()
+        awaits += 1
+        await asyncio.sleep(0)
+
+        assert awaits == 6
+        assert fut.done()
+        assert fut.exception() is exc
+        awaits += 1
+
+
+    assert not lock.locked()
+    await asyncio.gather(blocker(), waiter_non_blocking())
+    assert not lock.locked()
+
+
 @pytest.mark.parametrize("waits", range(1, 10))
 @pytest.mark.asyncio
 async def test_async_r_lock_acquire_cancellation(waits):
