@@ -47,9 +47,9 @@ def logger_mocker(mocker) -> _TSetupMockProtocol:
     def setup_mock(*logger_names):
         loggers = [logging.getLogger(name) for name in logger_names]
         for logger in loggers:
-            logger.addHandler = mocker.Mock()
-            logger.removeHandler = mocker.Mock()
-            logger.setLevel = mocker.Mock()
+            mocker.patch.object(logger, "addHandler")
+            mocker.patch.object(logger, "removeHandler")
+            mocker.spy(logger, "setLevel")
         return loggers
 
     return setup_mock
@@ -106,22 +106,21 @@ def test_watcher_context_manager(mocker) -> None:
     watcher.stop.assert_called_once()
 
 
-@pytest.mark.parametrize(
-    ("default_level", "level", "expected_level"),
-    (
-        (None, None, logging.DEBUG),
-        (logging.WARNING, None, logging.WARNING),
-        (logging.WARNING, logging.DEBUG, logging.DEBUG),
-        (logging.DEBUG, logging.WARNING, logging.WARNING),
-        (1, None, 1),
-        (None, 1, 1),
-    )
+WATCH_ARGS = (
+    #default_level, level, expected_level
+    (None, None, logging.DEBUG),
+    (logging.WARNING, None, logging.WARNING),
+    (logging.WARNING, logging.DEBUG, logging.DEBUG),
+    (logging.DEBUG, logging.WARNING, logging.WARNING),
+    (logging.INFO, None, logging.INFO),
+    (logging.INFO, logging.DEBUG, logging.DEBUG),
+    (logging.DEBUG, logging.INFO, logging.INFO),
+    (1, None, 1),
+    (None, 1, 1),
 )
-def test_watcher_level(
-    logger_mocker, default_level, level, expected_level
-) -> None:
-    logger_name = "neo4j"
-    logger = logger_mocker(logger_name)[0]
+
+
+def _setup_watch(logger_name, default_level, level):
     kwargs = {}
     if default_level is not None:
         kwargs["default_level"] = default_level
@@ -131,9 +130,73 @@ def test_watcher_level(
         kwargs["level"] = level
     watcher.watch(**kwargs)
 
+
+@pytest.mark.parametrize(
+    ("default_level", "level", "expected_level"),
+    WATCH_ARGS
+)
+@pytest.mark.parametrize(
+    "effective_level",
+    (logging.DEBUG, logging.WARNING, logging.INFO, logging.ERROR)
+)
+def test_watcher_level(
+    logger_mocker, default_level, level, expected_level, effective_level,
+) -> None:
+    logger_name = "neo4j"
+    logger = logger_mocker(logger_name)[0]
+    logger.setLevel(effective_level)
+    logger.setLevel.reset_mock()
+    _setup_watch(logger_name, default_level, level)
+
     (handler,), _ = logger.addHandler.call_args
-    assert handler.level == logging.NOTSET
-    logger.setLevel.assert_called_once_with(expected_level)
+    assert handler.level == expected_level
+    if effective_level <= expected_level:
+        logger.setLevel.assert_not_called()
+    else:
+        logger.setLevel.assert_called_once_with(expected_level)
+
+
+@pytest.mark.parametrize(
+    ("default_level1", "level1", "expected_level1"),
+    WATCH_ARGS
+)
+@pytest.mark.parametrize(
+    ("default_level2", "level2", "expected_level2"),
+    WATCH_ARGS
+)
+@pytest.mark.parametrize(
+    "effective_level",
+    (logging.DEBUG, logging.WARNING, logging.INFO, logging.ERROR)
+)
+def test_watcher_level_multiple_watchers(
+    logger_mocker, default_level1, level1, expected_level1,
+    default_level2, level2, expected_level2,
+    effective_level,
+) -> None:
+    logger_name = "neo4j"
+    logger = logger_mocker(logger_name)[0]
+    logger.setLevel(effective_level)
+    logger.setLevel.reset_mock()
+    _setup_watch(logger_name, default_level1, level1)
+    _setup_watch(logger_name, default_level2, level2)
+
+    assert logger.addHandler.call_count == 2
+    (handler1,), _ = logger.addHandler.call_args_list[0]
+    (handler2,), _ = logger.addHandler.call_args_list[1]
+
+    assert handler1.level == expected_level1
+    assert handler2.level == expected_level2
+
+    expected_logger_level = min(expected_level1, expected_level2)
+    if effective_level <= expected_logger_level:
+        logger.setLevel.assert_not_called()
+    else:
+        if effective_level > expected_level1 > expected_level2:
+            assert logger.setLevel.call_count == 2
+        else:
+            assert logger.setLevel.call_count == 1
+        (level,), _ = logger.setLevel.call_args_list[-1]
+        assert level == expected_logger_level
 
 
 custom_log_out = io.StringIO()

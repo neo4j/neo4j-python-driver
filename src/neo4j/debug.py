@@ -166,12 +166,14 @@ class Watcher:
         self.stop()
         handler = StreamHandler(out)
         handler.setFormatter(self.formatter)
+        handler.setLevel(level)
         if self._task_info:
             handler.addFilter(TaskIdFilter())
         for logger in self. _loggers:
             self._handlers[logger.name] = handler
             logger.addHandler(handler)
-            logger.setLevel(level)
+            if logger.getEffectiveLevel() > level:
+                logger.setLevel(level)
 
     def stop(self) -> None:
         """Disable logging for all loggers."""
