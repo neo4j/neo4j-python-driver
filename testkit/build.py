@@ -28,6 +28,7 @@ from _common import run_python
 
 
 if __name__ == "__main__":
-    run_python(["-m", "pip", "install", "-U", "pip"])
-    run_python(["-m", "pip", "install", "--use-pep517", "-Ur",
-                "requirements-dev.txt"])
+    run_python(["-m", "pip", "install", "-U", "pip"],
+               warning_as_error=False)
+    run_python(["-m", "pip", "install", "-Ur", "requirements-dev.txt"],
+               warning_as_error=False)
