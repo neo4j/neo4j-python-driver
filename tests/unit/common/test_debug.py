@@ -43,16 +43,24 @@ if t.TYPE_CHECKING:
 
 
 @pytest.fixture
-def logger_mocker(mocker) -> _TSetupMockProtocol:
+def logger_mocker(mocker) -> t.Generator[_TSetupMockProtocol, None, None]:
+    original_levels = {}
+
     def setup_mock(*logger_names):
+        nonlocal original_levels
+
         loggers = [logging.getLogger(name) for name in logger_names]
         for logger in loggers:
+            original_levels[logger] = logger.level
             mocker.patch.object(logger, "addHandler")
             mocker.patch.object(logger, "removeHandler")
             mocker.spy(logger, "setLevel")
         return loggers
 
-    return setup_mock
+    yield setup_mock
+
+    for logger, level in original_levels.items():
+        logger.setLevel(level)
 
 
 def test_watch_returns_watcher(logger_mocker) -> None:
@@ -283,6 +291,7 @@ def _assert_task_injection(
     handler_cls_mock = mocker.patch("neo4j.debug.StreamHandler", autospec=True)
     handler_mock = handler_cls_mock.return_value
     logger_name = "neo4j"
+    logger_mocker(logger_name)[0]
     watcher = neo4j_debug.Watcher(logger_name, colour=colour,
                                   thread_info=thread, task_info=task)
     record_mock = mocker.Mock(spec=logging.LogRecord)
