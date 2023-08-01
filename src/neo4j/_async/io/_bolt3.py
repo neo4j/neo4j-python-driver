@@ -407,7 +407,9 @@ class AsyncBolt3(AsyncBolt):
                 raise
             except (NotALeader, ForbiddenOnReadOnlyDatabase):
                 if self.pool:
-                    self.pool.on_write_failure(address=self.unresolved_address)
+                    await self.pool.on_write_failure(
+                        address=self.unresolved_address
+                    )
                 raise
             except Neo4jError as e:
                 await self.pool.on_neo4j_error(e, self)
