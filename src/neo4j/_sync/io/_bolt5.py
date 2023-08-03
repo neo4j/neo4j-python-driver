@@ -356,7 +356,9 @@ class Bolt5x0(Bolt):
                 raise
             except (NotALeader, ForbiddenOnReadOnlyDatabase):
                 if self.pool:
-                    self.pool.on_write_failure(address=self.unresolved_address)
+                    self.pool.on_write_failure(
+                        address=self.unresolved_address
+                    )
                 raise
             except Neo4jError as e:
                 if self.pool:
