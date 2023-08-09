@@ -30,6 +30,7 @@ if t.TYPE_CHECKING:
     )
 
 from .._api import (
+    NotificationMinimumSeverity,
     RoutingControl,
     TelemetryAPI,
 )
@@ -158,6 +159,9 @@ class AsyncGraphDatabase:
                 t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
             telemetry_disabled: bool = ...,
+            warn_notification_severity: t.Optional[
+                T_NotificationMinimumSeverity
+            ] = ...,
 
             # undocumented/unsupported options
             # they may be changed or removed any time without prior notice
@@ -566,7 +570,10 @@ class AsyncDriver:
             # they may be change or removed any time without prior notice
             initial_retry_delay: float = ...,
             retry_delay_multiplier: float = ...,
-            retry_delay_jitter_factor: float = ...
+            retry_delay_jitter_factor: float = ...,
+            warn_notification_severity: t.Optional[
+                T_NotificationMinimumSeverity
+            ] = ...,
         ) -> AsyncSession:
             ...
 
@@ -1312,14 +1319,28 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
         AsyncDriver.__init__(self, pool, default_workspace_config)
 
 
+
 def _normalize_notifications_config(config_kwargs):
-    if config_kwargs.get("notifications_disabled_categories") is not None:
-        config_kwargs["notifications_disabled_categories"] = [
-            getattr(e, "value", e)
-            for e in config_kwargs["notifications_disabled_categories"]
-        ]
-    if config_kwargs.get("notifications_min_severity") is not None:
-        config_kwargs["notifications_min_severity"] = getattr(
-            config_kwargs["notifications_min_severity"], "value",
-            config_kwargs["notifications_min_severity"]
+    list_config_keys = ("notifications_disabled_categories",)
+    for key in list_config_keys:
+        value = config_kwargs.get(key)
+        if value is not None:
+            config_kwargs[key] = [getattr(e, "value", e) for e in value]
+    single_config_keys = (
+        "notifications_min_severity",
+        "warn_notification_severity",
+    )
+    for key in single_config_keys:
+        value = config_kwargs.get(key)
+        if value is not None:
+            config_kwargs[key] = getattr(value, "value", value)
+    value = config_kwargs.get("warn_notification_severity")
+    if value not in (
+        None, *NotificationMinimumSeverity
+    ):
+        raise ValueError(
+            f"Invalid value for configuration "
+            f"warn_notification_severity: {value}. Should be None, a "
+            f"NotificationMinimumSeverity, or a string representing a "
+            f"NotificationMinimumSeverity."
         )

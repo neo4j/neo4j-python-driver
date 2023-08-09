@@ -16,14 +16,20 @@
 
 from __future__ import annotations
 
+import inspect
 import typing as t
 from collections import deque
-from warnings import warn
+from pathlib import Path
+from warnings import (
+    warn,
+    warn_explicit,
+)
 
 
 if t.TYPE_CHECKING:
     import typing_extensions as te
 
+from ..._api import NotificationMinimumSeverity
 from ..._async_compat.util import Util
 from ..._codec.hydration import BrokenHydrationObject
 from ..._data import (
@@ -35,6 +41,7 @@ from ..._work import (
     ResultSummary,
 )
 from ...exceptions import (
+    Neo4jWarning,
     ResultConsumedError,
     ResultFailedError,
     ResultNotSingleError,
@@ -52,6 +59,10 @@ if t.TYPE_CHECKING:
 
     from ...graph import Graph
 
+
+_driver_dir = Path(__file__)
+for _ in range(__package__.count(".") + 1):
+    _driver_dir = _driver_dir.parent
 
 _T = t.TypeVar("_T")
 _TResultKey = t.Union[int, str]
@@ -79,21 +90,34 @@ class Result(NonConcurrentMethodChecker):
     :meth:`.Session.run` and :meth:`.Transaction.run`.
     """
 
-    def __init__(self, connection, fetch_size, on_closed, on_error):
+    _creation_stack: t.Optional[t.List[inspect.FrameInfo]]
+    _creation_frame_cache: t.Union[None, t.Literal[False], inspect.FrameInfo]
+
+    def __init__(
+        self, connection, fetch_size, warn_notification_severity,
+        on_closed, on_error
+    ) -> None:
         self._connection = ConnectionErrorHandler(
             connection, self._connection_error_handler
         )
         self._hydration_scope = connection.new_hydration_scope()
         self._on_error = on_error
         self._on_closed = on_closed
-        self._metadata = None
-        self._keys = None
-        self._record_buffer = deque()
-        self._summary = None
+        self._metadata: dict = {}
+        self._keys: t.Tuple[str, ...] = ()
+        self._record_buffer: t.Deque[Record] = deque()
+        self._summary: t.Optional[ResultSummary] = None
         self._database = None
         self._bookmark = None
         self._raw_qid = -1
         self._fetch_size = fetch_size
+        self._warn_notification_severity = \
+            warn_notification_severity
+        if warn_notification_severity is not None:
+            self._creation_stack = inspect.stack()
+        else:
+            self._creation_stack = None
+        self._creation_frame_cache = None
 
         # states
         self._discarding = False    # discard the remainder of records
@@ -193,15 +217,14 @@ class Result(NonConcurrentMethodChecker):
                     for record in records
                 ))
 
-        def on_summary():
+        def _on_summary():
             self._attached = False
             Util.callback(self._on_closed)
 
         def on_failure(metadata):
-            self._attached = False
-            Util.callback(self._on_closed)
+            _on_summary()
 
-        def on_success(summary_metadata):
+        def on_success(summary_metadata: dict) -> None:
             self._streaming = False
             has_more = summary_metadata.get("has_more")
             self._has_more = bool(has_more)
@@ -210,6 +233,9 @@ class Result(NonConcurrentMethodChecker):
             self._metadata.update(summary_metadata)
             self._bookmark = summary_metadata.get("bookmark")
             self._database = summary_metadata.get("db", self._database)
+            _on_summary()
+            self._handle_warnings()
+
 
         self._connection.pull(
             n=self._fetch_size,
@@ -218,19 +244,17 @@ class Result(NonConcurrentMethodChecker):
             on_records=on_records,
             on_success=on_success,
             on_failure=on_failure,
-            on_summary=on_summary,
         )
         self._streaming = True
 
     def _discard(self):
-        def on_summary():
+        def _on_summary():
             self._attached = False
             Util.callback(self._on_closed)
 
         def on_failure(metadata):
             self._metadata.update(metadata)
-            self._attached = False
-            Util.callback(self._on_closed)
+            _on_summary()
 
         def on_success(summary_metadata):
             self._streaming = False
@@ -242,6 +266,8 @@ class Result(NonConcurrentMethodChecker):
             self._metadata.update(summary_metadata)
             self._bookmark = summary_metadata.get("bookmark")
             self._database = summary_metadata.get("db", self._database)
+            _on_summary()
+            self._handle_warnings()
 
         # This was the last page received, discard the rest
         self._connection.discard(
@@ -249,9 +275,64 @@ class Result(NonConcurrentMethodChecker):
             qid=self._qid,
             on_success=on_success,
             on_failure=on_failure,
-            on_summary=on_summary,
         )
         self._streaming = True
+
+    def _handle_warnings(self) -> None:
+        if self._warn_notification_severity is not None:
+            sev_filter: t.Tuple[NotificationMinimumSeverity, ...] = ()
+            if (
+                self._warn_notification_severity
+                == NotificationMinimumSeverity.WARNING
+            ):
+                sev_filter = (NotificationMinimumSeverity.WARNING,)
+            elif (
+                self._warn_notification_severity
+                == NotificationMinimumSeverity.INFORMATION
+            ):
+                sev_filter = (NotificationMinimumSeverity.INFORMATION,
+                              NotificationMinimumSeverity.WARNING)
+            if not sev_filter:
+                return
+            summary = self._obtain_summary()
+            warnings = [
+                n for n in summary.summary_notifications
+                if n.severity_level in sev_filter
+            ]
+            if not warnings:
+                return
+            for warning in warnings:
+                creation_frame = self._creation_frame
+                if creation_frame is False:
+                    warn(Neo4jWarning(warning), stacklevel=1)
+                else:
+                    globals_ = creation_frame.frame.f_globals
+                    if "__warningregistry__" not in globals_:
+                        globals_["__warningregistry__"] = {}
+                    warn_explicit(
+                        Neo4jWarning(warning),
+                        None,
+                        creation_frame.filename,
+                        creation_frame.lineno,
+                        module=globals_["__name__"],
+                        registry=globals_["__warningregistry__"],
+                        module_globals=globals_
+                    )
+
+    @property
+    def _creation_frame(self) -> t.Union[t.Literal[False], inspect.FrameInfo]:
+        if self._creation_frame_cache is not None:
+            return self._creation_frame_cache
+        if self._creation_stack is None:
+            self._creation_frame_cache = False
+        else:
+            self._creation_frame_cache = next(
+                (frame for frame in self._creation_stack
+                 if not frame.filename.startswith(str(_driver_dir))),
+                False
+            )
+        assert self._creation_frame_cache is not None  # help mypy a little
+        return self._creation_frame_cache
 
     @NonConcurrentMethodChecker.non_concurrent_iter
     def __iter__(self) -> t.Iterator[Record]:
@@ -331,22 +412,15 @@ class Result(NonConcurrentMethodChecker):
         """
         self._buffer()
 
-    def _obtain_summary(self):
-        """Obtain the summary of this result, buffering any remaining records.
+    def _obtain_summary(self) -> ResultSummary:
+        """Obtain the summary of this result.
 
         :returns: The :class:`neo4j.ResultSummary` for this result
         """
         if self._summary is None:
-            if self._metadata:
-                self._summary = ResultSummary(
-                    self._connection.unresolved_address, **self._metadata
-                )
-            elif self._connection:
-                self._summary = ResultSummary(
-                    self._connection.unresolved_address,
-                    server=self._connection.server_info
-                )
-
+            self._summary = ResultSummary(
+                self._connection.unresolved_address, **self._metadata
+            )
         return self._summary
 
     def keys(self) -> t.Tuple[str, ...]:

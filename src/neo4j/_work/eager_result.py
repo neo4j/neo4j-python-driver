@@ -14,10 +14,14 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 import typing as t
 
-from .._data import Record
-from .summary import ResultSummary
+
+if t.TYPE_CHECKING:
+    from .._data import Record
+    from .summary import ResultSummary
 
 
 class EagerResult(t.NamedTuple):

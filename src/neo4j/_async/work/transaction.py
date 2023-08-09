@@ -39,8 +39,10 @@ __all__ = (
 
 
 class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
-    def __init__(self, connection, fetch_size, on_closed, on_error,
-                 on_cancel):
+    def __init__(
+        self, connection, fetch_size, warn_notification_severity,
+        on_closed, on_error, on_cancel
+    ):
         self._connection = connection
         self._error_handling_connection = ConnectionErrorHandler(
             connection, self._error_handler
@@ -51,6 +53,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
         self._closed_flag = False
         self._last_error = None
         self._fetch_size = fetch_size
+        self._warn_notification_severity = warn_notification_severity
         self._on_closed = on_closed
         self._on_error = on_error
         self._on_cancel = on_cancel
@@ -159,8 +162,9 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
             await self._results[-1]._buffer_all()
 
         result = AsyncResult(
-            self._connection, self._fetch_size, self._result_on_closed_handler,
-            self._error_handler
+            self._connection, self._fetch_size,
+            self._warn_notification_severity,
+            self._result_on_closed_handler, self._error_handler
         )
         self._results.append(result)
 

@@ -19,17 +19,18 @@ from __future__ import annotations
 import typing as t
 from dataclasses import dataclass
 
-
-if t.TYPE_CHECKING:
-    import typing_extensions as te
-
 from .._api import (
     NotificationCategory,
     NotificationSeverity,
 )
 from .._exceptions import BoltProtocolError
-from ..addressing import Address
-from ..api import ServerInfo
+
+
+if t.TYPE_CHECKING:
+    import typing_extensions as te
+
+    from ..addressing import Address
+    from ..api import ServerInfo
 
 
 # TODO: This logic should be inside the Bolt subclasses, because it can change depending on Bolt Protocol Version.

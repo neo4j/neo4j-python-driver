@@ -239,9 +239,9 @@ async def test_transaction_no_rollback_on_defunct_connections(
 async def test_transaction_begin_pipelining(
     async_fake_connection, pipeline
 ) -> None:
+    noop_cb = lambda *args, **kwargs: None
     tx = AsyncTransaction(
-        async_fake_connection, 2, lambda *args, **kwargs: None,
-        lambda *args, **kwargs: None, lambda *args, **kwargs: None
+        async_fake_connection, 2, noop_cb, noop_cb, noop_cb, noop_cb
     )
     database = "db"
     imp_user = None

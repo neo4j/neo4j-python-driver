@@ -387,6 +387,9 @@ class WorkspaceConfig(Config):
     bookmark_manager = None
     # Specify the bookmark manager to be used for sessions by default.
 
+    #: Turn warning received by the server into native Python warnings
+    warn_notification_severity = None
+
 
 class SessionConfig(WorkspaceConfig):
     """ Session configuration.
