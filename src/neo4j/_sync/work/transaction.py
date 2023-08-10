@@ -74,6 +74,7 @@ class TransactionBase:
     def _begin(
         self, database, imp_user, bookmarks, access_mode, metadata, timeout,
         notifications_min_severity, notifications_disabled_categories,
+        pipelined=False,
     ):
         self._database = database
         self._connection.begin(
@@ -83,7 +84,8 @@ class TransactionBase:
             notifications_disabled_categories=notifications_disabled_categories
         )
         self._error_handling_connection.send_all()
-        self._error_handling_connection.fetch_all()
+        if not pipelined:
+            self._error_handling_connection.fetch_all()
 
     def _result_on_closed_handler(self):
         pass

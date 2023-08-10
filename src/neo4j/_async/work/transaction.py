@@ -74,6 +74,7 @@ class AsyncTransactionBase:
     async def _begin(
         self, database, imp_user, bookmarks, access_mode, metadata, timeout,
         notifications_min_severity, notifications_disabled_categories,
+        pipelined=False,
     ):
         self._database = database
         self._connection.begin(
@@ -83,7 +84,8 @@ class AsyncTransactionBase:
             notifications_disabled_categories=notifications_disabled_categories
         )
         await self._error_handling_connection.send_all()
-        await self._error_handling_connection.fetch_all()
+        if not pipelined:
+            await self._error_handling_connection.fetch_all()
 
     async def _result_on_closed_handler(self):
         pass
