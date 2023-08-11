@@ -36,6 +36,7 @@
     "Feature:API:Result.Peek": true,
     "Feature:API:Result.Single": true,
     "Feature:API:Result.SingleOptional": true,
+    "Feature:API:RetryableExceptions": true,
     "Feature:API:Session:AuthConfig": true,
     "Feature:API:Session:NotificationsConfig": true,
     "Feature:API:SSLConfig": true,

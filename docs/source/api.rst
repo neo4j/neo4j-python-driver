@@ -1838,9 +1838,6 @@ Server-side errors
 .. autoexception:: neo4j.exceptions.TokenExpired()
     :show-inheritance:
 
-.. autoexception:: neo4j.exceptions.TokenExpiredRetryable()
-    :show-inheritance:
-
 .. autoexception:: neo4j.exceptions.Forbidden()
     :show-inheritance:
 
