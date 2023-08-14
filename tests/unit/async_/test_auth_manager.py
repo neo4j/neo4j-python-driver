@@ -50,11 +50,11 @@ SAMPLE_AUTHS = (
 )
 
 CODES_HANDLED_BY_BASIC_MANAGER = {
-    "Neo4j.ClientError.Security.Unauthorized",
+    "Neo.ClientError.Security.Unauthorized",
 }
 CODES_HANDLED_BY_BEARER_MANAGER = {
-    "Neo4j.ClientError.Security.TokenExpired",
-    "Neo4j.ClientError.Security.Unauthorized",
+    "Neo.ClientError.Security.TokenExpired",
+    "Neo.ClientError.Security.Unauthorized",
 }
 SAMPLE_ERRORS = [
     Neo4jError.hydrate(code=code) for code in {
@@ -119,7 +119,7 @@ async def test_static_manager(
 
 @mark_async_test
 @pytest.mark.parametrize(("auth1", "auth2"),
-                         itertools.product(SAMPLE_AUTHS, repeat=2))
+                         list(itertools.product(SAMPLE_AUTHS, repeat=2)))
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
 async def test_basic_manager_manual_expiry(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
@@ -159,53 +159,6 @@ async def test_bearer_manager_manual_expiry(
         )
 
 
-async def _test_manager(
-    auth1: t.Union[t.Tuple[str, str], Auth, None],
-    auth2: t.Union[t.Tuple[str, str], Auth, None],
-    return_value_generator: t.Callable[
-        [t.Union[t.Tuple[str, str], Auth, None]], T
-    ],
-    manager_factory: t.Callable[
-        [t.Callable[[], t.Awaitable[T]]], AsyncAuthManager
-    ],
-    error: Neo4jError,
-    handled_codes: t.Container[str],
-    mocker: t.Any,
-) -> None:
-    provider = mocker.AsyncMock(return_value=return_value_generator(auth1))
-    typed_provider = t.cast(t.Callable[[], t.Awaitable[T]], provider)
-    manager: AsyncAuthManager = manager_factory(typed_provider)
-    provider.assert_not_called()
-    assert await manager.get_auth() is auth1
-    provider.assert_awaited_once()
-    provider.reset_mock()
-
-    provider.return_value = return_value_generator(auth2)
-
-    handled = await manager.handle_security_exception(
-        ("something", "else"), error
-    )
-    assert handled is False
-    assert await manager.get_auth() is auth1
-    provider.assert_not_called()
-
-    handled = await manager.handle_security_exception(auth1, error)
-    should_be_handled = error.code in handled_codes
-    if should_be_handled:
-        provider.assert_awaited_once()
-        assert handled is True
-    else:
-        provider.assert_not_called()
-        assert handled is False
-    provider.reset_mock()
-
-    if should_be_handled:
-        assert await manager.get_auth() is auth2
-    else:
-        assert await manager.get_auth() is auth1
-    provider.assert_not_called()
-
-
 @mark_async_test
 @pytest.mark.parametrize(("auth1", "auth2"),
                          itertools.product(SAMPLE_AUTHS, repeat=2))
@@ -243,3 +196,50 @@ async def test_bearer_manager_time_expiry(
             frozen_time.tick(0.000002)
             assert await manager.get_auth() is auth2
             provider.assert_awaited_once()
+
+
+async def _test_manager(
+    auth1: t.Union[t.Tuple[str, str], Auth, None],
+    auth2: t.Union[t.Tuple[str, str], Auth, None],
+    return_value_generator: t.Callable[
+        [t.Union[t.Tuple[str, str], Auth, None]], T
+    ],
+    manager_factory: t.Callable[
+        [t.Callable[[], t.Awaitable[T]]], AsyncAuthManager
+    ],
+    error: Neo4jError,
+    handled_codes: t.Container[str],
+    mocker: t.Any,
+) -> None:
+    provider = mocker.AsyncMock(return_value=return_value_generator(auth1))
+    typed_provider = t.cast(t.Callable[[], t.Awaitable[T]], provider)
+    manager: AsyncAuthManager = manager_factory(typed_provider)
+    provider.assert_not_called()
+    assert await manager.get_auth() is auth1
+    provider.assert_awaited_once()
+    provider.reset_mock()
+
+    provider.return_value = return_value_generator(auth2)
+
+    should_be_handled = error.code in handled_codes
+    handled = await manager.handle_security_exception(
+        ("something", "else"), error
+    )
+    assert handled is should_be_handled
+    assert await manager.get_auth() is auth1
+    provider.assert_not_called()
+
+    handled = await manager.handle_security_exception(auth1, error)
+
+    if should_be_handled:
+        provider.assert_awaited_once()
+    else:
+        provider.assert_not_called()
+    assert handled is should_be_handled
+    provider.reset_mock()
+
+    if should_be_handled:
+        assert await manager.get_auth() is auth2
+    else:
+        assert await manager.get_auth() is auth1
+    provider.assert_not_called()

@@ -50,11 +50,11 @@ SAMPLE_AUTHS = (
 )
 
 CODES_HANDLED_BY_BASIC_MANAGER = {
-    "Neo4j.ClientError.Security.Unauthorized",
+    "Neo.ClientError.Security.Unauthorized",
 }
 CODES_HANDLED_BY_BEARER_MANAGER = {
-    "Neo4j.ClientError.Security.TokenExpired",
-    "Neo4j.ClientError.Security.Unauthorized",
+    "Neo.ClientError.Security.TokenExpired",
+    "Neo.ClientError.Security.Unauthorized",
 }
 SAMPLE_ERRORS = [
     Neo4jError.hydrate(code=code) for code in {
@@ -119,7 +119,7 @@ def test_static_manager(
 
 @mark_sync_test
 @pytest.mark.parametrize(("auth1", "auth2"),
-                         itertools.product(SAMPLE_AUTHS, repeat=2))
+                         list(itertools.product(SAMPLE_AUTHS, repeat=2)))
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
 def test_basic_manager_manual_expiry(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
@@ -159,53 +159,6 @@ def test_bearer_manager_manual_expiry(
         )
 
 
-def _test_manager(
-    auth1: t.Union[t.Tuple[str, str], Auth, None],
-    auth2: t.Union[t.Tuple[str, str], Auth, None],
-    return_value_generator: t.Callable[
-        [t.Union[t.Tuple[str, str], Auth, None]], T
-    ],
-    manager_factory: t.Callable[
-        [t.Callable[[], t.Union[T]]], AuthManager
-    ],
-    error: Neo4jError,
-    handled_codes: t.Container[str],
-    mocker: t.Any,
-) -> None:
-    provider = mocker.MagicMock(return_value=return_value_generator(auth1))
-    typed_provider = t.cast(t.Callable[[], t.Union[T]], provider)
-    manager: AuthManager = manager_factory(typed_provider)
-    provider.assert_not_called()
-    assert manager.get_auth() is auth1
-    provider.assert_called_once()
-    provider.reset_mock()
-
-    provider.return_value = return_value_generator(auth2)
-
-    handled = manager.handle_security_exception(
-        ("something", "else"), error
-    )
-    assert handled is False
-    assert manager.get_auth() is auth1
-    provider.assert_not_called()
-
-    handled = manager.handle_security_exception(auth1, error)
-    should_be_handled = error.code in handled_codes
-    if should_be_handled:
-        provider.assert_called_once()
-        assert handled is True
-    else:
-        provider.assert_not_called()
-        assert handled is False
-    provider.reset_mock()
-
-    if should_be_handled:
-        assert manager.get_auth() is auth2
-    else:
-        assert manager.get_auth() is auth1
-    provider.assert_not_called()
-
-
 @mark_sync_test
 @pytest.mark.parametrize(("auth1", "auth2"),
                          itertools.product(SAMPLE_AUTHS, repeat=2))
@@ -243,3 +196,50 @@ def test_bearer_manager_time_expiry(
             frozen_time.tick(0.000002)
             assert manager.get_auth() is auth2
             provider.assert_called_once()
+
+
+def _test_manager(
+    auth1: t.Union[t.Tuple[str, str], Auth, None],
+    auth2: t.Union[t.Tuple[str, str], Auth, None],
+    return_value_generator: t.Callable[
+        [t.Union[t.Tuple[str, str], Auth, None]], T
+    ],
+    manager_factory: t.Callable[
+        [t.Callable[[], t.Union[T]]], AuthManager
+    ],
+    error: Neo4jError,
+    handled_codes: t.Container[str],
+    mocker: t.Any,
+) -> None:
+    provider = mocker.MagicMock(return_value=return_value_generator(auth1))
+    typed_provider = t.cast(t.Callable[[], t.Union[T]], provider)
+    manager: AuthManager = manager_factory(typed_provider)
+    provider.assert_not_called()
+    assert manager.get_auth() is auth1
+    provider.assert_called_once()
+    provider.reset_mock()
+
+    provider.return_value = return_value_generator(auth2)
+
+    should_be_handled = error.code in handled_codes
+    handled = manager.handle_security_exception(
+        ("something", "else"), error
+    )
+    assert handled is should_be_handled
+    assert manager.get_auth() is auth1
+    provider.assert_not_called()
+
+    handled = manager.handle_security_exception(auth1, error)
+
+    if should_be_handled:
+        provider.assert_called_once()
+    else:
+        provider.assert_not_called()
+    assert handled is should_be_handled
+    provider.reset_mock()
+
+    if should_be_handled:
+        assert manager.get_auth() is auth2
+    else:
+        assert manager.get_auth() is auth1
+    provider.assert_not_called()
