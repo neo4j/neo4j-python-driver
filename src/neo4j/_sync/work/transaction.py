@@ -83,8 +83,8 @@ class TransactionBase:
             notifications_min_severity=notifications_min_severity,
             notifications_disabled_categories=notifications_disabled_categories
         )
-        self._error_handling_connection.send_all()
         if not pipelined:
+            self._error_handling_connection.send_all()
             self._error_handling_connection.fetch_all()
 
     def _result_on_closed_handler(self):

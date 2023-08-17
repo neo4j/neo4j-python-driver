@@ -83,8 +83,8 @@ class AsyncTransactionBase:
             notifications_min_severity=notifications_min_severity,
             notifications_disabled_categories=notifications_disabled_categories
         )
-        await self._error_handling_connection.send_all()
         if not pipelined:
+            await self._error_handling_connection.send_all()
             await self._error_handling_connection.fetch_all()
 
     async def _result_on_closed_handler(self):
