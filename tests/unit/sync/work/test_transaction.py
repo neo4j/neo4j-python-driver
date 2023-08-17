@@ -255,7 +255,7 @@ def test_transaction_begin_pipelining(
         notifications_min_severity, notifications_disabled_categories,
         pipelined=pipeline
     )
-    expected_calls = [
+    expected_calls: list = [
         (
             "begin",
             {
@@ -270,8 +270,8 @@ def test_transaction_begin_pipelining(
                     notifications_disabled_categories,
             }
         ),
-        ("send_all",),
     ]
     if not pipeline:
+        expected_calls.append(("send_all",))
         expected_calls.append(("fetch_all",))
     assert fake_connection.method_calls == expected_calls
