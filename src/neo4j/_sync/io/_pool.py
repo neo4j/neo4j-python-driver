@@ -97,6 +97,11 @@ class IOPool(abc.ABC):
         self.lock = CooperativeRLock()
         self.cond = Condition(self.lock)
 
+    @property
+    @abc.abstractmethod
+    def is_direct_pool(self) -> bool:
+        ...
+
     def __enter__(self):
         return self
 
@@ -487,6 +492,8 @@ class IOPool(abc.ABC):
 
 class BoltPool(IOPool):
 
+    is_direct_pool = True
+
     @classmethod
     def open(cls, address, *, pool_config, workspace_config):
         """Create a new BoltPool
@@ -533,6 +540,8 @@ class Neo4jPool(IOPool):
     """ Connection pool with routing table.
     """
 
+    is_direct_pool = False
+
     @classmethod
     def open(cls, *addresses, pool_config, workspace_config,
              routing_context=None):
@@ -575,6 +584,7 @@ class Neo4jPool(IOPool):
         self.address = address
         self.routing_tables = {}
         self.refresh_lock = RLock()
+        self.is_direct_pool = False
 
     def __repr__(self):
         """ The representation shows the initial routing addresses.
@@ -800,8 +810,13 @@ class Neo4jPool(IOPool):
             raise ServiceUnavailable("Unable to retrieve routing information")
 
     def update_connection_pool(self, *, database):
-        routing_table = self.get_or_create_routing_table(database)
-        servers = routing_table.servers()
+        with self.refresh_lock:
+            routing_tables = [self.get_or_create_routing_table(database)]
+            for db in self.routing_tables.keys():
+                if db == database:
+                    continue
+                routing_tables.append(self.routing_tables[db])
+        servers = set.union(*(rt.servers() for rt in routing_tables))
         for address in list(self.connections):
             if address._unresolved not in servers:
                 super(Neo4jPool, self).deactivate(address)
@@ -936,17 +951,20 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  _: <POOL> deactivating address %r", address)
         # We use `discard` instead of `remove` here since the former
         # will not fail if the address has already been removed.
-        for database in self.routing_tables.keys():
-            self.routing_tables[database].routers.discard(address)
-            self.routing_tables[database].readers.discard(address)
-            self.routing_tables[database].writers.discard(address)
+        with self.refresh_lock:
+            for database in self.routing_tables.keys():
+                self.routing_tables[database].routers.discard(address)
+                self.routing_tables[database].readers.discard(address)
+                self.routing_tables[database].writers.discard(address)
         log.debug("[#0000]  _: <POOL> table=%r", self.routing_tables)
         super(Neo4jPool, self).deactivate(address)
 
     def on_write_failure(self, address):
         """ Remove a writer address from the routing table, if present.
         """
+        # FIXME: only need to remove the writer for a specific database
         log.debug("[#0000]  _: <POOL> removing writer %r", address)
-        for database in self.routing_tables.keys():
-            self.routing_tables[database].writers.discard(address)
+        with self.refresh_lock:
+            for database in self.routing_tables.keys():
+                self.routing_tables[database].writers.discard(address)
         log.debug("[#0000]  _: <POOL> table=%r", self.routing_tables)

@@ -23,6 +23,7 @@ import pytest
 
 from neo4j import (
     AsyncTransaction,
+    NotificationMinimumSeverity,
     Query,
 )
 
@@ -229,3 +230,48 @@ async def test_transaction_no_rollback_on_defunct_connections(
         async_fake_connection.is_reset_mock.assert_not_called()
         async_fake_connection.reset.assert_not_called()
         async_fake_connection.rollback.assert_not_called()
+
+
+@pytest.mark.parametrize("pipeline", (True, False))
+@mark_async_test
+async def test_transaction_begin_pipelining(
+    async_fake_connection, pipeline
+) -> None:
+    tx = AsyncTransaction(
+        async_fake_connection, 2, lambda *args, **kwargs: None,
+        lambda *args, **kwargs: None, lambda *args, **kwargs: None
+    )
+    database = "db"
+    imp_user = None
+    bookmarks = ["bookmark1", "bookmark2"]
+    access_mode = "r"
+    metadata = {"key": "value"}
+    timeout = 42
+    notifications_min_severity = NotificationMinimumSeverity.INFORMATION
+    notifications_disabled_categories = ["cat1", "cat2"]
+
+    await tx._begin(
+        database, imp_user, bookmarks, access_mode, metadata, timeout,
+        notifications_min_severity, notifications_disabled_categories,
+        pipelined=pipeline
+    )
+    expected_calls: list = [
+        (
+            "begin",
+            {
+                "db": database,
+                "imp_user": imp_user,
+                "bookmarks": bookmarks,
+                "mode": access_mode,
+                "metadata": metadata,
+                "timeout": timeout,
+                "notifications_min_severity": notifications_min_severity,
+                "notifications_disabled_categories":
+                    notifications_disabled_categories,
+            }
+        ),
+    ]
+    if not pipeline:
+        expected_calls.append(("send_all",))
+        expected_calls.append(("fetch_all",))
+    assert async_fake_connection.method_calls == expected_calls

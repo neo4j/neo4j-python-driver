@@ -58,12 +58,18 @@ class ExpiringAuth:
         :meth:`.AsyncAuthManagers.expiration_based`
 
     .. versionadded:: 5.8
+
+    .. versionchanged:: 5.9
+        Removed parameter and attribute ``expires_in`` (relative expiration
+        time). Replaced with ``expires_at`` (absolute expiration time).
+        :meth:`.expires_in` can be used to create an :class:`.ExpiringAuth`
+        with a relative expiration time.
     """
     auth: "_TAuth"
     expires_at: t.Optional[float] = None
 
     def expires_in(self, seconds: float) -> "ExpiringAuth":
-        """Return a copy of this object with a new expiration time.
+        """Return a (flat) copy of this object with a new expiration time.
 
         This is a convenience method for creating an :class:`.ExpiringAuth`
         for a relative expiration time ("expires in" instead of "expires at").
@@ -79,6 +85,8 @@ class ExpiringAuth:
         :param seconds:
             The number of seconds from now until the authentication information
             expires.
+
+        .. versionadded:: 5.9
         """
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore",
@@ -110,6 +118,8 @@ class AuthManager(metaclass=abc.ABCMeta):
 
         The token returned must always belong to the same identity.
         Switching identities using the `AuthManager` is undefined behavior.
+        You may use session-level authentication for such use-cases
+        :ref:`session-auth-ref`.
 
     **This is a preview** (see :ref:`filter-warnings-ref`).
     It might be changed without following the deprecation policy.
@@ -132,6 +142,8 @@ class AuthManager(metaclass=abc.ABCMeta):
             The method must only ever return auth information belonging to the
             same identity.
             Switching identities using the `AuthManager` is undefined behavior.
+            You may use session-level authentication for such use-cases
+            :ref:`session-auth-ref`.
         """
         ...
 

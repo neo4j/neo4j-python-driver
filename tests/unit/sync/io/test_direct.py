@@ -88,6 +88,8 @@ class QuickConnection:
 
 
 class FakeBoltPool(IOPool):
+    is_direct_pool = False
+
     def __init__(self, address, *, auth=None, **config):
         config["auth"] = static_auth(None)
         self.pool_config, self.workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)

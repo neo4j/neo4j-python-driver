@@ -111,15 +111,6 @@ The auth token is an object of the class :class:`neo4j.Auth` containing static d
 
 .. autoclass:: neo4j.Auth
 
-.. autoclass:: neo4j.auth_management.AuthManager
-    :members:
-
-.. autoclass:: neo4j.auth_management.AuthManagers
-    :members:
-
-.. autoclass:: neo4j.auth_management.ExpiringAuth
-
-
 Example:
 
 .. code-block:: python
@@ -128,6 +119,18 @@ Example:
 
 
     auth = neo4j.Auth("basic", "neo4j", "password")
+
+
+.. autoclass:: neo4j.auth_management.AuthManager
+    :members:
+
+.. autoclass:: neo4j.auth_management.AuthManagers
+    :members:
+
+.. autoclass:: neo4j.auth_management.ExpiringAuth
+    :members:
+
+
 
 
 Auth Token Helper Functions
@@ -243,7 +246,7 @@ Closing a driver will immediately shut down all connections in the pool.
                 return count
 
         :param query_: cypher query to execute
-        :type query_: typing.Optional[str]
+        :type query_: typing.LiteralString
         :param parameters_: parameters to use in the query
         :type parameters_: typing.Optional[typing.Dict[str, typing.Any]]
         :param routing_:
@@ -369,16 +372,10 @@ Closing a driver will immediately shut down all connections in the pool.
         :returns: the result of the ``result_transformer``
         :rtype: T
 
-        **This is experimental** (see :ref:`filter-warnings-ref`).
-        It might be changed or removed any time even without prior notice.
-
-        We are looking for feedback on this feature. Please let us know what
-        you think about it here:
-        https://github.com/neo4j/neo4j-python-driver/discussions/896
-
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
+
             * Added the ``auth_`` parameter.
             * Stabilized from experimental.
 
@@ -1032,7 +1029,7 @@ See :class:`.BookmarkManager` for more information.
 ``auth``
 --------
 Optional :class:`neo4j.Auth` or ``(user, password)``-tuple. Use this overwrite the
-authentication information for the session.
+authentication information for the session (user-switching).
 This requires the server to support re-authentication on the protocol level. You can
 check this by calling :meth:`.Driver.supports_session_auth` / :meth:`.AsyncDriver.supports_session_auth`.
 

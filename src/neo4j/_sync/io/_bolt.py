@@ -37,6 +37,7 @@ from ..._exceptions import (
 from ..._meta import USER_AGENT
 from ...addressing import ResolvedAddress
 from ...api import (
+    Auth,
     ServerInfo,
     Version,
 )
@@ -178,7 +179,6 @@ class Bolt:
         if not auth:
             return {}
         elif isinstance(auth, tuple) and 2 <= len(auth) <= 3:
-            from ...api import Auth
             return vars(Auth("basic", *auth))
         else:
             try:
@@ -837,8 +837,7 @@ class Bolt:
         self._set_defunct(message, error=error, silent=silent)
 
     def _set_defunct(self, message, error=None, silent=False):
-        from ._pool import BoltPool
-        direct_driver = isinstance(self.pool, BoltPool)
+        direct_driver = getattr(self.pool, "is_direct_pool", False)
         user_cancelled = isinstance(error, asyncio.CancelledError)
 
         if error:
@@ -947,3 +946,32 @@ class Bolt:
 
 
 BoltSocket.Bolt = Bolt  # type: ignore
+
+
+def tx_timeout_as_ms(timeout: float) -> int:
+    """Round transaction timeout to milliseconds.
+
+    Values in (0, 1], else values are rounded using the built-in round()
+    function (round n.5 values to nearest even).
+
+    :param timeout: timeout in seconds (must be >= 0)
+
+    :returns: timeout in milliseconds (rounded)
+
+    :raise ValueError: if timeout is negative
+    """
+    try:
+        timeout = float(timeout)
+    except (TypeError, ValueError) as e:
+        err_type = type(e)
+        msg = "Timeout must be specified as a number of seconds"
+        raise err_type(msg) from None
+    if timeout < 0:
+        raise ValueError("Timeout must be a positive number or 0.")
+    ms = int(round(1000 * timeout))
+    if ms == 0 and timeout > 0:
+        # Special case for 0 < timeout < 0.5 ms.
+        # This would be rounded to 0 ms, but the server interprets this as
+        # infinite timeout. So we round to the smallest possible timeout: 1 ms.
+        ms = 1
+    return ms

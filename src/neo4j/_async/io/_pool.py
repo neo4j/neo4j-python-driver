@@ -100,6 +100,11 @@ class AsyncIOPool(abc.ABC):
         self.lock = AsyncCooperativeRLock()
         self.cond = AsyncCondition(self.lock)
 
+    @property
+    @abc.abstractmethod
+    def is_direct_pool(self) -> bool:
+        ...
+
     async def __aenter__(self):
         return self
 
@@ -446,7 +451,7 @@ class AsyncIOPool(abc.ABC):
 
         await self._close_connections(closable_connections)
 
-    def on_write_failure(self, address):
+    async def on_write_failure(self, address):
         raise WriteServiceUnavailable(
             "No write service available for pool {}".format(self)
         )
@@ -489,6 +494,8 @@ class AsyncIOPool(abc.ABC):
 
 
 class AsyncBoltPool(AsyncIOPool):
+
+    is_direct_pool = True
 
     @classmethod
     def open(cls, address, *, pool_config, workspace_config):
@@ -536,6 +543,8 @@ class AsyncNeo4jPool(AsyncIOPool):
     """ Connection pool with routing table.
     """
 
+    is_direct_pool = False
+
     @classmethod
     def open(cls, *addresses, pool_config, workspace_config,
              routing_context=None):
@@ -578,6 +587,7 @@ class AsyncNeo4jPool(AsyncIOPool):
         self.address = address
         self.routing_tables = {}
         self.refresh_lock = AsyncRLock()
+        self.is_direct_pool = False
 
     def __repr__(self):
         """ The representation shows the initial routing addresses.
@@ -803,8 +813,13 @@ class AsyncNeo4jPool(AsyncIOPool):
             raise ServiceUnavailable("Unable to retrieve routing information")
 
     async def update_connection_pool(self, *, database):
-        routing_table = await self.get_or_create_routing_table(database)
-        servers = routing_table.servers()
+        async with self.refresh_lock:
+            routing_tables = [await self.get_or_create_routing_table(database)]
+            for db in self.routing_tables.keys():
+                if db == database:
+                    continue
+                routing_tables.append(self.routing_tables[db])
+        servers = set.union(*(rt.servers() for rt in routing_tables))
         for address in list(self.connections):
             if address._unresolved not in servers:
                 await super(AsyncNeo4jPool, self).deactivate(address)
@@ -939,17 +954,20 @@ class AsyncNeo4jPool(AsyncIOPool):
         log.debug("[#0000]  _: <POOL> deactivating address %r", address)
         # We use `discard` instead of `remove` here since the former
         # will not fail if the address has already been removed.
-        for database in self.routing_tables.keys():
-            self.routing_tables[database].routers.discard(address)
-            self.routing_tables[database].readers.discard(address)
-            self.routing_tables[database].writers.discard(address)
+        async with self.refresh_lock:
+            for database in self.routing_tables.keys():
+                self.routing_tables[database].routers.discard(address)
+                self.routing_tables[database].readers.discard(address)
+                self.routing_tables[database].writers.discard(address)
         log.debug("[#0000]  _: <POOL> table=%r", self.routing_tables)
         await super(AsyncNeo4jPool, self).deactivate(address)
 
-    def on_write_failure(self, address):
+    async def on_write_failure(self, address):
         """ Remove a writer address from the routing table, if present.
         """
+        # FIXME: only need to remove the writer for a specific database
         log.debug("[#0000]  _: <POOL> removing writer %r", address)
-        for database in self.routing_tables.keys():
-            self.routing_tables[database].writers.discard(address)
+        async with self.refresh_lock:
+            for database in self.routing_tables.keys():
+                self.routing_tables[database].writers.discard(address)
         log.debug("[#0000]  _: <POOL> table=%r", self.routing_tables)

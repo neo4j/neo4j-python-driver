@@ -100,10 +100,14 @@ class AsyncRLock(asyncio.Lock):
             # Hence, we flag this task as cancelled again, so that the next
             # `await` will raise the CancelledError.
             asyncio.current_task().cancel()
-        if task.done() and task.exception() is None:
-            self._owner = me
-            self._count = 1
-            return True
+        if task.done():
+            exception = task.exception()
+            if exception is None:
+                self._owner = me
+                self._count = 1
+                return True
+            else:
+                raise exception
         task.cancel()
         return False
 

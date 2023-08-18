@@ -233,7 +233,7 @@ Closing a driver will immediately shut down all connections in the pool.
                 return count
 
         :param query_: cypher query to execute
-        :type query_: typing.Optional[str]
+        :type query_: typing.LiteralString
         :param parameters_: parameters to use in the query
         :type parameters_: typing.Optional[typing.Dict[str, typing.Any]]
         :param routing_:
@@ -362,6 +362,7 @@ Closing a driver will immediately shut down all connections in the pool.
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
+
             * Added the ``auth_`` parameter.
             * Stabilized from experimental.
 

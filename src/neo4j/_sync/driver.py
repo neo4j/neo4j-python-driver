@@ -693,7 +693,7 @@ class Driver:
                 return count
 
         :param query_: cypher query to execute
-        :type query_: typing.Optional[str]
+        :type query_: typing.LiteralString
         :param parameters_: parameters to use in the query
         :type parameters_: typing.Optional[typing.Dict[str, typing.Any]]
         :param routing_:
@@ -823,6 +823,7 @@ class Driver:
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
+
             * Added the ``auth_`` parameter.
             * Stabilized from experimental.
         """
@@ -858,9 +859,10 @@ class Driver:
             else:
                 raise ValueError("Invalid routing control value: %r"
                                  % routing_)
-            return executor(
-                _work, query_, parameters, result_transformer_
-            )
+            with session._pipelined_begin:
+                return executor(
+                    _work, query_, parameters, result_transformer_
+                )
 
     @property
     def execute_query_bookmark_manager(self) -> BookmarkManager:
@@ -885,6 +887,7 @@ class Driver:
         .. versionadded:: 5.5
 
         .. versionchanged:: 5.8
+
             * Renamed from ``query_bookmark_manager`` to
               ``execute_query_bookmark_manager``.
             * Stabilized from experimental.

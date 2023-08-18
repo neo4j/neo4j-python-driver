@@ -176,8 +176,7 @@ def __getattr__(name):
     if name in (
         "log", "Config", "PoolConfig", "SessionConfig", "WorkspaceConfig"
     ):
-        from ._meta import deprecation_warn
-        deprecation_warn(
+        _deprecation_warn(
             "Importing {} from neo4j is deprecated without replacement. It's "
             "internal and will be removed in a future version."
             .format(name),

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [https://neo4j.com]
 #
@@ -18,17 +16,21 @@
 # limitations under the License.
 
 
-"""
-Executed in driver container.
-Responsible for building driver and test backend.
-"""
+from __future__ import annotations
 
 
-from _common import run_python
+__all__ = ["ContextBool"]
 
 
-if __name__ == "__main__":
-    run_python(["-m", "pip", "install", "-U", "pip"],
-               warning_as_error=False)
-    run_python(["-m", "pip", "install", "-Ur", "requirements-dev.txt"],
-               warning_as_error=False)
+class ContextBool:
+    def __init__(self) -> None:
+        self._value = False
+
+    def __bool__(self) -> bool:
+        return self._value
+
+    def __enter__(self) -> None:
+        self._value = True
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self._value = False
