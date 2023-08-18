@@ -859,9 +859,10 @@ class Driver:
             else:
                 raise ValueError("Invalid routing control value: %r"
                                  % routing_)
-            return executor(
-                _work, query_, parameters, result_transformer_
-            )
+            with session._pipelined_begin:
+                return executor(
+                    _work, query_, parameters, result_transformer_
+                )
 
     @property
     def execute_query_bookmark_manager(self) -> BookmarkManager:

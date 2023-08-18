@@ -61,6 +61,15 @@ from ..._async_compat import (
 )
 
 
+@pytest.fixture
+def session_cls_mock(mocker):
+    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
+                                    autospec=True)
+    session_cls_mock.return_value.attach_mock(mocker.NonCallableMagicMock(),
+                                              "_pipelined_begin")
+    yield session_cls_mock
+
+
 @pytest.mark.parametrize("protocol", ("bolt://", "bolt+s://", "bolt+ssc://"))
 @pytest.mark.parametrize("host", ("localhost", "127.0.0.1",
                                   "[::1]", "[0:0:0:0:0:0:0:1]"))
@@ -222,7 +231,8 @@ def test_driver_opens_write_session_by_default(uri, fake_pool, mocker):
         mocker.ANY,
         mocker.ANY,
         mocker.ANY,
-        mocker.ANY
+        mocker.ANY,
+        mocker.ANY,
     )
 
     driver.close()
@@ -295,12 +305,10 @@ def test_get_server_info_parameters_are_experimental(
 
 
 @mark_sync_test
-def test_with_builtin_bookmark_manager(mocker) -> None:
+def test_with_builtin_bookmark_manager(session_cls_mock) -> None:
     bmm = GraphDatabase.bookmark_manager()
     # could be one line, but want to make sure the type checker assigns
     # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
         _ = driver.session(bookmark_manager=bmm)
@@ -309,7 +317,9 @@ def test_with_builtin_bookmark_manager(mocker) -> None:
 
 
 @TestDecorators.mark_async_only_test
-def test_with_custom_inherited_async_bookmark_manager(mocker) -> None:
+def test_with_custom_inherited_async_bookmark_manager(
+    session_cls_mock
+) -> None:
     class BMM(BookmarkManager):
         def update_bookmarks(
             self, previous_bookmarks: t.Iterable[str],
@@ -324,10 +334,6 @@ def test_with_custom_inherited_async_bookmark_manager(mocker) -> None:
             ...
 
     bmm = BMM()
-    # could be one line, but want to make sure the type checker assigns
-    # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
         _ = driver.session(bookmark_manager=bmm)
@@ -336,7 +342,9 @@ def test_with_custom_inherited_async_bookmark_manager(mocker) -> None:
 
 
 @mark_sync_test
-def test_with_custom_inherited_sync_bookmark_manager(mocker) -> None:
+def test_with_custom_inherited_sync_bookmark_manager(
+    session_cls_mock
+) -> None:
     class BMM(BookmarkManager):
         def update_bookmarks(
             self, previous_bookmarks: t.Iterable[str],
@@ -351,10 +359,6 @@ def test_with_custom_inherited_sync_bookmark_manager(mocker) -> None:
             ...
 
     bmm = BMM()
-    # could be one line, but want to make sure the type checker assigns
-    # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
         _ = driver.session(bookmark_manager=bmm)
@@ -363,7 +367,9 @@ def test_with_custom_inherited_sync_bookmark_manager(mocker) -> None:
 
 
 @TestDecorators.mark_async_only_test
-def test_with_custom_ducktype_async_bookmark_manager(mocker) -> None:
+def test_with_custom_ducktype_async_bookmark_manager(
+    session_cls_mock
+) -> None:
     class BMM:
         def update_bookmarks(
             self, previous_bookmarks: t.Iterable[str],
@@ -378,10 +384,6 @@ def test_with_custom_ducktype_async_bookmark_manager(mocker) -> None:
             ...
 
     bmm = BMM()
-    # could be one line, but want to make sure the type checker assigns
-    # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
         _ = driver.session(bookmark_manager=bmm)
@@ -390,7 +392,9 @@ def test_with_custom_ducktype_async_bookmark_manager(mocker) -> None:
 
 
 @mark_sync_test
-def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
+def test_with_custom_ducktype_sync_bookmark_manager(
+    session_cls_mock
+) -> None:
     class BMM:
         def update_bookmarks(
             self, previous_bookmarks: t.Iterable[str],
@@ -405,10 +409,6 @@ def test_with_custom_ducktype_sync_bookmark_manager(mocker) -> None:
             ...
 
     bmm = BMM()
-    # could be one line, but want to make sure the type checker assigns
-    # bmm whatever type AsyncGraphDatabase.bookmark_manager() returns
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
     driver = GraphDatabase.driver("bolt://localhost")
     with driver as driver:
         _ = driver.session(bookmark_manager=bmm)
@@ -467,7 +467,6 @@ _T_NotificationDisabledCategory = t.Union[
 def test_driver_factory_with_notification_filters(
     uri: str,
     mocker,
-    fake_pool,
     min_sev: t.Optional[_T_NotificationMinimumSeverity],
     dis_cats: t.Optional[t.Iterable[_T_NotificationDisabledCategory]],
 ) -> None:
@@ -550,6 +549,7 @@ def test_driver_factory_with_notification_filters(
 @mark_sync_test
 def test_session_factory_with_notification_filter(
     uri: str,
+    session_cls_mock,
     mocker,
     min_sev: t.Optional[_T_NotificationMinimumSeverity],
     dis_cats: t.Optional[t.Iterable[_T_NotificationDisabledCategory]],
@@ -558,8 +558,6 @@ def test_session_factory_with_notification_filter(
     pool_mock: t.Any = mocker.MagicMock(spec=pool_cls)
     mocker.patch.object(pool_cls, "open", return_value=pool_mock)
     pool_mock.address = mocker.Mock()
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
 
     with GraphDatabase.driver(uri, auth=None) as driver:
         if min_sev is ...:
@@ -629,11 +627,10 @@ def test_execute_query_work(mocker) -> None:
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_query(
-    mocker, query: str, positional: bool
+    query: str, positional: bool, session_cls_mock, mocker
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
+
     with driver as driver:
         if positional:
             res = driver.execute_query(query)
@@ -657,12 +654,11 @@ def test_execute_query_query(
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_parameters(
-    mocker, parameters: t.Optional[t.Dict[str, t.Any]],
-    positional: bool
+    parameters: t.Optional[t.Dict[str, t.Any]], positional: bool,
+    session_cls_mock, mocker
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
+
     with driver as driver:
         if parameters is Ellipsis:
             parameters = None
@@ -689,11 +685,10 @@ def test_execute_query_parameters(
 ))
 @mark_sync_test
 def test_execute_query_keyword_parameters(
-    mocker, parameters: t.Optional[t.Dict[str, t.Any]],
+    parameters: t.Optional[t.Dict[str, t.Any]], session_cls_mock, mocker
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
+
     with driver as driver:
         if parameters is None:
             res = driver.execute_query("")
@@ -762,11 +757,11 @@ def test_execute_query_parameter_precedence(
     kw_params: t.Dict[str, t.Any],
     expected_params: t.Dict[str, t.Any],
     positional: bool,
+    session_cls_mock,
     mocker
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
+
     with driver as driver:
         if params is None:
             res = driver.execute_query("", **kw_params)
@@ -801,12 +796,11 @@ def test_execute_query_parameter_precedence(
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_routing_control(
-    mocker, session_executor: str, positional: bool,
-    routing_mode: t.Union[neo4j.RoutingControl, te.Literal["r", "w"], None]
+    session_executor: str, positional: bool,
+    routing_mode: t.Union[neo4j.RoutingControl, te.Literal["r", "w"], None],
+    session_cls_mock, mocker
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
     with driver as driver:
         if routing_mode is None:
             res = driver.execute_query("")
@@ -833,11 +827,9 @@ def test_execute_query_routing_control(
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_database(
-    mocker, database: t.Optional[str], positional: bool
+    database: t.Optional[str], positional: bool, session_cls_mock
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
     with driver as driver:
         if database is Ellipsis:
             database = None
@@ -857,11 +849,9 @@ def test_execute_query_database(
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_impersonated_user(
-    mocker, impersonated_user: t.Optional[str], positional: bool
+    impersonated_user: t.Optional[str], positional: bool, session_cls_mock
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
     with driver as driver:
         if impersonated_user is Ellipsis:
             impersonated_user = None
@@ -885,12 +875,11 @@ def test_execute_query_impersonated_user(
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_bookmark_manager(
-    mocker, positional: bool,
-    bookmark_manager: t.Union[BookmarkManager, BookmarkManager, None]
+    positional: bool,
+    bookmark_manager: t.Union[BookmarkManager, BookmarkManager, None],
+    session_cls_mock
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
     with driver as driver:
         if bookmark_manager is Ellipsis:
             bookmark_manager = driver.execute_query_bookmark_manager
@@ -914,12 +903,12 @@ def test_execute_query_bookmark_manager(
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_result_transformer(
-    mocker, positional: bool,
-    result_transformer: t.Callable[[Result], t.Union[SomeClass]]
+    positional: bool,
+    result_transformer: t.Callable[[Result], t.Union[SomeClass]],
+    session_cls_mock,
+    mocker
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
     res: t.Any
     with driver as driver:
         if result_transformer is Ellipsis:
@@ -951,10 +940,8 @@ def test_execute_query_result_transformer(
 
 
 @mark_sync_test
-def test_supports_session_auth(mocker) -> None:
+def test_supports_session_auth(session_cls_mock) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
-    session_cls_mock = mocker.patch("neo4j._sync.driver.Session",
-                                    autospec=True)
     with driver as driver:
         res = driver.supports_session_auth()
 

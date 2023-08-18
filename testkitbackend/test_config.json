@@ -65,6 +65,7 @@
     "Optimization:AuthPipelining": true,
     "Optimization:ConnectionReuse": true,
     "Optimization:EagerTransactionBegin": true,
+    "Optimization:ExecuteQueryPipelining": true,
     "Optimization:ImplicitDefaultArguments": true,
     "Optimization:MinimalBookmarksSet": true,
     "Optimization:MinimalResets": true,
