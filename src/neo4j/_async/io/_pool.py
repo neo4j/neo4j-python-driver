@@ -447,7 +447,7 @@ class AsyncIOPool(abc.ABC):
 
         await self._close_connections(closable_connections)
 
-    async def on_write_failure(self, address):
+    async def on_write_failure(self, address, database):
         raise WriteServiceUnavailable(
             "No write service available for pool {}".format(self)
         )
@@ -956,12 +956,13 @@ class AsyncNeo4jPool(AsyncIOPool):
         log.debug("[#0000]  _: <POOL> table=%r", self.routing_tables)
         await super(AsyncNeo4jPool, self).deactivate(address)
 
-    async def on_write_failure(self, address):
+    async def on_write_failure(self, address, database):
         """ Remove a writer address from the routing table, if present.
         """
-        # FIXME: only need to remove the writer for a specific database
-        log.debug("[#0000]  _: <POOL> removing writer %r", address)
+        log.debug("[#0000]  _: <POOL> removing writer %r for database %r",
+                  address, database)
         async with self.refresh_lock:
-            for database in self.routing_tables.keys():
+            table = self.routing_tables.get(database)
+            if table is not None:
                 self.routing_tables[database].writers.discard(address)
         log.debug("[#0000]  _: <POOL> table=%r", self.routing_tables)

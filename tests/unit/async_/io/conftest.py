@@ -102,7 +102,7 @@ class AsyncFakeSocket2:
         if callable(self.on_send):
             self.on_send(data)
 
-    def close(self):
+    async def close(self):
         return
 
     def kill(self):

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import typing as t
 from collections import deque
 from logging import getLogger
 from time import perf_counter
@@ -74,6 +75,16 @@ class ServerStateManagerBase(abc.ABC):
         ...
 
 
+class ClientStateManagerBase(abc.ABC):
+    @abc.abstractmethod
+    def __init__(self, init_state, on_change=None):
+        ...
+
+    @abc.abstractmethod
+    def transition(self, message):
+        ...
+
+
 class Bolt:
     """ Server connection for Bolt protocol.
 
@@ -103,12 +114,13 @@ class Bolt:
 
     # When the connection was last put back into the pool
     idle_since = float("-inf")
+    # The database name the connection was last used with
+    # (BEGIN for explicit transactions, RUN for auto-commit transactions)
+    last_database: t.Optional[str] = None
 
     # The socket
     _closing = False
     _closed = False
-
-    # The socket
     _defunct = False
 
     #: The pool of which this connection is a member
@@ -171,6 +183,10 @@ class Bolt:
 
     @abc.abstractmethod
     def _get_server_state_manager(self) -> ServerStateManagerBase:
+        ...
+
+    @abc.abstractmethod
+    def _get_client_state_manager(self) -> ClientStateManagerBase:
         ...
 
     @classmethod
@@ -753,6 +769,8 @@ class Bolt:
         """
         self.outbox.append_message(signature, fields, dehydration_hooks)
         self.responses.append(response)
+        if response:
+            self._get_client_state_manager().transition(response.message)
 
     def _send_all(self):
         if self.outbox.flush():

@@ -37,12 +37,14 @@ from ...exceptions import (
 )
 from ._bolt import (
     Bolt,
+    ClientStateManagerBase,
     ServerStateManagerBase,
     tx_timeout_as_ms,
 )
 from ._bolt3 import (
+    BoltStates,
+    ClientStateManager,
     ServerStateManager,
-    ServerStates,
 )
 from ._common import (
     check_supported_server_product,
@@ -71,31 +73,41 @@ class Bolt5x0(Bolt):
 
     supports_notification_filtering = False
 
-    server_states: t.Any = ServerStates
+    bolt_states: t.Any = BoltStates
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._server_state_manager = ServerStateManager(
-            self.server_states.CONNECTED,
+            self.bolt_states.CONNECTED,
             on_change=self._on_server_state_change
+        )
+        self._client_state_manager = ClientStateManager(
+            self.bolt_states.CONNECTED,
+            on_change=self._on_client_state_change
         )
 
     def _on_server_state_change(self, old_state, new_state):
-        log.debug("[#%04X]  _: <CONNECTION> state: %s > %s", self.local_port,
-                  old_state.name, new_state.name)
+        log.debug("[#%04X]  _: <CONNECTION> server state: %s > %s",
+                  self.local_port, old_state.name, new_state.name)
 
     def _get_server_state_manager(self) -> ServerStateManagerBase:
         return self._server_state_manager
+
+    def _on_client_state_change(self, old_state, new_state):
+        log.debug("[#%04X]  _: <CONNECTION> client state: %s > %s",
+                  self.local_port, old_state.name, new_state.name)
+
+    def _get_client_state_manager(self) -> ClientStateManagerBase:
+        return self._client_state_manager
 
     @property
     def is_reset(self):
         # We can't be sure of the server's state if there are still pending
         # responses. Unless the last message we sent was RESET. In that case
         # the server state will always be READY when we're done.
-        if (self.responses and self.responses[-1]
-                and self.responses[-1].message == "reset"):
-            return True
-        return self._server_state_manager.state == self.server_states.READY
+        if self.responses:
+            return self.responses[-1] and self.responses[-1].message == "reset"
+        return self._server_state_manager.state == self.bolt_states.READY
 
     @property
     def encrypted(self):
@@ -197,6 +209,11 @@ class Bolt5x0(Bolt):
             extra["mode"] = "r"
         if db:
             extra["db"] = db
+        if (
+            self._client_state_manager.state
+            != self.bolt_states.TX_READY_OR_TX_STREAMING
+        ):
+            self.last_database = db
         if imp_user:
             extra["imp_user"] = imp_user
         if bookmarks:
@@ -253,6 +270,7 @@ class Bolt5x0(Bolt):
             extra["mode"] = "r"
         if db:
             extra["db"] = db
+        self.last_database = db
         if imp_user:
             extra["imp_user"] = imp_user
         if bookmarks:
@@ -347,7 +365,7 @@ class Bolt5x0(Bolt):
         elif summary_signature == b"\x7F":
             log.debug("[#%04X]  S: FAILURE %r", self.local_port,
                       summary_metadata)
-            self._server_state_manager.state = self.server_states.FAILED
+            self._server_state_manager.state = self.bolt_states.FAILED
             try:
                 response.on_failure(summary_metadata or {})
             except (ServiceUnavailable, DatabaseUnavailable):
@@ -357,7 +375,8 @@ class Bolt5x0(Bolt):
             except (NotALeader, ForbiddenOnReadOnlyDatabase):
                 if self.pool:
                     self.pool.on_write_failure(
-                        address=self.unresolved_address
+                        address=self.unresolved_address,
+                        database=self.last_database
                     )
                 raise
             except Neo4jError as e:
@@ -374,7 +393,7 @@ class Bolt5x0(Bolt):
         return len(details), 1
 
 
-class ServerStates5x1(Enum):
+class BoltStates5x1(Enum):
     CONNECTED = "CONNECTED"
     READY = "READY"
     STREAMING = "STREAMING"
@@ -385,35 +404,60 @@ class ServerStates5x1(Enum):
 
 class ServerStateManager5x1(ServerStateManager):
     _STATE_TRANSITIONS = {  # type: ignore
-        ServerStates5x1.CONNECTED: {
-            "hello": ServerStates5x1.AUTHENTICATION,
+        BoltStates5x1.CONNECTED: {
+            "hello": BoltStates5x1.AUTHENTICATION,
         },
-        ServerStates5x1.AUTHENTICATION: {
-            "logon": ServerStates5x1.READY,
+        BoltStates5x1.AUTHENTICATION: {
+            "logon": BoltStates5x1.READY,
         },
-        ServerStates5x1.READY: {
-            "run": ServerStates5x1.STREAMING,
-            "begin": ServerStates5x1.TX_READY_OR_TX_STREAMING,
-            "logoff": ServerStates5x1.AUTHENTICATION,
+        BoltStates5x1.READY: {
+            "run": BoltStates5x1.STREAMING,
+            "begin": BoltStates5x1.TX_READY_OR_TX_STREAMING,
+            "logoff": BoltStates5x1.AUTHENTICATION,
         },
-        ServerStates5x1.STREAMING: {
-            "pull": ServerStates5x1.READY,
-            "discard": ServerStates5x1.READY,
-            "reset": ServerStates5x1.READY,
+        BoltStates5x1.STREAMING: {
+            "pull": BoltStates5x1.READY,
+            "discard": BoltStates5x1.READY,
+            "reset": BoltStates5x1.READY,
         },
-        ServerStates5x1.TX_READY_OR_TX_STREAMING: {
-            "commit": ServerStates5x1.READY,
-            "rollback": ServerStates5x1.READY,
-            "reset": ServerStates5x1.READY,
+        BoltStates5x1.TX_READY_OR_TX_STREAMING: {
+            "commit": BoltStates5x1.READY,
+            "rollback": BoltStates5x1.READY,
+            "reset": BoltStates5x1.READY,
         },
-        ServerStates5x1.FAILED: {
-            "reset": ServerStates5x1.READY,
+        BoltStates5x1.FAILED: {
+            "reset": BoltStates5x1.READY,
         }
     }
 
-
     def failed(self):
-        return self.state == ServerStates5x1.FAILED
+        return self.state == BoltStates5x1.FAILED
+
+
+class ClientStateManager5x1(ClientStateManager):
+    _STATE_TRANSITIONS = {  # type: ignore
+        BoltStates5x1.CONNECTED: {
+            "hello": BoltStates5x1.AUTHENTICATION,
+        },
+        BoltStates5x1.AUTHENTICATION: {
+            "logon": BoltStates5x1.READY,
+        },
+        BoltStates5x1.READY: {
+            "run": BoltStates5x1.STREAMING,
+            "begin": BoltStates5x1.TX_READY_OR_TX_STREAMING,
+            "logoff": BoltStates5x1.AUTHENTICATION,
+        },
+        BoltStates5x1.STREAMING: {
+            "begin": BoltStates5x1.TX_READY_OR_TX_STREAMING,
+            "logoff": BoltStates5x1.AUTHENTICATION,
+            "reset": BoltStates5x1.READY,
+        },
+        BoltStates5x1.TX_READY_OR_TX_STREAMING: {
+            "commit": BoltStates5x1.READY,
+            "rollback": BoltStates5x1.READY,
+            "reset": BoltStates5x1.READY,
+        },
+    }
 
 
 class Bolt5x1(Bolt5x0):
@@ -423,12 +467,15 @@ class Bolt5x1(Bolt5x0):
 
     supports_re_auth = True
 
-    server_states = ServerStates5x1
+    bolt_states = BoltStates5x1
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._server_state_manager = ServerStateManager5x1(
-            ServerStates5x1.CONNECTED, on_change=self._on_server_state_change
+            BoltStates5x1.CONNECTED, on_change=self._on_server_state_change
+        )
+        self._client_state_manager = ClientStateManager5x1(
+            BoltStates5x1.CONNECTED, on_change=self._on_client_state_change
         )
 
     def hello(self, dehydration_hooks=None, hydration_hooks=None):
@@ -541,6 +588,11 @@ class Bolt5x2(Bolt5x1):
             extra["mode"] = "r"
         if db:
             extra["db"] = db
+        if (
+            self._client_state_manager.state
+            != self.bolt_states.TX_READY_OR_TX_STREAMING
+        ):
+            self.last_database = db
         if imp_user:
             extra["imp_user"] = imp_user
         if notifications_min_severity is not None:
@@ -578,6 +630,7 @@ class Bolt5x2(Bolt5x1):
             extra["mode"] = "r"
         if db:
             extra["db"] = db
+        self.last_database = db
         if imp_user:
             extra["imp_user"] = imp_user
         if bookmarks:
