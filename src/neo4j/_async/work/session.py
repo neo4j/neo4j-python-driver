@@ -32,6 +32,7 @@ from ..._meta import (
     deprecated,
     PreviewWarning,
 )
+from ..._util import ContextBool
 from ..._work import Query
 from ...api import (
     Bookmarks,
@@ -100,6 +101,10 @@ class AsyncSession(AsyncWorkspace):
     # The state this session is in.
     _state_failed = False
 
+    _config: SessionConfig
+    _bookmark_manager: t.Optional[Bookmarks]
+    _pipelined_begin: ContextBool
+
     def __init__(self, pool, session_config):
         assert isinstance(session_config, SessionConfig)
         if session_config.auth is not None:
@@ -115,6 +120,7 @@ class AsyncSession(AsyncWorkspace):
         self._config = session_config
         self._initialize_bookmarks(session_config.bookmarks)
         self._bookmark_manager = session_config.bookmark_manager
+        self._pipelined_begin = ContextBool()
 
     async def __aenter__(self) -> AsyncSession:
         return self
@@ -421,6 +427,7 @@ class AsyncSession(AsyncWorkspace):
             bookmarks, access_mode, metadata, timeout,
             self._config.notifications_min_severity,
             self._config.notifications_disabled_categories,
+            pipelined=self._pipelined_begin
         )
 
     async def begin_transaction(
@@ -480,9 +487,15 @@ class AsyncSession(AsyncWorkspace):
 
         return t.cast(AsyncTransaction, self._transaction)
 
+
     async def _run_transaction(
-        self, access_mode, transaction_function, *args, **kwargs
-    ):
+        self,
+        access_mode: str,
+        transaction_function: t.Callable[
+            te.Concatenate[AsyncManagedTransaction, _P], t.Awaitable[_R]
+        ],
+        *args: _P.args, **kwargs: _P.kwargs
+    ) -> _R:
         self._check_state()
         if not callable(transaction_function):
             raise TypeError("Unit of work is not callable")
@@ -498,7 +511,7 @@ class AsyncSession(AsyncWorkspace):
 
         errors = []
 
-        t0 = -1  # Timer
+        t0: float = -1  # Timer
 
         while True:
             try:
@@ -507,6 +520,7 @@ class AsyncSession(AsyncWorkspace):
                     access_mode=access_mode, metadata=metadata,
                     timeout=timeout
                 )
+                assert isinstance(self._transaction, AsyncManagedTransaction)
                 tx = self._transaction
                 try:
                     result = await transaction_function(tx, *args, **kwargs)

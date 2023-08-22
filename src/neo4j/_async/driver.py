@@ -860,9 +860,10 @@ class AsyncDriver:
             else:
                 raise ValueError("Invalid routing control value: %r"
                                  % routing_)
-            return await executor(
-                _work, query_, parameters, result_transformer_
-            )
+            with session._pipelined_begin:
+                return await executor(
+                    _work, query_, parameters, result_transformer_
+                )
 
     @property
     def execute_query_bookmark_manager(self) -> AsyncBookmarkManager:

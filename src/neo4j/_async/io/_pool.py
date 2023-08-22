@@ -807,8 +807,13 @@ class AsyncNeo4jPool(AsyncIOPool):
             raise ServiceUnavailable("Unable to retrieve routing information")
 
     async def update_connection_pool(self, *, database):
-        routing_table = await self.get_or_create_routing_table(database)
-        servers = routing_table.servers()
+        async with self.refresh_lock:
+            routing_tables = [await self.get_or_create_routing_table(database)]
+            for db in self.routing_tables.keys():
+                if db == database:
+                    continue
+                routing_tables.append(self.routing_tables[db])
+        servers = set.union(*(rt.servers() for rt in routing_tables))
         for address in list(self.connections):
             if address._unresolved not in servers:
                 await super(AsyncNeo4jPool, self).deactivate(address)
@@ -954,6 +959,7 @@ class AsyncNeo4jPool(AsyncIOPool):
     async def on_write_failure(self, address):
         """ Remove a writer address from the routing table, if present.
         """
+        # FIXME: only need to remove the writer for a specific database
         log.debug("[#0000]  _: <POOL> removing writer %r", address)
         async with self.refresh_lock:
             for database in self.routing_tables.keys():
