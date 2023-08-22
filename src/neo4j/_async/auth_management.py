@@ -61,7 +61,7 @@ class AsyncStaticAuthManager(AsyncAuthManager):
         return False
 
 
-class Neo4jAuthTokenManager(AsyncAuthManager):
+class AsyncNeo4jAuthTokenManager(AsyncAuthManager):
     _current_auth: t.Optional[ExpiringAuth]
     _provider: t.Callable[[], t.Awaitable[ExpiringAuth]]
     _handled_codes: t.FrozenSet[str]
@@ -217,7 +217,7 @@ class AsyncAuthManagers:
                                         category=PreviewWarning)
                 return ExpiringAuth(await provider())
 
-        return Neo4jAuthTokenManager(wrapped_provider, handled_codes)
+        return AsyncNeo4jAuthTokenManager(wrapped_provider, handled_codes)
 
     @staticmethod
     @preview("Auth managers are a preview feature.")
@@ -282,4 +282,4 @@ class AsyncAuthManagers:
             "Neo.ClientError.Security.TokenExpired",
             "Neo.ClientError.Security.Unauthorized",
         ))
-        return Neo4jAuthTokenManager(provider, handled_codes)
+        return AsyncNeo4jAuthTokenManager(provider, handled_codes)
