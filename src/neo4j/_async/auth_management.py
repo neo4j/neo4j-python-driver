@@ -164,6 +164,11 @@ class AsyncAuthManagers:
     ) -> AsyncAuthManager:
         """Create an auth manager handling basic auth password rotation.
 
+        This factory wraps the provider function in an auth manager
+        implementation that caches the provides auth info until either the
+        server notifies the driver that the auth info is expired (by returning
+        an error that indicates that basic auth has changed).
+
         .. warning::
 
             The provider function **must not** interact with the driver in any
@@ -202,9 +207,8 @@ class AsyncAuthManagers:
         :returns:
             An instance of an implementation of :class:`.AsyncAuthManager` that
             returns auth info from the given provider and refreshes it, calling
-            the provider again, when the auth info expires (either because it's
-            reached its expiry time or because the server flagged it as
-            expired).
+            the provider again, when the auth info expires (because the server
+            flagged it as expired).
 
         .. versionadded:: 5.12
         """
@@ -225,6 +229,12 @@ class AsyncAuthManagers:
         provider: t.Callable[[], t.Awaitable[ExpiringAuth]]
     ) -> AsyncAuthManager:
         """Create an auth manager for potentially expiring bearer auth tokens.
+
+        This factory wraps the provider function in an auth manager
+        implementation that caches the provides auth info until either the
+        ``ExpiringAuth.expires_at`` is exceeded the server notifies the driver
+        that the auth info is expired (by returning an error that indicates
+        that the bearer auth token has expired).
 
         .. warning::
 
