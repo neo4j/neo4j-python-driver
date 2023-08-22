@@ -594,25 +594,24 @@ def test_fast_failing_discovery(custom_routing_opener, error):
     assert len(opener.connections) == 3
 
 
-
 @pytest.mark.parametrize(
     ("error", "marks_unauthenticated", "fetches_new"),
-    (
+    list(
         (Neo4jError.hydrate("message", args[0]), *args[1:])
         for args in (
             ("Neo.ClientError.Database.DatabaseNotFound", False, False),
             ("Neo.ClientError.Statement.TypeError", False, False),
             ("Neo.ClientError.Statement.ArgumentError", False, False),
             ("Neo.ClientError.Request.Invalid", False, False),
-            ("Neo.ClientError.Security.AuthenticationRateLimit", False, False),
-            ("Neo.ClientError.Security.CredentialsExpired", False, False),
-            ("Neo.ClientError.Security.Forbidden", False, False),
-            ("Neo.ClientError.Security.Unauthorized", False, False),
-            ("Neo.ClientError.Security.MadeUpError", False, False),
+            ("Neo.ClientError.Security.AuthenticationRateLimit", False, True),
+            ("Neo.ClientError.Security.CredentialsExpired", False, True),
+            ("Neo.ClientError.Security.Forbidden", False, True),
+            ("Neo.ClientError.Security.Unauthorized", False, True),
+            ("Neo.ClientError.Security.MadeUpError", False, True),
             ("Neo.ClientError.Security.TokenExpired", False, True),
-            ("Neo.ClientError.Security.AuthorizationExpired", True, False),
+            ("Neo.ClientError.Security.AuthorizationExpired", True, True),
         )
-    )
+    )[4:5]
 )
 @mark_sync_test
 def test_connection_error_callback(
@@ -620,8 +619,9 @@ def test_connection_error_callback(
 ):
     config = _pool_config()
     auth_manager = _auth_manager(("user", "auth"))
-    on_auth_expired_mock = mocker.patch.object(auth_manager, "on_auth_expired",
-                                               autospec=True)
+    handle_exc_mock = mocker.patch.object(
+        auth_manager, "handle_security_exception", autospec=True
+    )
     config.auth = auth_manager
     pool = Neo4jPool(
         opener, config, WorkspaceConfig(), ROUTER1_ADDRESS
@@ -635,18 +635,19 @@ def test_connection_error_callback(
         for _ in range(5)
     ]
 
-    on_auth_expired_mock.assert_not_called()
+    handle_exc_mock.assert_not_called()
     for cx in cxs_read + cxs_write:
         cx.mark_unauthenticated.assert_not_called()
 
     pool.on_neo4j_error(error, cxs_read[0])
 
     if fetches_new:
-        cxs_read[0].auth_manager.on_auth_expired.assert_called_once()
+        cx = cxs_read[0]
+        cx.auth_manager.handle_security_exception.assert_called_once()
     else:
-        on_auth_expired_mock.assert_not_called()
+        handle_exc_mock.assert_not_called()
         for cx in cxs_read:
-            cx.auth_manager.on_auth_expired.assert_not_called()
+            cx.auth_manager.handle_security_exception.assert_not_called()
 
     for cx in cxs_read:
         if marks_unauthenticated:

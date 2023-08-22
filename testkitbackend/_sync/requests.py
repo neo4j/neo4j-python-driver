@@ -188,13 +188,14 @@ def NewAuthTokenManager(backend, data):
                 )
             return backend.auth_token_supplies.pop(key)
 
-        def on_auth_expired(self, auth):
+        def handle_security_exception(self, auth, error):
             key = backend.next_key()
             backend.send_response(
-                "AuthTokenManagerOnAuthExpiredRequest", {
+                "AuthTokenManagerHandleSecurityExceptionRequest", {
                     "id": key,
                     "authTokenManagerId": auth_token_manager_id,
                     "auth": totestkit.auth_token(auth),
+                    "errorCode": error.code,
                 }
             )
             if not backend.process_request():
@@ -203,10 +204,11 @@ def NewAuthTokenManager(backend, data):
             if key not in backend.auth_token_on_expiration_supplies:
                 raise RuntimeError(
                     "Backend did not receive expected "
-                    "AuthTokenManagerOnAuthExpiredCompleted message for id "
-                    f"{key}"
+                    "AuthTokenManagerHandleSecurityExceptionCompleted message "
+                    f"for id {key}"
                 )
-            backend.auth_token_on_expiration_supplies.pop(key)
+            handled = backend.auth_token_on_expiration_supplies.pop(key)
+            return handled
 
     auth_manager = TestKitAuthManager()
     backend.auth_token_managers[auth_token_manager_id] = auth_manager
@@ -221,8 +223,9 @@ def AuthTokenManagerGetAuthCompleted(backend, data):
     backend.auth_token_supplies[data["requestId"]] = auth_token
 
 
-def AuthTokenManagerOnAuthExpiredCompleted(backend, data):
-    backend.auth_token_on_expiration_supplies[data["requestId"]] = True
+def AuthTokenManagerHandleSecurityExceptionCompleted(backend, data):
+    handled = data["handled"]
+    backend.auth_token_on_expiration_supplies[data["requestId"]] = handled
 
 
 def AuthTokenManagerClose(backend, data):
@@ -233,16 +236,53 @@ def AuthTokenManagerClose(backend, data):
     )
 
 
-def NewExpirationBasedAuthTokenManager(backend, data):
+def NewBasicAuthTokenManager(backend, data):
     auth_token_manager_id = backend.next_key()
 
     def auth_token_provider():
         key = backend.next_key()
         backend.send_response(
-            "ExpirationBasedAuthTokenProviderRequest",
+            "BasicAuthTokenProviderRequest",
             {
                 "id": key,
-                "expirationBasedAuthTokenManagerId": auth_token_manager_id,
+                "basicAuthTokenManagerId": auth_token_manager_id,
+            }
+        )
+        if not backend.process_request():
+            # connection was closed before end of next message
+            return None
+        if key not in backend.basic_auth_token_supplies:
+            raise RuntimeError(
+                "Backend did not receive expected "
+                "BasicAuthTokenManagerCompleted message for id "
+                f"{key}"
+            )
+        return backend.basic_auth_token_supplies.pop(key)
+
+    with warning_check(neo4j.PreviewWarning,
+                       "Auth managers are a preview feature."):
+        auth_manager = AuthManagers.basic(auth_token_provider)
+    backend.auth_token_managers[auth_token_manager_id] = auth_manager
+    backend.send_response(
+        "BasicAuthTokenManager", {"id": auth_token_manager_id}
+    )
+
+
+def BasicAuthTokenProviderCompleted(backend, data):
+    auth = fromtestkit.to_auth_token(data, "auth")
+    backend.basic_auth_token_supplies[data["requestId"]] = auth
+
+
+def NewBearerAuthTokenManager(backend, data):
+    auth_token_manager_id = backend.next_key()
+
+    def auth_token_provider():
+        key = backend.next_key()
+        backend.send_response(
+            "BearerAuthTokenProviderRequest",
+            {
+                "id": key,
+                "bearerAuthTokenManagerId": auth_token_manager_id,
             }
         )
         if not backend.process_request():
@@ -251,21 +291,21 @@ def NewExpirationBasedAuthTokenManager(backend, data):
         if key not in backend.expiring_auth_token_supplies:
             raise RuntimeError(
                 "Backend did not receive expected "
-                "ExpirationBasedAuthTokenManagerCompleted message for id "
+                "BearerAuthTokenManagerCompleted message for id "
                 f"{key}"
             )
         return backend.expiring_auth_token_supplies.pop(key)
 
     with warning_check(neo4j.PreviewWarning,
                        "Auth managers are a preview feature."):
-        auth_manager = AuthManagers.expiration_based(auth_token_provider)
+        auth_manager = AuthManagers.bearer(auth_token_provider)
     backend.auth_token_managers[auth_token_manager_id] = auth_manager
     backend.send_response(
-        "ExpirationBasedAuthTokenManager", {"id": auth_token_manager_id}
+        "BearerAuthTokenManager", {"id": auth_token_manager_id}
     )
 
 
-def ExpirationBasedAuthTokenProviderCompleted(backend, data):
+def BearerAuthTokenProviderCompleted(backend, data):
     temp_auth_data = data["auth"]
     temp_auth_data.mark_item_as_read_if_equals("name",
                                                "AuthTokenAndExpiration")

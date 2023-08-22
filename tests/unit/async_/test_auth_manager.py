@@ -34,9 +34,12 @@ from neo4j.auth_management import (
     AsyncAuthManagers,
     ExpiringAuth,
 )
+from neo4j.exceptions import Neo4jError
 
 from ..._async_compat import mark_async_test
 
+
+T = t.TypeVar("T")
 
 SAMPLE_AUTHS = (
     None,
@@ -46,16 +49,45 @@ SAMPLE_AUTHS = (
     Auth("scheme", "principal", "credentials", "realm", para="meter"),
 )
 
+CODES_HANDLED_BY_BASIC_MANAGER = {
+    "Neo.ClientError.Security.Unauthorized",
+}
+CODES_HANDLED_BY_BEARER_MANAGER = {
+    "Neo.ClientError.Security.TokenExpired",
+    "Neo.ClientError.Security.Unauthorized",
+}
+SAMPLE_ERRORS = [
+    Neo4jError.hydrate(code=code) for code in {
+        "Neo.ClientError.Security.AuthenticationRateLimit",
+        "Neo.ClientError.Security.AuthorizationExpired",
+        "Neo.ClientError.Security.CredentialsExpired",
+        "Neo.ClientError.Security.Forbidden",
+        "Neo.ClientError.Security.TokenExpired",
+        "Neo.ClientError.Security.Unauthorized",
+        "Neo.ClientError.Security.MadeUp",
+        "Neo.ClientError.Statement.SyntaxError",
+        *CODES_HANDLED_BY_BASIC_MANAGER,
+        *CODES_HANDLED_BY_BEARER_MANAGER,
+    }
+]
+
 
 @copy_signature(AsyncAuthManagers.static)
 def static_auth_manager(*args, **kwargs):
     with pytest.warns(PreviewWarning, match="Auth managers"):
         return AsyncAuthManagers.static(*args, **kwargs)
 
-@copy_signature(AsyncAuthManagers.expiration_based)
-def expiration_based_auth_manager(*args, **kwargs):
+
+@copy_signature(AsyncAuthManagers.basic)
+def basic_auth_manager(*args, **kwargs):
     with pytest.warns(PreviewWarning, match="Auth managers"):
-        return AsyncAuthManagers.expiration_based(*args, **kwargs)
+        return AsyncAuthManagers.basic(*args, **kwargs)
+
+
+@copy_signature(AsyncAuthManagers.bearer)
+def bearer_auth_manager(*args, **kwargs):
+    with pytest.warns(PreviewWarning, match="Auth managers"):
+        return AsyncAuthManagers.bearer(*args, **kwargs)
 
 
 @copy_signature(ExpiringAuth)
@@ -66,58 +98,72 @@ def expiring_auth(*args, **kwargs):
 
 @mark_async_test
 @pytest.mark.parametrize("auth", SAMPLE_AUTHS)
+@pytest.mark.parametrize("error", SAMPLE_ERRORS)
 async def test_static_manager(
-    auth
+    auth: t.Union[t.Tuple[str, str], Auth, None],
+    error: Neo4jError
 ) -> None:
     manager: AsyncAuthManager = static_auth_manager(auth)
     assert await manager.get_auth() is auth
 
-    await manager.on_auth_expired(("something", "else"))
+    handled = await manager.handle_security_exception(
+        ("something", "else"), error
+    )
+    assert handled is False
     assert await manager.get_auth() is auth
 
-    await manager.on_auth_expired(auth)
+    handled = await manager.handle_security_exception(auth, error)
+    assert handled is False
     assert await manager.get_auth() is auth
 
 
 @mark_async_test
 @pytest.mark.parametrize(("auth1", "auth2"),
-                         itertools.product(SAMPLE_AUTHS, repeat=2))
-@pytest.mark.parametrize("expires_at", (None, .001, 1, 1000.))
-async def test_expiration_based_manager_manual_expiry(
+                         list(itertools.product(SAMPLE_AUTHS, repeat=2)))
+@pytest.mark.parametrize("error", SAMPLE_ERRORS)
+async def test_basic_manager_manual_expiry(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
     auth2: t.Union[t.Tuple[str, str], Auth, None],
+    error: Neo4jError,
+    mocker
+) -> None:
+    def return_value_generator(auth):
+        return auth
+
+    await _test_manager(
+        auth1, auth2, return_value_generator, basic_auth_manager, error,
+        CODES_HANDLED_BY_BASIC_MANAGER, mocker
+    )
+
+
+@mark_async_test
+@pytest.mark.parametrize(("auth1", "auth2"),
+                         itertools.product(SAMPLE_AUTHS, repeat=2))
+@pytest.mark.parametrize("error", SAMPLE_ERRORS)
+@pytest.mark.parametrize("expires_at", (None, .001, 1, 1000.))
+async def test_bearer_manager_manual_expiry(
+    auth1: t.Union[t.Tuple[str, str], Auth, None],
+    auth2: t.Union[t.Tuple[str, str], Auth, None],
+    error: Neo4jError,
     expires_at: t.Optional[float],
     mocker
 ) -> None:
+    def return_value_generator(auth):
+        return expiring_auth(auth)
+
     with freeze_time("1970-01-01 00:00:00") as frozen_time:
         assert isinstance(frozen_time, FrozenDateTimeFactory)
-        temporal_auth = expiring_auth(auth1, expires_at)
-        provider = mocker.AsyncMock(return_value=temporal_auth)
-        manager: AsyncAuthManager = expiration_based_auth_manager(provider)
-
-        provider.assert_not_called()
-        assert await manager.get_auth() is auth1
-        provider.assert_awaited_once()
-        provider.reset_mock()
-
-        provider.return_value = expiring_auth(auth2)
-
-        await manager.on_auth_expired(("something", "else"))
-        assert await manager.get_auth() is auth1
-        provider.assert_not_called()
-
-        await manager.on_auth_expired(auth1)
-        provider.assert_awaited_once()
-        provider.reset_mock()
-        assert await manager.get_auth() is auth2
-        provider.assert_not_called()
+        await _test_manager(
+            auth1, auth2, return_value_generator, bearer_auth_manager, error,
+            CODES_HANDLED_BY_BEARER_MANAGER, mocker
+        )
 
 
 @mark_async_test
 @pytest.mark.parametrize(("auth1", "auth2"),
                          itertools.product(SAMPLE_AUTHS, repeat=2))
 @pytest.mark.parametrize("expires_at", (None, -1, 1., 1, 1000.))
-async def test_expiration_based_manager_time_expiry(
+async def test_bearer_manager_time_expiry(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
     auth2: t.Union[t.Tuple[str, str], Auth, None],
     expires_at: t.Optional[float],
@@ -130,7 +176,7 @@ async def test_expiration_based_manager_time_expiry(
         else:
             temporal_auth = expiring_auth(auth1)
         provider = mocker.AsyncMock(return_value=temporal_auth)
-        manager: AsyncAuthManager = expiration_based_auth_manager(provider)
+        manager: AsyncAuthManager = bearer_auth_manager(provider)
 
         provider.assert_not_called()
         assert await manager.get_auth() is auth1
@@ -150,3 +196,50 @@ async def test_expiration_based_manager_time_expiry(
             frozen_time.tick(0.000002)
             assert await manager.get_auth() is auth2
             provider.assert_awaited_once()
+
+
+async def _test_manager(
+    auth1: t.Union[t.Tuple[str, str], Auth, None],
+    auth2: t.Union[t.Tuple[str, str], Auth, None],
+    return_value_generator: t.Callable[
+        [t.Union[t.Tuple[str, str], Auth, None]], T
+    ],
+    manager_factory: t.Callable[
+        [t.Callable[[], t.Awaitable[T]]], AsyncAuthManager
+    ],
+    error: Neo4jError,
+    handled_codes: t.Container[str],
+    mocker: t.Any,
+) -> None:
+    provider = mocker.AsyncMock(return_value=return_value_generator(auth1))
+    typed_provider = t.cast(t.Callable[[], t.Awaitable[T]], provider)
+    manager: AsyncAuthManager = manager_factory(typed_provider)
+    provider.assert_not_called()
+    assert await manager.get_auth() is auth1
+    provider.assert_awaited_once()
+    provider.reset_mock()
+
+    provider.return_value = return_value_generator(auth2)
+
+    should_be_handled = error.code in handled_codes
+    handled = await manager.handle_security_exception(
+        ("something", "else"), error
+    )
+    assert handled is should_be_handled
+    assert await manager.get_auth() is auth1
+    provider.assert_not_called()
+
+    handled = await manager.handle_security_exception(auth1, error)
+
+    if should_be_handled:
+        provider.assert_awaited_once()
+    else:
+        provider.assert_not_called()
+    assert handled is should_be_handled
+    provider.reset_mock()
+
+    if should_be_handled:
+        assert await manager.get_auth() is auth2
+    else:
+        assert await manager.get_auth() is auth1
+    provider.assert_not_called()

@@ -145,6 +145,8 @@ class Neo4jError(Exception):
     #: (dict) Any additional information returned by the server.
     metadata = None
 
+    _retryable = False
+
     @classmethod
     def hydrate(
         cls,
@@ -230,13 +232,10 @@ class Neo4jError(Exception):
 
         .. versionadded:: 5.0
         """
-        return False
+        return self._retryable
 
     def _unauthenticates_all_connections(self) -> bool:
         return self.code == "Neo.ClientError.Security.AuthorizationExpired"
-
-    def _requires_new_credentials(self) -> bool:
-        return self.code == "Neo.ClientError.Security.TokenExpired"
 
     # TODO: 6.0 - Remove this alias
     invalidates_all_connections = deprecated(
@@ -262,6 +261,11 @@ class Neo4jError(Exception):
                                  "AuthorizationExpired"):
             return True
         return False
+
+    def _has_security_code(self) -> bool:
+        if self.code is None:
+            return False
+        return self.code.startswith("Neo.ClientError.Security.")
 
     # TODO: 6.0 - Remove this alias
     is_fatal_during_discovery = deprecated(
@@ -319,19 +323,6 @@ class TokenExpired(AuthError):
     """
 
 
-# Neo4jError > ClientError > AuthError > TokenExpired > TokenExpiredRetryable
-class TokenExpiredRetryable(TokenExpired):
-    """Raised when the authentication token has expired but can be refreshed.
-
-    This is the same server error as :exc:`.TokenExpired`, but raised when
-    the driver is configured to be able to refresh the token, hence making
-    the error retryable.
-    """
-
-    def is_retryable(self) -> bool:
-        return True
-
-
 # Neo4jError > ClientError > Forbidden
 class Forbidden(ClientError):
     """
@@ -349,8 +340,7 @@ class TransientError(Neo4jError):
     """ The database cannot service the request right now, retrying later might yield a successful outcome.
     """
 
-    def is_retryable(self) -> bool:
-        return True
+    _retryable = True
 
 
 # Neo4jError > TransientError > DatabaseUnavailable

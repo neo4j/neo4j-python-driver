@@ -32,6 +32,7 @@ from ._meta import (
     PreviewWarning,
 )
 from .api import _TAuth
+from .exceptions import Neo4jError
 
 
 @preview("Auth managers are a preview feature.")
@@ -128,6 +129,13 @@ class AuthManager(metaclass=abc.ABCMeta):
     .. seealso:: :class:`.AuthManagers`
 
     .. versionadded:: 5.8
+
+    .. versionchanged:: 5.12
+        ``on_auth_expired`` was removed from the interface and replaced by
+         :meth:`handle_security_exception`. The new method is called when the
+        server returns any `Neo.ClientError.Security.*` error. It's signature
+        differs in that it additionally received the error returned by the
+        server and returns a boolean indicating whether the error was handled.
     """
 
     @abc.abstractmethod
@@ -148,15 +156,27 @@ class AuthManager(metaclass=abc.ABCMeta):
         ...
 
     @abc.abstractmethod
-    def on_auth_expired(self, auth: _TAuth) -> None:
-        """Handle the server indicating expired authentication information.
+    def handle_security_exception(
+        self, auth: _TAuth, error: Neo4jError
+    ) -> bool:
+        """Handle the server indicating authentication failure.
 
-        The driver will call this method when the server indicates that the
-        provided authentication information is no longer valid.
+        The driver will call this method when the server returns any
+        `Neo.ClientError.Security.*` error. The error will then be processed
+        further as usual.
 
         :param auth:
-            The authentication information that the server flagged as no longer
-            valid.
+            The authentication information that was used when the server
+            returned the error.
+        :param error:
+            The error returned by the server.
+
+        :returns:
+            Whether the error was handled (:const:`True`), in which case the
+            driver will mark the error as retryable
+            (see :meth:`.Neo4jError.is_retryable`).
+
+        .. versionadded:: 5.12
         """
         ...
 
@@ -171,6 +191,10 @@ class AsyncAuthManager(metaclass=abc.ABCMeta):
     .. seealso:: :class:`.AuthManager`
 
     .. versionadded:: 5.8
+
+    .. versionchanged:: 5.12
+        ``on_auth_expired`` was removed from the interface and replaced by
+         :meth:`handle_security_exception`. See :class:`.AuthManager`.
     """
 
     @abc.abstractmethod
@@ -182,7 +206,9 @@ class AsyncAuthManager(metaclass=abc.ABCMeta):
         ...
 
     @abc.abstractmethod
-    async def on_auth_expired(self, auth: _TAuth) -> None:
+    async def handle_security_exception(
+        self, auth: _TAuth, error: Neo4jError
+    ) -> bool:
         """Async version of :meth:`.AuthManager.on_auth_expired`.
 
         .. seealso:: :meth:`.AuthManager.on_auth_expired`

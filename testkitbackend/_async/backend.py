@@ -58,6 +58,7 @@ class AsyncBackend:
         self.auth_token_managers = {}
         self.auth_token_supplies = {}
         self.auth_token_on_expiration_supplies = {}
+        self.basic_auth_token_supplies = {}
         self.expiring_auth_token_supplies = {}
         self.bookmark_managers = {}
         self.bookmarks_consumptions = {}
@@ -153,11 +154,13 @@ class AsyncBackend:
             payload["errorType"] = str(type(wrapped_exc))
             if wrapped_exc.args:
                 payload["msg"] = self._exc_msg(wrapped_exc.args[0])
+            payload["retryable"] = False
         else:
             payload["errorType"] = str(type(exc))
             payload["msg"] = self._exc_msg(exc)
             if isinstance(exc, Neo4jError):
                 payload["code"] = exc.code
+            payload["retryable"] = getattr(exc, "is_retryable", bool)()
 
         await self.send_response("DriverError", payload)
 

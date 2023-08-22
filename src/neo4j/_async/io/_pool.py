@@ -48,7 +48,6 @@ from ..._deadline import (
 )
 from ..._exceptions import BoltError
 from ..._routing import RoutingTable
-from ..._sync.auth_management import StaticAuthManager
 from ...api import (
     READ_ACCESS,
     WRITE_ACCESS,
@@ -65,11 +64,8 @@ from ...exceptions import (
     ReadServiceUnavailable,
     ServiceUnavailable,
     SessionExpired,
-    TokenExpired,
-    TokenExpiredRetryable,
     WriteServiceUnavailable,
 )
-from ..auth_management import AsyncStaticAuthManager
 from ._bolt import AsyncBolt
 
 
@@ -467,15 +463,13 @@ class AsyncIOPool(abc.ABC):
             with self.lock:
                 for connection in self.connections.get(address, ()):
                     connection.mark_unauthenticated()
-        if error._requires_new_credentials():
-            await AsyncUtil.callback(
-                connection.auth_manager.on_auth_expired,
-                connection.auth
+        if error._has_security_code():
+            handled = await AsyncUtil.callback(
+                connection.auth_manager.handle_security_exception,
+                connection.auth, error
             )
-        if (isinstance(error, TokenExpired)
-            and not isinstance(self.pool_config.auth, (AsyncStaticAuthManager,
-                                                       StaticAuthManager))):
-            error.__class__ = TokenExpiredRetryable
+            if handled:
+                error._retryable = True
 
     async def close(self):
         """ Close all connections and empty the pool.
