@@ -585,3 +585,66 @@ async def test_tx_timeout(
             assert "tx_timeout" not in extra
         else:
             assert extra["tx_timeout"] == res
+
+
+@pytest.mark.parametrize(
+    "actions",
+    itertools.combinations_with_replacement(
+        itertools.product(
+            ("run", "begin", "begin_run"),
+            ("reset", "commit", "rollback"),
+            (None, "some_db", "another_db"),
+        ),
+        2
+    )
+)
+@mark_async_test
+async def test_tracks_last_database(fake_socket_pair, actions):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=AsyncBolt5x2.PACKER_CLS,
+                               unpacker_cls=AsyncBolt5x2.UNPACKER_CLS)
+    connection = AsyncBolt5x2(address, sockets.client, 0)
+    await sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    await sockets.server.send_message(b"\x70", {})
+    await connection.hello()
+    assert connection.last_database is None
+    for action, finish, db in actions:
+        await sockets.server.send_message(b"\x70", {})
+        if action == "run":
+            connection.run("RETURN 1", db=db)
+        elif action == "begin":
+            connection.begin(db=db)
+        elif action == "begin_run":
+            connection.begin(db=db)
+            assert connection.last_database == db
+            await sockets.server.send_message(b"\x70", {})
+            connection.run("RETURN 1")
+        else:
+            raise ValueError(action)
+
+        assert connection.last_database == db
+        await connection.send_all()
+        await connection.fetch_all()
+        assert connection.last_database == db
+
+        await sockets.server.send_message(b"\x70", {})
+        if finish == "reset":
+            await connection.reset()
+        elif finish == "commit":
+            if action == "run":
+                connection.pull()
+            else:
+                connection.commit()
+        elif finish == "rollback":
+            if action == "run":
+                connection.pull()
+            else:
+                connection.rollback()
+        else:
+            raise ValueError(finish)
+
+        await connection.send_all()
+        await connection.fetch_all()
+
+        assert connection.last_database == db

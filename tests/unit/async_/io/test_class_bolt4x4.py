@@ -16,8 +16,8 @@
 # limitations under the License.
 
 
+import itertools
 import logging
-from itertools import permutations
 
 import pytest
 
@@ -340,7 +340,7 @@ async def test_re_auth_noop(auth, fake_socket, mocker):
 
 @pytest.mark.parametrize(
     ("auth1", "auth2"),
-    permutations(
+    itertools.permutations(
         (
             None,
             neo4j.Auth("scheme", "principal", "credentials", "realm"),

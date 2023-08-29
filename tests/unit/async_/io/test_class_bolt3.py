@@ -14,10 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
+import contextlib
+import itertools
 import logging
-from itertools import permutations
 
 import pytest
 
@@ -186,7 +185,7 @@ async def test_re_auth_noop(auth, fake_socket, mocker):
 
 @pytest.mark.parametrize(
     ("auth1", "auth2"),
-    permutations(
+    itertools.permutations(
         (
             None,
             neo4j.Auth("scheme", "principal", "credentials", "realm"),
@@ -359,3 +358,78 @@ async def test_tx_timeout(
             assert "tx_timeout" not in extra
         else:
             assert extra["tx_timeout"] == res
+
+
+@pytest.mark.parametrize(
+    "actions",
+    itertools.combinations_with_replacement(
+        itertools.product(
+            ("run", "begin", "begin_run"),
+            ("reset", "commit", "rollback"),
+            (None, "some_db", "another_db"),
+        ),
+        2
+    )
+)
+@mark_async_test
+async def test_tracks_last_database(fake_socket_pair, actions):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address,
+                               packer_cls=AsyncBolt3.PACKER_CLS,
+                               unpacker_cls=AsyncBolt3.UNPACKER_CLS)
+    connection = AsyncBolt3(address, sockets.client, 0)
+    await sockets.server.send_message(b"\x70", {"server": "Neo4j/1.2.3"})
+    await connection.hello()
+    assert connection.last_database is None
+    for action, finish, db in actions:
+        await sockets.server.send_message(b"\x70", {})
+        if action == "run":
+            with raises_if_db(db):
+                connection.run("RETURN 1", db=db)
+        elif action == "begin":
+            with raises_if_db(db):
+                connection.begin(db=db)
+        elif action == "begin_run":
+            with raises_if_db(db):
+                connection.begin(db=db)
+            assert connection.last_database is None
+            await sockets.server.send_message(b"\x70", {})
+            connection.run("RETURN 1")
+        else:
+            raise ValueError(action)
+
+        assert connection.last_database is None
+        await connection.send_all()
+        await connection.fetch_all()
+        assert connection.last_database is None
+
+        await sockets.server.send_message(b"\x70", {})
+        if finish == "reset":
+            await connection.reset()
+        elif finish == "commit":
+            if action == "run":
+                connection.pull()
+            else:
+                connection.commit()
+        elif finish == "rollback":
+            if action == "run":
+                connection.pull()
+            else:
+                connection.rollback()
+        else:
+            raise ValueError(finish)
+
+        await connection.send_all()
+        await connection.fetch_all()
+
+        assert connection.last_database is None
+
+
+@contextlib.contextmanager
+def raises_if_db(db):
+    if db is None:
+        yield
+    else:
+        with pytest.raises(ConfigurationError,
+                           match="selecting database is not supported"):
+            yield

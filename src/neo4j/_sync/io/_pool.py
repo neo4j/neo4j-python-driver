@@ -444,7 +444,7 @@ class IOPool(abc.ABC):
 
         self._close_connections(closable_connections)
 
-    def on_write_failure(self, address):
+    def on_write_failure(self, address, database):
         raise WriteServiceUnavailable(
             "No write service available for pool {}".format(self)
         )
@@ -953,12 +953,13 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  _: <POOL> table=%r", self.routing_tables)
         super(Neo4jPool, self).deactivate(address)
 
-    def on_write_failure(self, address):
+    def on_write_failure(self, address, database):
         """ Remove a writer address from the routing table, if present.
         """
-        # FIXME: only need to remove the writer for a specific database
-        log.debug("[#0000]  _: <POOL> removing writer %r", address)
+        log.debug("[#0000]  _: <POOL> removing writer %r for database %r",
+                  address, database)
         with self.refresh_lock:
-            for database in self.routing_tables.keys():
+            table = self.routing_tables.get(database)
+            if table is not None:
                 self.routing_tables[database].writers.discard(address)
         log.debug("[#0000]  _: <POOL> table=%r", self.routing_tables)
