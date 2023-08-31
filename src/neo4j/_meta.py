@@ -33,7 +33,7 @@ _FuncT = t.TypeVar("_FuncT", bound=t.Callable)
 
 # Can be automatically overridden in builds
 package = "neo4j"
-version = "5.11.dev0"
+version = "5.12.dev0"
 deprecated_package = False
 
 

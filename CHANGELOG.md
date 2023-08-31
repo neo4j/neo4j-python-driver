@@ -6,6 +6,10 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 - No breaking or major changes.
 
 
+## Version 5.12
+- No breaking or major changes.
+
+
 ## Version 5.11
 - No breaking or major changes.
 
