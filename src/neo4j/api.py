@@ -189,6 +189,7 @@ def custom_auth(
 
 
 # TODO: 6.0 - remove this class
+@deprecated("Use the `Bookmarks` class instead.")
 class Bookmark:
     """A Bookmark object contains an immutable list of bookmark string values.
 
@@ -198,8 +199,6 @@ class Bookmark:
         `Bookmark` will be removed in version 6.0.
         Use :class:`Bookmarks` instead.
     """
-
-    @deprecated("Use the `Bookmarks`` class instead.")
     def __init__(self, *values: str) -> None:
         if values:
             bookmarks = []

@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import asyncio
 import typing as t
-import warnings
 
 
 if t.TYPE_CHECKING:
@@ -47,7 +46,6 @@ from .._meta import (
     experimental_warn,
     preview,
     preview_warn,
-    PreviewWarning,
     unclosed_resource_warn,
 )
 from .._work import EagerResult
@@ -196,12 +194,7 @@ class AsyncGraphDatabase:
             driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
             if not isinstance(auth, AsyncAuthManager):
-                with warnings.catch_warnings():
-                    warnings.filterwarnings(
-                        "ignore", message=r".*\bAuth managers\b.*",
-                        category=PreviewWarning
-                    )
-                    auth = AsyncAuthManagers.static(auth)
+                auth = AsyncAuthManagers.static._without_warning(auth)
             else:
                 preview_warn("Auth managers are a preview feature.",
                              stack_level=2)
@@ -501,13 +494,6 @@ class AsyncDriver:
         """Indicate whether the driver was configured to use encryption."""
         return bool(self._pool.pool_config.encrypted)
 
-    def _prepare_session_config(self, **config):
-        if "auth" in config:
-            preview_warn("User switching is a preview feature.",
-                         stack_level=3)
-        _normalize_notifications_config(config)
-        return config
-
     if t.TYPE_CHECKING:
 
         def session(
@@ -549,7 +535,25 @@ class AsyncDriver:
 
             :returns: new :class:`neo4j.AsyncSession` object
             """
-            raise NotImplementedError
+            session_config = self._read_session_config(config)
+            return self._session(session_config)
+
+    def _session(self, session_config) -> AsyncSession:
+        return AsyncSession(self._pool, session_config)
+
+    def _read_session_config(self, config_kwargs, preview_check=True):
+        config = self._prepare_session_config(preview_check, config_kwargs)
+        session_config = SessionConfig(self._default_workspace_config,
+                                       config)
+        return session_config
+
+    @classmethod
+    def _prepare_session_config(cls, preview_check, config_kwargs):
+        if preview_check and "auth" in config_kwargs:
+            preview_warn("User switching is a preview feature.",
+                         stack_level=5)
+        _normalize_notifications_config(config_kwargs)
+        return config_kwargs
 
     async def close(self) -> None:
         """ Shut down, closing any open connections in the pool.
@@ -844,14 +848,16 @@ class AsyncDriver:
             bookmark_manager_ = self._query_bookmark_manager
         assert bookmark_manager_ is not _default
 
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore",
-                                    message=r"^User switching\b.*",
-                                    category=PreviewWarning)
-            session = self.session(database=database_,
-                                   impersonated_user=impersonated_user_,
-                                   bookmark_manager=bookmark_manager_,
-                                   auth=auth_)
+        session_config = self._read_session_config(
+            {
+                "database": database_,
+                "impersonated_user": impersonated_user_,
+                "bookmark_manager": bookmark_manager_,
+                "auth": auth_,
+            },
+            preview_check=False
+        )
+        session = self._session(session_config)
         async with session:
             if routing_ == RoutingControl.WRITE:
                 executor = session.execute_write
@@ -963,7 +969,8 @@ class AsyncDriver:
                     "changed or removed in any future version without prior "
                     "notice."
                 )
-            await self._get_server_info()
+            session_config = self._read_session_config(config)
+            await self._get_server_info(session_config)
 
     if t.TYPE_CHECKING:
 
@@ -1034,7 +1041,8 @@ class AsyncDriver:
                     "changed or removed in any future version without prior "
                     "notice."
                 )
-            return await self._get_server_info()
+            session_config = self._read_session_config(config)
+            return await self._get_server_info(session_config)
 
     async def supports_multi_db(self) -> bool:
         """ Check if the server or cluster supports multi-databases.
@@ -1049,7 +1057,8 @@ class AsyncDriver:
             won't throw a :exc:`ConfigurationError` when trying to use this
             driver feature.
         """
-        async with self.session() as session:
+        session_config = self._read_session_config({}, preview_check=False)
+        async with self._session(session_config) as session:
             await session._connect(READ_ACCESS)
             assert session._connection
             return session._connection.supports_multiple_databases
@@ -1130,29 +1139,23 @@ class AsyncDriver:
                     "changed or removed in any future version without prior "
                     "notice."
                 )
-            config["auth"] = auth
             if "database" not in config:
                 config["database"] = "system"
-            try:
-                with warnings.catch_warnings():
-                    warnings.filterwarnings(
-                        "ignore", message=r"^User switching\b.*",
-                        category=PreviewWarning
-                )
-                    session = self.session(**config)
-                async with session as session:
+            session_config = self._read_session_config(config)
+            session_config = SessionConfig(session_config, {"auth": auth})
+            async with self._session(session_config) as session:
+                try:
                     await session._verify_authentication()
-            except Neo4jError as exc:
-                if exc.code in (
-                    "Neo.ClientError.Security.CredentialsExpired",
-                    "Neo.ClientError.Security.Forbidden",
-                    "Neo.ClientError.Security.TokenExpired",
-                    "Neo.ClientError.Security.Unauthorized",
-                ):
-                    return False
-                raise
+                except Neo4jError as exc:
+                    if exc.code in (
+                        "Neo.ClientError.Security.CredentialsExpired",
+                        "Neo.ClientError.Security.Forbidden",
+                        "Neo.ClientError.Security.TokenExpired",
+                        "Neo.ClientError.Security.Unauthorized",
+                    ):
+                        return False
+                    raise
             return True
-
 
     async def supports_session_auth(self) -> bool:
         """Check if the remote supports connection re-authentication.
@@ -1170,13 +1173,14 @@ class AsyncDriver:
 
         .. versionadded:: 5.8
         """
-        async with self.session() as session:
+        session_config = self._read_session_config({}, preview_check=False)
+        async with self._session(session_config) as session:
             await session._connect(READ_ACCESS)
             assert session._connection
             return session._connection.supports_re_auth
 
-    async def _get_server_info(self, **config) -> ServerInfo:
-        async with self.session(**config) as session:
+    async def _get_server_info(self, session_config) -> ServerInfo:
+        async with self._session(session_config) as session:
             return await session._get_server_info()
 
 
@@ -1225,21 +1229,6 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
         AsyncDriver.__init__(self, pool, default_workspace_config)
         self._default_workspace_config = default_workspace_config
 
-    if not t.TYPE_CHECKING:
-
-        def session(self, **config) -> AsyncSession:
-            """
-            :param config: The values that can be specified are found in
-                :class: `neo4j.SessionConfig`
-
-            :returns:
-            :rtype: :class: `neo4j.AsyncSession`
-            """
-            config = self._prepare_session_config(**config)
-            session_config = SessionConfig(self._default_workspace_config,
-                                           config)
-            return AsyncSession(self._pool, session_config)
-
 
 class AsyncNeo4jDriver(_Routing, AsyncDriver):
     """:class:`.AsyncNeo4jDriver` is instantiated for ``neo4j`` URIs. The
@@ -1264,23 +1253,15 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
         _Routing.__init__(self, [pool.address])
         AsyncDriver.__init__(self, pool, default_workspace_config)
 
-    if not t.TYPE_CHECKING:
 
-        def session(self, **config) -> AsyncSession:
-            config = self._prepare_session_config(**config)
-            session_config = SessionConfig(self._default_workspace_config,
-                                           config)
-            return AsyncSession(self._pool, session_config)
-
-
-def _normalize_notifications_config(config):
-    if config.get("notifications_disabled_categories") is not None:
-        config["notifications_disabled_categories"] = [
+def _normalize_notifications_config(config_kwargs):
+    if config_kwargs.get("notifications_disabled_categories") is not None:
+        config_kwargs["notifications_disabled_categories"] = [
             getattr(e, "value", e)
-            for e in config["notifications_disabled_categories"]
+            for e in config_kwargs["notifications_disabled_categories"]
         ]
-    if config.get("notifications_min_severity") is not None:
-        config["notifications_min_severity"] = getattr(
-            config["notifications_min_severity"], "value",
-            config["notifications_min_severity"]
+    if config_kwargs.get("notifications_min_severity") is not None:
+        config_kwargs["notifications_min_severity"] = getattr(
+            config_kwargs["notifications_min_severity"], "value",
+            config_kwargs["notifications_min_severity"]
         )

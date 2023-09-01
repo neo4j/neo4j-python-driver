@@ -22,7 +22,6 @@
 
 
 import typing as t
-import warnings
 from logging import getLogger
 
 from .._async_compat.concurrency import Lock
@@ -31,10 +30,7 @@ from .._auth_management import (
     expiring_auth_has_expired,
     ExpiringAuth,
 )
-from .._meta import (
-    preview,
-    PreviewWarning,
-)
+from .._meta import preview
 
 # work around for https://github.com/sphinx-doc/sphinx/pull/10880
 # make sure TAuth is resolved in the docs, else they're pretty useless
@@ -215,11 +211,9 @@ class AuthManagers:
         handled_codes = frozenset(("Neo.ClientError.Security.Unauthorized",))
 
         def wrapped_provider() -> ExpiringAuth:
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore",
-                                        message=r"^Auth managers\b.*",
-                                        category=PreviewWarning)
-                return ExpiringAuth(provider())
+            return ExpiringAuth._without_warning(  # type: ignore
+                provider()
+            )
 
         return Neo4jAuthTokenManager(wrapped_provider, handled_codes)
 
