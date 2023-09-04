@@ -24,13 +24,9 @@
 import abc
 import time
 import typing as t
-import warnings
 from dataclasses import dataclass
 
-from ._meta import (
-    preview,
-    PreviewWarning,
-)
+from ._meta import preview
 from .api import _TAuth
 from .exceptions import Neo4jError
 
@@ -89,11 +85,9 @@ class ExpiringAuth:
 
         .. versionadded:: 5.9
         """
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore",
-                                    message=r"^Auth managers\b.*",
-                                    category=PreviewWarning)
-            return ExpiringAuth(self.auth, time.time() + seconds)
+        return ExpiringAuth._without_warning(  # type: ignore
+            self.auth, time.time() + seconds
+        )
 
 
 def expiring_auth_has_expired(auth: ExpiringAuth) -> bool:

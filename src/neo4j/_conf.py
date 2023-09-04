@@ -18,14 +18,12 @@
 
 from __future__ import annotations
 
-import warnings
 from abc import ABCMeta
 from collections.abc import Mapping
 
 from ._meta import (
     deprecation_warn,
     experimental_warn,
-    ExperimentalWarning,
 )
 from .api import (
     DEFAULT_DATABASE,
@@ -271,15 +269,15 @@ class Config(Mapping, metaclass=ConfigType):
                     config[key] = value
         return cls(config)
 
-    def __update(self, data):
+    def __update(self, data, warn=True):
         data_dict = dict(iter_items(data))
 
         def set_attr(k, v):
             if k in self.keys():
-                if k in self._deprecated_options():
+                if warn and k in self._deprecated_options():
                     deprecation_warn("The '{}' config key is "
                                      "deprecated.".format(k))
-                if k in self._experimental_options():
+                if warn and k in self._experimental_options():
                     experimental_warn(
                         "The '{}' config key is experimental. "
                         "It might be changed or removed any time even without "
@@ -293,10 +291,11 @@ class Config(Mapping, metaclass=ConfigType):
                         "Cannot specify both '{}' and '{}' in config"
                         .format(k0, k)
                     )
-                deprecation_warn(
-                    "The '{}' config key is deprecated, please use '{}' "
-                    "instead".format(k, k0)
-                )
+                if warn:
+                    deprecation_warn(
+                        "The '{}' config key is deprecated, please use '{}' "
+                        "instead".format(k, k0)
+                    )
                 if k in self._deprecated_aliases():
                     set_attr(k0, v)
                 else:  # k in self._deprecated_alternatives:
@@ -322,10 +321,7 @@ class Config(Mapping, metaclass=ConfigType):
     def __init__(self, *args, **kwargs):
         for arg in args:
             if isinstance(arg, Config):
-                with warnings.catch_warnings():
-                    for cat in (DeprecationWarning, ExperimentalWarning):
-                        warnings.filterwarnings("ignore", category=cat)
-                    self.__update(arg)
+                self.__update(arg, warn=False)
             else:
                 self.__update(arg)
         self.__update(kwargs)

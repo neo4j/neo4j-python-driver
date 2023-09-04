@@ -28,7 +28,8 @@ from inspect import isclass
 from warnings import warn
 
 
-_FuncT = t.TypeVar("_FuncT", bound=t.Callable)
+if t.TYPE_CHECKING:
+    _FuncT = t.TypeVar("_FuncT", bound=t.Callable)
 
 
 # Can be automatically overridden in builds
@@ -132,22 +133,6 @@ def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
     .. deprecated:: 5.8
         we now use "preview" instead of "experimental".
     """
-    def decorator(f):
-        if asyncio.iscoroutinefunction(f):
-            @wraps(f)
-            async def inner(*args, **kwargs):
-                experimental_warn(message, stack_level=2)
-                return await f(*args, **kwargs)
-
-            return inner
-        else:
-            @wraps(f)
-            def inner(*args, **kwargs):
-                experimental_warn(message, stack_level=2)
-                return f(*args, **kwargs)
-
-            return inner
-
     return _make_warning_decorator(message, experimental_warn)
 
 
@@ -173,7 +158,6 @@ def preview(message) -> t.Callable[[_FuncT], _FuncT]:
         def foo(x):
             pass
     """
-
     return _make_warning_decorator(message, preview_warn)
 
 
@@ -196,16 +180,24 @@ def _make_warning_decorator(
                 warning_func(message, stack_level=2)
                 return await f(*args, **kwargs)
 
+            inner._without_warning = f
             return inner
         if isclass(f):
             if hasattr(f, "__init__"):
                 original_init = f.__init__
+
                 @wraps(original_init)
-                def inner(*args, **kwargs):
+                def inner(self, *args, **kwargs):
                     warning_func(message, stack_level=2)
-                    return original_init(*args, **kwargs)
+                    return original_init(self, *args, **kwargs)
+
+                def _without_warning(cls, *args, **kwargs):
+                    obj = cls.__new__(cls, *args, **kwargs)
+                    original_init(obj, *args, **kwargs)
+                    return obj
 
                 f.__init__ = inner
+                f._without_warning = classmethod(_without_warning)
                 return f
             raise TypeError(
                 "Cannot decorate class without __init__"
@@ -216,6 +208,7 @@ def _make_warning_decorator(
                 warning_func(message, stack_level=2)
                 return f(*args, **kwargs)
 
+            inner._without_warning = f
             return inner
 
     return decorator
