@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import inspect
 import ssl
 import typing as t
 
@@ -950,3 +951,34 @@ def test_supports_session_auth(session_cls_mock) -> None:
     session_mock = session_cls_mock.return_value.__enter__.return_value
     connection_mock = session_mock._connection
     assert res is connection_mock.supports_re_auth
+
+
+@pytest.mark.parametrize(
+    ("method_name", "args", "kwargs"),
+    (
+        ("execute_query", ("",), {}),
+        ("session", (), {}),
+        ("verify_connectivity", (), {}),
+        ("get_server_info", (), {}),
+        ("supports_multi_db", (), {}),
+        ("supports_session_auth", (), {}),
+        ("close", (), {}),
+
+    )
+)
+@mark_sync_test
+def test_using_closed_driver_is_deprecated(
+    method_name, args, kwargs, session_cls_mock
+) -> None:
+    driver = GraphDatabase.driver("bolt://localhost")
+    driver.close()
+
+    method = getattr(driver, method_name)
+    with pytest.warns(
+        DeprecationWarning,
+        match="Using a driver after it has been closed is deprecated."
+    ):
+        if inspect.iscoroutinefunction(method):
+            method(*args, **kwargs)
+        else:
+            method(*args, **kwargs)

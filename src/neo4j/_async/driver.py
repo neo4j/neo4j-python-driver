@@ -489,6 +489,16 @@ class AsyncDriver:
                 )
                 self.close()
 
+    def _check_state(self):
+        if self._closed:
+            # TODO: 6.0 - raise the error
+            # raise DriverError("Driver closed")
+            deprecation_warn(
+                "Using a driver after it has been closed is deprecated. "
+                "Future versions of the driver will raise an error.",
+                stack_level=3
+            )
+
     @property
     def encrypted(self) -> bool:
         """Indicate whether the driver was configured to use encryption."""
@@ -535,6 +545,7 @@ class AsyncDriver:
 
             :returns: new :class:`neo4j.AsyncSession` object
             """
+            self._check_state()
             session_config = self._read_session_config(config)
             return self._session(session_config)
 
@@ -558,6 +569,7 @@ class AsyncDriver:
     async def close(self) -> None:
         """ Shut down, closing any open connections in the pool.
         """
+        self._check_state()
         try:
             await self._pool.close()
         except asyncio.CancelledError:
@@ -832,6 +844,7 @@ class AsyncDriver:
             * Added the ``auth_`` parameter.
             * Stabilized from experimental.
         """
+        self._check_state()
         invalid_kwargs = [k for k in kwargs if
                           k[-2:-1] != "_" and k[-1:] == "_"]
         if invalid_kwargs:
@@ -962,6 +975,7 @@ class AsyncDriver:
                 If you need information about the remote server, use
                 :meth:`get_server_info` instead.
             """
+            self._check_state()
             if config:
                 experimental_warn(
                     "All configuration key-word arguments to "
@@ -1034,6 +1048,7 @@ class AsyncDriver:
 
             .. versionadded:: 5.0
             """
+            self._check_state()
             if config:
                 experimental_warn(
                     "All configuration key-word arguments to "
@@ -1057,6 +1072,7 @@ class AsyncDriver:
             won't throw a :exc:`ConfigurationError` when trying to use this
             driver feature.
         """
+        self._check_state()
         session_config = self._read_session_config({}, preview_check=False)
         async with self._session(session_config) as session:
             await session._connect(READ_ACCESS)
@@ -1132,6 +1148,7 @@ class AsyncDriver:
 
             .. versionadded:: 5.8
             """
+            self._check_state()
             if config:
                 experimental_warn(
                     "All configuration key-word arguments but auth to "
@@ -1173,6 +1190,7 @@ class AsyncDriver:
 
         .. versionadded:: 5.8
         """
+        self._check_state()
         session_config = self._read_session_config({}, preview_check=False)
         async with self._session(session_config) as session:
             await session._connect(READ_ACCESS)
