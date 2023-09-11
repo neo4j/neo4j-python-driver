@@ -13,6 +13,7 @@
 
 import os
 import sys
+import typing
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -118,6 +119,17 @@ todo_include_todos = True
 # Don't include type hints in function signatures
 autodoc_typehints = "description"
 
+autodoc_type_aliases = {
+    # The code-base uses `import typing_extensions as te`.
+    # Re-write these to use `typing` instead, as Sphinx always resolves against
+    # the latest version of the `typing` module.
+    # This is a work-around to make Sphinx resolve type hints correctly, even
+    # though we're using `from __future__ import annotations`.
+    "te": typing,
+    # Type alias that's only defined and imported if `typing.TYPE_CHECKING`
+    # is `True`.
+    "_TAuth": "typing.Tuple[typing.Any, typing.Any] | Auth | None",
+}
 
 # -- Options for HTML output ----------------------------------------------
 

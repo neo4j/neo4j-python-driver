@@ -35,8 +35,11 @@ class Query:
     a similar role as :func:`.unit_of_work` for transactions functions.
 
     :param text: The query text.
+    :type text: typing.LiteralString
     :param metadata: metadata attached to the query.
+    :type metadata: typing.Dict[str, typing.Any] | None
     :param timeout: seconds.
+    :type timeout: float | None
     """
     def __init__(
         self,
@@ -83,6 +86,7 @@ def unit_of_work(
         https://neo4j.com/docs/cypher-manual/current/clauses/transaction-clauses/#query-listing-transactions
         and https://neo4j.com/docs/operations-manual/current/reference/procedures/
         for reference.
+    :type metadata: typing.Dict[str, typing.Any] | None
 
     :param timeout:
         the transaction timeout in seconds.
@@ -96,6 +100,9 @@ def unit_of_work(
         Value should not represent a negative duration.
         A zero duration will make the transaction execute indefinitely.
         None will use the default timeout configured in the database.
+    :type timeout: float | None
+
+    :rtype: typing.Callable[[T], T]
     """
 
     def wrapper(f):

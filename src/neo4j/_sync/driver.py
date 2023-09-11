@@ -121,10 +121,7 @@ class GraphDatabase:
             uri: str,
             *,
             auth: t.Union[
-                # work around https://github.com/sphinx-doc/sphinx/pull/10880
-                # make sure TAuth is resolved in the docs
-                # TAuth,
-                t.Union[t.Tuple[t.Any, t.Any], Auth, None],
+                _TAuth,
                 AuthManager,
             ] = ...,
             max_connection_lifetime: float = ...,
@@ -171,10 +168,7 @@ class GraphDatabase:
         def driver(
             cls, uri: str, *,
             auth: t.Union[
-                # work around https://github.com/sphinx-doc/sphinx/pull/10880
-                # make sure TAuth is resolved in the docs
-                # TAuth,
-                t.Union[t.Tuple[t.Any, t.Any], Auth, None],
+                _TAuth,
                 AuthManager,
             ] = None,
             **config

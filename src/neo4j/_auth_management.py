@@ -16,10 +16,7 @@
 # limitations under the License.
 
 
-# from __future__ import annotations
-# work around for https://github.com/sphinx-doc/sphinx/pull/10880
-# make sure TAuth is resolved in the docs, else they're pretty useless
-
+from __future__ import annotations
 
 import abc
 import time
@@ -27,8 +24,11 @@ import typing as t
 from dataclasses import dataclass
 
 from ._meta import preview
-from .api import _TAuth
 from .exceptions import Neo4jError
+
+
+if t.TYPE_CHECKING:
+    from .api import _TAuth
 
 
 @preview("Auth managers are a preview feature.")
@@ -62,10 +62,10 @@ class ExpiringAuth:
         :meth:`.expires_in` can be used to create an :class:`.ExpiringAuth`
         with a relative expiration time.
     """
-    auth: "_TAuth"
+    auth: _TAuth
     expires_at: t.Optional[float] = None
 
-    def expires_in(self, seconds: float) -> "ExpiringAuth":
+    def expires_in(self, seconds: float) -> ExpiringAuth:
         """Return a (flat) copy of this object with a new expiration time.
 
         This is a convenience method for creating an :class:`.ExpiringAuth`

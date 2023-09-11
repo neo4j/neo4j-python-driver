@@ -274,9 +274,12 @@ class Session(Workspace):
         For more usage details, see :meth:`.Transaction.run`.
 
         :param query: cypher query
+        :type query: typing.LiteralString | Query
         :param parameters: dictionary of parameters
+        :type parameters: typing.Dict[str, typing.Any] | None
         :param kwargs: additional keyword parameters.
             These take precedence over parameters passed as ``parameters``.
+        :type kwargs: typing.Any
 
         :returns: a new :class:`neo4j.Result` object
 
@@ -608,10 +611,15 @@ class Session(Workspace):
             argument and does work with the transaction.
             ``transaction_function(tx, *args, **kwargs)`` where ``tx`` is a
             :class:`.ManagedTransaction`.
+        :type transaction_function:
+            typing.Callable[[ManagedTransaction, P], typing.Union[R]]
         :param args: additional arguments for the `transaction_function`
+        :type args: P
         :param kwargs: key word arguments for the `transaction_function`
+        :type kwargs: P
 
         :returns: whatever the given `transaction_function` returns
+        :rtype: R
 
         :raises SessionError: if the session has been closed.
 
@@ -640,10 +648,15 @@ class Session(Workspace):
             argument and does work with the transaction.
             ``transaction_function(tx, *args, **kwargs)`` where ``tx`` is a
             :class:`.ManagedTransaction`.
+        :type transaction_function:
+            typing.Callable[[ManagedTransaction, P], typing.Union[R]]
         :param args: additional arguments for the `transaction_function`
+        :type args: P
         :param kwargs: key word arguments for the `transaction_function`
+        :type kwargs: P
 
         :returns: a result as returned by the given unit of work
+        :rtype: R
 
         :raises SessionError: if the session has been closed.
 
@@ -690,10 +703,15 @@ class Session(Workspace):
             argument and does work with the transaction.
             ``transaction_function(tx, *args, **kwargs)`` where ``tx`` is a
             :class:`.ManagedTransaction`.
+        :type transaction_function:
+            typing.Callable[[ManagedTransaction, P], typing.Union[R]]
         :param args: additional arguments for the `transaction_function`
+        :type args: P
         :param kwargs: key word arguments for the `transaction_function`
+        :type kwargs: P
 
         :returns: a result as returned by the given unit of work
+        :rtype: R
 
         :raises SessionError: if the session has been closed.
 
@@ -722,10 +740,15 @@ class Session(Workspace):
             argument and does work with the transaction.
             ``transaction_function(tx, *args, **kwargs)`` where ``tx`` is a
             :class:`.ManagedTransaction`.
+        :type transaction_function:
+            typing.Callable[[ManagedTransaction, P], typing.Union[R]]
         :param args: additional arguments for the `transaction_function`
+        :type args: P
         :param kwargs: key word arguments for the `transaction_function`
+        :type kwargs: P
 
         :returns: a result as returned by the given unit of work
+        :rtype: R
 
         :raises SessionError: if the session has been closed.
 

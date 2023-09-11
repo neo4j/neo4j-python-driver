@@ -430,6 +430,7 @@ class AsyncResult:
             instead of returning None if there is more than one record or
             warning if there are more than 1 record.
             :const:`False` by default.
+        :type strict: bool
 
         :returns: the next :class:`neo4j.Record` or :data:`None` if none remain
 
