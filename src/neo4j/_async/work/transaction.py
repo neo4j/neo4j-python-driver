@@ -127,9 +127,12 @@ class AsyncTransactionBase:
         :class:`list` properties must be homogenous.
 
         :param query: cypher query
+        :type query: typing.LiteralString
         :param parameters: dictionary of parameters
+        :type parameters: typing.Dict[str, typing.Any] | None
         :param kwparameters: additional keyword parameters.
             These take precedence over parameters passed as ``parameters``.
+        :type kwparameters: typing.Any
 
         :raise TransactionError: if the transaction is already closed
 
@@ -255,7 +258,7 @@ class AsyncTransactionBase:
         """Indicate whether the transaction has been closed or cancelled.
 
         :returns:
-            :const:`True` if closed or cancelled, :const:`False` otherwise.
+            :data:`True` if closed or cancelled, :data:`False` otherwise.
         :rtype: bool
         """
         return self._closed_flag

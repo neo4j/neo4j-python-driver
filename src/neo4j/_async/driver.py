@@ -122,10 +122,7 @@ class AsyncGraphDatabase:
             uri: str,
             *,
             auth: t.Union[
-                # work around https://github.com/sphinx-doc/sphinx/pull/10880
-                # make sure TAuth is resolved in the docs
-                # TAuth,
-                t.Union[t.Tuple[t.Any, t.Any], Auth, None],
+                _TAuth,
                 AsyncAuthManager,
             ] = ...,
             max_connection_lifetime: float = ...,
@@ -172,10 +169,7 @@ class AsyncGraphDatabase:
         def driver(
             cls, uri: str, *,
             auth: t.Union[
-                # work around https://github.com/sphinx-doc/sphinx/pull/10880
-                # make sure TAuth is resolved in the docs
-                # TAuth,
-                t.Union[t.Tuple[t.Any, t.Any], Auth, None],
+                _TAuth,
                 AsyncAuthManager,
             ] = None,
             **config
@@ -716,7 +710,7 @@ class AsyncDriver:
         :param routing_:
             whether to route the query to a reader (follower/read replica) or
             a writer (leader) in the cluster. Default is to route to a writer.
-        :type routing_: neo4j.RoutingControl
+        :type routing_: RoutingControl
         :param database_:
             database to execute the query against.
 
@@ -750,9 +744,7 @@ class AsyncDriver:
             https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
             See also the Session config :ref:`session-auth-ref`.
-        :type auth_: typing.Union[
-            typing.Tuple[typing.Any, typing.Any], neo4j.Auth, None
-        ]
+        :type auth_: typing.Tuple[typing.Any, typing.Any] | Auth | None
         :param result_transformer_:
             A function that gets passed the :class:`neo4j.AsyncResult` object
             resulting from the query and converts it to a different type. The
@@ -814,7 +806,7 @@ class AsyncDriver:
                     )
 
         :type result_transformer_:
-            typing.Callable[[neo4j.AsyncResult], typing.Awaitable[T]]
+            typing.Callable[[AsyncResult], typing.Awaitable[T]]
         :param bookmark_manager_:
             Specify a bookmark manager to use.
 
@@ -824,8 +816,7 @@ class AsyncDriver:
             Defaults to the driver's :attr:`.execute_query_bookmark_manager`.
 
             Pass :data:`None` to disable causal consistency.
-        :type bookmark_manager_:
-            typing.Union[AsyncBookmarkManager, BookmarkManager, None]
+        :type bookmark_manager_: AsyncBookmarkManager | BookmarkManager | None
         :param kwargs: additional keyword parameters. None of these can end
             with a single underscore. This is to avoid collisions with the
             keyword configuration parameters of this method. If you need to
@@ -834,7 +825,7 @@ class AsyncDriver:
             ``parameters_``.
         :type kwargs: typing.Any
 
-        :returns: the result of the ``result_transformer``
+        :returns: the result of the ``result_transformer_``
         :rtype: T
 
         .. versionadded:: 5.5

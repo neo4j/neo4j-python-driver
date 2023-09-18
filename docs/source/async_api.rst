@@ -235,11 +235,11 @@ Closing a driver will immediately shut down all connections in the pool.
         :param query_: cypher query to execute
         :type query_: typing.LiteralString
         :param parameters_: parameters to use in the query
-        :type parameters_: typing.Optional[typing.Dict[str, typing.Any]]
+        :type parameters_: typing.Dict[str, typing.Any] | None
         :param routing_:
             whether to route the query to a reader (follower/read replica) or
             a writer (leader) in the cluster. Default is to route to a writer.
-        :type routing_: neo4j.RoutingControl
+        :type routing_: RoutingControl
         :param database_:
             database to execute the query against.
 
@@ -251,7 +251,7 @@ Closing a driver will immediately shut down all connections in the pool.
                 as it will not have to resolve the default database first.
 
             See also the Session config :ref:`database-ref`.
-        :type database_: typing.Optional[str]
+        :type database_: str | None
         :param impersonated_user_:
             Name of the user to impersonate.
 
@@ -261,7 +261,7 @@ Closing a driver will immediately shut down all connections in the pool.
             permissions.
 
             See also the Session config :ref:`impersonated-user-ref`.
-        :type impersonated_user_: typing.Optional[str]
+        :type impersonated_user_: str | None
         :param auth_:
             Authentication information to use for this query.
 
@@ -273,8 +273,7 @@ Closing a driver will immediately shut down all connections in the pool.
             https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
             See also the Session config :ref:`session-auth-ref`.
-        :type auth_:
-            typing.Union[typing.Tuple[typing.Any, typing.Any], neo4j.Auth, None]
+        :type auth_: typing.Tuple[typing.Any, typing.Any] | Auth | None
         :param result_transformer_:
             A function that gets passed the :class:`neo4j.AsyncResult` object
             resulting from the query and converts it to a different type. The
@@ -336,7 +335,7 @@ Closing a driver will immediately shut down all connections in the pool.
                     )
 
         :type result_transformer_:
-            typing.Callable[[neo4j.AsyncResult], typing.Awaitable[T]]
+            typing.Callable[[AsyncResult], typing.Awaitable[T]]
         :param bookmark_manager_:
             Specify a bookmark manager to use.
 
@@ -346,8 +345,7 @@ Closing a driver will immediately shut down all connections in the pool.
             Defaults to the driver's :attr:`.execute_query_bookmark_manager`.
 
             Pass :data:`None` to disable causal consistency.
-        :type bookmark_manager_:
-            typing.Union[AsyncBookmarkManager, BookmarkManager, None]
+        :type bookmark_manager_: AsyncBookmarkManager | BookmarkManager | None
         :param kwargs: additional keyword parameters. None of these can end
             with a single underscore. This is to avoid collisions with the
             keyword configuration parameters of this method. If you need to
@@ -356,7 +354,7 @@ Closing a driver will immediately shut down all connections in the pool.
             ``parameters_``.
         :type kwargs: typing.Any
 
-        :returns: the result of the ``result_transformer``
+        :returns: the result of the ``result_transformer_``
         :rtype: T
 
         .. versionadded:: 5.5

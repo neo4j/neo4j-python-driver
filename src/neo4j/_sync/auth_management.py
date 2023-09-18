@@ -16,10 +16,7 @@
 # limitations under the License.
 
 
-# from __future__ import annotations
-# work around for https://github.com/sphinx-doc/sphinx/pull/10880
-# make sure TAuth is resolved in the docs, else they're pretty useless
-
+from __future__ import annotations
 
 import typing as t
 from logging import getLogger
@@ -32,11 +29,10 @@ from .._auth_management import (
 )
 from .._meta import preview
 
-# work around for https://github.com/sphinx-doc/sphinx/pull/10880
-# make sure TAuth is resolved in the docs, else they're pretty useless
-# if t.TYPE_CHECKING:
-from ..api import _TAuth
-from ..exceptions import Neo4jError
+
+if t.TYPE_CHECKING:
+    from ..api import _TAuth
+    from ..exceptions import Neo4jError
 
 
 log = getLogger("neo4j")

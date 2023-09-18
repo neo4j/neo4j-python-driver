@@ -78,11 +78,16 @@ class Auth:
 
     :param scheme: specifies the type of authentication, examples: "basic",
                    "kerberos"
+    :type scheme: str | None
     :param principal: specifies who is being authenticated
+    :type principal: str | None
     :param credentials: authenticates the principal
+    :type credentials: str | None
     :param realm: specifies the authentication provider
+    :type realm: str | None
     :param parameters: extra key word parameters passed along to the
                        authentication provider
+    :type parameters: typing.Any
     """
 
     def __init__(
@@ -105,7 +110,7 @@ class Auth:
         if parameters:
             self.parameters = parameters
 
-    def __eq__(self, other):
+    def __eq__(self, other: t.Any) -> bool:
         if not isinstance(other, Auth):
             return NotImplemented
         return vars(self) == vars(other)
@@ -114,11 +119,8 @@ class Auth:
 # For backwards compatibility
 AuthToken = Auth
 
-# if t.TYPE_CHECKING:
-# commented out as work around for
-# https://github.com/sphinx-doc/sphinx/pull/10880
-# make sure TAuth is resolved in the docs, else they're pretty useless
-_TAuth = t.Union[t.Tuple[t.Any, t.Any], Auth, None]
+if t.TYPE_CHECKING:
+    _TAuth = t.Union[t.Tuple[t.Any, t.Any], Auth, None]
 
 
 def basic_auth(
