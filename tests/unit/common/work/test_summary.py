@@ -308,6 +308,7 @@ def test_summary_result_counters(summary_args_kwargs, counters_set) -> None:
     ((5, 1), "t_first"),
     ((5, 2), "t_first"),
     ((5, 3), "t_first"),
+    ((5, 4), "t_first"),
 ))
 def test_summary_result_available_after(
     summary_args_kwargs, exists, bolt_version, meta_name
@@ -338,6 +339,7 @@ def test_summary_result_available_after(
     ((5, 1), "t_last"),
     ((5, 2), "t_last"),
     ((5, 3), "t_last"),
+    ((5, 4), "t_last"),
 ))
 def test_summary_result_consumed_after(
     summary_args_kwargs, exists, bolt_version, meta_name

@@ -31,7 +31,10 @@ if t.TYPE_CHECKING:
         T_NotificationMinimumSeverity,
     )
 
-from .._api import RoutingControl
+from .._api import (
+    RoutingControl,
+    TelemetryAPI,
+)
 from .._async_compat.util import AsyncUtil
 from .._conf import (
     Config,
@@ -71,6 +74,7 @@ from ..api import (
     URI_SCHEME_NEO4J,
     URI_SCHEME_NEO4J_SECURE,
     URI_SCHEME_NEO4J_SELF_SIGNED_CERTIFICATE,
+    WRITE_ACCESS,
 )
 from ..auth_management import (
     AsyncAuthManager,
@@ -159,7 +163,8 @@ class AsyncGraphDatabase:
             fetch_size: int = ...,
             impersonated_user: t.Optional[str] = ...,
             bookmark_manager: t.Union[AsyncBookmarkManager,
-                                      BookmarkManager, None] = ...
+                                      BookmarkManager, None] = ...,
+            telemetry_disabled: bool = ...,
         ) -> AsyncDriver:
             ...
 
@@ -864,15 +869,16 @@ class AsyncDriver:
         session = self._session(session_config)
         async with session:
             if routing_ == RoutingControl.WRITE:
-                executor = session.execute_write
+                access_mode = WRITE_ACCESS
             elif routing_ == RoutingControl.READ:
-                executor = session.execute_read
+                access_mode = READ_ACCESS
             else:
                 raise ValueError("Invalid routing control value: %r"
                                  % routing_)
             with session._pipelined_begin:
-                return await executor(
-                    _work, query_, parameters, result_transformer_
+                return await session._run_transaction(
+                    access_mode, TelemetryAPI.DRIVER,
+                    _work, (query_, parameters, result_transformer_), {}
                 )
 
     @property

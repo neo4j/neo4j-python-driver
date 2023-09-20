@@ -411,6 +411,9 @@ class PoolConfig(Config):
     #: List of notification categories for the server to ignore
     notifications_disabled_categories = None
 
+    #: Opt-Out of telemetry collection
+    telemetry_disabled = False
+
     def get_ssl_context(self):
         if self.ssl_context is not None:
             return self.ssl_context

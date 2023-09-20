@@ -58,6 +58,7 @@ test_pool_config = {
     "auth": None,
     "notifications_min_severity": None,
     "notifications_disabled_categories": None,
+    "telemetry_disabled": False,
 }
 
 test_session_config = {

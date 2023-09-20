@@ -19,6 +19,7 @@
 from logging import getLogger
 from ssl import SSLSocket
 
+from ..._api import TelemetryAPI
 from ..._exceptions import BoltProtocolError
 from ...api import (
     READ_ACCESS,
@@ -145,6 +146,11 @@ class Bolt4x0(Bolt):
     def logoff(self, dehydration_hooks=None, hydration_hooks=None):
         """Append a LOGOFF message to the outgoing queue."""
         self.assert_re_auth_support()
+
+    def telemetry(self, api: TelemetryAPI, dehydration_hooks=None,
+                  hydration_hooks=None, **handlers) -> None:
+        # TELEMETRY not support by this protocol version, so we ignore it.
+        pass
 
     def route(
         self, database=None, imp_user=None, bookmarks=None,

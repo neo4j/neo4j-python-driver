@@ -27,12 +27,17 @@ from neo4j import (
     Transaction,
     unit_of_work,
 )
+from neo4j._api import TelemetryAPI
 from neo4j._conf import SessionConfig
 from neo4j._sync.io import (
     BoltPool,
     Neo4jPool,
 )
-from neo4j.api import BookmarkManager
+from neo4j.api import (
+    BookmarkManager,
+    READ_ACCESS,
+    WRITE_ACCESS,
+)
 
 from ...._async_compat import mark_sync_test
 
@@ -566,3 +571,60 @@ def test_run_notification_disabled_categories(fake_pool, routing):
         connection_mock.run.assert_called_once()
         call_kwargs = connection_mock.run.call_args.kwargs
         assert call_kwargs["notifications_disabled_categories"] is dis_cats
+
+
+@mark_sync_test
+def test_session_run_api_telemetry(fake_pool):
+    with Session(fake_pool, SessionConfig()) as session:
+        session.run("RETURN 1")
+        assert len(fake_pool.acquired_connection_mocks) == 1
+        connection_mock = fake_pool.acquired_connection_mocks[0]
+        connection_mock.telemetry.assert_called_once()
+        call_args = connection_mock.telemetry.call_args.args
+        assert call_args[0] == TelemetryAPI.AUTO_COMMIT
+
+
+@mark_sync_test
+def test_session_unmanaged_transaction_api_telemetry(fake_pool):
+    with Session(fake_pool, SessionConfig()) as session:
+        session.begin_transaction()
+        assert len(fake_pool.acquired_connection_mocks) == 1
+        connection_mock = fake_pool.acquired_connection_mocks[0]
+        connection_mock.telemetry.assert_called_once()
+        call_args = connection_mock.telemetry.call_args.args
+        assert call_args[0] == TelemetryAPI.TX
+
+
+@pytest.mark.parametrize("tx_type", ("write_transaction", "read_transaction",
+                                     "execute_write", "execute_read",))
+@mark_sync_test
+def test_session_managed_transaction_api_telemetry(fake_pool, tx_type):
+    def work(_):
+        pass
+
+    with Session(fake_pool, SessionConfig()) as session:
+        with assert_warns_tx_func_deprecation(tx_type):
+            getattr(session, tx_type)(work)
+        assert len(fake_pool.acquired_connection_mocks) == 1
+        connection_mock = fake_pool.acquired_connection_mocks[0]
+        connection_mock.telemetry.assert_called_once()
+        call_args = connection_mock.telemetry.call_args.args
+        assert call_args[0] == TelemetryAPI.TX_FUNC
+
+
+@pytest.mark.parametrize("mode", (WRITE_ACCESS, READ_ACCESS))
+@mark_sync_test
+def test_session_custom_api_telemetry(fake_pool, mode):
+    def work(_):
+        pass
+
+    with Session(fake_pool, SessionConfig()) as session:
+        session._run_transaction(
+            mode, TelemetryAPI.DRIVER,
+            work, (), {}
+        )
+        assert len(fake_pool.acquired_connection_mocks) == 1
+        connection_mock = fake_pool.acquired_connection_mocks[0]
+        connection_mock.telemetry.assert_called_once()
+        call_args = connection_mock.telemetry.call_args.args
+        assert call_args[0] == TelemetryAPI.DRIVER

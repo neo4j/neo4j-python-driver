@@ -32,6 +32,7 @@ __all__ = [
     "NotificationCategory",
     "NotificationSeverity",
     "RoutingControl",
+    "TelemetryAPI"
 ]
 
 
@@ -225,6 +226,13 @@ class RoutingControl(str, Enum):
     """
     READ = "r"
     WRITE = "w"
+
+
+class TelemetryAPI(int, Enum):
+    TX_FUNC = 0
+    TX = 1
+    AUTO_COMMIT = 2
+    DRIVER = 3
 
 
 if t.TYPE_CHECKING:
