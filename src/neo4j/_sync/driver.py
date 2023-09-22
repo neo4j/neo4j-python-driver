@@ -562,7 +562,9 @@ class Driver:
     def close(self) -> None:
         """ Shut down, closing any open connections in the pool.
         """
-        self._check_state()
+        # TODO: 6.0 - NOOP if already closed
+        # if self._closed:
+        #     return
         try:
             self._pool.close()
         except asyncio.CancelledError:
