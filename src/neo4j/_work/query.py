@@ -36,9 +36,31 @@ class Query:
 
     :param text: The query text.
     :type text: typing.LiteralString
-    :param metadata: metadata attached to the query.
+    :param metadata:
+        a dictionary with metadata.
+        Specified metadata will be attached to the executing transaction
+        and visible in the output of ``SHOW TRANSACTIONS YIELD *``
+        It will also get logged to the ``query.log``.
+        This functionality makes it easier to tag transactions and is
+        equivalent to the ``dbms.setTXMetaData`` procedure, see
+        https://neo4j.com/docs/cypher-manual/current/clauses/transaction-clauses/#query-listing-transactions
+        and https://neo4j.com/docs/operations-manual/current/reference/procedures/
+        for reference.
     :type metadata: typing.Dict[str, typing.Any] | None
-    :param timeout: seconds.
+    :param timeout:
+        the transaction timeout in seconds.
+        Transactions that execute longer than the configured timeout will
+        be terminated by the database.
+        This functionality allows to limit query/transaction execution
+        time.
+        The Specified timeout overrides the default timeout configured in
+        the database using the ``db.transaction.timeout`` setting
+        (``dbms.transaction.timeout`` before Neo4j 5.0).
+        Values higher than ``db.transaction.timeout`` will be ignored and
+        will fall back to the default for server versions 4.2 to including
+        5.2. The value should not represent a negative duration.
+        A ``0`` duration will make the transaction execute indefinitely.
+        :data:`None` will use the default timeout configured on the server.
     :type timeout: float | None
     """
     def __init__(
@@ -90,16 +112,18 @@ def unit_of_work(
 
     :param timeout:
         the transaction timeout in seconds.
-        Transactions that execute longer than the configured timeout will be
-        terminated by the database.
-        This functionality allows to limit query/transaction execution time.
-        Specified timeout overrides the default timeout configured in the
-        database using ``dbms.transaction.timeout`` setting.
-        Values higher than ``dbms.transaction.timeout`` will be ignored and
-        will fall back to default (unless using Neo4j < 4.2).
-        Value should not represent a negative duration.
-        A zero duration will make the transaction execute indefinitely.
-        None will use the default timeout configured in the database.
+        Transactions that execute longer than the configured timeout will
+        be terminated by the database.
+        This functionality allows to limit query/transaction execution
+        time.
+        The Specified timeout overrides the default timeout configured in
+        the database using the ``db.transaction.timeout`` setting
+        (``dbms.transaction.timeout`` before Neo4j 5.0).
+        Values higher than ``db.transaction.timeout`` will be ignored and
+        will fall back to the default for server versions 4.2 to including
+        5.2. The value should not represent a negative duration.
+        A ``0`` duration will make the transaction execute indefinitely.
+        :data:`None` will use the default timeout configured on the server.
     :type timeout: float | None
 
     :rtype: typing.Callable[[T], T]
