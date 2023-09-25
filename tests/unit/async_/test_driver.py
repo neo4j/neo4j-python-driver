@@ -21,6 +21,7 @@ from __future__ import annotations
 import inspect
 import ssl
 import typing as t
+import warnings
 
 import pytest
 import typing_extensions as te
@@ -970,12 +971,11 @@ async def test_supports_session_auth(session_cls_mock) -> None:
         ("get_server_info", (), {}),
         ("supports_multi_db", (), {}),
         ("supports_session_auth", (), {}),
-        ("close", (), {}),
 
     )
 )
 @mark_async_test
-async def test_using_closed_driver_is_deprecated(
+async def test_using_closed_driver_where_deprecated(
     method_name, args, kwargs, session_cls_mock
 ) -> None:
     driver = AsyncGraphDatabase.driver("bolt://localhost")
@@ -986,6 +986,28 @@ async def test_using_closed_driver_is_deprecated(
         DeprecationWarning,
         match="Using a driver after it has been closed is deprecated."
     ):
+        if inspect.iscoroutinefunction(method):
+            await method(*args, **kwargs)
+        else:
+            method(*args, **kwargs)
+
+
+@pytest.mark.parametrize(
+    ("method_name", "args", "kwargs"),
+    (
+        ("close", (), {}),
+    )
+)
+@mark_async_test
+async def test_using_closed_driver_where_not_deprecated(
+    method_name, args, kwargs, session_cls_mock
+) -> None:
+    driver = AsyncGraphDatabase.driver("bolt://localhost")
+    await driver.close()
+
+    method = getattr(driver, method_name)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         if inspect.iscoroutinefunction(method):
             await method(*args, **kwargs)
         else:
