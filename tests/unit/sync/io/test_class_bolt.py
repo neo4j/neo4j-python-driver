@@ -39,7 +39,7 @@ def test_class_method_protocol_handlers():
     expected_handlers = {
         (3, 0),
         (4, 1), (4, 2), (4, 3), (4, 4),
-        (5, 0), (5, 1), (5, 2), (5, 3),
+        (5, 0), (5, 1), (5, 2), (5, 3), (5, 4),
     }
 
     protocol_handlers = Bolt.protocol_handlers()
@@ -65,7 +65,8 @@ def test_class_method_protocol_handlers():
         ((5, 1), 1),
         ((5, 2), 1),
         ((5, 3), 1),
-        ((5, 4), 0),
+        ((5, 4), 1),
+        ((5, 5), 0),
         ((6, 0), 0),
     ]
 )
@@ -85,7 +86,7 @@ def test_class_method_protocol_handlers_with_invalid_protocol_version():
 # [bolt-version-bump] search tag when changing bolt version support
 def test_class_method_get_handshake():
     handshake = Bolt.get_handshake()
-    assert (b"\x00\x03\x03\x05\x00\x02\x04\x04\x00\x00\x01\x04\x00\x00\x00\x03"
+    assert (b"\x00\x04\x04\x05\x00\x02\x04\x04\x00\x00\x01\x04\x00\x00\x00\x03"
             == handshake)
 
 
@@ -132,6 +133,7 @@ def test_cancel_hello_in_open(mocker, none_auth):
         ((5, 1), "neo4j._sync.io._bolt5.Bolt5x1"),
         ((5, 2), "neo4j._sync.io._bolt5.Bolt5x2"),
         ((5, 3), "neo4j._sync.io._bolt5.Bolt5x3"),
+        ((5, 4), "neo4j._sync.io._bolt5.Bolt5x4"),
     ),
 )
 @mark_sync_test
@@ -164,13 +166,15 @@ def test_version_negotiation(
     (2, 0),
     (4, 0),
     (3, 1),
-    (5, 4),
+    (5, 5),
     (6, 0),
 ))
 @mark_sync_test
 def test_failing_version_negotiation(mocker, bolt_version, none_auth):
-    supported_protocols = \
-        "('3.0', '4.1', '4.2', '4.3', '4.4', '5.0', '5.1', '5.2', '5.3')"
+    supported_protocols = (
+        "('3.0', '4.1', '4.2', '4.3', '4.4', "
+        "'5.0', '5.1', '5.2', '5.3', '5.4')"
+    )
 
     address = ("localhost", 7687)
     socket_mock = mocker.MagicMock(spec=BoltSocket)
@@ -186,7 +190,6 @@ def test_failing_version_negotiation(mocker, bolt_version, none_auth):
         Bolt.open(address, auth_manager=none_auth)
 
     assert exc.match(supported_protocols)
-
 
 
 @TestDecorators.mark_async_only_test

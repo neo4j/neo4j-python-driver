@@ -41,6 +41,7 @@ from neo4j import (
     TrustCustomCAs,
     TrustSystemCAs,
 )
+from neo4j._api import TelemetryAPI
 from neo4j._async.driver import _work
 from neo4j._async.io import (
     AsyncBoltPool,
@@ -644,9 +645,10 @@ async def test_execute_query_query(
     session_mock = session_cls_mock.return_value
     session_mock.__aenter__.assert_awaited_once()
     session_mock.__aexit__.assert_awaited_once()
-    session_executor_mock = session_mock.execute_write
+    session_executor_mock = session_mock._run_transaction
     session_executor_mock.assert_awaited_once_with(
-        _work, query, mocker.ANY, mocker.ANY
+        WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
+        (query, mocker.ANY, mocker.ANY), {}
     )
     assert res is session_executor_mock.return_value
 
@@ -676,9 +678,10 @@ async def test_execute_query_parameters(
     session_mock = session_cls_mock.return_value
     session_mock.__aenter__.assert_awaited_once()
     session_mock.__aexit__.assert_awaited_once()
-    session_executor_mock = session_mock.execute_write
+    session_executor_mock = session_mock._run_transaction
     session_executor_mock.assert_awaited_once_with(
-        _work, mocker.ANY, parameters or {}, mocker.ANY
+        WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
+        (mocker.ANY, parameters or {}, mocker.ANY), {}
     )
     assert res is session_executor_mock.return_value
 
@@ -702,9 +705,10 @@ async def test_execute_query_keyword_parameters(
     session_mock = session_cls_mock.return_value
     session_mock.__aenter__.assert_awaited_once()
     session_mock.__aexit__.assert_awaited_once()
-    session_executor_mock = session_mock.execute_write
+    session_executor_mock = session_mock._run_transaction
     session_executor_mock.assert_awaited_once_with(
-        _work, mocker.ANY, parameters or {}, mocker.ANY
+        WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
+        (mocker.ANY, parameters or {}, mocker.ANY), {}
     )
     assert res is session_executor_mock.return_value
 
@@ -779,27 +783,28 @@ async def test_execute_query_parameter_precedence(
     session_mock = session_cls_mock.return_value
     session_mock.__aenter__.assert_awaited_once()
     session_mock.__aexit__.assert_awaited_once()
-    session_executor_mock = session_mock.execute_write
+    session_executor_mock = session_mock._run_transaction
     session_executor_mock.assert_awaited_once_with(
-        _work, mocker.ANY, expected_params, mocker.ANY
+        WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
+        (mocker.ANY, expected_params, mocker.ANY), {}
     )
     assert res is session_executor_mock.return_value
 
 
 @pytest.mark.parametrize(
-    ("routing_mode", "session_executor"),
+    ("routing_mode", "mode"),
     (
-        (None, "execute_write"),
-        ("r", "execute_read"),
-        ("w", "execute_write"),
-        (neo4j.RoutingControl.READ, "execute_read"),
-        (neo4j.RoutingControl.WRITE, "execute_write"),
+        (None, WRITE_ACCESS),
+        ("r", READ_ACCESS),
+        ("w", WRITE_ACCESS),
+        (neo4j.RoutingControl.READ, READ_ACCESS),
+        (neo4j.RoutingControl.WRITE, WRITE_ACCESS),
     )
 )
 @pytest.mark.parametrize("positional", (True, False))
 @mark_async_test
 async def test_execute_query_routing_control(
-    session_executor: str, positional: bool,
+    mode: str, positional: bool,
     routing_mode: t.Union[neo4j.RoutingControl, te.Literal["r", "w"], None],
     session_cls_mock, mocker
 ) -> None:
@@ -817,9 +822,10 @@ async def test_execute_query_routing_control(
     session_mock = session_cls_mock.return_value
     session_mock.__aenter__.assert_awaited_once()
     session_mock.__aexit__.assert_awaited_once()
-    session_executor_mock = getattr(session_mock, session_executor)
+    session_executor_mock = session_mock._run_transaction
     session_executor_mock.assert_awaited_once_with(
-        _work, mocker.ANY, mocker.ANY, mocker.ANY
+        mode, TelemetryAPI.DRIVER, _work,
+        (mocker.ANY, mocker.ANY, mocker.ANY), {}
     )
     assert res is session_executor_mock.return_value
 
@@ -935,9 +941,10 @@ async def test_execute_query_result_transformer(
     session_mock = session_cls_mock.return_value
     session_mock.__aenter__.assert_awaited_once()
     session_mock.__aexit__.assert_awaited_once()
-    session_executor_mock = session_mock.execute_write
+    session_executor_mock = session_mock._run_transaction
     session_executor_mock.assert_awaited_once_with(
-        _work, mocker.ANY, mocker.ANY, result_transformer
+        WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
+        (mocker.ANY, mocker.ANY, result_transformer), {}
     )
     assert res is session_executor_mock.return_value
 

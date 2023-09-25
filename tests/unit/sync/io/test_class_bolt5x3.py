@@ -22,6 +22,7 @@ import logging
 import pytest
 
 import neo4j
+from neo4j._api import TelemetryAPI
 from neo4j._conf import PoolConfig
 from neo4j._meta import (
     BOLT_AGENT_DICT,
@@ -227,6 +228,28 @@ def test_hello_passes_routing_metadata(fake_socket_pair):
     assert tag == b"\x01"
     assert len(fields) == 1
     assert fields[0]["routing"] == {"foo": "bar"}
+
+
+@pytest.mark.parametrize("api", TelemetryAPI)
+@pytest.mark.parametrize("serv_enabled", (True, False))
+@pytest.mark.parametrize("driver_disabled", (True, False))
+@mark_sync_test
+def test_telemetry_message(
+    fake_socket, api, serv_enabled, driver_disabled
+):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    socket = fake_socket(address, Bolt5x3.UNPACKER_CLS)
+    connection = Bolt5x3(
+        address, socket, PoolConfig.max_connection_lifetime,
+        telemetry_disabled=driver_disabled
+    )
+    if serv_enabled:
+        connection.configuration_hints["telemetry.enabled"] = True
+    connection.telemetry(api)
+    connection.send_all()
+
+    with pytest.raises(OSError):
+        socket.pop_message()
 
 
 @pytest.mark.parametrize(("hints", "valid"), (

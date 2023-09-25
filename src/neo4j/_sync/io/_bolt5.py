@@ -21,6 +21,7 @@ from enum import Enum
 from logging import getLogger
 from ssl import SSLSocket
 
+from ..._api import TelemetryAPI
 from ..._codec.hydration import v2 as hydration_v2
 from ..._exceptions import BoltProtocolError
 from ..._meta import BOLT_AGENT_DICT
@@ -167,6 +168,11 @@ class Bolt5x0(Bolt):
     def logoff(self, dehydration_hooks=None, hydration_hooks=None):
         """Append a LOGOFF message to the outgoing queue."""
         self.assert_re_auth_support()
+
+    def telemetry(self, api: TelemetryAPI, dehydration_hooks=None,
+                  hydration_hooks=None, **handlers) -> None:
+        # TELEMETRY not support by this protocol version, so we ignore it.
+        pass
 
     def route(self, database=None, imp_user=None, bookmarks=None,
                     dehydration_hooks=None, hydration_hooks=None):
@@ -665,3 +671,22 @@ class Bolt5x3(Bolt5x2):
         headers = super().get_base_headers()
         headers["bolt_agent"] = BOLT_AGENT_DICT
         return headers
+
+
+class Bolt5x4(Bolt5x3):
+
+    PROTOCOL_VERSION = Version(5, 4)
+
+    def telemetry(self, api: TelemetryAPI, dehydration_hooks=None,
+                  hydration_hooks=None, **handlers) -> None:
+        if (
+            self.telemetry_disabled
+            or not self.configuration_hints.get("telemetry.enabled", False)
+        ):
+            return
+        api_raw = int(api)
+        log.debug("[#%04X]  C: TELEMETRY %i  # (%r)",
+                  self.local_port, api_raw, api)
+        self._append(b"\x54", (api_raw,),
+                     Response(self, "telemetry", hydration_hooks, **handlers),
+                     dehydration_hooks=dehydration_hooks)

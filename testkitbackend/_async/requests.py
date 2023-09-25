@@ -134,6 +134,7 @@ async def NewDriver(backend, data):
     for (conf_name, data_name) in (
         ("max_connection_pool_size", "maxConnectionPoolSize"),
         ("fetch_size", "fetchSize"),
+        ("telemetry_disabled", "telemetryDisabled")
     ):
         if data.get(data_name):
             kwargs[conf_name] = data[data_name]

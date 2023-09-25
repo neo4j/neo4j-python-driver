@@ -16,13 +16,13 @@
 # limitations under the License.
 
 
-import contextlib
 import itertools
 import logging
 
 import pytest
 
 import neo4j
+from neo4j._api import TelemetryAPI
 from neo4j._async.io._bolt4 import AsyncBolt4x0
 from neo4j._conf import PoolConfig
 from neo4j._meta import USER_AGENT
@@ -193,6 +193,28 @@ async def test_n_and_qid_extras_in_pull(fake_socket):
     assert tag == b"\x3F"
     assert len(fields) == 1
     assert fields[0] == {"n": 666, "qid": 777}
+
+
+@pytest.mark.parametrize("api", TelemetryAPI)
+@pytest.mark.parametrize("serv_enabled", (True, False))
+@pytest.mark.parametrize("driver_disabled", (True, False))
+@mark_async_test
+async def test_telemetry_message(
+    fake_socket, api, serv_enabled, driver_disabled
+):
+    address = neo4j.Address(("127.0.0.1", 7687))
+    socket = fake_socket(address, AsyncBolt4x0.UNPACKER_CLS)
+    connection = AsyncBolt4x0(
+        address, socket, PoolConfig.max_connection_lifetime,
+        telemetry_disabled=driver_disabled
+    )
+    if serv_enabled:
+        connection.configuration_hints["telemetry.enabled"] = True
+    connection.telemetry(api)
+    await connection.send_all()
+
+    with pytest.raises(OSError):
+        await socket.pop_message()
 
 
 @pytest.mark.parametrize("recv_timeout", (1, -1))

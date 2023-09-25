@@ -25,6 +25,7 @@ from collections import deque
 from logging import getLogger
 from time import perf_counter
 
+from ..._api import TelemetryAPI
 from ..._async_compat.network import AsyncBoltSocket
 from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import v1 as hydration_v1
@@ -134,7 +135,8 @@ class AsyncBolt:
     def __init__(self, unresolved_address, sock, max_connection_lifetime, *,
                  auth=None, auth_manager=None, user_agent=None,
                  routing_context=None, notifications_min_severity=None,
-                 notifications_disabled_categories=None):
+                 notifications_disabled_categories=None,
+                 telemetry_disabled=False):
         self.unresolved_address = unresolved_address
         self.socket = sock
         self.local_port = self.socket.getsockname()[1]
@@ -172,6 +174,7 @@ class AsyncBolt:
         self.auth = auth
         self.auth_dict = self._to_auth_dict(auth)
         self.auth_manager = auth_manager
+        self.telemetry_disabled = telemetry_disabled
 
         self.notifications_min_severity = notifications_min_severity
         self.notifications_disabled_categories = \
@@ -280,6 +283,7 @@ class AsyncBolt:
             AsyncBolt5x1,
             AsyncBolt5x2,
             AsyncBolt5x3,
+            AsyncBolt5x4,
         )
 
         handlers = {
@@ -293,6 +297,7 @@ class AsyncBolt:
             AsyncBolt5x1.PROTOCOL_VERSION: AsyncBolt5x1,
             AsyncBolt5x2.PROTOCOL_VERSION: AsyncBolt5x2,
             AsyncBolt5x3.PROTOCOL_VERSION: AsyncBolt5x3,
+            AsyncBolt5x4.PROTOCOL_VERSION: AsyncBolt5x4,
         }
 
         if protocol_version is None:
@@ -407,7 +412,10 @@ class AsyncBolt:
 
         # Carry out Bolt subclass imports locally to avoid circular dependency
         # issues.
-        if protocol_version == (5, 3):
+        if protocol_version == (5, 4):
+            from ._bolt5 import AsyncBolt5x4
+            bolt_cls = AsyncBolt5x4
+        elif protocol_version == (5, 3):
             from ._bolt5 import AsyncBolt5x3
             bolt_cls = AsyncBolt5x3
         elif protocol_version == (5, 2):
@@ -471,7 +479,8 @@ class AsyncBolt:
             routing_context=routing_context,
             notifications_min_severity=pool_config.notifications_min_severity,
             notifications_disabled_categories=
-                pool_config.notifications_disabled_categories
+                pool_config.notifications_disabled_categories,
+            telemetry_disabled=pool_config.telemetry_disabled,
         )
 
         try:
@@ -555,7 +564,6 @@ class AsyncBolt:
                     hydration_hooks=hydration_hooks)
         return True
 
-
     @abc.abstractmethod
     async def route(
         self, database=None, imp_user=None, bookmarks=None,
@@ -573,6 +581,23 @@ class AsyncBolt:
             Requires Bolt 4.4+.
         :param bookmarks: iterable of bookmark values after which this
                           transaction should begin
+        :param dehydration_hooks:
+            Hooks to dehydrate types (dict from type (class) to dehydration
+            function). Dehydration functions receive the value and returns an
+            object of type understood by packstream.
+        :param hydration_hooks:
+            Hooks to hydrate types (mapping from type (class) to
+            dehydration function). Dehydration functions receive the value of
+            type understood by packstream and are free to return anything.
+        """
+        pass
+
+    @abc.abstractmethod
+    def telemetry(self, api: TelemetryAPI, dehydration_hooks=None,
+                  hydration_hooks=None, **handlers) -> None:
+        """Send telemetry information about the API usage to the server.
+
+        :param api: the API used.
         :param dehydration_hooks:
             Hooks to dehydrate types (dict from type (class) to dehydration
             function). Dehydration functions receive the value and returns an

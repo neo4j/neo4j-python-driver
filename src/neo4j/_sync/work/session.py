@@ -24,6 +24,7 @@ from logging import getLogger
 from random import random
 from time import perf_counter
 
+from ..._api import TelemetryAPI
 from ..._async_compat import sleep
 from ..._async_compat.util import Util
 from ..._conf import SessionConfig
@@ -300,8 +301,10 @@ class Session(Workspace):
 
         if not self._connection:
             self._connect(self._config.default_access_mode)
+            assert self._connection is not None
         cx = self._connection
 
+        cx.telemetry(TelemetryAPI.AUTO_COMMIT)
         self._auto_result = Result(
             cx, self._config.fetch_size, self._result_closed,
             self._result_error
@@ -406,9 +409,20 @@ class Session(Workspace):
         )
 
     def _open_transaction(
-        self, *, tx_cls, access_mode, metadata=None, timeout=None
-    ):
+        self,
+        *,
+        tx_cls: t.Callable[
+            ..., t.Union[Transaction, ManagedTransaction]
+        ],
+        access_mode, api: t.Optional[TelemetryAPI],
+        metadata=None,
+        timeout=None,
+        api_success_cb: t.Optional[t.Callable[[dict], None]] = None,
+    ) -> None:
         self._connect(access_mode=access_mode)
+        assert self._connection is not None
+        if api is not None:
+            self._connection.telemetry(api, on_success=api_success_cb)
         self._transaction = tx_cls(
             self._connection, self._config.fetch_size,
             self._transaction_closed_handler,
@@ -482,21 +496,21 @@ class Session(Workspace):
             )
 
         self._open_transaction(
-            tx_cls=Transaction,
+            tx_cls=Transaction, api=TelemetryAPI.TX,
             access_mode=self._config.default_access_mode, metadata=metadata,
             timeout=timeout
         )
 
         return t.cast(Transaction, self._transaction)
 
-
     def _run_transaction(
         self,
         access_mode: str,
+        api: TelemetryAPI,
         transaction_function: t.Callable[
             te.Concatenate[ManagedTransaction, _P], t.Union[_R]
         ],
-        *args: _P.args, **kwargs: _P.kwargs
+        args: _P.args, kwargs: _P.kwargs
     ) -> _R:
         self._check_state()
         if not callable(transaction_function):
@@ -511,6 +525,12 @@ class Session(Workspace):
             self._config.retry_delay_jitter_factor
         )
 
+        telemetry_sent = False
+
+        def api_success_cb(meta):
+            nonlocal telemetry_sent
+            telemetry_sent = True
+
         errors = []
 
         t0: float = -1  # Timer
@@ -519,8 +539,9 @@ class Session(Workspace):
             try:
                 self._open_transaction(
                     tx_cls=ManagedTransaction,
+                    api=None if telemetry_sent else api,
                     access_mode=access_mode, metadata=metadata,
-                    timeout=timeout
+                    timeout=timeout, api_success_cb=api_success_cb,
                 )
                 assert isinstance(self._transaction, ManagedTransaction)
                 tx = self._transaction
@@ -634,7 +655,8 @@ class Session(Workspace):
         .. versionadded:: 5.0
         """
         return self._run_transaction(
-            READ_ACCESS, transaction_function, *args, **kwargs
+            READ_ACCESS, TelemetryAPI.TX_FUNC,
+            transaction_function, args, kwargs
         )
 
     # TODO: 6.0 - Remove this method
@@ -672,7 +694,8 @@ class Session(Workspace):
             Method was renamed to :meth:`.execute_read`.
         """
         return self._run_transaction(
-            READ_ACCESS, transaction_function, *args, **kwargs
+            READ_ACCESS, TelemetryAPI.TX_FUNC,
+            transaction_function, args, kwargs
         )
 
     def execute_write(
@@ -726,7 +749,8 @@ class Session(Workspace):
         .. versionadded:: 5.0
         """
         return self._run_transaction(
-            WRITE_ACCESS, transaction_function, *args, **kwargs
+            WRITE_ACCESS, TelemetryAPI.TX_FUNC,
+            transaction_function, args, kwargs
         )
 
     # TODO: 6.0 - Remove this method
@@ -764,7 +788,8 @@ class Session(Workspace):
             Method was renamed to :meth:`.execute_write`.
         """
         return self._run_transaction(
-            WRITE_ACCESS, transaction_function, *args, **kwargs
+            WRITE_ACCESS, TelemetryAPI.TX_FUNC,
+            transaction_function, args, kwargs
         )
 
 

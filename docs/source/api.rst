@@ -399,6 +399,7 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`user-agent-ref`
 + :ref:`driver-notifications-min-severity-ref`
 + :ref:`driver-notifications-disabled-categories-ref`
++ :ref:`telemetry-disabled-ref`
 
 
 .. _connection-acquisition-timeout-ref:
@@ -662,6 +663,30 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 .. versionadded:: 5.7
 
 .. seealso:: :class:`.NotificationDisabledCategory`, session config :ref:`session-notifications-disabled-categories-ref`
+
+
+.. _telemetry-disabled-ref:
+
+``telemetry_disabled``
+----------------------
+By default, the driver will send anonymous usage statistics to the server it connects to if the server requests those.
+By setting ``telemetry_disabled=True``, the driver will not send any telemetry data.
+
+The driver transmits the following information:
+
+* Every time one of the following APIs is used to execute a query (for the first time), the server is informed of this
+  (without any further information like arguments, client identifiers, etc.):
+
+  * :meth:`.Driver.execute_query`
+  * :meth:`.Session.begin_transaction`
+  * :meth:`.Session.execute_read`, :meth:`.Session.execute_write`
+  * :meth:`.Session.run`
+  * the async counterparts of the above methods
+
+:Type: :class:`bool`
+:Default: :data:`False`
+
+.. versionadded:: 5.13
 
 
 Driver Object Lifetime
