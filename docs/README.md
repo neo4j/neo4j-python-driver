@@ -2,6 +2,8 @@
 Sphinx Documentation
 ====================
 
+Building the docs requires Python 3.8+
+
 In project root
 ```
 pip install -r requirements-dev.txt
