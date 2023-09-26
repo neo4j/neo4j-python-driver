@@ -4,9 +4,10 @@ Neo4j Python Driver |version|
 
 The Official Neo4j Driver for Python.
 
+
 Neo4j versions supported:
 
-* Neo4j 5.0 - 5.12
+* Neo4j 5.0 - |version|
 * Neo4j 4.4
 
 Python versions supported:
@@ -34,6 +35,7 @@ Topics
 
 
 .. toctree::
+   :maxdepth: 3
    :hidden:
 
    api.rst

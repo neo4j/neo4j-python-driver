@@ -859,10 +859,10 @@ A :class:`neo4j.AsyncResult` is attached to an active connection, through a :cla
 
 .. autoclass:: neo4j.AsyncResult()
 
-    .. method:: result.__aiter__()
+    .. method:: __aiter__()
         :async:
 
-    .. method:: result.__anext__()
+    .. method:: __anext__()
         :async:
 
     .. automethod:: keys
