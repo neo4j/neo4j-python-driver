@@ -454,9 +454,6 @@ Specify whether TCP keep-alive should be enabled.
 :Type: ``bool``
 :Default: ``True``
 
-**This is experimental** (see :ref:`filter-warnings-ref`).
-It might be changed or removed any time even without prior notice.
-
 
 .. _max-connection-lifetime-ref:
 
