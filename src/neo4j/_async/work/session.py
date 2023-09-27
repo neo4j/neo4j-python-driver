@@ -470,7 +470,7 @@ class AsyncSession(AsyncWorkspace):
             be terminated by the database.
             This functionality allows user code to limit query/transaction
             execution time.
-            The Specified timeout overrides the default timeout configured in
+            The specified timeout overrides the default timeout configured in
             the database using the ``db.transaction.timeout`` setting
             (``dbms.transaction.timeout`` before Neo4j 5.0).
             Values higher than ``db.transaction.timeout`` will be ignored and
