@@ -41,9 +41,25 @@ body.sphinx a.external::after {
     background-position: 50%;
 }
 
-body.sphinx #searchbox,
-body.sphinx #indexlinkbox {
+body.sphinx #searchbox {
     padding: 0 1.5rem 0.5rem;
+}
+
+body.sphinx #indexlinkbox {
+    padding: 0 1.5rem 0.5rem 0;
+}
+
+body.sphinx #indexlinkbox .indexlinkwrapper > ul:first-child {
+    margin-top: 0;
+}
+
+#indexlinklabel {
+    padding-left: 1.5rem;
+}
+
+body.sphinx #searchlabel,
+body.sphinx #indexlinklabel {
+    margin: 0.8rem 0 0.5rem;
 }
 
 body.sphinx #searchlabel,
@@ -177,6 +193,7 @@ div.code-block-caption:hover > a.headerlink {
 .nav-menu ul {
     padding-left: 0;
 }
+
 
 {% for level in range(1, 4) %}
 .nav-menu li.toctree-l{{ level }} {
