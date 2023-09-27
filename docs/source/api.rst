@@ -1560,7 +1560,7 @@ Which in this case would yield::
    2. ``void`` and ``complexfloating`` typed numpy ``ndarray``\s are not supported.
    3. ``Period``, ``Interval``, and ``pyarrow`` pandas types are not supported.
    4. A pandas ``DataFrame`` will be serialized as Map with the column names mapping to the column values (as Lists).
-       Just like with ``dict`` objects, the column names need to be :class:`str` objects.
+      Just like with ``dict`` objects, the column names need to be :class:`str` objects.
 
 
 

@@ -320,10 +320,6 @@ dt {
     font-size: .88889rem
 }
 
-.sphinx .doc .admonition .admonition-title {
-    display: none;
-}
-
 .sphinx .doc .admonition .admonition-title:after {
     content: ":";
 }
