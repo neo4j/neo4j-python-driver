@@ -6,15 +6,12 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 - No breaking or major changes.
 
 
-## Version 5.12
-- No breaking or major changes.
+## Version 5.13
+- Deprecated using `neo4j.Driver` and `neo4j.AsyncDriver` after calling `.close()` on them,
+  except for calling `.close()` again, which has no effects.
 
 
-## Version 5.11
-- No breaking or major changes.
-
-
-## Version 5.10
+## Version 5.10 - 5.12
 - No breaking or major changes.
 
 
@@ -41,11 +38,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
   Everything should be imported directly from `neo4j` instead.
 
 
-## Version 5.6
-- No breaking or major changes.
-
-
-## Version 5.5
+## Version 5.5 - 5.6
 - No breaking or major changes.
 
 
@@ -82,11 +75,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
       an argument.  
 
 
-## Version 5.2
-- No breaking or major changes.
-
-
-## Version 5.1
+## Version 5.1 - 5.2
 - No breaking or major changes.
 
 
@@ -230,7 +219,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 
 ## Version 4.2
-- No driver changes have been made for Neo4j 4.2
+- No breaking or major changes.
 
 
 ## Version 4.1
