@@ -112,7 +112,8 @@ class ExperimentalWarning(Warning):
     """ Base class for warnings about experimental features.
 
     .. deprecated:: 5.8
-        we now use "preview" instead of "experimental".
+        we now use "preview" instead of "experimental":
+        :class:`.PreviewWarning`.
     """
 
 
@@ -137,7 +138,10 @@ def experimental(message) -> t.Callable[[_FuncT], _FuncT]:
 
 
 class PreviewWarning(Warning):
-    """ Base class for warnings about experimental features.
+    """A driver feature in preview has been used.
+
+    It might be changed without following the deprecation policy.
+    See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
     """
 
 

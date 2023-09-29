@@ -527,7 +527,8 @@ For example:
                                        resolver=custom_resolver)
 
 
-:Default: :data:`None`
+:Type: ``Callable | None``
+:Default: ``None``
 
 
 .. _trust-ref:
@@ -1343,19 +1344,15 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`n
 See https://neo4j.com/docs/python-manual/current/cypher-workflow/#python-driver-type-mapping for more about type mapping.
 
 
-***********
-EagerResult
-***********
-
 .. autoclass:: neo4j.EagerResult
     :show-inheritance:
     :members:
 
 
-Graph
-=====
-
 .. autoclass:: neo4j.graph.Graph()
+
+    **This is experimental** (see :ref:`filter-warnings-ref`).
+    It might be changed or removed any time even without prior notice.
 
     .. autoattribute:: nodes
 
@@ -1363,13 +1360,6 @@ Graph
 
     .. automethod:: relationship_type
 
-**This is experimental** (see :ref:`filter-warnings-ref`).
-It might be changed or removed any time even without prior notice.
-
-
-******
-Record
-******
 
 .. autoclass:: neo4j.Record()
 
@@ -1477,9 +1467,13 @@ SummaryNotificationPosition
 
 
 
-***************
+**********
+Data Types
+**********
+
+
 Core Data Types
-***************
+===============
 
 Cypher supports a set of core data types that all map to built-in types in Python.
 
@@ -1566,13 +1560,13 @@ Which in this case would yield::
    2. ``void`` and ``complexfloating`` typed numpy ``ndarray``\s are not supported.
    3. ``Period``, ``Interval``, and ``pyarrow`` pandas types are not supported.
    4. A pandas ``DataFrame`` will be serialized as Map with the column names mapping to the column values (as Lists).
-       Just like with ``dict`` objects, the column names need to be :class:`str` objects.
+      Just like with ``dict`` objects, the column names need to be :class:`str` objects.
 
 
 
-****************
+
 Graph Data Types
-****************
+================
 
 Cypher queries can return entire graph structures as well as individual property values.
 
@@ -1592,7 +1586,7 @@ Path           :class:`neo4j.graph.Path`
 
 
 Node
-====
+----
 
 .. autoclass:: neo4j.graph.Node
 
@@ -1643,7 +1637,7 @@ Node
 
 
 Relationship
-============
+------------
 
 .. autoclass:: neo4j.graph.Relationship
 
@@ -1706,7 +1700,7 @@ Relationship
 
 
 Path
-====
+----
 
 .. autoclass:: neo4j.graph.Path
 
@@ -1741,27 +1735,40 @@ Path
     .. autoproperty:: relationships
 
 
-******************
 Spatial Data Types
-******************
+==================
 
 .. include:: types/_spatial_overview.rst
 
 See topic :ref:`spatial-data-types` for more details.
 
 
-*******************
 Temporal Data Types
-*******************
+===================
 
 .. include:: types/_temporal_overview.rst
 
 See topic :ref:`temporal-data-types` for more details.
 
 
-***************
+*********
+Bookmarks
+*********
+
+
+Bookmarks
+=========
+
+.. autoclass:: neo4j.Bookmarks
+    :members:
+    :special-members: __bool__, __add__, __iter__
+
+.. autoclass:: neo4j.Bookmark
+    :members:
+
+
 BookmarkManager
-***************
+===============
 
 .. autoclass:: neo4j.api.BookmarkManager
     :members:
@@ -1998,6 +2005,9 @@ Please provide details about your running environment,
 Warnings
 ********
 
+Warning Classes
+===============
+
 The Python Driver uses the built-in :class:`python:DeprecationWarning` class to warn about deprecations.
 
 The Python Driver uses the built-in :class:`python:ResourceWarning` class to warn about not properly closed resources, e.g., Drivers and Sessions.
@@ -2008,34 +2018,37 @@ The Python Driver uses the built-in :class:`python:ResourceWarning` class to war
 .. _development mode: https://docs.python.org/3/library/devmode.html#devmode
 
 
-The Python Driver uses the :class:`neo4j.ExperimentalWarning` class to warn about experimental features.
+.. autoclass:: neo4j.PreviewWarning
 
 .. autoclass:: neo4j.ExperimentalWarning
 
 
 .. _filter-warnings-ref:
 
-Filter Warnings
-===============
+Filtering Warnings
+==================
 
-This example shows how to suppress the :class:`neo4j.ExperimentalWarning` using the :func:`python:warnings.filterwarnings` function.
+This example shows how to suppress the :class:`neo4j.PreviewWarning` using the :func:`python:warnings.filterwarnings` function.
 
 .. code-block:: python
 
     import warnings
-    from neo4j import ExperimentalWarning
+    from neo4j import PreviewWarning
 
     ...
 
     with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=ExperimentalWarning)
-        ...  # the call emitting the ExperimentalWarning
+        warnings.filterwarnings("ignore", category=PreviewWarning)
+        ...  # the call emitting the PreviewWarning
 
     ...
 
-This will only mute the :class:`neo4j.ExperimentalWarning` for everything inside
+This will only mute the :class:`neo4j.PreviewWarning` for everything inside
 the ``with``-block. This is the preferred way to mute warnings, as warnings
 triggerd by new code will still be visible.
+
+Note, that :class:`warnings.catch_warnings` is not thread-safe.
+See Python's own documentation for more details.
 
 However, should you want to mute it for the entire application, use the
 following code:
@@ -2043,9 +2056,9 @@ following code:
 .. code-block:: python
 
     import warnings
-    from neo4j import ExperimentalWarning
+    from neo4j import PreviewWarning
 
-    warnings.filterwarnings("ignore", category=ExperimentalWarning)
+    warnings.filterwarnings("ignore", category=PreviewWarning)
 
     ...
 
@@ -2096,15 +2109,3 @@ Full Control
     # make sure the logger logs on the desired log level
     logging.getLogger("neo4j").setLevel(logging.DEBUG)
     # from now on, DEBUG logging to stdout is enabled in the driver
-
-
-*********
-Bookmarks
-*********
-
-.. autoclass:: neo4j.Bookmarks
-    :members:
-    :special-members: __bool__, __add__, __iter__
-
-.. autoclass:: neo4j.Bookmark
-    :members:

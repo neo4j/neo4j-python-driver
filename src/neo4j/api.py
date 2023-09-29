@@ -235,7 +235,7 @@ class Bookmark:
 class Bookmarks:
     """Container for an immutable set of bookmark string values.
 
-    Bookmarks are used to causally chain session.
+    Bookmarks are used to causally chain sessions.
     See :meth:`Session.last_bookmarks` or :meth:`AsyncSession.last_bookmarks`
     for more information.
 

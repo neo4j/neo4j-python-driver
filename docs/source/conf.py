@@ -132,34 +132,52 @@ autodoc_type_aliases = {
 }
 
 # -- Options for HTML output ----------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
+
+# use neo4j theme, which extends neo4j docs css for sphinx
+
+html_theme_path = ["themes"]
+
+
+# 01-nav.js is a copy of a js file of the same name that is included in the
+# docs-ui bundle
+def setup(app):
+    app.add_js_file("https://neo4j.com/docs/assets/js/site.js",
+                    loading_method="defer")
+    app.add_js_file("js/12-fragment-jumper.js", loading_method="defer")
+
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'nature'
+html_theme = "neo4j"
 
-# _static/nature_custom.css_t
-html_style = 'nature_custom.css'
+# html_style = ""
 
-html_js_files = [
-    'anchor_new_target.js',
-]
+# html_js_files = []
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {
+    "sidebar_includehidden": True,
+    "sidebar_collapse": True,
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = "Neo4j Python Driver {}".format(version)
+html_title = f"Neo4j Python Driver {version}"
+
+html_context = {
+    "html_title": html_title
+}
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #html_short_title = None
@@ -191,7 +209,9 @@ html_title = "Neo4j Python Driver {}".format(version)
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
-#html_additional_pages = {}
+html_additional_pages = {
+    "gentree": "gentree.html"
+}
 
 # If false, no module index is generated.
 #html_domain_indices = True
