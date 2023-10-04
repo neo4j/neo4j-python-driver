@@ -42,19 +42,29 @@ ENV PYENV_ROOT /.pyenv
 ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
 
 # Setup python version
-ENV PYTHON_VERSIONS 3.7 3.8 3.9 3.10 3.11
+ENV PYTHON_VERSIONS 3.12 3.11 3.10 3.9 3.8 3.7
 
 RUN for version in $PYTHON_VERSIONS; do \
         pyenv install $version; \
     done
 RUN pyenv rehash
-RUN pyenv global $(pyenv versions --bare --skip-aliases)
+RUN pyenv global $(pyenv versions --bare --skip-aliases | sort --version-sort --reverse)
 
 # Install Latest pip and setuptools for each environment
 # + tox and tools for starting the tests
 # https://pip.pypa.io/en/stable/news/
 RUN for version in $PYTHON_VERSIONS; do \
         python$version -m pip install -U pip && \
-        python$version -m pip install -U setuptools && \
         python$version -m pip install -U coverage tox; \
     done
+
+# Installing pyarrow lib until pre-built wheel for Python 3.12 exists
+# https://github.com/apache/arrow/issues/37880
+RUN apt update && \
+    apt install -y -V lsb-release cmake gcc && \
+    distro_name=$(lsb_release --id --short | tr 'A-Z' 'a-z') && \
+    code_name=$(lsb_release --codename --short) && \
+    wget https://apache.jfrog.io/artifactory/arrow/${distro_name}/apache-arrow-apt-source-latest-${code_name}.deb && \
+    apt install -y -V ./apache-arrow-apt-source-latest-${code_name}.deb && \
+    apt update && \
+    apt install -y -V libarrow-dev # For C++ \

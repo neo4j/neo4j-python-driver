@@ -715,6 +715,7 @@ def test_execute_query_keyword_parameters(
 @pytest.mark.parametrize("parameters", (
     {"_": "a"}, {"foo_": None}, {"foo_": 1, "bar_": 2}
 ))
+@mark_sync_test
 def test_reserved_query_keyword_parameters(
     mocker, parameters: t.Dict[str, t.Any],
 ) -> None:

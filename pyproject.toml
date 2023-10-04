@@ -50,10 +50,11 @@ pandas = [
     "pandas >= 1.1.0, < 3.0.0",
     "numpy >= 1.7.0, < 2.0.0",
 ]
+pyarrow = ["pyarrow >= 1.0.0"]
 
 [build-system]
 requires = [
-    "setuptools~=65.6",
+    "setuptools>=66.1.0",
     "tomlkit~=0.11.6",
 ]
 build-backend = "setuptools.build_meta"

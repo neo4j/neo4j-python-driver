@@ -607,7 +607,7 @@ def test_data(num_records):
         record.data.return_value = expected_data[-1]
     assert result.data("hello", "world") == expected_data
     for record in records:
-        assert record.data.called_once_with("hello", "world")
+        record.data.assert_called_once_with("hello", "world")
 
 
 @pytest.mark.parametrize("records", (
