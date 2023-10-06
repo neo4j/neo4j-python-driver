@@ -25,9 +25,8 @@ import sys
 # The shipped wait_for can swallow cancellation errors (starting with 3.8).
 # See: https://github.com/python/cpython/pull/26097
 # and https://github.com/python/cpython/pull/28149
-# Since 3.8 and 3.9 already received their final maintenance release, there
-# will be now fix for this. So this patch needs to stick around at least until
-# we remove support for Python 3.9.
+# Ultimately, this got fixed in https://github.com/python/cpython/pull/98518
+# (released with Python 3.12) by re-doing how wait_for works.
 
 
 if (3, 12) > sys.version_info >= (3, 8):
