@@ -59,7 +59,7 @@ _TResultKey = t.Union[int, str]
 
 
 _RESULT_FAILED_ERROR = (
-    "The result has failed. Either this result or another result in the same"
+    "The result has failed. Either this result or another result in the same "
     "transaction has encountered an error."
 )
 _RESULT_OUT_OF_SCOPE_ERROR = (
