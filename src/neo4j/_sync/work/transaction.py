@@ -92,6 +92,8 @@ class TransactionBase:
 
     def _error_handler(self, exc):
         self._last_error = exc
+        for result in self._results:
+            result._tx_failure(exc)
         if isinstance(exc, asyncio.CancelledError):
             self._cancel()
             return

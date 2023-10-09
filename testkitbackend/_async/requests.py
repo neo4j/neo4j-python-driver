@@ -401,7 +401,7 @@ async def ExecuteQuery(backend, data):
 
 def resolution_func(backend, custom_resolver=False, custom_dns_resolver=False):
     # This solution (putting custom resolution together with DNS resolution
-    # into one function only works because the Python driver calls the custom
+    # into one function) only works because the Python driver calls the custom
     # resolver function for every connection, which is not true for all
     # drivers. Properly exposing a way to change the DNS lookup behavior is not
     # possible without changing the driver's code.

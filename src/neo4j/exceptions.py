@@ -40,6 +40,7 @@ Driver API Errors
   + TransactionError
     + TransactionNestingError
   + ResultError
+    + ResultFailedError
     + ResultConsumedError
     + ResultNotSingleError
   + BrokenRecordError
@@ -462,6 +463,17 @@ class ResultError(DriverError):
     def __init__(self, result_, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.result = result_
+
+
+# DriverError > ResultError > ResultFailedError
+class ResultFailedError(ResultError):
+    """Raised when trying to access records of a failed result.
+
+    A :class:`.Result` will be considered failed if
+     * itself encountered an error while fetching records
+     * another result within the same transaction encountered an error while
+       fetching records
+    """
 
 
 # DriverError > ResultError > ResultConsumedError

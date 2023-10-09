@@ -24,6 +24,7 @@ from neo4j import ServerInfo
 from neo4j._deadline import Deadline
 from neo4j._sync.io import Bolt
 from neo4j.auth_management import AuthManager
+from neo4j.exceptions import Neo4jError
 
 
 __all__ = [
@@ -154,10 +155,12 @@ def scripted_connection_generator(fake_connection_generator):
                 [
                     ("run", {"on_success": ({},), "on_summary": None}),
                     ("pull", {
+                        "on_records": ([some_record],),
                         "on_success": None,
                         "on_summary": None,
-                        "on_records":
                     })
+                    # use any exception to throw it instead of calling handlers
+                    ("commit", RuntimeError("oh no!"))
                 ]
                 ```
                 Note that arguments can be `None`. In this case, ScriptedConnection
@@ -180,6 +183,9 @@ def scripted_connection_generator(fake_connection_generator):
                     self._script_pos += 1
 
                     def callback():
+                        if isinstance(scripted_callbacks, BaseException):
+                            raise scripted_callbacks
+                        error = None
                         for cb_name, default_cb_args in (
                             ("on_ignored", ({},)),
                             ("on_failure", ({},)),
@@ -197,10 +203,14 @@ def scripted_connection_generator(fake_connection_generator):
                             if cb_args is None:
                                 cb_args = default_cb_args
                             res = cb(*cb_args)
+                            if cb_name == "on_failure":
+                                error = Neo4jError.hydrate(**cb_args[0])
                             try:
                                 res  # maybe the callback is async
                             except TypeError:
                                 pass  # or maybe it wasn't ;)
+                        if error is not None:
+                            raise error
 
                     self.callbacks.append(callback)
 

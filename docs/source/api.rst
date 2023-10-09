@@ -1902,6 +1902,8 @@ Client-side errors
 
   * :class:`neo4j.exceptions.ResultError`
 
+    * :class:`neo4j.exceptions.ResultFailedError`
+
     * :class:`neo4j.exceptions.ResultConsumedError`
 
     * :class:`neo4j.exceptions.ResultNotSingleError`
@@ -1945,6 +1947,9 @@ Client-side errors
 .. autoexception:: neo4j.exceptions.ResultError()
     :show-inheritance:
     :members: result
+
+.. autoexception:: neo4j.exceptions.ResultFailedError()
+    :show-inheritance:
 
 .. autoexception:: neo4j.exceptions.ResultConsumedError()
     :show-inheritance:

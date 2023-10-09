@@ -38,6 +38,7 @@ from ..._work import (
 )
 from ...exceptions import (
     ResultConsumedError,
+    ResultFailedError,
     ResultNotSingleError,
 )
 from ...time import (
@@ -57,6 +58,10 @@ _T = t.TypeVar("_T")
 _TResultKey = t.Union[int, str]
 
 
+_RESULT_FAILED_ERROR = (
+    "The result has failed. Either this result or another result in the same "
+    "transaction has encountered an error."
+)
 _RESULT_OUT_OF_SCOPE_ERROR = (
     "The result is out of scope. The associated transaction "
     "has been closed. Results can only be used while the "
@@ -76,8 +81,11 @@ class AsyncResult:
     """
 
     def __init__(self, connection, fetch_size, on_closed, on_error):
-        self._connection = ConnectionErrorHandler(connection, on_error)
+        self._connection = ConnectionErrorHandler(
+            connection, self._connection_error_handler
+        )
         self._hydration_scope = connection.new_hydration_scope()
+        self._on_error = on_error
         self._on_closed = on_closed
         self._metadata = None
         self._keys = None
@@ -101,6 +109,13 @@ class AsyncResult:
         self._consumed = False
         # the result has been closed as a result of closing the transaction
         self._out_of_scope = False
+        # exception shared across all results of a transaction
+        self._exception = None
+
+    async def _connection_error_handler(self, exc):
+        self._exception = exc
+        self._attached = False
+        await AsyncUtil.callback(self._on_error, exc)
 
     @property
     def _qid(self):
@@ -257,6 +272,9 @@ class AsyncResult:
                 await self._connection.send_all()
 
         self._exhausted = True
+        if self._exception is not None:
+            raise ResultFailedError(self, _RESULT_FAILED_ERROR) \
+                from self._exception
         if self._out_of_scope:
             raise ResultConsumedError(self, _RESULT_OUT_OF_SCOPE_ERROR)
         if self._consumed:
@@ -345,6 +363,11 @@ class AsyncResult:
         # Subsequent calls to `next` will raise a ResultConsumedError.
         await self._exhaust()
         self._out_of_scope = True
+
+    def _tx_failure(self, exc):
+        # Handle failure of the associated transaction.
+        self._attached = False
+        self._exception = exc
 
     async def consume(self) -> ResultSummary:
         """Consume the remainder of this result and return a :class:`neo4j.ResultSummary`.
