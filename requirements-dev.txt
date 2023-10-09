@@ -1,5 +1,5 @@
 # the driver itself
--e .[pandas,numpy]
+-e .[pandas,numpy,pyarrow]
 
 # auto-generate sync driver from async code
 unasync>=0.5.0
@@ -10,16 +10,10 @@ mypy>=0.971
 typing-extensions>=4.3.0
 types-pytz>=2022.1.2
 
-# for packaging
-setuptools~=65.6
-# TODO: 6.0 - can be removed once `setup.py` is simplified
-tomlkit~=0.11.6
-
 # needed for running tests
 coverage[toml]>=5.5
 freezegun >= 1.2.2
 mock>=4.0.3
-pyarrow>=1.0.0
 pytest>=6.2.5
 pytest-asyncio>=0.16.0
 pytest-benchmark>=3.4.1

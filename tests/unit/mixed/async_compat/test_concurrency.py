@@ -225,7 +225,6 @@ async def test_async_r_lock_acquire_non_blocking_exception(mocker):
         assert fut.exception() is exc
         awaits += 1
 
-
     assert not lock.locked()
     await asyncio.gather(blocker(), waiter_non_blocking())
     assert not lock.locked()
