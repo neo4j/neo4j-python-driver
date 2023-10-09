@@ -17,7 +17,6 @@
 
 
 from unittest.mock import MagicMock
-from uuid import uuid4
 
 import pytest
 
@@ -25,6 +24,11 @@ from neo4j import (
     AsyncTransaction,
     NotificationMinimumSeverity,
     Query,
+)
+from neo4j.exceptions import (
+    ClientError,
+    ResultFailedError,
+    ServiceUnavailable,
 )
 
 from ...._async_compat import mark_async_test
@@ -275,3 +279,51 @@ async def test_transaction_begin_pipelining(
         expected_calls.append(("send_all",))
         expected_calls.append(("fetch_all",))
     assert async_fake_connection.method_calls == expected_calls
+
+
+@pytest.mark.parametrize("error", ("server", "connection"))
+@mark_async_test
+async def test_server_error_propagates(async_scripted_connection, error):
+    connection = async_scripted_connection
+    script = [
+        # res 1
+        ("run", {"on_success": ({"fields": ["n"]},), "on_summary": None}),
+        ("pull", {"on_records": ([[1], [2]],),
+                  "on_success": ({"has_more": True},)}),
+        # res 2
+        ("run", {"on_success": ({"fields": ["n"]},), "on_summary": None}),
+        ("pull", {"on_records": ([[1], [2]],),
+                  "on_success": ({"has_more": True},)}),
+    ]
+    if error == "server":
+        script.append(
+            ("pull", {"on_failure": ({"code": "Neo.ClientError.Made.Up"},),
+                      "on_summary": None})
+        )
+        expected_error = ClientError
+    elif error == "connection":
+        script.append(("pull", ServiceUnavailable()))
+        expected_error = ServiceUnavailable
+    else:
+        raise ValueError(f"Unknown error type {error}")
+    connection.set_script(script)
+
+    tx = AsyncTransaction(
+        connection, 2, lambda *args, **kwargs: None,
+        lambda *args, **kwargs: None, lambda *args, **kwargs: None
+    )
+    res1 = await tx.run("UNWIND range(1, 1000) AS n RETURN n")
+    assert await res1.__anext__() == {"n": 1}
+
+    res2 = await tx.run("RETURN 'causes error later'")
+    assert await res2.fetch(2) == [{"n": 1}, {"n": 2}]
+    with pytest.raises(expected_error) as exc1:
+        await res2.__anext__()
+
+    # can finish the buffer
+    assert await res1.fetch(1) == [{"n": 2}]
+    # then fails because the connection was broken by res2
+    with pytest.raises(ResultFailedError) as exc2:
+        await res1.__anext__()
+
+    assert exc1.value is exc2.value.__cause__
