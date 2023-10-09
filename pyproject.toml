@@ -38,6 +38,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dynamic = ["version", "readme"]
 
@@ -50,17 +51,19 @@ pandas = [
     "pandas >= 1.1.0, < 3.0.0",
     "numpy >= 1.7.0, < 2.0.0",
 ]
+pyarrow = ["pyarrow >= 1.0.0"]
+
 
 [build-system]
 requires = [
-    "setuptools~=65.6",
-    "tomlkit~=0.11.6",
+    "setuptools >= 66.1.0",
+    # TODO: 6.0 - can be removed once `setup.py` is simplified
+    "tomlkit ~= 0.11.6",
 ]
 build-backend = "setuptools.build_meta"
 
-# still in beta
-#[tool.setuptools.dynamic]
-#version = {attr = "neo4j._meta.version"}
+[tool.setuptools.dynamic]
+version = {attr = "neo4j._meta.version"}
 
 
 [tool.coverage]

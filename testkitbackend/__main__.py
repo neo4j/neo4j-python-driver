@@ -49,7 +49,11 @@ def async_main():
 
 
 if __name__ == "__main__":
-    warnings.simplefilter("error")
+    if sys.version_info < (3, 12):
+        # Ignore warnings for Python 3.12 for now
+        # https://github.com/dateutil/dateutil/issues/1284 needs to be released
+        # and propagate through our dependency graph
+        warnings.simplefilter("error")
     if len(sys.argv) == 2 and sys.argv[1].lower().strip() == "async":
         async_main()
     else:

@@ -136,6 +136,8 @@ class AsyncRLock(asyncio.Lock):
             try:
                 await wait_for(fut, timeout)
             except asyncio.CancelledError:
+                if fut.cancelled():
+                    raise
                 already_finished = not fut.cancel()
                 if already_finished:
                     # Too late to cancel the acquisition.

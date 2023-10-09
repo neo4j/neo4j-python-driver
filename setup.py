@@ -35,7 +35,6 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent / "src"))
 from neo4j._meta import (
     deprecated_package as deprecated,
     package,
-    version,
 )
 
 
@@ -84,8 +83,4 @@ def changed_package_name(new_name):
 
 
 with changed_package_name(package):
-    setup(
-        # until `[tool.setuptools.dynamic]` in pyproject.toml is out of beta
-        version=version,
-        long_description=readme,
-    )
+    setup(long_description=readme)

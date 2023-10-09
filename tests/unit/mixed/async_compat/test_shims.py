@@ -42,8 +42,8 @@ async def _check_wait_for(wait_for_, should_propagate_cancellation):
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 8),
-    reason="wait_for is only broken in Python 3.8+"
+    not (3, 12) > sys.version_info >= (3, 8),
+    reason="wait_for is only broken in Python 3.8-3.11 (inclusive)"
 )
 @mark_async_test
 async def test_wait_for_shim_is_necessary_starting_from_3x8():
@@ -56,8 +56,8 @@ async def test_wait_for_shim_is_necessary_starting_from_3x8():
 
 
 @pytest.mark.skipif(
-    sys.version_info >= (3, 8),
-    reason="wait_for is only broken in Python 3.8+"
+    (3, 12) > sys.version_info >= (3, 8),
+    reason="wait_for is only broken in Python 3.8-3.11 (inclusive)"
 )
 @mark_async_test
 async def test_wait_for_shim_is_not_necessary_prior_to_3x8():
