@@ -130,20 +130,17 @@ class NotificationDisabledCategory(str, Enum):
     Inherits from :class:`str` and :class:`Enum`. Every driver API accepting a
     :class:`.NotificationFilter` value will also accept a string::
 
-        >>> NotificationDisabledCategory.HINT == "HINT"
-        True
         >>> NotificationDisabledCategory.UNRECOGNIZED == "UNRECOGNIZED"
-        True
-        >>> NotificationDisabledCategory.UNSUPPORTED == "UNSUPPORTED"
         True
         >>> NotificationDisabledCategory.PERFORMANCE == "PERFORMANCE"
         True
         >>> NotificationDisabledCategory.DEPRECATION == "DEPRECATION"
         True
-        >>> NotificationDisabledCategory.GENERIC == "GENERIC"
-        True
 
     .. versionadded:: 5.7
+
+    .. versionchanged:: 5.14
+        Added categories :attr:`.SECURITY` and :attr:`.TOPOLOGY`.
 
     .. seealso::
         driver config :ref:`driver-notifications-disabled-categories-ref`,
@@ -156,6 +153,8 @@ class NotificationDisabledCategory(str, Enum):
     PERFORMANCE = "PERFORMANCE"
     DEPRECATION = "DEPRECATION"
     GENERIC = "GENERIC"
+    SECURITY = "SECURITY"
+    TOPOLOGY = "TOPOLOGY"
 
 
 if t.TYPE_CHECKING:
@@ -168,6 +167,8 @@ if t.TYPE_CHECKING:
             "PERFORMANCE",
             "DEPRECATION",
             "GENERIC",
+            "SECURITY",
+            "TOPOLOGY",
         ],
     ]
     __all__.append("T_NotificationDisabledCategory")
@@ -188,6 +189,9 @@ class NotificationCategory(str, Enum):
 
     .. versionadded:: 5.7
 
+    .. versionchanged:: 5.14
+        Added categories :attr:`.SECURITY` and :attr:`.TOPOLOGY`.
+
     .. seealso:: :attr:`SummaryNotification.category`
     """
 
@@ -197,6 +201,8 @@ class NotificationCategory(str, Enum):
     PERFORMANCE = "PERFORMANCE"
     DEPRECATION = "DEPRECATION"
     GENERIC = "GENERIC"
+    SECURITY = "SECURITY"
+    TOPOLOGY = "TOPOLOGY"
     #: Used when the server provides a Category which the driver is unaware of.
     #: This can happen when connecting to a server newer than the driver or
     #: before notification categories were introduced.
