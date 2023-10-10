@@ -40,7 +40,7 @@ class NotificationMinimumSeverity(str, Enum):
     """Filter notifications returned by the server by minimum severity.
 
     Inherits from :class:`str` and :class:`Enum`. Every driver API accepting a
-    :class:`.NotificationFilter` value will also accept a string::
+    :class:`.NotificationMinimumSeverity` value will also accept a string::
 
         >>> NotificationMinimumSeverity.OFF == "OFF"
         True
@@ -128,7 +128,7 @@ class NotificationDisabledCategory(str, Enum):
     """Filter notifications returned by the server by category.
 
     Inherits from :class:`str` and :class:`Enum`. Every driver API accepting a
-    :class:`.NotificationFilter` value will also accept a string::
+    :class:`.NotificationDisabledCategory` value will also accept a string::
 
         >>> NotificationDisabledCategory.UNRECOGNIZED == "UNRECOGNIZED"
         True
@@ -153,7 +153,9 @@ class NotificationDisabledCategory(str, Enum):
     PERFORMANCE = "PERFORMANCE"
     DEPRECATION = "DEPRECATION"
     GENERIC = "GENERIC"
+    #: Requires server version 5.14 or newer.
     SECURITY = "SECURITY"
+    #: Requires server version 5.14 or newer.
     TOPOLOGY = "TOPOLOGY"
 
 

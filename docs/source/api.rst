@@ -629,7 +629,8 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 :data:`None` will apply the server's default setting.
 
 .. Note::
-    If configured, the server or all servers of the cluster need to support notifications filtering.
+    If configured, the server or all servers of the cluster need to support notifications filtering
+    (server version 5.7 and newer).
     Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
 
 :Type: :data:`None`, :class:`.NotificationMinimumSeverity`, or :class:`str`
@@ -652,7 +653,8 @@ Notifications are available via :attr:`.ResultSummary.notifications` and :attr:`
 :data:`None` will apply the server's default setting.
 
 .. Note::
-    If configured, the server or all servers of the cluster need to support notifications filtering.
+    If configured, the server or all servers of the cluster need to support notifications filtering
+    (server version 5.7 and newer).
     Otherwise, the driver will raise a :exc:`.ConfigurationError` as soon as it encounters a server that does not.
 
 :Type: :data:`None`, :term:`iterable` of :class:`.NotificationDisabledCategory` and/or :class:`str`
@@ -1778,15 +1780,15 @@ BookmarkManager
 Constants, Enums, Helpers
 *************************
 
-.. autoclass:: neo4j.NotificationMinimumSeverity
+.. autoclass:: neo4j.NotificationMinimumSeverity()
     :show-inheritance:
     :members:
 
-.. autoclass:: neo4j.NotificationDisabledCategory
+.. autoclass:: neo4j.NotificationDisabledCategory()
     :show-inheritance:
     :members:
 
-.. autoclass:: neo4j.RoutingControl
+.. autoclass:: neo4j.RoutingControl()
     :show-inheritance:
     :members:
 
