@@ -229,6 +229,8 @@ _CATEGORY_LOOKUP = {
     "PERFORMANCE": NotificationCategory.PERFORMANCE,
     "DEPRECATION": NotificationCategory.DEPRECATION,
     "GENERIC": NotificationCategory.GENERIC,
+    "SECURITY": NotificationCategory.SECURITY,
+    "TOPOLOGY": NotificationCategory.TOPOLOGY,
 }
 
 
