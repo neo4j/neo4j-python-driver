@@ -89,7 +89,40 @@ impl <'b> PackStreamDecoder<'b> {
         return kvps.into_py_dict(self.py);
     }
 
-    fn read_string_length() {
+    fn read_string_length(&mut self) -> usize {
+        let marker = self.bytes[self.index];
+        self.index += 1;
+        let high_nibble = (marker & 0xF0).u8;
+        match high_nibble {
+            TINY_STRING => (marker & 0x0F) as usize,
+            STRING_8 => self.read_u8() as usize,
+            STRING_16 => self.read_u16() as usize,
+            STRING_32 => self.read_u32() as usize,
+            _ => panic!("Invalid string length marker: {}", marker)
+        }
+    }
 
+    fn read_u8(&mut self) -> i32 {
+        let value = self.bytes[self.index];
+        self.index += 1;
+        return value & 0xFF;
+    }
+
+    fn read_u16(&mut self) -> i32 {
+        let value = u16::from_be_bytes(self.bytes[self.index..self.index + 2]);
+        self.index += 2;
+        return value & 0xFFFF;
+    }
+
+    fn read_u32(&mut self) -> i64 {
+        let value = u32::from_be_bytes(self.bytes[self.index..self.index + 4]);
+        self.index += 4;
+        return value & 0xFFFFFFFFu64;
+    }
+
+    fn read_u64(&mut self) -> u64 {
+        let value = u64::from_be_bytes(self.bytes[self.index..self.index + 8]);
+        self.index += 8;
+        return value;
     }
 }
