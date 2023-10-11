@@ -17,21 +17,3 @@ fn fast_packstream(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(read_map, m)?)?;
     Ok(())
 }
-
-struct PackStreamDecoder<'a> {
-    bytes: Vec<u8>,
-    py: Python<'a>,
-    index: usize
-}
-
-impl <'b> PackStreamDecoder<'b> {
-    pub fn new<'a>(data: Vec<u8>, py: &'a Python<'b>) -> PackStreamDecoder<'a> {
-        Self { bytes: data, py: *py, index: 0 }
-    }
-
-    pub fn read(&mut self) -> PyObject {
-
-    }
-
-
-}
