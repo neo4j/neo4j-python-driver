@@ -109,19 +109,25 @@ impl <'b> PackStreamDecoder<'b> {
     }
 
     fn read_u16(&mut self) -> i32 {
-        let value = u16::from_be_bytes(self.bytes[self.index..self.index + 2]);
+        let value = u16::from_be_bytes(self.bytes[self.index..self.index + 2usize   ]);
         self.index += 2;
         return value & 0xFFFF;
     }
 
     fn read_u32(&mut self) -> i64 {
-        let value = u32::from_be_bytes(self.bytes[self.index..self.index + 4]);
+        let value = u32::from_be_bytes(self.bytes[self.index..self.index + 4usize]);
         self.index += 4;
         return value & 0xFFFFFFFFu64;
     }
 
     fn read_u64(&mut self) -> u64 {
-        let value = u64::from_be_bytes(self.bytes[self.index..self.index + 8]);
+        let value = u64::from_be_bytes(self.bytes[self.index..self.index + 8usize]);
+        self.index += 8;
+        return value;
+    }
+
+    fn read_double(&mut self) -> f64 {
+        let value = f64::from_be_bytes(self.bytes[self.index..self.index + 8usize]);
         self.index += 8;
         return value;
     }
