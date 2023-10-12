@@ -43,7 +43,7 @@ impl <'b> PackStreamDecoder<'b> {
     }
 
     fn read_value(&mut self, marker: u8) -> PyObject {
-        let high_nibble = (marker & 0xF0) as u8;
+        let high_nibble = marker & 0xF0;
         
         match high_nibble {
             TINY_STRING => self.read_string((marker & 0x0F) as usize),
@@ -72,7 +72,7 @@ impl <'b> PackStreamDecoder<'b> {
         }
         let data = &self.bytes[self.index..self.index + length];
         self.index += length;
-        return String::from_utf8(data).unwrap().to_object(self.py);
+        return String::from_utf8(Vec::from(data)).unwrap().to_object(self.py);
     }
 
     fn read_map(&mut self, length: usize) -> PyObject {
@@ -80,11 +80,12 @@ impl <'b> PackStreamDecoder<'b> {
             return PyDict::new(self.py).to_object(self.py);
         }
 
-        let mut kvps: Vec<(String, PyObject)> = Vec::with_capacity(length);
+        let mut kvps: Vec<(PyObject, PyObject)> = Vec::with_capacity(length);
         for _ in 0..length {
-            let key = self.read_string(self.read_string_length());
+            let len = self.read_string_length();
+            let key = self.read_string(len);
             let value = self.read();
-            kvps.push(key, value);
+            kvps.push((key, value));
         }
         return kvps.into_py_dict(self.py).into();
     }
@@ -92,7 +93,7 @@ impl <'b> PackStreamDecoder<'b> {
     fn read_string_length(&mut self) -> usize {
         let marker = self.bytes[self.index];
         self.index += 1;
-        let high_nibble = (marker & 0xF0) as u8;
+        let high_nibble = (marker & 0xF0);
         match high_nibble {
             TINY_STRING => (marker & 0x0F) as usize,
             STRING_8 => self.read_u8() as usize,

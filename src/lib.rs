@@ -3,9 +3,9 @@ use decoder::PackStreamDecoder;
 use pyo3::prelude::*;
 
 #[pyfunction]
-fn read_map(py: Python, bytes: Vec<u8>) -> PyResult<&PyObject> {
+fn read_map(py: Python, bytes: Vec<u8>) -> PyResult<PyObject> {
     let mut decoder = PackStreamDecoder::new(bytes, &py);
-    return Ok(&decoder.read());
+    return Ok(decoder.read());
 }
 
 /// A Python module implemented in Rust.
