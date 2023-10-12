@@ -44,13 +44,18 @@ impl <'b> PackStreamDecoder<'b> {
 
     fn read_value(&mut self, marker: u8) -> PyObject {
         let high_nibble = marker & 0xF0;
-        
         match high_nibble {
             TINY_STRING => self.read_string((marker & 0x0F) as usize),
             TINY_LIST => self.read_list((marker & 0x0F) as usize),
             TINY_MAP => self.read_map((marker & 0x0F) as usize),
-            _ => match marker {
-                _ => panic!("Invalid marker: {}", marker)
+            _ => {
+                if marker as i8 >= -16i8 {
+                    return (marker as i8).to_object(self.py);
+                }
+                match marker {
+                    INT_8 => self.next_i8(),
+                    _ => panic!("Invalid marker: {}", marker)
+                }
             }
         }
     }
@@ -121,8 +126,20 @@ impl <'b> PackStreamDecoder<'b> {
         return (value & 0xFFFFFFFF).into();
     }
 
-    fn read_u64(&mut self) -> u64 {
-        let value = u64::from_be_bytes(self.bytes[self.index..self.index + 8].try_into().unwrap());
+    fn next_i16(&mut self) -> i16 {
+        let value = i16::from_be_bytes(self.bytes[self.index..self.index + 2].try_into().unwrap());
+        self.index += 2;
+        return value;
+    }
+
+    fn next_i32(&mut self) -> i32 {
+        let value = i32::from_be_bytes(self.bytes[self.index..self.index + 4].try_into().unwrap());
+        self.index += 4;
+        return value;
+    }
+
+    fn read_i64(&mut self) -> i64 {
+        let value = i64::from_be_bytes(self.bytes[self.index..self.index + 8].try_into().unwrap());
         self.index += 8;
         return value;
     }
@@ -132,4 +149,23 @@ impl <'b> PackStreamDecoder<'b> {
         self.index += 8;
         return value;
     }
+
+    fn next_i8(&mut self) -> i8 {
+        let value = i8::try_from(self.bytes[self.index]).unwrap();
+        self.index += 1;
+        return value;
+    }
 }
+//
+// internal sbyte NextSByte()
+// {
+// Stream.Read(_buffers.ByteArray);
+// return (sbyte)_buffers.ByteArray[0];
+// }
+//
+// public byte NextByte()
+// {
+// Stream.Read(_buffers.ByteArray);
+//
+// return _buffers.ByteArray[0];
+// }
