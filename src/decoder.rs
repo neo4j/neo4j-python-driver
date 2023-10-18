@@ -53,7 +53,42 @@ impl <'b> PackStreamDecoder<'b> {
                     return (marker as i8).to_object(self.py);
                 }
                 match marker {
-                    INT_8 => self.next_i8(),
+                    INT_8 => self.next_i8().to_object(self.py),
+                    INT_16 => self.next_i16().to_object(self.py),
+                    INT_32 => self.next_i32().to_object(self.py),
+                    INT_64 => self.next_i64().to_object(self.py),
+                    LIST_8 => {
+                        let len = self.read_u8() as usize;
+                        self.read_list(len)
+                    },
+                    LIST_16 => {
+                        let len = self.read_u16() as usize;
+                        self.read_list(len)
+                    },
+                    LIST_32 => {
+                        let len = self.read_u32() as usize;
+                        self.read_list(len)
+                    },
+                    STRING_8 => {
+                        let len = self.read_u8() as usize;
+                        self.read_string(len)
+                    },
+                    STRING_16 => {
+                        let len = self.read_u16() as usize;
+                        self.read_string(len)
+                    },
+                    STRING_32 => {
+                        let len = self.read_u32() as usize;
+                        self.read_string(len)
+                    },
+                    // STRUCT_8 => {
+                    //     let len = self.read_u8() as usize;
+                    //     self.read_struct(len)
+                    // },
+                    // STRUCT_16 => {
+                    //     let len = self.read_u16() as usize;
+                    //     self.read_struct(len)
+                    // },
                     _ => panic!("Invalid marker: {}", marker)
                 }
             }
@@ -138,7 +173,7 @@ impl <'b> PackStreamDecoder<'b> {
         return value;
     }
 
-    fn read_i64(&mut self) -> i64 {
+    fn next_i64(&mut self) -> i64 {
         let value = i64::from_be_bytes(self.bytes[self.index..self.index + 8].try_into().unwrap());
         self.index += 8;
         return value;
@@ -156,16 +191,3 @@ impl <'b> PackStreamDecoder<'b> {
         return value;
     }
 }
-//
-// internal sbyte NextSByte()
-// {
-// Stream.Read(_buffers.ByteArray);
-// return (sbyte)_buffers.ByteArray[0];
-// }
-//
-// public byte NextByte()
-// {
-// Stream.Read(_buffers.ByteArray);
-//
-// return _buffers.ByteArray[0];
-// }
