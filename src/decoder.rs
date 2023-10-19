@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, IntoPyDict, PyList};
+use pyo3::types::{IntoPyDict, PyDict, PyList};
 use std::str;
 
 const NULL: u8 = 0xC0;
@@ -29,12 +29,16 @@ const STRUCT_16: u8 = 0xDD;
 pub(crate) struct PackStreamDecoder<'a> {
     bytes: Vec<u8>,
     py: Python<'a>,
-    index: usize
+    index: usize,
 }
 
-impl <'b> PackStreamDecoder<'b> {
+impl<'b> PackStreamDecoder<'b> {
     pub fn new<'a>(data: Vec<u8>, py: &'a Python<'b>) -> PackStreamDecoder<'a> {
-        Self { bytes: data, py: *py, index: 0 }
+        Self {
+            bytes: data,
+            py: *py,
+            index: 0,
+        }
     }
 
     pub fn read(&mut self) -> PyObject {
@@ -65,40 +69,40 @@ impl <'b> PackStreamDecoder<'b> {
                     LIST_8 => {
                         let len = self.read_u8() as usize;
                         self.read_list(len)
-                    },
+                    }
                     LIST_16 => {
                         let len = self.read_u16() as usize;
                         self.read_list(len)
-                    },
+                    }
                     LIST_32 => {
                         let len = self.read_u32() as usize;
                         self.read_list(len)
-                    },
+                    }
                     STRING_8 => {
                         let len = self.read_u8() as usize;
                         self.read_string(len)
-                    },
+                    }
                     STRING_16 => {
                         let len = self.read_u16() as usize;
                         self.read_string(len)
-                    },
+                    }
                     STRING_32 => {
                         let len = self.read_u32() as usize;
                         self.read_string(len)
-                    },
+                    }
                     MAP_8 => {
                         let len = self.read_u8() as usize;
                         self.read_map(len)
-                    },
+                    }
                     MAP_16 => {
                         let len = self.read_u16() as usize;
                         self.read_map(len)
-                    },
+                    }
                     MAP_32 => {
                         let len = self.read_u32() as usize;
                         self.read_map(len)
-                    },
-                    _ => panic!("Invalid marker: {}", marker)
+                    }
+                    _ => panic!("Invalid marker: {}", marker),
                 }
             }
         }
@@ -111,7 +115,7 @@ impl <'b> PackStreamDecoder<'b> {
         let mut items = Vec::with_capacity(length);
         for _ in 0..length {
             items.push(self.read());
-        }   
+        }
         return items.to_object(self.py);
     }
 
@@ -148,7 +152,7 @@ impl <'b> PackStreamDecoder<'b> {
             STRING_8 => self.read_u8() as usize,
             STRING_16 => self.read_u16() as usize,
             STRING_32 => self.read_u32() as usize,
-            _ => panic!("Invalid string length marker: {}", marker)
+            _ => panic!("Invalid string length marker: {}", marker),
         }
     }
 
