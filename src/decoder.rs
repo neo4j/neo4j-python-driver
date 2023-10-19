@@ -1,9 +1,9 @@
 use pyo3::prelude::*;
 use pyo3::types::{IntoPyDict, PyDict, PyList};
 use std::str;
+const TINY_STRING: u8 = 0x80;
 const TINY_LIST: u8 = 0x90;
 const TINY_MAP: u8 = 0xA0;
-const TINY_STRING: u8 = 0x80;
 const TINY_STRUCT: u8 = 0xB0;
 const NULL: u8 = 0xC0;
 const FALSE: u8 = 0xC2;
@@ -145,7 +145,7 @@ impl<'b> PackStreamDecoder<'b> {
     fn read_string_length(&mut self) -> usize {
         let marker = self.bytes[self.index];
         self.index += 1;
-        let high_nibble = (marker & 0xF0);
+        let high_nibble = marker & 0xF0;
         match high_nibble {
             TINY_STRING => (marker & 0x0F) as usize,
             STRING_8 => self.read_u8() as usize,
