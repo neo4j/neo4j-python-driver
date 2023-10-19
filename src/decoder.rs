@@ -1,28 +1,27 @@
 use pyo3::prelude::*;
 use pyo3::types::{IntoPyDict, PyDict, PyList};
 use std::str;
-
+const TINY_LIST: u8 = 0x90;
+const TINY_MAP: u8 = 0xA0;
+const TINY_STRING: u8 = 0x80;
+const TINY_STRUCT: u8 = 0xB0;
 const NULL: u8 = 0xC0;
 const FALSE: u8 = 0xC2;
 const TRUE: u8 = 0xC3;
-const FLOAT_64: u8 = 0xC1;
 const INT_8: u8 = 0xC8;
 const INT_16: u8 = 0xC9;
 const INT_32: u8 = 0xCA;
 const INT_64: u8 = 0xCB;
-const TINY_STRING: u8 = 0x80;
+const FLOAT_64: u8 = 0xC1;
 const STRING_8: u8 = 0xD0;
 const STRING_16: u8 = 0xD1;
 const STRING_32: u8 = 0xD2;
-const TINY_LIST: u8 = 0x90;
 const LIST_8: u8 = 0xD4;
 const LIST_16: u8 = 0xD5;
 const LIST_32: u8 = 0xD6;
-const TINY_MAP: u8 = 0xA0;
 const MAP_8: u8 = 0xD8;
 const MAP_16: u8 = 0xD9;
 const MAP_32: u8 = 0xDA;
-const TINY_STRUCT: u8 = 0xB0;
 const STRUCT_8: u8 = 0xDC;
 const STRUCT_16: u8 = 0xDD;
 
@@ -66,18 +65,6 @@ impl<'b> PackStreamDecoder<'b> {
                     INT_32 => self.next_i32().to_object(self.py),
                     INT_64 => self.next_i64().to_object(self.py),
                     FLOAT_64 => self.read_double().to_object(self.py),
-                    LIST_8 => {
-                        let len = self.read_u8() as usize;
-                        self.read_list(len)
-                    }
-                    LIST_16 => {
-                        let len = self.read_u16() as usize;
-                        self.read_list(len)
-                    }
-                    LIST_32 => {
-                        let len = self.read_u32() as usize;
-                        self.read_list(len)
-                    }
                     STRING_8 => {
                         let len = self.read_u8() as usize;
                         self.read_string(len)
@@ -89,6 +76,18 @@ impl<'b> PackStreamDecoder<'b> {
                     STRING_32 => {
                         let len = self.read_u32() as usize;
                         self.read_string(len)
+                    }
+                    LIST_8 => {
+                        let len = self.read_u8() as usize;
+                        self.read_list(len)
+                    }
+                    LIST_16 => {
+                        let len = self.read_u16() as usize;
+                        self.read_list(len)
+                    }
+                    LIST_32 => {
+                        let len = self.read_u32() as usize;
+                        self.read_list(len)
                     }
                     MAP_8 => {
                         let len = self.read_u8() as usize;
