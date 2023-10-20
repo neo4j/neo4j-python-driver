@@ -6,6 +6,7 @@ from struct import (
 )
 from codecs import decode
 
+
 class Unpacker:
 
     def __init__(self, unpackable):
@@ -232,10 +233,10 @@ class UnpackableBuffer:
 
 
 def main():
-    data = None
     with open("C:\\tmp\\test.bin", "rb") as file:
         data = bytearray(file.read())
-    print("python")
+    print(f"decoding:{len(data)} bytes.")
+    print("Python.")
     start = timer()
     u = Unpacker(UnpackableBuffer(data)).unpack()
     end = timer()
@@ -243,12 +244,13 @@ def main():
     start = timer()
     v = fpsr(data)
     end = timer()
-    print("rust in python")
+    print("PyO3.")
     print_time(start, end)
-    
+
     a = json.dumps(u)
     b = json.dumps(v)
-    print(a == b)
+    print(f"output matched: {a == b}.")
+
 
 def print_time(start, end):
     ms = (end - start)
@@ -257,5 +259,3 @@ def print_time(start, end):
 
 if __name__ == '__main__':
     main()
-
-
