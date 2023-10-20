@@ -26,15 +26,15 @@ const STRUCT_8: u8 = 0xDC;
 const STRUCT_16: u8 = 0xDD;
 
 pub(crate) struct PackStreamDecoder<'a> {
-    bytes: Vec<u8>,
+    bytes: &'a [u8],
     py: Python<'a>,
     index: usize,
 }
 
 impl<'b> PackStreamDecoder<'b> {
-    pub fn new<'a>(data: Vec<u8>, py: &'a Python<'b>) -> PackStreamDecoder<'a> {
+    pub fn new<'a>(data: &'b Vec<u8>, py: &'a Python<'b>) -> PackStreamDecoder<'a> {
         Self {
-            bytes: data,
+            bytes: data.as_slice(),
             py: *py,
             index: 0,
         }
@@ -54,7 +54,7 @@ impl<'b> PackStreamDecoder<'b> {
             TINY_MAP => self.read_map((marker & 0x0F) as usize),
             _ => {
                 if marker as i8 >= -16i8 {
-                    return (marker as i8).to_object(self.py);
+                    return (i8::try_from(marker).unwrap()).to_object(self.py);
                 }
                 match marker {
                     NULL => self.py.None(),
@@ -66,39 +66,39 @@ impl<'b> PackStreamDecoder<'b> {
                     INT_64 => self.next_i64().to_object(self.py),
                     FLOAT_64 => self.read_double().to_object(self.py),
                     STRING_8 => {
-                        let len = self.read_u8() as usize;
+                        let len = self.read_u8();
                         self.read_string(len)
                     }
                     STRING_16 => {
-                        let len = self.read_u16() as usize;
+                        let len = self.read_u16();
                         self.read_string(len)
                     }
                     STRING_32 => {
-                        let len = self.read_u32() as usize;
+                        let len = self.read_u32();
                         self.read_string(len)
                     }
                     LIST_8 => {
-                        let len = self.read_u8() as usize;
+                        let len = self.read_u8();
                         self.read_list(len)
                     }
                     LIST_16 => {
-                        let len = self.read_u16() as usize;
+                        let len = self.read_u16();
                         self.read_list(len)
                     }
                     LIST_32 => {
-                        let len = self.read_u32() as usize;
+                        let len = self.read_u32();
                         self.read_list(len)
                     }
                     MAP_8 => {
-                        let len = self.read_u8() as usize;
+                        let len = self.read_u8();
                         self.read_map(len)
                     }
                     MAP_16 => {
-                        let len = self.read_u16() as usize;
+                        let len = self.read_u16();
                         self.read_map(len)
                     }
                     MAP_32 => {
-                        let len = self.read_u32() as usize;
+                        let len = self.read_u32();
                         self.read_map(len)
                     }
                     _ => panic!("Invalid marker: {}", marker),
@@ -131,7 +131,6 @@ impl<'b> PackStreamDecoder<'b> {
         if length == 0 {
             return PyDict::new(self.py).to_object(self.py);
         }
-
         let mut kvps: Vec<(PyObject, PyObject)> = Vec::with_capacity(length);
         for _ in 0..length {
             let len = self.read_string_length();
@@ -148,29 +147,29 @@ impl<'b> PackStreamDecoder<'b> {
         let high_nibble = marker & 0xF0;
         match high_nibble {
             TINY_STRING => (marker & 0x0F) as usize,
-            STRING_8 => self.read_u8() as usize,
-            STRING_16 => self.read_u16() as usize,
-            STRING_32 => self.read_u32() as usize,
+            STRING_8 => self.read_u8(),
+            STRING_16 => self.read_u16(),
+            STRING_32 => self.read_u32(),
             _ => panic!("Invalid string length marker: {}", marker),
         }
     }
 
-    fn read_u8(&mut self) -> i32 {
+    fn read_u8(&mut self) -> usize {
         let value = self.bytes[self.index];
         self.index += 1;
-        return (value & 0xFF).into();
+        return (value & 0xFF) as usize;
     }
 
-    fn read_u16(&mut self) -> i32 {
+    fn read_u16(&mut self) -> usize {
         let value = u16::from_be_bytes(self.bytes[self.index..self.index + 2].try_into().unwrap());
         self.index += 2;
-        return (value & 0xFFFF).into();
+        return (value & 0xFFFF) as usize;
     }
 
-    fn read_u32(&mut self) -> i64 {
+    fn read_u32(&mut self) -> usize {
         let value = u32::from_be_bytes(self.bytes[self.index..self.index + 4].try_into().unwrap());
         self.index += 4;
-        return (value & 0xFFFFFFFF).into();
+        return (value & 0xFFFFFFFF) as usize;
     }
 
     fn next_i16(&mut self) -> i16 {

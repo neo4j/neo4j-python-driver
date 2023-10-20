@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 
 #[pyfunction]
 fn read(py: Python, bytes: Vec<u8>) -> PyResult<PyObject> {
-    let mut decoder = PackStreamDecoder::new(bytes, &py);
+    let mut decoder = PackStreamDecoder::new(&bytes, &py);
     return Ok(decoder.read());
 }
 
