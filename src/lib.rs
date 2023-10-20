@@ -1,11 +1,13 @@
 mod decoder;
 use decoder::PackStreamDecoder;
 use pyo3::prelude::*;
+use pyo3::types::PyByteArray;
 
 #[pyfunction]
-fn read(py: Python, bytes: Vec<u8>) -> PyResult<PyObject> {
-    let mut decoder = PackStreamDecoder::new(&bytes, &py);
-    return Ok(decoder.read());
+unsafe fn read(py: Python, bytes: &PyByteArray) -> PyResult<PyObject> {
+    let mut decoder = PackStreamDecoder::new(bytes.as_bytes(), &py);
+    let result = decoder.read();
+    return Ok(result);
 }
 
 /// A Python module implemented in Rust.

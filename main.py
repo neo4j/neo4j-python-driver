@@ -234,6 +234,7 @@ def main():
     data = None
     with open("C:\\tmp\\test.bin", "rb") as file:
         data = bytearray(file.read())
+    print("python")
     start = timer()
     Unpacker(UnpackableBuffer(data)).unpack()
     end = timer()
@@ -241,11 +242,12 @@ def main():
     start = timer()
     v = fpsr(data)
     end = timer()
+    print("rust in python")
     print_time(start, end)
 
 def print_time(start, end):
-    ms = int((end - start) * 1000) 
-    print('Time elapsed: {}ms'.format(ms))
+    ms = (end - start)
+    print('Time elapsed: {}s'.format(ms))
 
 
 if __name__ == '__main__':

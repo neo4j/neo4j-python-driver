@@ -32,9 +32,9 @@ pub(crate) struct PackStreamDecoder<'a> {
 }
 
 impl<'b> PackStreamDecoder<'b> {
-    pub fn new<'a>(data: &'b Vec<u8>, py: &'a Python<'b>) -> PackStreamDecoder<'a> {
+    pub fn new<'a>(data: &'b[u8], py: &'a Python<'b>) -> PackStreamDecoder<'a> {
         Self {
-            bytes: data.as_slice(),
+            bytes: data,
             py: *py,
             index: 0,
         }
