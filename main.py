@@ -1,3 +1,4 @@
+import json
 from timeit import default_timer as timer
 from fast_packstream import read as fpsr
 from struct import (
@@ -236,7 +237,7 @@ def main():
         data = bytearray(file.read())
     print("python")
     start = timer()
-    Unpacker(UnpackableBuffer(data)).unpack()
+    u = Unpacker(UnpackableBuffer(data)).unpack()
     end = timer()
     print_time(start, end)
     start = timer()
@@ -244,6 +245,10 @@ def main():
     end = timer()
     print("rust in python")
     print_time(start, end)
+    
+    a = json.dumps(u)
+    b = json.dumps(v)
+    print(a == b)
 
 def print_time(start, end):
     ms = (end - start)
