@@ -242,7 +242,7 @@ def main():
     end = timer()
     print_time(start, end)
     start = timer()
-    v = fpsr(data)
+    (v, i) = fpsr(data, 0, None)
     end = timer()
     print("PyO3.")
     print_time(start, end)

@@ -1,6 +1,8 @@
 use pyo3::prelude::*;
-use pyo3::types::{IntoPyDict, PyDict, PyList};
+use pyo3::types::{IntoPyDict, PyBytes, PyDict, PyList, PyTuple};
 use std::str;
+use crate::BoltStruct;
+
 const TINY_STRING: u8 = 0x80;
 const TINY_LIST: u8 = 0x90;
 const TINY_MAP: u8 = 0xA0;
@@ -28,15 +30,17 @@ const STRUCT_16: u8 = 0xDD;
 pub(crate) struct PackStreamDecoder<'a> {
     bytes: &'a [u8],
     py: Python<'a>,
-    index: usize,
+    pub index: usize,
+    hydration_hooks: Option<&'a PyDict>
 }
 
-impl<'b> PackStreamDecoder<'b> {
-    pub fn new<'a>(data: &'b[u8], py: &'a Python<'b>) -> PackStreamDecoder<'a> {
+impl<'a> PackStreamDecoder<'a> {
+    pub fn new(data: &'a[u8], py: Python<'a>, idx: usize, hydration_hooks: Option<&'a PyDict>) -> Self {
         Self {
             bytes: data,
-            py: *py,
-            index: 0,
+            py,
+            index: idx,
+            hydration_hooks
         }
     }
 
@@ -52,6 +56,7 @@ impl<'b> PackStreamDecoder<'b> {
             TINY_STRING => self.read_string((marker & 0x0F) as usize),
             TINY_LIST => self.read_list((marker & 0x0F) as usize),
             TINY_MAP => self.read_map((marker & 0x0F) as usize),
+            TINY_STRUCT => self.read_struct((marker & 0x0F) as usize),
             _ => {
                 if marker as i8 >= -16i8 {
                     return (i8::try_from(marker).unwrap()).to_object(self.py);
@@ -101,6 +106,14 @@ impl<'b> PackStreamDecoder<'b> {
                         let len = self.read_u32();
                         self.read_map(len)
                     }
+                    STRUCT_8 => {
+                        let len = self.read_u8();
+                        self.read_struct(len)
+                    }
+                    STRUCT_16 => {
+                        let len = self.read_u16();
+                        self.read_struct(len)
+                    },
                     _ => panic!("Invalid marker: {}", marker),
                 }
             }
@@ -139,6 +152,26 @@ impl<'b> PackStreamDecoder<'b> {
             kvps.push((key, value));
         }
         return kvps.into_py_dict(self.py).into();
+    }
+
+    fn read_struct(&mut self, length: usize) -> PyObject {
+        let tag = self.bytes[self.index];
+        self.index += 1;
+        let mut fields = Vec::with_capacity(length);
+        for _ in 0..length {
+            fields.push(self.read())
+        }
+        let mut bolt_struct = BoltStruct { tag, fields }.into_py(self.py);
+        let Some(hooks) = dbg!(self.hydration_hooks) else {
+            return bolt_struct;
+        };
+
+        let attr = bolt_struct.getattr(self.py, "__class__").unwrap();
+        if let Some(res) = hooks.get_item(attr) {
+            bolt_struct = res.call(PyTuple::new(self.py, [bolt_struct]), None).unwrap().into_py(self.py);
+        }
+
+        bolt_struct
     }
 
     fn read_string_length(&mut self) -> usize {
@@ -201,4 +234,5 @@ impl<'b> PackStreamDecoder<'b> {
         self.index += 1;
         return value;
     }
+
 }
