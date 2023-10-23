@@ -29,7 +29,7 @@ pub struct BoltStruct {
 #[pymethods]
 impl BoltStruct {
     #[getter(tag)]
-    fn num<'a>(&self, py: Python<'a>) -> &'a PyBytes {
+    fn read_tag<'a>(&self, py: Python<'a>) -> &'a PyBytes {
         PyBytes::new(py,&[self.tag])
     }
 }
