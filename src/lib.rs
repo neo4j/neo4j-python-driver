@@ -5,7 +5,12 @@ use pyo3::prelude::*;
 use pyo3::types::{PyByteArray, PyBytes, PyDict};
 
 #[pyfunction]
-unsafe fn read(py: Python, bytes: &PyByteArray, idx: usize, hydration_hooks: Option<&PyDict>) -> PyResult<(PyObject, usize)> {
+unsafe fn read(
+    py: Python,
+    bytes: &PyByteArray,
+    idx: usize,
+    hydration_hooks: Option<&PyDict>,
+) -> PyResult<(PyObject, usize)> {
     let mut decoder = PackStreamDecoder::new(bytes.as_bytes(), py, idx, hydration_hooks);
     let result = decoder.read();
     Ok((result, decoder.index))
@@ -15,7 +20,7 @@ unsafe fn read(py: Python, bytes: &PyByteArray, idx: usize, hydration_hooks: Opt
 #[pymodule]
 fn fast_packstream(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(read, m)?)?;
-    m.add_class::<BoltStruct>();
+    m.add_class::<BoltStruct>()?;
     Ok(())
 }
 
@@ -23,13 +28,13 @@ fn fast_packstream(_py: Python, m: &PyModule) -> PyResult<()> {
 pub struct BoltStruct {
     tag: u8,
     #[pyo3(get)]
-    pub fields: Vec<PyObject>
+    pub fields: Vec<PyObject>,
 }
 
 #[pymethods]
 impl BoltStruct {
     #[getter(tag)]
     fn read_tag<'a>(&self, py: Python<'a>) -> &'a PyBytes {
-        PyBytes::new(py,&[self.tag])
+        PyBytes::new(py, &[self.tag])
     }
 }

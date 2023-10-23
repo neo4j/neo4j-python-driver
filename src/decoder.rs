@@ -1,7 +1,7 @@
-use pyo3::prelude::*;
-use pyo3::types::{IntoPyDict, PyBytes, PyDict, PyList, PyTuple};
-use std::str;
 use crate::BoltStruct;
+use pyo3::prelude::*;
+use pyo3::types::{IntoPyDict, PyDict, PyList, PyTuple};
+use std::str;
 
 const TINY_STRING: u8 = 0x80;
 const TINY_LIST: u8 = 0x90;
@@ -31,16 +31,21 @@ pub(crate) struct PackStreamDecoder<'a> {
     bytes: &'a [u8],
     py: Python<'a>,
     pub index: usize,
-    hydration_hooks: Option<&'a PyDict>
+    hydration_hooks: Option<&'a PyDict>,
 }
 
 impl<'a> PackStreamDecoder<'a> {
-    pub fn new(data: &'a[u8], py: Python<'a>, idx: usize, hydration_hooks: Option<&'a PyDict>) -> Self {
+    pub fn new(
+        data: &'a [u8],
+        py: Python<'a>,
+        idx: usize,
+        hydration_hooks: Option<&'a PyDict>,
+    ) -> Self {
         Self {
             bytes: data,
             py,
             index: idx,
-            hydration_hooks
+            hydration_hooks,
         }
     }
 
@@ -113,7 +118,7 @@ impl<'a> PackStreamDecoder<'a> {
                     STRUCT_16 => {
                         let len = self.read_u16();
                         self.read_struct(len)
-                    },
+                    }
                     _ => panic!("Invalid marker: {}", marker),
                 }
             }
@@ -168,7 +173,10 @@ impl<'a> PackStreamDecoder<'a> {
 
         let attr = bolt_struct.getattr(self.py, "__class__").unwrap();
         if let Some(res) = hooks.get_item(attr) {
-            bolt_struct = res.call(PyTuple::new(self.py, [bolt_struct]), None).unwrap().into_py(self.py);
+            bolt_struct = res
+                .call(PyTuple::new(self.py, [bolt_struct]), None)
+                .unwrap()
+                .into_py(self.py);
         }
 
         bolt_struct
@@ -234,5 +242,4 @@ impl<'a> PackStreamDecoder<'a> {
         self.index += 1;
         return value;
     }
-
 }
