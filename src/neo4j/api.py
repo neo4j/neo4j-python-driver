@@ -423,7 +423,7 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
         * The ``get_all_bookmarks`` method was removed.
         * The ``forget`` method was removed.
 
-    .. versionchanged:: 5.8 stabilized from experimental
+    .. versionchanged:: 5.8 Stabilized from experimental.
     """
 
     @abc.abstractmethod
@@ -460,7 +460,7 @@ class AsyncBookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     .. versionchanged:: 5.3
         See :class:`.BookmarkManager` for changes.
 
-    .. versionchanged:: 5.8 stabilized from experimental
+    .. versionchanged:: 5.8 Stabilized from experimental.
     """
 
     @abc.abstractmethod

@@ -23,7 +23,6 @@ import time
 import typing as t
 from dataclasses import dataclass
 
-from ._meta import preview
 from .exceptions import Neo4jError
 
 
@@ -31,7 +30,6 @@ if t.TYPE_CHECKING:
     from .api import _TAuth
 
 
-@preview("Auth managers are a preview feature.")
 @dataclass
 class ExpiringAuth:
     """Represents potentially expiring authentication information.
@@ -46,10 +44,6 @@ class ExpiringAuth:
         If :data:`None`, the authentication information is considered to not
         expire until the server explicitly indicates so.
 
-    **This is a preview** (see :ref:`filter-warnings-ref`).
-    It might be changed without following the deprecation policy.
-    See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
     .. seealso::
         :meth:`.AuthManagers.expiration_based`,
         :meth:`.AsyncAuthManagers.expiration_based`
@@ -57,10 +51,13 @@ class ExpiringAuth:
     .. versionadded:: 5.8
 
     .. versionchanged:: 5.9
-        Removed parameter and attribute ``expires_in`` (relative expiration
-        time). Replaced with ``expires_at`` (absolute expiration time).
-        :meth:`.expires_in` can be used to create an :class:`.ExpiringAuth`
-        with a relative expiration time.
+
+        * Removed parameter and attribute ``expires_in`` (relative expiration
+          time). Replaced with ``expires_at`` (absolute expiration time).
+        * :meth:`.expires_in` can be used to create an :class:`.ExpiringAuth`
+          with a relative expiration time.
+
+    .. versionchanged:: 5.14 Stabilized from preview.
     """
     auth: _TAuth
     expires_at: t.Optional[float] = None
@@ -85,9 +82,7 @@ class ExpiringAuth:
 
         .. versionadded:: 5.9
         """
-        return ExpiringAuth._without_warning(  # type: ignore
-            self.auth, time.time() + seconds
-        )
+        return ExpiringAuth(self.auth, time.time() + seconds)
 
 
 def expiring_auth_has_expired(auth: ExpiringAuth) -> bool:
@@ -116,19 +111,15 @@ class AuthManager(metaclass=abc.ABCMeta):
         You may use session-level authentication for such use-cases
         :ref:`session-auth-ref`.
 
-    **This is a preview** (see :ref:`filter-warnings-ref`).
-    It might be changed without following the deprecation policy.
-    See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
     .. seealso:: :class:`.AuthManagers`
 
     .. versionadded:: 5.8
 
     .. versionchanged:: 5.12
         ``on_auth_expired`` was removed from the interface and replaced by
-         :meth:`handle_security_exception`. The new method is called when the
+        :meth:`handle_security_exception`. The new method is called when the
         server returns any `Neo.ClientError.Security.*` error. It's signature
-        differs in that it additionally received the error returned by the
+        differs in that it additionally receives the error returned by the
         server and returns a boolean indicating whether the error was handled.
     """
 
@@ -177,10 +168,6 @@ class AuthManager(metaclass=abc.ABCMeta):
 
 class AsyncAuthManager(metaclass=abc.ABCMeta):
     """Async version of :class:`.AuthManager`.
-
-    **This is a preview** (see :ref:`filter-warnings-ref`).
-    It might be changed without following the deprecation policy.
-    See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. seealso:: :class:`.AuthManager`
 

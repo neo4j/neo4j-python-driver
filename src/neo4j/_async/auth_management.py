@@ -27,7 +27,6 @@ from .._auth_management import (
     expiring_auth_has_expired,
     ExpiringAuth,
 )
-from .._meta import preview
 
 
 if t.TYPE_CHECKING:
@@ -105,20 +104,17 @@ class AsyncNeo4jAuthTokenManager(AsyncAuthManager):
 class AsyncAuthManagers:
     """A collection of :class:`.AsyncAuthManager` factories.
 
-    **This is a preview** (see :ref:`filter-warnings-ref`).
-    It might be changed without following the deprecation policy.
-    See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
     .. versionadded:: 5.8
 
     .. versionchanged:: 5.12
 
         * Method ``expiration_based()`` was renamed to :meth:`bearer`.
         * Added :meth:`basic`.
+
+    .. versionchanged:: 5.14 Stabilized from preview.
     """
 
     @staticmethod
-    @preview("Auth managers are a preview feature.")
     def static(auth: _TAuth) -> AsyncAuthManager:
         """Create a static auth manager.
 
@@ -146,11 +142,14 @@ class AsyncAuthManagers:
         :returns:
             An instance of an implementation of :class:`.AsyncAuthManager` that
             always returns the same auth.
+
+        .. versionadded:: 5.8
+
+        .. versionchanged:: 5.14 Stabilized from preview.
         """
         return AsyncStaticAuthManager(auth)
 
     @staticmethod
-    @preview("Auth managers are a preview feature.")
     def basic(
         provider: t.Callable[[], t.Awaitable[_TAuth]]
     ) -> AsyncAuthManager:
@@ -203,18 +202,17 @@ class AsyncAuthManagers:
             flagged it as expired).
 
         .. versionadded:: 5.12
+
+        .. versionchanged:: 5.14 Stabilized from preview.
         """
         handled_codes = frozenset(("Neo.ClientError.Security.Unauthorized",))
 
         async def wrapped_provider() -> ExpiringAuth:
-            return ExpiringAuth._without_warning(  # type: ignore
-                await provider()
-            )
+            return ExpiringAuth(await provider())
 
         return AsyncNeo4jAuthTokenManager(wrapped_provider, handled_codes)
 
     @staticmethod
-    @preview("Auth managers are a preview feature.")
     def bearer(
         provider: t.Callable[[], t.Awaitable[ExpiringAuth]]
     ) -> AsyncAuthManager:
@@ -277,6 +275,8 @@ class AsyncAuthManagers:
             expired).
 
         .. versionadded:: 5.12
+
+        .. versionchanged:: 5.14 Stabilized from preview.
         """
         handled_codes = frozenset((
             "Neo.ClientError.Security.TokenExpired",

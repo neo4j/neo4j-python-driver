@@ -267,11 +267,6 @@ Closing a driver will immediately shut down all connections in the pool.
 
             By default, the driver configuration is used.
 
-            **This is a preview** (see :ref:`filter-warnings-ref`).
-            It might be changed without following the deprecation policy.
-            See also
-            https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
             See also the Session config :ref:`session-auth-ref`.
         :type auth_: typing.Tuple[typing.Any, typing.Any] | Auth | None
         :param result_transformer_:
@@ -361,8 +356,11 @@ Closing a driver will immediately shut down all connections in the pool.
 
         .. versionchanged:: 5.8
 
-            * Added the ``auth_`` parameter.
+            * Added ``auth_`` parameter in preview.
             * Stabilized from experimental.
+
+        .. versionchanged:: 5.14
+            Stabilized ``auth_`` parameter from preview.
 
 
 .. _async-driver-configuration-ref:
@@ -651,7 +649,7 @@ See :class:`BookmarkManager` for more information.
 :Type: :data:`None`, :class:`BookmarkManager`, or :class:`AsyncBookmarkManager`
 :Default: :data:`None`
 
-.. versionchanged:: 5.8 stabilized from experimental
+.. versionchanged:: 5.8 Stabilized from experimental.
 
 
 

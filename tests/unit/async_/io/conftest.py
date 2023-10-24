@@ -24,7 +24,6 @@ from struct import (
 
 import pytest
 
-from neo4j import PreviewWarning
 from neo4j._async.io._common import (
     AsyncInbox,
     AsyncOutbox,
@@ -148,13 +147,10 @@ def fake_socket_2():
 def fake_socket_pair():
     return AsyncFakeSocketPair
 
+
 @pytest.fixture
 def static_auth():
-    def inner(auth):
-        with pytest.warns(PreviewWarning, match="Auth managers"):
-            return AsyncAuthManagers.static(auth)
-
-    return inner
+    return AsyncAuthManagers.static
 
 
 @pytest.fixture

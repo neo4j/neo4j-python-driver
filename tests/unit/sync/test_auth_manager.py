@@ -74,26 +74,22 @@ SAMPLE_ERRORS = [
 
 @copy_signature(AuthManagers.static)
 def static_auth_manager(*args, **kwargs):
-    with pytest.warns(PreviewWarning, match="Auth managers"):
-        return AuthManagers.static(*args, **kwargs)
+    return AuthManagers.static(*args, **kwargs)
 
 
 @copy_signature(AuthManagers.basic)
 def basic_auth_manager(*args, **kwargs):
-    with pytest.warns(PreviewWarning, match="Auth managers"):
-        return AuthManagers.basic(*args, **kwargs)
+    return AuthManagers.basic(*args, **kwargs)
 
 
 @copy_signature(AuthManagers.bearer)
 def bearer_auth_manager(*args, **kwargs):
-    with pytest.warns(PreviewWarning, match="Auth managers"):
-        return AuthManagers.bearer(*args, **kwargs)
+    return AuthManagers.bearer(*args, **kwargs)
 
 
 @copy_signature(ExpiringAuth)
 def expiring_auth(*args, **kwargs):
-    with pytest.warns(PreviewWarning, match="Auth managers"):
-        return ExpiringAuth(*args, **kwargs)
+    return ExpiringAuth(*args, **kwargs)
 
 
 @mark_sync_test
