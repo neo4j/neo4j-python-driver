@@ -1,7 +1,8 @@
-use crate::BoltStruct;
 use pyo3::prelude::*;
-use pyo3::types::{IntoPyDict, PyDict, PyList, PyTuple};
+use pyo3::types::{IntoPyDict, PyByteArray, PyDict, PyList, PyTuple};
 use std::str;
+
+use crate::Structure;
 
 const TINY_STRING: u8 = 0x80;
 const TINY_LIST: u8 = 0x90;
@@ -27,7 +28,23 @@ const MAP_32: u8 = 0xDA;
 const STRUCT_8: u8 = 0xDC;
 const STRUCT_16: u8 = 0xDD;
 
-pub(crate) struct PackStreamDecoder<'a> {
+pub(crate) fn register(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(unpack, m)?)
+}
+
+#[pyfunction]
+unsafe fn unpack(
+    py: Python,
+    bytes: &PyByteArray,
+    idx: usize,
+    hydration_hooks: Option<&PyDict>,
+) -> PyResult<(PyObject, usize)> {
+    let mut decoder = PackStreamDecoder::new(bytes.as_bytes(), py, idx, hydration_hooks);
+    let result = decoder.read();
+    Ok((result, decoder.index))
+}
+
+struct PackStreamDecoder<'a> {
     bytes: &'a [u8],
     py: Python<'a>,
     pub index: usize,
@@ -52,7 +69,7 @@ impl<'a> PackStreamDecoder<'a> {
     pub fn read(&mut self) -> PyObject {
         let marker = self.bytes[self.index];
         self.index += 1;
-        return self.read_value(marker);
+        self.read_value(marker)
     }
 
     fn read_value(&mut self, marker: u8) -> PyObject {
@@ -133,7 +150,7 @@ impl<'a> PackStreamDecoder<'a> {
         for _ in 0..length {
             items.push(self.read());
         }
-        return items.to_object(self.py);
+        items.to_object(self.py)
     }
 
     fn read_string(&mut self, length: usize) -> PyObject {
@@ -142,7 +159,7 @@ impl<'a> PackStreamDecoder<'a> {
         }
         let data = &self.bytes[self.index..self.index + length];
         self.index += length;
-        return str::from_utf8(data).unwrap().to_object(self.py);
+        str::from_utf8(data).unwrap().to_object(self.py)
     }
 
     fn read_map(&mut self, length: usize) -> PyObject {
@@ -156,7 +173,7 @@ impl<'a> PackStreamDecoder<'a> {
             let value = self.read();
             kvps.push((key, value));
         }
-        return kvps.into_py_dict(self.py).into();
+        kvps.into_py_dict(self.py).into()
     }
 
     fn read_struct(&mut self, length: usize) -> PyObject {
@@ -166,7 +183,7 @@ impl<'a> PackStreamDecoder<'a> {
         for _ in 0..length {
             fields.push(self.read())
         }
-        let mut bolt_struct = BoltStruct { tag, fields }.into_py(self.py);
+        let mut bolt_struct = Structure { tag, fields }.into_py(self.py);
         let Some(hooks) = dbg!(self.hydration_hooks) else {
             return bolt_struct;
         };
@@ -198,48 +215,48 @@ impl<'a> PackStreamDecoder<'a> {
     fn read_u8(&mut self) -> usize {
         let value = self.bytes[self.index];
         self.index += 1;
-        return (value & 0xFF) as usize;
+        value as usize
     }
 
     fn read_u16(&mut self) -> usize {
         let value = u16::from_be_bytes(self.bytes[self.index..self.index + 2].try_into().unwrap());
         self.index += 2;
-        return (value & 0xFFFF) as usize;
+        value as usize
     }
 
     fn read_u32(&mut self) -> usize {
         let value = u32::from_be_bytes(self.bytes[self.index..self.index + 4].try_into().unwrap());
         self.index += 4;
-        return (value & 0xFFFFFFFF) as usize;
+        value as usize
     }
 
     fn next_i16(&mut self) -> i16 {
         let value = i16::from_be_bytes(self.bytes[self.index..self.index + 2].try_into().unwrap());
         self.index += 2;
-        return value;
+        value
     }
 
     fn next_i32(&mut self) -> i32 {
         let value = i32::from_be_bytes(self.bytes[self.index..self.index + 4].try_into().unwrap());
         self.index += 4;
-        return value;
+        value
     }
 
     fn next_i64(&mut self) -> i64 {
         let value = i64::from_be_bytes(self.bytes[self.index..self.index + 8].try_into().unwrap());
         self.index += 8;
-        return value;
+        value
     }
 
     fn read_double(&mut self) -> f64 {
         let value = f64::from_be_bytes(self.bytes[self.index..self.index + 8].try_into().unwrap());
         self.index += 8;
-        return value;
+        value
     }
 
     fn next_i8(&mut self) -> i8 {
         let value = i8::try_from(self.bytes[self.index]).unwrap();
         self.index += 1;
-        return value;
+        value
     }
 }
