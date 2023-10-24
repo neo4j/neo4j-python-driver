@@ -16,7 +16,6 @@
 # limitations under the License.
 
 
-import typing as t
 from codecs import decode
 from contextlib import contextmanager
 from struct import (
@@ -24,44 +23,19 @@ from struct import (
     unpack as struct_unpack,
 )
 
-from ...._optional_deps import (
-    np,
-    pd,
-)
 from ...hydration import DehydrationHooks
 from .._common import Structure
+from .types import *
 
 
 try:
-    from .._rust.v1 import unpack as _rust_unpack
+    from .._rust.v1 import (
+        pack as _rust_pack,
+        unpack as _rust_unpack,
+    )
 except ImportError:
+    _rust_pack = None
     _rust_unpack = None
-
-
-NONE_VALUES: t.Tuple = (None,)
-TRUE_VALUES: t.Tuple = (True,)
-FALSE_VALUES: t.Tuple = (False,)
-INT_TYPES: t.Tuple[t.Type, ...] = (int,)
-FLOAT_TYPES: t.Tuple[t.Type, ...] = (float,)
-# we can't put tuple here because spatial types subclass tuple,
-# and we don't want to treat them as sequences
-SEQUENCE_TYPES: t.Tuple[t.Type, ...] = (list,)
-MAPPING_TYPES: t.Tuple[t.Type, ...] = (dict,)
-BYTES_TYPES: t.Tuple[t.Type, ...] = (bytes, bytearray)
-
-
-if np is not None:
-    TRUE_VALUES = (*TRUE_VALUES, np.bool_(True))
-    FALSE_VALUES = (*FALSE_VALUES, np.bool_(False))
-    INT_TYPES = (*INT_TYPES, np.integer)
-    FLOAT_TYPES = (*FLOAT_TYPES, np.floating)
-    SEQUENCE_TYPES = (*SEQUENCE_TYPES, np.ndarray)
-
-if pd is not None:
-    NONE_VALUES = (*NONE_VALUES, pd.NA)
-    SEQUENCE_TYPES = (*SEQUENCE_TYPES, pd.Series, pd.Categorical,
-                      pd.core.arrays.ExtensionArray)
-    MAPPING_TYPES = (*MAPPING_TYPES, pd.DataFrame)
 
 
 PACKED_UINT_8 = [struct_pack(">B", value) for value in range(0x100)]
@@ -80,12 +54,16 @@ class Packer:
         self.stream = stream
         self._write = self.stream.write
 
-    def _pack_raw(self, data):
-        self._write(data)
-
     def pack(self, data, dehydration_hooks=None):
-        self._pack(data,
-                   dehydration_hooks=self._inject_hooks(dehydration_hooks))
+        dehydration_hooks = self._inject_hooks(dehydration_hooks)
+        self._py_pack(data, dehydration_hooks=dehydration_hooks)
+
+    def _pack(self, data, dehydration_hooks=None):
+        if _rust_pack:
+            data = _rust_pack(data, dehydration_hooks)
+            self._write(data)
+        else:
+            self._py_pack(data, dehydration_hooks)
 
     @classmethod
     def _inject_hooks(cls, dehydration_hooks=None):
@@ -99,7 +77,7 @@ class Packer:
             subtypes={}
         )
 
-    def _pack(self, value, dehydration_hooks=None):
+    def _py_pack(self, value, dehydration_hooks=None):
         write = self._write
 
         # None
@@ -141,18 +119,18 @@ class Packer:
         elif isinstance(value, str):
             encoded = value.encode("utf-8")
             self._pack_string_header(len(encoded))
-            self._pack_raw(encoded)
+            self._write(encoded)
 
         # Bytes
         elif isinstance(value, BYTES_TYPES):
             self._pack_bytes_header(len(value))
-            self._pack_raw(value)
+            self._write(value)
 
         # List
         elif isinstance(value, SEQUENCE_TYPES):
             self._pack_list_header(len(value))
             for item in value:
-                self._pack(item, dehydration_hooks)
+                self._py_pack(item, dehydration_hooks)
 
         # Map
         elif isinstance(value, MAPPING_TYPES):
@@ -162,8 +140,8 @@ class Packer:
                     raise TypeError(
                         "Map keys must be strings, not {}".format(type(key))
                     )
-                self._pack(key, dehydration_hooks)
-                self._pack(item, dehydration_hooks)
+                self._py_pack(key, dehydration_hooks)
+                self._py_pack(item, dehydration_hooks)
 
         # Structure
         elif isinstance(value, Structure):
@@ -174,7 +152,7 @@ class Packer:
             if dehydration_hooks:
                 transformer = dehydration_hooks.get_transformer(value)
                 if transformer is not None:
-                    self._pack(transformer(value), dehydration_hooks)
+                    self._py_pack(transformer(value), dehydration_hooks)
                     return
 
             raise ValueError("Values of type %s are not supported" % type(value))
