@@ -280,11 +280,6 @@ Closing a driver will immediately shut down all connections in the pool.
 
             By default, the driver configuration is used.
 
-            **This is a preview** (see :ref:`filter-warnings-ref`).
-            It might be changed without following the deprecation policy.
-            See also
-            https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
             See also the Session config :ref:`session-auth-ref`.
         :type auth_: typing.Tuple[typing.Any, typing.Any] | Auth | None
         :param result_transformer_:
@@ -374,8 +369,11 @@ Closing a driver will immediately shut down all connections in the pool.
 
         .. versionchanged:: 5.8
 
-            * Added the ``auth_`` parameter.
+            * Added ``auth_`` parameter in preview.
             * Stabilized from experimental.
+
+        .. versionchanged:: 5.14
+            Stabilized ``auth_`` parameter from preview.
 
 
 .. _driver-configuration-ref:
@@ -1044,7 +1042,7 @@ See :class:`.BookmarkManager` for more information.
 
 .. versionadded:: 5.0
 
-.. versionchanged:: 5.8 stabilized from experimental
+.. versionchanged:: 5.8 Stabilized from experimental.
 
 
 .. _session-auth-ref:
@@ -1060,14 +1058,12 @@ It is not possible to overwrite the authentication information for the session w
 i.e., downgrade the authentication at session level.
 Instead, you should create a driver with no authentication and upgrade the authentication at session level as needed.
 
-**This is a preview** (see :ref:`filter-warnings-ref`).
-It might be changed without following the deprecation policy.
-See also https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
 :Type: :data:`None`, :class:`.Auth` or ``(user, password)``-tuple
 :Default: :data:`None` - use the authentication information provided during driver creation.
 
 .. versionadded:: 5.8
+
+.. versionchanged:: 5.14 Stabilized from preview.
 
 
 .. _session-notifications-min-severity-ref:

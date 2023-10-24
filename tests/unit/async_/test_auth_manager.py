@@ -74,26 +74,22 @@ SAMPLE_ERRORS = [
 
 @copy_signature(AsyncAuthManagers.static)
 def static_auth_manager(*args, **kwargs):
-    with pytest.warns(PreviewWarning, match="Auth managers"):
-        return AsyncAuthManagers.static(*args, **kwargs)
+    return AsyncAuthManagers.static(*args, **kwargs)
 
 
 @copy_signature(AsyncAuthManagers.basic)
 def basic_auth_manager(*args, **kwargs):
-    with pytest.warns(PreviewWarning, match="Auth managers"):
-        return AsyncAuthManagers.basic(*args, **kwargs)
+    return AsyncAuthManagers.basic(*args, **kwargs)
 
 
 @copy_signature(AsyncAuthManagers.bearer)
 def bearer_auth_manager(*args, **kwargs):
-    with pytest.warns(PreviewWarning, match="Auth managers"):
-        return AsyncAuthManagers.bearer(*args, **kwargs)
+    return AsyncAuthManagers.bearer(*args, **kwargs)
 
 
 @copy_signature(ExpiringAuth)
 def expiring_auth(*args, **kwargs):
-    with pytest.warns(PreviewWarning, match="Auth managers"):
-        return ExpiringAuth(*args, **kwargs)
+    return ExpiringAuth(*args, **kwargs)
 
 
 @mark_async_test

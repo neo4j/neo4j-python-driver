@@ -19,7 +19,6 @@
 import pytest
 
 import neo4j
-from neo4j import PreviewWarning
 from neo4j._async.io import AsyncBolt
 from neo4j._async.io._pool import AsyncIOPool
 from neo4j._conf import (
@@ -110,13 +109,15 @@ class AsyncFakeBoltPool(AsyncIOPool):
             self.address, auth, timeout, liveness_check_timeout
         )
 
+
 def static_auth(auth):
-    with pytest.warns(PreviewWarning, match="Auth managers"):
-        return AsyncAuthManagers.static(auth)
+    return AsyncAuthManagers.static(auth)
+
 
 @pytest.fixture
 def auth_manager():
     static_auth(("test", "test"))
+
 
 @mark_async_test
 async def test_bolt_connection_open(auth_manager):

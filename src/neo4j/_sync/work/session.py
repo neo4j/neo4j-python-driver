@@ -105,9 +105,7 @@ class Session(Workspace):
     def __init__(self, pool, session_config):
         assert isinstance(session_config, SessionConfig)
         if session_config.auth is not None:
-            session_config.auth = AuthManagers.static._without_warning(
-                session_config.auth
-            )
+            session_config.auth = AuthManagers.static(session_config.auth)
         super().__init__(pool, session_config)
         self._config = session_config
         self._initialize_bookmarks(session_config.bookmarks)
