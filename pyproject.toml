@@ -19,11 +19,13 @@
 name = "neo4j-rust-ext"
 description = "Rust Extensions for a Faster Neo4j Bolt driver for Python"
 license = {text = "Apache License, Version 2.0"}
-readme = "README.rst"
+readme = "README.md"
 authors = [
     {name = "Neo4j, Inc.", email = "drivers@neo4j.com"},
 ]
-dependencies = ["neo4j == 5.15.0"]
+dependencies = [
+    "neo4j == 5.15.0"
+]
 requires-python = ">=3.7"
 keywords = ["neo4j", "graph", "database"]
 classifiers = [
@@ -42,17 +44,12 @@ classifiers = [
 version = "5.15.0.0a1"
 
 [project.urls]
-Homepage = "https://github.com/neo4j/neo4j-python-driver"
+Homepage = "https://github.com/neo4j-drivers/neo4j-python-driver-rust-ext"
 
 [build-system]
-requires = [
-    "setuptools ~= 66.1.0",
-    "setuptools-rust >= 1.7.0",
-]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.2,<2.0"]
+build-backend = "maturin"
 
-[[tool.setuptools-rust.ext-modules]]
-target = "neo4j._codec.packstream._rust"
-path = "src/neo4j/_codec/packstream/_rust/Cargo.toml"
-rust_version = ">=1.65.0"
-#optional = true
+[tool.maturin]
+features = ["pyo3/extension-module"]
+module-name = "neo4j._codec.packstream._rust"
