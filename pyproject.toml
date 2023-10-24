@@ -23,7 +23,7 @@ readme = "README.rst"
 authors = [
     {name = "Neo4j, Inc.", email = "drivers@neo4j.com"},
 ]
-dependencies = ["neo4j == 5.13.0"]
+dependencies = ["neo4j == 5.15.0"]
 requires-python = ">=3.7"
 keywords = ["neo4j", "graph", "database"]
 classifiers = [
@@ -39,7 +39,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-version = "5.13.0.0a1"
+version = "5.15.0.0a1"
 
 [project.urls]
 Homepage = "https://github.com/neo4j/neo4j-python-driver"
