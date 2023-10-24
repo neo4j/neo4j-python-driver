@@ -99,7 +99,7 @@ function set_metadata_and_setup
     # Create source distribution
     find . -name *.pyc -delete
     rm -rf "${SRC}/*.egg-info" 2> /dev/null
-    python setup.py $*
+    python -m build $*
     check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"
 
     trap - EXIT
