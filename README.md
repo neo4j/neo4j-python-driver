@@ -2,7 +2,7 @@
 
 This project contains Rust extensions to speed up the [official Python driver for Neo4j](https://github.com/neo4j/neo4j-python-driver).
 
-> IMPORTANT:  
+> **IMPORTANT**  
 > This project is currently in **alpha** phase.
 
 
