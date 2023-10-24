@@ -114,8 +114,7 @@ def _pool_config():
 
 
 def _auth_manager(auth):
-    with pytest.warns(PreviewWarning, match="Auth managers"):
-        return AuthManagers.static(auth)
+    return AuthManagers.static(auth)
 
 
 def _simple_pool(opener) -> Neo4jPool:
