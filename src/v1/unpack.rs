@@ -68,73 +68,77 @@ impl<'a> PackStreamDecoder<'a> {
 
     fn read_value(&mut self, marker: u8) -> PyResult<PyObject> {
         let high_nibble = marker & 0xF0;
-        Ok(match high_nibble {
-            TINY_STRING => self.read_string((marker & 0x0F).into())?,
-            TINY_LIST => self.read_list((marker & 0x0F).into())?,
-            TINY_MAP => self.read_map((marker & 0x0F).into())?,
-            TINY_STRUCT => self.read_struct((marker & 0x0F).into())?,
-            _ if marker as i8 >= -16i8 => i8::try_from(marker)
-                .expect("checked marker is in bounds")
-                .to_object(self.py),
-            _ => match marker {
-                NULL => self.py.None(),
-                FALSE => false.to_object(self.py),
-                TRUE => true.to_object(self.py),
-                INT_8 => self.read_i8()?.to_object(self.py),
-                INT_16 => self.read_i16()?.to_object(self.py),
-                INT_32 => self.read_i32()?.to_object(self.py),
-                INT_64 => self.read_i64()?.to_object(self.py),
-                FLOAT_64 => self.read_f64()?.to_object(self.py),
-                STRING_8 => {
-                    let len = self.read_u8()?;
-                    self.read_string(len)?
-                }
-                STRING_16 => {
-                    let len = self.read_u16()?;
-                    self.read_string(len)?
-                }
-                STRING_32 => {
-                    let len = self.read_u32()?;
-                    self.read_string(len)?
-                }
-                LIST_8 => {
-                    let len = self.read_u8()?;
-                    self.read_list(len)?
-                }
-                LIST_16 => {
-                    let len = self.read_u16()?;
-                    self.read_list(len)?
-                }
-                LIST_32 => {
-                    let len = self.read_u32()?;
-                    self.read_list(len)?
-                }
-                MAP_8 => {
-                    let len = self.read_u8()?;
-                    self.read_map(len)?
-                }
-                MAP_16 => {
-                    let len = self.read_u16()?;
-                    self.read_map(len)?
-                }
-                MAP_32 => {
-                    let len = self.read_u32()?;
-                    self.read_map(len)?
-                }
-                BYTES_8 => {
-                    let len = self.read_u8()?;
-                    self.read_bytes(len)?
-                }
-                BYTES_16 => {
-                    let len = self.read_u16()?;
-                    self.read_bytes(len)?
-                }
-                BYTES_32 => {
-                    let len = self.read_u32()?;
-                    self.read_bytes(len)?
-                }
-                _ => panic!("Invalid marker: {}", marker),
-            },
+
+        Ok(match marker {
+            // tiny int
+            _ if marker as i8 >= -16 => (marker as i8).to_object(self.py),
+            NULL => self.py.None(),
+            FLOAT_64 => self.read_f64()?.to_object(self.py),
+            FALSE => false.to_object(self.py),
+            TRUE => true.to_object(self.py),
+            INT_8 => self.read_i8()?.to_object(self.py),
+            INT_16 => self.read_i16()?.to_object(self.py),
+            INT_32 => self.read_i32()?.to_object(self.py),
+            INT_64 => self.read_i64()?.to_object(self.py),
+            BYTES_8 => {
+                let len = self.read_u8()?;
+                self.read_bytes(len)?
+            }
+            BYTES_16 => {
+                let len = self.read_u16()?;
+                self.read_bytes(len)?
+            }
+            BYTES_32 => {
+                let len = self.read_u32()?;
+                self.read_bytes(len)?
+            }
+            _ if high_nibble == TINY_STRING => self.read_string((marker & 0x0F).into())?,
+            STRING_8 => {
+                let len = self.read_u8()?;
+                self.read_string(len)?
+            }
+            STRING_16 => {
+                let len = self.read_u16()?;
+                self.read_string(len)?
+            }
+            STRING_32 => {
+                let len = self.read_u32()?;
+                self.read_string(len)?
+            }
+            _ if high_nibble == TINY_LIST => self.read_list((marker & 0x0F).into())?,
+            LIST_8 => {
+                let len = self.read_u8()?;
+                self.read_list(len)?
+            }
+            LIST_16 => {
+                let len = self.read_u16()?;
+                self.read_list(len)?
+            }
+            LIST_32 => {
+                let len = self.read_u32()?;
+                self.read_list(len)?
+            }
+            _ if high_nibble == TINY_MAP => self.read_map((marker & 0x0F).into())?,
+            MAP_8 => {
+                let len = self.read_u8()?;
+                self.read_map(len)?
+            }
+            MAP_16 => {
+                let len = self.read_u16()?;
+                self.read_map(len)?
+            }
+            MAP_32 => {
+                let len = self.read_u32()?;
+                self.read_map(len)?
+            }
+            _ if high_nibble == TINY_STRUCT => self.read_struct((marker & 0x0F).into())?,
+            _ => {
+                // raise ValueError("Unknown PackStream marker %02X" % marker)
+                return Err(PyErr::new::<PyValueError, _>(format!(
+                    "Unknown PackStream marker {:02X}",
+                    marker
+                )));
+            }
         })
     }
 
