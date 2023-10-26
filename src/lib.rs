@@ -17,9 +17,10 @@
 
 pub mod v1;
 
+use pyo3::basic::CompareOp;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict};
+use pyo3::types::{PyBytes, PyDict, PyTuple};
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -52,7 +53,7 @@ fn register_package(py: Python, m: &PyModule, name: &str) -> PyResult<()> {
 pub struct Structure {
     tag: u8,
     #[pyo3(get)]
-    pub fields: Vec<PyObject>,
+    fields: Vec<PyObject>,
 }
 
 #[pymethods]
@@ -71,5 +72,43 @@ impl Structure {
     #[getter(tag)]
     fn read_tag<'a>(&self, py: Python<'a>) -> &'a PyBytes {
         PyBytes::new(py, &[self.tag])
+    }
+
+    #[getter(fields)]
+    fn read_fields<'a>(&self, py: Python<'a>) -> &'a PyTuple {
+        PyTuple::new(py, &self.fields)
+    }
+
+    fn eq(&self, other: &Self, py: Python<'_>) -> PyResult<bool> {
+        if self.tag != other.tag || self.fields.len() != other.fields.len() {
+            return Ok(false);
+        }
+        for (a, b) in self
+            .fields
+            .iter()
+            .map(|e| e.as_ref(py))
+            .zip(other.fields.iter().map(|e| e.as_ref(py)))
+        {
+            if !a.eq(b)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn __richcmp__(&self, other: &Self, op: CompareOp, py: Python<'_>) -> PyResult<PyObject> {
+        Ok(match op {
+            CompareOp::Eq => self.eq(other, py)?.into_py(py),
+            CompareOp::Ne => (!self.eq(other, py)?).into_py(py),
+            _ => py.NotImplemented(),
+        })
+    }
+
+    fn __hash__(&self, py: Python<'_>) -> PyResult<isize> {
+        let mut fields_hash = 0;
+        for field in &self.fields {
+            fields_hash += field.as_ref(py).hash()?;
+        }
+        Ok(fields_hash.wrapping_add(self.tag.into()))
     }
 }

@@ -202,7 +202,7 @@ impl<'a> PackStreamDecoder<'a> {
             fields.push(self.read()?)
         }
         let mut bolt_struct = Structure { tag, fields }.into_py(self.py);
-        let Some(hooks) = dbg!(self.hydration_hooks) else {
+        let Some(hooks) = self.hydration_hooks else {
             return Ok(bolt_struct);
         };
 

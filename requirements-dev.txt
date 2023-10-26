@@ -1,0 +1,14 @@
+.[numpy,pandas,pyarrow]
+
+# for local development
+pre-commit
+
+# for unit tests
+tox
+pytest
+
+# for Python driver's TestKit backend
+freezegun
+
+# for packaging
+build

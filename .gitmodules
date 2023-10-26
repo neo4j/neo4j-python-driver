@@ -1,0 +1,3 @@
+[submodule "driver"]
+	path = driver
+	url = https://github.com/robsdedude/neo4j-python-driver
