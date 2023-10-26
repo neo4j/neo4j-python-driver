@@ -56,7 +56,7 @@ class Packer:
 
     def pack(self, data, dehydration_hooks=None):
         dehydration_hooks = self._inject_hooks(dehydration_hooks)
-        self._py_pack(data, dehydration_hooks=dehydration_hooks)
+        self._pack(data, dehydration_hooks=dehydration_hooks)
 
     def _pack(self, data, dehydration_hooks=None):
         if _rust_pack:
