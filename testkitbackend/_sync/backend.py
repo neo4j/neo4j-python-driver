@@ -28,6 +28,7 @@ from json import (
 )
 from pathlib import Path
 
+import neo4j
 from neo4j._exceptions import BoltError
 from neo4j.exceptions import (
     DriverError,
@@ -45,7 +46,7 @@ from . import requests
 
 
 TESTKIT_BACKEND_PATH = Path(__file__).absolute().resolve().parents[1]
-DRIVER_PATH = TESTKIT_BACKEND_PATH.parent / "src" / "neo4j"
+DRIVER_PATH = Path(neo4j.__path__[0]).absolute().resolve()
 
 
 class Backend:
