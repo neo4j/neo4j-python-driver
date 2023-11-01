@@ -67,4 +67,4 @@ RUN apt update && \
     wget https://apache.jfrog.io/artifactory/arrow/${distro_name}/apache-arrow-apt-source-latest-${code_name}.deb && \
     apt install -y -V ./apache-arrow-apt-source-latest-${code_name}.deb && \
     apt update && \
-    apt install -y -V libarrow-dev # For C++ \
+    apt install -y -V libarrow-dev # For C++
