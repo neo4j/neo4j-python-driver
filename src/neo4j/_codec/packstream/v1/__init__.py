@@ -58,11 +58,12 @@ class Packer:
         dehydration_hooks = self._inject_hooks(dehydration_hooks)
         self._pack(data, dehydration_hooks=dehydration_hooks)
 
-    def _pack(self, data, dehydration_hooks=None):
-        if _rust_pack:
+    if _rust_pack:
+        def _pack(self, data, dehydration_hooks=None):
             data = _rust_pack(data, dehydration_hooks)
             self._write(data)
-        else:
+    else:
+        def _pack(self, data, dehydration_hooks=None):
             self._py_pack(data, dehydration_hooks)
 
     @classmethod
@@ -281,14 +282,15 @@ class Unpacker:
     def read_u8(self):
         return self.unpackable.read_u8()
 
-    def unpack(self, hydration_hooks=None):
-        if _rust_unpack:
+    if _rust_unpack:
+        def unpack(self, hydration_hooks=None):
             value, i = _rust_unpack(
                 self.unpackable.data, self.unpackable.p, hydration_hooks
             )
             self.unpackable.p = i
             return value
-        else:
+    else:
+        def unpack(self, hydration_hooks=None):
             return self._unpack(hydration_hooks=hydration_hooks)
 
     def _unpack(self, hydration_hooks=None):
