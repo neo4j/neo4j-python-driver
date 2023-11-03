@@ -30,25 +30,5 @@ from _common import (
 
 
 if __name__ == "__main__":
-    # run(["git", "status", "--porcelain"])
     run_python(["-m", "pip", "install", "-U", "pip"])
     run_python(["-m", "pip", "install", "-Ur", "requirements-dev.txt"])
-    # run([
-    #     "git", "clone", "--single-branch", "--branch", DRIVER_REF,
-    #     "--depth", "1", f"https://github.com/neo4j/{DRIVER_REPO}",
-    #     "driver_tmp",
-    # ])
-    # try:
-    #     os.remove("tests/v1/packstream.py")
-    # except FileNotFoundError:
-    #     pass
-    # os.rename(
-    #     "driver_tmp/tests/unit/common/codec/packstream/v1/test_packstream.py",
-    #     "tests/v1/packstream.py"
-    # )
-    # try:
-    #     shutil.rmtree("testkitbackend")
-    # except FileNotFoundError:
-    #     pass
-    # os.rename("driver_tmp/testkitbackend", "testkitbackend")
-    # shutil.rmtree("driver_tmp")
