@@ -16,7 +16,9 @@
 # limitations under the License.
 
 
-try:
-    from ._rust import Structure
-except ImportError:
-    from ._python import Structure
+from ._common import Structure
+
+
+__all__ = [
+    "Structure",
+]
