@@ -1,4 +1,4 @@
-# Rust Extensions for a Faster Neo4j Bolt driver for Python
+# Rust Extensions for a Faster Neo4j Bolt Driver for Python
 
 This project contains Rust extensions to speed up the [official Python driver for Neo4j](https://github.com/neo4j/neo4j-python-driver).
 
@@ -7,7 +7,7 @@ This project contains Rust extensions to speed up the [official Python driver fo
 
 
 ## Installation
-Adjust your `requirements.txt` or similar the line `neo4j` with:
+Adjust your dependencies (`requirements.txt`, `pyproject.toml` or similar) like so:
 ```
 # remove:
 # neo4j == 5.X.Y
@@ -15,16 +15,17 @@ Adjust your `requirements.txt` or similar the line `neo4j` with:
 neo4j-rust-ext ~= 5.X.Y.0
 ```
 
+I.e., install the same version of `neo4j-rust-ext` as you would install of `neo4j` (except for the last segment which is used for patches of this library).  
 That's it!
-You don't have to change your code.
+You don't have to change your code but can use the driver as you normally would.
 This package will install the driver as its dependency and then inject itself in a place where the driver can find it and pick it up.
 
 
 ## Requirements
 For many operating systems and architectures, the pre-built wheels will work out of the box.
-If they don't, pip (or any other Python packaging front-ent) will try to build the extension from source.
+If they don't, pip (or any other Python packaging front-end) will try to build the extension from source.
 Here's what you'll need for this:
  * Rust 1.65.0 or later:  
    https://www.rust-lang.org/tools/install
- * Header files for your Python installation.  
-   For example, on Ubuntu, you need to install the `python3-dev` package.
+ * Further build tools (depending on the platform).  
+   E.g., `gcc` on Ubuntu: `sudo apt install gcc`
