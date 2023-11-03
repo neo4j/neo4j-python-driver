@@ -117,5 +117,9 @@ asyncio_mode = "auto"
 [tool.mypy]
 
 [[tool.mypy.overrides]]
-module = "pandas.*"
+module = [
+    "pandas.*",
+    "neo4j._codec.packstream._rust",
+    "neo4j._codec.packstream._rust.*",
+]
 ignore_missing_imports = true

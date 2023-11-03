@@ -42,7 +42,7 @@ class EagerResult(t.NamedTuple):
 
     .. versionadded:: 5.5
 
-    .. versionchanged:: 5.8 stabilized from experimental
+    .. versionchanged:: 5.8 Stabilized from experimental.
     """
     #: Alias for field 0 (``eager_result[0]``)
     records: t.List[Record]

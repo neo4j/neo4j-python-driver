@@ -47,8 +47,6 @@ from .._conf import (
 from .._meta import (
     deprecation_warn,
     experimental_warn,
-    preview,
-    preview_warn,
     unclosed_resource_warn,
 )
 from .._work import EagerResult
@@ -192,10 +190,7 @@ class GraphDatabase:
             driver_type, security_type, parsed = parse_neo4j_uri(uri)
 
             if not isinstance(auth, AuthManager):
-                auth = AuthManagers.static._without_warning(auth)
-            else:
-                preview_warn("Auth managers are a preview feature.",
-                             stack_level=2)
+                auth = AuthManagers.static(auth)
             config["auth"] = auth
 
             # TODO: 6.0 - remove "trust" config option
@@ -356,7 +351,7 @@ class GraphDatabase:
             * ``bookmarks_consumer`` no longer receives the database name as
               an argument.
 
-        .. versionchanged:: 5.8 stabilized from experimental
+        .. versionchanged:: 5.8 Stabilized from experimental.
         """
         return Neo4jBookmarkManager(
             initial_bookmarks=initial_bookmarks,
@@ -550,17 +545,14 @@ class Driver:
     def _session(self, session_config) -> Session:
         return Session(self._pool, session_config)
 
-    def _read_session_config(self, config_kwargs, preview_check=True):
-        config = self._prepare_session_config(preview_check, config_kwargs)
+    def _read_session_config(self, config_kwargs):
+        config = self._prepare_session_config(config_kwargs)
         session_config = SessionConfig(self._default_workspace_config,
                                        config)
         return session_config
 
     @classmethod
-    def _prepare_session_config(cls, preview_check, config_kwargs):
-        if preview_check and "auth" in config_kwargs:
-            preview_warn("User switching is a preview feature.",
-                         stack_level=5)
+    def _prepare_session_config(cls, config_kwargs):
         _normalize_notifications_config(config_kwargs)
         return config_kwargs
 
@@ -744,11 +736,6 @@ class Driver:
 
             By default, the driver configuration is used.
 
-            **This is a preview** (see :ref:`filter-warnings-ref`).
-            It might be changed without following the deprecation policy.
-            See also
-            https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
             See also the Session config :ref:`session-auth-ref`.
         :type auth_: typing.Tuple[typing.Any, typing.Any] | Auth | None
         :param result_transformer_:
@@ -838,8 +825,11 @@ class Driver:
 
         .. versionchanged:: 5.8
 
-            * Added the ``auth_`` parameter.
+            * Added ``auth_`` parameter in preview.
             * Stabilized from experimental.
+
+        .. versionchanged:: 5.14
+            Stabilized ``auth_`` parameter from preview.
         """
         self._check_state()
         invalid_kwargs = [k for k in kwargs if
@@ -864,8 +854,7 @@ class Driver:
                 "impersonated_user": impersonated_user_,
                 "bookmark_manager": bookmark_manager_,
                 "auth": auth_,
-            },
-            preview_check=False
+            }
         )
         session = self._session(session_config)
         with session:
@@ -1071,7 +1060,7 @@ class Driver:
             driver feature.
         """
         self._check_state()
-        session_config = self._read_session_config({}, preview_check=False)
+        session_config = self._read_session_config({})
         with self._session(session_config) as session:
             session._connect(READ_ACCESS)
             assert session._connection
@@ -1105,7 +1094,6 @@ class Driver:
 
     else:
 
-        @preview("User switching is a preview feature.")
         def verify_authentication(
             self,
             auth: t.Union[Auth, t.Tuple[t.Any, t.Any], None] = None,
@@ -1139,12 +1127,9 @@ class Driver:
                 Use the exception to further understand the cause of the
                 connectivity problem.
 
-            **This is a preview** (see :ref:`filter-warnings-ref`).
-            It might be changed without following the deprecation policy.
-            See also
-            https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
-
             .. versionadded:: 5.8
+
+            .. versionchanged:: 5.14 Stabilized from experimental.
             """
             self._check_state()
             if config:
@@ -1189,7 +1174,7 @@ class Driver:
         .. versionadded:: 5.8
         """
         self._check_state()
-        session_config = self._read_session_config({}, preview_check=False)
+        session_config = self._read_session_config({})
         with self._session(session_config) as session:
             session._connect(READ_ACCESS)
             assert session._connection

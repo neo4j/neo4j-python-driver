@@ -1,6 +1,9 @@
 # the driver itself
 -e .[pandas,numpy,pyarrow]
 
+# needed for packaging
+build
+
 # auto-generate sync driver from async code
 unasync>=0.5.0
 # pre-commit hooks and tools

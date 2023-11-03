@@ -642,7 +642,7 @@ class AsyncResult:
 
         .. versionadded:: 5.5
 
-        .. versionchanged:: 5.8 stabilized from experimental
+        .. versionchanged:: 5.8 Stabilized from experimental.
         """
 
         await self._buffer_all()
