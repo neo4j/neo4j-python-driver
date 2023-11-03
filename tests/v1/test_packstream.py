@@ -52,10 +52,12 @@ def unpacker_with_buffer():
     unpackable_buffer = Unpacker.new_unpackable_buffer()
     return Unpacker(unpackable_buffer), unpackable_buffer
 
+
 def test_packable_buffer(packer_with_buffer):
     packer, packable_buffer = packer_with_buffer
     assert isinstance(packable_buffer, PackableBuffer)
     assert packable_buffer is packer.stream
+
 
 def test_unpackable_buffer(unpacker_with_buffer):
     unpacker, unpackable_buffer = unpacker_with_buffer
@@ -120,7 +122,6 @@ def np_float_overflow_as_error(request):
         old_err = np.seterr(over="ignore")
     yield
     np.seterr(**old_err)
-
 
 
 @pytest.fixture(params=(
