@@ -64,3 +64,16 @@ build-backend = "maturin"
 [tool.maturin]
 features = ["pyo3/extension-module", "pyo3/generate-import-lib"]
 module-name = "neo4j._codec.packstream._rust"
+exclude = [
+    "/.editorconfig",
+    ".gitignore",
+    ".gitmodules",
+    ".pre-commit-config.yaml",
+    "bin/**/*",
+    "driver/**/*",
+    "test*/**/*",
+    "CONTRIBUTING.md",
+    "requirements*.txt",
+    "tox.ini",
+    { path = "neo4j/**/.keep", format = "wheel" }
+]

@@ -11,4 +11,4 @@ pytest
 freezegun
 
 # for packaging
-build
+maturin
