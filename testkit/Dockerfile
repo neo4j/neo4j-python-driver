@@ -58,17 +58,6 @@ RUN for version in $PYTHON_VERSIONS; do \
         python$version -m pip install -U coverage tox; \
     done
 
-# Installing pyarrow lib until pre-built wheel for Python 3.12 exists
-# https://github.com/apache/arrow/issues/37880
-RUN apt update && \
-    apt install -y -V lsb-release cmake gcc && \
-    distro_name=$(lsb_release --id --short | tr 'A-Z' 'a-z') && \
-    code_name=$(lsb_release --codename --short) && \
-    wget https://apache.jfrog.io/artifactory/arrow/${distro_name}/apache-arrow-apt-source-latest-${code_name}.deb && \
-    apt install -y -V ./apache-arrow-apt-source-latest-${code_name}.deb && \
-    apt update && \
-    apt install -y -V libarrow-dev # For C++
-
 # Install Rust toolchain
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
