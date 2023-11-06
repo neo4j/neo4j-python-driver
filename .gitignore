@@ -13,8 +13,8 @@ __pycache__/
 
 .Python
 .venv/
+.tox/
 env/
-bin/
 build/
 develop-eggs/
 dist/
@@ -36,3 +36,6 @@ venv/
 
 # VSCode
 .vscode/
+
+testkit/CAs
+testkit/CustomCAs
