@@ -10,9 +10,9 @@ This project contains Rust extensions to speed up the [official Python driver fo
 Adjust your dependencies (`requirements.txt`, `pyproject.toml` or similar) like so:
 ```
 # remove:
-# neo4j == 5.X.Y
+# neo4j == X.Y.Z  # needs to be at least 5.14.1 for a matching Rust extension to exist
 # add:
-neo4j-rust-ext ~= 5.X.Y.0
+neo4j-rust-ext == X.Y.Z.*
 ```
 
 I.e., install the same version of `neo4j-rust-ext` as you would install of `neo4j` (except for the last segment which is used for patches of this library).  
