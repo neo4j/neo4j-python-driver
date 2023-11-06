@@ -15,11 +15,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::OnceLock;
+use std::borrow::Cow;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use pyo3::exceptions::{PyOverflowError, PyTypeError, PyValueError};
+use pyo3::exceptions::{PyImportError, PyOverflowError, PyTypeError, PyValueError};
 use pyo3::intern;
 use pyo3::prelude::*;
+use pyo3::sync::GILOnceCell;
 use pyo3::types::{PyBytes, PyDict, PyString, PyType};
 
 use super::{
@@ -96,19 +98,29 @@ impl TypeMappings {
     }
 }
 
-static TYPE_MAPPINGS: OnceLock<PyResult<TypeMappings>> = OnceLock::new();
+static TYPE_MAPPINGS: GILOnceCell<PyResult<TypeMappings>> = GILOnceCell::new();
+static TYPE_MAPPINGS_INIT: AtomicBool = AtomicBool::new(false);
 
 fn get_type_mappings(py: Python<'_>) -> PyResult<&'static TypeMappings> {
-    let mappings = TYPE_MAPPINGS.get_or_init(|| {
-        let locals = PyDict::new(py);
-        py.run(
-            "from neo4j._codec.packstream.v1.types import *",
-            None,
-            Some(locals),
-        )?;
-        TypeMappings::new(py, locals)
+    let mappings = TYPE_MAPPINGS.get_or_try_init(py, || {
+        fn init(py: Python<'_>) -> PyResult<TypeMappings> {
+            let locals = PyDict::new(py);
+            py.run(
+                "from neo4j._codec.packstream.v1.types import *",
+                None,
+                Some(locals),
+            )?;
+            TypeMappings::new(py, locals)
+        }
+
+        if TYPE_MAPPINGS_INIT.swap(true, Ordering::SeqCst) {
+            return Err(PyErr::new::<PyImportError, _>(
+                "Cannot call _rust.pack while loading `neo4j._codec.packstream.v1.types`",
+            ));
+        }
+        Ok(init(py))
     });
-    mappings.as_ref().map_err(|e| e.clone_ref(py))
+    mappings?.as_ref().map_err(|e| e.clone_ref(py))
 }
 
 #[pyfunction]
@@ -170,7 +182,7 @@ impl<'a> PackStreamEncoder<'a> {
         }
 
         if value.is_instance(self.type_mappings.bytes_types.as_ref(self.py))? {
-            return self.write_bytes(value.extract::<&[u8]>()?);
+            return self.write_bytes(value.extract::<Cow<[u8]>>()?);
         }
 
         if value.is_instance(self.type_mappings.sequence_types.as_ref(self.py))? {
@@ -204,7 +216,7 @@ impl<'a> PackStreamEncoder<'a> {
             let size = value_ref.fields.len().try_into().map_err(|_| {
                 PyErr::new::<PyOverflowError, _>("Structure header size out of range")
             })?;
-            self.write_struct_header(value_ref.tag, size);
+            self.write_struct_header(value_ref.tag, size)?;
             return value_ref
                 .fields
                 .iter()
@@ -267,7 +279,7 @@ impl<'a> PackStreamEncoder<'a> {
         Ok(())
     }
 
-    fn write_bytes(&mut self, b: &[u8]) -> PyResult<()> {
+    fn write_bytes(&mut self, b: Cow<[u8]>) -> PyResult<()> {
         let size = Self::usize_to_u64(b.len())?;
         if size <= 255 {
             self.buffer.extend(&[BYTES_8]);
@@ -283,7 +295,7 @@ impl<'a> PackStreamEncoder<'a> {
                 "Bytes header size out of range",
             ));
         }
-        self.buffer.extend(b);
+        self.buffer.extend(b.iter());
         Ok(())
     }
 
@@ -354,7 +366,13 @@ impl<'a> PackStreamEncoder<'a> {
         Ok(())
     }
 
-    fn write_struct_header(&mut self, tag: u8, size: u8) {
+    fn write_struct_header(&mut self, tag: u8, size: u8) -> PyResult<()> {
+        if size > 15 {
+            return Err(PyErr::new::<PyOverflowError, _>(
+                "Structure size out of range",
+            ));
+        }
         self.buffer.extend(&[TINY_STRUCT + size, tag]);
+        Ok(())
     }
 }

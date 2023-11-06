@@ -53,7 +53,7 @@ Remember that many community members have become regular contributors and some a
 
 ## Specifically for this project:
 
-Setting up the development environment:
+### Setting up the Development Environment
  * Install Python 3.8+
  * Install the requirements
    ```bash
@@ -75,13 +75,31 @@ Setting up the development environment:
    $ python3 -m pip install -U pip
    $ python3 -m pip install -Ur requirements-dev.txt
    ```
- * Install the pre-commit hook, that will do some code-format-checking everytime
-   you commit.
-   ```bash
-   $ pre-commit install
-   ```
+* Install the pre-commit hook, that will do some code-format-checking everytime
+  you commit.
+  ```bash
+  $ pre-commit install
+  ```
 
-Building
+### Working with Pre-commit
+If you want to run the pre-commit checks manually, you can do so:
+```bash
+$ pre-commit run --all-files
+# or
+$ pre-commit run --file path/to/a/file
+```
+
+To commit skipping the pre-commit checks, you can do so:
+```bash
+git commit --no-verify ...
+```
+
+### Running Tests
+```bash
+# in the project root
+pip install . -r tests/requirements.txt
+python -m pytest tests
+```
 
 
 ## Got an idea for a new project?

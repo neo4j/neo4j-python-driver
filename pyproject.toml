@@ -21,17 +21,23 @@ description = "Rust Extensions for a Faster Neo4j Bolt driver for Python"
 license = {text = "Apache License, Version 2.0"}
 readme = "README.md"
 authors = [
-    {name = "Neo4j, Inc.", email = "drivers@neo4j.com"},
+    # Can be changed back when https://github.com/PyO3/maturin/pull/1832 is merged and released
+    # {name = "Neo4j, Inc.", email = "drivers@neo4j.com"},
+    {email = "\"Neo4j, Inc.\" <drivers@neo4j.com>"}
 ]
 dependencies = [
-    "neo4j == 5.15.0"
+    "neo4j == 5.14.1"
 ]
 requires-python = ">=3.7"
 keywords = ["neo4j", "graph", "database"]
 classifiers = [
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
     "Topic :: Database",
     "Topic :: Software Development",
     "Programming Language :: Python :: 3.7",
@@ -41,15 +47,33 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-version = "5.15.0.0a1"
+version = "5.14.1.0a1"
 
 [project.urls]
 Homepage = "https://github.com/neo4j-drivers/neo4j-python-driver-rust-ext"
+
+[project.optional-dependencies]
+numpy = ["neo4j[numpy]"]
+pandas = ["neo4j[pandas]"]
+pyarrow = ["neo4j[pyarrow]"]
 
 [build-system]
 requires = ["maturin>=1.2,<2.0"]
 build-backend = "maturin"
 
 [tool.maturin]
-features = ["pyo3/extension-module"]
+features = ["pyo3/extension-module", "pyo3/generate-import-lib"]
 module-name = "neo4j._codec.packstream._rust"
+exclude = [
+    "/.editorconfig",
+    ".gitignore",
+    ".gitmodules",
+    ".pre-commit-config.yaml",
+    "bin/**/*",
+    "driver/**/*",
+    "test*/**/*",
+    "CONTRIBUTING.md",
+    "requirements*.txt",
+    "tox.ini",
+    { path = "neo4j/**/.keep", format = "wheel" }
+]
