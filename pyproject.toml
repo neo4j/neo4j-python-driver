@@ -17,7 +17,7 @@
 
 [project]
 name = "neo4j-rust-ext"
-description = "Rust Extensions for a Faster Neo4j Bolt driver for Python"
+description = "Rust Extensions for a Faster Neo4j Bolt Driver for Python"
 license = {text = "Apache License, Version 2.0"}
 readme = "README.md"
 authors = [
@@ -50,7 +50,11 @@ classifiers = [
 version = "5.14.1.0a1"
 
 [project.urls]
-Homepage = "https://github.com/neo4j-drivers/neo4j-python-driver-rust-ext"
+Homepage = "https://neo4j.com/"
+Repository = "https://github.com/neo4j-drivers/neo4j-python-driver-rust-ext"
+"Issue Tracker" = "https://github.com/neo4j-drivers/neo4j-python-driver-rust-ext/issues"
+Forum = "https://community.neo4j.com/c/drivers-stacks/python/"
+Discord = "https://discord.com/invite/neo4j"
 
 [project.optional-dependencies]
 numpy = ["neo4j[numpy]"]
