@@ -244,30 +244,18 @@ impl<'a> PackStreamDecoder<'a> {
         Ok(byte)
     }
 
-    fn read_2_bytes(&mut self) -> PyResult<[u8; 2]> {
-        Ok([self.read_byte()?, self.read_byte()?])
-    }
-
-    fn read_4_bytes(&mut self) -> PyResult<[u8; 4]> {
-        Ok([
-            self.read_byte()?,
-            self.read_byte()?,
-            self.read_byte()?,
-            self.read_byte()?,
-        ])
-    }
-
-    fn read_8_bytes(&mut self) -> PyResult<[u8; 8]> {
-        Ok([
-            self.read_byte()?,
-            self.read_byte()?,
-            self.read_byte()?,
-            self.read_byte()?,
-            self.read_byte()?,
-            self.read_byte()?,
-            self.read_byte()?,
-            self.read_byte()?,
-        ])
+    fn read_n_bytes<const N: usize>(&mut self, n: usize) -> PyResult<[u8; N]> {
+        let to = self.index + n;
+        unsafe {
+            // Safety: we're holding the GIL, and don't interact with Python while using the bytes.
+            match self.bytes.as_bytes().get(self.index..to) {
+                Some(b) => {
+                    self.index = to;
+                    Ok(<[u8; N]>::try_from(b).expect("we know the slice has exactly N values"))
+                }
+                None => Err(PyErr::new::<PyValueError, _>("Nothing to unpack")),
+            }
+        }
     }
 
     fn read_u8(&mut self) -> PyResult<usize> {
@@ -275,12 +263,12 @@ impl<'a> PackStreamDecoder<'a> {
     }
 
     fn read_u16(&mut self) -> PyResult<usize> {
-        let data = self.read_2_bytes()?;
+        let data = self.read_n_bytes(2)?;
         Ok(u16::from_be_bytes(data).into())
     }
 
     fn read_u32(&mut self) -> PyResult<usize> {
-        let data = self.read_4_bytes()?;
+        let data = self.read_n_bytes(4)?;
         u32::from_be_bytes(data).try_into().map_err(|_| {
             PyErr::new::<PyValueError, _>(
                 "Server announced 32 bit sized data. Not supported by this architecture.",
@@ -293,18 +281,18 @@ impl<'a> PackStreamDecoder<'a> {
     }
 
     fn read_i16(&mut self) -> PyResult<i16> {
-        self.read_2_bytes().map(i16::from_be_bytes)
+        self.read_n_bytes(2).map(i16::from_be_bytes)
     }
 
     fn read_i32(&mut self) -> PyResult<i32> {
-        self.read_4_bytes().map(i32::from_be_bytes)
+        self.read_n_bytes(4).map(i32::from_be_bytes)
     }
 
     fn read_i64(&mut self) -> PyResult<i64> {
-        self.read_8_bytes().map(i64::from_be_bytes)
+        self.read_n_bytes(8).map(i64::from_be_bytes)
     }
 
     fn read_f64(&mut self) -> PyResult<f64> {
-        self.read_8_bytes().map(f64::from_be_bytes)
+        self.read_n_bytes(8).map(f64::from_be_bytes)
     }
 }
