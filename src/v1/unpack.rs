@@ -241,11 +241,12 @@ impl<'a> PackStreamDecoder<'a> {
     }
 
     fn read_n_bytes<const N: usize>(&mut self, n: usize) -> PyResult<[u8; N]> {
-        let from = self.index;
-        self.index += n;
+        let to = self.index + n;
         unsafe {
-            match self.bytes.as_bytes().get(from..self.index) {
+            // Safety: we're holding the GIL, and don't interact with Python while using the bytes.
+            match self.bytes.as_bytes().get(self.index..to) {
                 Some(b) => {
+                    self.index = to;
                     Ok(<[u8; N]>::try_from(b).expect("we know the slice has exactly N values"))
                 }
                 None => Err(PyErr::new::<PyValueError, _>("Nothing to unpack")),
