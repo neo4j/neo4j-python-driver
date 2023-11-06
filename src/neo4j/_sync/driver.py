@@ -1192,8 +1192,6 @@ def _work(
     transformer: t.Callable[[Result], t.Union[_T]]
 ) -> _T:
     res = tx.run(query, parameters)
-    if transformer is Result.to_eager_result:
-        return transformer(res)
     return transformer(res)
 
 

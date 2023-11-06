@@ -1193,8 +1193,6 @@ async def _work(
     transformer: t.Callable[[AsyncResult], t.Awaitable[_T]]
 ) -> _T:
     res = await tx.run(query, parameters)
-    if transformer is AsyncResult.to_eager_result:
-        return await transformer(res)
     return await transformer(res)
 
 

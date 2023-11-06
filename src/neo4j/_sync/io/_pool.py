@@ -109,7 +109,7 @@ class IOPool(abc.ABC):
 
     def _acquire_from_pool(self, address):
         with self.lock:
-            for connection in list(self.connections.get(address, [])):
+            for connection in self.connections[address]:
                 if connection.in_use:
                     continue
                 connection.pool = self
