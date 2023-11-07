@@ -240,7 +240,7 @@ class AsyncBoltSocket:
             log.debug("[#0000]  S: <TIMEOUT> %s", resolved_address)
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             if s:
-                await cls.close_socket(s)
+                cls._kill_raw_socket(s)
             raise ServiceUnavailable(
                 "Timed out trying to establish connection to {!r}".format(
                     resolved_address)) from None
@@ -248,12 +248,12 @@ class AsyncBoltSocket:
             log.debug("[#0000]  S: <CANCELLED> %s", resolved_address)
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             if s:
-                await cls.close_socket(s)
+                cls._kill_raw_socket(s)
             raise
         except (SSLError, CertificateError) as error:
             local_port = s.getsockname()[1]
             if s:
-                await cls.close_socket(s)
+                cls._kill_raw_socket(s)
             raise BoltSecurityError(
                 message="Failed to establish encrypted connection.",
                 address=(resolved_address._host_name, local_port)
@@ -263,7 +263,7 @@ class AsyncBoltSocket:
                       " ".join(map(repr, error.args)))
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
             if s:
-                await cls.close_socket(s)
+                cls._kill_raw_socket(s)
             if isinstance(error, OSError):
                 raise ServiceUnavailable(
                     "Failed to establish connection to {!r} (reason {})"
@@ -350,14 +350,18 @@ class AsyncBoltSocket:
             except OSError:
                 pass
         else:
-            try:
-                socket_.shutdown(SHUT_RDWR)
-            except OSError:
-                pass
-            try:
-                socket_.close()
-            except OSError:
-                pass
+            cls._kill_raw_socket(socket_)
+
+    @classmethod
+    def _kill_raw_socket(cls, socket_):
+        try:
+            socket_.shutdown(SHUT_RDWR)
+        except OSError:
+            pass
+        try:
+            socket_.close()
+        except OSError:
+            pass
 
     @classmethod
     async def connect(cls, address, *, tcp_timeout, deadline,
@@ -409,7 +413,10 @@ class AsyncBoltSocket:
                 log.debug("[#%04X]  C: <CANCELED> %s", local_port,
                           resolved_address)
                 if s:
-                    await cls.close_socket(s)
+                    try:
+                        s.kill()
+                    except OSError:
+                        pass
                 raise
             except Exception:
                 if s:
@@ -528,7 +535,7 @@ class BoltSocket:
         except SocketTimeout:
             log.debug("[#0000]  S: <TIMEOUT> %s", resolved_address)
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-            cls.close_socket(s)
+            cls._kill_raw_socket(s)
             raise ServiceUnavailable(
                 "Timed out trying to establish connection to {!r}".format(
                     resolved_address))
@@ -536,7 +543,7 @@ class BoltSocket:
             log.debug("[#0000]  S: <ERROR> %s %s", type(error).__name__,
                       " ".join(map(repr, error.args)))
             log.debug("[#0000]  C: <CLOSE> %s", resolved_address)
-            cls.close_socket(s)
+            cls._kill_raw_socket(s)
             if isinstance(error, OSError):
                 raise ServiceUnavailable(
                     "Failed to establish connection to {!r} (reason {})"
@@ -554,7 +561,7 @@ class BoltSocket:
                 sni_host = host if HAS_SNI and host else None
                 s = ssl_context.wrap_socket(s, server_hostname=sni_host)
             except (OSError, SSLError, CertificateError) as cause:
-                cls.close_socket(s)
+                cls._kill_raw_socket(s)
                 raise BoltSecurityError(
                     message="Failed to establish encrypted connection.",
                     address=(host, local_port)
@@ -615,7 +622,7 @@ class BoltSocket:
             # If no data is returned after a successful select
             # response, the server has closed the connection
             log.debug("[#%04X]  S: <CLOSE>", local_port)
-            cls.close_socket(s)
+            cls._kill_raw_socket(s)
             raise ServiceUnavailable(
                 f"Connection to {resolved_address} closed without handshake "
                 "response"
@@ -623,7 +630,7 @@ class BoltSocket:
         if data_size != 4:
             # Some garbled data has been received
             log.debug("[#%04X]  S: @*#!", local_port)
-            cls.close_socket(s)
+            cls._kill_raw_socket(s)
             raise BoltProtocolError(
                 "Expected four byte Bolt handshake response from "
                 f"{resolved_address!r}, received {response!r} instead; "
@@ -632,7 +639,7 @@ class BoltSocket:
             )
         elif response == b"HTTP":
             log.debug("[#%04X]  S: <CLOSE>", local_port)
-            cls.close_socket(s)
+            cls._kill_raw_socket(s)
             raise ServiceUnavailable(
                 f"Cannot to connect to Bolt service on {resolved_address!r} "
                 "(looks like HTTP)"
@@ -646,6 +653,10 @@ class BoltSocket:
     def close_socket(cls, socket_):
         if isinstance(socket_, BoltSocket):
             socket_ = socket_._socket
+        cls._kill_raw_socket(socket_)
+
+    @classmethod
+    def _kill_raw_socket(cls, socket_):
         try:
             socket_.shutdown(SHUT_RDWR)
         except OSError:
