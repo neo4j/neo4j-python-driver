@@ -60,10 +60,7 @@ class Point(t.Tuple[float, ...]):
         def z(self) -> float: ...
 
     def __new__(cls, iterable: t.Iterable[float]) -> Point:
-        # mypy issue https://github.com/python/mypy/issues/14890
-        return tuple.__new__(  # type: ignore[type-var]
-            cls, map(float, iterable)
-        )
+        return tuple.__new__(cls, map(float, iterable))
 
     def __repr__(self) -> str:
         return "POINT(%s)" % " ".join(map(str, self))
