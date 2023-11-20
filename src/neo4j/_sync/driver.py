@@ -380,6 +380,15 @@ class GraphDatabase:
         """ Create a driver for routing-capable Neo4j service access
         that uses socket I/O and thread-based concurrency.
         """
+
+        # TODO: 6.0 - adjust signature to only take one target
+        if len(targets) > 1:
+            deprecation_warn(
+                "Creating a routing driver with multiple targets is "
+                "deprecated. The driver only uses the first target anyway. "
+                "The method signature will change in a future release.",
+            )
+
         from .._exceptions import (
             BoltHandshakeError,
             BoltSecurityError,
