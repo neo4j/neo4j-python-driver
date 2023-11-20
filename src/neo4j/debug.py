@@ -230,15 +230,3 @@ def watch(
                       task_info=task_info)
     watcher.watch()
     return watcher
-
-
-class Connection:
-    def connect(self):
-        self.hello()  # buffer HELLO message
-        self.logon()  # buffer LOGON message
-        self.send_and_receive()  # send HELLO and LOGON, receive 2x SUCCESS
-
-    def reauth(self):
-        self.logoff()  # buffer LOGOFF message
-        self.logon()  # buffer LOGON message
-        self.send_and_receive()  # send LOGOFF and LOGON, receive 2x SUCCESS
