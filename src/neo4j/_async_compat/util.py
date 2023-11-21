@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import traceback
 import typing as t
 from functools import wraps
 
@@ -88,6 +89,14 @@ class AsyncUtil:
 
     is_async_code: t.ClassVar = True
 
+    @staticmethod
+    def extract_stack(limit=None):
+        # can maybe be improved in the future
+        # https://github.com/python/cpython/issues/91048
+        stack = asyncio.current_task().get_stack(limit=limit)
+        stack_walk = ((f, f.f_lineno) for f in stack)
+        return traceback.StackSummary.extract(stack_walk, limit=limit)
+
 
 class Util:
     iter: t.ClassVar = iter
@@ -115,3 +124,7 @@ class Util:
         return coro_function
 
     is_async_code: t.ClassVar = False
+
+    @staticmethod
+    def extract_stack(limit=None):
+        return traceback.extract_stack(limit=limit)[:-1]
