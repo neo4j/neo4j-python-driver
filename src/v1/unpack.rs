@@ -244,8 +244,8 @@ impl<'a> PackStreamDecoder<'a> {
         Ok(byte)
     }
 
-    fn read_n_bytes<const N: usize>(&mut self, n: usize) -> PyResult<[u8; N]> {
-        let to = self.index + n;
+    fn read_n_bytes<const N: usize>(&mut self) -> PyResult<[u8; N]> {
+        let to = self.index + N;
         unsafe {
             // Safety: we're holding the GIL, and don't interact with Python while using the bytes.
             match self.bytes.as_bytes().get(self.index..to) {
@@ -263,12 +263,12 @@ impl<'a> PackStreamDecoder<'a> {
     }
 
     fn read_u16(&mut self) -> PyResult<usize> {
-        let data = self.read_n_bytes(2)?;
+        let data = self.read_n_bytes()?;
         Ok(u16::from_be_bytes(data).into())
     }
 
     fn read_u32(&mut self) -> PyResult<usize> {
-        let data = self.read_n_bytes(4)?;
+        let data = self.read_n_bytes()?;
         u32::from_be_bytes(data).try_into().map_err(|_| {
             PyErr::new::<PyValueError, _>(
                 "Server announced 32 bit sized data. Not supported by this architecture.",
@@ -281,18 +281,18 @@ impl<'a> PackStreamDecoder<'a> {
     }
 
     fn read_i16(&mut self) -> PyResult<i16> {
-        self.read_n_bytes(2).map(i16::from_be_bytes)
+        self.read_n_bytes().map(i16::from_be_bytes)
     }
 
     fn read_i32(&mut self) -> PyResult<i32> {
-        self.read_n_bytes(4).map(i32::from_be_bytes)
+        self.read_n_bytes().map(i32::from_be_bytes)
     }
 
     fn read_i64(&mut self) -> PyResult<i64> {
-        self.read_n_bytes(8).map(i64::from_be_bytes)
+        self.read_n_bytes().map(i64::from_be_bytes)
     }
 
     fn read_f64(&mut self) -> PyResult<f64> {
-        self.read_n_bytes(8).map(f64::from_be_bytes)
+        self.read_n_bytes().map(f64::from_be_bytes)
     }
 }
