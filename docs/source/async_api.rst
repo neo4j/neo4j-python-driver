@@ -239,7 +239,7 @@ Closing a driver will immediately shut down all connections in the pool.
             transaction configuration.
         :type query_: typing.LiteralString | Query
         :param parameters_: parameters to use in the query
-        :type parameters_: typing.Optional[typing.Dict[str, typing.Any]]
+        :type parameters_: typing.Dict[str, typing.Any] | None
         :param routing_:
             Whether to route the query to a reader (follower/read replica) or
             a writer (leader) in the cluster. Default is to route to a writer.
