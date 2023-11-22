@@ -78,7 +78,12 @@ class Query:
         self.timeout = timeout
 
     def __str__(self) -> te.LiteralString:
-        return t.cast(te.LiteralString, str(self.text))
+        # we know that if Query is constructed with a LiteralString,
+        # str(self.text) will be a LiteralString as well. The conversion isn't
+        # necessary if the user adheres to the type hints. However, it was
+        # here before, and we don't want to break backwards compatibility.
+        text: te.LiteralString = str(self.text)  # type: ignore[assignment]
+        return text
 
 
 def unit_of_work(
