@@ -31,8 +31,10 @@ class Query:
     """A query with attached extra data.
 
     This wrapper class for queries is used to attach extra data to queries
-    passed to :meth:`.Session.run` and :meth:`.AsyncSession.run`, fulfilling
-    a similar role as :func:`.unit_of_work` for transactions functions.
+    passed to :meth:`.Session.run`/:meth:`.AsyncSession.run` and
+    :meth:`.Driver.execute_query`/:meth:`.AsyncDriver.execute_query`,
+    fulfilling a similar role as :func:`.unit_of_work` for transactions
+    functions.
 
     :param text: The query text.
     :type text: typing.LiteralString
@@ -76,7 +78,7 @@ class Query:
         self.timeout = timeout
 
     def __str__(self) -> te.LiteralString:
-        return str(self.text)
+        return t.cast(te.LiteralString, str(self.text))
 
 
 def unit_of_work(

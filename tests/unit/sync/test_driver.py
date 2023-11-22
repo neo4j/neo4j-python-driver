@@ -34,6 +34,7 @@ from neo4j import (
     Neo4jDriver,
     NotificationDisabledCategory,
     NotificationMinimumSeverity,
+    Query,
     Result,
     TRUST_ALL_CERTIFICATES,
     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES,
@@ -71,6 +72,13 @@ def session_cls_mock(mocker):
     session_cls_mock.return_value.attach_mock(mocker.NonCallableMagicMock(),
                                               "_pipelined_begin")
     yield session_cls_mock
+
+
+@pytest.fixture
+def unit_of_work_mock(mocker):
+    unit_of_work_mock = mocker.patch("neo4j._sync.driver.unit_of_work",
+                                     autospec=True)
+    yield unit_of_work_mock
 
 
 @pytest.mark.parametrize("protocol", ("bolt://", "bolt+s://", "bolt+ssc://"))
@@ -626,11 +634,20 @@ def test_execute_query_work(mocker) -> None:
     assert res is transformer_mock.return_value
 
 
-@pytest.mark.parametrize("query", ("foo", "bar", "RETURN 1 AS n"))
+@pytest.mark.parametrize("query", (
+    "foo",
+    "bar",
+    "RETURN 1 AS n",
+    Query("RETURN 1 AS n"),
+    Query("RETURN 1 AS n", metadata={"key": "value"}),
+    Query("RETURN 1 AS n", timeout=1234),
+    Query("RETURN 1 AS n", metadata={"key": "value"}, timeout=1234),
+))
 @pytest.mark.parametrize("positional", (True, False))
 @mark_sync_test
 def test_execute_query_query(
-    query: str, positional: bool, session_cls_mock, mocker
+    query: te.LiteralString | Query, positional: bool, session_cls_mock,
+    unit_of_work_mock, mocker
 ) -> None:
     driver = GraphDatabase.driver("bolt://localhost")
 
@@ -645,10 +662,21 @@ def test_execute_query_query(
     session_mock.__enter__.assert_called_once()
     session_mock.__exit__.assert_called_once()
     session_executor_mock = session_mock._run_transaction
-    session_executor_mock.assert_called_once_with(
-        WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
-        (query, mocker.ANY, mocker.ANY), {}
-    )
+    if isinstance(query, Query):
+        unit_of_work_mock.assert_called_once_with(query.metadata,
+                                                  query.timeout)
+        unit_of_work = unit_of_work_mock.return_value
+        unit_of_work.assert_called_once_with(_work)
+        session_executor_mock.assert_called_once_with(
+            WRITE_ACCESS, TelemetryAPI.DRIVER, unit_of_work.return_value,
+            (query.text, mocker.ANY, mocker.ANY), {}
+        )
+    else:
+        unit_of_work_mock.assert_not_called()
+        session_executor_mock.assert_called_once_with(
+            WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
+            (query, mocker.ANY, mocker.ANY), {}
+        )
     assert res is session_executor_mock.return_value
 
 
