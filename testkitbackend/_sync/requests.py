@@ -40,10 +40,6 @@ from .. import (
     test_subtest_skips,
     totestkit,
 )
-from .._warning_check import (
-    warning_check,
-    warnings_check,
-)
 from ..exceptions import MarkdAsDriverException
 
 
@@ -121,6 +117,7 @@ def NewDriver(backend, data):
         ("connectionTimeoutMs", "connection_timeout"),
         ("maxTxRetryTimeMs", "max_transaction_retry_time"),
         ("connectionAcquisitionTimeoutMs", "connection_acquisition_timeout"),
+        ("livenessCheckTimeoutMs", "liveness_check_timeout"),
     ):
         if data.get(timeout_testkit) is not None:
             kwargs[timeout_driver] = data[timeout_testkit] / 1000
@@ -149,7 +146,6 @@ def NewDriver(backend, data):
                           for cert in data["trustedCertificates"])
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     fromtestkit.set_notifications_config(kwargs, data)
-    data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
     driver = neo4j.GraphDatabase.driver(
         data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
@@ -372,6 +368,9 @@ def ExecuteQuery(backend, data):
         else:
             bookmark_manager = backend.bookmark_managers[bookmark_manager_id]
             kwargs["bookmark_manager_"] = bookmark_manager
+    if "authorizationToken" in config:
+        kwargs["auth_"] = fromtestkit.to_auth_token(config,
+                                                    "authorizationToken")
 
     eager_result = driver.execute_query(cypher, params, **kwargs)
     backend.send_response("EagerResult", {
@@ -793,6 +792,7 @@ def GetRoutingTable(backend, data):
         response_data[role] = list(map(str, addresses))
     backend.send_response("RoutingTable", response_data)
 
+
 def FakeTimeInstall(backend, _data):
     assert backend.fake_time is None
     assert backend.fake_time_ticker is None
@@ -800,6 +800,7 @@ def FakeTimeInstall(backend, _data):
     backend.fake_time = freeze_time()
     backend.fake_time_ticker = backend.fake_time.start()
     backend.send_response("FakeTimeAck", {})
+
 
 def FakeTimeTick(backend, data):
     assert backend.fake_time is not None

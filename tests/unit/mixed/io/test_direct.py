@@ -31,15 +31,13 @@ import pytest
 from neo4j._async.io._pool import AcquireAuth as AsyncAcquireAuth
 from neo4j._deadline import Deadline
 from neo4j._sync.io._pool import AcquireAuth
-from neo4j.auth_management import (
-    AsyncAuthManagers,
-    AuthManagers,
-)
 
+from ...async_.conftest import async_fake_connection_generator
 from ...async_.io.test_direct import AsyncFakeBoltPool
 from ...async_.test_auth_manager import (
     static_auth_manager as static_async_auth_manager,
 )
+from ...sync.conftest import fake_connection_generator
 from ...sync.io.test_direct import FakeBoltPool
 from ...sync.test_auth_manager import static_auth_manager
 from ._common import (
@@ -63,7 +61,7 @@ class TestMixedConnectionPoolTestCase:
                     == len([cx for cx in connections if not cx.in_use]))
 
     @pytest.mark.parametrize("pre_populated", (0, 3, 5))
-    def test_multithread(self, pre_populated):
+    def test_multithread(self, pre_populated, fake_connection_generator):
         connections_lock = Lock()
         connections = []
         pre_populated_connections = []
@@ -79,7 +77,9 @@ class TestMixedConnectionPoolTestCase:
             release_event_.wait()
             pool_.release(conn_)
 
-        with FakeBoltPool((), max_connection_pool_size=5) as pool:
+        with FakeBoltPool(
+            fake_connection_generator, (), max_connection_pool_size=5
+        ) as pool:
             address = ("127.0.0.1", 7687)
             acquired_counter = MultiEvent()
             release_event = Event()
@@ -123,7 +123,7 @@ class TestMixedConnectionPoolTestCase:
             # The pool size is still 5, but all are free
             self.assert_pool_size(address, 0, 5, pool)
 
-    def test_full_pool_re_auth(self, mocker):
+    def test_full_pool_re_auth(self, fake_connection_generator, mocker):
         address = ("127.0.0.1", 7687)
         acquire_auth1 = AcquireAuth(auth=static_auth_manager(
             ("user1", "pass1"))
@@ -147,7 +147,6 @@ class TestMixedConnectionPoolTestCase:
                 if waiters:
                     break
                 time.sleep(0.001)
-            cx.re_auth = mocker.Mock(spec=cx.re_auth)
             pool_.release(cx)
 
         def acquire2(pool_):
@@ -158,7 +157,9 @@ class TestMixedConnectionPoolTestCase:
             assert auth2 in cx.re_auth.call_args.args
             pool_.release(cx)
 
-        with FakeBoltPool((), max_connection_pool_size=1) as pool:
+        with FakeBoltPool(
+            fake_connection_generator, (), max_connection_pool_size=1
+        ) as pool:
             t1 = threading.Thread(target=acquire1, args=(pool,), daemon=True)
             t2 = threading.Thread(target=acquire2, args=(pool,), daemon=True)
             t1.start()
@@ -168,7 +169,9 @@ class TestMixedConnectionPoolTestCase:
 
     @pytest.mark.parametrize("pre_populated", (0, 3, 5))
     @pytest.mark.asyncio
-    async def test_multi_coroutine(self, pre_populated):
+    async def test_multi_coroutine(
+        self, pre_populated, async_fake_connection_generator
+    ):
         connections = []
         pre_populated_connections = []
 
@@ -202,7 +205,9 @@ class TestMixedConnectionPoolTestCase:
             # The pool size is still 5, but all are free
             self.assert_pool_size(address, 0, 5, pool_)
 
-        async with AsyncFakeBoltPool((), max_connection_pool_size=5) as pool:
+        async with AsyncFakeBoltPool(
+            async_fake_connection_generator, (), max_connection_pool_size=5
+        ) as pool:
             address = ("127.0.0.1", 7687)
             acquired_counter = AsyncMultiEvent()
             release_event = AsyncEvent()
@@ -229,7 +234,9 @@ class TestMixedConnectionPoolTestCase:
             )
 
     @pytest.mark.asyncio
-    async def test_full_pool_re_auth_async(self, mocker):
+    async def test_full_pool_re_auth_async(
+        self, async_fake_connection_generator, mocker
+    ):
         address = ("127.0.0.1", 7687)
         acquire_auth1 = AsyncAcquireAuth(auth=static_async_auth_manager(
             ("user1", "pass1"))
@@ -244,7 +251,6 @@ class TestMixedConnectionPoolTestCase:
             cx1 = cx
             while len(pool_.cond._waiters) == 0:
                 await asyncio.sleep(0)
-            cx.re_auth = mocker.Mock(spec=cx.re_auth)
             await pool_.release(cx)
 
         async def acquire2(pool_):
@@ -257,5 +263,7 @@ class TestMixedConnectionPoolTestCase:
             assert auth2 in cx.re_auth.call_args.args
             await pool_.release(cx)
 
-        async with AsyncFakeBoltPool((), max_connection_pool_size=1) as pool:
+        async with AsyncFakeBoltPool(
+            async_fake_connection_generator, (), max_connection_pool_size=1
+        ) as pool:
             await asyncio.gather(acquire1(pool), acquire2(pool))

@@ -49,6 +49,7 @@ test_pool_config = {
     "connection_timeout": 30.0,
     "keep_alive": True,
     "max_connection_lifetime": 3600,
+    "liveness_check_timeout": None,
     "max_connection_pool_size": 100,
     "resolver": None,
     "encrypted": False,

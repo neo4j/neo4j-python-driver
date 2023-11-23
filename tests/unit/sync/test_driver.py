@@ -117,48 +117,48 @@ def test_routing_driver_constructor(protocol, host, port, params, auth_token):
 @pytest.mark.parametrize(
     ("test_config", "expected_failure", "expected_failure_message"),
     (
-        ({"encrypted": False}, ConfigurationError, "The config settings"),
-        ({"encrypted": True}, ConfigurationError, "The config settings"),
+        ({"encrypted": False}, ConfigurationError, '"encrypted"'),
+        ({"encrypted": True}, ConfigurationError, '"encrypted"'),
         (
             {"encrypted": True, "trust": TRUST_ALL_CERTIFICATES},
-            ConfigurationError, "The config settings"
+            ConfigurationError, '"encrypted"'
         ),
         (
             {"trust": TRUST_ALL_CERTIFICATES},
-            ConfigurationError, "The config settings"
+            ConfigurationError, '"trust"'
         ),
         (
             {"trust": TRUST_SYSTEM_CA_SIGNED_CERTIFICATES},
-            ConfigurationError, "The config settings"
+            ConfigurationError, '"trust"'
         ),
         (
             {"encrypted": True, "trusted_certificates": TrustAll()},
-            ConfigurationError, "The config settings"
+            ConfigurationError, '"encrypted"'
         ),
         (
             {"trusted_certificates": TrustAll()},
-            ConfigurationError, "The config settings"
+            ConfigurationError, '"trusted_certificates"'
         ),
         (
             {"trusted_certificates": TrustSystemCAs()},
-            ConfigurationError, "The config settings"
+            ConfigurationError, '"trusted_certificates"'
         ),
         (
             {"trusted_certificates": TrustCustomCAs("foo", "bar")},
-            ConfigurationError, "The config settings"
+            ConfigurationError, '"trusted_certificates"'
         ),
         (
             {"ssl_context": None},
-            ConfigurationError, "The config settings"
+            ConfigurationError, '"ssl_context"'
         ),
         (
             {"ssl_context": ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)},
-            ConfigurationError, "The config settings"
+            ConfigurationError, '"ssl_context"'
         ),
     )
 )
 @mark_sync_test
-def test_driver_config_error(
+def test_driver_config_error_uri_conflict(
     test_uri, test_config, expected_failure, expected_failure_message
 ):
     def driver_builder():
@@ -169,7 +169,7 @@ def test_driver_config_error(
             return GraphDatabase.driver(test_uri, **test_config)
 
     if "+" in test_uri:
-        # `+s` and `+ssc` are short hand syntax for not having to configure the
+        # `+s` and `+ssc` are shorthand syntax for not having to configure the
         # encryption behavior of the driver. Specifying both is invalid.
         with pytest.raises(expected_failure, match=expected_failure_message):
             driver_builder()
@@ -197,6 +197,22 @@ def test_invalid_protocol(test_uri):
     )
 )
 def test_driver_trust_config_error(
+    test_config, expected_failure, expected_failure_message
+):
+    with pytest.raises(expected_failure, match=expected_failure_message):
+        GraphDatabase.driver("bolt://127.0.0.1:9001", **test_config)
+
+
+@pytest.mark.parametrize(
+    ("test_config", "expected_failure", "expected_failure_message"),
+    (
+        (
+            {"liveness_check_timeout": -1},
+            ConfigurationError, '"liveness_check_timeout"'
+        ),
+    )
+)
+def test_driver_liveness_timeout_config_error(
     test_config, expected_failure, expected_failure_message
 ):
     with pytest.raises(expected_failure, match=expected_failure_message):

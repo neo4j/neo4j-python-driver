@@ -38,6 +38,7 @@ from .._api import (
 from .._async_compat.util import Util
 from .._conf import (
     Config,
+    ConfigurationError,
     PoolConfig,
     SessionConfig,
     TrustAll,
@@ -122,11 +123,9 @@ class GraphDatabase:
             cls,
             uri: str,
             *,
-            auth: t.Union[
-                _TAuth,
-                AuthManager,
-            ] = ...,
+            auth: t.Union[_TAuth, AuthManager] = ...,
             max_connection_lifetime: float = ...,
+            liveness_check_timeout: t.Optional[float] = ...,
             max_connection_pool_size: int = ...,
             connection_timeout: float = ...,
             trust: t.Union[
@@ -148,9 +147,10 @@ class GraphDatabase:
             notifications_disabled_categories: t.Optional[
                 t.Iterable[T_NotificationDisabledCategory]
             ] = ...,
+            telemetry_disabled: bool = ...,
 
             # undocumented/unsupported options
-            # they may be change or removed any time without prior notice
+            # they may be changed or removed any time without prior notice
             connection_acquisition_timeout: float = ...,
             max_transaction_retry_time: float = ...,
             initial_retry_delay: float = ...,
@@ -161,7 +161,6 @@ class GraphDatabase:
             impersonated_user: t.Optional[str] = ...,
             bookmark_manager: t.Union[BookmarkManager,
                                       BookmarkManager, None] = ...,
-            telemetry_disabled: bool = ...,
         ) -> Driver:
             ...
 
@@ -169,11 +168,10 @@ class GraphDatabase:
 
         @classmethod
         def driver(
-            cls, uri: str, *,
-            auth: t.Union[
-                _TAuth,
-                AuthManager,
-            ] = None,
+            cls,
+            uri: str,
+            *,
+            auth: t.Union[_TAuth, AuthManager] = None,
             **config
         ) -> Driver:
             """Create a driver.
@@ -199,7 +197,6 @@ class GraphDatabase:
                     TRUST_ALL_CERTIFICATES,
                     TRUST_SYSTEM_CA_SIGNED_CERTIFICATES
                 ):
-                    from ..exceptions import ConfigurationError
                     raise ConfigurationError(
                         "The config setting `trust` values are {!r}"
                         .format(
@@ -213,8 +210,8 @@ class GraphDatabase:
             if ("trusted_certificates" in config.keys()
                 and not isinstance(config["trusted_certificates"],
                                    TrustStore)):
-                raise ConnectionError(
-                    "The config setting `trusted_certificates` must be of "
+                raise ConfigurationError(
+                    'The config setting "trusted_certificates" must be of '
                     "type neo4j.TrustAll, neo4j.TrustCustomCAs, or"
                     "neo4j.TrustSystemCAs but was {}".format(
                         type(config["trusted_certificates"])
@@ -226,7 +223,6 @@ class GraphDatabase:
                      or "trust" in config.keys()
                      or "trusted_certificates" in config.keys()
                      or "ssl_context" in config.keys())):
-                from ..exceptions import ConfigurationError
 
                 # TODO: 6.0 - remove "trust" from error message
                 raise ConfigurationError(
@@ -254,12 +250,22 @@ class GraphDatabase:
                 config["encrypted"] = True
                 config["trusted_certificates"] = TrustAll()
             _normalize_notifications_config(config)
+            liveness_check_timeout = config.get("liveness_check_timeout")
+            if (
+                    liveness_check_timeout is not None
+                    and liveness_check_timeout < 0
+            ):
+                raise ConfigurationError(
+                    'The config setting "liveness_check_timeout" must be '
+                    "greater than or equal to 0 but was "
+                    f"{liveness_check_timeout}."
+                )
 
             assert driver_type in (DRIVER_BOLT, DRIVER_NEO4J)
             if driver_type == DRIVER_BOLT:
                 if parse_routing_context(parsed.query):
                     deprecation_warn(
-                        "Creating a direct driver (`bolt://` scheme) with "
+                        'Creating a direct driver ("bolt://" scheme) with '
                         "routing context (URI parameters) is deprecated. They "
                         "will be ignored. This will raise an error in a "
                         'future release. Given URI "{}"'.format(uri),

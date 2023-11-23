@@ -18,7 +18,7 @@
 
 from collections.abc import MutableSet
 from logging import getLogger
-from time import perf_counter
+from time import monotonic
 
 from .addressing import Address
 
@@ -108,7 +108,7 @@ class RoutingTable:
         self.readers = OrderedSet(readers)
         self.writers = OrderedSet(writers)
         self.initialized_without_writers = not self.writers
-        self.last_updated_time = perf_counter()
+        self.last_updated_time = monotonic()
         self.ttl = ttl
         self.database = database
 
@@ -129,7 +129,7 @@ class RoutingTable:
         """ Indicator for whether routing information is still usable.
         """
         assert isinstance(readonly, bool)
-        expired = self.last_updated_time + self.ttl <= perf_counter()
+        expired = self.last_updated_time + self.ttl <= monotonic()
         if readonly:
             has_server_for_mode = bool(self.readers)
         else:
@@ -148,7 +148,7 @@ class RoutingTable:
         :rtype: bool
         """
         from ._conf import RoutingConfig
-        perf_time = perf_counter()
+        perf_time = monotonic()
         res = self.last_updated_time + self.ttl + RoutingConfig.routing_table_purge_delay <= perf_time
         log.debug("[#0000]  _: <ROUTING> purge check: "
                   "last_updated_time=%r, ttl=%r, perf_time=%r => %r",
@@ -163,7 +163,7 @@ class RoutingTable:
         self.readers.replace(new_routing_table.readers)
         self.writers.replace(new_routing_table.writers)
         self.initialized_without_writers = not self.writers
-        self.last_updated_time = perf_counter()
+        self.last_updated_time = monotonic()
         self.ttl = new_routing_table.ttl
         log.debug("[#0000]  _: <ROUTING> updated table=%r", self)
 

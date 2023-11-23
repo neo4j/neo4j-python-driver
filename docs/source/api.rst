@@ -388,6 +388,7 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`encrypted-ref`
 + :ref:`keep-alive-ref`
 + :ref:`max-connection-lifetime-ref`
++ :ref:`liveness-check-timeout-ref`
 + :ref:`max-connection-pool-size-ref`
 + :ref:`max-transaction-retry-time-ref`
 + :ref:`resolver-ref`
@@ -463,6 +464,33 @@ The maximum duration in seconds that the driver will keep a connection for befor
 :Default: ``3600``
 
 
+.. _liveness-check-timeout-ref:
+
+``liveness_check_timeout``
+--------------------------
+Pooled connections that have been idle in the pool for longer than this timeout (specified in seconds) will be tested
+before they are used again, to ensure they are still live.
+If this option is set too low, additional network round trips will be incurred when acquiring a connection, which causes
+a performance hit.
+
+If this is set high, you may receive sessions that are backed by no longer live connections, which will lead to
+exceptions in your application.
+Assuming the database is running, these exceptions will go away if you retry or use a driver API with built-in retries.
+
+Hence, this parameter tunes a balance between the likelihood of your application seeing connection problems, and
+performance.
+
+You normally should not need to tune this parameter.
+No connection liveliness check is done by default (:data:`None`).
+A value of ``0`` means connections will always be tested for validity.
+Negative values are not allowed.
+
+:Type: :class:`float` or :data:`None`
+:Default: :data:`None`
+
+.. versionadded:: 5.15
+
+
 .. _max-connection-pool-size-ref:
 
 ``max_connection_pool_size``
@@ -525,8 +553,8 @@ For example:
                                        resolver=custom_resolver)
 
 
-:Type: ``Callable | None``
-:Default: ``None``
+:Type: ``Callable`` or  :data:`None`
+:Default: :data:`None`
 
 
 .. _trust-ref:
@@ -611,7 +639,7 @@ custom ``ssl_context`` is configured.
 --------------
 Specify the client agent name.
 
-:Type: ``str``
+:Type: :class:`str`
 :Default: *The Python Driver will generate a user agent name.*
 
 

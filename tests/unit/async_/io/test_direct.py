@@ -36,67 +36,23 @@ from neo4j.exceptions import (
 from ...._async_compat import mark_async_test
 
 
-class AsyncFakeSocket:
-    def __init__(self, address):
-        self.address = address
-
-    def getpeername(self):
-        return self.address
-
-    async def sendall(self, data):
-        return
-
-    def close(self):
-        return
-
-
-class AsyncQuickConnection:
-    def __init__(self, socket):
-        self.socket = socket
-        self.address = socket.getpeername()
-        self.local_port = self.address[1]
-        self.connection_id = "bolt-1234"
-
-    @property
-    def is_reset(self):
-        return True
-
-    def stale(self):
-        return False
-
-    async def reset(self):
-        pass
-
-    def re_auth(self, auth, auth_manager, force=False):
-        return False
-
-    def close(self):
-        self.socket.close()
-
-    def closed(self):
-        return False
-
-    def defunct(self):
-        return False
-
-    def timedout(self):
-        return False
-
-    def assert_re_auth_support(self):
-        pass
-
-
 class AsyncFakeBoltPool(AsyncIOPool):
     is_direct_pool = False
 
-    def __init__(self, address, *, auth=None, **config):
+    def __init__(self, connection_gen, address, *, auth=None, **config):
+        self.buffered_connection_mocks = []
         config["auth"] = static_auth(None)
         self.pool_config, self.workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
         if config:
             raise ValueError("Unexpected config keys: %s" % ", ".join(config.keys()))
 
         async def opener(addr, auth, timeout):
-            return AsyncQuickConnection(AsyncFakeSocket(addr))
+            if self.buffered_connection_mocks:
+                mock = self.buffered_connection_mocks.pop()
+            else:
+                mock = connection_gen()
+                mock.address = addr
+            return mock
 
         super().__init__(opener, self.pool_config, self.workspace_config)
         self.address = address
@@ -149,12 +105,14 @@ async def test_bolt_connection_ping_timeout():
 
 
 @pytest.fixture
-async def pool():
-    async with AsyncFakeBoltPool(("127.0.0.1", 7687)) as pool:
+async def pool(async_fake_connection_generator):
+    async with AsyncFakeBoltPool(
+        async_fake_connection_generator, ("127.0.0.1", 7687)
+    ) as pool:
         yield pool
 
 
-def assert_pool_size( address, expected_active, expected_inactive, pool):
+def assert_pool_size(address, expected_active, expected_inactive, pool):
     try:
         connections = pool.connections[address]
     except KeyError:
@@ -227,8 +185,10 @@ async def test_pool_in_use_count(pool):
 
 
 @mark_async_test
-async def test_pool_max_conn_pool_size(pool):
-    async with AsyncFakeBoltPool((), max_connection_pool_size=1) as pool:
+async def test_pool_max_conn_pool_size(async_fake_connection_generator):
+    async with AsyncFakeBoltPool(
+        async_fake_connection_generator, (), max_connection_pool_size=1
+    ) as pool:
         address = neo4j.Address(("127.0.0.1", 7687))
         await pool._acquire(address, None, Deadline(0), None)
         assert pool.in_use_connection_count(address) == 1
@@ -239,22 +199,67 @@ async def test_pool_max_conn_pool_size(pool):
 
 @pytest.mark.parametrize("is_reset", (True, False))
 @mark_async_test
-async def test_pool_reset_when_released(is_reset, pool, mocker):
+async def test_pool_reset_when_released(
+    is_reset, pool, async_fake_connection_generator
+):
+    connection_mock = async_fake_connection_generator()
+    pool.buffered_connection_mocks.append(connection_mock)
     address = neo4j.Address(("127.0.0.1", 7687))
-    quick_connection_name = AsyncQuickConnection.__name__
-    is_reset_mock = mocker.patch(
-        f"{__name__}.{quick_connection_name}.is_reset",
-        new_callable=mocker.PropertyMock
-    )
-    reset_mock = mocker.patch(
-        f"{__name__}.{quick_connection_name}.reset",
-        new_callable=mocker.AsyncMock
-    )
+    is_reset_mock = connection_mock.is_reset_mock
+    reset_mock = connection_mock.reset
     is_reset_mock.return_value = is_reset
     connection = await pool._acquire(address, None, Deadline(3), None)
-    assert isinstance(connection, AsyncQuickConnection)
     assert is_reset_mock.call_count == 0
     assert reset_mock.call_count == 0
     await pool.release(connection)
     assert is_reset_mock.call_count == 1
     assert reset_mock.call_count == int(not is_reset)
+
+
+@pytest.mark.parametrize("config_timeout", (None, 0, 0.2, 1234))
+@pytest.mark.parametrize("acquire_timeout", (None, 0, 0.2, 1234))
+@mark_async_test
+async def test_liveness_check(
+    config_timeout, acquire_timeout, async_fake_connection_generator
+):
+    effective_timeout = config_timeout
+    if acquire_timeout is not None:
+        effective_timeout = acquire_timeout
+    async with AsyncFakeBoltPool(
+        async_fake_connection_generator, ("127.0.0.1", 7687),
+        liveness_check_timeout=config_timeout,
+    ) as pool:
+        address = neo4j.Address(("127.0.0.1", 7687))
+        # pre-populate pool
+        cx1 = await pool._acquire(address, None, Deadline(3), None)
+        await pool.release(cx1)
+        cx1.reset.assert_not_called()
+        cx1.is_idle_for.assert_not_called()
+
+        # simulate just before timeout
+        cx1.is_idle_for.return_value = False
+
+        cx2 = await pool._acquire(address, None, Deadline(3), acquire_timeout)
+        assert cx2 is cx1
+        if effective_timeout is not None:
+            cx1.is_idle_for.assert_called_once_with(effective_timeout)
+        else:
+            cx1.is_idle_for.assert_not_called()
+        await pool.release(cx1)
+        cx1.reset.assert_not_called()
+
+        # simulate after timeout
+        cx1.is_idle_for.return_value = True
+        cx1.is_idle_for.reset_mock()
+
+        cx2 = await pool._acquire(address, None, Deadline(3), acquire_timeout)
+        assert cx2 is cx1
+        if effective_timeout is not None:
+            cx1.is_idle_for.assert_called_once_with(effective_timeout)
+            cx1.reset.assert_awaited_once()
+        else:
+            cx1.is_idle_for.assert_not_called()
+            cx1.reset.assert_not_called()
+        cx1.reset.reset_mock()
+        await pool.release(cx1)
+        cx1.reset.assert_not_called()

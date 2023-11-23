@@ -246,6 +246,8 @@ class IOPool(abc.ABC):
             auth = AcquireAuth(None)
         force_auth = auth.force_auth
         auth = auth.auth
+        if liveness_check_timeout is None:
+            liveness_check_timeout = self.pool_config.liveness_check_timeout
 
         def health_check(connection_, deadline_):
             if (connection_.closed()
