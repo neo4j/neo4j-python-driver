@@ -379,6 +379,10 @@ Closing a driver will immediately shut down all connections in the pool.
         .. versionchanged:: 5.14
             Stabilized ``auth_`` parameter from preview.
 
+        .. versionchanged:: 5.15
+            The ``query_`` parameter now also accepts a :class:`.Query` object
+            instead of only :class:`str`.
+
 
 .. _driver-configuration-ref:
 

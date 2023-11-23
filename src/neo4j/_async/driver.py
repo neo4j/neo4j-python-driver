@@ -846,6 +846,10 @@ class AsyncDriver:
 
         .. versionchanged:: 5.14
             Stabilized ``auth_`` parameter from preview.
+
+        .. versionchanged:: 5.15
+            The ``query_`` parameter now also accepts a :class:`.Query` object
+            instead of only :class:`str`.
         """
         self._check_state()
         invalid_kwargs = [k for k in kwargs if
