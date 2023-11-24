@@ -793,6 +793,22 @@ async def GetRoutingTable(backend, data):
     await backend.send_response("RoutingTable", response_data)
 
 
+async def GetConnectionPoolMetrics(backend, data):
+    driver_id = data["driverId"]
+    address = neo4j.Address.parse(data["address"])
+    driver = backend.drivers[driver_id]
+    connections = driver._pool.connections.get(address, ())
+    in_use = (
+        sum(c.in_use for c in connections)
+        + driver._pool.connections_reservations[address]
+    )
+    idle = len(connections) - in_use
+    await backend.send_response("ConnectionPoolMetrics", {
+        "inUse": in_use,
+        "idle": idle,
+    })
+
+
 async def FakeTimeInstall(backend, _data):
     assert backend.fake_time is None
     assert backend.fake_time_ticker is None
