@@ -113,6 +113,8 @@ Specifically for this driver, this will:
      It might be changed or removed any time even without prior notice.
    * the driver will raise an exception if non-concurrency-safe methods are used concurrently.
 
+     .. versionadded:: 5.15
+
 .. _development mode: https://docs.python.org/3/library/devmode.html
 
 
