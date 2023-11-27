@@ -31,6 +31,7 @@ from ...exceptions import (
     SessionError,
     SessionExpired,
 )
+from .._debug import NonConcurrentMethodChecker
 from ..io import (
     AcquireAuth,
     Neo4jPool,
@@ -40,7 +41,7 @@ from ..io import (
 log = logging.getLogger("neo4j")
 
 
-class Workspace:
+class Workspace(NonConcurrentMethodChecker):
 
     def __init__(self, pool, config):
         assert isinstance(config, WorkspaceConfig)
@@ -56,6 +57,7 @@ class Workspace:
         self._last_from_bookmark_manager = None
         # Workspace has been closed.
         self._closed = False
+        super().__init__()
 
     def __del__(self):
         if self._closed:
@@ -189,6 +191,7 @@ class Workspace:
                 self._connection = None
             self._connection_access_mode = None
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def close(self) -> None:
         if self._closed:
             return

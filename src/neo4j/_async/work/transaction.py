@@ -23,6 +23,7 @@ from functools import wraps
 from ..._async_compat.util import AsyncUtil
 from ..._work import Query
 from ...exceptions import TransactionError
+from .._debug import AsyncNonConcurrentMethodChecker
 from ..io import ConnectionErrorHandler
 from .result import AsyncResult
 
@@ -38,7 +39,7 @@ __all__ = (
 )
 
 
-class AsyncTransactionBase:
+class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
     def __init__(self, connection, fetch_size, on_closed, on_error,
                  on_cancel):
         self._connection = connection
@@ -54,10 +55,12 @@ class AsyncTransactionBase:
         self._on_closed = on_closed
         self._on_error = on_error
         self._on_cancel = on_cancel
+        super().__init__()
 
     async def _enter(self):
         return self
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def _exit(self, exception_type, exception_value, traceback):
         if self._closed_flag:
             return
@@ -69,6 +72,7 @@ class AsyncTransactionBase:
             return
         await self._close()
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def _begin(
         self, database, imp_user, bookmarks, access_mode, metadata, timeout,
         notifications_min_severity, notifications_disabled_categories,
@@ -102,6 +106,7 @@ class AsyncTransactionBase:
             await result._tx_end()
         self._results = []
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def run(
         self,
         query: te.LiteralString,
@@ -165,6 +170,7 @@ class AsyncTransactionBase:
 
         return result
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def _commit(self):
         """Mark this transaction as successful and close in order to trigger a COMMIT.
 
@@ -194,6 +200,7 @@ class AsyncTransactionBase:
 
         return self._bookmark
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def _rollback(self):
         """Mark this transaction as unsuccessful and close in order to trigger a ROLLBACK.
 
@@ -219,6 +226,7 @@ class AsyncTransactionBase:
             self._closed_flag = True
             await AsyncUtil.callback(self._on_closed)
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def _close(self):
         """Close this transaction, triggering a ROLLBACK if not closed.
         """

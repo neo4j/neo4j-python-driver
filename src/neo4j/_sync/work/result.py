@@ -43,6 +43,7 @@ from ...time import (
     Date,
     DateTime,
 )
+from .._debug import NonConcurrentMethodChecker
 from ..io import ConnectionErrorHandler
 
 
@@ -71,7 +72,7 @@ _RESULT_CONSUMED_ERROR = (
 )
 
 
-class Result:
+class Result(NonConcurrentMethodChecker):
     """Handler for the result of Cypher query execution.
 
     Instances of this class are typically constructed and returned by
@@ -109,6 +110,7 @@ class Result:
         self._out_of_scope = False
         # exception shared across all results of a transaction
         self._exception = None
+        super().__init__()
 
     def _connection_error_handler(self, exc):
         self._exception = exc
@@ -251,11 +253,15 @@ class Result:
         )
         self._streaming = True
 
+    @NonConcurrentMethodChecker.non_concurrent_iter
     def __iter__(self) -> t.Iterator[Record]:
         """Iterator returning Records.
 
-        :returns: Record, it is an immutable ordered collection of key-value pairs.
-        :rtype: :class:`neo4j.Record`
+        Advancing the iterator advances the underlying result stream.
+        So even when creating multiple iterators from the same result, each
+        Record will only be returned once.
+
+        :returns: Iterator over the result stream's records.
         """
         while self._record_buffer or self._attached:
             if self._record_buffer:
@@ -278,7 +284,9 @@ class Result:
         if self._consumed:
             raise ResultConsumedError(self, _RESULT_CONSUMED_ERROR)
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def __next__(self) -> Record:
+        """Advance the result stream and return the record."""
         return self.__iter__().__next__()
 
     def _attach(self):
@@ -367,6 +375,7 @@ class Result:
         self._attached = False
         self._exception = exc
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def consume(self) -> ResultSummary:
         """Consume the remainder of this result and return a :class:`neo4j.ResultSummary`.
 
@@ -434,6 +443,7 @@ class Result:
     def single(self, strict: te.Literal[True]) -> Record:
         ...
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def single(self, strict: bool = False) -> t.Optional[Record]:
         """Obtain the next and only remaining record or None.
 
@@ -495,6 +505,7 @@ class Result:
                 )
         return buffer.popleft()
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def fetch(self, n: int) -> t.List[Record]:
         """Obtain up to n records from this result.
 
@@ -517,6 +528,7 @@ class Result:
             for _ in range(min(n, len(self._record_buffer)))
         ]
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def peek(self) -> t.Optional[Record]:
         """Obtain the next record from this result without consuming it.
 
@@ -537,6 +549,7 @@ class Result:
             return self._record_buffer[0]
         return None
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def graph(self) -> Graph:
         """Turn the result into a :class:`neo4j.Graph`.
 
@@ -559,6 +572,7 @@ class Result:
         self._buffer_all()
         return self._hydration_scope.get_graph()
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def value(
         self, key: _TResultKey = 0, default: t.Optional[object] = None
     ) -> t.List[t.Any]:
@@ -580,6 +594,7 @@ class Result:
         """
         return [record.value(key, default) for record in self]
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def values(
         self, *keys: _TResultKey
     ) -> t.List[t.List[t.Any]]:
@@ -600,6 +615,7 @@ class Result:
         """
         return [record.values(*keys) for record in self]
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def data(self, *keys: _TResultKey) -> t.List[t.Dict[str, t.Any]]:
         """Return the remainder of the result as a list of dictionaries.
 
@@ -626,6 +642,7 @@ class Result:
         """
         return [record.data(*keys) for record in self]
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def to_eager_result(self) -> EagerResult:
         """Convert this result to an :class:`.EagerResult`.
 
@@ -650,6 +667,7 @@ class Result:
             summary=self.consume()
         )
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def to_df(
         self,
         expand: bool = False,
