@@ -14,9 +14,13 @@
 # limitations under the License.
 
 
-from ._common import Structure
+from ._common import (
+    RUST_AVAILABLE,
+    Structure,
+)
 
 
 __all__ = [
     "Structure",
+    "RUST_AVAILABLE",
 ]
