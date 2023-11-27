@@ -16,5 +16,7 @@
 
 try:
     from ._rust import Structure
+    RUST_AVAILABLE = True
 except ImportError:
     from ._python import Structure
+    RUST_AVAILABLE = False
