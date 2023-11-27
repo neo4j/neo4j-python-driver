@@ -67,14 +67,6 @@ def _compute_user_agent() -> str:
 USER_AGENT = _compute_user_agent()
 
 
-# TODO: 6.0 - remove this function
-def get_user_agent():
-    """ Obtain the default user agent string sent to the server after
-    a successful handshake.
-    """
-    return USER_AGENT
-
-
 def _id(x):
     return x
 
@@ -225,3 +217,15 @@ def unclosed_resource_warn(obj):
     else:
         msg += "\nEnable tracemalloc to get the object allocation traceback."
     warn(msg, ResourceWarning, stacklevel=2, source=obj)
+
+
+# TODO: 6.0 - remove this function
+@deprecated(
+    "get_user_agent is considered an internal function and will be removed in "
+    "a future version"
+)
+def get_user_agent():
+    """ Obtain the default user agent string sent to the server after
+    a successful handshake.
+    """
+    return USER_AGENT
