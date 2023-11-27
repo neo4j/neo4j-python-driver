@@ -73,7 +73,9 @@ def _compute_user_agent() -> str:
 USER_AGENT = _compute_user_agent()
 
 
-# TODO: 6.0 - remove this function
+# Undocumented but exposed.
+# Other official drivers also provide means to access the default user agent.
+# Hence, we'll leave this here for now.
 def get_user_agent():
     """ Obtain the default user agent string sent to the server after
     a successful handshake.
