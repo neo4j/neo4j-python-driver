@@ -363,6 +363,11 @@ def ExecuteQuery(backend, data):
         value = config.get(config_key, None)
         if value is not None:
             kwargs[kwargs_key] = value
+    tx_kwargs = fromtestkit.to_tx_kwargs(config)
+    if tx_kwargs:
+        query = neo4j.Query(cypher, **tx_kwargs)
+    else:
+        query = cypher
     bookmark_manager_id = config.get("bookmarkManagerId")
     if bookmark_manager_id is not None:
         if bookmark_manager_id == -1:
@@ -371,7 +376,7 @@ def ExecuteQuery(backend, data):
             bookmark_manager = backend.bookmark_managers[bookmark_manager_id]
             kwargs["bookmark_manager_"] = bookmark_manager
 
-    eager_result = driver.execute_query(cypher, params, **kwargs)
+    eager_result = driver.execute_query(query, params, **kwargs)
     backend.send_response("EagerResult", {
         "keys": eager_result.keys,
         "records": list(map(totestkit.record, eager_result.records)),
