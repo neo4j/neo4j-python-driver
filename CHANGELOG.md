@@ -4,7 +4,7 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
 - No breaking or major changes.
-
+- Refactored logger names to adhere to a hierarchical structure for better log source tracing.
 
 ## Version 5.15
 - No breaking or major changes.

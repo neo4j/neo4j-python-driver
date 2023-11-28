@@ -5,7 +5,7 @@ import socket
 from ... import addressing
 
 
-log = logging.getLogger("neo4j")
+log = logging.getLogger("neo4j.async_compat.network")
 
 
 def _resolved_addresses_from_info(info, host_name):

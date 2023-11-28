@@ -57,7 +57,7 @@ from ._common import (
 
 
 # Set up logger
-log = getLogger("neo4j")
+log = getLogger("neo4j.async.io")
 
 
 class ServerStateManagerBase(abc.ABC):

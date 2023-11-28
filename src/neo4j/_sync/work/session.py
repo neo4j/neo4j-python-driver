@@ -61,7 +61,7 @@ if t.TYPE_CHECKING:
     _P = te.ParamSpec("_P")
 
 
-log = getLogger("neo4j")
+log = getLogger("neo4j.sync.work")
 
 
 class Session(Workspace):

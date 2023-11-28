@@ -65,7 +65,7 @@ from ._bolt import Bolt
 
 
 # Set up logger
-log = getLogger("neo4j")
+log = getLogger("neo4j.sync.io")
 
 
 @dataclass

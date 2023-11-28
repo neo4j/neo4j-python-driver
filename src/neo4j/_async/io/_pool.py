@@ -68,7 +68,7 @@ from ._bolt import AsyncBolt
 
 
 # Set up logger
-log = getLogger("neo4j")
+log = getLogger("neo4j.async.io")
 
 
 @dataclass

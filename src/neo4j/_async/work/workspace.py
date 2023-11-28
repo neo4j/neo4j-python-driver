@@ -38,7 +38,7 @@ from ..io import (
 )
 
 
-log = logging.getLogger("neo4j")
+log = logging.getLogger("neo4j.async.work")
 
 
 class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
