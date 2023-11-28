@@ -34,7 +34,7 @@ if t.TYPE_CHECKING:
 
 # Can be automatically overridden in builds
 package = "neo4j"
-version = "5.14.dev0"
+version = "5.15.dev0"
 deprecated_package = False
 
 
