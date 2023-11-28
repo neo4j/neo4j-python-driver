@@ -131,6 +131,8 @@ class NonConcurrentMethodChecker:
                     if acquired:
                         try:
                             item = iter_.__next__()
+                        except StopIteration:
+                            return
                         finally:
                             with self.__tracebacks_lock:
                                 self.__tracebacks.pop()
