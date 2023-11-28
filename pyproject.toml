@@ -24,7 +24,7 @@ authors = [
     {email = "\"Neo4j, Inc.\" <drivers@neo4j.com>"}
 ]
 dependencies = [
-    "neo4j == 5.14.1"
+    "neo4j == 5.15.0"
 ]
 requires-python = ">=3.7"
 keywords = ["neo4j", "graph", "database"]
@@ -43,7 +43,7 @@ classifiers = [
     "Topic :: Database",
     "Topic :: Software Development",
 ]
-version = "5.14.1.0a1"
+version = "5.15.0.0a1"
 
 [project.urls]
 Homepage = "https://neo4j.com/"
