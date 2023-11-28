@@ -131,6 +131,8 @@ class AsyncNonConcurrentMethodChecker:
                     if acquired:
                         try:
                             item = await iter_.__anext__()
+                        except StopAsyncIteration:
+                            return
                         finally:
                             async with self.__tracebacks_lock:
                                 self.__tracebacks.pop()
