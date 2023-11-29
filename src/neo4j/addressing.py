@@ -30,7 +30,7 @@ if t.TYPE_CHECKING:
     import typing_extensions as te
 
 
-log = logging.getLogger("neo4j.addressing")
+log = logging.getLogger("neo4j.pool")
 
 
 _T = t.TypeVar("_T")

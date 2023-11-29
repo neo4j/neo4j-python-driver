@@ -28,7 +28,7 @@ from ...exceptions import (
 )
 
 
-log = logging.getLogger("neo4j.async.io")
+log = logging.getLogger("neo4j")
 
 
 class AsyncInbox:

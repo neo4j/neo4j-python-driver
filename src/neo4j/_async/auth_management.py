@@ -32,7 +32,7 @@ if t.TYPE_CHECKING:
     from ..exceptions import Neo4jError
 
 
-log = getLogger("neo4j.async")
+log = getLogger("neo4j.auth")
 
 
 class AsyncStaticAuthManager(AsyncAuthManager):

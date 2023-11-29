@@ -57,7 +57,7 @@ from ._common import (
 
 
 # Set up logger
-log = getLogger("neo4j.sync.io")
+log = getLogger("neo4j.bolt")
 
 
 class ServerStateManagerBase(abc.ABC):

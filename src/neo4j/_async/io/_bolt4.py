@@ -51,7 +51,7 @@ from ._common import (
 )
 
 
-log = getLogger("neo4j.async.io")
+log = getLogger("neo4j.bolt")
 
 
 class AsyncBolt4x0(AsyncBolt):

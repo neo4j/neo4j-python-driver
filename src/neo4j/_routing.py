@@ -21,7 +21,7 @@ from time import perf_counter
 from .addressing import Address
 
 
-log = getLogger("neo4j.routing")
+log = getLogger("neo4j.pool")
 
 
 class OrderedSet(MutableSet):

@@ -49,7 +49,7 @@ from ._common import (
 )
 
 
-log = getLogger("neo4j.sync.io")
+log = getLogger("neo4j.bolt")
 
 
 class BoltStates(Enum):
