@@ -5,7 +5,7 @@ import socket
 from ... import addressing
 
 
-log = logging.getLogger("neo4j.network")
+log = logging.getLogger("neo4j.io")
 
 
 def _resolved_addresses_from_info(info, host_name):
@@ -142,7 +142,7 @@ class NetworkUtil:
             yield address
             return
 
-        addressing.log.debug("[#0000]  _: <RESOLVE> in: %s", address)
+        log.debug("[#0000]  _: <RESOLVE> in: %s", address)
         if resolver:
             for address in map(addressing.Address, resolver(address)):
                 log.debug("[#0000]  _: <RESOLVE> custom resolver out: %s",

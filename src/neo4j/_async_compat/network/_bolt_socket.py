@@ -62,7 +62,7 @@ if t.TYPE_CHECKING:
     from ..._sync.io import Bolt
 
 
-log = logging.getLogger("neo4j.network")
+log = logging.getLogger("neo4j.io")
 
 
 def _sanitize_deadline(deadline):
