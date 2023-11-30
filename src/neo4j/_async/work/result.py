@@ -1,8 +1,6 @@
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [https://neo4j.com]
 #
-# This file is part of Neo4j.
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -45,6 +43,7 @@ from ...time import (
     Date,
     DateTime,
 )
+from .._debug import AsyncNonConcurrentMethodChecker
 from ..io import ConnectionErrorHandler
 
 
@@ -73,7 +72,7 @@ _RESULT_CONSUMED_ERROR = (
 )
 
 
-class AsyncResult:
+class AsyncResult(AsyncNonConcurrentMethodChecker):
     """Handler for the result of Cypher query execution.
 
     Instances of this class are typically constructed and returned by
@@ -111,6 +110,7 @@ class AsyncResult:
         self._out_of_scope = False
         # exception shared across all results of a transaction
         self._exception = None
+        super().__init__()
 
     async def _connection_error_handler(self, exc):
         self._exception = exc
@@ -253,11 +253,15 @@ class AsyncResult:
         )
         self._streaming = True
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_iter
     async def __aiter__(self) -> t.AsyncIterator[Record]:
         """Iterator returning Records.
 
-        :returns: Record, it is an immutable ordered collection of key-value pairs.
-        :rtype: :class:`neo4j.Record`
+        Advancing the iterator advances the underlying result stream.
+        So even when creating multiple iterators from the same result, each
+        Record will only be returned once.
+
+        :returns: Iterator over the result stream's records.
         """
         while self._record_buffer or self._attached:
             if self._record_buffer:
@@ -280,7 +284,9 @@ class AsyncResult:
         if self._consumed:
             raise ResultConsumedError(self, _RESULT_CONSUMED_ERROR)
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def __anext__(self) -> Record:
+        """Advance the result stream and return the record."""
         return await self.__aiter__().__anext__()
 
     async def _attach(self):
@@ -369,6 +375,7 @@ class AsyncResult:
         self._attached = False
         self._exception = exc
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def consume(self) -> ResultSummary:
         """Consume the remainder of this result and return a :class:`neo4j.ResultSummary`.
 
@@ -436,6 +443,7 @@ class AsyncResult:
     async def single(self, strict: te.Literal[True]) -> Record:
         ...
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def single(self, strict: bool = False) -> t.Optional[Record]:
         """Obtain the next and only remaining record or None.
 
@@ -497,6 +505,7 @@ class AsyncResult:
                 )
         return buffer.popleft()
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def fetch(self, n: int) -> t.List[Record]:
         """Obtain up to n records from this result.
 
@@ -519,6 +528,7 @@ class AsyncResult:
             for _ in range(min(n, len(self._record_buffer)))
         ]
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def peek(self) -> t.Optional[Record]:
         """Obtain the next record from this result without consuming it.
 
@@ -539,6 +549,7 @@ class AsyncResult:
             return self._record_buffer[0]
         return None
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def graph(self) -> Graph:
         """Turn the result into a :class:`neo4j.Graph`.
 
@@ -561,6 +572,7 @@ class AsyncResult:
         await self._buffer_all()
         return self._hydration_scope.get_graph()
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def value(
         self, key: _TResultKey = 0, default: t.Optional[object] = None
     ) -> t.List[t.Any]:
@@ -582,6 +594,7 @@ class AsyncResult:
         """
         return [record.value(key, default) async for record in self]
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def values(
         self, *keys: _TResultKey
     ) -> t.List[t.List[t.Any]]:
@@ -602,6 +615,7 @@ class AsyncResult:
         """
         return [record.values(*keys) async for record in self]
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def data(self, *keys: _TResultKey) -> t.List[t.Dict[str, t.Any]]:
         """Return the remainder of the result as a list of dictionaries.
 
@@ -628,6 +642,7 @@ class AsyncResult:
         """
         return [record.data(*keys) async for record in self]
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def to_eager_result(self) -> EagerResult:
         """Convert this result to an :class:`.EagerResult`.
 
@@ -652,6 +667,7 @@ class AsyncResult:
             summary=await self.consume()
         )
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def to_df(
         self,
         expand: bool = False,

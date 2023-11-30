@@ -1,8 +1,6 @@
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [https://neo4j.com]
 #
-# This file is part of Neo4j.
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -44,6 +42,7 @@ from ...exceptions import (
     SessionExpired,
     TransactionError,
 )
+from .._debug import AsyncNonConcurrentMethodChecker
 from ..auth_management import AsyncAuthManagers
 from .result import AsyncResult
 from .transaction import (
@@ -180,6 +179,7 @@ class AsyncSession(AsyncWorkspace):
         await self._connect(READ_ACCESS, force_auth=True)
         await self._disconnect()
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def close(self) -> None:
         """Close the session.
 
@@ -249,6 +249,7 @@ class AsyncSession(AsyncWorkspace):
             """
             self._handle_cancellation(message="manual cancel")
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def run(
         self,
         query: t.Union[te.LiteralString, Query],
@@ -322,6 +323,7 @@ class AsyncSession(AsyncWorkspace):
         "`last_bookmark` has been deprecated in favor of `last_bookmarks`. "
         "This method can lead to unexpected behaviour."
     )
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def last_bookmark(self) -> t.Optional[str]:
         """Get the bookmark received following the last completed transaction.
 
@@ -436,6 +438,7 @@ class AsyncSession(AsyncWorkspace):
             pipelined=self._pipelined_begin
         )
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def begin_transaction(
         self,
         metadata: t.Optional[t.Dict[str, t.Any]] = None,
@@ -585,6 +588,7 @@ class AsyncSession(AsyncWorkspace):
         else:
             raise ServiceUnavailable("Transaction failed")
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def execute_read(
         self,
         transaction_function: t.Callable[
@@ -660,6 +664,7 @@ class AsyncSession(AsyncWorkspace):
 
     # TODO: 6.0 - Remove this method
     @deprecated("read_transaction has been renamed to execute_read")
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def read_transaction(
         self,
         transaction_function: t.Callable[
@@ -697,6 +702,7 @@ class AsyncSession(AsyncWorkspace):
             transaction_function, args, kwargs
         )
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def execute_write(
         self,
         transaction_function: t.Callable[
@@ -754,6 +760,7 @@ class AsyncSession(AsyncWorkspace):
 
     # TODO: 6.0 - Remove this method
     @deprecated("write_transaction has been renamed to execute_write")
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def write_transaction(
         self,
         transaction_function: t.Callable[

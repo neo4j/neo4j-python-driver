@@ -1,8 +1,6 @@
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [https://neo4j.com]
 #
-# This file is part of Neo4j.
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -50,7 +48,11 @@ from .._meta import (
     experimental_warn,
     unclosed_resource_warn,
 )
-from .._work import EagerResult
+from .._work import (
+    EagerResult,
+    Query,
+    unit_of_work,
+)
 from ..addressing import Address
 from ..api import (
     Auth,
@@ -588,7 +590,7 @@ class Driver:
     @t.overload
     def execute_query(
         self,
-        query_: te.LiteralString,
+        query_: t.Union[te.LiteralString, Query],
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -607,7 +609,7 @@ class Driver:
     @t.overload
     def execute_query(
         self,
-        query_: te.LiteralString,
+        query_: t.Union[te.LiteralString, Query],
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -625,7 +627,7 @@ class Driver:
 
     def execute_query(
         self,
-        query_: te.LiteralString,
+        query_: t.Union[te.LiteralString, Query],
         parameters_: t.Optional[t.Dict[str, t.Any]] = None,
         routing_: T_RoutingControl = RoutingControl.WRITE,
         database_: t.Optional[str] = None,
@@ -658,8 +660,9 @@ class Driver:
                 query_, parameters_, routing_, database_, impersonated_user_,
                 bookmark_manager_, auth_, result_transformer_, **kwargs
             ):
+                @unit_of_work(query_.metadata, query_.timeout)
                 def work(tx):
-                    result = tx.run(query_, parameters_, **kwargs)
+                    result = tx.run(query_.text, parameters_, **kwargs)
                     return result_transformer_(result)
 
                 with driver.session(
@@ -716,16 +719,19 @@ class Driver:
                 assert isinstance(count, int)
                 return count
 
-        :param query_: cypher query to execute
-        :type query_: typing.LiteralString
+        :param query_:
+            Cypher query to execute.
+            Use a :class:`.Query` object to pass a query with additional
+            transaction configuration.
+        :type query_: typing.LiteralString | Query
         :param parameters_: parameters to use in the query
         :type parameters_: typing.Optional[typing.Dict[str, typing.Any]]
         :param routing_:
-            whether to route the query to a reader (follower/read replica) or
+            Whether to route the query to a reader (follower/read replica) or
             a writer (leader) in the cluster. Default is to route to a writer.
         :type routing_: RoutingControl
         :param database_:
-            database to execute the query against.
+            Database to execute the query against.
 
             None (default) uses the database configured on the server side.
 
@@ -845,6 +851,10 @@ class Driver:
 
         .. versionchanged:: 5.14
             Stabilized ``auth_`` parameter from preview.
+
+        .. versionchanged:: 5.15
+            The ``query_`` parameter now also accepts a :class:`.Query` object
+            instead of only :class:`str`.
         """
         self._check_state()
         invalid_kwargs = [k for k in kwargs if
@@ -857,6 +867,14 @@ class Driver:
                 "latter case, use the `parameters_` dictionary instead."
                 % invalid_kwargs
             )
+        if isinstance(query_, Query):
+            timeout = query_.timeout
+            metadata = query_.metadata
+            query_str = query_.text
+            work = unit_of_work(metadata, timeout)(_work)
+        else:
+            query_str = query_
+            work = _work
         parameters = dict(parameters_ or {}, **kwargs)
 
         if bookmark_manager_ is _default:
@@ -883,7 +901,7 @@ class Driver:
             with session._pipelined_begin:
                 return session._run_transaction(
                     access_mode, TelemetryAPI.DRIVER,
-                    _work, (query_, parameters, result_transformer_), {}
+                    work, (query_str, parameters, result_transformer_), {}
                 )
 
     @property
@@ -1202,7 +1220,7 @@ class Driver:
 
 def _work(
     tx: ManagedTransaction,
-    query: str,
+    query: te.LiteralString,
     parameters: t.Dict[str, t.Any],
     transformer: t.Callable[[Result], t.Union[_T]]
 ) -> _T:

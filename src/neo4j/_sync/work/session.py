@@ -1,8 +1,6 @@
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [https://neo4j.com]
 #
-# This file is part of Neo4j.
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -44,6 +42,7 @@ from ...exceptions import (
     SessionExpired,
     TransactionError,
 )
+from .._debug import NonConcurrentMethodChecker
 from ..auth_management import AuthManagers
 from .result import Result
 from .transaction import (
@@ -180,6 +179,7 @@ class Session(Workspace):
         self._connect(READ_ACCESS, force_auth=True)
         self._disconnect()
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def close(self) -> None:
         """Close the session.
 
@@ -249,6 +249,7 @@ class Session(Workspace):
             """
             self._handle_cancellation(message="manual cancel")
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def run(
         self,
         query: t.Union[te.LiteralString, Query],
@@ -322,6 +323,7 @@ class Session(Workspace):
         "`last_bookmark` has been deprecated in favor of `last_bookmarks`. "
         "This method can lead to unexpected behaviour."
     )
+    @NonConcurrentMethodChecker.non_concurrent_method
     def last_bookmark(self) -> t.Optional[str]:
         """Get the bookmark received following the last completed transaction.
 
@@ -436,6 +438,7 @@ class Session(Workspace):
             pipelined=self._pipelined_begin
         )
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def begin_transaction(
         self,
         metadata: t.Optional[t.Dict[str, t.Any]] = None,
@@ -585,6 +588,7 @@ class Session(Workspace):
         else:
             raise ServiceUnavailable("Transaction failed")
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def execute_read(
         self,
         transaction_function: t.Callable[
@@ -660,6 +664,7 @@ class Session(Workspace):
 
     # TODO: 6.0 - Remove this method
     @deprecated("read_transaction has been renamed to execute_read")
+    @NonConcurrentMethodChecker.non_concurrent_method
     def read_transaction(
         self,
         transaction_function: t.Callable[
@@ -697,6 +702,7 @@ class Session(Workspace):
             transaction_function, args, kwargs
         )
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def execute_write(
         self,
         transaction_function: t.Callable[
@@ -754,6 +760,7 @@ class Session(Workspace):
 
     # TODO: 6.0 - Remove this method
     @deprecated("write_transaction has been renamed to execute_write")
+    @NonConcurrentMethodChecker.non_concurrent_method
     def write_transaction(
         self,
         transaction_function: t.Callable[

@@ -503,25 +503,16 @@ dl.field-list > dd > ol {
     margin-left: 0;
 }
 
-ol.simple p, ul.simple p {
-    margin-bottom: 0;
-}
-
-ol.simple > li:not(:first-child) > p,
-ul.simple > li:not(:first-child) > p,
-:not(li) > ol > li:first-child > :first-child,
-:not(li) > ul > li:first-child > :first-child {
+.content ol li > p:first-of-type,
+.content ul li > p:first-of-type {
     margin-top: 0;
 }
 
-
-li > p:last-child {
-    margin-top: 10px;
+.content ol li > p:last-of-type,
+.content ul li > p:last-of-type {
+    margin-bottom: 0;
 }
 
-li > p:first-child {
-    margin-top: 10px;
-}
 
 table.docutils {
     margin-top: 10px;

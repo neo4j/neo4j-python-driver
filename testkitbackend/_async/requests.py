@@ -1,8 +1,6 @@
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [https://neo4j.com]
 #
-# This file is part of Neo4j.
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -361,6 +359,11 @@ async def ExecuteQuery(backend, data):
         value = config.get(config_key, None)
         if value is not None:
             kwargs[kwargs_key] = value
+    tx_kwargs = fromtestkit.to_tx_kwargs(config)
+    if tx_kwargs:
+        query = neo4j.Query(cypher, **tx_kwargs)
+    else:
+        query = cypher
     bookmark_manager_id = config.get("bookmarkManagerId")
     if bookmark_manager_id is not None:
         if bookmark_manager_id == -1:
@@ -372,7 +375,7 @@ async def ExecuteQuery(backend, data):
         kwargs["auth_"] = fromtestkit.to_auth_token(config,
                                                     "authorizationToken")
 
-    eager_result = await driver.execute_query(cypher, params, **kwargs)
+    eager_result = await driver.execute_query(query, params, **kwargs)
     await backend.send_response("EagerResult", {
         "keys": eager_result.keys,
         "records": list(map(totestkit.record, eager_result.records)),

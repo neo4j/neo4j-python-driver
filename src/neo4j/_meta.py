@@ -1,8 +1,6 @@
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [https://neo4j.com]
 #
-# This file is part of Neo4j.
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -27,6 +25,8 @@ from functools import wraps
 from inspect import isclass
 from warnings import warn
 
+from ._codec.packstream import RUST_AVAILABLE
+
 
 if t.TYPE_CHECKING:
     _FuncT = t.TypeVar("_FuncT", bound=t.Callable)
@@ -34,7 +34,7 @@ if t.TYPE_CHECKING:
 
 # Can be automatically overridden in builds
 package = "neo4j"
-version = "5.14.dev0"
+version = "5.15.dev0"
 deprecated_package = False
 
 
@@ -42,13 +42,17 @@ def _compute_bolt_agent() -> t.Dict[str, str]:
     def format_version_info(version_info):
         return "{}.{}.{}-{}-{}".format(*version_info)
 
+    language = "Python"
+    if RUST_AVAILABLE:
+        language += "-Rust"
+
     return {
         "product": f"neo4j-python/{version}",
         "platform":
             f"{platform.system() or 'Unknown'} "
             f"{platform.release() or 'unknown'}; "
             f"{platform.machine() or 'unknown'}",
-        "language": f"Python/{format_version_info(sys.version_info)}",
+        "language": f"{language}/{format_version_info(sys.version_info)}",
         "language_details":
             f"{platform.python_implementation()}; "
             f"{format_version_info(sys.implementation.version)} "
@@ -61,15 +65,17 @@ BOLT_AGENT_DICT = _compute_bolt_agent()
 
 
 def _compute_user_agent() -> str:
-    template = "neo4j-python/{} Python/{}.{}.{}-{}-{} ({})"
-    fields = (version,) + tuple(sys.version_info) + (sys.platform,)
-    return template.format(*fields)
+    return (f'{BOLT_AGENT_DICT["product"]} '
+            f'{BOLT_AGENT_DICT["language"]} '
+            f'({sys.platform})')
 
 
 USER_AGENT = _compute_user_agent()
 
 
-# TODO: 6.0 - remove this function
+# Undocumented but exposed.
+# Other official drivers also provide means to access the default user agent.
+# Hence, we'll leave this here for now.
 def get_user_agent():
     """ Obtain the default user agent string sent to the server after
     a successful handshake.

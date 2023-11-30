@@ -187,8 +187,9 @@ Closing a driver will immediately shut down all connections in the pool.
                 query_, parameters_, routing_, database_, impersonated_user_,
                 bookmark_manager_, auth_, result_transformer_, **kwargs
             ):
+                @unit_of_work(query_.metadata, query_.timeout)
                 def work(tx):
-                    result = tx.run(query_, parameters_, **kwargs)
+                    result = tx.run(query_.text, parameters_, **kwargs)
                     return result_transformer_(result)
 
                 with driver.session(
@@ -245,16 +246,19 @@ Closing a driver will immediately shut down all connections in the pool.
                 assert isinstance(count, int)
                 return count
 
-        :param query_: cypher query to execute
-        :type query_: typing.LiteralString
+        :param query_:
+            Cypher query to execute.
+            Use a :class:`.Query` object to pass a query with additional
+            transaction configuration.
+        :type query_: typing.LiteralString | Query
         :param parameters_: parameters to use in the query
         :type parameters_: typing.Dict[str, typing.Any] | None
         :param routing_:
-            whether to route the query to a reader (follower/read replica) or
+            Whether to route the query to a reader (follower/read replica) or
             a writer (leader) in the cluster. Default is to route to a writer.
         :type routing_: RoutingControl
         :param database_:
-            database to execute the query against.
+            Database to execute the query against.
 
             None (default) uses the database configured on the server side.
 
@@ -374,6 +378,10 @@ Closing a driver will immediately shut down all connections in the pool.
 
         .. versionchanged:: 5.14
             Stabilized ``auth_`` parameter from preview.
+
+        .. versionchanged:: 5.15
+            The ``query_`` parameter now also accepts a :class:`.Query` object
+            instead of only :class:`str`.
 
 
 .. _driver-configuration-ref:

@@ -99,6 +99,25 @@ To deactivate the current active virtual environment, use:
     deactivate
 
 
+Development Environment
+=======================
+
+For development, we recommend to run Python in `development mode`_ (``python -X dev ...``).
+Specifically for this driver, this will:
+
+ * enable :class:`ResourceWarning`, which the driver emits if resources (e.g., Sessions) aren't properly closed.
+ * enable :class:`DeprecationWarning`, which the driver emits if deprecated APIs are used.
+ * enable the driver's debug mode (this can also be achieved by setting the environment variable ``PYTHONNEO4JDEBUG``):
+
+   * **This is experimental**.
+     It might be changed or removed any time even without prior notice.
+   * the driver will raise an exception if non-concurrency-safe methods are used concurrently.
+
+     .. versionadded:: 5.15
+
+.. _development mode: https://docs.python.org/3/library/devmode.html
+
+
 *************
 Quick Example
 *************

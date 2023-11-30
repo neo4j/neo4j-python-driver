@@ -1,8 +1,6 @@
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [https://neo4j.com]
 #
-# This file is part of Neo4j.
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -31,8 +29,10 @@ class Query:
     """A query with attached extra data.
 
     This wrapper class for queries is used to attach extra data to queries
-    passed to :meth:`.Session.run` and :meth:`.AsyncSession.run`, fulfilling
-    a similar role as :func:`.unit_of_work` for transactions functions.
+    passed to :meth:`.Session.run`/:meth:`.AsyncSession.run` and
+    :meth:`.Driver.execute_query`/:meth:`.AsyncDriver.execute_query`,
+    fulfilling a similar role as :func:`.unit_of_work` for transactions
+    functions.
 
     :param text: The query text.
     :type text: typing.LiteralString
@@ -76,7 +76,12 @@ class Query:
         self.timeout = timeout
 
     def __str__(self) -> te.LiteralString:
-        return str(self.text)
+        # we know that if Query is constructed with a LiteralString,
+        # str(self.text) will be a LiteralString as well. The conversion isn't
+        # necessary if the user adheres to the type hints. However, it was
+        # here before, and we don't want to break backwards compatibility.
+        text: te.LiteralString = str(self.text)  # type: ignore[assignment]
+        return text
 
 
 def unit_of_work(
