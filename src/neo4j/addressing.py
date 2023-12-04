@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import logging
 import typing as t
 from socket import (
     AddressFamily,
@@ -28,9 +27,6 @@ from socket import (
 
 if t.TYPE_CHECKING:
     import typing_extensions as te
-
-
-log = logging.getLogger("neo4j")
 
 
 _T = t.TypeVar("_T")

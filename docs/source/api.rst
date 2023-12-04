@@ -2080,9 +2080,30 @@ following code:
 Logging
 *******
 
-The driver offers logging for debugging purposes. It is not recommended to
-enable logging for anything other than debugging. For instance, if the driver is
-not able to connect to the database server or if undesired behavior is observed.
+The driver offers logging for debugging purposes.
+It is not recommended to enable logging for anything other than debugging.
+For instance, if the driver is not able to connect to the database server or if
+undesired behavior is observed.
+
+This includes messages logged on ``WARNING`` level or higher.
+They are logged to help understand what is going on *inside* the driver.
+All relevant information is passed through return values, raised exceptions,
+warnings, etc.
+The logs are not the right place to look for actionable information.
+
+The driver supports hierarchical logging.
+This means you can selectively configure all of the driver's logging or only
+parts of it.
+Currently available:
+
+* ``neo4j``: The root logger for the driver.
+  High-level code (e.g., Session, Transaction, Driver, etc.) logs here.
+
+  * ``neo4j.io``: Logs network activity and bolt protocol messages, handshakes,
+    etc.
+  * ``neo4j.pool``: Logs connection pool activity (including routing).
+  * ``neo4j.auth_management``: Logger for provided :class:`.AuthManager`
+    implementations.
 
 There are different ways of enabling logging as listed below.
 

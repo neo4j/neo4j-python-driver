@@ -4,6 +4,13 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
 - No breaking or major changes.
+- Implemented a hierarchical logger structure to improve log source
+  identification and traceability.  
+  Introduced child loggers:
+  - `neo4j.io`: For socket and bolt protocol related logging.
+  - `neo4j.pool`: For logs pertaining to connection pooling and routing.
+  - `neo4j.auth_management`: For logging inside the provided AuthManager
+    implementations.
 
 
 ## Version 5.15
