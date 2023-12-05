@@ -207,13 +207,14 @@ def test_watcher_level_multiple_watchers(
 
 custom_log_out = io.StringIO()
 
+
 @pytest.mark.parametrize(
     ("default_out", "out", "expected_out"),
     (
-        (None, None, sys.stderr),
-        (sys.stdout, None, sys.stdout),
-        (sys.stdout, sys.stderr, sys.stderr),
-        (sys.stderr, sys.stdout, sys.stdout),
+        (None, None, "stderr"),
+        ("stdout", None, "stdout"),
+        ("stdout", "stderr", "stderr"),
+        ("stderr", "stdout", "stdout"),
         (custom_log_out, None, custom_log_out),
         (None, custom_log_out, custom_log_out),
     )
@@ -221,6 +222,20 @@ custom_log_out = io.StringIO()
 def test_watcher_out(
     logger_mocker, default_out, out, expected_out
 ) -> None:
+    def normalize_stream(stream):
+        # For some reason (probably a change in pytest), sys.stdout and
+        # sys.stderr are replaces with a custom now io.TextIOWrapper.
+        # Therefore, we grab them dynamically within the test.
+        if isinstance(stream, str):
+            if stream == "stdout":
+                return sys.stdout
+            elif stream == "stderr":
+                return sys.stderr
+        return stream
+
+    default_out = normalize_stream(default_out)
+    out = normalize_stream(out)
+    expected_out = normalize_stream(expected_out)
     logger_name = "neo4j"
     logger = logger_mocker(logger_name)[0]
     kwargs = {}
