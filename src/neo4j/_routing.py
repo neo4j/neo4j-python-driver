@@ -21,7 +21,7 @@ from time import monotonic
 from .addressing import Address
 
 
-log = getLogger("neo4j")
+log = getLogger("neo4j.pool")
 
 
 class OrderedSet(MutableSet):

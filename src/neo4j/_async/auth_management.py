@@ -32,7 +32,7 @@ if t.TYPE_CHECKING:
     from ..exceptions import Neo4jError
 
 
-log = getLogger("neo4j")
+log = getLogger("neo4j.auth_management")
 
 
 class AsyncStaticAuthManager(AsyncAuthManager):
@@ -67,7 +67,11 @@ class AsyncNeo4jAuthTokenManager(AsyncAuthManager):
         self._lock = AsyncLock()
 
     async def _refresh_auth(self):
-        self._current_auth = await self._provider()
+        try:
+            self._current_auth = await self._provider()
+        except BaseException as e:
+            log.error("[     ]  _: <AUTH MANAGER> provider failed: %r", e)
+            raise
         if self._current_auth is None:
             raise TypeError(
                 "Auth provider function passed to expiration_based "
