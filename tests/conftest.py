@@ -169,7 +169,7 @@ def neo4j_session(neo4j_driver):
 # async support for pytest-benchmark
 # https://github.com/ionelmc/pytest-benchmark/issues/66
 @pytest_asyncio.fixture
-async def aio_benchmark(benchmark, event_loop):
+def aio_benchmark(benchmark, event_loop):
     def _wrapper(func, *args, **kwargs):
         if asyncio.iscoroutinefunction(func):
             @benchmark
