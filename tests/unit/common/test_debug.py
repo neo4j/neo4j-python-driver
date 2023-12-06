@@ -224,7 +224,7 @@ def test_watcher_out(
 ) -> None:
     def normalize_stream(stream):
         # For some reason (probably a change in pytest), sys.stdout and
-        # sys.stderr are replaces with a custom now io.TextIOWrapper.
+        # sys.stderr are replaced with a custom io.TextIOWrapper.
         # Therefore, we grab them dynamically within the test.
         if isinstance(stream, str):
             if stream == "stdout":
