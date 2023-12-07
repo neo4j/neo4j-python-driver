@@ -13,7 +13,9 @@
     "'neo4j.datatypes.test_temporal_types.TestDataTypes.test_should_echo_all_timezone_ids'":
       "test_subtest_skips.dt_conversion",
     "'neo4j.datatypes.test_temporal_types.TestDataTypes.test_date_time_cypher_created_tz_id'":
-      "test_subtest_skips.tz_id"
+      "test_subtest_skips.tz_id",
+    "stub\\.routing\\.test_routing_v[0-9x]+\\.RoutingV[0-9x]+\\.test_should_drop_connections_failing_liveness_check":
+        "Liveness check error handling is not (yet) unified: https://github.com/neo-technology/drivers-adr/pull/83"
   },
   "features": {
     "Feature:API:BookmarkManager": true,
@@ -25,7 +27,7 @@
     "Feature:API:Driver.VerifyConnectivity": true,
     "Feature:API:Driver.SupportsSessionAuth": true,
     "Feature:API:Driver:NotificationsConfig": true,
-    "Feature:API:Liveness.Check": false,
+    "Feature:API:Liveness.Check": true,
     "Feature:API:Result.List": true,
     "Feature:API:Result.Peek": true,
     "Feature:API:Result.Single": true,

@@ -38,10 +38,6 @@ from .. import (
     test_subtest_skips,
     totestkit,
 )
-from .._warning_check import (
-    warning_check,
-    warnings_check,
-)
 from ..exceptions import MarkdAsDriverException
 
 
@@ -119,6 +115,7 @@ async def NewDriver(backend, data):
         ("connectionTimeoutMs", "connection_timeout"),
         ("maxTxRetryTimeMs", "max_transaction_retry_time"),
         ("connectionAcquisitionTimeoutMs", "connection_acquisition_timeout"),
+        ("livenessCheckTimeoutMs", "liveness_check_timeout"),
     ):
         if data.get(timeout_testkit) is not None:
             kwargs[timeout_driver] = data[timeout_testkit] / 1000
@@ -147,7 +144,6 @@ async def NewDriver(backend, data):
                           for cert in data["trustedCertificates"])
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     fromtestkit.set_notifications_config(kwargs, data)
-    data.mark_item_as_read_if_equals("livenessCheckTimeoutMs", None)
 
     driver = neo4j.AsyncGraphDatabase.driver(
         data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
@@ -375,6 +371,9 @@ async def ExecuteQuery(backend, data):
         else:
             bookmark_manager = backend.bookmark_managers[bookmark_manager_id]
             kwargs["bookmark_manager_"] = bookmark_manager
+    if "authorizationToken" in config:
+        kwargs["auth_"] = fromtestkit.to_auth_token(config,
+                                                    "authorizationToken")
 
     eager_result = await driver.execute_query(query, params, **kwargs)
     await backend.send_response("EagerResult", {
@@ -796,6 +795,23 @@ async def GetRoutingTable(backend, data):
         response_data[role] = list(map(str, addresses))
     await backend.send_response("RoutingTable", response_data)
 
+
+async def GetConnectionPoolMetrics(backend, data):
+    driver_id = data["driverId"]
+    address = neo4j.Address.parse(data["address"])
+    driver = backend.drivers[driver_id]
+    connections = driver._pool.connections.get(address, ())
+    in_use = (
+        sum(c.in_use for c in connections)
+        + driver._pool.connections_reservations[address]
+    )
+    idle = len(connections) - in_use
+    await backend.send_response("ConnectionPoolMetrics", {
+        "inUse": in_use,
+        "idle": idle,
+    })
+
+
 async def FakeTimeInstall(backend, _data):
     assert backend.fake_time is None
     assert backend.fake_time_ticker is None
@@ -803,6 +819,7 @@ async def FakeTimeInstall(backend, _data):
     backend.fake_time = freeze_time()
     backend.fake_time_ticker = backend.fake_time.start()
     await backend.send_response("FakeTimeAck", {})
+
 
 async def FakeTimeTick(backend, data):
     assert backend.fake_time is not None
