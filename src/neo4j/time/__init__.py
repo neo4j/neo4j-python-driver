@@ -2019,6 +2019,12 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         return cls.combine(Date(year, month, day),
                            Time(hour, minute, second, nanosecond, tzinfo))
 
+    # SERIALIZATION #
+
+    def __reduce__(cls):
+        return (cls.__class__,
+                (cls.year, cls.month, cls.day, cls.hour, cls.minute, cls.second, cls.nanosecond, cls.tzinfo))
+
     # CLASS METHODS #
 
     @classmethod

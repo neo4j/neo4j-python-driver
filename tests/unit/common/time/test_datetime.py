@@ -19,6 +19,7 @@ from __future__ import annotations
 import copy
 import itertools
 import operator
+import pickle
 from datetime import (
     datetime,
     timedelta,
@@ -409,6 +410,11 @@ class TestDateTime:
         d2 = copy.deepcopy(d)
         assert d is not d2
         assert d == d2
+
+    def test_datetime_pickle(self) -> None:
+        expected = DateTime(2023, 12, 7, 12, 34, 56, 7890)
+        actual = pickle.loads(pickle.dumps(expected))
+        assert expected == actual
 
 
 def test_iso_format_with_time_zone_case_1() -> None:
