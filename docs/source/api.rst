@@ -167,7 +167,7 @@ Closing a driver will immediately shut down all connections in the pool.
               verify_connectivity, get_server_info, verify_authentication,
               supports_session_auth, supports_multi_db
 
-    .. method:: execute_query(query, parameters_=None,routing_=neo4j.RoutingControl.WRITE, database_=None, impersonated_user_=None, bookmark_manager_=self.execute_query_bookmark_manager, result_transformer_=Result.to_eager_result, **kwargs)
+    .. method:: execute_query(query, parameters_=None,routing_=neo4j.RoutingControl.WRITE, database_=None, impersonated_user_=None, bookmark_manager_=self.execute_query_bookmark_manager, auth_=None, result_transformer_=Result.to_eager_result, **kwargs)
 
         Execute a query in a transaction function and return all results.
 
