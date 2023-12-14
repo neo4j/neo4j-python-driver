@@ -239,7 +239,7 @@ class AsyncSession(AsyncWorkspace):
 
             ::
 
-                session = await driver.session()
+                session = driver.session()
                 try:
                     ...  # do some work
                 except asyncio.CancelledError:
