@@ -353,6 +353,7 @@ class Session(Workspace):
             return self._bookmarks[-1]
         return None
 
+    @NonConcurrentMethodChecker.non_concurrent_method
     def last_bookmarks(self) -> Bookmarks:
         """Return most recent bookmarks of the session.
 
