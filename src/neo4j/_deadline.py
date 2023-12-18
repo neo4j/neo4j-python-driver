@@ -15,7 +15,7 @@
 
 
 from contextlib import contextmanager
-from time import perf_counter
+from time import monotonic
 
 
 class Deadline:
@@ -23,7 +23,7 @@ class Deadline:
         if timeout is None or timeout == float("inf"):
             self._deadline = float("inf")
         else:
-            self._deadline = perf_counter() + timeout
+            self._deadline = monotonic() + timeout
         self._original_timeout = timeout
 
     @property
@@ -36,7 +36,7 @@ class Deadline:
     def to_timeout(self):
         if self._deadline == float("inf"):
             return None
-        timeout = self._deadline - perf_counter()
+        timeout = self._deadline - monotonic()
         return timeout if timeout > 0 else 0
 
     def __eq__(self, other):

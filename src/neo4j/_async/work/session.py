@@ -20,7 +20,7 @@ import asyncio
 import typing as t
 from logging import getLogger
 from random import random
-from time import perf_counter
+from time import monotonic
 
 from ..._api import TelemetryAPI
 from ..._async_compat import async_sleep
@@ -570,8 +570,8 @@ class AsyncSession(AsyncWorkspace):
                 return result
             if t0 == -1:
                 # The timer should be started after the first attempt
-                t0 = perf_counter()
-            t1 = perf_counter()
+                t0 = monotonic()
+            t1 = monotonic()
             if t1 - t0 > self._config.max_transaction_retry_time:
                 break
             delay = next(retry_delay)

@@ -32,11 +32,18 @@ from operator import xor as xor_operator
 from ._codec.hydration import BrokenHydrationObject
 from ._conf import iter_items
 from ._meta import deprecated
+from ._spatial import Point
 from .exceptions import BrokenRecordError
 from .graph import (
     Node,
     Path,
     Relationship,
+)
+from .time import (
+    Date,
+    DateTime,
+    Duration,
+    Time,
 )
 
 
@@ -241,18 +248,55 @@ class Record(tuple, Mapping):
                     for i in range(len(self)))
 
     def data(self, *keys: _K) -> t.Dict[str, t.Any]:
-        """ Return the keys and values of this record as a dictionary,
-        optionally including only certain values by index or key. Keys
-        provided in the items that are not in the record will be
-        inserted with a value of :data:`None`; indexes provided
-        that are out of bounds will trigger an :exc:`IndexError`.
+        """Return the record as a dictionary.
 
-        :param keys: indexes or keys of the items to include; if none
-                      are provided, all values will be included
+        Return the keys and values of this record as a dictionary, optionally
+        including only certain values by index or key.
+        Keys provided in the items that are not in the record will be inserted
+        with a value of :data:`None`; indexes provided that are out of bounds
+        will trigger an :exc:`IndexError`.
+
+        This function provides a convenient but opinionated way to transform
+        the record into a mostly JSON serializable format. It is mainly useful
+        for interactive sessions and rapid prototyping.
+
+        The transformation works as follows:
+
+         * Nodes are transformed into dictionaries of their
+           properties.
+
+           * No indication of their original type remains.
+           * Not all information is serialized (e.g., labels and element_id are
+             absent).
+
+         * Relationships are transformed to a tuple of
+           ``(start_node, type, end_node)``, where the nodes are transformed
+           as described above, and type is the relationship type name
+           (:class:`str`).
+
+           * No indication of their original type remains.
+           * No other information (properties, element_id, start_node,
+             end_node, ...) is serialized.
+
+         * Paths are transformed into lists of nodes and relationships. No
+           indication of the original type remains.
+         * :class:`list` and :class:`dict` values are recursively transformed.
+         * Every other type remains unchanged.
+
+           * Spatial types and durations inherit from :class:`tuple`. Hence,
+             they are JSON serializable, but, like graph types, type
+             information will be lost in the process.
+           * The remaining temporal types are not JSON serializable.
+
+        You will have to implement a custom serializer should you need more
+        control over the output format.
+
+        :param keys: Indexes or keys of the items to include. If none are
+            provided, all values will be included.
 
         :returns: dictionary of values, keyed by field name
 
-        :raises: :exc:`IndexError` if an out-of-bounds index is specified
+        :raises: :exc:`IndexError` if an out-of-bounds index is specified.
         """
         return RecordExporter().transform(dict(self.items(*keys)))
 
@@ -288,7 +332,7 @@ class RecordExporter(DataTransformer):
                 path.append(self.transform(relationship.__class__.__name__))
                 path.append(self.transform(x.nodes[i + 1]))
             return path
-        elif isinstance(x, str):
+        elif isinstance(x, (str, Point, Date, Time, DateTime, Duration)):
             return x
         elif isinstance(x, Sequence):
             typ = type(x)

@@ -19,12 +19,28 @@ from __future__ import annotations
 import traceback
 
 import pytest
+import pytz
 
 from neo4j import Record
 from neo4j._codec.hydration import BrokenHydrationObject
 from neo4j._codec.hydration.v1 import HydrationHandler
 from neo4j.exceptions import BrokenRecordError
-from neo4j.graph import Node
+from neo4j.graph import (
+    Graph,
+    Node,
+    Path,
+    Relationship,
+)
+from neo4j.spatial import (
+    CartesianPoint,
+    WGS84Point,
+)
+from neo4j.time import (
+    Date,
+    DateTime,
+    Duration,
+    Time,
+)
 
 
 # python -m pytest -s -v tests/unit/test_record.py
@@ -73,17 +89,164 @@ def test_record_repr() -> None:
     assert repr(a_record) == "<Record name='Nigel' empire='The British Empire'>"
 
 
-def test_record_data() -> None:
-    r = Record(zip(["name", "age", "married"], ["Alice", 33, True]))
-    assert r.data() == {"name": "Alice", "age": 33, "married": True}
-    assert r.data("name") == {"name": "Alice"}
-    assert r.data("age", "name") == {"age": 33, "name": "Alice"}
-    assert r.data("age", "name", "shoe size") == {"age": 33, "name": "Alice", "shoe size": None}
-    assert r.data(0, "name") == {"name": "Alice"}
-    assert r.data(0) == {"name": "Alice"}
-    assert r.data(1, 0) == {"age": 33, "name": "Alice"}
+_RECORD_DATA_ALICE_KEYS = ["name", "age", "married"]
+_RECORD_DATA_ALICE_VALUES = ["Alice", 33, True]
+_RECORD_DATA_GRAPH = Graph()
+_RECORD_DATA_REL_KNOWS = _RECORD_DATA_GRAPH.relationship_type("KNOWS")
+_RECORD_DATA_REL_FOLLOWS = _RECORD_DATA_GRAPH.relationship_type("FOLLOWS")
+
+
+def _record_data_alice_know_bob() -> Relationship:
+    alice = Node(_RECORD_DATA_GRAPH, "1", 1, ["Person"], {"name": "Alice"})
+    bob = Node(_RECORD_DATA_GRAPH, "2", 2, ["Person"], {"name": "Bob"})
+    alice_knows_bob = _RECORD_DATA_REL_KNOWS(_RECORD_DATA_GRAPH, "4", 4,
+                                             {"proper": "tea"})
+    alice_knows_bob._start_node = alice
+    alice_knows_bob._end_node = bob
+    return alice_knows_bob
+
+
+def _record_data_make_path() -> Path:
+    alice_knows_bob = _record_data_alice_know_bob()
+    alice = alice_knows_bob.start_node
+    assert alice is not None
+    bob = alice_knows_bob.end_node
+    carlos = Node(_RECORD_DATA_GRAPH, "3", 3, ["Person"], {"name": "Carlos"})
+    carlos_follows_bob = _RECORD_DATA_REL_FOLLOWS(_RECORD_DATA_GRAPH, "5", 5,
+                                                  {"proper": "tea"})
+    carlos_follows_bob._start_node = carlos
+    carlos_follows_bob._end_node = bob
+    return Path(alice, alice_knows_bob, carlos_follows_bob)
+
+
+@pytest.mark.parametrize(
+    ("keys", "expected"),
+    (
+        (
+            (),
+            {"name": "Alice", "age": 33, "married": True},
+        ),
+        (
+            ("name",),
+            {"name": "Alice"},
+        ),
+        (
+            ("age", "name"),
+            {"age": 33, "name": "Alice"},
+        ),
+        (
+            ("age", "name", "shoe size"),
+            {"age": 33, "name": "Alice", "shoe size": None},
+        ),
+        (
+            ("age", "name", "shoe size"),
+            {"age": 33, "name": "Alice", "shoe size": None},
+        ),
+        (
+            ("age", "name", "shoe size"),
+            {"age": 33, "name": "Alice", "shoe size": None},
+        ),
+        (
+            (0, "name"),
+            {"name": "Alice"},
+        ),
+        (
+            (0,),
+            {"name": "Alice"},
+        ),
+        (
+            (1, 0),
+            {"age": 33, "name": "Alice"},
+        ),
+    ),
+)
+def test_record_data_keys(keys, expected) -> None:
+    record = Record(zip(_RECORD_DATA_ALICE_KEYS, _RECORD_DATA_ALICE_VALUES))
+    assert record.data(*keys) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    (
+        *(
+            (value, value)
+            for value in (
+                None,
+                True,
+                False,
+                0,
+                1,
+                -1,
+                2147483647,
+                -2147483648,
+                3.141592653589,
+                "",
+                "Hello, world!",
+                "👋, 🌍!",
+                [],
+                [1, 2.0, "3", True, None],
+                {"foo": ["bar", 1]},
+                b"",
+                b"foobar",
+                Date(2021, 1, 1),
+                Time(12, 34, 56, 123456789),
+                Time(1, 2, 3, 4, pytz.FixedOffset(60)),
+                DateTime(2021, 1, 1, 12, 34, 56, 123456789),
+                DateTime(2018, 10, 12, 11, 37, 41, 474716862,
+                         pytz.FixedOffset(60)),
+                pytz.timezone("Europe/Stockholm").localize(
+                    DateTime(2018, 10, 12, 11, 37, 41, 474716862)
+                ),
+                Duration(1, 2, 3, 4, 5, 6, 7),
+                CartesianPoint((1, 2.0)),
+                CartesianPoint((1, 2.0, 3)),
+                WGS84Point((1, 2.0)),
+                WGS84Point((1, 2.0, 3)),
+            )
+        ),
+        *(
+            (value, expected)
+            for value, expected in (
+                (
+                    Node(_RECORD_DATA_GRAPH, "1", 1, ["Person"],
+                         {"name": "Alice"}),
+                    {"name": "Alice"},
+                ),
+                (
+                    _record_data_alice_know_bob(),
+                    (
+                        {"name": "Alice"},
+                        "KNOWS",
+                        {"name": "Bob"},
+                    )
+                ),
+                (
+                    _record_data_make_path(),
+                    [
+                        {"name": "Alice"},
+                        "KNOWS",
+                        {"name": "Bob"},
+                        "FOLLOWS",
+                        {"name": "Carlos"},
+                    ]
+                ),
+            )
+        ),
+    )
+)
+@pytest.mark.parametrize("wrapper", (None, lambda x: [x], lambda x: {"x": x}))
+def test_record_data_types(value, expected, wrapper) -> None:
+    if wrapper is not None:
+        value = wrapper(value)
+        expected = wrapper(expected)
+    record = Record([("key", value)])
+    assert record.data("key") == {"key": expected}
+
+
+def test_record_index_error() -> None:
+    record = Record(zip(_RECORD_DATA_ALICE_KEYS, _RECORD_DATA_ALICE_VALUES))
     with pytest.raises(IndexError):
-        _ = r.data(1, 0, 999)
+        record.data(1, 0, 999)
 
 
 def test_record_keys() -> None:

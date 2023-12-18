@@ -355,6 +355,10 @@ class PoolConfig(Config):
     max_connection_lifetime = 3600  # seconds
     # The maximum duration the driver will keep a connection for before being removed from the pool.
 
+    #: Timeout after which idle connections will be checked for liveness
+    #: before returned from the pool.
+    liveness_check_timeout = None
+
     #: Max Connection Pool Size
     max_connection_pool_size = 100
     # The maximum total number of connections allowed, per host (i.e. cluster nodes), to be managed by the connection pool.

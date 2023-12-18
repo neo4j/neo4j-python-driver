@@ -619,15 +619,17 @@ class Result(NonConcurrentMethodChecker):
     def data(self, *keys: _TResultKey) -> t.List[t.Dict[str, t.Any]]:
         """Return the remainder of the result as a list of dictionaries.
 
+        Each dictionary represents a record
+
         This function provides a convenient but opinionated way to obtain the
         remainder of the result as mostly JSON serializable data. It is mainly
         useful for interactive sessions and rapid prototyping.
 
-        For instance, node and relationship labels are not included. You will
-        have to implement a custom serializer should you need more control over
-        the output format.
+        For details see :meth:`.Record.data`.
 
-        :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
+        :param keys: Fields to return for each remaining record.
+            Optionally filtering to include only certain values by index or
+            key.
 
         :returns: list of dictionaries
 

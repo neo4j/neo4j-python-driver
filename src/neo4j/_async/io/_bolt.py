@@ -21,7 +21,7 @@ import asyncio
 import typing as t
 from collections import deque
 from logging import getLogger
-from time import perf_counter
+from time import monotonic
 
 from ..._api import TelemetryAPI
 from ..._async_compat.network import AsyncBoltSocket
@@ -159,9 +159,9 @@ class AsyncBolt:
         self.hydration_handler = self.HYDRATION_HANDLER_CLS()
         self.responses = deque()
         self._max_connection_lifetime = max_connection_lifetime
-        self._creation_timestamp = perf_counter()
+        self._creation_timestamp = monotonic()
         self.routing_context = routing_context
-        self.idle_since = perf_counter()
+        self.idle_since = monotonic()
 
         # Determine the user agent
         if user_agent:
@@ -797,7 +797,7 @@ class AsyncBolt:
 
     async def _send_all(self):
         if await self.outbox.flush():
-            self.idle_since = perf_counter()
+            self.idle_since = monotonic()
 
     async def send_all(self):
         """ Send all queued messages to the server.
@@ -847,7 +847,7 @@ class AsyncBolt:
             hydration_hooks=self.responses[0].hydration_hooks
         )
         res = await self._process_message(tag, fields)
-        self.idle_since = perf_counter()
+        self.idle_since = monotonic()
         return res
 
     async def fetch_all(self):
@@ -928,7 +928,7 @@ class AsyncBolt:
     def stale(self):
         return (self._stale
                 or (0 <= self._max_connection_lifetime
-                    <= perf_counter() - self._creation_timestamp))
+                    <= monotonic() - self._creation_timestamp))
 
     _stale = False
 
@@ -983,7 +983,7 @@ class AsyncBolt:
 
         :rtype: bool
         """
-        return perf_counter() - self.idle_since > timeout
+        return monotonic() - self.idle_since > timeout
 
 
 AsyncBoltSocket.Bolt = AsyncBolt  # type: ignore
