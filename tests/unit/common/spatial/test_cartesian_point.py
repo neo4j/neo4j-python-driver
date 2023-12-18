@@ -16,9 +16,21 @@
 
 from __future__ import annotations
 
+import copy
+import pickle
+
 import pytest
 
 from neo4j.spatial import CartesianPoint
+
+
+def make_reduce_points():
+    return (
+        CartesianPoint((1, 2)),
+        CartesianPoint((3.2, 4.0)),
+        CartesianPoint((3, 4, -1)),
+        CartesianPoint((3.2, 4.0, -1.2)),
+    )
 
 
 class TestCartesianPoint:
@@ -42,3 +54,30 @@ class TestCartesianPoint:
         assert p.y == y
         with pytest.raises(AttributeError):
             _ = p.z
+
+    @pytest.mark.parametrize("p", make_reduce_points())
+    def test_copy(self, p):
+        p.foo = [1, 2]
+        p2 = copy.copy(p)
+        assert p == p2
+        assert p is not p2
+        assert p.foo is p2.foo
+
+    @pytest.mark.parametrize("p", make_reduce_points())
+    def test_deep_copy(self, p):
+        p.foo = [1, [2]]
+        p2 = copy.deepcopy(p)
+        assert p == p2
+        assert p is not p2
+        assert p.foo == p2.foo
+        assert p.foo is not p2.foo
+        assert p.foo[1] is not p2.foo[1]
+
+    @pytest.mark.parametrize("expected", make_reduce_points())
+    def test_pickle(self, expected):
+        expected.foo = [1, [2]]
+        actual = pickle.loads(pickle.dumps(expected))
+        assert expected == actual
+        assert expected is not actual
+        assert expected.foo == actual.foo
+        assert expected.foo is not actual.foo

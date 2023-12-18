@@ -574,12 +574,17 @@ class Duration(t.Tuple[int, int, int, int],  # type: ignore[misc]
         """"""
         return self.iso_format()
 
-    def __copy__(self) -> Duration:
-        return self.__new__(self.__class__, months=self[0], days=self[1],
-                            seconds=self[2], nanoseconds=self[3])
+    def __reduce__(self):
+        return (
+            type(self)._restore, (tuple(self), self.__dict__)
+        )
 
-    def __deepcopy__(self, memo) -> Duration:
-        return self.__copy__()
+    @classmethod
+    def _restore(cls, elements, dict_):
+        instance = tuple.__new__(cls, elements)
+        if dict_:
+            instance.__dict__.update(dict_)
+        return instance
 
     @classmethod
     def from_iso_format(cls, s: str) -> Duration:
@@ -763,6 +768,11 @@ class Date(date_base_class, metaclass=DateType):
     # CONSTRUCTOR #
 
     def __new__(cls, year: int, month: int, day: int) -> Date:
+        # TODO: 6.0 - remove the __new__ magic and ZeroDate being a singleton.
+        #             It's fine to remain as constant. Instead, simply use
+        #             __init__ and simplify pickle/copy (remove __reduce__).
+        #             N.B. this is a breaking change and be treated as such.
+        #             Also consider introducing __slots__
         if year == month == day == 0:
             return ZeroDate
         year, month, day = _normalize_day(year, month, day)
@@ -1218,11 +1228,17 @@ class Date(date_base_class, metaclass=DateType):
         except TypeError:
             return NotImplemented
 
-    def __copy__(self) -> Date:
-        return self.__new(self.__ordinal, self.__year, self.__month, self.__day)
+    def __reduce__(self):
+        if self is ZeroDate:
+            return "ZeroDate"
+        return type(self)._restore, (self.__dict__,)
 
-    def __deepcopy__(self, *args, **kwargs) -> Date:
-        return self.__copy__()
+    @classmethod
+    def _restore(cls, dict_) -> Date:
+        instance = object.__new__(cls)
+        if dict_:
+            instance.__dict__.update(dict_)
+        return instance
 
     # INSTANCE METHODS #
 
@@ -1396,33 +1412,52 @@ class Time(time_base_class, metaclass=TimeType):
 
     # CONSTRUCTOR #
 
-    def __new__(
-        cls,
+    def __init__(
+        self,
         hour: int = 0,
         minute: int = 0,
         second: int = 0,
         nanosecond: int = 0,
         tzinfo: t.Optional[_tzinfo] = None
-    ) -> Time:
-        hour, minute, second, nanosecond = cls.__normalize_nanosecond(
+    ) -> None:
+        hour, minute, second, nanosecond = self.__normalize_nanosecond(
             hour, minute, second, nanosecond
         )
         ticks = (3600000000000 * hour
                  + 60000000000 * minute
                  + 1000000000 * second
                  + nanosecond)
-        return cls.__new(ticks, hour, minute, second, nanosecond, tzinfo)
+        self.__unchecked_init(ticks, hour, minute, second, nanosecond, tzinfo)
 
     @classmethod
-    def __new(cls, ticks, hour, minute, second, nanosecond, tzinfo):
-        instance = object.__new__(cls)
-        instance.__ticks = int(ticks)
-        instance.__hour = int(hour)
-        instance.__minute = int(minute)
-        instance.__second = int(second)
-        instance.__nanosecond = int(nanosecond)
-        instance.__tzinfo = tzinfo
+    def __unchecked_new(
+        cls,
+        ticks: int,
+        hour: int,
+        minutes: int,
+        second: int,
+        nano: int,
+        tz: t.Optional[_tzinfo]
+    ) -> Time:
+        instance = object.__new__(Time)
+        instance.__unchecked_init(ticks, hour, minutes, second, nano, tz)
         return instance
+
+    def __unchecked_init(
+        self,
+        ticks: int,
+        hour: int,
+        minutes: int,
+        second: int,
+        nano: int,
+        tz: t.Optional[_tzinfo]
+    ) -> None:
+        self.__ticks = ticks
+        self.__hour = hour
+        self.__minute = minutes
+        self.__second = second
+        self.__nanosecond = nano
+        self.__tzinfo = tz
 
     # CLASS METHODS #
 
@@ -1521,7 +1556,8 @@ class Time(time_base_class, metaclass=TimeType):
             second, nanosecond = divmod(ticks, NANO_SECONDS)
             minute, second = divmod(second, 60)
             hour, minute = divmod(minute, 60)
-            return cls.__new(ticks, hour, minute, second, nanosecond, tz)
+            return cls.__unchecked_new(ticks, hour, minute, second, nanosecond,
+                                       tz)
         raise ValueError("Ticks out of range (0..86400000000000)")
 
     @classmethod
@@ -1619,7 +1655,7 @@ class Time(time_base_class, metaclass=TimeType):
 
     __nanosecond = 0
 
-    __tzinfo = None
+    __tzinfo: t.Optional[_tzinfo] = None
 
     @property
     def ticks(self) -> int:
@@ -1750,13 +1786,6 @@ class Time(time_base_class, metaclass=TimeType):
         if self_ticks is None:
             return NotImplemented
         return self_ticks > other_ticks
-
-    def __copy__(self) -> Time:
-        return self.__new(self.__ticks, self.__hour, self.__minute,
-                          self.__second, self.__nanosecond, self.__tzinfo)
-
-    def __deepcopy__(self, *args, **kwargs) -> Time:
-        return self.__copy__()
 
     # INSTANCE METHODS #
 
@@ -2019,12 +2048,6 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         return cls.combine(Date(year, month, day),
                            Time(hour, minute, second, nanosecond, tzinfo))
 
-    # SERIALIZATION #
-
-    def __reduce__(cls):
-        return (cls.__class__,
-                (cls.year, cls.month, cls.day, cls.hour, cls.minute, cls.second, cls.nanosecond, cls.tzinfo))
-
     # CLASS METHODS #
 
     @classmethod
@@ -2132,6 +2155,10 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
         """
         assert isinstance(date, Date)
         assert isinstance(time, Time)
+        return cls._combine(date, time)
+
+    @classmethod
+    def _combine(cls, date: Date, time: Time) -> DateTime:
         instance = object.__new__(cls)
         instance.__date = date
         instance.__time = time
@@ -2497,11 +2524,15 @@ class DateTime(date_time_base_class, metaclass=DateTimeType):
             return self.__add__(-other)
         return NotImplemented
 
-    def __copy__(self) -> DateTime:
-        return self.combine(self.__date, self.__time)
+    def __reduce__(self):
+        return type(self)._restore, (self.__dict__,)
 
-    def __deepcopy__(self, memo) -> DateTime:
-        return self.__copy__()
+    @classmethod
+    def _restore(cls, dict_):
+        instance = object.__new__(cls)
+        if dict_:
+            instance.__dict__.update(dict_)
+        return instance
 
     # INSTANCE METHODS #
 
