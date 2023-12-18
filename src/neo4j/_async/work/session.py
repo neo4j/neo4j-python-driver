@@ -239,7 +239,7 @@ class AsyncSession(AsyncWorkspace):
 
             ::
 
-                session = await driver.session()
+                session = driver.session()
                 try:
                     ...  # do some work
                 except asyncio.CancelledError:
@@ -353,6 +353,7 @@ class AsyncSession(AsyncWorkspace):
             return self._bookmarks[-1]
         return None
 
+    @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def last_bookmarks(self) -> Bookmarks:
         """Return most recent bookmarks of the session.
 
