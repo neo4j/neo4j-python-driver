@@ -374,16 +374,6 @@ class TestDuration:
     def test_copy(self) -> None:
         d = Duration(years=1, months=2, days=3, hours=4, minutes=5, seconds=6,
                      milliseconds=7, microseconds=8, nanoseconds=9)
-        # TODO: 6.0 - add empty __slots__ to Duration and optimize copy.
-        #       By doing so, Durations can no longer have dynamic attributes
-        #       (like `.foo` here) - !breaking change!, assumed to have low
-        #       impact - but they become better performing. Furthermore, copy
-        #       and deepcopy can become the identify function as Durations
-        #       become immutable. Lastly, pickling can be optimized to
-        #       something along the lines of
-        #       `return tuple.__new__, (type(self), tuple(self))`
-        #       skipping all the checks & normalization.
-        #       The same can be done for spatial types.
         d.foo = [1, 2]  # type: ignore[attr-defined]
         d2 = copy.copy(d)
         assert d == d2
