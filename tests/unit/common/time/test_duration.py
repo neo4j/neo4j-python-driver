@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import copy
+import pickle
 from datetime import timedelta
 
 import pytest
@@ -373,16 +374,32 @@ class TestDuration:
     def test_copy(self) -> None:
         d = Duration(years=1, months=2, days=3, hours=4, minutes=5, seconds=6,
                      milliseconds=7, microseconds=8, nanoseconds=9)
+        d.foo = [1, 2]  # type: ignore[attr-defined]
         d2 = copy.copy(d)
-        assert d is not d2
         assert d == d2
+        assert d is not d2
+        assert d.foo is d2.foo  # type: ignore[attr-defined]
 
     def test_deep_copy(self) -> None:
         d = Duration(years=1, months=2, days=3, hours=4, minutes=5, seconds=6,
                      milliseconds=7, microseconds=8, nanoseconds=9)
+        d.foo = [1, [2]]  # type: ignore[attr-defined]
         d2 = copy.deepcopy(d)
-        assert d is not d2
         assert d == d2
+        assert d is not d2
+        assert d.foo == d2.foo  # type: ignore[attr-defined]
+        assert d.foo is not d2.foo  # type: ignore[attr-defined]
+        assert d.foo[1] is not d2.foo[1]  # type: ignore[attr-defined]
+
+    def test_pickle(self) -> None:
+        expected = Duration(
+            years=1, months=2, days=3, hours=4, minutes=5, seconds=6,
+            milliseconds=7, microseconds=8, nanoseconds=9
+        )
+        expected.foo = [1, [2]]  # type: ignore[attr-defined]
+        actual = pickle.loads(pickle.dumps(expected))
+        assert expected == actual
+        assert expected.foo == actual.foo  # type: ignore[attr-defined]
 
     def test_from_iso_format(self) -> None:
         assert Duration() == Duration.from_iso_format("PT0S")

@@ -16,8 +16,10 @@
 
 from __future__ import annotations
 
+import copy
 import itertools
 import operator
+import pickle
 from datetime import (
     time,
     timedelta,
@@ -41,6 +43,18 @@ from neo4j.time._arithmetic import (
 
 timezone_us_eastern = timezone("US/Eastern")
 timezone_utc = timezone("UTC")
+
+
+def make_reduce_times():
+    return (
+        Time(12, 34, 56, 789000001, tzinfo=None),
+        Time(12, 34, 56, 789000001, tzinfo=timezone_utc),
+        Time(12, 34, 56, 789000001, tzinfo=datetime_timezone.utc),
+        Time(13, 34, 56, 789000001, tzinfo=FixedOffset(60)),
+        Time(13, 34, 56, 789000001,
+             tzinfo=datetime_timezone(timedelta(hours=1))),
+        Time(7, 34, 56, 789000001, tzinfo=timezone_us_eastern),
+    )
 
 
 class TestTime:
@@ -515,6 +529,33 @@ class TestTime:
         assert not t1 > t2
         assert t2 >= t1
         assert not t1 >= t2
+
+    @pytest.mark.parametrize("t", make_reduce_times())
+    def test_copy(self, t):
+        t.foo = [1, 2]
+        t2 = copy.copy(t)
+        assert t == t2
+        assert t is not t2
+        assert t.foo is t2.foo
+
+    @pytest.mark.parametrize("t", make_reduce_times())
+    def test_deep_copy(self, t):
+        t.foo = [1, [2]]
+        t2 = copy.deepcopy(t)
+        assert t == t2
+        assert t is not t2
+        assert t.foo == t2.foo
+        assert t.foo is not t2.foo
+        assert t.foo[1] is not t2.foo[1]
+
+    @pytest.mark.parametrize("expected", make_reduce_times())
+    def test_pickle(self, expected):
+        expected.foo = [1, [2]]
+        actual = pickle.loads(pickle.dumps(expected))
+        assert expected == actual
+        assert expected is not actual
+        assert expected.foo == actual.foo
+        assert expected.foo is not actual.foo
 
 
 def test_str() -> None:
