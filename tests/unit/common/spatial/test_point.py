@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import copy
+import pickle
 import typing as t
 
 import pytest
@@ -24,6 +26,17 @@ from neo4j._spatial import (
     Point,
     point_type,
 )
+
+
+def make_reduce_points():
+    return (
+        Point((42,)),
+        Point((69.420,)),
+        Point((1, 2)),
+        Point((1.2, 2.3)),
+        Point((1, 3, 3, 7)),
+        Point((1.0, 3.0, 3.0, 7.0)),
+    )
 
 
 class TestPoint:
@@ -59,3 +72,30 @@ class TestPoint:
             p[1] = 2.0  # type: ignore[index]
         with pytest.raises(TypeError):
             p[2] = 2.0  # type: ignore[index]
+
+    @pytest.mark.parametrize("p", make_reduce_points())
+    def test_copy(self, p):
+        p.foo = [1, 2]
+        p2 = copy.copy(p)
+        assert p == p2
+        assert p is not p2
+        assert p.foo is p2.foo
+
+    @pytest.mark.parametrize("p", make_reduce_points())
+    def test_deep_copy(self, p):
+        p.foo = [1, [2]]
+        p2 = copy.deepcopy(p)
+        assert p == p2
+        assert p is not p2
+        assert p.foo == p2.foo
+        assert p.foo is not p2.foo
+        assert p.foo[1] is not p2.foo[1]
+
+    @pytest.mark.parametrize("expected", make_reduce_points())
+    def test_pickle(self, expected):
+        expected.foo = [1, [2]]
+        actual = pickle.loads(pickle.dumps(expected))
+        assert expected == actual
+        assert expected is not actual
+        assert expected.foo == actual.foo
+        assert expected.foo is not actual.foo

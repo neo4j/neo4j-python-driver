@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import copy
 import datetime
+import pickle
 from datetime import date
 from time import struct_time
 
@@ -535,17 +536,43 @@ class TestDate:
         actual = Date.from_iso_format("2018-10-01")
         assert expected == actual
 
-    def test_date_copy(self) -> None:
+    def test_copy(self) -> None:
         d = Date(2010, 10, 1)
+        d.foo = [1, 2]  # type: ignore[attr-defined]
         d2 = copy.copy(d)
-        assert d is not d2
         assert d == d2
+        assert d is not d2
+        assert d.foo is d2.foo  # type: ignore[attr-defined]
 
-    def test_date_deep_copy(self) -> None:
+    def test_zero_date_copy(self) -> None:
+        d2 = copy.copy(ZeroDate)
+        assert ZeroDate is d2
+
+    def test_deep_copy(self) -> None:
         d = Date(2010, 10, 1)
+        d.foo = [1, [2]]  # type: ignore[attr-defined]
         d2 = copy.deepcopy(d)
-        assert d is not d2
         assert d == d2
+        assert d is not d2
+        assert d.foo == d2.foo  # type: ignore[attr-defined]
+        assert d.foo is not d2.foo  # type: ignore[attr-defined]
+        assert d.foo[1] is not d2.foo[1]
+
+    def test_zero_date_deep_copy(self) -> None:
+        d2 = copy.deepcopy(ZeroDate)
+        assert ZeroDate is d2
+
+    def test_pickle(self) -> None:
+        expected = Date(2010, 10, 1)
+        expected.foo = [1, [2]]  # type: ignore[attr-defined]
+        actual = pickle.loads(pickle.dumps(expected))
+        assert expected == actual
+        assert expected.foo == actual.foo  # type: ignore[attr-defined]
+
+    def test_zero_date_pickle(self) -> None:
+        expected = ZeroDate
+        actual = pickle.loads(pickle.dumps(expected))
+        assert expected is actual
 
 
 @pytest.mark.parametrize(("tz", "expected"), (

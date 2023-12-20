@@ -19,6 +19,7 @@ from __future__ import annotations
 import copy
 import itertools
 import operator
+import pickle
 from datetime import (
     datetime,
     timedelta,
@@ -49,6 +50,17 @@ timezone_us_eastern = timezone("US/Eastern")
 timezone_london = timezone("Europe/London")
 timezone_berlin = timezone("Europe/Berlin")
 timezone_utc = timezone("UTC")
+
+
+def make_reduce_datetimes():
+    return (
+        DateTime(2023, 12, 7, 12, 34, 56, 123456789),
+        DateTime(2018, 10, 1, 12, 34, 56, 123456789, tzinfo=FixedOffset(754)),
+        DateTime(2018, 10, 1, 12, 34, 56, 123456789, tzinfo=FixedOffset(-754)),
+        DateTime(2019, 10, 30, 7, 54, 2, 129790999, tzinfo=timezone_utc),
+        timezone_berlin.localize(DateTime(2022, 3, 27, 1, 30)),
+        timezone_berlin.localize(DateTime(2022, 3, 27, 3, 30)),
+    )
 
 
 def seconds_options(seconds, nanoseconds):
@@ -398,17 +410,32 @@ class TestDateTime:
         actual = DateTime.from_iso_format("2018-10-01T12:34:56.123456789-12:34:56.123456")
         assert expected == actual
 
-    def test_datetime_copy(self) -> None:
-        d = DateTime(2010, 10, 1, 10, 0, 10)
-        d2 = copy.copy(d)
-        assert d is not d2
-        assert d == d2
+    @pytest.mark.parametrize("dt", make_reduce_datetimes())
+    def test_copy(self, dt):
+        dt.foo = [1, 2]
+        dt2 = copy.copy(dt)
+        assert dt == dt2
+        assert dt is not dt2
+        assert dt.foo is dt2.foo
 
-    def test_datetime_deep_copy(self) -> None:
-        d = DateTime(2010, 10, 1, 10, 0, 12)
-        d2 = copy.deepcopy(d)
-        assert d is not d2
-        assert d == d2
+    @pytest.mark.parametrize("dt", make_reduce_datetimes())
+    def test_deep_copy(self, dt):
+        dt.foo = [1, [2]]
+        dt2 = copy.deepcopy(dt)
+        assert dt == dt2
+        assert dt is not dt2
+        assert dt.foo == dt2.foo
+        assert dt.foo is not dt2.foo
+        assert dt.foo[1] is not dt2.foo[1]
+
+    @pytest.mark.parametrize("expected", make_reduce_datetimes())
+    def test_pickle(self, expected):
+        expected.foo = [1, [2]]
+        actual = pickle.loads(pickle.dumps(expected))
+        assert expected == actual
+        assert expected is not actual
+        assert expected.foo == actual.foo
+        assert expected.foo is not actual.foo
 
 
 def test_iso_format_with_time_zone_case_1() -> None:

@@ -14,6 +14,10 @@
 # limitations under the License.
 
 
+import copy
+import pickle
+import typing as t
+from dataclasses import dataclass
 from itertools import product
 
 import pytest
@@ -507,53 +511,124 @@ def test_graph_views_v1():
         assert g.relationships[str(id_)] == rel
 
 
+@dataclass
+class ExampleGraph:
+    graph: Graph
+    alice: Node
+    bob: Node
+    carol: Node
+    alice_knows_bob: Relationship
+    carol_dislikes_bob: Relationship
+
+
+@pytest.fixture
+def example_graph_builder_v2() -> t.Callable[[bool], ExampleGraph]:
+    def builder(legacy_id: bool) -> ExampleGraph:
+        hydration_scope = HydrationHandler().new_hydration_scope()
+        gh = hydration_scope._graph_hydrator
+
+        alice_element_id = "1" if legacy_id else "alice"
+        bob_element_id = "2" if legacy_id else "bob"
+        carol_element_id = "3" if legacy_id else "carol"
+
+        alice = gh.hydrate_node(
+            1, {"Person"},  {"name": "Alice", "dict": {"list": [1]}},
+            alice_element_id
+        )
+        bob = gh.hydrate_node(
+            2, {"Person"}, {"name": "Bob", "dict": {"list": [1]}},
+            bob_element_id
+        )
+        carol = gh.hydrate_node(
+            3, {"Person"}, {"name": "Carol", "dict": {"list": [1]}},
+            carol_element_id
+        )
+
+        alice_knows_bob_element_id = "1" if legacy_id else "alice_knows_bob"
+        carol_dislikes_bob_element_id = \
+            "2" if legacy_id else "carol_dislikes_bob"
+
+        alice_knows_bob = gh.hydrate_relationship(
+            1, 1, 2, "KNOWS", {"since": 1999}, alice_knows_bob_element_id,
+            alice_element_id, bob_element_id
+        )
+        carol_dislikes_bob = gh.hydrate_relationship(
+            2, 3, 2, "DISLIKES", {}, carol_dislikes_bob_element_id,
+            carol_element_id, bob_element_id
+        )
+
+        return ExampleGraph(
+            graph=hydration_scope.get_graph(),
+            alice=alice,
+            bob=bob,
+            carol=carol,
+            alice_knows_bob=alice_knows_bob,
+            carol_dislikes_bob=carol_dislikes_bob
+        )
+
+    return builder
+
+
 @pytest.mark.parametrize("legacy_id", (True, False))
-def test_graph_views_v2_repr(legacy_id):
-    hydration_scope = HydrationHandler().new_hydration_scope()
-    gh = hydration_scope._graph_hydrator
+def test_graph_views_v2_repr(example_graph_builder_v2, legacy_id):
+    g = example_graph_builder_v2(legacy_id)
 
-    alice_element_id = "1" if legacy_id else "alice"
-    bob_element_id = "2" if legacy_id else "bob"
-    carol_element_id = "3" if legacy_id else "carol"
-
-    alice = gh.hydrate_node(1, {"Person"}, {"name": "Alice"}, alice_element_id)
-    bob = gh.hydrate_node(2, {"Person"}, {"name": "Bob"}, bob_element_id)
-    carol = gh.hydrate_node(3, {"Person"}, {"name": "Carol"}, carol_element_id)
-
-    alice_knows_bob_element_id = "1" if legacy_id else "alice_knows_bob"
-    carol_dislikes_bob_element_id = "2" if legacy_id else "carol_dislikes_bob"
-
-    alice_knows_bob = gh.hydrate_relationship(
-        1, 1, 2, "KNOWS", {"since": 1999}, alice_knows_bob_element_id,
-        alice_element_id, bob_element_id
-    )
-    carol_dislikes_bob = gh.hydrate_relationship(
-        2, 3, 2, "DISLIKES", {}, carol_dislikes_bob_element_id,
-        carol_element_id, bob_element_id
-    )
-
-    g = hydration_scope.get_graph()
-    assert len(g.nodes) == 3
+    assert len(g.graph.nodes) == 3
     for id_, element_id, node in (
-        (1, alice_element_id, alice),
-        (2, bob_element_id, bob),
-        (3, carol_element_id, carol)
+        (1, g.alice.element_id, g.alice),
+        (2, g.bob.element_id, g.bob),
+        (3, g.carol.element_id, g.carol),
     ):
         with pytest.warns(DeprecationWarning, match=r"element_id \(str\)"):
-            assert g.nodes[id_] == node
-        assert g.nodes[element_id] == node
+            assert g.graph.nodes[id_] == node
+        assert g.graph.nodes[element_id] == node
         if not legacy_id:
             with pytest.raises(KeyError):
-                g.nodes[str(id_)]
+                g.graph.nodes[str(id_)]
 
-    assert len(g.relationships) == 2
+    assert len(g.graph.relationships) == 2
     for id_, element_id, rel in (
-        (1, alice_knows_bob_element_id, alice_knows_bob),
-        (2, carol_dislikes_bob_element_id, carol_dislikes_bob)
+        (1, g.alice_knows_bob.element_id, g.alice_knows_bob),
+        (2, g.carol_dislikes_bob.element_id, g.carol_dislikes_bob),
     ):
         with pytest.warns(DeprecationWarning, match=r"element_id \(str\)"):
-            assert g.relationships[id_] == rel
-        assert g.relationships[element_id] == rel
+            assert g.graph.relationships[id_] == rel
+        assert g.graph.relationships[element_id] == rel
         if not legacy_id:
             with pytest.raises(KeyError):
-                g.relationships[str(id_)]
+                g.graph.relationships[str(id_)]
+
+
+@pytest.mark.parametrize("legacy_id", (True, False))
+def test_node_copy(example_graph_builder_v2, legacy_id):
+    g = example_graph_builder_v2(legacy_id)
+    alice = g.alice
+    alice2 = copy.copy(alice)
+    assert alice == alice2
+    assert alice2 is not alice
+    a_dict = alice["dict"]
+    a2_dict = alice2["dict"]
+    assert a2_dict is a_dict
+
+
+@pytest.mark.parametrize("legacy_id", (True, False))
+def test_node_deep_copy(example_graph_builder_v2, legacy_id):
+    g = example_graph_builder_v2(legacy_id)
+    alice = g.alice
+    alice2 = copy.deepcopy(alice)
+    # not the same nodes, because they belong to different graphs
+    # (graph got cloned)
+    assert alice != alice2
+    assert alice2 is not alice
+
+    # root both in a fake graph
+    alice2._graph = alice._graph = Graph()
+    assert alice == alice2
+    a_dict = alice["dict"]
+    a2_dict = alice2["dict"]
+    assert a2_dict == a_dict
+    assert a2_dict is not a_dict
+    a_list = a_dict["list"]
+    a2_list = a2_dict["list"]
+    assert a2_list == a_list
+    assert a2_list is not a_list
