@@ -281,6 +281,26 @@ class LogonResponse(InitResponse):
         raise Neo4jError.hydrate(**metadata)
 
 
+class ResetResponse(Response):
+    async def _unexpected_message(self, response):
+        log.warning("[#%04X]  _: <CONNECTION> RESET received %s "
+                    "(unexpected response) => dropping connection",
+                    self.connection.local_port, response)
+        await self.connection.close()
+
+    async def on_records(self, records):
+        await self._unexpected_message("RECORD")
+
+    async def on_success(self, metadata):
+        pass
+
+    async def on_failure(self, metadata):
+        await self._unexpected_message("FAILURE")
+
+    async def on_ignored(self, metadata=None):
+        await self._unexpected_message("IGNORED")
+
+
 class CommitResponse(Response):
     pass
 
