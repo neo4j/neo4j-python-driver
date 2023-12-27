@@ -47,6 +47,7 @@ from ._common import (
     check_supported_server_product,
     CommitResponse,
     InitResponse,
+    ResetResponse,
     Response,
 )
 
@@ -311,17 +312,14 @@ class Bolt4x0(Bolt):
                      dehydration_hooks=dehydration_hooks)
 
     def reset(self, dehydration_hooks=None, hydration_hooks=None):
-        """ Add a RESET message to the outgoing queue, send
-        it and consume all remaining messages.
+        """Reset the connection.
+
+        Add a RESET message to the outgoing queue, send it and consume all
+        remaining messages.
         """
-
-        def fail(metadata):
-            raise BoltProtocolError("RESET failed %r" % metadata, self.unresolved_address)
-
         log.debug("[#%04X]  C: RESET", self.local_port)
-        self._append(b"\x0F",
-                     response=Response(self, "reset", hydration_hooks,
-                                       on_failure=fail),
+        response = ResetResponse(self, "reset", hydration_hooks)
+        self._append(b"\x0F", response=response,
                      dehydration_hooks=dehydration_hooks)
         self.send_all()
         self.fetch_all()

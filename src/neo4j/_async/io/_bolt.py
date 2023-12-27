@@ -857,7 +857,7 @@ class AsyncBolt:
                  messages fetched
         """
         detail_count = summary_count = 0
-        while self.responses:
+        while not self._closed and self.responses:
             response = self.responses[0]
             while not response.complete:
                 detail_delta, summary_delta = await self.fetch_message()
