@@ -4,6 +4,9 @@ See also https://github.com/neo4j/neo4j-python-driver/wiki for a full changelog.
 
 ## NEXT RELEASE
 - No breaking or major changes.
+
+
+## Version 5.16
 - Implemented a hierarchical logger structure to improve log source
   identification and traceability.  
   Introduced child loggers:
