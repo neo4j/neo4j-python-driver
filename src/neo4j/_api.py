@@ -151,9 +151,8 @@ class NotificationDisabledCategory(str, Enum):
     PERFORMANCE = "PERFORMANCE"
     DEPRECATION = "DEPRECATION"
     GENERIC = "GENERIC"
-    #: Requires server version 5.14 or newer.
     SECURITY = "SECURITY"
-    #: Requires server version 5.14 or newer.
+    #: Requires server version 5.13 or newer.
     TOPOLOGY = "TOPOLOGY"
 
 
