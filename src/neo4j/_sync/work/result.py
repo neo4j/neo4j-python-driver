@@ -286,7 +286,10 @@ class Result(NonConcurrentMethodChecker):
 
     @NonConcurrentMethodChecker.non_concurrent_method
     def __next__(self) -> Record:
-        """Advance the result stream and return the record."""
+        """Advance the result stream and return the record.
+
+        :raises StopIteration: if no more records are available.
+        """
         return self.__iter__().__next__()
 
     def _attach(self):
