@@ -1347,9 +1347,9 @@ A :class:`neo4j.Result` is attached to an active connection, through a :class:`n
 
 .. autoclass:: neo4j.Result()
 
-    .. describe:: iter(result)
+    .. automethod:: __iter__
 
-    .. describe:: next(result)
+    .. automethod:: __next__
 
     .. automethod:: keys
 

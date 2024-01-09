@@ -286,7 +286,10 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def __anext__(self) -> Record:
-        """Advance the result stream and return the record."""
+        """Advance the result stream and return the record.
+
+        :raises StopAsyncIteration: if no more records are available.
+        """
         return await self.__aiter__().__anext__()
 
     async def _attach(self):
