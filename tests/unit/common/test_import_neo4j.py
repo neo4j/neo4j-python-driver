@@ -14,6 +14,8 @@
 # limitations under the License.
 
 
+import importlib
+
 import pytest
 
 
@@ -166,3 +168,19 @@ def test_import_time():
 
 def test_import_exceptions():
     from neo4j import exceptions
+
+
+def test_import_star():
+    with pytest.warns() as warnings:
+        importlib.__import__("neo4j", fromlist=("*",))
+    assert len(warnings) == 5
+    assert all(issubclass(w.category, DeprecationWarning) for w in warnings)
+    messages = {str(w.message) for w in warnings}
+    for item in (
+        "log", "Config", "PoolConfig", "SessionConfig", "WorkspaceConfig"
+    ):
+        message = (
+            f"Importing {item} from neo4j is deprecated without replacement. "
+            f"It's internal and will be removed in a future version."
+        )
+        assert message in messages
