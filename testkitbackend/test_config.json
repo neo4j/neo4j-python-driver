@@ -21,6 +21,7 @@
     "Feature:API:BookmarkManager": true,
     "Feature:API:ConnectionAcquisitionTimeout": true,
     "Feature:API:Driver.ExecuteQuery": true,
+    "Feature:API:Driver.ExecuteQuery:WithAuth": true,
     "Feature:API:Driver:GetServerInfo": true,
     "Feature:API:Driver.IsEncrypted": true,
     "Feature:API:Driver.VerifyAuthentication": true,
