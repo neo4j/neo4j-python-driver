@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import typing as t
-from functools import wraps
 
 from ..._async_compat.util import AsyncUtil
 from ..._work import Query
@@ -57,7 +56,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
         self._on_cancel = on_cancel
         super().__init__()
 
-    async def _enter(self):
+    async def _enter(self) -> te.Self:
         return self
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
@@ -113,7 +112,7 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
         parameters: t.Optional[t.Dict[str, t.Any]] = None,
         **kwparameters: t.Any
     ) -> AsyncResult:
-        """ Run a Cypher query within the context of this transaction.
+        """Run a Cypher query within the context of this transaction.
 
         Cypher is typically expressed as a query template plus a
         set of named parameters. In Python, parameters may be expressed
@@ -172,10 +171,6 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def _commit(self):
-        """Mark this transaction as successful and close in order to trigger a COMMIT.
-
-        :raise TransactionError: if the transaction is already closed
-        """
         if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
         if self._last_error:
@@ -202,10 +197,6 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def _rollback(self):
-        """Mark this transaction as unsuccessful and close in order to trigger a ROLLBACK.
-
-        :raise TransactionError: if the transaction is already closed
-        """
         if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
 
@@ -228,14 +219,79 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def _close(self):
-        """Close this transaction, triggering a ROLLBACK if not closed.
-        """
         if self._closed_flag:
             return
         await self._rollback()
 
     if AsyncUtil.is_async_code:
         def _cancel(self) -> None:
+            if self._closed_flag:
+                return
+            try:
+                self._on_cancel()
+            finally:
+                self._closed_flag = True
+
+    def _closed(self) -> bool:
+        return self._closed_flag
+
+
+class AsyncTransaction(AsyncTransactionBase):
+    """Fully user-managed transaction.
+
+    Container for multiple Cypher queries to be executed within a single
+    context. :class:`AsyncTransaction` objects can be used as a context
+    manager (:py:const:`async with` block) where the transaction is committed
+    or rolled back based on whether an exception is raised::
+
+        async with await session.begin_transaction() as tx:
+            ...
+
+    """
+
+    async def __aenter__(self) -> AsyncTransaction:
+        return await self._enter()
+
+    async def __aexit__(
+        self, exception_type, exception_value, traceback
+    ) -> None:
+        await self._exit(exception_type, exception_value, traceback)
+
+    async def commit(self) -> None:
+        """Commit the transaction and close it.
+
+        Marks this transaction as successful and closes in order to trigger a
+        COMMIT.
+
+        :raise TransactionError: if the transaction is already closed
+        """
+        return await self._commit()
+
+    async def rollback(self) -> None:
+        """Rollback the transaction and close it.
+
+        Marks the transaction as unsuccessful and closes in order to trigger
+        a ROLLBACK.
+
+        :raise TransactionError: if the transaction is already closed
+        """
+        return await self._rollback()
+
+    async def close(self) -> None:
+        """Close this transaction, triggering a ROLLBACK if not closed."""
+        return await self._close()
+
+    def closed(self) -> bool:
+        """Indicate whether the transaction has been closed or cancelled.
+
+        :returns:
+            :data:`True` if closed or cancelled, :data:`False` otherwise.
+        :rtype: bool
+        """
+        return self._closed()
+
+    if AsyncUtil.is_async_code:
+        def cancel(self) -> None:
             """Cancel this transaction.
 
             If the transaction is already closed, this method does nothing.
@@ -255,61 +311,6 @@ class AsyncTransactionBase(AsyncNonConcurrentMethodChecker):
                     raise
 
             """
-            if self._closed_flag:
-                return
-            try:
-                self._on_cancel()
-            finally:
-                self._closed_flag = True
-
-    def _closed(self):
-        """Indicate whether the transaction has been closed or cancelled.
-
-        :returns:
-            :data:`True` if closed or cancelled, :data:`False` otherwise.
-        :rtype: bool
-        """
-        return self._closed_flag
-
-
-class AsyncTransaction(AsyncTransactionBase):
-    """ Container for multiple Cypher queries to be executed within a single
-    context. :class:`AsyncTransaction` objects can be used as a context
-    managers (:py:const:`async with` block) where the transaction is committed
-    or rolled back on based on whether an exception is raised::
-
-        async with await session.begin_transaction() as tx:
-            ...
-
-    """
-
-    @wraps(AsyncTransactionBase._enter)
-    async def __aenter__(self) -> AsyncTransaction:
-        return await self._enter()
-
-    @wraps(AsyncTransactionBase._exit)
-    async def __aexit__(self, exception_type, exception_value, traceback):
-        await self._exit(exception_type, exception_value, traceback)
-
-    @wraps(AsyncTransactionBase._commit)
-    async def commit(self) -> None:
-        return await self._commit()
-
-    @wraps(AsyncTransactionBase._rollback)
-    async def rollback(self) -> None:
-        return await self._rollback()
-
-    @wraps(AsyncTransactionBase._close)
-    async def close(self) -> None:
-        return await self._close()
-
-    @wraps(AsyncTransactionBase._closed)
-    def closed(self) -> bool:
-        return self._closed()
-
-    if AsyncUtil.is_async_code:
-        @wraps(AsyncTransactionBase._cancel)
-        def cancel(self) -> None:
             return self._cancel()
 
 

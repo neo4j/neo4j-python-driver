@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import typing as t
-from functools import wraps
 
 from ..._async_compat.util import Util
 from ..._work import Query
@@ -57,7 +56,7 @@ class TransactionBase(NonConcurrentMethodChecker):
         self._on_cancel = on_cancel
         super().__init__()
 
-    def _enter(self):
+    def _enter(self) -> te.Self:
         return self
 
     @NonConcurrentMethodChecker.non_concurrent_method
@@ -113,7 +112,7 @@ class TransactionBase(NonConcurrentMethodChecker):
         parameters: t.Optional[t.Dict[str, t.Any]] = None,
         **kwparameters: t.Any
     ) -> Result:
-        """ Run a Cypher query within the context of this transaction.
+        """Run a Cypher query within the context of this transaction.
 
         Cypher is typically expressed as a query template plus a
         set of named parameters. In Python, parameters may be expressed
@@ -172,10 +171,6 @@ class TransactionBase(NonConcurrentMethodChecker):
 
     @NonConcurrentMethodChecker.non_concurrent_method
     def _commit(self):
-        """Mark this transaction as successful and close in order to trigger a COMMIT.
-
-        :raise TransactionError: if the transaction is already closed
-        """
         if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
         if self._last_error:
@@ -202,10 +197,6 @@ class TransactionBase(NonConcurrentMethodChecker):
 
     @NonConcurrentMethodChecker.non_concurrent_method
     def _rollback(self):
-        """Mark this transaction as unsuccessful and close in order to trigger a ROLLBACK.
-
-        :raise TransactionError: if the transaction is already closed
-        """
         if self._closed_flag:
             raise TransactionError(self, "Transaction closed")
 
@@ -228,14 +219,79 @@ class TransactionBase(NonConcurrentMethodChecker):
 
     @NonConcurrentMethodChecker.non_concurrent_method
     def _close(self):
-        """Close this transaction, triggering a ROLLBACK if not closed.
-        """
         if self._closed_flag:
             return
         self._rollback()
 
     if Util.is_async_code:
         def _cancel(self) -> None:
+            if self._closed_flag:
+                return
+            try:
+                self._on_cancel()
+            finally:
+                self._closed_flag = True
+
+    def _closed(self) -> bool:
+        return self._closed_flag
+
+
+class Transaction(TransactionBase):
+    """Fully user-managed transaction.
+
+    Container for multiple Cypher queries to be executed within a single
+    context. :class:`Transaction` objects can be used as a context
+    manager (:py:const:`with` block) where the transaction is committed
+    or rolled back based on whether an exception is raised::
+
+        with session.begin_transaction() as tx:
+            ...
+
+    """
+
+    def __enter__(self) -> Transaction:
+        return self._enter()
+
+    def __exit__(
+        self, exception_type, exception_value, traceback
+    ) -> None:
+        self._exit(exception_type, exception_value, traceback)
+
+    def commit(self) -> None:
+        """Commit the transaction and close it.
+
+        Marks this transaction as successful and closes in order to trigger a
+        COMMIT.
+
+        :raise TransactionError: if the transaction is already closed
+        """
+        return self._commit()
+
+    def rollback(self) -> None:
+        """Rollback the transaction and close it.
+
+        Marks the transaction as unsuccessful and closes in order to trigger
+        a ROLLBACK.
+
+        :raise TransactionError: if the transaction is already closed
+        """
+        return self._rollback()
+
+    def close(self) -> None:
+        """Close this transaction, triggering a ROLLBACK if not closed."""
+        return self._close()
+
+    def closed(self) -> bool:
+        """Indicate whether the transaction has been closed or cancelled.
+
+        :returns:
+            :data:`True` if closed or cancelled, :data:`False` otherwise.
+        :rtype: bool
+        """
+        return self._closed()
+
+    if Util.is_async_code:
+        def cancel(self) -> None:
             """Cancel this transaction.
 
             If the transaction is already closed, this method does nothing.
@@ -255,61 +311,6 @@ class TransactionBase(NonConcurrentMethodChecker):
                     raise
 
             """
-            if self._closed_flag:
-                return
-            try:
-                self._on_cancel()
-            finally:
-                self._closed_flag = True
-
-    def _closed(self):
-        """Indicate whether the transaction has been closed or cancelled.
-
-        :returns:
-            :data:`True` if closed or cancelled, :data:`False` otherwise.
-        :rtype: bool
-        """
-        return self._closed_flag
-
-
-class Transaction(TransactionBase):
-    """ Container for multiple Cypher queries to be executed within a single
-    context. :class:`Transaction` objects can be used as a context
-    managers (:py:const:`with` block) where the transaction is committed
-    or rolled back on based on whether an exception is raised::
-
-        with session.begin_transaction() as tx:
-            ...
-
-    """
-
-    @wraps(TransactionBase._enter)
-    def __enter__(self) -> Transaction:
-        return self._enter()
-
-    @wraps(TransactionBase._exit)
-    def __exit__(self, exception_type, exception_value, traceback):
-        self._exit(exception_type, exception_value, traceback)
-
-    @wraps(TransactionBase._commit)
-    def commit(self) -> None:
-        return self._commit()
-
-    @wraps(TransactionBase._rollback)
-    def rollback(self) -> None:
-        return self._rollback()
-
-    @wraps(TransactionBase._close)
-    def close(self) -> None:
-        return self._close()
-
-    @wraps(TransactionBase._closed)
-    def closed(self) -> bool:
-        return self._closed()
-
-    if Util.is_async_code:
-        @wraps(TransactionBase._cancel)
-        def cancel(self) -> None:
             return self._cancel()
 
 
