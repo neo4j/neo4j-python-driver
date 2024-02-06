@@ -27,3 +27,6 @@ tox>=4.0.0
 
 # needed for building docs
 sphinx
+
+# needed for BenchKit
+sanic>=23.12.1; python_version >= '3.8.0'

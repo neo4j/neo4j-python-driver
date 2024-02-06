@@ -37,7 +37,7 @@ repos:
       - id: mypy
         name: mypy static type check
         entry: mypy
-        args: [ --show-error-codes, src, tests, testkitbackend ]
+        args: [ --show-error-codes, src, tests, testkitbackend, benchkit ]
         'types_or': [ python, pyi ]
         language: system
         pass_filenames: false
