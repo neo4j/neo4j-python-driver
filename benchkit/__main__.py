@@ -10,6 +10,11 @@ from .env import env
 if __name__ == '__main__':
     loader = AppLoader(factory=create_app)
     app = loader.load()
+
+    # For local development:
     # app.prepare(port=env.backend_port, debug=True, workers=1, dev=True)
+
+    # For production:
     app.prepare(host="0.0.0.0", port=env.backend_port, workers=1)
+
     Sanic.serve(primary=app, app_loader=loader)
