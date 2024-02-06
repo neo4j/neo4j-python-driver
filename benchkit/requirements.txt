@@ -1,4 +1,0 @@
-# install from project root with `pip install -r benchkit/requirements.txt`
-
--e .[pandas,numpy,pyarrow]
-sanic>=23.12.1
