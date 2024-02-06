@@ -6,6 +6,6 @@ COPY . /driver
 
 # Install dependencies
 RUN pip install -U pip && \
-    pip install -Ur requirements-dev.txt
+    pip install -Ur benchkit/requirements.txt
 
 ENTRYPOINT ["python", "-m", "benchkit"]
