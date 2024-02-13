@@ -69,9 +69,17 @@ def summary(summary_: neo4j.ResultSummary) -> dict:
         return [serialize_notification(n)
                 for n in summary_.summary_notifications]
 
+    def format_address(address: neo4j.Address):
+        if len(address) == 2:
+            return f"{address.host}:{address.port}"
+        if len(address) == 4:
+            return f"[{address.host}]:{address.port}"
+        else:
+            raise ValueError(f"Unexpected address format: {address}")
+
     return {
         "serverInfo": {
-            "address": ":".join(map(str, summary_.server.address)),
+            "address": format_address(summary_.server.address),
             "agent": summary_.server.agent,
             "protocolVersion":
                 ".".join(map(str, summary_.server.protocol_version)),
