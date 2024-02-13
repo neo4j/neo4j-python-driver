@@ -320,11 +320,10 @@ class ServerInfo:
         return self._address
 
     @property
-    def protocol_version(self) -> Version:
+    def protocol_version(self) -> t.Tuple[int, int]:
         """ Bolt protocol version with which the remote server
-        communicates. This is returned as a :class:`.Version`
-        object, which itself extends a simple 2-tuple of
-        (major, minor) integers.
+        communicates. This is returned as a 2-tuple:class:`tuple` (subclass) of
+        ``(major, minor)`` integers.
         """
         return self._protocol_version
 
@@ -404,7 +403,7 @@ class BookmarkManager(_Protocol, metaclass=abc.ABCMeta):
     This class is just an abstract base class that defines the required
     interface. Create a child class to implement a specific bookmark manager
     or make use of the default implementation provided by the driver through
-    :meth:`.GraphDatabase.bookmark_manager()`.
+    :meth:`.GraphDatabase.bookmark_manager`.
 
     .. note::
         All methods must be concurrency safe.

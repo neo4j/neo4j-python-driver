@@ -343,7 +343,7 @@ class GraphDatabase:
             internal bookmark set. It will receive the new set of bookmarks
             as a :class:`.Bookmarks` object and return :data:`None`.
 
-        :returns: A default implementation of :class:`BookmarkManager`.
+        :returns: A default implementation of :class:`.BookmarkManager`.
 
         .. versionadded:: 5.0
 
@@ -908,7 +908,7 @@ class Driver:
     def execute_query_bookmark_manager(self) -> BookmarkManager:
         """The driver's default query bookmark manager.
 
-        This is the default :class:`BookmarkManager` used by
+        This is the default :class:`.BookmarkManager` used by
         :meth:`.execute_query`. This can be used to causally chain
         :meth:`.execute_query` calls and sessions. Example::
 
@@ -1088,8 +1088,8 @@ class Driver:
         .. note::
             Feature support query based solely on the Bolt protocol version.
             The feature might still be disabled on the server side even if this
-            function return :const:`True`. It just guarantees that the driver
-            won't throw a :exc:`ConfigurationError` when trying to use this
+            function return :data:`True`. It just guarantees that the driver
+            won't throw a :exc:`.ConfigurationError` when trying to use this
             driver feature.
         """
         self._check_state()
@@ -1140,9 +1140,9 @@ class Driver:
             a member of a cluster and exchange some data. In a cluster, there
             is no guarantee about which server will be contacted. If the data
             exchange is successful and the authentication information is valid,
-            :const:`True` is returned. Otherwise, the error will be matched
+            :data:`True` is returned. Otherwise, the error will be matched
             against a list of known authentication errors. If the error is on
-            that list, :const:`False` is returned indicating that the
+            that list, :data:`False` is returned indicating that the
             authentication information is invalid. Otherwise, the error is
             re-raised.
 
@@ -1200,8 +1200,8 @@ class Driver:
         .. note::
             Feature support query based solely on the Bolt protocol version.
             The feature might still be disabled on the server side even if this
-            function return :const:`True`. It just guarantees that the driver
-            won't throw a :exc:`ConfigurationError` when trying to use this
+            function return :data:`True`. It just guarantees that the driver
+            won't throw a :exc:`.ConfigurationError` when trying to use this
             driver feature.
 
         .. versionadded:: 5.8

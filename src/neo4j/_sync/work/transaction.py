@@ -241,7 +241,7 @@ class Transaction(TransactionBase):
 
     Container for multiple Cypher queries to be executed within a single
     context. :class:`Transaction` objects can be used as a context
-    manager (:py:const:`with` block) where the transaction is committed
+    manager (``with`` block) where the transaction is committed
     or rolled back based on whether an exception is raised::
 
         with session.begin_transaction() as tx:

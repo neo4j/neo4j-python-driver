@@ -249,7 +249,7 @@ class Address(tuple, metaclass=_AddressMeta):
         """The port part of the address as an integer.
 
         First try to resolve the port as an integer, using
-        :meth:`socket.getservbyname`. If that fails, fall back to parsing the
+        :func:`socket.getservbyname`. If that fails, fall back to parsing the
         port as an integer.
 
             >>> Address(("localhost", 7687)).port_number

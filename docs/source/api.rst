@@ -896,7 +896,7 @@ To construct a :class:`neo4j.Session` use the :meth:`neo4j.Driver.session` metho
 ``bookmarks``
 -------------
 Optional :class:`neo4j.Bookmarks`. Use this to causally chain sessions.
-See :meth:`Session.last_bookmarks` or :meth:`AsyncSession.last_bookmarks` for
+See :meth:`.Session.last_bookmarks` or :meth:`.AsyncSession.last_bookmarks` for
 more information.
 
 :Default: :data:`None`
@@ -984,7 +984,7 @@ Specifically, the following applies:
 Name of the user to impersonate.
 This means that all actions in the session will be executed in the security
 context of the impersonated user. For this, the user for which the
-:class:`Driver` has been created needs to have the appropriate permissions.
+:class:`.Driver` has been created needs to have the appropriate permissions.
 
 .. Note::
 
@@ -1861,8 +1861,6 @@ Server-side errors
     * :class:`neo4j.exceptions.AuthError`
 
       * :class:`neo4j.exceptions.TokenExpired`
-
-        * :class:`neo4j.exceptions.TokenExpiredRetryable`
 
     * :class:`neo4j.exceptions.Forbidden`
 

@@ -23,7 +23,6 @@ as a number of utility functions.
 from __future__ import annotations
 
 import re
-import typing
 import typing as t
 from datetime import (
     date,
@@ -751,8 +750,8 @@ class Date(date_base_class, metaclass=DateType):
     desirable outcome than would otherwise be produced. Externally, the day
     number is always the same as would be written on a calendar.
 
-    :param year: the year. Minimum :attr:`.MIN_YEAR` (0001), maximum
-        :attr:`.MAX_YEAR` (9999).
+    :param year: the year. Minimum :data:`.MIN_YEAR` (0001), maximum
+        :data:`.MAX_YEAR` (9999).
     :type year: int
     :param month: the month. Minimum 1, maximum 12.
     :type month: int
@@ -761,7 +760,7 @@ class Date(date_base_class, metaclass=DateType):
     :type day: int
 
     A zero date can also be acquired by passing all zeroes to the
-    :class:`neo4j.time.Date` constructor or by using the :attr:`ZeroDate`
+    :class:`.Date` constructor or by using the :data:`ZeroDate`
     constant.
     """
 

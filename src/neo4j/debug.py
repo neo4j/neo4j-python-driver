@@ -100,9 +100,9 @@ class Watcher:
     :param colour: Whether the log levels should be indicated with ANSI colour
         codes.
     :param thread_info: whether to include information about the current
-        thread in the log message. Defaults to :const:`True`.
+        thread in the log message. Defaults to :data:`True`.
     :param task_info: whether to include information about the current
-        async task in the log message. Defaults to :const:`True`.
+        async task in the log message. Defaults to :data:`True`.
 
     .. versionchanged:: 5.3
 
