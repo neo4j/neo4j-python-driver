@@ -167,8 +167,8 @@ def test_routing_driver_constructor(protocol, host, port, params, auth_token):
 def test_driver_config_error_uri_conflict(
     test_uri, test_config, expected_failure, expected_failure_message
 ):
-    def driver_builder():
-        if "trust" in test_config:
+    def driver_builder(expect_failure=False):
+        if "trust" in test_config and not expect_failure:
             with pytest.warns(DeprecationWarning, match="trust"):
                 return GraphDatabase.driver(test_uri, **test_config)
         else:
@@ -178,7 +178,7 @@ def test_driver_config_error_uri_conflict(
         # `+s` and `+ssc` are shorthand syntax for not having to configure the
         # encryption behavior of the driver. Specifying both is invalid.
         with pytest.raises(expected_failure, match=expected_failure_message):
-            driver_builder()
+            driver_builder(expect_failure=True)
     else:
         driver = driver_builder()
         driver.close()
