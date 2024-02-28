@@ -52,10 +52,11 @@ _K = t.Union[int, str]
 
 
 class Record(tuple, Mapping):
-    """ A :class:`.Record` is an immutable ordered collection of key-value
-    pairs. It is generally closer to a :py:class:`namedtuple` than to a
-    :py:class:`OrderedDict` in as much as iteration of the collection will
-    yield values rather than keys.
+    """ A :class:`.Record` is an immutable, ordered collection of key-value
+    pairs.
+    It is generally closer to a :func:`collections.namedtuple` than to a
+    :class:`OrderedDict` in as much as iteration of the collection will yield
+    values rather than keys.
     """
 
     __keys: t.Tuple[str]

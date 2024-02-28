@@ -210,8 +210,8 @@ class Neo4jError(Exception):
 
         See :meth:`.is_retryable`.
 
-        :returns: :const:`True` if the error is retryable,
-            :const:`False` otherwise.
+        :returns: :data:`True` if the error is retryable,
+            :data:`False` otherwise.
 
         .. deprecated:: 5.0
             This method will be removed in a future version.
@@ -226,8 +226,8 @@ class Neo4jError(Exception):
         retry. This method makes mostly sense when implementing a custom
         retry policy in conjunction with :ref:`explicit-transactions-ref`.
 
-        :returns: :const:`True` if the error is retryable,
-            :const:`False` otherwise.
+        :returns: :data:`True` if the error is retryable,
+            :data:`False` otherwise.
 
         .. versionadded:: 5.0
         """
@@ -314,11 +314,6 @@ class AuthError(ClientError):
 # Neo4jError > ClientError > AuthError > TokenExpired
 class TokenExpired(AuthError):
     """ Raised when the authentication token has expired.
-
-    A new driver instance with a fresh authentication token needs to be
-    created, unless the driver was configured using a non-static
-    :class:`.AuthManager`. In that case, the error will be
-    :exc:`.TokenExpiredRetryable` instead.
     """
 
 
@@ -414,8 +409,8 @@ class DriverError(Exception):
         retry. This method makes mostly sense when implementing a custom
         retry policy in conjunction with :ref:`explicit-transactions-ref`.
 
-        :returns: :const:`True` if the error is retryable,
-            :const:`False` otherwise.
+        :returns: :data:`True` if the error is retryable,
+            :data:`False` otherwise.
 
         .. versionadded:: 5.0
         """

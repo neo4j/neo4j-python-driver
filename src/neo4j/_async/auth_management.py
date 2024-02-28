@@ -222,9 +222,9 @@ class AsyncAuthManagers:
 
         This factory wraps the provider function in an auth manager
         implementation that caches the provides auth info until either the
-        ``ExpiringAuth.expires_at`` is exceeded the server notifies the driver
-        that the auth info is expired (by returning an error that indicates
-        that the bearer auth token has expired).
+        :attr:`.ExpiringAuth.expires_at` is exceeded the server notifies the
+        driver that the auth info is expired (by returning an error that
+        indicates that the bearer auth token has expired).
 
         .. warning::
 

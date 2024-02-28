@@ -201,7 +201,7 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
     def closed(self) -> bool:
         """Indicate whether the session has been closed.
 
-        :returns: :const:`True` if closed, :const:`False` otherwise.
+        :returns: :data:`True` if closed, :data:`False` otherwise.
         """
         return self._closed
 

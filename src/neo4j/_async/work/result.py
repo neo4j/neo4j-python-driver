@@ -424,7 +424,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             was obtained has been closed.
 
         .. versionchanged:: 5.0
-            Can raise :exc:`ResultConsumedError`.
+            Can raise :exc:`.ResultConsumedError`.
         """
         if self._out_of_scope:
             raise ResultConsumedError(self, _RESULT_OUT_OF_SCOPE_ERROR)
@@ -452,24 +452,24 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
 
         Calling this method always exhausts the result.
 
-        If ``strict`` is :const:`True`, this method will raise an exception if
+        If ``strict`` is :data:`True`, this method will raise an exception if
         there is not exactly one record left.
 
-        If ``strict`` is :const:`False`, fewer than one record will make this
+        If ``strict`` is :data:`False`, fewer than one record will make this
         method return :data:`None`, more than one record will make this method
         emit a warning and return the first record.
 
         :param strict:
-            If :const:`True`, raise a :class:`neo4j.ResultNotSingleError`
-            instead of returning None if there is more than one record or
-            warning if there are more than 1 record.
-            :const:`False` by default.
+            If :data:`True`, raise a :exc:`.ResultNotSingleError` instead of
+            returning :data:`None` if there is more than one record or warning
+            if there is more than 1 record.
+            :data:`False` by default.
         :type strict: bool
 
         :returns: the next :class:`neo4j.Record` or :data:`None` if none remain
 
         :warns: if more than one record is available and
-            ``strict`` is :const:`False`
+            ``strict`` is :data:`False`
 
         :raises ResultNotSingleError:
             If ``strict=True`` and not exactly one record is available.
@@ -480,7 +480,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         .. versionchanged:: 5.0
 
             * Added ``strict`` parameter.
-            * Can raise :exc:`ResultConsumedError`.
+            * Can raise :exc:`.ResultConsumedError`.
         """
         await self._buffer(2)
         buffer = self._record_buffer
@@ -545,7 +545,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             consumed.
 
         .. versionchanged:: 5.0
-            Can raise :exc:`ResultConsumedError`.
+            Can raise :exc:`.ResultConsumedError`.
         """
         await self._buffer(1)
         if self._record_buffer:
@@ -554,14 +554,14 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
 
     @AsyncNonConcurrentMethodChecker.non_concurrent_method
     async def graph(self) -> Graph:
-        """Turn the result into a :class:`neo4j.Graph`.
+        """Turn the result into a :class:`.Graph`.
 
-        Return a :class:`neo4j.graph.Graph` instance containing all the graph
-        objects in the result. This graph will also contain already consumed
-        records.
+        Return a :class:`.Graph` instance containing all the graph objects in
+        the result.
+        This graph will also contain already consumed records.
 
-        After calling this method, the result becomes
-        detached, buffering all remaining records.
+        After calling this method, the result becomes detached, buffering all
+        remaining records.
 
         :returns: a result graph
 
@@ -570,7 +570,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             consumed.
 
         .. versionchanged:: 5.0
-            Can raise :exc:`ResultConsumedError`.
+            Can raise :exc:`.ResultConsumedError`.
         """
         await self._buffer_all()
         return self._hydration_scope.get_graph()
@@ -591,7 +591,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             consumed.
 
         .. versionchanged:: 5.0
-            Can raise :exc:`ResultConsumedError`.
+            Can raise :exc:`.ResultConsumedError`.
 
         .. seealso:: :meth:`.Record.value`
         """
@@ -612,7 +612,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             consumed.
 
         .. versionchanged:: 5.0
-            Can raise :exc:`ResultConsumedError`.
+            Can raise :exc:`.ResultConsumedError`.
 
         .. seealso:: :meth:`.Record.values`
         """
@@ -641,7 +641,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             consumed.
 
         .. versionchanged:: 5.0
-            Can raise :exc:`ResultConsumedError`.
+            Can raise :exc:`.ResultConsumedError`.
 
         .. seealso:: :meth:`.Record.data`
         """
@@ -690,7 +690,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         for instance will return a DataFrame with two columns: ``n`` and ``m``
         and 10 rows.
 
-        :param expand: If :const:`True`, some structures in the result will be
+        :param expand: If :data:`True`, some structures in the result will be
             recursively expanded (flattened out into multiple columns) like so
             (everything inside ``<...>`` is a placeholder):
 
@@ -720,21 +720,21 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
               * ``<r>->.type`` (str) the relationship's type.
                 See :attr:`.Relationship.type`.
 
-            * :const:`list` objects under any variable ``<l>`` will be expanded
+            * :class:`list` objects under any variable ``<l>`` will be expanded
               into
 
               * ``<l>[].0`` (any) the 1st list element
               * ``<l>[].1`` (any) the 2nd list element
               * ...
 
-            * :const:`dict` objects under any variable ``<d>`` will be expanded
+            * :class:`dict` objects under any variable ``<d>`` will be expanded
               into
 
               * ``<d>{}.<key1>`` (any) the 1st key of the dict
               * ``<d>{}.<key2>`` (any) the 2nd key of the dict
               * ...
 
-            * :const:`list` and :const:`dict` objects are expanded recursively.
+            * :class:`list` and :class:`dict` objects are expanded recursively.
               Example::
 
                 variable x: [{"foo": "bar", "baz": [42, 0]}, "foobar"]
@@ -751,10 +751,10 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             * Everything else (including :class:`.Path` objects) will not
               be flattened.
 
-            :const:`dict` keys and variable names that contain ``.``  or ``\``
+            :class:`dict` keys and variable names that contain ``.``  or ``\``
             will be escaped with a backslash (``\.`` and ``\\`` respectively).
         :param parse_dates:
-            If :const:`True`, columns that exclusively contain
+            If :data:`True`, columns that exclusively contain
             :class:`time.DateTime` objects, :class:`time.Date` objects, or
             :data:`None`, will be converted to :class:`pandas.Timestamp`.
 
@@ -818,7 +818,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         result cannot be used to acquire further records.
 
         In such case, all methods that need to access the Result's records,
-        will raise a :exc:`ResultConsumedError` when called.
+        will raise a :exc:`.ResultConsumedError` when called.
 
         :returns: whether the result is closed.
 
