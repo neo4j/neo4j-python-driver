@@ -381,7 +381,7 @@ Async Driver Configuration
 driver accepts
 
  * a sync as well as an async custom resolver function (see :ref:`async-resolver-ref`)
- * as sync as well as an async auth token manager (see :class:`neo4j.AsyncAuthManager`).
+ * as sync as well as an async auth token manager (see :class:`.AsyncAuthManager`).
 
 
 .. _async-resolver-ref:
@@ -643,7 +643,7 @@ accepts either a :class:`neo4j.api.BookmarkManager` object or a
 Specify a bookmark manager for the driver to use. If present, the bookmark
 manager is used to keep all work on the driver causally consistent.
 
-See :class:`BookmarkManager` for more information.
+See :class:`.BookmarkManager` for more information.
 
 .. warning::
     Enabling the BookmarkManager can have a negative impact on performance since
@@ -654,7 +654,7 @@ See :class:`BookmarkManager` for more information.
     group a series of queries together that will be causally chained
     automatically.
 
-:Type: :data:`None`, :class:`BookmarkManager`, or :class:`AsyncBookmarkManager`
+:Type: :data:`None`, :class:`.BookmarkManager`, or :class:`.AsyncBookmarkManager`
 :Default: :data:`None`
 
 .. versionchanged:: 5.8 Stabilized from experimental.

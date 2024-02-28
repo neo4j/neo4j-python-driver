@@ -32,8 +32,8 @@ if t.TYPE_CHECKING:
 class ExpiringAuth:
     """Represents potentially expiring authentication information.
 
-    This class is used with :meth:`.AuthManagers.expiration_based` and
-    :meth:`.AsyncAuthManagers.expiration_based`.
+    This class is used with :meth:`.AuthManagers.bearer` and
+    :meth:`.AsyncAuthManagers.bearer`.
 
     :param auth: The authentication information.
     :param expires_at:
@@ -43,8 +43,8 @@ class ExpiringAuth:
         expire until the server explicitly indicates so.
 
     .. seealso::
-        :meth:`.AuthManagers.expiration_based`,
-        :meth:`.AsyncAuthManagers.expiration_based`
+        :meth:`.AuthManagers.bearer`,
+        :meth:`.AsyncAuthManagers.bearer`
 
     .. versionadded:: 5.8
 
@@ -155,7 +155,7 @@ class AuthManager(metaclass=abc.ABCMeta):
             The error returned by the server.
 
         :returns:
-            Whether the error was handled (:const:`True`), in which case the
+            Whether the error was handled (:data:`True`), in which case the
             driver will mark the error as retryable
             (see :meth:`.Neo4jError.is_retryable`).
 
@@ -188,8 +188,8 @@ class AsyncAuthManager(metaclass=abc.ABCMeta):
     async def handle_security_exception(
         self, auth: _TAuth, error: Neo4jError
     ) -> bool:
-        """Async version of :meth:`.AuthManager.on_auth_expired`.
+        """Async version of :meth:`.AuthManager.handle_security_exception`.
 
-        .. seealso:: :meth:`.AuthManager.on_auth_expired`
+        .. seealso:: :meth:`.AuthManager.handle_security_exception`
         """
         ...

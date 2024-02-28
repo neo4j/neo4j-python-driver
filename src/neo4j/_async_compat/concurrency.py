@@ -53,7 +53,7 @@ class AsyncRLock(asyncio.Lock):
 
     .. warning::
         In async Python there are no threads. This implementation uses
-        :meth:`asyncio.current_task()` to determine the owner of the lock. This
+        :meth:`asyncio.current_task` to determine the owner of the lock. This
         means that the owner changes when using :meth:`asyncio.wait_for` or
         any other method that wraps the work in a new :class:`asyncio.Task`.
     """

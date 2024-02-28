@@ -37,8 +37,9 @@ __all__ = [
 class NotificationMinimumSeverity(str, Enum):
     """Filter notifications returned by the server by minimum severity.
 
-    Inherits from :class:`str` and :class:`Enum`. Every driver API accepting a
-    :class:`.NotificationMinimumSeverity` value will also accept a string::
+    Inherits from :class:`str` and :class:`enum.Enum`.
+    Every driver API accepting a :class:`.NotificationMinimumSeverity` value
+    will also accept a string::
 
         >>> NotificationMinimumSeverity.OFF == "OFF"
         True
@@ -74,8 +75,8 @@ if t.TYPE_CHECKING:
 class NotificationSeverity(str, Enum):
     """Server-side notification severity.
 
-    Inherits from :class:`str` and :class:`Enum`. Hence, can also be compared
-    to its string value::
+    Inherits from :class:`str` and :class:`enum.Enum`.
+    Hence, can also be compared to its string value::
 
         >>> NotificationSeverity.WARNING == "WARNING"
         True
@@ -125,8 +126,9 @@ class NotificationSeverity(str, Enum):
 class NotificationDisabledCategory(str, Enum):
     """Filter notifications returned by the server by category.
 
-    Inherits from :class:`str` and :class:`Enum`. Every driver API accepting a
-    :class:`.NotificationDisabledCategory` value will also accept a string::
+    Inherits from :class:`str` and :class:`enum.Enum`.
+    Every driver API accepting a :class:`.NotificationDisabledCategory` value
+    will also accept a string::
 
         >>> NotificationDisabledCategory.UNRECOGNIZED == "UNRECOGNIZED"
         True
@@ -176,8 +178,8 @@ if t.TYPE_CHECKING:
 class NotificationCategory(str, Enum):
     """Server-side notification category.
 
-    Inherits from :class:`str` and :class:`Enum`. Hence, can also be compared
-    to its string value::
+    Inherits from :class:`str` and :class:`enum.Enum`.
+    Hence, can also be compared to its string value::
 
         >>> NotificationCategory.DEPRECATION == "DEPRECATION"
         True
@@ -211,8 +213,9 @@ class NotificationCategory(str, Enum):
 class RoutingControl(str, Enum):
     """Selection which cluster members to route a query connect to.
 
-    Inherits from :class:`str` and :class:`Enum`. Every driver API accepting a
-    :class:`.RoutingControl` value will also accept a string
+    Inherits from :class:`str` and :class:`enum.Enum`.
+    Every driver API accepting a :class:`.RoutingControl` value will also
+    accept a string::
 
         >>> RoutingControl.READ == "r"
         True
@@ -220,7 +223,7 @@ class RoutingControl(str, Enum):
         True
 
     .. seealso::
-        :attr:`.AsyncDriver.execute_query`, :attr:`.Driver.execute_query`
+        :meth:`.AsyncDriver.execute_query`, :meth:`.Driver.execute_query`
 
     .. versionadded:: 5.5
 
