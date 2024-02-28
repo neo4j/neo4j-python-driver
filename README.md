@@ -2,8 +2,8 @@
 
 This project contains Rust extensions to speed up the [official Python driver for Neo4j](https://github.com/neo4j/neo4j-python-driver).
 
-> **IMPORTANT**  
-> This project is currently in **beta** phase.
+The exact speedup depends on the use-case but has been measured to be between 3x and 10x faster.
+Use-cases moving only few but big records out of the DBMS tend to benefit the most.
 
 
 ## Installation
