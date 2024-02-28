@@ -43,6 +43,16 @@ To install the latest stable version, use:
     install ``neo4j`` as shown above.
 
 
+Alternative Installation for Better Performance
+-----------------------------------------------
+
+You may want to have a look at the available Rust extensions for this driver
+for better performance. The Rust extensions are not installed by default. For
+more information, see `neo4j-rust-ext`_.
+
+.. _neo4j-rust-ext: https://github.com/neo4j-drivers/neo4j-python-driver-rust-ext
+
+
 Quick Example
 =============
 
