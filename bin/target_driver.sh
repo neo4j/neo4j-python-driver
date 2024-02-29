@@ -4,7 +4,7 @@ set -e
 version="$1"; shift
 
 sed -i "s/\"\(neo4j *== *\).*\"/\"\1$version\"/" pyproject.toml
-sed -i "s/\(version *= *\)\"[0-9]\+\.[0-9]\+\.[0-9]\+\(.*\)\"/\1\"$version.0b1\"/" pyproject.toml
+sed -i "s/\(version *= *\)\"[0-9]\+\.[0-9]\+\.[0-9]\+\(.*\)\"/\1\"$version.0\"/" pyproject.toml
 
 cd driver
 git fetch origin
