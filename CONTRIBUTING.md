@@ -57,26 +57,10 @@ Remember that many community members have become regular contributors and some a
  * Install Python 3.8+
  * Install the requirements
    ```bash
-   $ python3 -m pip install -U pip pre-commit
-   ```
- * Install pre-commit hooks to notice mistakes before the CI does it for you ;)
-   ```bash
-   $ pre-commit install
-   ```
-
-All code in `_sync` or `sync` folders is auto-generated. Don't change it, but
-install the pre-commit hooks as described below instead. They will take care of
-updating the code if necessary.
-
-Setting up the development environment:
- * Install Python 3.8+
- * Install the requirements
-   ```bash
    $ python3 -m pip install -U pip
    $ python3 -m pip install -Ur requirements-dev.txt
    ```
-* Install the pre-commit hook, that will do some code-format-checking everytime
-  you commit.
+* Install pre-commit hooks to notice mistakes before the CI does it for you ;)
   ```bash
   $ pre-commit install
   ```
