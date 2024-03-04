@@ -403,6 +403,7 @@ Additional configuration can be provided via the :class:`neo4j.Driver` construct
 + :ref:`trust-ref`
 + :ref:`ssl-context-ref`
 + :ref:`trusted-certificates-ref`
++ :ref:`client-certificate-ref`
 + :ref:`user-agent-ref`
 + :ref:`driver-notifications-min-severity-ref`
 + :ref:`driver-notifications-disabled-categories-ref`
@@ -573,7 +574,8 @@ Specify how to determine the authenticity of encryption certificates provided by
 
 This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
 
-This setting does not have any effect if ``encrypted`` is set to ``False``.
+This setting does not have any effect if ``encrypted`` is set to ``False`` or a
+custom ``ssl_context`` is configured.
 
 :Type: ``neo4j.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES``, ``neo4j.TRUST_ALL_CERTIFICATES``
 
@@ -605,7 +607,7 @@ Specify a custom SSL context to use for wrapping connections.
 
 This setting is only available for URI schemes ``bolt://`` and ``neo4j://`` (:ref:`uri-ref`).
 
-If given, ``encrypted`` and ``trusted_certificates`` have no effect.
+If given, ``encrypted``, ``trusted_certificates``, and ``client_certificate`` have no effect.
 
 .. warning::
     This option may compromise your application's security if used improperly.
@@ -632,13 +634,37 @@ custom ``ssl_context`` is configured.
 :Type: :class:`.TrustSystemCAs`, :class:`.TrustAll`, or :class:`.TrustCustomCAs`
 :Default: :const:`neo4j.TrustSystemCAs()`
 
+.. versionadded:: 5.0
+
 .. autoclass:: neo4j.TrustSystemCAs
 
 .. autoclass:: neo4j.TrustAll
 
 .. autoclass:: neo4j.TrustCustomCAs
 
-.. versionadded:: 5.0
+
+.. _client-certificate-ref:
+
+``client_certificate``
+----------------------
+Specify a client certificate or certificate provider for mutual TLS (mTLS) authentication.
+
+This setting does not have any effect if ``encrypted`` is set to ``False``
+(and the URI scheme is ``bolt://`` or ``neo4j://``) or a custom ``ssl_context`` is configured.
+
+**This is a preview** (see :ref:`filter-warnings-ref`).
+It might be changed without following the deprecation policy.
+See also
+https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+:Type: :class:`.ClientCertificate`, :class:`.ClientCertificateProvider` or :data:`None`.
+:Default: :data:`None`
+
+.. versionadded:: 5.19
+
+.. autoclass:: neo4j.auth_management.ClientCertificate
+
+.. autoclass:: neo4j.auth_management.ClientCertificateProvider
 
 
 .. _user-agent-ref:

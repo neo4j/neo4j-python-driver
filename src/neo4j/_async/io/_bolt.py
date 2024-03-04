@@ -28,13 +28,13 @@ from ..._async_compat.network import AsyncBoltSocket
 from ..._async_compat.util import AsyncUtil
 from ..._codec.hydration import v1 as hydration_v1
 from ..._codec.packstream import v1 as packstream_v1
-from ..._conf import PoolConfig
 from ..._deadline import Deadline
 from ..._exceptions import (
     BoltError,
     BoltHandshakeError,
 )
 from ..._meta import USER_AGENT
+from ..._sync.config import PoolConfig
 from ...addressing import ResolvedAddress
 from ...api import (
     Auth,
@@ -49,6 +49,7 @@ from ...exceptions import (
     ServiceUnavailable,
     SessionExpired,
 )
+from ..config import AsyncPoolConfig
 from ._common import (
     AsyncInbox,
     AsyncOutbox,
@@ -392,7 +393,7 @@ class AsyncBolt:
         """
 
         if pool_config is None:
-            pool_config = PoolConfig()
+            pool_config = AsyncPoolConfig()
         if deadline is None:
             deadline = Deadline(None)
 
@@ -402,7 +403,7 @@ class AsyncBolt:
                 tcp_timeout=pool_config.connection_timeout,
                 deadline=deadline,
                 custom_resolver=pool_config.resolver,
-                ssl_context=pool_config.get_ssl_context(),
+                ssl_context=await pool_config.get_ssl_context(),
                 keep_alive=pool_config.keep_alive,
             )
 

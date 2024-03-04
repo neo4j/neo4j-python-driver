@@ -36,6 +36,7 @@
     "Feature:API:RetryableExceptions": true,
     "Feature:API:Session:AuthConfig": true,
     "Feature:API:Session:NotificationsConfig": true,
+    "Feature:API:SSLClientCertificate": true,
     "Feature:API:SSLConfig": true,
     "Feature:API:SSLSchemes": true,
     "Feature:API:Type.Spatial":  true,

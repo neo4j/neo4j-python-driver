@@ -171,10 +171,10 @@ class AsyncRLock(asyncio.Lock):
 class AsyncCooperativeLock:
     """Lock placeholder for asyncio Python when working fully cooperatively.
 
-    This lock doesn't do anything in async Python. It's threaded counterpart,
+    This lock doesn't do anything in async Python. Its threaded counterpart,
     however, is an ordinary :class:`threading.Lock`.
     The AsyncCooperativeLock only works if there is no await being used
-    while the lock is acquired.
+    while the lock is held.
     """
 
     def __init__(self):

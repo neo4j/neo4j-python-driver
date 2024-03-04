@@ -19,12 +19,18 @@ from __future__ import annotations
 import typing as t
 from logging import getLogger
 
-from .._async_compat.concurrency import Lock
+from .._async_compat.concurrency import (
+    CooperativeLock,
+    Lock,
+)
 from .._auth_management import (
     AuthManager,
+    ClientCertificate,
+    ClientCertificateProvider,
     expiring_auth_has_expired,
     ExpiringAuth,
 )
+from .._meta import preview
 
 
 if t.TYPE_CHECKING:
@@ -285,3 +291,127 @@ class AuthManagers:
             "Neo.ClientError.Security.Unauthorized",
         ))
         return Neo4jAuthTokenManager(provider, handled_codes)
+
+
+class _StaticClientCertificateProvider(ClientCertificateProvider):
+    _cert: t.Optional[ClientCertificate]
+
+    def __init__(self, cert: ClientCertificate) -> None:
+        self._cert = cert
+
+    def get_certificate(self) -> t.Optional[ClientCertificate]:
+        cert, self._cert = self._cert, None
+        return cert
+
+
+@preview("Mutual TLS is a preview feature.")
+class RotatingClientCertificateProvider(ClientCertificateProvider):
+    """
+    Implementation of a certificate provider that can rotate certificates.
+
+    The provider will make the driver use the initial certificate for all
+    connections until the certificate is updated using the
+    :meth:`update_certificate` method.
+    From that point on, the new certificate will be used for all new
+    connections until :meth:`update_certificate` is called again and so on.
+
+    **This is a preview** (see :ref:`filter-warnings-ref`).
+    It might be changed without following the deprecation policy.
+    See also
+    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+    Example::
+
+        from neo4j import GraphDatabase
+        from neo4j.auth_management import (
+            ClientCertificate,
+            ClientCertificateProviders,
+        )
+
+
+        provider = ClientCertificateProviders.rotating(
+            ClientCertificate(
+                certfile="path/to/certfile.pem",
+                keyfile="path/to/keyfile.pem",
+                password=lambda: "super_secret_password"
+            )
+        )
+        driver = GraphDatabase.driver(
+           # secure driver must be configured for client certificate
+           # to be used: (...+s[sc] scheme or encrypted=True)
+           "neo4j+s://example.com:7687",
+           # auth still required as before, unless server is configured to not
+           # use authentication
+           auth=("neo4j", "password"),
+           client_certificate=provider
+        )
+
+        # do work with the driver, until the certificate needs to be rotated
+        ...
+
+        provider.update_certificate(
+            ClientCertificate(
+                certfile="path/to/new/certfile.pem",
+                keyfile="path/to/new/keyfile.pem",
+                password=lambda: "new_super_secret_password"
+            )
+        )
+
+        # do more work with the driver, until the certificate needs to be
+        # rotated again
+        ...
+
+    :param initial_cert: The certificate to use initially.
+
+    .. versionadded:: 5.19
+
+    """
+    def __init__(self, initial_cert: ClientCertificate) -> None:
+        self._cert: t.Optional[ClientCertificate] = initial_cert
+        self._lock = CooperativeLock()
+
+    def get_certificate(self) -> t.Optional[ClientCertificate]:
+        with self._lock:
+            cert, self._cert = self._cert, None
+            return cert
+
+    def update_certificate(self, cert: ClientCertificate) -> None:
+        """
+        Update the certificate to use for new connections.
+        """
+        with self._lock:
+            self._cert = cert
+
+
+class ClientCertificateProviders:
+    """A collection of :class:`.ClientCertificateProvider` factories.
+
+    **This is a preview** (see :ref:`filter-warnings-ref`).
+    It might be changed without following the deprecation policy.
+    See also
+    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+    .. versionadded:: 5.19
+    """
+    @staticmethod
+    @preview("Mutual TLS is a preview feature.")
+    def static(cert: ClientCertificate) -> ClientCertificateProvider:
+        """
+        Create a static client certificate provider.
+
+        The provider simply makes the driver use the given certificate for all
+        connections.
+        """
+        return _StaticClientCertificateProvider(cert)
+
+    @staticmethod
+    @preview("Mutual TLS is a preview feature.")
+    def rotating(
+        initial_cert: ClientCertificate
+    ) -> RotatingClientCertificateProvider:
+        """
+        Create certificate provider that allows for rotating certificates.
+
+        .. seealso:: :class:`.RotatingClientCertificateProvider`
+        """
+        return RotatingClientCertificateProvider(initial_cert)

@@ -21,8 +21,8 @@ import pytest
 
 import neo4j
 from neo4j._api import TelemetryAPI
-from neo4j._conf import PoolConfig
 from neo4j._meta import USER_AGENT
+from neo4j._sync.config import PoolConfig
 from neo4j._sync.io._bolt4 import Bolt4x1
 from neo4j.exceptions import ConfigurationError
 

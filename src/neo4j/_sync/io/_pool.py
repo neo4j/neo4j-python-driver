@@ -36,10 +36,7 @@ from ..._async_compat.concurrency import (
 )
 from ..._async_compat.network import NetworkUtil
 from ..._async_compat.util import Util
-from ..._conf import (
-    PoolConfig,
-    WorkspaceConfig,
-)
+from ..._conf import WorkspaceConfig
 from ..._deadline import (
     connection_deadline,
     Deadline,
@@ -61,6 +58,7 @@ from ...exceptions import (
     SessionExpired,
     WriteServiceUnavailable,
 )
+from ..config import PoolConfig
 from ._bolt import Bolt
 
 

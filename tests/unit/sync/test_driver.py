@@ -41,10 +41,9 @@ from neo4j import (
     TrustSystemCAs,
 )
 from neo4j._api import TelemetryAPI
-from neo4j._conf import (
-    PoolConfig,
-    SessionConfig,
-)
+from neo4j._conf import SessionConfig
+from neo4j._sync.auth_management import _StaticClientCertificateProvider
+from neo4j._sync.config import PoolConfig
 from neo4j._sync.driver import _work
 from neo4j._sync.io import (
     BoltPool,
@@ -54,6 +53,10 @@ from neo4j.api import (
     BookmarkManager,
     READ_ACCESS,
     WRITE_ACCESS,
+)
+from neo4j.auth_management import (
+    ClientCertificate,
+    ClientCertificateProvider,
 )
 from neo4j.exceptions import ConfigurationError
 
@@ -439,6 +442,52 @@ def test_with_custom_ducktype_sync_bookmark_manager(
         _ = driver.session(bookmark_manager=bmm)
         session_cls_mock.assert_called_once()
         assert session_cls_mock.call_args[0][1].bookmark_manager is bmm
+
+
+@mark_sync_test
+def test_with_static_client_certificate() -> None:
+    with pytest.warns(neo4j.PreviewWarning, match="Mutual TLS"):
+        cert = ClientCertificate("foo")
+    with pytest.warns(neo4j.PreviewWarning, match="Mutual TLS"):
+        with GraphDatabase.driver(
+            "bolt://localhost", client_certificate=cert
+        ) as driver:
+            passed_provider = driver._pool.pool_config.client_certificate
+            assert isinstance(passed_provider,
+                              _StaticClientCertificateProvider)
+            assert passed_provider._cert is cert
+
+
+@mark_sync_test
+def test_with_custom_inherited_client_certificate_provider(
+    session_cls_mock
+) -> None:
+    class Provider(ClientCertificateProvider):
+        def get_certificate(self) -> t.Optional[ClientCertificate]:
+            return None
+
+    provider = Provider()
+    with pytest.warns(neo4j.PreviewWarning, match="Mutual TLS"):
+        with GraphDatabase.driver(
+            "bolt://localhost", client_certificate=provider
+        ) as driver:
+            assert driver._pool.pool_config.client_certificate is provider
+
+
+@mark_sync_test
+def test_with_custom_ducktype_client_certificate_provider(
+    session_cls_mock
+) -> None:
+    class Provider:
+        def get_certificate(self) -> t.Optional[ClientCertificate]:
+            return None
+
+    provider = Provider()
+    with pytest.warns(neo4j.PreviewWarning, match="Mutual TLS"):
+        with GraphDatabase.driver(
+            "bolt://localhost", client_certificate=provider
+        ) as driver:
+            assert driver._pool.pool_config.client_certificate is provider
 
 
 _T_NotificationMinimumSeverity = t.Union[

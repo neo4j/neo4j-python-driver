@@ -28,13 +28,17 @@ from neo4j import (
 )
 from neo4j._meta import copy_signature
 from neo4j.auth_management import (
-    AsyncAuthManager,
-    AsyncAuthManagers,
+    AuthManager,
+    AuthManagers,
+    ClientCertificate,
+    ClientCertificateProvider,
+    ClientCertificateProviders,
     ExpiringAuth,
+    RotatingClientCertificateProvider,
 )
 from neo4j.exceptions import Neo4jError
 
-from ..._async_compat import mark_async_test
+from ..._async_compat import mark_sync_test
 
 
 T = t.TypeVar("T")
@@ -70,19 +74,19 @@ SAMPLE_ERRORS = [
 ]
 
 
-@copy_signature(AsyncAuthManagers.static)
+@copy_signature(AuthManagers.static)
 def static_auth_manager(*args, **kwargs):
-    return AsyncAuthManagers.static(*args, **kwargs)
+    return AuthManagers.static(*args, **kwargs)
 
 
-@copy_signature(AsyncAuthManagers.basic)
+@copy_signature(AuthManagers.basic)
 def basic_auth_manager(*args, **kwargs):
-    return AsyncAuthManagers.basic(*args, **kwargs)
+    return AuthManagers.basic(*args, **kwargs)
 
 
-@copy_signature(AsyncAuthManagers.bearer)
+@copy_signature(AuthManagers.bearer)
 def bearer_auth_manager(*args, **kwargs):
-    return AsyncAuthManagers.bearer(*args, **kwargs)
+    return AuthManagers.bearer(*args, **kwargs)
 
 
 @copy_signature(ExpiringAuth)
@@ -90,32 +94,32 @@ def expiring_auth(*args, **kwargs):
     return ExpiringAuth(*args, **kwargs)
 
 
-@mark_async_test
+@mark_sync_test
 @pytest.mark.parametrize("auth", SAMPLE_AUTHS)
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
-async def test_static_manager(
+def test_static_manager(
     auth: t.Union[t.Tuple[str, str], Auth, None],
     error: Neo4jError
 ) -> None:
-    manager: AsyncAuthManager = static_auth_manager(auth)
-    assert await manager.get_auth() is auth
+    manager: AuthManager = static_auth_manager(auth)
+    assert manager.get_auth() is auth
 
-    handled = await manager.handle_security_exception(
+    handled = manager.handle_security_exception(
         ("something", "else"), error
     )
     assert handled is False
-    assert await manager.get_auth() is auth
+    assert manager.get_auth() is auth
 
-    handled = await manager.handle_security_exception(auth, error)
+    handled = manager.handle_security_exception(auth, error)
     assert handled is False
-    assert await manager.get_auth() is auth
+    assert manager.get_auth() is auth
 
 
-@mark_async_test
+@mark_sync_test
 @pytest.mark.parametrize(("auth1", "auth2"),
                          list(itertools.product(SAMPLE_AUTHS, repeat=2)))
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
-async def test_basic_manager_manual_expiry(
+def test_basic_manager_manual_expiry(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
     auth2: t.Union[t.Tuple[str, str], Auth, None],
     error: Neo4jError,
@@ -124,18 +128,18 @@ async def test_basic_manager_manual_expiry(
     def return_value_generator(auth):
         return auth
 
-    await _test_manager(
+    _test_manager(
         auth1, auth2, return_value_generator, basic_auth_manager, error,
         CODES_HANDLED_BY_BASIC_MANAGER, mocker
     )
 
 
-@mark_async_test
+@mark_sync_test
 @pytest.mark.parametrize(("auth1", "auth2"),
                          itertools.product(SAMPLE_AUTHS, repeat=2))
 @pytest.mark.parametrize("error", SAMPLE_ERRORS)
 @pytest.mark.parametrize("expires_at", (None, .001, 1, 1000.))
-async def test_bearer_manager_manual_expiry(
+def test_bearer_manager_manual_expiry(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
     auth2: t.Union[t.Tuple[str, str], Auth, None],
     error: Neo4jError,
@@ -147,17 +151,17 @@ async def test_bearer_manager_manual_expiry(
 
     with freeze_time("1970-01-01 00:00:00") as frozen_time:
         assert isinstance(frozen_time, FrozenDateTimeFactory)
-        await _test_manager(
+        _test_manager(
             auth1, auth2, return_value_generator, bearer_auth_manager, error,
             CODES_HANDLED_BY_BEARER_MANAGER, mocker
         )
 
 
-@mark_async_test
+@mark_sync_test
 @pytest.mark.parametrize(("auth1", "auth2"),
                          itertools.product(SAMPLE_AUTHS, repeat=2))
 @pytest.mark.parametrize("expires_at", (None, -1, 1., 1, 1000.))
-async def test_bearer_manager_time_expiry(
+def test_bearer_manager_time_expiry(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
     auth2: t.Union[t.Tuple[str, str], Auth, None],
     expires_at: t.Optional[float],
@@ -169,71 +173,156 @@ async def test_bearer_manager_time_expiry(
             temporal_auth = expiring_auth(auth1, expires_at)
         else:
             temporal_auth = expiring_auth(auth1)
-        provider = mocker.AsyncMock(return_value=temporal_auth)
-        manager: AsyncAuthManager = bearer_auth_manager(provider)
+        provider = mocker.MagicMock(return_value=temporal_auth)
+        manager: AuthManager = bearer_auth_manager(provider)
 
         provider.assert_not_called()
-        assert await manager.get_auth() is auth1
-        provider.assert_awaited_once()
+        assert manager.get_auth() is auth1
+        provider.assert_called_once()
         provider.reset_mock()
 
         provider.return_value = expiring_auth(auth2)
 
         if expires_at is None or expires_at < 0:
             frozen_time.tick(1_000_000)
-            assert await manager.get_auth() is auth1
+            assert manager.get_auth() is auth1
             provider.assert_not_called()
         else:
             frozen_time.tick(expires_at - 0.000001)
-            assert await manager.get_auth() is auth1
+            assert manager.get_auth() is auth1
             provider.assert_not_called()
             frozen_time.tick(0.000002)
-            assert await manager.get_auth() is auth2
-            provider.assert_awaited_once()
+            assert manager.get_auth() is auth2
+            provider.assert_called_once()
 
 
-async def _test_manager(
+def _test_manager(
     auth1: t.Union[t.Tuple[str, str], Auth, None],
     auth2: t.Union[t.Tuple[str, str], Auth, None],
     return_value_generator: t.Callable[
         [t.Union[t.Tuple[str, str], Auth, None]], T
     ],
     manager_factory: t.Callable[
-        [t.Callable[[], t.Awaitable[T]]], AsyncAuthManager
+        [t.Callable[[], t.Union[T]]], AuthManager
     ],
     error: Neo4jError,
     handled_codes: t.Container[str],
     mocker: t.Any,
 ) -> None:
-    provider = mocker.AsyncMock(return_value=return_value_generator(auth1))
-    typed_provider = t.cast(t.Callable[[], t.Awaitable[T]], provider)
-    manager: AsyncAuthManager = manager_factory(typed_provider)
+    provider = mocker.MagicMock(return_value=return_value_generator(auth1))
+    typed_provider = t.cast(t.Callable[[], t.Union[T]], provider)
+    manager: AuthManager = manager_factory(typed_provider)
     provider.assert_not_called()
-    assert await manager.get_auth() is auth1
-    provider.assert_awaited_once()
+    assert manager.get_auth() is auth1
+    provider.assert_called_once()
     provider.reset_mock()
 
     provider.return_value = return_value_generator(auth2)
 
     should_be_handled = error.code in handled_codes
-    handled = await manager.handle_security_exception(
+    handled = manager.handle_security_exception(
         ("something", "else"), error
     )
     assert handled is should_be_handled
-    assert await manager.get_auth() is auth1
+    assert manager.get_auth() is auth1
     provider.assert_not_called()
 
-    handled = await manager.handle_security_exception(auth1, error)
+    handled = manager.handle_security_exception(auth1, error)
 
     if should_be_handled:
-        provider.assert_awaited_once()
+        provider.assert_called_once()
     else:
         provider.assert_not_called()
     assert handled is should_be_handled
     provider.reset_mock()
 
     if should_be_handled:
-        assert await manager.get_auth() is auth2
+        assert manager.get_auth() is auth2
     else:
-        assert await manager.get_auth() is auth1
+        assert manager.get_auth() is auth1
     provider.assert_not_called()
+
+
+@pytest.fixture
+def client_cert_factory() -> t.Callable[[], ClientCertificate]:
+    i = 0
+
+    def factory() -> ClientCertificate:
+        with pytest.warns(PreviewWarning, match="Mutual TLS"):
+            return ClientCertificate(f"cert{i}")
+
+    return factory
+
+
+@copy_signature(ClientCertificateProviders.static)
+def static_cert_provider(*args, **kwargs):
+    with pytest.warns(PreviewWarning, match="Mutual TLS"):
+        return ClientCertificateProviders.static(*args, **kwargs)
+
+
+@copy_signature(RotatingClientCertificateProvider)
+def rotating_cert_provider_direct(*args, **kwargs):
+    with pytest.warns(PreviewWarning, match="Mutual TLS"):
+        return RotatingClientCertificateProvider(*args, **kwargs)
+
+
+@copy_signature(ClientCertificateProviders.rotating)
+def rotating_cert_provider(*args, **kwargs):
+    with pytest.warns(PreviewWarning, match="Mutual TLS"):
+        return ClientCertificateProviders.rotating(*args, **kwargs)
+
+
+@mark_sync_test
+def test_static_client_cert_provider(client_cert_factory) -> None:
+    cert1: ClientCertificate = client_cert_factory()
+    provider: ClientCertificateProvider = static_cert_provider(cert1)
+
+    assert provider.get_certificate() is cert1
+    for _ in range(10):
+        assert provider.get_certificate() is None
+
+
+if t.TYPE_CHECKING:
+    # Tests for type checker only. No need to run the test.
+
+    def test_rotating_client_cert_provider_type_init(
+        client_cert_factory
+    ) -> None:
+        cert1: ClientCertificate = client_cert_factory()
+        provider: RotatingClientCertificateProvider = \
+            rotating_cert_provider_direct(cert1)
+        _: ClientCertificateProvider = provider
+
+
+    def test_rotating_client_cert_provider_type_factory(
+        client_cert_factory
+    ) -> None:
+        cert1: ClientCertificate = client_cert_factory()
+        provider: RotatingClientCertificateProvider = \
+            rotating_cert_provider(cert1)
+        _: ClientCertificateProvider = provider
+
+
+@pytest.mark.parametrize(
+    "factory", (rotating_cert_provider, rotating_cert_provider_direct)
+)
+@mark_sync_test
+def test_rotating_client_cert_provider(
+    factory: t.Callable[[ClientCertificate],
+                        RotatingClientCertificateProvider],
+    client_cert_factory
+) -> None:
+    cert1: ClientCertificate = client_cert_factory()
+    cert2: ClientCertificate = client_cert_factory()
+    assert cert1 is not cert2  # sanity check
+    provider: RotatingClientCertificateProvider = factory(cert1)
+
+    assert provider.get_certificate() is cert1
+    for _ in range(10):
+        assert provider.get_certificate() is None
+
+    provider.update_certificate(cert2)
+
+    assert provider.get_certificate() is cert2
+    for _ in range(10):
+        assert provider.get_certificate() is None

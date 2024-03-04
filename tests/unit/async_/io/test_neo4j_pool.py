@@ -20,17 +20,16 @@ from collections import defaultdict
 import pytest
 
 from neo4j import (
-    PreviewWarning,
     READ_ACCESS,
     WRITE_ACCESS,
 )
+from neo4j._async.config import AsyncPoolConfig
 from neo4j._async.io import (
     AsyncBolt,
     AsyncNeo4jPool,
 )
 from neo4j._async_compat.util import AsyncUtil
 from neo4j._conf import (
-    PoolConfig,
     RoutingConfig,
     WorkspaceConfig,
 )
@@ -106,7 +105,7 @@ def opener(custom_routing_opener):
 
 
 def _pool_config():
-    pool_config = PoolConfig()
+    pool_config = AsyncPoolConfig()
     pool_config.auth = _auth_manager(("user", "pass"))
     return pool_config
 
@@ -501,7 +500,7 @@ async def test__acquire_new_later_without_room(opener):
 async def test_passes_pool_config_to_connection(mocker):
     bolt_mock = mocker.patch.object(AsyncBolt, "open", autospec=True)
 
-    pool_config = PoolConfig()
+    pool_config = AsyncPoolConfig()
     workspace_config = WorkspaceConfig()
     pool = AsyncNeo4jPool.open(
         mocker.Mock, pool_config=pool_config, workspace_config=workspace_config

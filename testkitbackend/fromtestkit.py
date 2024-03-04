@@ -14,6 +14,9 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
+import typing as t
 from datetime import timedelta
 
 import pytz
@@ -24,6 +27,7 @@ from neo4j import (
     NotificationMinimumSeverity,
     Query,
 )
+from neo4j.auth_management import ClientCertificate
 from neo4j.spatial import (
     CartesianPoint,
     WGS84Point,
@@ -34,6 +38,8 @@ from neo4j.time import (
     Duration,
     Time,
 )
+
+from ._warning_check import warnings_check
 
 
 def to_cypher_and_params(data):
@@ -179,6 +185,19 @@ def to_auth_token(data, key):
         )
         auth_token.mark_item_as_read("parameters", recursive=True)
     return auth
+
+
+def to_client_cert(data, key) -> t.Optional[ClientCertificate]:
+    if data[key] is None:
+        return None
+    data[key].mark_item_as_read_if_equals("name", "ClientCertificate")
+    cert_data = data[key]["data"]
+    with warnings_check((
+        (neo4j.PreviewWarning, "Mutual TLS is a preview feature."),
+    )):
+        return ClientCertificate(
+            cert_data["certfile"], cert_data["keyfile"], cert_data["password"]
+        )
 
 
 def set_notifications_config(config, data):
