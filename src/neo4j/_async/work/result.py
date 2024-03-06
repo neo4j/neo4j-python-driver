@@ -614,13 +614,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         .. seealso:: :meth:`.Record.values`
 
         .. versionchanged:: 5.0
-<<<<<<< HEAD
             Can raise :exc:`.ResultConsumedError`.
-
-        .. seealso:: :meth:`.Record.values`
-=======
-            Can raise :exc:`ResultConsumedError`.
->>>>>>> aec06af9 (ADR 024: mTLS for 2FA)
         """
         return [record.values(*keys) async for record in self]
 
@@ -649,13 +643,7 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
         .. seealso:: :meth:`.Record.data`
 
         .. versionchanged:: 5.0
-<<<<<<< HEAD
             Can raise :exc:`.ResultConsumedError`.
-
-        .. seealso:: :meth:`.Record.data`
-=======
-            Can raise :exc:`ResultConsumedError`.
->>>>>>> aec06af9 (ADR 024: mTLS for 2FA)
         """
         return [record.data(*keys) async for record in self]
 
