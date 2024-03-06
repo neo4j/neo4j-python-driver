@@ -117,6 +117,9 @@ def NewDriver(backend, data):
         kwargs["client_certificate"] = \
             backend.client_cert_providers[client_cert_provider_id]
         data.mark_item_as_read_if_equals("clientCertificate", None)
+        expected_warnings.append(
+            (neo4j.PreviewWarning, "Mutual TLS is a preview feature.")
+        )
     else:
         client_cert = fromtestkit.to_client_cert(data, "clientCertificate")
         if client_cert is not None:
