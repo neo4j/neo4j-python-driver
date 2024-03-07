@@ -124,7 +124,7 @@ class AsyncPoolConfig(Config):
 
         client_cert: t.Optional[ClientCertificate] = None
 
-        # try to server the cached ssl context
+        # try to serve the cached ssl context
         async with self._ssl_context_cache_lock:
             if self._ssl_context_cache is not None:
                 if self.client_certificate is None:
