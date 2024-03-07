@@ -14,19 +14,37 @@
 # limitations under the License.
 
 
-from ._async.auth_management import AsyncAuthManagers
+from ._async.auth_management import (
+    AsyncAuthManagers,
+    AsyncClientCertificateProviders,
+    AsyncRotatingClientCertificateProvider,
+)
 from ._auth_management import (
     AsyncAuthManager,
+    AsyncClientCertificateProvider,
     AuthManager,
+    ClientCertificate,
+    ClientCertificateProvider,
     ExpiringAuth,
 )
-from ._sync.auth_management import AuthManagers
+from ._sync.auth_management import (
+    AuthManagers,
+    ClientCertificateProviders,
+    RotatingClientCertificateProvider,
+)
 
 
 __all__ = [
     "AsyncAuthManager",
     "AsyncAuthManagers",
+    "AsyncClientCertificateProvider",
+    "AsyncClientCertificateProviders",
+    "AsyncRotatingClientCertificateProvider",
     "AuthManager",
     "AuthManagers",
+    "ClientCertificate",
+    "ClientCertificateProvider",
+    "ClientCertificateProviders",
     "ExpiringAuth",
+    "RotatingClientCertificateProvider",
 ]

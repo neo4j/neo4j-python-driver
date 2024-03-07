@@ -20,17 +20,16 @@ from collections import defaultdict
 import pytest
 
 from neo4j import (
-    PreviewWarning,
     READ_ACCESS,
     WRITE_ACCESS,
 )
 from neo4j._async_compat.util import Util
 from neo4j._conf import (
-    PoolConfig,
     RoutingConfig,
     WorkspaceConfig,
 )
 from neo4j._deadline import Deadline
+from neo4j._sync.config import PoolConfig
 from neo4j._sync.io import (
     Bolt,
     Neo4jPool,

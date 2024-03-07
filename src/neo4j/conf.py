@@ -22,13 +22,13 @@ from ._conf import (
     DeprecatedAlias,
     DeprecatedAlternative,
     iter_items,
-    PoolConfig,
     RoutingConfig,
     SessionConfig,
     TransactionConfig,
     WorkspaceConfig,
 )
 from ._meta import deprecation_warn as _deprecation_warn
+from ._sync.config import PoolConfig
 
 
 __all__ = [

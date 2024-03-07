@@ -17,11 +17,11 @@
 import pytest
 
 import neo4j
+from neo4j._async.config import AsyncPoolConfig
 from neo4j._async.io import AsyncBolt
 from neo4j._async.io._pool import AsyncIOPool
 from neo4j._conf import (
     Config,
-    PoolConfig,
     WorkspaceConfig,
 )
 from neo4j._deadline import Deadline
@@ -40,7 +40,9 @@ class AsyncFakeBoltPool(AsyncIOPool):
     def __init__(self, connection_gen, address, *, auth=None, **config):
         self.buffered_connection_mocks = []
         config["auth"] = static_auth(None)
-        self.pool_config, self.workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
+        self.pool_config, self.workspace_config = Config.consume_chain(
+            config, AsyncPoolConfig, WorkspaceConfig
+        )
         if config:
             raise ValueError("Unexpected config keys: %s" % ", ".join(config.keys()))
 

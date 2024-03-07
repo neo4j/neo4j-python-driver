@@ -112,9 +112,9 @@ class ResultSummary:
     def summary_notifications(self) -> t.List[SummaryNotification]:
         """The same as ``notifications`` but in a parsed, structured form.
 
-        .. versionadded:: 5.7
-
         .. seealso:: :attr:`.notifications`, :class:`.SummaryNotification`
+
+        .. versionadded:: 5.7
         """
         if getattr(self, "_summary_notifications", None) is None:
             self._summary_notifications = [
@@ -236,9 +236,9 @@ _CATEGORY_LOOKUP = {
 class SummaryNotification:
     """Structured form of a notification received from the server.
 
-    .. versionadded:: 5.7
-
     .. seealso:: :attr:`.ResultSummary.summary_notifications`
+
+    .. versionadded:: 5.7
     """
 
     title: str = ""
@@ -280,9 +280,9 @@ class SummaryNotification:
 class SummaryNotificationPosition:
     """Structured form of a notification position received from the server.
 
-    .. versionadded:: 5.7
-
     .. seealso:: :class:`.SummaryNotification`
+
+    .. versionadded:: 5.7
     """
 
     #: The line number of the notification. Line numbers start at 1.

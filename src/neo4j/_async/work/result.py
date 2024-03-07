@@ -590,10 +590,10 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             was obtained has been closed or the Result has been explicitly
             consumed.
 
+        .. seealso:: :meth:`.Record.value`
+
         .. versionchanged:: 5.0
             Can raise :exc:`.ResultConsumedError`.
-
-        .. seealso:: :meth:`.Record.value`
         """
         return [record.value(key, default) async for record in self]
 
@@ -611,10 +611,10 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             was obtained has been closed or the Result has been explicitly
             consumed.
 
+        .. seealso:: :meth:`.Record.values`
+
         .. versionchanged:: 5.0
             Can raise :exc:`.ResultConsumedError`.
-
-        .. seealso:: :meth:`.Record.values`
         """
         return [record.values(*keys) async for record in self]
 
@@ -640,10 +640,10 @@ class AsyncResult(AsyncNonConcurrentMethodChecker):
             was obtained has been closed or the Result has been explicitly
             consumed.
 
+        .. seealso:: :meth:`.Record.data`
+
         .. versionchanged:: 5.0
             Can raise :exc:`.ResultConsumedError`.
-
-        .. seealso:: :meth:`.Record.data`
         """
         return [record.data(*keys) async for record in self]
 

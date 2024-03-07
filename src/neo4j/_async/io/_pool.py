@@ -36,10 +36,7 @@ from ..._async_compat.concurrency import (
 )
 from ..._async_compat.network import AsyncNetworkUtil
 from ..._async_compat.util import AsyncUtil
-from ..._conf import (
-    PoolConfig,
-    WorkspaceConfig,
-)
+from ..._conf import WorkspaceConfig
 from ..._deadline import (
     connection_deadline,
     Deadline,
@@ -64,6 +61,7 @@ from ...exceptions import (
     SessionExpired,
     WriteServiceUnavailable,
 )
+from ..config import AsyncPoolConfig
 from ._bolt import AsyncBolt
 
 
@@ -83,7 +81,7 @@ class AsyncIOPool(abc.ABC):
 
     def __init__(self, opener, pool_config, workspace_config):
         assert callable(opener)
-        assert isinstance(pool_config, PoolConfig)
+        assert isinstance(pool_config, AsyncPoolConfig)
         assert isinstance(workspace_config, WorkspaceConfig)
 
         self.opener = opener
