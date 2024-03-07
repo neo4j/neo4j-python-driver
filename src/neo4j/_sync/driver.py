@@ -37,7 +37,6 @@ from .._async_compat.util import Util
 from .._conf import (
     Config,
     ConfigurationError,
-    PoolConfig,
     SessionConfig,
     TrustAll,
     TrustStore,
@@ -46,6 +45,7 @@ from .._conf import (
 from .._meta import (
     deprecation_warn,
     experimental_warn,
+    preview_warn,
     unclosed_resource_warn,
 )
 from .._work import (
@@ -79,13 +79,17 @@ from ..api import (
 from ..auth_management import (
     AuthManager,
     AuthManagers,
+    ClientCertificate,
+    ClientCertificateProvider,
 )
 from ..exceptions import Neo4jError
+from .auth_management import _StaticClientCertificateProvider
 from .bookmark_manager import (
     Neo4jBookmarkManager,
     TBmConsumer as _TBmConsumer,
     TBmSupplier as _TBmSupplier,
 )
+from .config import PoolConfig
 from .work import (
     ManagedTransaction,
     Result,
@@ -140,7 +144,10 @@ class GraphDatabase:
             ] = ...,
             encrypted: bool = ...,
             trusted_certificates: TrustStore = ...,
-            ssl_context: ssl.SSLContext = ...,
+            client_certificate: t.Union[
+                ClientCertificate, ClientCertificateProvider, None
+            ] = ...,
+            ssl_context: t.Optional[ssl.SSLContext] = ...,
             user_agent: str = ...,
             keep_alive: bool = ...,
             notifications_min_severity: t.Optional[
@@ -193,6 +200,16 @@ class GraphDatabase:
                 auth = AuthManagers.static(auth)
             config["auth"] = auth
 
+            client_certificate = config.get("client_certificate")
+            if isinstance(client_certificate, ClientCertificate):
+                # using internal class until public factory is GA:
+                # AsyncClientCertificateProviders.static
+                config["client_certificate"] = \
+                    _StaticClientCertificateProvider(client_certificate)
+            if client_certificate is not None:
+                preview_warn("Mutual TLS is a preview feature.",
+                             stack_level=2)
+
             # TODO: 6.0 - remove "trust" config option
             if "trust" in config.keys():
                 if config["trust"] not in (
@@ -220,11 +237,12 @@ class GraphDatabase:
                     )
                 )
 
-            if (security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE]
-                and ("encrypted" in config.keys()
-                     or "trust" in config.keys()
-                     or "trusted_certificates" in config.keys()
-                     or "ssl_context" in config.keys())):
+            if (security_type in (SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
+                                  SECURITY_TYPE_SECURE)
+                and ("encrypted" in config
+                     or "trust" in config
+                     or "trusted_certificates" in config
+                     or "ssl_context" in config)):
 
                 # TODO: 6.0 - remove "trust" from error message
                 raise ConfigurationError(

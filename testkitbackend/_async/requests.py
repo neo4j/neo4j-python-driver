@@ -18,6 +18,7 @@ import datetime
 import json
 import re
 import ssl
+import typing as t
 import warnings
 from os import path
 
@@ -27,9 +28,11 @@ import neo4j
 import neo4j.api
 import neo4j.auth_management
 from neo4j._async_compat.util import AsyncUtil
+from neo4j._auth_management import ClientCertificate
 from neo4j.auth_management import (
     AsyncAuthManager,
     AsyncAuthManagers,
+    AsyncClientCertificateProvider,
     ExpiringAuth,
 )
 
@@ -38,6 +41,7 @@ from .. import (
     test_subtest_skips,
     totestkit,
 )
+from .._warning_check import warnings_check
 from ..exceptions import MarkdAsDriverException
 
 
@@ -100,12 +104,29 @@ async def GetFeatures(backend, data):
 
 
 async def NewDriver(backend, data):
+    expected_warnings = []
+
     auth = fromtestkit.to_auth_token(data, "authorizationToken")
     if auth is None and data.get("authTokenManagerId") is not None:
         auth = backend.auth_token_managers[data["authTokenManagerId"]]
     else:
         data.mark_item_as_read_if_equals("authTokenManagerId", None)
     kwargs = {}
+    client_cert_provider_id = data.get("clientCertificateProviderId")
+    if client_cert_provider_id is not None:
+        kwargs["client_certificate"] = \
+            backend.client_cert_providers[client_cert_provider_id]
+        data.mark_item_as_read_if_equals("clientCertificate", None)
+        expected_warnings.append(
+            (neo4j.PreviewWarning, "Mutual TLS is a preview feature.")
+        )
+    else:
+        client_cert = fromtestkit.to_client_cert(data, "clientCertificate")
+        if client_cert is not None:
+            kwargs["client_certificate"] = client_cert
+            expected_warnings.append(
+                (neo4j.PreviewWarning, "Mutual TLS is a preview feature.")
+            )
     if data["resolverRegistered"] or data["domainNameResolverRegistered"]:
         kwargs["resolver"] = resolution_func(
             backend, data["resolverRegistered"],
@@ -145,9 +166,10 @@ async def NewDriver(backend, data):
             kwargs["trusted_certificates"] = neo4j.TrustCustomCAs(*cert_paths)
     fromtestkit.set_notifications_config(kwargs, data)
 
-    driver = neo4j.AsyncGraphDatabase.driver(
-        data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
-    )
+    with warnings_check(expected_warnings):
+        driver = neo4j.AsyncGraphDatabase.driver(
+            data["uri"], auth=auth, user_agent=data["userAgent"], **kwargs,
+        )
     key = backend.next_key()
     backend.drivers[key] = driver
     await backend.send_response("Driver", {"id": key})
@@ -298,6 +320,59 @@ async def BearerAuthTokenProviderCompleted(backend, data):
         expiring_auth = expiring_auth.expires_in(expires_in)
 
     backend.expiring_auth_token_supplies[data["requestId"]] = expiring_auth
+
+
+class TestKitClientCertificateProvider(AsyncClientCertificateProvider):
+    def __init__(self, backend):
+        self.id = backend.next_key()
+        self._backend = backend
+
+    async def get_certificate(self) -> t.Optional[ClientCertificate]:
+        request_id = self._backend.next_key()
+        await self._backend.send_response(
+            "ClientCertificateProviderRequest",
+            {
+                "id": request_id,
+                "clientCertificateProviderId": self.id,
+            }
+        )
+        if not await self._backend.process_request():
+            # connection was closed before end of next message
+            return None
+        if request_id not in self._backend.client_cert_supplies:
+            raise RuntimeError(
+                "Backend did not receive expected "
+                "ClientCertificateProviderCompleted message for id "
+                f"{request_id}"
+            )
+        return self._backend.client_cert_supplies.pop(request_id)
+
+
+async def NewClientCertificateProvider(backend, data):
+    provider = TestKitClientCertificateProvider(backend)
+    backend.client_cert_providers[provider.id] = provider
+    await backend.send_response(
+        "ClientCertificateProvider", {"id": provider.id}
+    )
+
+
+async def ClientCertificateProviderClose(backend, data):
+    client_cert_provider_id = data["id"]
+    del backend.client_cert_providers[client_cert_provider_id]
+    await backend.send_response(
+        "ClientCertificateProvider", {"id": client_cert_provider_id}
+    )
+
+
+async def ClientCertificateProviderCompleted(backend, data):
+    has_update = data["hasUpdate"]
+    request_id = data["requestId"]
+    if not has_update:
+        data.mark_item_as_read("clientCertificate", recursive=True)
+        backend.client_cert_supplies[request_id] = None
+        return
+    client_cert = fromtestkit.to_client_cert(data, "clientCertificate")
+    backend.client_cert_supplies[request_id] = client_cert
 
 
 async def VerifyConnectivity(backend, data):

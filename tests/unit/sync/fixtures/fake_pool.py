@@ -16,7 +16,7 @@
 
 import pytest
 
-from neo4j._conf import PoolConfig
+from neo4j._sync.config import PoolConfig
 from neo4j._sync.io._pool import IOPool
 
 

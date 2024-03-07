@@ -381,7 +381,8 @@ Async Driver Configuration
 driver accepts
 
  * a sync as well as an async custom resolver function (see :ref:`async-resolver-ref`)
- * as sync as well as an async auth token manager (see :class:`.AsyncAuthManager`).
+ * a sync as well as an async auth token manager (see :class:`.AsyncAuthManager`).
+ * an async client certificate provider (see :ref:`async-client-certificate-ref`).
 
 
 .. _async-resolver-ref:
@@ -434,6 +435,28 @@ For example:
 
 
 :Default: :data:`None`
+
+
+.. _async-client-certificate-ref:
+
+``client_certificate``
+----------------------
+Specify a client certificate or certificate provider for mutual TLS (mTLS) authentication.
+
+This setting does not have any effect if ``encrypted`` is set to ``False``
+(and the URI scheme is ``bolt://`` or ``neo4j://``) or a custom ``ssl_context`` is configured.
+
+**This is a preview** (see :ref:`filter-warnings-ref`).
+It might be changed without following the deprecation policy.
+See also
+https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+:Type: :class:`.ClientCertificate`, :class:`.AsyncClientCertificateProvider` or :data:`None`.
+:Default: :data:`None`
+
+.. versionadded:: 5.19
+
+.. autoclass:: neo4j.auth_management.AsyncClientCertificateProvider
 
 
 

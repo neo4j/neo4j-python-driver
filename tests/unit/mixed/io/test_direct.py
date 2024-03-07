@@ -32,12 +32,12 @@ from neo4j._sync.io._pool import AcquireAuth
 
 from ...async_.conftest import async_fake_connection_generator
 from ...async_.io.test_direct import AsyncFakeBoltPool
-from ...async_.test_auth_manager import (
+from ...async_.test_auth_management import (
     static_auth_manager as static_async_auth_manager,
 )
 from ...sync.conftest import fake_connection_generator
 from ...sync.io.test_direct import FakeBoltPool
-from ...sync.test_auth_manager import static_auth_manager
+from ...sync.test_auth_management import static_auth_manager
 from ._common import (
     AsyncMultiEvent,
     MultiEvent,

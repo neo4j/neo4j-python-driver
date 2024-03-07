@@ -37,7 +37,6 @@ from .._async_compat.util import AsyncUtil
 from .._conf import (
     Config,
     ConfigurationError,
-    PoolConfig,
     SessionConfig,
     TrustAll,
     TrustStore,
@@ -46,6 +45,7 @@ from .._conf import (
 from .._meta import (
     deprecation_warn,
     experimental_warn,
+    preview_warn,
     unclosed_resource_warn,
 )
 from .._work import (
@@ -80,13 +80,17 @@ from ..api import (
 from ..auth_management import (
     AsyncAuthManager,
     AsyncAuthManagers,
+    AsyncClientCertificateProvider,
+    ClientCertificate,
 )
 from ..exceptions import Neo4jError
+from .auth_management import _AsyncStaticClientCertificateProvider
 from .bookmark_manager import (
     AsyncNeo4jBookmarkManager,
     TBmConsumer as _TBmConsumer,
     TBmSupplier as _TBmSupplier,
 )
+from .config import AsyncPoolConfig
 from .work import (
     AsyncManagedTransaction,
     AsyncResult,
@@ -141,7 +145,10 @@ class AsyncGraphDatabase:
             ] = ...,
             encrypted: bool = ...,
             trusted_certificates: TrustStore = ...,
-            ssl_context: ssl.SSLContext = ...,
+            client_certificate: t.Union[
+                ClientCertificate, AsyncClientCertificateProvider, None
+            ] = ...,
+            ssl_context: t.Optional[ssl.SSLContext] = ...,
             user_agent: str = ...,
             keep_alive: bool = ...,
             notifications_min_severity: t.Optional[
@@ -194,6 +201,16 @@ class AsyncGraphDatabase:
                 auth = AsyncAuthManagers.static(auth)
             config["auth"] = auth
 
+            client_certificate = config.get("client_certificate")
+            if isinstance(client_certificate, ClientCertificate):
+                # using internal class until public factory is GA:
+                # AsyncClientCertificateProviders.static
+                config["client_certificate"] = \
+                    _AsyncStaticClientCertificateProvider(client_certificate)
+            if client_certificate is not None:
+                preview_warn("Mutual TLS is a preview feature.",
+                             stack_level=2)
+
             # TODO: 6.0 - remove "trust" config option
             if "trust" in config.keys():
                 if config["trust"] not in (
@@ -221,11 +238,12 @@ class AsyncGraphDatabase:
                     )
                 )
 
-            if (security_type in [SECURITY_TYPE_SELF_SIGNED_CERTIFICATE, SECURITY_TYPE_SECURE]
-                and ("encrypted" in config.keys()
-                     or "trust" in config.keys()
-                     or "trusted_certificates" in config.keys()
-                     or "ssl_context" in config.keys())):
+            if (security_type in (SECURITY_TYPE_SELF_SIGNED_CERTIFICATE,
+                                  SECURITY_TYPE_SECURE)
+                and ("encrypted" in config
+                     or "trust" in config
+                     or "trusted_certificates" in config
+                     or "ssl_context" in config)):
 
                 # TODO: 6.0 - remove "trust" from error message
                 raise ConfigurationError(
@@ -1253,7 +1271,7 @@ class AsyncBoltDriver(_Direct, AsyncDriver):
         """
         from .io import AsyncBoltPool
         address = cls.parse_target(target)
-        pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
+        pool_config, default_workspace_config = Config.consume_chain(config, AsyncPoolConfig, WorkspaceConfig)
         pool = AsyncBoltPool.open(address, pool_config=pool_config, workspace_config=default_workspace_config)
         return cls(pool, default_workspace_config)
 
@@ -1278,7 +1296,7 @@ class AsyncNeo4jDriver(_Routing, AsyncDriver):
     def open(cls, *targets, routing_context=None, **config):
         from .io import AsyncNeo4jPool
         addresses = cls.parse_targets(*targets)
-        pool_config, default_workspace_config = Config.consume_chain(config, PoolConfig, WorkspaceConfig)
+        pool_config, default_workspace_config = Config.consume_chain(config, AsyncPoolConfig, WorkspaceConfig)
         pool = AsyncNeo4jPool.open(*addresses, routing_context=routing_context, pool_config=pool_config, workspace_config=default_workspace_config)
         return cls(pool, default_workspace_config)
 

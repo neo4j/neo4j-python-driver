@@ -37,7 +37,6 @@ from ._async.work import (
 )
 from ._conf import (
     Config as _Config,
-    PoolConfig as _PoolConfig,
     SessionConfig as _SessionConfig,
     TrustAll,
     TrustCustomCAs,
@@ -53,6 +52,7 @@ from ._meta import (
     PreviewWarning,
     version as __version__,
 )
+from ._sync.config import PoolConfig as _PoolConfig
 from ._sync.driver import (
     BoltDriver,
     Driver,

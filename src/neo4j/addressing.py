@@ -148,7 +148,7 @@ class Address(tuple, metaclass=_AddressMeta):
         :param default_port: The default port to use if none is specified.
             :data:`None` indicates to use ``0`` as default.
 
-        :return: The parsed address.
+        :returns: The parsed address.
         """
         if not isinstance(s, str):
             raise TypeError("Address.parse requires a string argument")
@@ -198,7 +198,7 @@ class Address(tuple, metaclass=_AddressMeta):
         :param default_port: The default port to use if none is specified.
             :data:`None` indicates to use ``0`` as default.
 
-        :return: The list of parsed addresses.
+        :returns: The list of parsed addresses.
         """
         if not all(isinstance(s0, str) for s0 in s):
             raise TypeError("Address.parse_list requires a string argument")

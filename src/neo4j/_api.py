@@ -48,11 +48,11 @@ class NotificationMinimumSeverity(str, Enum):
         >>> NotificationMinimumSeverity.INFORMATION == "INFORMATION"
         True
 
-    .. versionadded:: 5.7
-
     .. seealso::
         driver config :ref:`driver-notifications-min-severity-ref`,
         session config :ref:`session-notifications-min-severity-ref`
+
+    .. versionadded:: 5.7
     """
 
     OFF = "OFF"
@@ -111,9 +111,9 @@ class NotificationSeverity(str, Enum):
                 # or severity_level == "UNKNOWN"
                 log.debug("%r", notification)
 
-    .. versionadded:: 5.7
-
     .. seealso:: :attr:`SummaryNotification.severity_level`
+
+    .. versionadded:: 5.7
     """
 
     WARNING = "WARNING"
@@ -137,14 +137,14 @@ class NotificationDisabledCategory(str, Enum):
         >>> NotificationDisabledCategory.DEPRECATION == "DEPRECATION"
         True
 
+    .. seealso::
+        driver config :ref:`driver-notifications-disabled-categories-ref`,
+        session config :ref:`session-notifications-disabled-categories-ref`
+
     .. versionadded:: 5.7
 
     .. versionchanged:: 5.14
         Added categories :attr:`.SECURITY` and :attr:`.TOPOLOGY`.
-
-    .. seealso::
-        driver config :ref:`driver-notifications-disabled-categories-ref`,
-        session config :ref:`session-notifications-disabled-categories-ref`
     """
 
     HINT = "HINT"
@@ -188,12 +188,12 @@ class NotificationCategory(str, Enum):
         >>> NotificationCategory.UNKNOWN == "UNKNOWN"
         True
 
+    .. seealso:: :attr:`SummaryNotification.category`
+
     .. versionadded:: 5.7
 
     .. versionchanged:: 5.14
         Added categories :attr:`.SECURITY` and :attr:`.TOPOLOGY`.
-
-    .. seealso:: :attr:`SummaryNotification.category`
     """
 
     HINT = "HINT"

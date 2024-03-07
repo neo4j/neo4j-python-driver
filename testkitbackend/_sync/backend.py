@@ -59,6 +59,8 @@ class Backend:
         self.auth_token_on_expiration_supplies = {}
         self.basic_auth_token_supplies = {}
         self.expiring_auth_token_supplies = {}
+        self.client_cert_providers = {}
+        self.client_cert_supplies = {}
         self.bookmark_managers = {}
         self.bookmarks_consumptions = {}
         self.bookmarks_supplies = {}

@@ -21,11 +21,18 @@ import time
 import typing as t
 from dataclasses import dataclass
 
+from ._meta import preview
 from .exceptions import Neo4jError
 
 
 if t.TYPE_CHECKING:
+    from os import PathLike
+
+    from typing_extensions import Protocol as _Protocol
+
     from .api import _TAuth
+else:
+    _Protocol = object
 
 
 @dataclass
@@ -164,7 +171,7 @@ class AuthManager(metaclass=abc.ABCMeta):
         ...
 
 
-class AsyncAuthManager(metaclass=abc.ABCMeta):
+class AsyncAuthManager(_Protocol, metaclass=abc.ABCMeta):
     """Async version of :class:`.AuthManager`.
 
     .. seealso:: :class:`.AuthManager`
@@ -191,5 +198,95 @@ class AsyncAuthManager(metaclass=abc.ABCMeta):
         """Async version of :meth:`.AuthManager.handle_security_exception`.
 
         .. seealso:: :meth:`.AuthManager.handle_security_exception`
+        """
+        ...
+
+
+@preview("Mutual TLS is a preview feature.")
+@dataclass
+class ClientCertificate:
+    """
+    Simple data class to hold client certificate information.
+
+    The attributes are the same as the arguments to
+    :meth:`ssl.SSLContext.load_cert_chain()`.
+
+    .. versionadded:: 5.19
+    """
+    certfile: t.Union[str, bytes, PathLike[str], PathLike[bytes]]
+    keyfile: t.Union[str, bytes, PathLike[str], PathLike[bytes], None] = None
+    password: t.Union[
+        t.Callable[[], t.Union[str | bytes]],
+        str,
+        bytes,
+        None
+    ] = None
+
+
+class ClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
+    """
+    Provides a client certificate to the driver for mutual TLS.
+
+    The package provides some default implementations of this class in
+    :class:`.AsyncClientCertificateProviders` for convenience.
+
+    The driver will call :meth:`.get_certificate` to check if the client wants
+    the driver to use as new certificate for mutual TLS.
+
+    The certificate is only used as a second factor for authenticating the
+    client.
+    The DBMS user still needs to authenticate with an authentication token.
+
+    Note that the work done in the methods of this interface count towards the
+    connection acquisition affected by the respective timeout setting
+    :ref:`connection-acquisition-timeout-ref`.
+    Should fetching the certificate be particularly slow, it might be necessary
+    to increase the timeout.
+
+    .. warning::
+
+        The provider **must not** interact with the driver in any way as this
+        can cause deadlocks and undefined behaviour.
+
+    .. versionadded:: 5.19
+    """
+
+    @abc.abstractmethod
+    def get_certificate(self) -> t.Optional[ClientCertificate]:
+        """
+        Return the new certificate (if present) to use for new connections.
+
+        If no new certificate is available, return :data:`None`.
+        This will make the driver continue using the current certificate.
+
+        Note that a new certificate will only be used for new connections.
+        Already established connections will continue using the old
+        certificate as TLS is established during connection setup.
+
+        :returns: The new certificate to use for new connections.
+        """
+        ...
+
+
+class AsyncClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
+    """
+    Async version of :class:`.ClientCertificateProvider`.
+
+    **This is a preview** (see :ref:`filter-warnings-ref`).
+    It might be changed without following the deprecation policy.
+    See also
+    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
+
+    .. seealso:: :class:`.ClientCertificateProvider`
+
+    .. versionadded:: 5.19
+    """
+
+    @abc.abstractmethod
+    async def get_certificate(self) -> t.Optional[ClientCertificate]:
+        """
+        Return the new certificate (if present) to use for new connections.
+
+        .. seealso:: :meth:`.ClientCertificateProvider.get_certificate`
         """
         ...

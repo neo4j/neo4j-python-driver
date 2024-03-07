@@ -22,8 +22,8 @@ import pytest
 
 import neo4j
 from neo4j._api import TelemetryAPI
+from neo4j._async.config import AsyncPoolConfig
 from neo4j._async.io._bolt3 import AsyncBolt3
-from neo4j._conf import PoolConfig
 from neo4j._meta import USER_AGENT
 from neo4j.exceptions import ConfigurationError
 
@@ -62,14 +62,14 @@ def test_conn_is_not_stale(fake_socket, set_stale):
 
 def test_db_extra_not_supported_in_begin(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
-    connection = AsyncBolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
+    connection = AsyncBolt3(address, fake_socket(address), AsyncPoolConfig.max_connection_lifetime)
     with pytest.raises(ConfigurationError):
         connection.begin(db="something")
 
 
 def test_db_extra_not_supported_in_run(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
-    connection = AsyncBolt3(address, fake_socket(address), PoolConfig.max_connection_lifetime)
+    connection = AsyncBolt3(address, fake_socket(address), AsyncPoolConfig.max_connection_lifetime)
     with pytest.raises(ConfigurationError):
         connection.run("", db="something")
 
@@ -78,7 +78,7 @@ def test_db_extra_not_supported_in_run(fake_socket):
 async def test_simple_discard(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt3.UNPACKER_CLS)
-    connection = AsyncBolt3(address, socket, PoolConfig.max_connection_lifetime)
+    connection = AsyncBolt3(address, socket, AsyncPoolConfig.max_connection_lifetime)
     connection.discard()
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -90,7 +90,7 @@ async def test_simple_discard(fake_socket):
 async def test_simple_pull(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt3.UNPACKER_CLS)
-    connection = AsyncBolt3(address, socket, PoolConfig.max_connection_lifetime)
+    connection = AsyncBolt3(address, socket, AsyncPoolConfig.max_connection_lifetime)
     connection.pull()
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -108,7 +108,7 @@ async def test_telemetry_message(
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt3.UNPACKER_CLS)
     connection = AsyncBolt3(
-        address, socket, PoolConfig.max_connection_lifetime,
+        address, socket, AsyncPoolConfig.max_connection_lifetime,
         telemetry_disabled=driver_disabled
     )
     if serv_enabled:
@@ -135,7 +135,7 @@ async def test_hint_recv_timeout_seconds_gets_ignored(
         "hints": {"connection.recv_timeout_seconds": recv_timeout},
     })
     connection = AsyncBolt3(
-        address, sockets.client, PoolConfig.max_connection_lifetime
+        address, sockets.client, AsyncPoolConfig.max_connection_lifetime
     )
     await connection.hello()
     sockets.client.settimeout.assert_not_called()
@@ -163,7 +163,7 @@ async def test_credentials_are_not_logged(
     sockets.client.settimeout = mocker.Mock()
     await sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.4"})
     connection = AsyncBolt3(
-        address, sockets.client, PoolConfig.max_connection_lifetime, auth=auth
+        address, sockets.client, AsyncPoolConfig.max_connection_lifetime, auth=auth
     )
     with caplog.at_level(logging.DEBUG):
         await connection.hello()
@@ -181,7 +181,7 @@ async def test_credentials_are_not_logged(
 def test_auth_message_raises_configuration_error(message, fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
     connection = AsyncBolt3(address, fake_socket(address),
-                            PoolConfig.max_connection_lifetime)
+                            AsyncPoolConfig.max_connection_lifetime)
     with pytest.raises(ConfigurationError,
                        match="User switching is not supported"):
         getattr(connection, message)()
@@ -196,7 +196,7 @@ def test_auth_message_raises_configuration_error(message, fake_socket):
 async def test_re_auth_noop(auth, fake_socket, mocker):
     address = neo4j.Address(("127.0.0.1", 7687))
     connection = AsyncBolt3(address, fake_socket(address),
-                            PoolConfig.max_connection_lifetime, auth=auth)
+                            AsyncPoolConfig.max_connection_lifetime, auth=auth)
     logon_spy = mocker.spy(connection, "logon")
     logoff_spy = mocker.spy(connection, "logoff")
     res = connection.re_auth(auth, None)
@@ -221,7 +221,7 @@ async def test_re_auth_noop(auth, fake_socket, mocker):
 async def test_re_auth(auth1, auth2, fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
     connection = AsyncBolt3(address, fake_socket(address),
-                            PoolConfig.max_connection_lifetime, auth=auth1)
+                            AsyncPoolConfig.max_connection_lifetime, auth=auth1)
     with pytest.raises(ConfigurationError,
                        match="User switching is not supported"):
         connection.re_auth(auth2, None)
@@ -245,7 +245,7 @@ def test_does_not_support_notification_filters(fake_socket, method,
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt3.UNPACKER_CLS)
     connection = AsyncBolt3(address, socket,
-                            PoolConfig.max_connection_lifetime)
+                            AsyncPoolConfig.max_connection_lifetime)
     method = getattr(connection, method)
     with pytest.raises(ConfigurationError, match="Notification filtering"):
         method(*args, **kwargs)
@@ -267,7 +267,7 @@ async def test_hello_does_not_support_notification_filters(
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt3.UNPACKER_CLS)
     connection = AsyncBolt3(
-        address, socket, PoolConfig.max_connection_lifetime,
+        address, socket, AsyncPoolConfig.max_connection_lifetime,
         **kwargs
     )
     with pytest.raises(ConfigurationError, match="Notification filtering"):

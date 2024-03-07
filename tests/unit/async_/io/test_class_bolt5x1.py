@@ -22,8 +22,8 @@ import pytest
 import neo4j
 import neo4j.exceptions
 from neo4j._api import TelemetryAPI
+from neo4j._async.config import AsyncPoolConfig
 from neo4j._async.io._bolt5 import AsyncBolt5x1
-from neo4j._conf import PoolConfig
 from neo4j._meta import USER_AGENT
 from neo4j.exceptions import ConfigurationError
 
@@ -77,7 +77,7 @@ async def test_extra_in_begin(fake_socket, args, kwargs, expected_fields):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
-                              PoolConfig.max_connection_lifetime)
+                              AsyncPoolConfig.max_connection_lifetime)
     connection.begin(*args, **kwargs)
     await connection.send_all()
     tag, is_fields = await socket.pop_message()
@@ -99,7 +99,7 @@ async def test_extra_in_run(fake_socket, args, kwargs, expected_fields):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
-                              PoolConfig.max_connection_lifetime)
+                              AsyncPoolConfig.max_connection_lifetime)
     connection.run(*args, **kwargs)
     await connection.send_all()
     tag, is_fields = await socket.pop_message()
@@ -112,7 +112,7 @@ async def test_n_extra_in_discard(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
-                              PoolConfig.max_connection_lifetime)
+                              AsyncPoolConfig.max_connection_lifetime)
     connection.discard(n=666)
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -133,7 +133,7 @@ async def test_qid_extra_in_discard(fake_socket, test_input, expected):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
-                              PoolConfig.max_connection_lifetime)
+                              AsyncPoolConfig.max_connection_lifetime)
     connection.discard(qid=test_input)
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -154,7 +154,7 @@ async def test_n_and_qid_extras_in_discard(fake_socket, test_input, expected):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
-                              PoolConfig.max_connection_lifetime)
+                              AsyncPoolConfig.max_connection_lifetime)
     connection.discard(n=666, qid=test_input)
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -175,7 +175,7 @@ async def test_n_extra_in_pull(fake_socket, test_input, expected):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
-                              PoolConfig.max_connection_lifetime)
+                              AsyncPoolConfig.max_connection_lifetime)
     connection.pull(n=test_input)
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -196,7 +196,7 @@ async def test_qid_extra_in_pull(fake_socket, test_input, expected):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
-                              PoolConfig.max_connection_lifetime)
+                              AsyncPoolConfig.max_connection_lifetime)
     connection.pull(qid=test_input)
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -210,7 +210,7 @@ async def test_n_and_qid_extras_in_pull(fake_socket):
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
-                              PoolConfig.max_connection_lifetime)
+                              AsyncPoolConfig.max_connection_lifetime)
     connection.pull(n=666, qid=777)
     await connection.send_all()
     tag, fields = await socket.pop_message()
@@ -228,7 +228,7 @@ async def test_hello_passes_routing_metadata(fake_socket_pair):
     await sockets.server.send_message(b"\x70", {"server": "Neo4j/4.4.0"})
     await sockets.server.send_message(b"\x70", {})
     connection = AsyncBolt5x1(
-        address, sockets.client, PoolConfig.max_connection_lifetime,
+        address, sockets.client, AsyncPoolConfig.max_connection_lifetime,
         routing_context={"foo": "bar"}
     )
     await connection.hello()
@@ -248,7 +248,7 @@ async def test_telemetry_message(
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(
-        address, socket, PoolConfig.max_connection_lifetime,
+        address, socket, AsyncPoolConfig.max_connection_lifetime,
         telemetry_disabled=driver_disabled
     )
     if serv_enabled:
@@ -282,7 +282,7 @@ async def test_hello_pipelines_logon(fake_socket_pair):
                   "message": "kthxbye"}
     )
     connection = AsyncBolt5x1(
-        address, sockets.client, PoolConfig.max_connection_lifetime, auth=auth
+        address, sockets.client, AsyncPoolConfig.max_connection_lifetime, auth=auth
     )
     with pytest.raises(neo4j.exceptions.Neo4jError):
         await connection.hello()
@@ -302,7 +302,7 @@ async def test_logon(fake_socket_pair):
                                packer_cls=AsyncBolt5x1.PACKER_CLS,
                                unpacker_cls=AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, sockets.client,
-                              PoolConfig.max_connection_lifetime, auth=auth)
+                              AsyncPoolConfig.max_connection_lifetime, auth=auth)
     connection.logon()
     await connection.send_all()
     await _assert_logon_message(sockets, auth)
@@ -321,7 +321,7 @@ async def test_re_auth(fake_socket_pair, mocker, static_auth):
                   "message": "kthxbye"}
     )
     connection = AsyncBolt5x1(address, sockets.client,
-                              PoolConfig.max_connection_lifetime)
+                              AsyncPoolConfig.max_connection_lifetime)
     connection.pool = mocker.AsyncMock()
     connection.re_auth(auth, auth_manager)
     await connection.send_all()
@@ -343,7 +343,7 @@ async def test_logoff(fake_socket_pair):
                                unpacker_cls=AsyncBolt5x1.UNPACKER_CLS)
     await sockets.server.send_message(b"\x70", {})
     connection = AsyncBolt5x1(address, sockets.client,
-                              PoolConfig.max_connection_lifetime)
+                              AsyncPoolConfig.max_connection_lifetime)
     connection.logoff()
     assert not sockets.server.recv_buffer  # pipelined, so no response yet
     await connection.send_all()
@@ -379,7 +379,7 @@ async def test_hint_recv_timeout_seconds(
     )
     await sockets.server.send_message(b"\x70", {})
     connection = AsyncBolt5x1(
-        address, sockets.client, PoolConfig.max_connection_lifetime
+        address, sockets.client, AsyncPoolConfig.max_connection_lifetime
     )
     with caplog.at_level(logging.INFO):
         await connection.hello()
@@ -421,7 +421,7 @@ async def test_credentials_are_not_logged(auth, fake_socket_pair, caplog):
     await sockets.server.send_message(b"\x70", {"server": "Neo4j/4.3.4"})
     await sockets.server.send_message(b"\x70", {})
     connection = AsyncBolt5x1(
-        address, sockets.client, PoolConfig.max_connection_lifetime, auth=auth
+        address, sockets.client, AsyncPoolConfig.max_connection_lifetime, auth=auth
     )
     with caplog.at_level(logging.DEBUG):
         await connection.hello()
@@ -453,7 +453,7 @@ def test_does_not_support_notification_filters(fake_socket, method,
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(address, socket,
-                            PoolConfig.max_connection_lifetime)
+                            AsyncPoolConfig.max_connection_lifetime)
     method = getattr(connection, method)
     with pytest.raises(ConfigurationError, match="Notification filtering"):
         method(*args, **kwargs)
@@ -475,7 +475,7 @@ async def test_hello_does_not_support_notification_filters(
     address = neo4j.Address(("127.0.0.1", 7687))
     socket = fake_socket(address, AsyncBolt5x1.UNPACKER_CLS)
     connection = AsyncBolt5x1(
-        address, socket, PoolConfig.max_connection_lifetime,
+        address, socket, AsyncPoolConfig.max_connection_lifetime,
         **kwargs
     )
     with pytest.raises(ConfigurationError, match="Notification filtering"):
