@@ -1011,8 +1011,9 @@ def test_execute_query_result_transformer(
     driver = GraphDatabase.driver("bolt://localhost")
     res: t.Any
     with driver as driver:
+        expected_transformer: t.Any = result_transformer
         if result_transformer is Ellipsis:
-            result_transformer = Result.to_eager_result
+            expected_transformer = Result.to_eager_result
             res_default: neo4j.EagerResult = driver.execute_query("")
             res = res_default
         else:
@@ -1035,7 +1036,7 @@ def test_execute_query_result_transformer(
     session_executor_mock = session_mock._run_transaction
     session_executor_mock.assert_called_once_with(
         WRITE_ACCESS, TelemetryAPI.DRIVER, _work,
-        (mocker.ANY, mocker.ANY, result_transformer), {}
+        (mocker.ANY, mocker.ANY, expected_transformer), {}
     )
     assert res is session_executor_mock.return_value
 
