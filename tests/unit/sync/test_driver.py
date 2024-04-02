@@ -1011,7 +1011,7 @@ def test_execute_query_result_transformer(
     driver = GraphDatabase.driver("bolt://localhost")
     res: t.Any
     with driver as driver:
-        expected_transformer: t.Any = None
+        expected_transformer: t.Any = result_transformer
         if result_transformer is Ellipsis:
             expected_transformer = Result.to_eager_result
             res_default: neo4j.EagerResult = driver.execute_query("")

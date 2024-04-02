@@ -1012,7 +1012,7 @@ async def test_execute_query_result_transformer(
     driver = AsyncGraphDatabase.driver("bolt://localhost")
     res: t.Any
     async with driver as driver:
-        expected_transformer: t.Any = None
+        expected_transformer: t.Any = result_transformer
         if result_transformer is Ellipsis:
             expected_transformer = AsyncResult.to_eager_result
             res_default: neo4j.EagerResult = await driver.execute_query("")
