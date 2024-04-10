@@ -19,7 +19,6 @@ from __future__ import annotations
 import asyncio
 import platform
 import sys
-import tracemalloc
 import typing as t
 from functools import wraps
 from inspect import isclass
@@ -91,8 +90,11 @@ def copy_signature(_: _FuncT) -> t.Callable[[t.Callable], _FuncT]:
     return _id
 
 
-def deprecation_warn(message, stack_level=1):
-    warn(message, category=DeprecationWarning, stacklevel=stack_level + 1)
+
+# Copy globals as function locals to make sure that they are available
+# during Python shutdown when the Pool is destroyed.
+def deprecation_warn(message, stack_level=1, _warn=warn):
+    _warn(message, category=DeprecationWarning, stacklevel=stack_level + 1)
 
 
 def deprecated(message: str) -> t.Callable[[_FuncT], _FuncT]:
@@ -224,12 +226,9 @@ def _make_warning_decorator(
     return decorator
 
 
-def unclosed_resource_warn(obj):
-    msg = f"Unclosed {obj!r}."
-    trace = tracemalloc.get_object_traceback(obj)
-    if trace:
-        msg += "\nObject allocated at (most recent call last):\n"
-        msg += "\n".join(trace.format())
-    else:
-        msg += "\nEnable tracemalloc to get the object allocation traceback."
-    warn(msg, ResourceWarning, stacklevel=2, source=obj)
+# Copy globals as function locals to make sure that they are available
+# during Python shutdown when the Pool is destroyed.
+def unclosed_resource_warn(obj, _warn=warn):
+    cls_name = obj.__class__.__name__
+    msg = f"unclosed  {cls_name}: {obj!r}."
+    _warn(msg, ResourceWarning, stacklevel=2, source=obj)
