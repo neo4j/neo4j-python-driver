@@ -279,7 +279,7 @@ def tx_timeout_as_ms(timeout: float) -> int:
     Values in (0, 1], else values are rounded using the built-in round()
     function (round n.5 values to nearest even).
 
-    :param timeout: timeout in seconds (must be >= 0)
+    :param timeout: timeout in seconds
 
     :returns: timeout in milliseconds (rounded)
 
@@ -290,9 +290,7 @@ def tx_timeout_as_ms(timeout: float) -> int:
     except (TypeError, ValueError) as e:
         err_type = type(e)
         msg = "Timeout must be specified as a number of seconds"
-        raise err_type(msg) from None
-    if timeout < 0:
-        raise ValueError("Timeout must be a positive number or 0.")
+        raise err_type(msg) from e
     ms = int(round(1000 * timeout))
     if ms == 0 and timeout > 0:
         # Special case for 0 < timeout < 0.5 ms.

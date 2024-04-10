@@ -178,7 +178,7 @@ class Bolt4x0(Bolt):
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
-        if timeout or timeout == 0:
+        if timeout or (isinstance(timeout, (float, int)) and timeout == 0):
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
@@ -226,7 +226,7 @@ class Bolt4x0(Bolt):
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
-        if timeout or timeout == 0:
+        if timeout or (isinstance(timeout, (float, int)) and timeout == 0):
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,), Response(self, "begin", **handlers))
@@ -484,7 +484,7 @@ class Bolt4x4(Bolt4x3):
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
-        if timeout or timeout == 0:
+        if timeout or (isinstance(timeout, (float, int)) and timeout == 0):
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port,
@@ -515,7 +515,7 @@ class Bolt4x4(Bolt4x3):
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
-        if timeout or timeout == 0:
+        if timeout or (isinstance(timeout, (float, int)) and timeout == 0):
             extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
         self._append(b"\x11", (extra,), Response(self, "begin", **handlers))
