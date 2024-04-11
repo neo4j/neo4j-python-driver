@@ -43,6 +43,7 @@ from neo4j.io import (
     Bolt,
     check_supported_server_product,
 )
+from neo4j.io._bolt import ClientStateManagerBase
 from neo4j.io._common import (
     CommitResponse,
     InitResponse,
@@ -53,7 +54,7 @@ from neo4j.io._common import (
 log = getLogger("neo4j")
 
 
-class ServerStates(Enum):
+class BoltStates(Enum):
     CONNECTED = "CONNECTED"
     READY = "READY"
     STREAMING = "STREAMING"
@@ -63,25 +64,25 @@ class ServerStates(Enum):
 
 class ServerStateManager:
     _STATE_TRANSITIONS = {
-        ServerStates.CONNECTED: {
-            "hello": ServerStates.READY,
+        BoltStates.CONNECTED: {
+            "hello": BoltStates.READY,
         },
-        ServerStates.READY: {
-            "run": ServerStates.STREAMING,
-            "begin": ServerStates.TX_READY_OR_TX_STREAMING,
+        BoltStates.READY: {
+            "run": BoltStates.STREAMING,
+            "begin": BoltStates.TX_READY_OR_TX_STREAMING,
         },
-        ServerStates.STREAMING: {
-            "pull": ServerStates.READY,
-            "discard": ServerStates.READY,
-            "reset": ServerStates.READY,
+        BoltStates.STREAMING: {
+            "pull": BoltStates.READY,
+            "discard": BoltStates.READY,
+            "reset": BoltStates.READY,
         },
-        ServerStates.TX_READY_OR_TX_STREAMING: {
-            "commit": ServerStates.READY,
-            "rollback": ServerStates.READY,
-            "reset": ServerStates.READY,
+        BoltStates.TX_READY_OR_TX_STREAMING: {
+            "commit": BoltStates.READY,
+            "rollback": BoltStates.READY,
+            "reset": BoltStates.READY,
         },
-        ServerStates.FAILED: {
-            "reset": ServerStates.READY,
+        BoltStates.FAILED: {
+            "reset": BoltStates.READY,
         }
     }
 
@@ -95,6 +96,39 @@ class ServerStateManager:
         state_before = self.state
         self.state = self._STATE_TRANSITIONS\
             .get(self.state, {})\
+            .get(message, self.state)
+        if state_before != self.state and callable(self._on_change):
+            self._on_change(state_before, self.state)
+
+
+class ClientStateManager(ClientStateManagerBase):
+    _STATE_TRANSITIONS = {
+        BoltStates.CONNECTED: {
+            "hello": BoltStates.READY,
+        },
+        BoltStates.READY: {
+            "run": BoltStates.STREAMING,
+            "begin": BoltStates.TX_READY_OR_TX_STREAMING,
+        },
+        BoltStates.STREAMING: {
+            "begin": BoltStates.TX_READY_OR_TX_STREAMING,
+            "reset": BoltStates.READY,
+        },
+        BoltStates.TX_READY_OR_TX_STREAMING: {
+            "commit": BoltStates.READY,
+            "rollback": BoltStates.READY,
+            "reset": BoltStates.READY,
+        },
+    }
+
+    def __init__(self, init_state, on_change=None):
+        self.state = init_state
+        self._on_change = on_change
+
+    def transition(self, message):
+        state_before = self.state
+        self.state = self._STATE_TRANSITIONS \
+            .get(self.state, {}) \
             .get(message, self.state)
         if state_before != self.state and callable(self._on_change):
             self._on_change(state_before, self.state)
@@ -115,12 +149,22 @@ class Bolt3(Bolt):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._server_state_manager = ServerStateManager(
-            ServerStates.CONNECTED, on_change=self._on_server_state_change
+            BoltStates.CONNECTED, on_change=self._on_server_state_change
+        )
+        self._client_state_manager = ClientStateManager(
+            BoltStates.CONNECTED, on_change=self._on_client_state_change
         )
 
     def _on_server_state_change(self, old_state, new_state):
-        log.debug("[#%04X]  State: %s > %s", self.local_port,
+        log.debug("[#%04X]  Server State: %s > %s", self.local_port,
                   old_state.name, new_state.name)
+
+    def _on_client_state_change(self, old_state, new_state):
+        log.debug("[#%04X]  Client state: %s > %s",
+                  self.local_port, old_state.name, new_state.name)
+
+    def _get_client_state_manager(self):
+        return self._client_state_manager
 
     @property
     def is_reset(self):
@@ -130,7 +174,7 @@ class Bolt3(Bolt):
         if (self.responses and self.responses[-1]
                 and self.responses[-1].message == "reset"):
             return True
-        return self._server_state_manager.state == ServerStates.READY
+        return self._server_state_manager.state == BoltStates.READY
 
     @property
     def encrypted(self):
@@ -349,7 +393,7 @@ class Bolt3(Bolt):
             response.on_ignored(summary_metadata or {})
         elif summary_signature == b"\x7F":
             log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
-            self._server_state_manager.state = ServerStates.FAILED
+            self._server_state_manager.state = BoltStates.FAILED
             try:
                 response.on_failure(summary_metadata or {})
             except (ServiceUnavailable, DatabaseUnavailable):
@@ -358,7 +402,10 @@ class Bolt3(Bolt):
                 raise
             except (NotALeader, ForbiddenOnReadOnlyDatabase):
                 if self.pool:
-                    self.pool.on_write_failure(address=self.unresolved_address),
+                    self.pool.on_write_failure(
+                        address=self.unresolved_address,
+                        database=self.last_database,
+                    ),
                 raise
             except Neo4jError as e:
                 if self.pool and e.invalidates_all_connections():

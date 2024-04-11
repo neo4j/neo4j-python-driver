@@ -50,8 +50,9 @@ from neo4j.io._common import (
     Response,
 )
 from neo4j.io._bolt3 import (
+    BoltStates,
+    ClientStateManager,
     ServerStateManager,
-    ServerStates,
 )
 
 
@@ -73,12 +74,22 @@ class Bolt4x0(Bolt):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._server_state_manager = ServerStateManager(
-            ServerStates.CONNECTED, on_change=self._on_server_state_change
+            BoltStates.CONNECTED, on_change=self._on_server_state_change
+        )
+        self._client_state_manager = ClientStateManager(
+            BoltStates.CONNECTED, on_change=self._on_client_state_change
         )
 
     def _on_server_state_change(self, old_state, new_state):
-        log.debug("[#%04X]  State: %s > %s", self.local_port,
+        log.debug("[#%04X]  Server state: %s > %s", self.local_port,
                   old_state.name, new_state.name)
+
+    def _on_client_state_change(self, old_state, new_state):
+        log.debug("[#%04X]  Client state: %s > %s",
+                  self.local_port, old_state.name, new_state.name)
+
+    def _get_client_state_manager(self):
+        return self._client_state_manager
 
     @property
     def is_reset(self):
@@ -88,7 +99,7 @@ class Bolt4x0(Bolt):
         if (self.responses and self.responses[-1]
                 and self.responses[-1].message == "reset"):
             return True
-        return self._server_state_manager.state == ServerStates.READY
+        return self._server_state_manager.state == BoltStates.READY
 
     @property
     def encrypted(self):
@@ -168,6 +179,9 @@ class Bolt4x0(Bolt):
             extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
         if db:
             extra["db"] = db
+        client_state = self._client_state_manager.state
+        if client_state != BoltStates.TX_READY_OR_TX_STREAMING:
+            self.last_database = db
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
@@ -219,6 +233,7 @@ class Bolt4x0(Bolt):
             extra["mode"] = "r"  # It will default to mode "w" if nothing is specified
         if db:
             extra["db"] = db
+        self.last_database = db
         if bookmarks:
             try:
                 extra["bookmarks"] = list(bookmarks)
@@ -301,7 +316,7 @@ class Bolt4x0(Bolt):
             response.on_ignored(summary_metadata or {})
         elif summary_signature == b"\x7F":
             log.debug("[#%04X]  S: FAILURE %r", self.local_port, summary_metadata)
-            self._server_state_manager.state = ServerStates.FAILED
+            self._server_state_manager.state = BoltStates.FAILED
             try:
                 response.on_failure(summary_metadata or {})
             except (ServiceUnavailable, DatabaseUnavailable):
@@ -310,7 +325,10 @@ class Bolt4x0(Bolt):
                 raise
             except (NotALeader, ForbiddenOnReadOnlyDatabase):
                 if self.pool:
-                    self.pool.on_write_failure(address=self.unresolved_address),
+                    self.pool.on_write_failure(
+                        address=self.unresolved_address,
+                        database=self.last_database,
+                    ),
                 raise
             except Neo4jError as e:
                 if self.pool and e.invalidates_all_connections():
@@ -478,6 +496,9 @@ class Bolt4x4(Bolt4x3):
             extra["mode"] = "r"
         if db:
             extra["db"] = db
+        client_state = self._client_state_manager.state
+        if client_state != BoltStates.TX_READY_OR_TX_STREAMING:
+            self.last_database = db
         if imp_user:
             extra["imp_user"] = imp_user
         if bookmarks:
@@ -513,6 +534,7 @@ class Bolt4x4(Bolt4x3):
             extra["mode"] = "r"
         if db:
             extra["db"] = db
+        self.last_database = db
         if imp_user:
             extra["imp_user"] = imp_user
         if bookmarks:
