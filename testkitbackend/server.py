@@ -23,6 +23,9 @@ class Server(TCPServer):
 
     def __init__(self, address):
         class Handler(StreamRequestHandler):
+            # undocumented config but unbearably slow without
+            wbufsize = 2 ** 16  # 64 KiB
+
             def handle(self):
                 backend = Backend(self.rfile, self.wfile)
                 try:
