@@ -1213,7 +1213,13 @@ class Neo4jPool(IOPool):
             raise ServiceUnavailable("Unable to retrieve routing information")
 
     def update_connection_pool(self, *, database):
-        servers = self.get_or_create_routing_table(database).servers()
+        with self.refresh_lock:
+            routing_tables = [self.get_or_create_routing_table(database)]
+            for db in self.routing_tables.keys():
+                if db == database:
+                    continue
+                routing_tables.append(self.routing_tables[db])
+        servers = set.union(*(rt.servers() for rt in routing_tables))
         for address in list(self.connections):
             if address.unresolved not in servers:
                 super(Neo4jPool, self).deactivate(address)
