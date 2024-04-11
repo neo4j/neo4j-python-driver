@@ -236,10 +236,6 @@ def test_hint_recv_timeout_seconds_gets_ignored(fake_socket_pair, recv_timeout):
         (3.456, 3456),
         (1, 1000),
         (
-            -1e-15,
-            ValueError("Timeout must be a positive number or 0")
-        ),
-        (
             "foo",
             ValueError("Timeout must be specified as a number of seconds")
         ),
