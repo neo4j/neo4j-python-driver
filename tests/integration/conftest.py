@@ -92,7 +92,9 @@ class Neo4jService(object):
 
     def stop(self, timeout=None):
         from shutil import rmtree
-        self.controller.stop()
+        # Killing the process as waiting for it to gracefully shutdown
+        # timed out on team city, not sure why.
+        self.controller.stop(kill=True)
         rmtree(self.home)
 
     def machines(self):
