@@ -47,6 +47,7 @@ from neo4j.io._common import (
     CommitResponse,
     InitResponse,
     Response,
+    tx_timeout_as_ms,
 )
 
 
@@ -225,11 +226,8 @@ class Bolt3(Bolt):
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
-        if timeout:
-            try:
-                extra["tx_timeout"] = int(1000 * timeout)
-            except TypeError:
-                raise TypeError("Timeout must be specified as a number of seconds")
+        if timeout or (isinstance(timeout, (float, int)) and timeout == 0):
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         fields = (query, parameters, extra)
         log.debug("[#%04X]  C: RUN %s", self.local_port, " ".join(map(repr, fields)))
         if query.upper() == u"COMMIT":
@@ -277,12 +275,8 @@ class Bolt3(Bolt):
                 extra["tx_metadata"] = dict(metadata)
             except TypeError:
                 raise TypeError("Metadata must be coercible to a dict")
-        if timeout:
-            try:
-                extra["tx_timeout"] = int(1000 * timeout)
-            except TypeError:
-                raise TypeError("Timeout must be specified as a number of seconds")
-        log.debug("[#%04X]  C: BEGIN %r", self.local_port, extra)
+        if timeout or (isinstance(timeout, (float, int)) and timeout == 0):
+            extra["tx_timeout"] = tx_timeout_as_ms(timeout)
         self._append(b"\x11", (extra,), Response(self, "begin", **handlers))
 
     def commit(self, **handlers):

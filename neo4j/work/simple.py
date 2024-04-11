@@ -281,10 +281,19 @@ class Session(Workspace):
 
         :param timeout:
             the transaction timeout in seconds.
-            Transactions that execute longer than the configured timeout will be terminated by the database.
-            This functionality allows to limit query/transaction execution time.
-            Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
-            Value should not represent a duration of zero or negative duration.
+            Transactions that execute longer than the configured timeout will
+            be terminated by the database.
+            This functionality allows user code to limit query/transaction
+            execution time.
+            The specified timeout overrides the default timeout configured in
+            the database using the ``db.transaction.timeout`` setting
+            (``dbms.transaction.timeout`` before Neo4j 5.0).
+            Values higher than ``db.transaction.timeout`` will be ignored and
+            will fall back to the default for server versions between 4.2 and
+            5.2 (inclusive).
+            The value should not represent a negative duration.
+            A ``0`` duration will make the transaction execute indefinitely.
+            :data:`None` will use the default timeout configured on the server.
         :type timeout: int
 
         :returns: A new transaction instance.
@@ -441,7 +450,21 @@ class Query:
     :type text: str
     :param metadata: metadata attached to the query.
     :type metadata: dict
-    :param timeout: seconds.
+    :param timeout:
+        the transaction timeout in seconds.
+        Transactions that execute longer than the configured timeout will
+        be terminated by the database.
+        This functionality allows user code to limit query/transaction
+        execution time.
+        The specified timeout overrides the default timeout configured in
+        the database using the ``db.transaction.timeout`` setting
+        (``dbms.transaction.timeout`` before Neo4j 5.0).
+        Values higher than ``db.transaction.timeout`` will be ignored and
+        will fall back to the default for server versions between 4.2 and
+        5.2 (inclusive).
+        The value should not represent a negative duration.
+        A ``0`` duration will make the transaction execute indefinitely.
+        :data:`None` will use the default timeout configured on the server.
     :type timeout: float or :const:`None`
     """
     def __init__(self, text, metadata=None, timeout=None):
@@ -476,12 +499,19 @@ def unit_of_work(metadata=None, timeout=None):
 
     :param timeout:
         the transaction timeout in seconds.
-        Transactions that execute longer than the configured timeout will be terminated by the database.
-        This functionality allows to limit query/transaction execution time.
-        Specified timeout overrides the default timeout configured in the database using ``dbms.transaction.timeout`` setting.
-        Values higher than ``dbms.transaction.timeout`` will be ignored and
-        will fall back to default (unless using Neo4j < 4.2).
-        Value should not represent a duration of zero or negative duration.
+        Transactions that execute longer than the configured timeout will
+        be terminated by the database.
+        This functionality allows user code to limit query/transaction
+        execution time.
+        The specified timeout overrides the default timeout configured in
+        the database using the ``db.transaction.timeout`` setting
+        (``dbms.transaction.timeout`` before Neo4j 5.0).
+        Values higher than ``db.transaction.timeout`` will be ignored and
+        will fall back to the default for server versions between 4.2 and
+        5.2 (inclusive).
+        The value should not represent a negative duration.
+        A ``0`` duration will make the transaction execute indefinitely.
+        :data:`None` will use the default timeout configured on the server.
     :type timeout: float or :const:`None`
     """
 
