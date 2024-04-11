@@ -515,9 +515,10 @@ class Duration(tuple):
             # )
             seconds = self[2] + Decimal(self[3]) / NANO_SECONDS
             seconds, subseconds = symmetric_divmod(seconds % other, 1)
+            ns = subseconds * NANO_SECONDS
             return Duration(months=round_half_to_even(self[0] % other),
                             days=round_half_to_even(self[1] % other),
-                            seconds=seconds, subseconds=subseconds)
+                            seconds=seconds, nanoseconds=ns)
         return NotImplemented
 
     @deprecated("Will be removed in 5.0.")
