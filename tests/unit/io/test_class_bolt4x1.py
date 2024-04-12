@@ -18,10 +18,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 from unittest.mock import MagicMock
 
 import pytest
 
+from neo4j import Address
 from neo4j.io._bolt4 import Bolt4x1
 from neo4j.conf import PoolConfig
 
@@ -263,3 +265,62 @@ def test_tx_timeout(fake_socket_pair, func, args, extra_idx, timeout, res):
             assert "tx_timeout" not in extra
         else:
             assert extra["tx_timeout"] == res
+
+
+@pytest.mark.parametrize(
+    "actions",
+    itertools.combinations_with_replacement(
+        itertools.product(
+            ("run", "begin", "begin_run"),
+            ("reset", "commit", "rollback"),
+            (None, "some_db", "another_db"),
+        ),
+        2
+    )
+)
+def test_tracks_last_database(fake_socket_pair, actions):
+    address = Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address)
+    connection = Bolt4x1(address, sockets.client, 0)
+    sockets.server.send_message(0x70, {"server": "Neo4j/1.2.3"})
+    connection.hello()
+    assert connection.last_database is None
+    for action, finish, db in actions:
+        sockets.server.send_message(0x70, {})
+        if action == "run":
+            connection.run("RETURN 1", db=db)
+        elif action == "begin":
+            connection.begin(db=db)
+        elif action == "begin_run":
+            connection.begin(db=db)
+            assert connection.last_database == db
+            sockets.server.send_message(0x70, {})
+            connection.run("RETURN 1")
+        else:
+            raise ValueError(action)
+
+        assert connection.last_database == db
+        connection.send_all()
+        connection.fetch_all()
+        assert connection.last_database == db
+
+        sockets.server.send_message(0x70, {})
+        if finish == "reset":
+            connection.reset()
+        elif finish == "commit":
+            if action == "run":
+                connection.pull()
+            else:
+                connection.commit()
+        elif finish == "rollback":
+            if action == "run":
+                connection.pull()
+            else:
+                connection.rollback()
+        else:
+            raise ValueError(finish)
+
+        connection.send_all()
+        connection.fetch_all()
+
+        assert connection.last_database == db
