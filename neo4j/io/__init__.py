@@ -564,7 +564,7 @@ class Bolt(abc.ABC):
                  messages fetched
         """
         detail_count = summary_count = 0
-        while self.responses:
+        while not self._closed and self.responses:
             response = self.responses[0]
             while not response.complete:
                 detail_delta, summary_delta = self.fetch_message()

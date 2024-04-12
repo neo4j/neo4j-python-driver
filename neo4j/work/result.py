@@ -366,11 +366,17 @@ class Result:
         return [record.values(*keys) for record in self]
 
     def data(self, *keys):
-        """Helper function that return the remainder of the result as a list of dictionaries.
+        """Return the remainder of the result as a list of dictionaries.
 
-        See :class:`neo4j.Record.data`
+        Each dictionary represents a record.
 
-        :param keys: fields to return for each remaining record. Optionally filtering to include only certain values by index or key.
+        For details see :meth:`.Record.data`.
+
+        :param keys: Fields to return for each remaining record.
+
+            Optionally filtering to include only certain values by index or
+            key.
+
         :returns: list of dictionaries
         :rtype: list
         """
