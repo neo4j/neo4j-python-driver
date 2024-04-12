@@ -18,10 +18,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import itertools
 from unittest.mock import MagicMock
 
 import pytest
 
+from neo4j import Address
 from neo4j.io._bolt3 import Bolt3
 from neo4j.conf import PoolConfig
 from neo4j.exceptions import (
@@ -136,12 +139,12 @@ def test_hint_recv_timeout_seconds_gets_ignored(fake_socket_pair, recv_timeout):
         (3.456, 3456),
         (1, 1000),
         (
-            "foo",
-            ValueError("Timeout must be specified as a number of seconds")
+                "foo",
+                ValueError("Timeout must be specified as a number of seconds")
         ),
         (
-            [1, 2],
-            TypeError("Timeout must be specified as a number of seconds")
+                [1, 2],
+                TypeError("Timeout must be specified as a number of seconds")
         )
     )
 )
@@ -163,3 +166,75 @@ def test_tx_timeout(fake_socket_pair, func, args, extra_idx, timeout, res):
             assert "tx_timeout" not in extra
         else:
             assert extra["tx_timeout"] == res
+
+
+@pytest.mark.parametrize(
+    "actions",
+    itertools.combinations_with_replacement(
+        itertools.product(
+            ("run", "begin", "begin_run"),
+            ("reset", "commit", "rollback"),
+            (None, "some_db", "another_db"),
+        ),
+        2
+    )
+)
+def test_tracks_last_database(fake_socket_pair, actions):
+    address = Address(("127.0.0.1", 7687))
+    sockets = fake_socket_pair(address)
+    connection = Bolt3(address, sockets.client, 0)
+    sockets.server.send_message(0x70, {"server": "Neo4j/1.2.3"})
+    connection.hello()
+    assert connection.last_database is None
+    for action, finish, db in actions:
+        sockets.server.send_message(0x70, {})
+        if action == "run":
+            with raises_if_db(db):
+                connection.run("RETURN 1", db=db)
+        elif action == "begin":
+            with raises_if_db(db):
+                connection.begin(db=db)
+        elif action == "begin_run":
+            with raises_if_db(db):
+                connection.begin(db=db)
+            assert connection.last_database is None
+            sockets.server.send_message(0x70, {})
+            connection.run("RETURN 1")
+        else:
+            raise ValueError(action)
+
+        assert connection.last_database is None
+        connection.send_all()
+        connection.fetch_all()
+        assert connection.last_database is None
+
+        sockets.server.send_message(0x70, {})
+        if finish == "reset":
+            connection.reset()
+        elif finish == "commit":
+            if action == "run":
+                connection.pull()
+            else:
+                connection.commit()
+        elif finish == "rollback":
+            if action == "run":
+                connection.pull()
+            else:
+                connection.rollback()
+        else:
+            raise ValueError(finish)
+
+        connection.send_all()
+        connection.fetch_all()
+
+        assert connection.last_database is None
+
+
+@contextlib.contextmanager
+def raises_if_db(db):
+    if db is None:
+        yield
+    else:
+        with pytest.raises(ConfigurationError,
+                           match="selecting database is not supported"):
+            yield

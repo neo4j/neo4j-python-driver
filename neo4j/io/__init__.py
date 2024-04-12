@@ -105,6 +105,16 @@ from neo4j.routing import RoutingTable
 log = getLogger("neo4j")
 
 
+class ClientStateManagerBase(abc.ABC):
+    @abc.abstractmethod
+    def __init__(self, init_state, on_change=None):
+        ...
+
+    @abc.abstractmethod
+    def transition(self, message):
+        ...
+
+
 class Bolt(abc.ABC):
     """ Server connection for Bolt protocol.
 
@@ -124,6 +134,10 @@ class Bolt(abc.ABC):
 
     # The socket
     in_use = False
+
+    # The database name the connection was last used with
+    # (BEGIN for explicit transactions, RUN for auto-commit transactions)
+    last_database = None
 
     # The socket
     _closing = False
@@ -400,6 +414,10 @@ class Bolt(abc.ABC):
             pass
 
     @abc.abstractmethod
+    def _get_client_state_manager(self):
+        ...
+
+    @abc.abstractmethod
     def route(self, database=None, imp_user=None, bookmarks=None):
         """ Fetch a routing table from the server for the given
         `database`. For Bolt 4.3 and above, this appends a ROUTE
@@ -504,6 +522,8 @@ class Bolt(abc.ABC):
             self.packer.pack_struct(signature, fields)
         self.outbox.wrap_message()
         self.responses.append(response)
+        if response:
+            self._get_client_state_manager().transition(response.message)
 
     def _send_all(self):
         with self.outbox.view() as data:
@@ -867,8 +887,10 @@ class IOPool:
             if not self.connections[address]:
                 del self.connections[address]
 
-    def on_write_failure(self, address):
-        raise WriteServiceUnavailable("No write service available for pool {}".format(self))
+    def on_write_failure(self, address, database):
+        raise WriteServiceUnavailable(
+            "No write service available for pool {}".format(self)
+        )
 
     def close(self):
         """ Close all connections and empty the pool.
@@ -1348,13 +1370,15 @@ class Neo4jPool(IOPool):
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_tables)
         super(Neo4jPool, self).deactivate(address)
 
-    def on_write_failure(self, address):
+    def on_write_failure(self, address, database):
         """ Remove a writer address from the routing table, if present.
         """
-        log.debug("[#0000]  C: <ROUTING> Removing writer %r", address)
+        log.debug("[#0000]  C: <ROUTING> Removing writer %r for database %r",
+                  address, database)
         with self.refresh_lock:
-            for database in self.routing_tables.keys():
-                self.routing_tables[database].writers.discard(address)
+            table = self.routing_tables.get(database)
+            if table is not None:
+                table.writers.discard(address)
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_tables)
 
 
