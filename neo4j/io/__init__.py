@@ -1372,7 +1372,7 @@ class Neo4jPool(IOPool):
         with self.refresh_lock:
             table = self.routing_tables.get(database)
             if table is not None:
-                self.routing_tables[database].writers.discard(address)
+                table.writers.discard(address)
         log.debug("[#0000]  C: <ROUTING> table=%r", self.routing_tables)
 
 
