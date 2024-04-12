@@ -150,12 +150,12 @@ class Config(Mapping, metaclass=ConfigType):
                     config[key] = value
         return cls(config)
 
-    def __update(self, data):
+    def __update(self, data, warn=True):
         data_dict = dict(iter_items(data))
 
         def set_attr(k, v):
             if k in self.keys():
-                if k in self._deprecated_options():
+                if warn and k in self._deprecated_options():
                     deprecation_warn("The '{}' config key is "
                                      "deprecated".format(k))
                 setattr(self, k, v)
@@ -164,10 +164,11 @@ class Config(Mapping, metaclass=ConfigType):
                 if k0 in data_dict:
                     raise ValueError("Cannot specify both '{}' and '{}' in "
                                      "config".format(k0, k))
-                deprecation_warn(
-                    "The '{}' config key is deprecated, please use "
-                    "'{}' instead".format(k, k0)
-                )
+                if warn:
+                    deprecation_warn(
+                        "The '{}' config key is deprecated, please use "
+                        "'{}' instead".format(k, k0)
+                    )
                 set_attr(k0, v)
             else:
                 raise AttributeError(k)
@@ -189,10 +190,7 @@ class Config(Mapping, metaclass=ConfigType):
     def __init__(self, *args, **kwargs):
         for arg in args:
             if isinstance(arg, Config):
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore",
-                                            category=DeprecationWarning)
-                    self.__update(arg)
+                self.__update(arg, warn=False)
             else:
                 self.__update(arg)
         self.__update(kwargs)
