@@ -59,15 +59,19 @@ class AsyncWorkspace(AsyncNonConcurrentMethodChecker):
         self._closed = False
         super().__init__()
 
-    def __del__(self):
+    def __del__(
+        self, _unclosed_resource_warn=unclosed_resource_warn,
+        _is_async_code=AsyncUtil.is_async_code,
+        _deprecation_warn=deprecation_warn,
+    ):
         if self._closed:
             return
-        unclosed_resource_warn(self)
+        _unclosed_resource_warn(self)
         # TODO: 6.0 - remove this
-        if asyncio.iscoroutinefunction(self.close):
+        if _is_async_code:
             return
         try:
-            deprecation_warn(
+            _deprecation_warn(
                 "Relying on AsyncSession's destructor to close the session "
                 "is deprecated. Please make sure to close the session. Use it "
                 "as a context (`with` statement) or make sure to call "

@@ -502,20 +502,27 @@ class Driver:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def __del__(self):
+    # Copy globals as function locals to make sure that they are available
+    # during Python shutdown when the Pool is destroyed.
+    def __del__(
+        self, _unclosed_resource_warn=unclosed_resource_warn,
+        _is_async_code=Util.is_async_code,
+        _deprecation_warn=deprecation_warn,
+    ):
         if not self._closed:
-            unclosed_resource_warn(self)
+            _unclosed_resource_warn(self)
         # TODO: 6.0 - remove this
+        if _is_async_code:
+            return
         if not self._closed:
-            if not Util.is_async_code:
-                deprecation_warn(
-                    "Relying on Driver's destructor to close the session "
-                    "is deprecated. Please make sure to close the session. "
-                    "Use it as a context (`with` statement) or make sure to "
-                    "call `.close()` explicitly. Future versions of the "
-                    "driver will not close drivers automatically."
-                )
-                self.close()
+            _deprecation_warn(
+                "Relying on Driver's destructor to close the session "
+                "is deprecated. Please make sure to close the session. "
+                "Use it as a context (`with` statement) or make sure to "
+                "call `.close()` explicitly. Future versions of the "
+                "driver will not close drivers automatically."
+            )
+            self.close()
 
     def _check_state(self):
         if self._closed:
