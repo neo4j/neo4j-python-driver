@@ -25,8 +25,6 @@ from neo4j.io._common import (
     ResetResponse,
 )
 
-from ..work import fake_connection
-
 
 @pytest.mark.parametrize(("chunk_size", "data", "result"), (
     (

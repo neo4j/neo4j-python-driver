@@ -30,8 +30,6 @@ from neo4j import (
 )
 from neo4j.io import IOPool
 
-from ._fake_connection import fake_connection_generator
-
 
 @pytest.fixture
 def pool(mocker, fake_connection_generator):

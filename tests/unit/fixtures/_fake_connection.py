@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
 # Copyright (c) "Neo4j"
 # Neo4j Sweden AB [http://neo4j.com]
 #
@@ -25,6 +22,12 @@ import pytest
 
 from neo4j import ServerInfo
 from neo4j._deadline import Deadline
+
+
+__all__ = [
+    "fake_connection",
+    "fake_connection_generator",
+]
 
 
 @pytest.fixture

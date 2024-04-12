@@ -38,8 +38,6 @@ from neo4j.exceptions import (
 )
 from neo4j.io import Neo4jPool
 
-from ..work import fake_connection_generator
-
 
 ROUTER1_ADDRESS = ResolvedAddress(("1.2.3.1", 9000), host_name="host")
 ROUTER2_ADDRESS = ResolvedAddress(("1.2.3.1", 9001), host_name="host")
