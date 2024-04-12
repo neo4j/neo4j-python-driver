@@ -46,6 +46,7 @@ from neo4j.io import (
 from neo4j.io._common import (
     CommitResponse,
     InitResponse,
+    ResetResponse,
     Response,
     tx_timeout_as_ms,
 )
@@ -240,15 +241,13 @@ class Bolt4x0(Bolt):
         self._append(b"\x13", (), Response(self, "rollback", **handlers))
 
     def reset(self):
-        """ Add a RESET message to the outgoing queue, send
-        it and consume all remaining messages.
+        """Reset the connection.
+
+        Add a RESET message to the outgoing queue, send it and consume all
+        remaining messages.
         """
-
-        def fail(metadata):
-            raise BoltProtocolError("RESET failed %r" % metadata, self.unresolved_address)
-
         log.debug("[#%04X]  C: RESET", self.local_port)
-        self._append(b"\x0F", response=Response(self, "reset", on_failure=fail))
+        self._append(b"\x0F", response=ResetResponse(self, "reset"))
         self.send_all()
         self.fetch_all()
 

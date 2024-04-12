@@ -267,6 +267,26 @@ class InitResponse(Response):
             )
 
 
+class ResetResponse(Response):
+    def _unexpected_message(self, response):
+        log.warning("[#%04X]  RESET received %s (unexpected response) "
+                    "=> dropping connection",
+                    self.connection.local_port, response)
+        self.connection.close()
+
+    def on_records(self, records):
+        self._unexpected_message("RECORD")
+
+    def on_success(self, metadata):
+        pass
+
+    def on_failure(self, metadata):
+        self._unexpected_message("FAILURE")
+
+    def on_ignored(self, metadata=None):
+        self._unexpected_message("IGNORED")
+
+
 class CommitResponse(Response):
 
     pass
