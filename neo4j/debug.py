@@ -87,10 +87,12 @@ class Watcher:
         self.stop()
         handler = StreamHandler(out)
         handler.setFormatter(self.formatter)
+        handler.setLevel(level)
         for logger in self. loggers:
             self.handlers[logger.name] = handler
             logger.addHandler(handler)
-            logger.setLevel(level)
+            if logger.getEffectiveLevel() > level:
+                logger.setLevel(level)
 
     def stop(self):
         """Disable logging for all loggers."""

@@ -267,6 +267,54 @@ class InitResponse(Response):
             )
 
 
+class ResetResponse(Response):
+    def _unexpected_message(self, response):
+        log.warning("[#%04X]  RESET received %s (unexpected response) "
+                    "=> dropping connection",
+                    self.connection.local_port, response)
+        self.connection.close()
+
+    def on_records(self, records):
+        self._unexpected_message("RECORD")
+
+    def on_success(self, metadata):
+        pass
+
+    def on_failure(self, metadata):
+        self._unexpected_message("FAILURE")
+
+    def on_ignored(self, metadata=None):
+        self._unexpected_message("IGNORED")
+
+
 class CommitResponse(Response):
 
     pass
+
+
+def tx_timeout_as_ms(timeout: float) -> int:
+    """
+    Round transaction timeout to milliseconds.
+
+    Values in (0, 1], else values are rounded using the built-in round()
+    function (round n.5 values to nearest even).
+
+    :param timeout: timeout in seconds
+
+    :returns: timeout in milliseconds (rounded)
+
+    :raise ValueError: if timeout is negative
+    """
+    try:
+        timeout = float(timeout)
+    except (TypeError, ValueError) as e:
+        err_type = type(e)
+        msg = "Timeout must be specified as a number of seconds"
+        raise err_type(msg) from e
+    ms = int(round(1000 * timeout))
+    if ms == 0 and timeout > 0:
+        # Special case for 0 < timeout < 0.5 ms.
+        # This would be rounded to 0 ms, but the server interprets this as
+        # infinite timeout. So we round to the smallest possible timeout: 1 ms.
+        ms = 1
+    return ms
