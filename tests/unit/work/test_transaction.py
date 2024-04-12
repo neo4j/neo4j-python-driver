@@ -31,8 +31,6 @@ from neo4j import (
     Transaction,
 )
 
-from ._fake_connection import fake_connection
-
 
 @pytest.mark.parametrize(("explicit_commit", "close"), (
     (False, False),
