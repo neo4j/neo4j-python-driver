@@ -19,6 +19,6 @@
 # limitations under the License.
 
 from ._fake_connection import (
-    FakeConnection,
+    fake_connection_generator,
     fake_connection,
 )

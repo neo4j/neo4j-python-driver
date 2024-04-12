@@ -30,17 +30,17 @@ from neo4j import (
 )
 from neo4j.io import IOPool
 
-from ._fake_connection import FakeConnection
+from ._fake_connection import fake_connection_generator
 
 
 @pytest.fixture
-def pool(mocker):
+def pool(mocker, fake_connection_generator):
     pool = mocker.Mock(spec=IOPool)
     assert not hasattr(pool, "acquired_connection_mocks")
     pool.acquired_connection_mocks = []
 
     def acquire_side_effect(*_, **__):
-        connection = FakeConnection()
+        connection = fake_connection_generator()
         pool.acquired_connection_mocks.append(connection)
         return connection
 

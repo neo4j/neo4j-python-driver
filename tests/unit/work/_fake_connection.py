@@ -20,7 +20,6 @@
 
 
 import inspect
-from unittest import mock
 
 import pytest
 
@@ -28,87 +27,93 @@ from neo4j import ServerInfo
 from neo4j._deadline import Deadline
 
 
-class FakeConnection(mock.NonCallableMagicMock):
-    callbacks = []
-    server_info = ServerInfo("127.0.0.1", (4, 3))
-    local_port = 1234
-    bolt_patches = set()
+@pytest.fixture
+def fake_connection_generator(session_mocker):
+    mock = session_mocker.mock_module
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.attach_mock(mock.Mock(return_value=True), "is_reset_mock")
-        self.attach_mock(mock.Mock(return_value=False), "defunct")
-        self.attach_mock(mock.Mock(return_value=False), "stale")
-        self.attach_mock(mock.Mock(return_value=False), "closed")
-        self.attach_mock(mock.Mock(return_value=False), "socket")
-        self.socket.attach_mock(
-            mock.Mock(return_value=None), "get_deadline"
-        )
+    class FakeConnection(mock.NonCallableMagicMock):
+        callbacks = []
+        server_info = ServerInfo("127.0.0.1", (4, 3))
+        local_port = 1234
+        bolt_patches = set()
 
-        def set_deadline_side_effect(deadline):
-            deadline = Deadline.from_timeout_or_deadline(deadline)
-            self.socket.get_deadline.return_value = deadline
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.attach_mock(mock.Mock(return_value=True), "is_reset_mock")
+            self.attach_mock(mock.Mock(return_value=False), "defunct")
+            self.attach_mock(mock.Mock(return_value=False), "stale")
+            self.attach_mock(mock.Mock(return_value=False), "closed")
+            self.attach_mock(mock.Mock(return_value=False), "socket")
+            self.socket.attach_mock(
+                mock.Mock(return_value=None), "get_deadline"
+            )
 
-        self.socket.attach_mock(
-            mock.Mock(side_effect=set_deadline_side_effect), "set_deadline"
-        )
+            def set_deadline_side_effect(deadline):
+                deadline = Deadline.from_timeout_or_deadline(deadline)
+                self.socket.get_deadline.return_value = deadline
 
-        def close_side_effect():
-            self.closed.return_value = True
+            self.socket.attach_mock(
+                mock.Mock(side_effect=set_deadline_side_effect), "set_deadline"
+            )
 
-        self.attach_mock(mock.Mock(side_effect=close_side_effect), "close")
+            def close_side_effect():
+                self.closed.return_value = True
 
-    @property
-    def is_reset(self):
-        if self.closed.return_value or self.defunct.return_value:
-            raise AssertionError("is_reset should not be called on a closed or "
-                                 "defunct connection.")
-        return self.is_reset_mock()
+            self.attach_mock(mock.Mock(side_effect=close_side_effect), "close")
 
-    def fetch_message(self, *args, **kwargs):
-        if self.callbacks:
-            cb = self.callbacks.pop(0)
-            cb()
-        return super().__getattr__("fetch_message")(*args, **kwargs)
+        @property
+        def is_reset(self):
+            if self.closed.return_value or self.defunct.return_value:
+                raise AssertionError("is_reset should not be called on a closed or "
+                                     "defunct connection.")
+            return self.is_reset_mock()
 
-    def fetch_all(self, *args, **kwargs):
-        while self.callbacks:
-            cb = self.callbacks.pop(0)
-            cb()
-        return super().__getattr__("fetch_all")(*args, **kwargs)
+        def fetch_message(self, *args, **kwargs):
+            if self.callbacks:
+                cb = self.callbacks.pop(0)
+                cb()
+            return super().__getattr__("fetch_message")(*args, **kwargs)
 
-    def __getattr__(self, name):
-        parent = super()
+        def fetch_all(self, *args, **kwargs):
+            while self.callbacks:
+                cb = self.callbacks.pop(0)
+                cb()
+            return super().__getattr__("fetch_all")(*args, **kwargs)
 
-        def build_message_handler(name):
-            def func(*args, **kwargs):
-                def callback():
-                    for cb_name, param_count in (
-                        ("on_success", 1),
-                        ("on_summary", 0)
-                    ):
-                        cb = kwargs.get(cb_name, None)
-                        if callable(cb):
-                            try:
-                                param_count = \
-                                    len(inspect.signature(cb).parameters)
-                            except ValueError:
-                                # e.g. built-in method as cb
-                                pass
-                            if param_count == 1:
-                                cb({})
-                            else:
-                                cb()
-                self.callbacks.append(callback)
+        def __getattr__(self, name):
+            parent = super()
 
-            return func
+            def build_message_handler(name):
+                def func(*args, **kwargs):
+                    def callback():
+                        for cb_name, param_count in (
+                            ("on_success", 1),
+                            ("on_summary", 0)
+                        ):
+                            cb = kwargs.get(cb_name, None)
+                            if callable(cb):
+                                try:
+                                    param_count = \
+                                        len(inspect.signature(cb).parameters)
+                                except ValueError:
+                                    # e.g. built-in method as cb
+                                    pass
+                                if param_count == 1:
+                                    cb({})
+                                else:
+                                    cb()
+                    self.callbacks.append(callback)
 
-        method_mock = parent.__getattr__(name)
-        if name in ("run", "commit", "pull", "rollback", "discard"):
-            method_mock.side_effect = build_message_handler(name)
-        return method_mock
+                return func
+
+            method_mock = parent.__getattr__(name)
+            if name in ("run", "commit", "pull", "rollback", "discard"):
+                method_mock.side_effect = build_message_handler(name)
+            return method_mock
+
+    return FakeConnection
 
 
 @pytest.fixture
-def fake_connection():
-    return FakeConnection()
+def fake_connection(fake_connection_generator):
+    return fake_connection_generator()
