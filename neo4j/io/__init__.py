@@ -588,7 +588,7 @@ class Bolt(abc.ABC):
         direct_driver = isinstance(self.pool, BoltPool)
 
         if error:
-            log.debug("[#%04X]  %r", self.socket.getsockname()[1], error)
+            log.debug("[#%04X]  %r", self.local_port, error)
         log.error(message)
         # We were attempting to receive data but the connection
         # has unexpectedly terminated. So, we need to close the
