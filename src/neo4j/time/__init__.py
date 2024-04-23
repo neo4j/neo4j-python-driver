@@ -854,35 +854,10 @@ class Date(date_base_class, metaclass=DateType):
         """
         if ordinal == 0:
             return ZeroDate
-        if ordinal >= 736695:
-            year = 2018     # Project release year
-            month = 1
-            day = int(ordinal - 736694)
-        elif ordinal >= 719163:
-            year = 1970     # Unix epoch
-            month = 1
-            day = int(ordinal - 719162)
-        else:
-            year = 1
-            month = 1
-            day = int(ordinal)
-        if day < 1 or day > 3652059:
-            # Note: this requires a maximum of 22 bits for storage
-            # Could be transferred in 3 bytes.
-            raise ValueError("Ordinal out of range (1..3652059)")
-        if year < MIN_YEAR or year > MAX_YEAR:
-            raise ValueError("Year out of range (%d..%d)" % (MIN_YEAR, MAX_YEAR))
-        days_in_year = DAYS_IN_YEAR[year]
-        while day > days_in_year:
-            day -= days_in_year
-            year += 1
-            days_in_year = DAYS_IN_YEAR[year]
-        days_in_month = DAYS_IN_MONTH[(year, month)]
-        while day > days_in_month:
-            day -= days_in_month
-            month += 1
-            days_in_month = DAYS_IN_MONTH[(year, month)]
-        year, month, day = _normalize_day(year, month, day)
+        elif ordinal < 0 or ordinal > 3652059:
+            raise ValueError("Ordinal out of range (0..3652059)")
+        d = datetime.fromordinal(ordinal)
+        year, month, day = _normalize_day(d.year, d.month, d.day)
         return cls.__new(ordinal, year, month, day)
 
     @classmethod
@@ -1165,17 +1140,9 @@ class Date(date_base_class, metaclass=DateType):
         :raises ValueError: if the added duration has a time component.
         """
         def add_months(d, months):
-            years, months = symmetric_divmod(months, 12)
-            year = d.__year + years
-            month = d.__month + months
-            while month > 12:
-                year += 1
-                month -= 12
-            while month < 1:
-                year -= 1
-                month += 12
-            d.__year = year
-            d.__month = month
+            overflow_years, month = divmod(months + d.__month - 1, 12)
+            d.__year += overflow_years
+            d.__month = month + 1
 
         def add_days(d, days):
             assert 1 <= d.__day <= 28 or -28 <= d.__day <= -1
