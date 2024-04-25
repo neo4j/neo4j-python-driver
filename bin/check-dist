@@ -13,8 +13,10 @@ then
     exit 1
 else
     source "${ROOT}/bin/dist-functions"
-    check_file "${DIST}/neo4j-driver-${VERSION}.tar.gz"
-    check_file "${DIST}/neo4j-${VERSION}.tar.gz"
+    for PACKAGE in "neo4j-driver" "neo4j"; do
+        PACKAGE="$(normalize_dist_name "$PACKAGE")"
+        check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"
+    done
 fi
 
 exit ${STATUS}

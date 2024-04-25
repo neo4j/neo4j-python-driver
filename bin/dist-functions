@@ -39,10 +39,16 @@ function set_deprecated {
     sed -i 's/^deprecated_package = .*/deprecated_package = '$1'/g' "${SRC}/neo4j/_meta.py"
 }
 
+# distribution normalization according to PEP 625 https://peps.python.org/pep-0625/
+function normalize_dist_name
+{
+    echo $1 | sed 's/[._-]\+/_/g' | tr '[:upper:]' '[:lower:]'
+}
+
 function check_file
 {
     FILE=$1
-    echo -n "Checking file $(basename ${FILE})... "
+    echo -n "Checking file $(basename "${FILE}")... "
     if [ -f "${FILE}" ]
     then
         echo "OK"
@@ -100,7 +106,7 @@ function set_metadata_and_setup
     find . -name *.pyc -delete
     rm -rf "${SRC}/*.egg-info" 2> /dev/null
     python -m build $*
-    check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"
+    check_file "${DIST}/$(normalize_dist_name $PACKAGE)-${VERSION}.tar.gz"
 
     trap - EXIT
     cleanup
