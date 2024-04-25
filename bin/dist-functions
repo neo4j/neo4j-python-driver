@@ -24,16 +24,23 @@ function set_version
     sed -i 's/^version = .*/version = "'$1'"/g' neo4j/meta.py
 }
 
+# distribution normalization according to PEP 625 https://peps.python.org/pep-0625/
+function normalize_dist_name
+{
+    echo $1 | sed 's/[._-]\+/_/g' | tr '[:upper:]' '[:lower:]'
+}
+
 function check_file
 {
     FILE=$1
-    echo -n "Checking file $(basename ${FILE})... "
+    echo -n "Checking file $(basename "${FILE}")... "
     if [ -f "${FILE}" ]
     then
         echo "OK"
+        return 0
     else
         echo "missing"
-        STATUS=1
+        return 1
     fi
 }
 
@@ -76,9 +83,13 @@ function set_metadata_and_setup
 
     # Create source distribution
     find . -name *.pyc -delete
-    rm -rf ${ROOT}/*.egg-info 2> /dev/null
+    rm -rf "${ROOT}/*.egg-info" 2> /dev/null
     python setup.py $*
-    check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"
+    NORMALIZED_PACKAGE="$(normalize_dist_name $PACKAGE)"
+    if ! (check_file "${DIST}/${NORMALIZED_PACKAGE}-${VERSION}.tar.gz" \
+          || check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"); then
+        STATUS=1
+    fi
 
   trap - EXIT
   cleanup
