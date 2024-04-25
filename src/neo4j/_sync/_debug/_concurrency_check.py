@@ -75,8 +75,8 @@ class NonConcurrentMethodChecker:
                         "NonConcurrentMethodChecked.non_concurrent_method"
                     )
 
-            @wraps(f)
             @copy_signature(f)
+            @wraps(f)
             def inner(*args, **kwargs):
                 self = args[0]
                 assert isinstance(self, cls)
@@ -114,8 +114,8 @@ class NonConcurrentMethodChecker:
                         "NonConcurrentMethodChecked.non_concurrent_iter"
                     )
 
-            @wraps(f)
             @copy_signature(f)
+            @wraps(f)
             def inner(*args, **kwargs):
                 self = args[0]
                 assert isinstance(self, cls)
