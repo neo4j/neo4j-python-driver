@@ -14,8 +14,11 @@ then
 else
     source "${ROOT}/bin/dist-functions"
     for PACKAGE in "neo4j-driver" "neo4j"; do
-        PACKAGE="$(normalize_dist_name "$PACKAGE")"
-        check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"
+        NORMALIZED_PACKAGE="$(normalize_dist_name "$PACKAGE")"
+        if ! (check_file "${DIST}/${NORMALIZED_PACKAGE}-${VERSION}.tar.gz" \
+              || check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"); then
+            STATUS=1
+        fi
     done
 fi
 

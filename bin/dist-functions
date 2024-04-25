@@ -52,9 +52,10 @@ function check_file
     if [ -f "${FILE}" ]
     then
         echo "OK"
+        return 0
     else
         echo "missing"
-        STATUS=1
+        return 1
     fi
 }
 
@@ -106,7 +107,11 @@ function set_metadata_and_setup
     find . -name *.pyc -delete
     rm -rf "${SRC}/*.egg-info" 2> /dev/null
     python -m build $*
-    check_file "${DIST}/$(normalize_dist_name $PACKAGE)-${VERSION}.tar.gz"
+    NORMALIZED_PACKAGE="$(normalize_dist_name $PACKAGE)"
+    if ! (check_file "${DIST}/${NORMALIZED_PACKAGE}-${VERSION}.tar.gz" \
+          || check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"); then
+        STATUS=1
+    fi
 
     trap - EXIT
     cleanup

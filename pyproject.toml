@@ -64,7 +64,7 @@ pyarrow = ["pyarrow >= 1.0.0"]
 
 [build-system]
 requires = [
-    "setuptools >= 69.3.0",
+    "setuptools >= 66.1.0",
     # TODO: 6.0 - can be removed once `setup.py` is simplified
     "tomlkit ~= 0.11.6",
 ]
