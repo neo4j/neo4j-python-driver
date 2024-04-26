@@ -113,8 +113,8 @@ class AuthManager(metaclass=abc.ABCMeta):
 
         The token returned must always belong to the same identity.
         Switching identities using the `AuthManager` is undefined behavior.
-        You may use session-level authentication for such use-cases
-        :ref:`session-auth-ref`.
+        You may use :ref:`session-level authentication<session-auth-ref>`
+        for such use-cases.
 
     .. seealso:: :class:`.AuthManagers`
 
@@ -123,9 +123,11 @@ class AuthManager(metaclass=abc.ABCMeta):
     .. versionchanged:: 5.12
         ``on_auth_expired`` was removed from the interface and replaced by
         :meth:`handle_security_exception`. The new method is called when the
-        server returns any `Neo.ClientError.Security.*` error. It's signature
+        server returns any `Neo.ClientError.Security.*` error. Its signature
         differs in that it additionally receives the error returned by the
         server and returns a boolean indicating whether the error was handled.
+
+    .. versionchanged:: 5.14 Stabilized from preview.
     """
 
     @abc.abstractmethod
@@ -140,8 +142,8 @@ class AuthManager(metaclass=abc.ABCMeta):
             The method must only ever return auth information belonging to the
             same identity.
             Switching identities using the `AuthManager` is undefined behavior.
-            You may use session-level authentication for such use-cases
-            :ref:`session-auth-ref`.
+            You may use :ref:`session-level authentication<session-auth-ref>`
+            for such use-cases.
         """
         ...
 
@@ -181,6 +183,8 @@ class AsyncAuthManager(_Protocol, metaclass=abc.ABCMeta):
     .. versionchanged:: 5.12
         ``on_auth_expired`` was removed from the interface and replaced by
          :meth:`handle_security_exception`. See :class:`.AuthManager`.
+
+    .. versionchanged:: 5.14 Stabilized from preview.
     """
 
     @abc.abstractmethod
@@ -210,6 +214,11 @@ class ClientCertificate:
 
     The attributes are the same as the arguments to
     :meth:`ssl.SSLContext.load_cert_chain()`.
+
+    **This is a preview** (see :ref:`filter-warnings-ref`).
+    It might be changed without following the deprecation policy.
+    See also
+    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. versionadded:: 5.19
     """
@@ -247,6 +256,11 @@ class ClientCertificateProvider(_Protocol, metaclass=abc.ABCMeta):
 
         The provider **must not** interact with the driver in any way as this
         can cause deadlocks and undefined behaviour.
+
+    **This is a preview** (see :ref:`filter-warnings-ref`).
+    It might be changed without following the deprecation policy.
+    See also
+    https://github.com/neo4j/neo4j-python-driver/wiki/preview-features
 
     .. versionadded:: 5.19
     """
