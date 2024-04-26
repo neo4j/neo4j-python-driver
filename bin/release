@@ -17,9 +17,20 @@ if [ "${VERSION}" == "" ]
 then
     echo "usage: ${SCRIPT} VERSION"
     exit 1
-else
-    source "${ROOT}/bin/dist-functions"
-    twine upload ${TWINE_ARGS} \
-        "${DIST}/neo4j-driver-${VERSION}.tar.gz" \
-        "${DIST}/neo4j-${VERSION}.tar.gz"
 fi
+
+source "${ROOT}/bin/dist-functions"
+for PACKAGE in "neo4j-driver" "neo4j"; do
+    NORMALIZED_PACKAGE="$(normalize_dist_name "$PACKAGE")"
+    if check_file "${DIST}/${NORMALIZED_PACKAGE}-${VERSION}.tar.gz"
+    then
+      TWINE_ARGS="${TWINE_ARGS} ${DIST}/${NORMALIZED_PACKAGE}-${VERSION}.tar.gz"
+    elif check_file "${DIST}/${PACKAGE}-${VERSION}.tar.gz"; then
+      TWINE_ARGS="${TWINE_ARGS} ${DIST}/${PACKAGE}-${VERSION}.tar.gz"
+    else
+      echo "Distribution file for ${PACKAGE} not found"
+      exit 1
+    fi
+done
+
+twine upload ${TWINE_ARGS}
