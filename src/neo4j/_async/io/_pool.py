@@ -962,5 +962,5 @@ class AsyncNeo4jPool(AsyncIOPool):
         async with self.refresh_lock:
             table = self.routing_tables.get(database)
             if table is not None:
-                table.writers.discard(address)
+                self.routing_tables[database].writers.discard(address)
         log.debug("[#0000]  _: <POOL> table=%r", self.routing_tables)
