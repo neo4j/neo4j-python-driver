@@ -126,6 +126,8 @@ class AuthManagers:
     def static(auth: _TAuth) -> AuthManager:
         """Create a static auth manager.
 
+        The manager will always return the auth info provided at its creation.
+
         Example::
 
             # NOTE: this example is for illustration purposes only.
@@ -164,9 +166,13 @@ class AuthManagers:
         """Create an auth manager handling basic auth password rotation.
 
         This factory wraps the provider function in an auth manager
-        implementation that caches the provides auth info until either the
-        server notifies the driver that the auth info is expired (by returning
-        an error that indicates that basic auth has changed).
+        implementation that caches the provided auth info until the server
+        notifies the driver that the auth info has expired (by returning
+        an error that indicates that the password is invalid).
+
+        Note that this implies that the provider function will be called again
+        if it provides wrong auth info, potentially deferring failure due to a
+        wrong password or username.
 
         .. warning::
 
@@ -176,8 +182,8 @@ class AuthManagers:
             The provider function must only ever return auth information
             belonging to the same identity.
             Switching identities is undefined behavior.
-            You may use session-level authentication for such use-cases
-            :ref:`session-auth-ref`.
+            You may use :ref:`session-level authentication<session-auth-ref>`
+            for such use-cases.
 
         Example::
 
@@ -201,13 +207,13 @@ class AuthManagers:
                 ...  # do stuff
 
         :param provider:
-            A callable that provides a :class:`.ExpiringAuth` instance.
+            A callable that provides new auth info whenever the server notifies
+            the driver that the previous auth info is invalid.
 
         :returns:
             An instance of an implementation of :class:`.AuthManager` that
             returns auth info from the given provider and refreshes it, calling
-            the provider again, when the auth info expires (because the server
-            flagged it as expired).
+            the provider again, when the auth info was rejected by the server.
 
         .. versionadded:: 5.12
 
@@ -227,9 +233,9 @@ class AuthManagers:
         """Create an auth manager for potentially expiring bearer auth tokens.
 
         This factory wraps the provider function in an auth manager
-        implementation that caches the provides auth info until either the
-        :attr:`.ExpiringAuth.expires_at` is exceeded the server notifies the
-        driver that the auth info is expired (by returning an error that
+        implementation that caches the provided auth info until either the
+        :attr:`.ExpiringAuth.expires_at` exceeded or the server notified the
+        driver that the auth info has expired (by returning an error that
         indicates that the bearer auth token has expired).
 
         .. warning::
@@ -240,8 +246,8 @@ class AuthManagers:
             The provider function must only ever return auth information
             belonging to the same identity.
             Switching identities is undefined behavior.
-            You may use session-level authentication for such use-cases
-            :ref:`session-auth-ref`.
+            You may use :ref:`session-level authentication<session-auth-ref>`
+            for such use-cases.
 
         Example::
 
@@ -364,7 +370,6 @@ class RotatingClientCertificateProvider(ClientCertificateProvider):
     :param initial_cert: The certificate to use initially.
 
     .. versionadded:: 5.19
-
     """
     def __init__(self, initial_cert: ClientCertificate) -> None:
         self._cert: t.Optional[ClientCertificate] = initial_cert
